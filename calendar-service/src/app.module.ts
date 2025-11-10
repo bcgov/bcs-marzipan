@@ -4,15 +4,17 @@ import { AppService } from './app.service';
 import { CalendarEntity } from './calendar/entities/calendar.entity'; // use with a real database
 import { CalendarModule } from './calendar/calendar.module';
 import { TypeOrmModule } from '@nestjs/typeorm'; // use with a real database
+import { UserModule } from './user/user.module';
+import { UserEntity } from './user/entities/user.entity'; // use with a real database
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: ':memory:',
-      entities: [CalendarEntity],
+      entities: [CalendarEntity, UserEntity],
       synchronize: true,
-}), CalendarModule,
+}), CalendarModule, UserModule,
   ], 
   // imports: [CalendarModule],
   controllers: [AppController],
