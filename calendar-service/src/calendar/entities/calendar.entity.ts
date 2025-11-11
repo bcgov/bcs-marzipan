@@ -15,7 +15,10 @@ export class CalendarEntity {
   title!: string;
 
   @Column({ nullable: true })
-  category!: 'event' | 'meeting' | 'other';
+  category!: 'event' | 'meeting' | 'other' | 'release' | 'issue';
+
+  @Column({ nullable: true })
+  type!: 'Awareness Date' | 'News Release' | 'Issue' | 'release' | 'issue';
 
   @Column({ nullable: true })
   summary!: string;
@@ -45,10 +48,10 @@ export class CalendarEntity {
   ministry!: string;
 
   @CreateDateColumn()
-  created_on!: Date;
+  created_on!: Date | undefined;
 
   @UpdateDateColumn()
-  updated_on!: Date;
+  updated_on!: Date | undefined;
 
   @Column({ nullable: true })
   created_by!: string;
@@ -63,14 +66,14 @@ export class CalendarEntity {
   assigned_to!: string;
 
   @Column({ default: 'active' })
-  status!: 'active' | 'deleted';
+  status!: 'active' | 'deleted' | 'new' | 'changed' | 'reviewed';
 
   @Column({ nullable: true })
-  deleted_on!: Date;
+  deleted_on!: Date | undefined;
 
   @Column({ nullable: true })
   deleted_reason!: string;
 
   @Column({ nullable: true })
-  restored_on!: Date;
+  restored_on!: Date | undefined;
 }

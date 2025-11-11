@@ -6,7 +6,7 @@ export class CreateCalendarDto {
 
   @IsOptional()
   @IsEnum(['event', 'meeting', 'other'])
-  category?: 'event' | 'meeting' | 'other';
+  category?: 'event' | 'meeting' | 'other' | 'release';
 
   @IsOptional()
   @IsString()
