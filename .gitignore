@@ -20,10 +20,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # environment variables
-.env
 .env*
-.env.*.local
-.env.local
+!.env.example
 
 # editor and OS specific files
 .DS_Store
@@ -33,6 +31,11 @@ Thumbs.db
 
 # testing
 /coverage
+
+# build caches
+.vite/
+.nest/
+*.tsbuildinfo
 
 # misc
 *.log
