@@ -28,6 +28,7 @@ import {
   governmentRepresentatives,
   communicationContacts,
   eventPlanners,
+  // videographers,
 } from '../schema/lookups';
 import { ministries } from '../schema/ministry';
 import { systemUsers } from '../schema/user';

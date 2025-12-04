@@ -15,7 +15,18 @@ export async function fetchActivities(
       params: filters,
     }
   );
-  return res.data.data;
+  // Handle different response structures
+  if (res.data && res.data.data) {
+    return res.data.data;
+  }
+
+  // If the response is directly an array
+  if (Array.isArray(res.data)) {
+    return res.data;
+  }
+
+  console.error('Unexpected API response structure:', res.data);
+  return [];
 }
 
 export async function fetchActivity(id: number): Promise<ActivityResponse> {
