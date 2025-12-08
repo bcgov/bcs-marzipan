@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { LoggerModule } from './common/logger/logger.module';
 
 /**
  * Resolves the root .env file path.
@@ -25,6 +26,7 @@ function resolveRootEnvPath(): string {
       // Load .env from root directory
       envFilePath: resolveRootEnvPath(),
     }),
+    LoggerModule,
     DatabaseModule,
     ActivitiesModule,
   ],

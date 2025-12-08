@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
 import { schema } from '@corpcal/database';
 import * as postgresModule from 'postgres';
+import { AppLogger } from '../common/logger/logger.service';
 
 export const DATABASE_CLIENT = 'DATABASE_CLIENT';
 
@@ -29,7 +30,7 @@ function maskConnectionString(connectionString: string): string {
 
 export const databaseProvider = {
   provide: DATABASE_CLIENT,
-  useFactory: (configService: ConfigService) => {
+  useFactory: (configService: ConfigService, logger: AppLogger) => {
     const connectionString = configService.get<string>('DATABASE_URL');
 
     if (!connectionString) {
@@ -39,18 +40,18 @@ export const databaseProvider = {
     }
 
     // Log connection info (without password) for debugging
-    // eslint-disable-next-line no-console
-    console.log(
-      `Connecting to database: ${maskConnectionString(connectionString)}`
+    logger.log(
+      `Connecting to database: ${maskConnectionString(connectionString)}`,
+      'DatabaseProvider'
     );
 
     // Access the default export - when externalized, require() returns the default directly
     // Type assertion needed because postgres module's default export typing varies by build target
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const postgres = (postgresModule as any).default || postgresModule;
 
     // Create postgres client with connection pooling
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+
     const queryClient = postgres(connectionString, {
       max: configService.get<number>('DB_MAX_CONNECTIONS', 10),
       idle_timeout: configService.get<number>('DB_IDLE_TIMEOUT', 20),
@@ -66,7 +67,7 @@ export const databaseProvider = {
 
     return db;
   },
-  inject: [ConfigService],
+  inject: [ConfigService, AppLogger],
 };
 
 export type Database = ReturnType<typeof drizzle<typeof schema>>;

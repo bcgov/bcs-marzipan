@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import json from '@eslint/json';
 
 /**
  * Helper function to create type-checked ESLint configs for a specific project
@@ -52,11 +53,30 @@ export default [
       '**/coverage/**',
       '**/*.config.js',
       '**/*.config.ts',
-      '**/tsconfig*.json',
+      '**/tsconfig*.json', // TypeScript config files
       '.local/**',
       '**/*.md',
       'scripts/**',
+      'package-lock.json', // Generated file - too large and changes frequently
+      '**/migrations/meta/**', // Generated migration metadata
     ],
+  },
+
+  // JSON linting configuration
+  {
+    plugins: {
+      json,
+    },
+  },
+  {
+    files: ['**/*.json'],
+    language: 'json/json',
+    rules: {
+      'json/no-duplicate-keys': 'error',
+      'json/no-empty-keys': 'error',
+      'json/no-unsafe-values': 'error',
+      'json/sort-keys': 'off', // Let Prettier handle sorting
+    },
   },
 
   // Base recommended configs
@@ -138,6 +158,7 @@ export default [
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       'react/prop-types': 'off', // Using TypeScript for prop validation
+      'react/react-in-jsx-scope': 'off', // Using TypeScript for JSX
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
@@ -176,7 +197,7 @@ export default [
 
   // Prettier integration (must be last to override formatting rules)
   // eslint-plugin-prettier/recommended includes both prettier plugin and disables conflicting rules
-  // Restrict to code files and JSON
+  // Include JSON files so Prettier can format them (after JSON linting validates them)
   {
     ...eslintPluginPrettierRecommended,
     files: [

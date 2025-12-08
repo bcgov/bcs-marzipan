@@ -39,7 +39,62 @@ export const updateActivitySchema = createUpdateSchema(activities);
  * Note: The base schema from drizzle-zod already handles date/time fields correctly
  * No need to override since we're using date() and time() types, not timestamp()
  */
-export const createActivityRequestSchema = createActivitySchema;
+export const createActivityRequestSchema = createActivitySchema.extend({
+  // Transform empty strings to null for nullable UUID fields
+  // This handles form inputs where empty fields send "" instead of null
+  newsReleaseId: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.string().uuid().nullable().optional()
+  ),
+  leadOrgId: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.string().uuid().nullable().optional()
+  ),
+  eventLeadOrgId: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.string().uuid().nullable().optional()
+  ),
+  contactMinistryId: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.string().uuid().nullable().optional()
+  ),
+  // Transform venueAddress: handle both string (legacy) and object formats
+  // If string is provided, convert to null (can't reliably parse free-form string)
+  // If object is provided, validate it has the correct structure
+  venueAddress: z.preprocess(
+    (val) => {
+      // If it's already null or undefined, return as-is
+      if (val === null || val === undefined) return null;
+      // If it's a string, return null (legacy format - can't parse reliably)
+      if (typeof val === 'string') return null;
+      // If it's an object, return it (will be validated by the schema)
+      if (typeof val === 'object') return val;
+      // For any other type, return null
+      return null;
+    },
+    z
+      .object({
+        street: z.string(),
+        city: z.string(),
+        provinceOrState: z.string(),
+        country: z.string(),
+      })
+      .nullable()
+      .optional()
+  ),
+  // Junction table data - arrays of IDs to create relationships
+  categoryIds: z.array(z.number().int()).optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
+  jointOrganizationIds: z.array(z.string().uuid()).optional(),
+  relatedActivityIds: z.array(z.number().int()).optional(),
+  commsMaterialIds: z.array(z.number().int()).optional(),
+  translationLanguageIds: z.array(z.number().int()).optional(),
+  jointEventOrganizationIds: z.array(z.string().uuid()).optional(),
+  representativeIds: z.array(z.number().int()).optional(), // For activityRepresentatives
+  sharedWithOrganizationIds: z.array(z.string().uuid()).optional(),
+  canEditUserIds: z.array(z.number().int()).optional(),
+  canViewUserIds: z.array(z.number().int()).optional(),
+});
 
 /**
  * Schema for updating an activity via HTTP request

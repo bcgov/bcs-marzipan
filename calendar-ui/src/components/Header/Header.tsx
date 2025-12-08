@@ -1,29 +1,17 @@
+import React from 'react';
 import logo from '../../assets/Logo.svg';
-import styles from './Header.module.css';
 import { Avatar, Button, Tooltip } from '@fluentui/react-components';
-import { Alert24Regular, QuestionCircle24Regular } from '@fluentui/react-icons';
+import { Alert24Regular } from '@fluentui/react-icons';
+import { Link } from 'react-router-dom';
 
-type HeaderProps = {
-  // Add props here if needed in the future
-};
-
-const Header = ({}: HeaderProps) => {
+const Header = () => {
   return (
-    <header className={styles.header}>
-      <img
-        src={logo}
-        alt="Logo"
-        style={{ height: '40px', marginRight: '16px' }}
-      />
+    <header className="box-border flex h-14 w-full items-center border-b-2 border-[#f4f4f4] px-20 py-2">
+      <Link to="/">
+        <img src={logo} alt="Logo" className="mr-4 h-10" />
+      </Link>
 
-      <div
-        style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-        }}
-      >
+      <div className="ml-auto flex items-center gap-4">
         <Tooltip content="Notifications" relationship="label">
           <Button icon={<Alert24Regular />} appearance="subtle" />
         </Tooltip>

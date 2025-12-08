@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-// Import operators from drizzle-orm (these are exported by drizzle-orm)
-import { eq, and, gte, lte, inArray } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { eq, and, SQL, gte, lte, inArray } from 'drizzle-orm';
 import {
   activities,
   pitchStatuses,
@@ -41,29 +43,220 @@ export class ActivitiesService {
    * Create a new activity
    */
   async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
-    const newActivity: NewActivity = {
-      ...(dto as Partial<NewActivity>),
-      createdDateTime: new Date(),
+    // Extract junction table data from DTO
+    // Type assertion needed because CreateActivityRequest extends the base schema
+    const dtoWithJunctions = dto as CreateActivityRequest & {
+      categoryIds?: number[];
+      tagIds?: string[];
+      jointOrganizationIds?: string[];
+      relatedActivityIds?: number[];
+      commsMaterialIds?: number[];
+      translationLanguageIds?: number[];
+      jointEventOrganizationIds?: string[];
+      representativeIds?: number[];
+      sharedWithOrganizationIds?: string[];
+      canEditUserIds?: number[];
+      canViewUserIds?: number[];
     };
 
-    const [created] = await this.databaseService.db
-      .insert(activities)
-      .values(newActivity as typeof activities.$inferInsert)
-      .returning();
-    // For create, we don't have related data yet, so pass empty defaults
-    return this.mapToResponseDto(created, {
-      categories: [],
-      tags: [],
-      jointOrg: [],
-      relatedActivities: [],
-      commsMaterials: [],
-      translationsRequired: [],
-      jointEventOrg: [],
-      representativesAttending: [],
-      sharedWith: [],
-      canEdit: [],
-      canView: [],
+    const {
+      categoryIds,
+      tagIds,
+      jointOrganizationIds,
+      relatedActivityIds,
+      commsMaterialIds,
+      translationLanguageIds,
+      jointEventOrganizationIds,
+      representativeIds,
+      sharedWithOrganizationIds,
+      canEditUserIds,
+      canViewUserIds,
+      ...activityData
+    } = dtoWithJunctions;
+
+    // TODO: Replace with actual authenticated user ID
+    const currentUserId = 1;
+
+    // Validate foreign key references before starting transaction
+    if (categoryIds && categoryIds.length > 0) {
+      await this.validateCategoryIds(categoryIds);
+    }
+
+    // Use transaction to ensure all inserts succeed or fail together
+    const result = await this.databaseService.db.transaction(async (tx) => {
+      const newActivity: NewActivity = {
+        ...(activityData as Partial<NewActivity>),
+        createdDateTime: new Date(),
+      };
+
+      const [created] = await tx
+        .insert(activities)
+        .values(newActivity)
+        .returning();
+
+      const activityId = created.id;
+      const now = new Date();
+
+      // Insert junction table relationships using helper function
+      await this.insertJunctionRecords(
+        tx,
+        activityCategories,
+        activityId,
+        categoryIds,
+        (categoryId) => ({ categoryId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityTags,
+        activityId,
+        tagIds,
+        (tagId) => ({ tagId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityJointOrganizations,
+        activityId,
+        jointOrganizationIds,
+        (orgId) => ({ organizationId: orgId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityRelatedEntries,
+        activityId,
+        relatedActivityIds,
+        (relatedId) => ({ relatedActivityId: relatedId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityCommsMaterials,
+        activityId,
+        commsMaterialIds,
+        (materialId) => ({ commsMaterialId: materialId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityTranslationLanguages,
+        activityId,
+        translationLanguageIds,
+        (languageId) => ({ languageId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityJointEventOrganizations,
+        activityId,
+        jointEventOrganizationIds,
+        (orgId) => ({ organizationId: orgId }),
+        currentUserId,
+        now
+      );
+
+      // Special case: activityRepresentatives has additional attendingStatus field
+      if (representativeIds && representativeIds.length > 0) {
+        await tx.insert(activityRepresentatives).values(
+          representativeIds.map((repId) => ({
+            activityId,
+            representativeId: repId,
+            attendingStatus: 'requested', // Default status
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          }))
+        );
+      }
+
+      await this.insertJunctionRecords(
+        tx,
+        activitySharedWithOrganizations,
+        activityId,
+        sharedWithOrganizationIds,
+        (orgId) => ({ organizationId: orgId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityCanEditUsers,
+        activityId,
+        canEditUserIds,
+        (userId) => ({ userId }),
+        currentUserId,
+        now
+      );
+
+      await this.insertJunctionRecords(
+        tx,
+        activityCanViewUsers,
+        activityId,
+        canViewUserIds,
+        (userId) => ({ userId }),
+        currentUserId,
+        now
+      );
+
+      return created;
     });
+
+    // Fetch the created activity with all related data
+    return this.findOne(result.id);
+  }
+
+  /**
+   * Helper function to insert junction table records
+   * Reduces code duplication for common junction table insert patterns
+   *
+   * @param tx - Database transaction
+   * @param table - Junction table to insert into
+   * @param activityId - ID of the activity
+   * @param ids - Array of IDs to create relationships for (can be number[] or string[])
+   * @param idMapper - Function to map an ID to the junction table record fields
+   * @param currentUserId - ID of the user creating the records
+   * @param now - Current timestamp
+   */
+  private async insertJunctionRecords<TId extends number | string>(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    table: any,
+    activityId: number,
+    ids: TId[] | undefined,
+    idMapper: (id: TId) => Record<string, any>,
+    currentUserId: number,
+    now: Date
+  ): Promise<void> {
+    if (!ids || ids.length === 0) {
+      return;
+    }
+
+    await tx.insert(table).values(
+      ids.map((id) => ({
+        activityId,
+        ...idMapper(id),
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      }))
+    );
   }
 
   /**
@@ -1065,5 +1258,30 @@ export class ActivitiesService {
     }
 
     return dto;
+  }
+
+  /**
+   * Validate that all category IDs exist in the database
+   */
+  private async validateCategoryIds(categoryIds: number[]): Promise<void> {
+    if (categoryIds.length === 0) {
+      return;
+    }
+
+    const existingCategories = await this.databaseService.db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(
+        and(inArray(categories.id, categoryIds), eq(categories.isActive, true))
+      );
+
+    const existingIds = new Set(existingCategories.map((c) => c.id));
+    const missingIds = categoryIds.filter((id) => !existingIds.has(id));
+
+    if (missingIds.length > 0) {
+      throw new BadRequestException(
+        `Invalid category IDs: ${missingIds.join(', ')}. These categories do not exist or are not active.`
+      );
+    }
   }
 }

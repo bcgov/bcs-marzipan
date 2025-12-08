@@ -15,6 +15,7 @@
     "jsx": "react-jsx",
     "baseUrl": "./",
     "paths": {
+      "@/*": ["./src/*"],
       "@corpcal/shared": ["../packages/shared/dist/esm"],
       "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
       "@corpcal/database": ["../packages/database/dist/esm"],
@@ -22,6 +23,6 @@
       "react": ["./node_modules/@types/react"] // clears errors around icons (ts:2786)
     }
   },
-  "include": ["src"],
+  "include": ["src", "../.local/draft_components/tagpicker.tsx"],
   "exclude": ["node_modules"]
 }

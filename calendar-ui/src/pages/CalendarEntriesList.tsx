@@ -39,7 +39,7 @@ export const CalendarEntriesList = () => {
           {/* Add Button */}
           <Button
             appearance="primary"
-            onClick={() => window.open('/entry-form', '_blank')}
+            onClick={() => window.open('/create-activity')}
             icon={<Add24Regular />}
           >
             New Entry

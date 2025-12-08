@@ -1,0 +1,190 @@
+-- Seed Script for Remaining Lookup Tables
+-- This script seeds lookup tables that were not included in 003_seed_lookup_tables.sql
+-- Based on mock data from calendar-ui/src/data/mockLookups.ts
+-- Run this after applying the base migration (0000_brown_the_executioner.sql) and 003_seed_lookup_tables.sql
+
+-- ============================================================================
+-- CITIES
+-- Cities for activities
+-- ============================================================================
+
+INSERT INTO cities (id, name, display_name, sort_order, is_active, province) VALUES
+  (1, 'Victoria', 'Victoria', 1, true, 'BC'),
+  (2, 'Vancouver', 'Vancouver', 2, true, 'BC'),
+  (3, 'Kelowna', 'Kelowna', 3, true, 'BC'),
+  (4, 'Nanaimo', 'Nanaimo', 4, true, 'BC'),
+  (5, 'Kamloops', 'Kamloops', 5, true, 'BC'),
+  (6, 'Prince George', 'Prince George', 6, true, 'BC'),
+  (7, 'Terrace', 'Terrace', 7, true, 'BC'),
+  (8, 'Vernon', 'Vernon', 8, true, 'BC'),
+  (9, 'Williams Lake', 'Williams Lake', 9, true, 'BC'),
+  (10, 'Prince Rupert', 'Prince Rupert', 10, true, 'BC'),
+  (11, 'Smithers', 'Smithers', 11, true, 'BC')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- GOVERNMENT REPRESENTATIVES
+-- Representatives for activities
+-- ============================================================================
+
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title) VALUES
+  (1, 'Premier', 'Premier Eby', 1, true, 'Premier of British Columbia'),
+  (2, 'Minister', 'Minister Osborne', 2, true, 'Minister of')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- TAGS
+-- Classification tags for activities
+-- Uses UUID primary key
+-- ============================================================================
+
+INSERT INTO tags (id, key, display_name, sort_order, is_active) VALUES
+  ('00000000-0000-4000-8000-000000000101', 'HQ-1P', 'HQ-1P', 1, true),
+  ('00000000-0000-4000-8000-000000000102', 'HQ-3S', 'HQ-3S', 2, true),
+  ('00000000-0000-4000-8000-000000000103', 'HQ-4W', 'HQ-4W', 3, true),
+  ('00000000-0000-4000-8000-000000000104', 'HQ-PR', 'HQ-PR', 4, true),
+  ('00000000-0000-4000-8000-000000000105', 'HQ-EV', 'HQ-EV', 5, true),
+  ('00000000-0000-4000-8000-000000000106', 'HQ-ECO', 'HQ-ECO', 6, true),
+  ('00000000-0000-4000-8000-000000000107', 'CAS', 'CAS', 7, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- MINISTRIES
+-- Government departments
+-- Uses UUID primary key, sort_order is required
+-- ============================================================================
+
+INSERT INTO ministries (id, sort_order, is_active, display_name) VALUES
+  ('00000000-0000-4000-8000-000000000001', 1, true, 'Office of the Premier'),
+  ('00000000-0000-4000-8000-000000000002', 2, true, 'Agriculture and Food'),
+  ('00000000-0000-4000-8000-000000000003', 3, true, 'Attorney General'),
+  ('00000000-0000-4000-8000-000000000004', 4, true, 'Children and Family Development'),
+  ('00000000-0000-4000-8000-000000000005', 5, true, 'Citizens'' Services'),
+  ('00000000-0000-4000-8000-000000000006', 6, true, 'Education and Child Care'),
+  ('00000000-0000-4000-8000-000000000007', 7, true, 'Emergency Management and Climate Readiness'),
+  ('00000000-0000-4000-8000-000000000008', 8, true, 'Energy and Climate Solutions'),
+  ('00000000-0000-4000-8000-000000000009', 9, true, 'Environment and Parks'),
+  ('00000000-0000-4000-8000-000000000010', 10, true, 'Finance'),
+  ('00000000-0000-4000-8000-000000000011', 11, true, 'Forests'),
+  ('00000000-0000-4000-8000-000000000012', 12, true, 'Health'),
+  ('00000000-0000-4000-8000-000000000013', 13, true, 'Housing and Municipal Affairs'),
+  ('00000000-0000-4000-8000-000000000014', 14, true, 'Indigenous Relations and Reconciliation'),
+  ('00000000-0000-4000-8000-000000000015', 15, true, 'Infrastructure'),
+  ('00000000-0000-4000-8000-000000000016', 16, true, 'Intergovernmental Relations Secretariat'),
+  ('00000000-0000-4000-8000-000000000017', 17, true, 'Jobs and Economic Growth'),
+  ('00000000-0000-4000-8000-000000000018', 18, true, 'Labour'),
+  ('00000000-0000-4000-8000-000000000019', 19, true, 'Mining and Critical Minerals'),
+  ('00000000-0000-4000-8000-000000000020', 20, true, 'Post-Secondary Education and Future Skills'),
+  ('00000000-0000-4000-8000-000000000021', 21, true, 'Public Safety and Solicitor General'),
+  ('00000000-0000-4000-8000-000000000022', 22, true, 'Social Development and Poverty Reduction'),
+  ('00000000-0000-4000-8000-000000000023', 23, true, 'Tourism, Arts, Culture and Sport'),
+  ('00000000-0000-4000-8000-000000000024', 24, true, 'Transportation and Transit'),
+  ('00000000-0000-4000-8000-000000000025', 25, true, 'Water, Land and Resource Stewardship')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- ORGANIZATIONS
+-- Organizations (superset of ministries)
+-- Uses UUID primary key
+-- Links to ministries where applicable (BC government ministries)
+-- ============================================================================
+
+INSERT INTO organizations (id, name, display_name, organization_type, ministry_id, is_active, sort_order) VALUES
+  ('00000000-0000-4000-8000-000000000001', 'Office of the Premier', 'Office of the Premier', 'bcgov', '00000000-0000-4000-8000-000000000001', true, 1),
+  ('00000000-0000-4000-8000-000000000002', 'Agriculture and Food', 'Agriculture and Food', 'bcgov', '00000000-0000-4000-8000-000000000002', true, 2),
+  ('00000000-0000-4000-8000-000000000003', 'Attorney General', 'Attorney General', 'bcgov', '00000000-0000-4000-8000-000000000003', true, 3),
+  ('00000000-0000-4000-8000-000000000004', 'Children and Family Development', 'Children and Family Development', 'bcgov', '00000000-0000-4000-8000-000000000004', true, 4),
+  ('00000000-0000-4000-8000-000000000005', 'Citizens'' Services', 'Citizens'' Services', 'bcgov', '00000000-0000-4000-8000-000000000005', true, 5),
+  ('00000000-0000-4000-8000-000000000006', 'Education and Child Care', 'Education and Child Care', 'bcgov', '00000000-0000-4000-8000-000000000006', true, 6),
+  ('00000000-0000-4000-8000-000000000007', 'Emergency Management and Climate Readiness', 'Emergency Management and Climate Readiness', 'bcgov', '00000000-0000-4000-8000-000000000007', true, 7),
+  ('00000000-0000-4000-8000-000000000008', 'Energy and Climate Solutions', 'Energy and Climate Solutions', 'bcgov', '00000000-0000-4000-8000-000000000008', true, 8),
+  ('00000000-0000-4000-8000-000000000009', 'Environment and Parks', 'Environment and Parks', 'bcgov', '00000000-0000-4000-8000-000000000009', true, 9),
+  ('00000000-0000-4000-8000-000000000010', 'Finance', 'Finance', 'bcgov', '00000000-0000-4000-8000-000000000010', true, 10),
+  ('00000000-0000-4000-8000-000000000011', 'Forests', 'Forests', 'bcgov', '00000000-0000-4000-8000-000000000011', true, 11),
+  ('00000000-0000-4000-8000-000000000012', 'Health', 'Health', 'bcgov', '00000000-0000-4000-8000-000000000012', true, 12),
+  ('00000000-0000-4000-8000-000000000013', 'Housing and Municipal Affairs', 'Housing and Municipal Affairs', 'bcgov', '00000000-0000-4000-8000-000000000013', true, 13),
+  ('00000000-0000-4000-8000-000000000014', 'Indigenous Relations and Reconciliation', 'Indigenous Relations and Reconciliation', 'bcgov', '00000000-0000-4000-8000-000000000014', true, 14),
+  ('00000000-0000-4000-8000-000000000015', 'Infrastructure', 'Infrastructure', 'bcgov', '00000000-0000-4000-8000-000000000015', true, 15),
+  ('00000000-0000-4000-8000-000000000016', 'Intergovernmental Relations Secretariat', 'Intergovernmental Relations Secretariat', 'bcgov', '00000000-0000-4000-8000-000000000016', true, 16),
+  ('00000000-0000-4000-8000-000000000017', 'Jobs and Economic Growth', 'Jobs and Economic Growth', 'bcgov', '00000000-0000-4000-8000-000000000017', true, 17),
+  ('00000000-0000-4000-8000-000000000018', 'Labour', 'Labour', 'bcgov', '00000000-0000-4000-8000-000000000018', true, 18),
+  ('00000000-0000-4000-8000-000000000019', 'Mining and Critical Minerals', 'Mining and Critical Minerals', 'bcgov', '00000000-0000-4000-8000-000000000019', true, 19),
+  ('00000000-0000-4000-8000-000000000020', 'Post-Secondary Education and Future Skills', 'Post-Secondary Education and Future Skills', 'bcgov', '00000000-0000-4000-8000-000000000020', true, 20),
+  ('00000000-0000-4000-8000-000000000021', 'Public Safety and Solicitor General', 'Public Safety and Solicitor General', 'bcgov', '00000000-0000-4000-8000-000000000021', true, 21),
+  ('00000000-0000-4000-8000-000000000022', 'Social Development and Poverty Reduction', 'Social Development and Poverty Reduction', 'bcgov', '00000000-0000-4000-8000-000000000022', true, 22),
+  ('00000000-0000-4000-8000-000000000023', 'Tourism, Arts, Culture and Sport', 'Tourism, Arts, Culture and Sport', 'bcgov', '00000000-0000-4000-8000-000000000023', true, 23),
+  ('00000000-0000-4000-8000-000000000024', 'Transportation and Transit', 'Transportation and Transit', 'bcgov', '00000000-0000-4000-8000-000000000024', true, 24),
+  ('00000000-0000-4000-8000-000000000025', 'Water, Land and Resource Stewardship', 'Water, Land and Resource Stewardship', 'bcgov', '00000000-0000-4000-8000-000000000025', true, 25)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- COMMUNICATION CONTACTS
+-- Communication contacts for activities
+-- ============================================================================
+
+INSERT INTO communication_contacts (id, name, display_name, sort_order, is_active, email, phone) VALUES
+  (1, 'Sarah Johnson', 'Sarah Johnson', 1, true, 'sarah.johnson@gov.bc.ca', '250-555-0101'),
+  (2, 'Michael Chen', 'Michael Chen', 2, true, 'michael.chen@gov.bc.ca', '250-555-0102'),
+  (3, 'Emily Rodriguez', 'Emily Rodriguez', 3, true, 'emily.rodriguez@gov.bc.ca', '250-555-0103'),
+  (4, 'David Kim', 'David Kim', 4, true, 'david.kim@gov.bc.ca', '250-555-0104'),
+  (5, 'Jennifer Taylor', 'Jennifer Taylor', 5, true, 'jennifer.taylor@gov.bc.ca', '250-555-0105'),
+  (6, 'Robert Williams', 'Robert Williams', 6, true, 'robert.williams@gov.bc.ca', '250-555-0106')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- EVENT PLANNERS
+-- Event planners for activities
+-- ============================================================================
+
+INSERT INTO event_planners (id, name, display_name, sort_order, is_active, email, phone) VALUES
+  (1, 'Lisa Anderson', 'Lisa Anderson', 1, true, 'lisa.anderson@gov.bc.ca', '250-555-0201'),
+  (2, 'James Martinez', 'James Martinez', 2, true, 'james.martinez@gov.bc.ca', '250-555-0202'),
+  (3, 'Patricia Brown', 'Patricia Brown', 3, true, 'patricia.brown@gov.bc.ca', '250-555-0203'),
+  (4, 'Christopher Lee', 'Christopher Lee', 4, true, 'christopher.lee@gov.bc.ca', '250-555-0204'),
+  (5, 'Amanda White', 'Amanda White', 5, true, 'amanda.white@gov.bc.ca', '250-555-0205'),
+  (6, 'Daniel Harris', 'Daniel Harris', 6, true, 'daniel.harris@gov.bc.ca', '250-555-0206')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- VIDEOGRAPHERS
+-- Videographers for activities
+-- ============================================================================
+
+INSERT INTO videographers (id, name, display_name, sort_order, is_active, email, phone) VALUES
+  (1, 'Mark Thompson', 'Mark Thompson', 1, true, 'mark.thompson@gov.bc.ca', '250-555-0301'),
+  (2, 'Nicole Garcia', 'Nicole Garcia', 2, true, 'nicole.garcia@gov.bc.ca', '250-555-0302'),
+  (3, 'Kevin Moore', 'Kevin Moore', 3, true, 'kevin.moore@gov.bc.ca', '250-555-0303'),
+  (4, 'Rachel Clark', 'Rachel Clark', 4, true, 'rachel.clark@gov.bc.ca', '250-555-0304'),
+  (5, 'Thomas Lewis', 'Thomas Lewis', 5, true, 'thomas.lewis@gov.bc.ca', '250-555-0305'),
+  (6, 'Michelle Walker', 'Michelle Walker', 6, true, 'michelle.walker@gov.bc.ca', '250-555-0306')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- THEMES
+-- Classification themes for activities
+-- Uses UUID primary key
+-- ============================================================================
+
+INSERT INTO themes (id, key, display_name, sort_order, is_active) VALUES
+  ('00000000-0000-4000-8000-000000000201', 'health-care', 'Health Care', 1, true),
+  ('00000000-0000-4000-8000-000000000202', 'education', 'Education', 2, true),
+  ('00000000-0000-4000-8000-000000000203', 'environment', 'Environment', 3, true),
+  ('00000000-0000-4000-8000-000000000204', 'infrastructure', 'Infrastructure', 4, true),
+  ('00000000-0000-4000-8000-000000000205', 'economy', 'Economy', 5, true),
+  ('00000000-0000-4000-8000-000000000206', 'housing', 'Housing', 6, true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- SYSTEM USERS
+-- System users for authentication and authorization
+-- ============================================================================
+
+INSERT INTO system_users (id, username, first_name, last_name, email, role, is_active, department) VALUES
+  (1, 'john.doe', 'John', 'Doe', 'john.doe@gov.bc.ca', 'Admin', true, 'Office of the Premier'),
+  (2, 'jane.smith', 'Jane', 'Smith', 'jane.smith@gov.bc.ca', 'Editor', true, 'Communications'),
+  (3, 'sam.wilson', 'Sam', 'Wilson', 'sam.wilson@gov.bc.ca', 'Editor', true, 'Public Affairs'),
+  (4, 'david.chen', 'David', 'Chen', 'david.chen@gov.bc.ca', 'Editor', true, 'Media Relations'),
+  (5, 'emily.wang', 'Emily', 'Wang', 'emily.wang@gov.bc.ca', 'ReadOnly', true, 'Policy'),
+  (6, 'michael.brown', 'Michael', 'Brown', 'michael.brown@gov.bc.ca', 'ReadOnly', true, 'Research')
+ON CONFLICT (id) DO NOTHING;
+
