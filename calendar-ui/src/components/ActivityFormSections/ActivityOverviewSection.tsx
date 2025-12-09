@@ -23,11 +23,6 @@ import {
 import { Button } from '../ui/button';
 import { Combobox } from '../ui/combobox';
 import { Plus, X } from 'lucide-react';
-import {
-  mockCategories,
-  mockOrganizations,
-  mockTags,
-} from '../../data/mockLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -42,11 +37,20 @@ type FormData = CreateActivityRequest & {
 type ActivityOverviewSectionProps = {
   relatedActivityOptions: Array<{ value: string; label: string }>;
   jointOrganizationOptions: Array<{ value: string; label: string }>;
+  categories: Array<{ id: number; name: string; displayName?: string }>;
+  organizations: Array<{ value: string; label: string }>;
+  tags: Array<{ id: string; text: string }>;
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ relatedActivityOptions, jointOrganizationOptions }) => {
+> = ({
+  relatedActivityOptions,
+  jointOrganizationOptions,
+  categories,
+  organizations,
+  tags,
+}) => {
   const form = useFormContext<FormData>();
   const [showJointOrganizations, setShowJointOrganizations] = useState(false);
 
@@ -81,7 +85,7 @@ export const ActivityOverviewSection: React.FC<
           Select all that apply
         </p>
         <div className="flex flex-wrap gap-2">
-          {mockCategories.map((category) => (
+          {categories.map((category) => (
             <Badge
               key={category.id}
               variant={
@@ -129,9 +133,9 @@ export const ActivityOverviewSection: React.FC<
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockOrganizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
+                {organizations.map((org) => (
+                  <SelectItem key={org.value} value={org.value}>
+                    {org.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -255,7 +259,7 @@ export const ActivityOverviewSection: React.FC<
       <div>
         <Label className="mb-3 block">Tags</Label>
         <div className="flex flex-wrap gap-2">
-          {mockTags.map((tag) => (
+          {tags.map((tag) => (
             <Badge
               key={tag.id}
               variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}

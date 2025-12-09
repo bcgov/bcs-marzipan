@@ -22,8 +22,11 @@ import {
  * They should NOT be exposed directly via API endpoints.
  *
  * For API responses:
- * - Backend: Use DTOs in apps/api/src/activities/dto/activity-response.dto.ts
- * - Frontend: Use API types from @corpcal/shared/api/types
+ * - Backend: Use DTOs from @corpcal/shared/dto (e.g., ActivityResponseDto)
+ * - Frontend: Use API types from @corpcal/shared/api/types (e.g., ActivityResponse)
+ *
+ * Note: API response schemas are derived from the database schema via Zod,
+ * but the database types themselves remain internal-only.
  */
 
 // Activity types

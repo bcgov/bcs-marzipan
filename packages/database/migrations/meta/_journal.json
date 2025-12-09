@@ -15,6 +15,13 @@
       "when": 1764802750138,
       "tag": "0001_spotty_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764981562240,
+      "tag": "0002_bitter_frightful_four",
+      "breakpoints": true
     }
   ]
 }

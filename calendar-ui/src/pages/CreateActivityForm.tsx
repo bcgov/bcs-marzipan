@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
-import { mockOrganizations, mockSystemUsers } from '../data/mockLookups';
+import { useFormLookups } from '../hooks/useFormLookups';
 import {
   ActivityOverviewSection,
   ActivityApprovalsSection,
@@ -193,36 +193,33 @@ export const CreateActivityForm: React.FC = () => {
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
 
-  // Mock related activities for selection (TODO: Replace with API call)
-  const mockRelatedActivities = [
-    { id: 1, title: 'Related Activity 1' },
-    { id: 2, title: 'Related Activity 2' },
-    { id: 3, title: 'Related Activity 3' },
-  ];
+  // Fetch all lookup data
+  const lookups = useFormLookups();
 
-  // Transform organizations for combobox
-  const jointOrganizationOptions = mockOrganizations.map((org) => ({
-    value: org.id,
-    label: org.name,
-  }));
+  // Show loading state if lookups are still loading
+  if (lookups.isLoading) {
+    return (
+      <div className="mx-auto max-w-200 px-4 py-8">
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+          <p className="text-muted-foreground">Loading form data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Transform system users for combobox
-  const canEditUserOptions = mockSystemUsers.map((user) => ({
-    value: user.id.toString(),
-    label: user.name,
-  }));
+  // Show error state if lookups failed (but still allow form to be used with empty dropdowns)
+  if (lookups.hasError) {
+    console.warn(
+      'Failed to load some lookup data. Form may have empty dropdowns.'
+    );
+  }
 
-  // Transform system users for owner combobox
-  const ownerOptions = mockSystemUsers.map((user) => ({
-    value: user.id.toString(),
-    label: user.name,
-  }));
-
-  // Transform related activities for combobox
-  const relatedActivityOptions = mockRelatedActivities.map((activity) => ({
-    value: activity.id.toString(),
-    label: activity.title,
-  }));
+  // Transform data for form sections
+  const jointOrganizationOptions = lookups.organizations;
+  const ownerOptions = lookups.users;
+  const canEditUserOptions = lookups.users;
+  const relatedActivityOptions = lookups.relatedActivities;
 
   const ErrorFallback = ({
     error,
@@ -278,16 +275,32 @@ export const CreateActivityForm: React.FC = () => {
             <ActivityOverviewSection
               relatedActivityOptions={relatedActivityOptions}
               jointOrganizationOptions={jointOrganizationOptions}
+              categories={lookups.categories}
+              organizations={lookups.organizations}
+              tags={lookups.tags}
             />
 
-            <ActivityApprovalsSection form={form} />
+            <ActivityApprovalsSection
+              form={form}
+              pitchStatusOptions={lookups.pitchStatuses}
+            />
 
-            <ActivityScheduleSection form={form} />
+            <ActivityScheduleSection
+              form={form}
+              schedulingStatusOptions={lookups.schedulingStatuses}
+            />
 
-            <ActivityCommsSection />
+            <ActivityCommsSection
+              commsLeadOptions={lookups.users}
+              commsMaterialOptions={lookups.commsMaterials}
+              translationLanguageOptions={lookups.translationLanguages}
+            />
 
             <ActivityEventSection
               jointOrganizationOptions={jointOrganizationOptions}
+              eventLeadOrgOptions={lookups.organizations}
+              eventPlannerOptions={lookups.users}
+              representativeOptions={lookups.governmentRepresentatives}
             />
 
             <ActivityVenueSection form={form} />
@@ -297,6 +310,7 @@ export const CreateActivityForm: React.FC = () => {
             <ActivitySharingSection
               ownerOptions={ownerOptions}
               canEditUserOptions={canEditUserOptions}
+              sharedWithOrgOptions={lookups.organizations}
             />
 
             {/* Form Actions */}

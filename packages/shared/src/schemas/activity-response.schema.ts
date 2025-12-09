@@ -1,104 +1,160 @@
 import { z } from 'zod';
+import { createSelectSchema } from 'drizzle-zod';
+import { activities } from '@corpcal/database/schema';
+import {
+  ATTENDING_STATUS,
+  LOOK_AHEAD_STATUS,
+  LOOK_AHEAD_SECTION,
+  CALENDAR_VISIBILITY,
+} from '../constants/activity-enums';
 
 /**
  * Activity API Response Schema
- * Represents the API contract, decoupled from the database schema.
- * Dates are ISO strings for JSON serialization.
  *
- * This schema is the single source of truth for the ActivityResponse type.
- * It should be used to:
- * - Infer the ActivityResponse type
- * - Validate API responses at runtime (in development)
- * - Ensure DTOs match the API contract
+ * This schema is automatically generated from the Drizzle activities table schema
+ * using createSelectSchema, then transformed to match the API contract.
+ *
+ * Transformations applied:
+ * - Omit internal fields (rowVersion, rowGuid, deprecated fields)
+ * - Transform date/time fields to ISO strings
+ * - Transform foreign key IDs to strings where needed
+ * - Rename fields to match API contract (e.g., leadOrgId → leadOrg)
+ * - Add computed/joined fields (category, tags, jointOrg, etc.)
+ *
+ * This ensures the API response schema stays in sync with database schema changes.
+ * The schema is the single source of truth for the ActivityResponse type.
  */
-export const activityResponseSchema = z.object({
-  id: z.number().int().positive(),
-  displayId: z.string().nullable(), // MIN-###### format
 
-  // Activity status and category
-  activityStatusId: z.string(), // ActivityStatus enum value
-  category: z.array(z.string()), // Array of category names/IDs
+// Base schema generated from Drizzle table
+const baseActivitySchema = createSelectSchema(activities);
 
-  // Basic info
-  title: z.string(),
-  summary: z.string().nullable(), // 1000 char limit
-  isIssue: z.boolean(),
-  oicRelated: z.boolean(),
-  isActive: z.boolean(),
-
-  // Organizations
-  leadOrg: z.uuid().nullable(), // organizationId
-  jointOrg: z.array(z.uuid()).optional(), // Array of organizationIds
-
-  // Related activities and tags
-  relatedActivities: z.array(z.string()).optional(), // Array of activity IDs
-  tags: z.array(z.object({ id: z.uuid(), text: z.string() })).optional(),
-
-  // Approvals
-  significance: z.string().nullable(), // 500 char limit
-  pitchStatus: z.string(), // PitchStatus enum value
-  pitchComments: z.string().nullable(), // 500 char limit
-  confidential: z.boolean(),
-
-  // Scheduling
-  schedulingStatus: z.string(), // SchedulingStatus enum value
-  isAllDay: z.boolean(),
-  startDate: z.string().nullable(), // ISO date string (YYYY-MM-DD)
-  startTime: z.string().nullable(), // Time string (HH:mm format)
-  endDate: z.string().nullable(), // ISO date string (YYYY-MM-DD)
-  endTime: z.string().nullable(), // Time string (HH:mm format)
-  schedulingConsiderations: z.string().nullable(), // 500 char limit
-
-  // Comms
-  commsLead: z.string().nullable(), // userId
-  commsMaterials: z.array(z.string()).optional(), // Array of CommsMaterials enum values
-  newsReleaseId: z.uuid().nullable(),
-  translationsRequired: z.array(z.string()).optional(), // Array of TranslatedLanguage enum values
-
-  // Event
-  eventLeadOrg: z.uuid().nullable(), // organizationId
-  jointEventOrg: z.array(z.uuid()).optional(), // Array of organizationIds
-  representativesAttending: z
-    .array(
-      z.object({
-        representative: z.string(), // Representative enum value
-        attendingStatus: z.enum(['requested', 'declined', 'confirmed']),
+// Pick only the fields we want to keep from the base schema, then transform and extend
+export const activityResponseSchema = baseActivitySchema
+  .pick({
+    id: true,
+    displayId: true,
+    title: true,
+    summary: true,
+    isIssue: true,
+    oicRelated: true,
+    isActive: true,
+    significance: true,
+    pitchComments: true,
+    isAllDay: true,
+    schedulingConsiderations: true,
+    newsReleaseId: true,
+    eventLeadName: true,
+    notForLookAhead: true,
+    planningReport: true,
+    thirtySixtyNinetyReport: true,
+    // Keep these for transformation
+    activityStatusId: true,
+    startDate: true,
+    startTime: true,
+    endDate: true,
+    endTime: true,
+    isTimeConfirmed: true,
+    isDateConfirmed: true,
+    createdDateTime: true,
+    lastUpdatedDateTime: true,
+    createdBy: true,
+    lastUpdatedBy: true,
+    venueAddress: true,
+    lookAheadStatus: true,
+    lookAheadSection: true,
+    calendarVisibility: true,
+    // Note: isConfidential is not picked - we add confidential in extend() instead
+    // TODO: Review naming and duplication of fields
+  })
+  .extend({
+    // Fields from picked schema that need explicit type definitions
+    // due to drizzle-zod type inference limitations
+    id: z.number().int(),
+    displayId: z.string().nullable(),
+    title: z.string(),
+    summary: z.string().nullable(),
+    isIssue: z.boolean(),
+    oicRelated: z.boolean(),
+    isActive: z.boolean(),
+    significance: z.string().nullable(),
+    pitchComments: z.string().nullable(),
+    isAllDay: z.boolean(),
+    schedulingConsiderations: z.string().nullable(),
+    newsReleaseId: z.string().uuid().nullable(),
+    eventLeadName: z.string().nullable(),
+    notForLookAhead: z.boolean(),
+    planningReport: z.boolean(),
+    thirtySixtyNinetyReport: z.boolean(),
+    // Transform activityStatusId from number to string
+    activityStatusId: z.string(),
+    // Transform date fields to ISO date strings (YYYY-MM-DD)
+    startDate: z.string().nullable(),
+    endDate: z.string().nullable(),
+    // Transform time fields to HH:mm strings
+    startTime: z.string().nullable(),
+    endTime: z.string().nullable(),
+    isTimeConfirmed: z.boolean(),
+    isDateConfirmed: z.boolean(),
+    // Transform timestamp fields to ISO datetime strings
+    createdDateTime: z.string().datetime(),
+    lastUpdatedDateTime: z.string().datetime(),
+    // Transform user ID fields to strings
+    createdBy: z.string(),
+    lastUpdatedBy: z.string(),
+    // Transform venueAddress JSONB to typed object
+    venueAddress: z
+      .object({
+        street: z.string(),
+        city: z.string(),
+        provinceOrState: z.string(),
+        country: z.string(),
       })
-    )
-    .optional(),
-  venueAddress: z
-    .object({
-      street: z.string(),
-      city: z.string(),
-      provinceOrState: z.string(),
-      country: z.string(),
-    })
-    .nullable(),
-  eventLead: z.string().nullable(), // userId or eventLeadName
-  eventLeadName: z.string().nullable().optional(), // Free text for non-system user event leads
-  videographer: z.string().nullable(), // userId
-  graphics: z.string().nullable(), // userId
-
-  // Reports
-  notForLookAhead: z.boolean(),
-  lookAheadStatus: z.enum(['none', 'new', 'changed']),
-  lookAheadSection: z.enum(['events', 'issues', 'news', 'awareness']),
-  planningReport: z.boolean(),
-  thirtySixtyNinetyReport: z.boolean(),
-
-  // Sharing
-  owner: z.string().nullable(), // userId
-  sharedWith: z.array(z.uuid()).optional(), // Array of organizationIds
-  canEdit: z.array(z.string()).optional(), // Array of userIds
-  canView: z.array(z.string()).optional(), // Array of userIds
-  calendarVisibility: z.enum(['visible', 'partial', 'hidden']),
-
-  // Meta
-  createdDateTime: z.iso.datetime(),
-  createdBy: z.string(), // userId
-  lastUpdatedDateTime: z.iso.datetime(),
-  lastUpdatedBy: z.string(), // userId
-});
+      .nullable(),
+    // Transform enum-like varchar fields to proper enums using constants
+    lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable(),
+    lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable(),
+    calendarVisibility: z.enum(CALENDAR_VISIBILITY).nullable(),
+    // Rename isConfidential to confidential
+    confidential: z.boolean(),
+    // Add computed/joined fields
+    category: z.array(z.string()),
+    tags: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          text: z.string(),
+        })
+      )
+      .optional(),
+    jointOrg: z.array(z.string().uuid()).optional(),
+    relatedActivities: z.array(z.string()).optional(),
+    commsMaterials: z.array(z.string()).optional(),
+    translationsRequired: z.array(z.string()).optional(),
+    jointEventOrg: z.array(z.string().uuid()).optional(),
+    representativesAttending: z
+      .array(
+        z.object({
+          representative: z.string(),
+          attendingStatus: z.enum(ATTENDING_STATUS),
+        })
+      )
+      .optional(),
+    sharedWith: z.array(z.string().uuid()).optional(),
+    canEdit: z.array(z.string()).optional(),
+    canView: z.array(z.string()).optional(),
+    // Add renamed organization fields
+    leadOrg: z.string().uuid().nullable(),
+    eventLeadOrg: z.string().uuid().nullable(),
+    // Add transformed user fields
+    commsLead: z.string().nullable(),
+    eventLead: z.string().nullable(),
+    videographer: z.string().nullable(),
+    graphics: z.string().nullable(),
+    owner: z.string().nullable(),
+    // Add computed status fields (from lookups)
+    pitchStatus: z.string(),
+    schedulingStatus: z.string(),
+  });
 
 /**
  * Paginated Response Schema

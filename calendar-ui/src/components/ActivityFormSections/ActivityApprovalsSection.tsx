@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { mockPitchStatuses } from '../../data/mockLookups';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -22,11 +21,12 @@ type FormData = CreateActivityRequest;
 
 type ActivityApprovalsSectionProps = {
   form: UseFormReturn<FormData>;
+  pitchStatusOptions: Array<{ id: number; name: string; displayName?: string }>;
 };
 
 export const ActivityApprovalsSection: React.FC<
   ActivityApprovalsSectionProps
-> = ({ form }) => {
+> = ({ form, pitchStatusOptions }) => {
   return (
     <ActivityFormSection title="Approvals">
       <FormField
@@ -64,7 +64,7 @@ export const ActivityApprovalsSection: React.FC<
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockPitchStatuses.map((status) => (
+                {pitchStatusOptions.map((status) => (
                   <SelectItem key={status.id} value={status.id.toString()}>
                     {status.displayName || status.name}
                   </SelectItem>

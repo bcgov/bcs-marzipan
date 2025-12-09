@@ -18,11 +18,6 @@ import {
   SelectValue,
 } from '../ui/select';
 import { X } from 'lucide-react';
-import {
-  mockSystemUsers,
-  mockCommsMaterials,
-  mockTranslationLanguages,
-} from '../../data/mockLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -32,9 +27,25 @@ type FormData = CreateActivityRequest & {
   translationLanguageIds?: number[];
 };
 
-type ActivityCommsSectionProps = Record<string, never>;
+type ActivityCommsSectionProps = {
+  commsLeadOptions: Array<{ value: string; label: string }>;
+  commsMaterialOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
+  translationLanguageOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
+};
 
-export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = () => {
+export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
+  commsLeadOptions,
+  commsMaterialOptions,
+  translationLanguageOptions,
+}) => {
   const form = useFormContext<FormData>();
 
   // Move useMultiSelect hooks into the component
@@ -67,9 +78,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = () => {
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockSystemUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.name}
+                {commsLeadOptions.map((user) => (
+                  <SelectItem key={user.value} value={user.value}>
+                    {user.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -82,7 +93,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = () => {
       <div>
         <Label className="mb-3 block">Comms Materials</Label>
         <div className="flex flex-wrap gap-2">
-          {mockCommsMaterials.map((material) => (
+          {commsMaterialOptions.map((material) => (
             <Badge
               key={material.id}
               variant={
@@ -130,7 +141,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = () => {
       <div>
         <Label className="mb-3 block">Translations Required</Label>
         <div className="flex flex-wrap gap-2">
-          {mockTranslationLanguages.map((language) => (
+          {translationLanguageOptions.map((language) => (
             <Badge
               key={language.id}
               variant={

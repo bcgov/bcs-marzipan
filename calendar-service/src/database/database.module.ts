@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { databaseProvider, DATABASE_CLIENT } from './database.provider';
 import { DatabaseService } from './database.service';
+import { SeedService } from './seed.service';
 
 /**
  * Database Module
@@ -11,7 +12,7 @@ import { DatabaseService } from './database.service';
 @Global()
 @Module({
   imports: [ConfigModule],
-  providers: [databaseProvider, DatabaseService],
-  exports: [DATABASE_CLIENT, DatabaseService],
+  providers: [databaseProvider, DatabaseService, SeedService],
+  exports: [DATABASE_CLIENT, DatabaseService, SeedService],
 })
 export class DatabaseModule {}

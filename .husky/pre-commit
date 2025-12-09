@@ -1,15 +1,42 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-commit checks (non-blocking)
+# This hook runs linting, formatting, and type validation checks
+# All checks are non-blocking - warnings are shown but commits proceed
+
 echo "Running pre-commit checks (non-blocking)..."
+
+# Auto-fix formatting issues first
+echo "Auto-fixing formatting issues..."
+npm run format || echo "Warning: Some formatting issues could not be auto-fixed"
 
 # Auto-fix linting issues
 echo "Auto-fixing linting issues..."
 npm run lint || echo "Warning: Some linting issues could not be auto-fixed"
 
+# Check for remaining formatting issues (non-blocking)
+echo "Checking for remaining formatting issues..."
+npm run format:check || {
+  echo "Warning: Formatting issues found - run 'npm run format' to fix"
+}
+
 # Check for remaining linting issues (non-blocking)
 echo "Checking for remaining linting issues..."
-npm run lint:check || echo "Warning: Linting issues found"
+npm run lint:check || {
+  echo "Warning: Linting issues found - run 'npm run lint' to fix"
+}
 
-# Check formatting (non-blocking)
-echo "Checking code formatting..."
-npm run format:check || echo "Warning: Formatting issues found"
+# Validate types are in sync (non-blocking)
+echo "Validating types are in sync..."
+npm run validate-types --workspace=packages/shared || {
+  echo ""
+  echo "WARNING: Type validation failed - please review the errors above"
+  echo "         Run 'npm run validate-types --workspace=packages/shared' to review issues"
+  echo ""
+}
 
 echo "✅ Pre-commit checks completed (non-blocking mode)"
+
+# Always exit with success to allow commit to proceed
+exit 0

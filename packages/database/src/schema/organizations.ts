@@ -9,7 +9,6 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { ministries } from './ministry';
-import { activities } from './activity';
 
 /**
  * Organizations table - Organizations (superset of ministries)
@@ -30,13 +29,10 @@ export const organizations = pgTable('organizations', {
     .defaultNow(),
 });
 
-export const organizationsRelations = relations(
-  organizations,
-  ({ one, many }) => ({
-    ministry: one(ministries, {
-      fields: [organizations.ministryId],
-      references: [ministries.id],
-    }),
-    // Reverse relations will be defined in junction tables
-  })
-);
+export const organizationsRelations = relations(organizations, ({ one }) => ({
+  ministry: one(ministries, {
+    fields: [organizations.ministryId],
+    references: [ministries.id],
+  }),
+  // Reverse relations will be defined in junction tables
+}));
