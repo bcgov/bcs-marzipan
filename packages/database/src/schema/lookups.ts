@@ -8,6 +8,8 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { ministries } from './ministry';
 
 /**
  * ActivityStatus lookup table - Activity statuses
@@ -57,6 +59,8 @@ export const governmentRepresentatives = pgTable('government_representatives', {
   isActive: boolean('is_active').notNull().default(true),
   title: varchar('title', { length: 255 }),
   email: varchar('email', { length: 255 }),
+  ministryId: uuid('ministry_id').references(() => ministries.id), // Nullable FK - links ministers to ministries
+  representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'cabinet_member', 'mla', 'other'
   timestamp: timestamp('timestamp', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -230,3 +234,12 @@ export const translatedLanguages = pgTable('translated_languages', {
 
 // Relations for lookup tables
 // Note: Reverse relations are defined in activity.ts to avoid circular dependencies
+export const governmentRepresentativesRelations = relations(
+  governmentRepresentatives,
+  ({ one }) => ({
+    ministry: one(ministries, {
+      fields: [governmentRepresentatives.ministryId],
+      references: [ministries.id],
+    }),
+  })
+);

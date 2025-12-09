@@ -25,6 +25,6 @@ RUN npm run build --workspace=packages/shared && \
 
 FROM docker.io/library/nginx:alpine
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html
-# Add nginx config if needed to proxy /api to backend
+COPY calendar-ui/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

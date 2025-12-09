@@ -14,5 +14,5 @@ export const formatDateTime = (
   return d.toISOString();
 };
 
-// Export Drizzle-Zod utilities
-export * from './drizzle-zod';
+// Export schema helpers
+export * from './schema-helpers';

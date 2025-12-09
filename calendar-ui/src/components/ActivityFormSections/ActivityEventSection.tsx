@@ -20,11 +20,6 @@ import {
 import { Button } from '../ui/button';
 import { Combobox } from '../ui/combobox';
 import { Plus, X } from 'lucide-react';
-import {
-  mockOrganizations,
-  mockSystemUsers,
-  mockGovernmentRepresentatives,
-} from '../../data/mockLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -36,10 +31,21 @@ type FormData = CreateActivityRequest & {
 
 type ActivityEventSectionProps = {
   jointOrganizationOptions: Array<{ value: string; label: string }>;
+  eventLeadOrgOptions: Array<{ value: string; label: string }>;
+  eventPlannerOptions: Array<{ value: string; label: string }>;
+  representativeOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+    title?: string;
+  }>;
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   jointOrganizationOptions,
+  eventLeadOrgOptions,
+  eventPlannerOptions,
+  representativeOptions,
 }) => {
   const form = useFormContext<FormData>();
   const [showJointEventOrganizations, setShowJointEventOrganizations] =
@@ -72,9 +78,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockOrganizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
+                {eventLeadOrgOptions.map((org) => (
+                  <SelectItem key={org.value} value={org.value}>
+                    {org.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -128,9 +134,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockSystemUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.name}
+                {eventPlannerOptions.map((user) => (
+                  <SelectItem key={user.value} value={user.value}>
+                    {user.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -143,7 +149,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
       <div>
         <Label className="mb-3 block">Representatives Attending</Label>
         <div className="flex flex-wrap gap-2">
-          {mockGovernmentRepresentatives.map((rep) => (
+          {representativeOptions.map((rep) => (
             <Badge
               key={rep.id}
               variant={

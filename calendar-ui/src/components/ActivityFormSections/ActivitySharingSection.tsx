@@ -15,10 +15,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Combobox } from '../ui/combobox';
-import {
-  mockOrganizations,
-  calendarVisibilityOptions,
-} from '../../data/mockLookups';
+import { calendarVisibilityOptions } from '../../data/mockLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -31,11 +28,13 @@ type FormData = CreateActivityRequest & {
 type ActivitySharingSectionProps = {
   ownerOptions: Array<{ value: string; label: string }>;
   canEditUserOptions: Array<{ value: string; label: string }>;
+  sharedWithOrgOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   ownerOptions,
   canEditUserOptions,
+  sharedWithOrgOptions,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -124,9 +123,9 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {mockOrganizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
+                  {sharedWithOrgOptions.map((org) => (
+                    <SelectItem key={org.value} value={org.value}>
+                      {org.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
