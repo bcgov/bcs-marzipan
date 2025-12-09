@@ -73,17 +73,19 @@ export const CalendarEntryForm: React.FC = () => {
   const nextStep = () => setStep((s) => Math.min(s + 1, 5));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await createActivity(formData);
-      if (!res) throw new Error('Failed to save entry');
-      console.log('Entry saved:', res);
-      alert('✅ Entry saved successfully!');
-    } catch (err) {
-      console.error(err);
-      alert('❌ Failed to save entry');
-    }
+    void (async () => {
+      try {
+        const res = await createActivity(formData);
+        if (!res) throw new Error('Failed to save entry');
+        console.log('Entry saved:', res);
+        alert('✅ Entry saved successfully!');
+      } catch (err) {
+        console.error(err);
+        alert('❌ Failed to save entry');
+      }
+    })();
   };
 
   return (

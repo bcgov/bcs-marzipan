@@ -53,7 +53,7 @@ export const EntryDetails = () => {
         <section style={{ marginBottom: '24px' }}>
           <h3>Tags</h3>
           <textarea
-            value={formData.tags.join(', ')}
+            value={formData.tags ? formData.tags.join(', ') : ''}
             readOnly
             style={{ width: '100%', minHeight: '40px', resize: 'none' }}
           />

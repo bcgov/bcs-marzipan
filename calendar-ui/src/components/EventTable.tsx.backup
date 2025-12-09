@@ -52,13 +52,6 @@ const useStyles = makeStyles({
   },
 });
 
-// Report entity type
-type Report = {
-  id: string;
-  name: string;
-  type?: 'planning' | 'look-ahead' | '30-60-90' | 'other';
-};
-
 // Dummy data interface
 type EventRow = {
   date: string;
@@ -78,7 +71,7 @@ type EventRow = {
   representatives: string[] | undefined;
   leads: string[] | undefined;
   commsMaterials: string[] | undefined;
-  reports: Report[] | undefined;
+  reports: string[] | undefined;
   tags: string[] | undefined;
   startDate: Date;
   endDate: Date | undefined;
@@ -87,117 +80,112 @@ type EventRow = {
 
 // Dummy table data
 export const eventData: EventRow[] = [
-  // {
-  //   startDate: new Date('2025-01-21T09:30:00'),
-  //   endDate: new Date('2025-03-29'),
-  //   date: 'Jan 21 – Mar 29',
-  //   id: 'PSFS-113714',
-  //   title: '$6M to increase Indigenous learners...',
-  //   category: ['Release'],
-  //   type: 'News Release',
-  //   status: 'New',
-  //   confirmed: false,
-  //   dateCreated: 'Jan 03 2025',
-  //   //dateCreated:  new Date('2025-01-03T10:30:00Z'), we'll probably use actual dates in the future
-  //   dateModified: undefined,
-  //   mine: true,
-  //   sharedWithMe: false,
-  //   ministry: 'hlth',
-  //   confidential: undefined,
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: ['Premier Eby', 'Minister Gauss', 'Minister Euler'],
-  //   leads: ['Johannes Kepler', 'Tycho Brahe', 'Caroline Herschel'],
-  //   commsMaterials: [
-  //     'Event or media plan',
-  //     'Media advisory',
-  //     'Q&As',
-  //     'Speaking notes',
-  //   ],
-  //   reports: [
-  //     { id: '1', name: 'Planning Report', type: 'planning' },
-  //     { id: '2', name: 'Look Ahead', type: 'look-ahead' },
-  //   ],
-  //   tags: undefined,
-  //   location: undefined,
-  // },
-  // {
-  //   date: 'Feb 4 – Mar 27',
-  //   startDate: new Date('2025-02-04T09:30:00'),
-  //   endDate: new Date('2025-03-27'),
-  //   id: 'TACS-116305',
-  //   title: 'Royal BC Museum Phase 2 Conversations',
-  //   category: ['Issue'],
-  //   type: 'Issue',
-  //   status: 'Reviewed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-11-16T03:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: true,
-  //   ministry: 'hlth',
-  //   confidential: 'CONFIDENTIAL Issue',
-  //   summary: undefined,
-  //   representatives: ['Minister Smith', 'Deputy Minister Johnson'],
-  //   leads: ['Lead One', 'Lead Two'],
-  //   commsMaterials: ['Event or media plan', 'Media advisory'],
-  //   reports: [
-  //     { id: '3', name: '30/60/90 Report', type: '30-60-90' },
-  //     { id: '4', name: 'Look Ahead', type: 'look-ahead' },
-  //   ],
-  //   tags: ['ECC'],
-  //   location: 'BC Legislature, Victoria BC',
-  // },
-  // {
-  //   date: 'Feb 29 – Apr 8',
-  //   startDate: new Date('2025-02-29T09:30:00'),
-  //   endDate: new Date('2025-04-08'),
-  //   id: 'MOTI-112502',
-  //   title: 'Pattullo Bridge Project milestone',
-  //   category: ['Release'],
-  //   type: 'News Release',
-  //   status: 'Changed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-11-16T03:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: false,
-  //   ministry: 'citz',
-  //   confidential: 'Confidential',
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: undefined,
-  //   leads: undefined,
-  //   commsMaterials: undefined,
-  //   reports: [{ id: '5', name: 'Planning Report', type: 'planning' }],
-  //   tags: ['Infrastructure', 'Transportation'],
-  //   location: undefined,
-  // },
-  // {
-  //   date: 'Mar 1 – Mar 31',
-  //   startDate: new Date('2025-03-01T09:30:00'),
-  //   endDate: new Date('2025-03-31'),
-  //   id: 'HLTH-116081',
-  //   title: 'Pharmacy Appreciation Month',
-  //   category: ['Event'],
-  //   type: 'Awareness Date',
-  //   status: 'Reviewed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-09-10T10:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: false,
-  //   ministry: 'hlth',
-  //   confidential: undefined,
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: undefined,
-  //   leads: undefined,
-  //   commsMaterials: undefined,
-  //   reports: undefined,
-  //   tags: ['Health', 'Pharmacy'],
-  //   location: undefined,
-  // },
+  {
+    startDate: new Date('2025-01-21T09:30:00'),
+    endDate: new Date('2025-03-29'),
+    date: 'Jan 21 – Mar 29',
+    id: 'PSFS-113714',
+    title: '$6M to increase Indigenous learners...',
+    category: ['Release'],
+    type: 'News Release',
+    status: 'New',
+    confirmed: false,
+    dateCreated: 'Jan 03 2025',
+    //dateCreated:  new Date('2025-01-03T10:30:00Z'), we'll probably use actual dates in the future
+    dateModified: undefined,
+    mine: true,
+    sharedWithMe: false,
+    ministry: 'hlth',
+    confidential: undefined,
+    summary:
+      'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
+    representatives: ['Premier Eby', 'Minister Gauss', 'Minister Euler'],
+    leads: ['Johannes Kepler', 'Tycho Brahe', 'Caroline Herschel'],
+    commsMaterials: [
+      'Event or media plan',
+      'Media advisory',
+      'Q&As',
+      'Speaking notes',
+    ],
+    reports: ['Report One', 'Report Two'],
+    tags: undefined,
+    location: undefined,
+  },
+  {
+    date: 'Feb 4 – Mar 27',
+    startDate: new Date('2025-02-04T09:30:00'),
+    endDate: new Date('2025-03-27'),
+    id: 'TACS-116305',
+    title: 'Royal BC Museum Phase 2 Conversations',
+    category: ['Issue'],
+    type: 'Issue',
+    status: 'Reviewed',
+    confirmed: true,
+    dateCreated: 'Jan 03 2025',
+    dateModified: new Date('2025-11-16T03:30:00Z'),
+    mine: false,
+    sharedWithMe: true,
+    ministry: 'hlth',
+    confidential: 'CONFIDENTIAL Issue',
+    summary: undefined,
+    representatives: ['Minister Smith', 'Deputy Minister Johnson'],
+    leads: ['Lead One', 'Lead Two'],
+    commsMaterials: ['Event or media plan', 'Media advisory'],
+    reports: ['Report One', 'Report Two'],
+    tags: ['ECC'],
+    location: 'BC Legislature, Victoria BC',
+  },
+  {
+    date: 'Feb 29 – Apr 8',
+    startDate: new Date('2025-02-29T09:30:00'),
+    endDate: new Date('2025-04-08'),
+    id: 'MOTI-112502',
+    title: 'Pattullo Bridge Project milestone',
+    category: ['Release'],
+    type: 'News Release',
+    status: 'Changed',
+    confirmed: true,
+    dateCreated: 'Jan 03 2025',
+    dateModified: new Date('2025-11-16T03:30:00Z'),
+    mine: false,
+    sharedWithMe: false,
+    ministry: 'citz',
+    confidential: 'Confidential',
+    summary:
+      'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
+    representatives: undefined,
+    leads: undefined,
+    commsMaterials: undefined,
+    reports: ['Report One'],
+    tags: ['Infrastructure', 'Transportation'],
+    location: undefined,
+  },
+
+  {
+    date: 'Mar 1 – Mar 31',
+    startDate: new Date('2025-03-01T09:30:00'),
+    endDate: new Date('2025-03-31'),
+    id: 'HLTH-116081',
+    title: 'Pharmacy Appreciation Month',
+    category: ['Event'],
+    type: 'Awareness Date',
+    status: 'Reviewed',
+    confirmed: true,
+    dateCreated: 'Jan 03 2025',
+    dateModified: new Date('2025-09-10T10:30:00Z'),
+    mine: false,
+    sharedWithMe: false,
+    ministry: 'hlth',
+    confidential: undefined,
+    summary:
+      'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
+    representatives: undefined,
+    leads: undefined,
+    commsMaterials: undefined,
+    reports: undefined,
+    tags: ['Health', 'Pharmacy'],
+    location: undefined,
+  },
 ];
 
 const getLastModifiedString = (modified: Date | undefined) => {
@@ -247,118 +235,6 @@ const getDaysDifference = (date1: Date, date2: Date): number => {
 
   // Round the result to the nearest whole day
   return Math.floor(diffInDays); // "round" and "ciel" are also options. I think floor makes most sense.
-};
-
-const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
-  // Map ActivityResponse to EventRow format
-  // Adjust the mapping based on your actual ActivityResponse structure
-  // we'll probably ditch this altogether and just use ActivityResponse DTO directly eventually
-
-  // Format date range
-  const startDate = activity.startDate
-    ? new Date(activity.startDate)
-    : new Date();
-  const endDate = activity.endDate ? new Date(activity.endDate) : undefined;
-  const formatDateRange = () => {
-    const start = startDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-    if (endDate) {
-      const end = endDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-      return `${start} – ${end}`;
-    }
-    return start;
-  };
-
-  // Map lookAheadStatus to status
-  const statusMap: Record<string, 'New' | 'Reviewed' | 'Changed' | 'Deleted'> =
-    {
-      new: 'New',
-      none: 'Reviewed',
-      changed: 'Changed',
-    };
-  const status = statusMap[activity.lookAheadStatus] || 'Reviewed';
-
-  // Check if confirmed
-  const confirmed = activity.schedulingStatus?.toLowerCase() === 'confirmed';
-
-  // Compile representatives
-  const representatives = activity.representativesAttending?.map(
-    (r) => r.representative
-  );
-
-  // Compile leads
-  const leads: string[] = [];
-  if (activity.commsLead) leads.push(activity.commsLead);
-  if (activity.eventLead) leads.push(activity.eventLead);
-
-  // Compile reports based on flags
-  const reports: Report[] = [];
-  if (activity.planningReport) {
-    reports.push({ id: 'planning', name: 'Planning Report', type: 'planning' });
-  }
-  if (activity.thirtySixtyNinetyReport) {
-    reports.push({ id: '30-60-90', name: '30/60/90 Report', type: '30-60-90' });
-  }
-  if (!activity.notForLookAhead) {
-    reports.push({ id: 'look-ahead', name: 'Look Ahead', type: 'look-ahead' });
-  }
-
-  return {
-    id: activity.displayId || `ACT-${activity.id}`,
-    title: activity.title || '',
-    category:
-      activity.category && activity.category.length > 0
-        ? activity.category
-        : undefined,
-    type: activity.isIssue ? 'Issue' : activity.category?.[0] || 'Event',
-    status,
-    confirmed,
-    dateCreated: new Date(activity.createdDateTime).toLocaleDateString(
-      'en-US',
-      {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }
-    ),
-    dateModified: activity.lastUpdatedDateTime
-      ? new Date(activity.lastUpdatedDateTime)
-      : undefined,
-    mine: false, // TODO: check if current user is owner
-    sharedWithMe: false, // TODO: check if user in canView/canEdit
-    ministry: activity.leadOrg || '',
-    confidential: activity.confidential
-      ? activity.isIssue
-        ? 'CONFIDENTIAL Issue'
-        : 'Confidential'
-      : undefined,
-    summary: activity.summary || undefined,
-    representatives:
-      representatives && representatives.length > 0
-        ? representatives
-        : undefined,
-    leads: leads.length > 0 ? leads : undefined,
-    commsMaterials:
-      activity.commsMaterials && activity.commsMaterials.length > 0
-        ? activity.commsMaterials
-        : undefined,
-    reports: reports.length > 0 ? reports : undefined,
-    tags:
-      activity.tags && activity.tags.length > 0
-        ? activity.tags.map((tag) => tag.text)
-        : undefined,
-    startDate,
-    endDate,
-    location: activity.venueAddress
-      ? `${activity.venueAddress.street}, ${activity.venueAddress.city}, ${activity.venueAddress.provinceOrState}`
-      : undefined,
-    date: formatDateRange(),
-  };
 };
 
 const multiColumnTabFilterFn: FilterFn<EventRow> = (
@@ -427,23 +303,11 @@ export const EventTable: React.FC<EventTableProps> = ({
         setIsLoading(true);
         setError(null);
         const activities = await fetchActivities();
-
-        // Check if activities is an array
-        if (!Array.isArray(activities)) {
-          console.error('Activities response is not an array:', activities);
-          setError('Invalid response format from server');
-          setEventData([]);
-          return;
-        }
-
         const mappedData = activities.map(mapActivityToEventRow);
         setEventData(mappedData);
       } catch (err) {
         console.error('Error fetching activities:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch activities'
-        );
-        setEventData([]); // Set to empty array on error
+        setError(err instanceof Error ? err.message : 'Failed to fetch activities');
       } finally {
         setIsLoading(false);
       }
@@ -510,14 +374,12 @@ export const EventTable: React.FC<EventTableProps> = ({
             <div className={styles.overviewTitle}>{row.original.title}</div>
             <div>
               <Badge
-                className={row.original.category?.[0]}
+                className={row.original.category}
                 appearance={
-                  row.original.category?.[0] === 'Release'
-                    ? 'filled'
-                    : 'outline'
+                  row.original.category === 'Release' ? 'filled' : 'outline'
                 }
               >
-                {row.original.category?.[0]}
+                {row.original.category}
               </Badge>
             </div>
           </div>
@@ -664,20 +526,18 @@ export const EventTable: React.FC<EventTableProps> = ({
         header: 'Reports',
         size: 100,
         filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          // filterValue is an array of selected report IDs or names
+          // filterValue is an array of selected report names
           if (!filterValue || !filterValue.length) return true;
           const reports = row.original.reports || [];
           // Only show rows that have at least one selected report
-          return filterValue.some((val: string) =>
-            reports.some((r) => r.id === val || r.name === val)
-          );
+          return filterValue.some((val: string) => reports.includes(val));
         },
         cell: ({ row }) => (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {row.original.reports && row.original.reports.length
               ? row.original.reports.map((report) => (
-                  <Badge key={report.id} appearance="filled">
-                    {report.name}
+                  <Badge key={report} appearance="filled">
+                    {report}
                   </Badge>
                 ))
               : null}
@@ -865,88 +725,88 @@ export const EventTable: React.FC<EventTableProps> = ({
             }}
           >
             {filteredRows.length > 0 && (
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHeaderCell
-                          key={header.id}
-                          onClick={
-                            header.column.getCanSort()
-                              ? header.column.getToggleSortingHandler()
-                              : undefined
-                          }
-                          style={{
-                            cursor: header.column.getCanSort()
-                              ? 'pointer'
-                              : undefined,
-                            width: header.getSize(),
-                            position: header.column.getIsPinned()
-                              ? 'sticky'
-                              : 'relative', // Make pinned columns sticky
-                            left: header.column.getIsPinned()
-                              ? header.column.id === 'id' // Only offset the 'id' column. This was a freaking ordeal
-                                ? `${header.column.getStart('left') + 16}px`
-                                : `${header.column.getStart('left')}px`
-                              : 'auto',
-                            zIndex: header.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
-                            background: header.column.getIsPinned()
-                              ? '#fff'
-                              : 'transparent', // Optional: Match table background
-                          }}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {header.column.getIsSorted() === 'asc' && ' ▲'}
-                          {header.column.getIsSorted() === 'desc' && ' ▼'}
-                        </TableHeaderCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        void navigate('/details', { state: row.original });
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHeaderCell
+                      key={header.id}
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                      style={{
+                        cursor: header.column.getCanSort()
+                          ? 'pointer'
+                          : undefined,
+                        width: header.getSize(),
+                        position: header.column.getIsPinned()
+                          ? 'sticky'
+                          : 'relative', // Make pinned columns sticky
+                        left: header.column.getIsPinned()
+                          ? header.column.id === 'id' // Only offset the 'id' column. This was a freaking ordeal
+                            ? `${header.column.getStart('left') + 16}px`
+                            : `${header.column.getStart('left')}px`
+                          : 'auto',
+                        zIndex: header.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
+                        background: header.column.getIsPinned()
+                          ? '#fff'
+                          : 'transparent', // Optional: Match table background
                       }}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          style={{
-                            position: cell.column.getIsPinned()
-                              ? 'sticky'
-                              : 'relative', // Make pinned cells sticky
-                            left: cell.column.getIsPinned()
-                              ? cell.column.id === 'id'
-                                ? `${cell.column.getStart('left') + 16}px`
-                                : `${cell.column.getStart('left')}px`
-                              : 'auto',
-                            zIndex: cell.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
-                            background: cell.column.getIsPinned()
-                              ? '#fff'
-                              : 'transparent', // Optional: Match row background
-                            boxSizing: 'border-box', // Include padding in width calculation
-                            width: cell.column.columnDef.size,
-                            minWidth: cell.column.columnDef.size,
-                          }}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      {header.column.getIsSorted() === 'asc' && ' ▲'}
+                      {header.column.getIsSorted() === 'desc' && ' ▼'}
+                    </TableHeaderCell>
                   ))}
-                </TableBody>
-              </Table>
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    void navigate('/details', { state: row.original });
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      style={{
+                        position: cell.column.getIsPinned()
+                          ? 'sticky'
+                          : 'relative', // Make pinned cells sticky
+                        left: cell.column.getIsPinned()
+                          ? cell.column.id === 'id'
+                            ? `${cell.column.getStart('left') + 16}px`
+                            : `${cell.column.getStart('left')}px`
+                          : 'auto',
+                        zIndex: cell.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
+                        background: cell.column.getIsPinned()
+                          ? '#fff'
+                          : 'transparent', // Optional: Match row background
+                        boxSizing: 'border-box', // Include padding in width calculation
+                        width: cell.column.columnDef.size,
+                        minWidth: cell.column.columnDef.size,
+                      }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
             )}
             {filteredRows.length === 0 && (
               <div
@@ -962,12 +822,7 @@ export const EventTable: React.FC<EventTableProps> = ({
             )}
           </div>
           <div
-            style={{
-              marginTop: 16,
-              display: 'flex',
-              gap: 8,
-              alignItems: 'center',
-            }}
+            style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}
           >
             <Button
               onClick={() => table.previousPage()}
