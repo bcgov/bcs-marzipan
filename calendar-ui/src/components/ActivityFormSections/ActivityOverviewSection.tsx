@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
   FormField,
@@ -31,6 +31,7 @@ import {
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
+import { fetchCategories } from '../../api/activitiesApi';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -50,7 +51,25 @@ export const ActivityOverviewSection: React.FC<
   const form = useFormContext<FormData>();
   const [showJointOrganizations, setShowJointOrganizations] = useState(false);
 
+  const [categories, setCategories] = useState<any[]>([]);
   // Move useMultiSelect hooks into the component
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await fetchCategories();
+        if (response) {
+          setCategories(response);
+          console.log('Fetched categories:', response);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
+    void loadCategories();
+  }, []);
+
   const [selectedCategories, toggleCategory] = useMultiSelect<
     FormData,
     'categoryIds',

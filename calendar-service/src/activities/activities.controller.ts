@@ -25,6 +25,7 @@ import type {
 } from '@corpcal/shared/schemas';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
+import { Category } from '@corpcal/shared';
 
 @ApiTags('activities')
 @Controller('activities')
@@ -79,6 +80,20 @@ export class ActivitiesController {
       query.isIssue !== undefined;
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters);
+    return {
+      success: true,
+      data: results,
+    };
+  }
+
+  @ApiOperation({ summary: 'Get all activity categories' })
+  @ApiResponse({ status: 200, description: 'All categories found' })
+  @Get('categories')
+  async fetchCategories(): Promise<{
+    success: boolean;
+    data: Category[];
+  }> {
+    const results = await this.activitiesService.fetchCategories();
     return {
       success: true,
       data: results,
