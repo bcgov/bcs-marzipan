@@ -60,7 +60,6 @@ export const ActivityOverviewSection: React.FC<
         const response = await fetchCategories();
         if (response) {
           setCategories(response);
-          console.log('Fetched categories:', response);
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -100,7 +99,7 @@ export const ActivityOverviewSection: React.FC<
           Select all that apply
         </p>
         <div className="flex flex-wrap gap-2">
-          {mockCategories.map((category) => (
+          {categories.map((category) => (
             <Badge
               key={category.id}
               variant={

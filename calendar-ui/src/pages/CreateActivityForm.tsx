@@ -29,6 +29,14 @@ import {
   ActivityReportsSection,
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
+import React from 'react';
+import {
+  TabList,
+  Tab,
+  TabValue,
+  SelectTabData,
+  SelectTabEvent,
+} from '@fluentui/react-components';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -48,6 +56,11 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+
+  const [selectedValue, setSelectedValue] = useState<TabValue>('overview');
+  const onTabSelect = (event: SelectTabEvent, data: SelectTabData) => {
+    setSelectedValue(data.value);
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
@@ -255,6 +268,33 @@ export const CreateActivityForm: React.FC = () => {
       </div>
     );
   };
+  const Overview = React.memo(() => (
+    <ActivityOverviewSection
+      relatedActivityOptions={relatedActivityOptions}
+      jointOrganizationOptions={jointOrganizationOptions}
+    />
+  ));
+  Overview.displayName = 'overview';
+
+  const Approvals = React.memo(() => <ActivityApprovalsSection form={form} />);
+  Approvals.displayName = 'approvals';
+
+  const Schedule = React.memo(() => <ActivityScheduleSection form={form} />);
+  Schedule.displayName = 'schedule';
+
+  const Venue = React.memo(() => <ActivityVenueSection form={form} />);
+  Venue.displayName = 'venue';
+
+  const Reports = React.memo(() => <ActivityReportsSection form={form} />);
+  Reports.displayName = 'reports';
+
+  const Sharing = React.memo(() => (
+    <ActivitySharingSection
+      ownerOptions={ownerOptions}
+      canEditUserOptions={canEditUserOptions}
+    />
+  ));
+  Sharing.displayName = 'Sharing';
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -275,14 +315,25 @@ export const CreateActivityForm: React.FC = () => {
             }}
             className="space-y-8"
           >
-            <ActivityOverviewSection
-              relatedActivityOptions={relatedActivityOptions}
-              jointOrganizationOptions={jointOrganizationOptions}
-            />
+            <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
+              <Tab value="overview">Overview</Tab>
+              <Tab value="approvals">Approvals</Tab>
+              <Tab value="schedule">Schedule</Tab>
+              <Tab value="venue">Venue</Tab>{' '}
+              {/* I assume this becomes user's ministry, whatever it is */}
+              <Tab value="reports">Reports</Tab>
+              <Tab value="sharing">Sharing</Tab>
+            </TabList>
 
-            <ActivityApprovalsSection form={form} />
-
-            <ActivityScheduleSection form={form} />
+            <div>
+              {selectedValue === 'overview' && <Overview />}
+              {selectedValue === 'approvals' && <Approvals />}
+              {selectedValue === 'schedule' && <Schedule />}
+              {selectedValue === 'venue' && <Venue />}
+              {selectedValue === 'reports' && <Reports />}
+              {selectedValue === 'sharing' && <Sharing />}
+            </div>
+            {/* <ActivityScheduleSection form={form} />
 
             <ActivityCommsSection />
 
@@ -297,7 +348,7 @@ export const CreateActivityForm: React.FC = () => {
             <ActivitySharingSection
               ownerOptions={ownerOptions}
               canEditUserOptions={canEditUserOptions}
-            />
+            /> */}
 
             {/* Form Actions */}
             <div className="flex gap-4 pt-4">

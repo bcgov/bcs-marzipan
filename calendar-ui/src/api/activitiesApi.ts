@@ -1,5 +1,8 @@
 import api from './axios.js';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type {
+  ActivityResponse,
+  ActivityCategory
+} from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,

@@ -1,6 +1,5 @@
 import {
   pgTable,
-  PgTableWithColumns,
   serial,
   timestamp,
   date,
@@ -45,7 +44,7 @@ import {
  * Activity table - Core entity for calendar events
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Activity.cs
  */
-export const activities: PgTableWithColumns<any> = pgTable('activities', {
+export const activities = pgTable('activities', {
   id: serial('id').primaryKey(),
 
   // Display ID (computed: MIN-###### format)
