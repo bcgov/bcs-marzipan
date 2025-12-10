@@ -53,7 +53,7 @@ The database can be seeded with initial lookup table data using the `SeedService
 
 ### Running Seeds
 
-To seed the database with lookup table data, run:
+To seed the database with lookup table data, from the calendar-service run:
 
 ```bash
 npm run seed

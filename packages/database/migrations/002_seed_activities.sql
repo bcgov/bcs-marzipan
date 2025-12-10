@@ -442,14 +442,20 @@ ON CONFLICT (activity_id, language_id) DO UPDATE
 -- Link activities to government representatives
 -- ============================================================================
 
-INSERT INTO activity_representatives (activity_id, representative_id, representative_name, attending_status, is_active, created_by, last_updated_by) VALUES
+INSERT INTO activity_representatives (activity_id, representative_id, representative_name, attending_status, is_active, created_by, last_updated_by)
+SELECT * FROM (VALUES
   (1, 1000, 'Premier David Eby', 'confirmed', true, 1, 2),
   (2, 2012, 'Minister Josie Osborne', 'confirmed', true, 2, 3),
   (3, 2006, 'Minister Lisa Beare', 'requested', true, 3, 4),
   (4, 2009, 'Minister Tamara Davidson', 'confirmed', true, 1, 2),
   (4, 2011, 'Minister Ravi Parmar', 'confirmed', true, 1, 2),
   (5, 2013, 'Minister Christine Boyle', 'confirmed', true, 2, 3)
-ON CONFLICT DO NOTHING;
+) AS v(activity_id, representative_id, representative_name, attending_status, is_active, created_by, last_updated_by)
+WHERE NOT EXISTS (
+  SELECT 1 FROM activity_representatives 
+  WHERE activity_representatives.activity_id = v.activity_id 
+    AND activity_representatives.representative_id = v.representative_id
+);
 
 -- ============================================================================
 -- ACTIVITY SHARED WITH ORGANIZATIONS
