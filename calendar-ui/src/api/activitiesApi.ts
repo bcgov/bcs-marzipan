@@ -1,5 +1,8 @@
 import api from './axios.js';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type {
+  ActivityResponse,
+  ActivityCategory,
+} from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
@@ -18,7 +21,18 @@ export async function fetchActivities(
       params: filters,
     }
   );
-  return res.data.data;
+  // Handle different response structures
+  if (res.data && res.data.data) {
+    return res.data.data;
+  }
+
+  // If the response is directly an array
+  if (Array.isArray(res.data)) {
+    return res.data;
+  }
+
+  console.error('Unexpected API response structure:', res.data);
+  return [];
 }
 
 export async function fetchActivity(id: number): Promise<ActivityResponse> {
@@ -60,4 +74,29 @@ export async function updateActivity(
 
 export async function deleteActivity(id: number): Promise<void> {
   await api.delete(`/activities/${id}`);
+}
+
+export async function fetchActivityCategories(): Promise<ActivityCategory[]> {
+  const res = await api.get<{ success: boolean; data: ActivityCategory[] }>(
+    '/activities/categories'
+  );
+  // Handle different response structures
+  if (res.data && res.data.data) {
+    return res.data.data;
+  }
+
+  // If the response is directly an array
+  if (Array.isArray(res.data)) {
+    return res.data;
+  }
+
+  console.error('Unexpected API response structure:', res.data);
+  return [];
+}
+
+export async function fetchCategories(): Promise<any[]> {
+  const res = await api.get<{ success: boolean; data: any[] }>(
+    `/activities/categories`
+  );
+  return res.data.data;
 }

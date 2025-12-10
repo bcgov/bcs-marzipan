@@ -28,7 +28,7 @@ import {
   translatedLanguages,
   systemUsers,
 } from '@corpcal/database/schema';
-import type { Activity } from '@corpcal/database/types';
+import type { Activity, Category, NewActivity } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
@@ -1283,5 +1283,15 @@ export class ActivitiesService {
         `Invalid category IDs: ${missingIds.join(', ')}. These categories do not exist or are not active.`
       );
     }
+  }
+
+  public async fetchCategories(): Promise<Category[]> {
+    const results = await this.databaseService.db
+      .select()
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(categories.name);
+
+    return results;
   }
 }
