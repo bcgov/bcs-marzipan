@@ -9,14 +9,16 @@
 -- Values: 'new', 'queued', 'reviewed', 'changed', 'paused', 'deleted'
 -- ============================================================================
 
-INSERT INTO activity_statuses (name, display_name, sort_order, is_active, description) VALUES
+INSERT INTO activity_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
   ('new', 'New', 1, true, 'Newly created entry'),
   ('queued', 'Queued', 2, true, 'Entry is queued for review'),
   ('reviewed', 'Reviewed', 3, true, 'Entry has been reviewed'),
   ('changed', 'Changed', 4, true, 'Entry has been changed'),
   ('paused', 'Paused', 5, true, 'Entry is paused'),
   ('deleted', 'Deleted', 6, true, 'Entry is deleted')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM activity_statuses WHERE activity_statuses.name = v.name);
 
 -- ============================================================================
 -- PITCH STATUSES
@@ -24,12 +26,14 @@ ON CONFLICT DO NOTHING;
 -- Values: 'not required', 'submitted', 'pitched', 'approved'
 -- ============================================================================
 
-INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, description) VALUES
+INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
   ('not required', 'Not Required', 1, true, 'Pitch approval is not required'),
   ('submitted', 'Submitted', 2, true, 'Pitch has been submitted'),
   ('pitched', 'Pitched', 3, true, 'Pitch has been presented'),
   ('approved', 'Approved', 4, true, 'Pitch has been approved')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.name);
 
 -- ============================================================================
 -- SCHEDULING STATUSES
@@ -37,11 +41,13 @@ ON CONFLICT DO NOTHING;
 -- Values: 'unknown', 'tentative', 'confirmed'
 -- ============================================================================
 
-INSERT INTO scheduling_statuses (name, display_name, sort_order, is_active, description) VALUES
+INSERT INTO scheduling_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
   ('unknown', 'Unknown', 1, true, 'Scheduling status is unknown'),
   ('tentative', 'Tentative', 2, true, 'Event is tentatively scheduled'),
   ('confirmed', 'Confirmed', 3, true, 'Event is confirmed')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM scheduling_statuses WHERE scheduling_statuses.name = v.name);
 
 -- ============================================================================
 -- CATEGORIES
@@ -49,7 +55,8 @@ ON CONFLICT DO NOTHING;
 -- Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
 -- ============================================================================
 
-INSERT INTO categories (name, display_name, sort_order, pitch_not_required, is_active, description) VALUES
+INSERT INTO categories (name, display_name, sort_order, pitch_not_required, is_active, description)
+SELECT * FROM (VALUES
   ('event', 'Event', 1, false, true, 'Event category (may require pitch approval)'),
   ('release', 'Release', 2, false, true, 'Release category (may require pitch approval)'),
   ('awareness', 'Awareness', 3, false, true, 'Awareness category'),
@@ -58,7 +65,8 @@ INSERT INTO categories (name, display_name, sort_order, pitch_not_required, is_a
   ('social media', 'Social Media', 6, false, true, 'Social Media category'),
   ('speech', 'Speech', 7, false, true, 'Speech category'),
   ('tv radio', 'TV/Radio', 8, false, true, 'TV/Radio category')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, pitch_not_required, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE categories.name = v.name);
 
 -- ============================================================================
 -- COMMS MATERIALS
@@ -66,7 +74,8 @@ ON CONFLICT DO NOTHING;
 -- Common values: 'Media Advisory', 'Q&As', 'Key Messages', 'News Release', etc.
 -- ============================================================================
 
-INSERT INTO comms_materials (name, display_name, sort_order, is_active, description) VALUES
+INSERT INTO comms_materials (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
   ('media advisory', 'Media Advisory', 1, true, 'Media advisory materials'),
   ('q and a', 'Q&As', 2, true, 'Question and answer materials'),
   ('key messages', 'Key Messages', 3, true, 'Key messaging materials'),
@@ -74,7 +83,8 @@ INSERT INTO comms_materials (name, display_name, sort_order, is_active, descript
   ('backgrounder', 'Backgrounder', 5, true, 'Background information materials'),
   ('factsheet', 'Factsheet', 6, true, 'Fact sheet materials'),
   ('speaking notes', 'Speaking Notes', 7, true, 'Speaking notes materials')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM comms_materials WHERE comms_materials.name = v.name);
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
@@ -82,7 +92,8 @@ ON CONFLICT DO NOTHING;
 -- Common values: 'French', 'Chinese Simplified', 'Spanish', etc.
 -- ============================================================================
 
-INSERT INTO translated_languages (name, display_name, sort_order, is_active, description) VALUES
+INSERT INTO translated_languages (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
   ('french', 'French', 1, true, 'French translation required'),
   ('chinese simplified', 'Chinese Simplified', 2, true, 'Simplified Chinese translation required'),
   ('chinese traditional', 'Chinese Traditional', 3, true, 'Traditional Chinese translation required'),
@@ -91,7 +102,8 @@ INSERT INTO translated_languages (name, display_name, sort_order, is_active, des
   ('tagalog', 'Tagalog', 6, true, 'Tagalog translation required'),
   ('arabic', 'Arabic', 7, true, 'Arabic translation required'),
   ('hindi', 'Hindi', 8, true, 'Hindi translation required')
-ON CONFLICT DO NOTHING;
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM translated_languages WHERE translated_languages.name = v.name);
 
 -- ============================================================================
 -- CITIES
