@@ -12,7 +12,10 @@ import { AppLogger } from '../common/logger/logger.service';
  */
 @Injectable()
 export class SeedService {
-  private readonly seedFiles = ['001_seed_lookup_tables.sql'];
+  private readonly seedFiles = [
+    '001_seed_lookup_tables.sql',
+    '002_seed_activities.sql',
+  ];
 
   constructor(
     @Inject(DATABASE_CLIENT) private readonly db: Database,
@@ -100,10 +103,10 @@ export class SeedService {
 
     if (isCompiled) {
       // From dist/database -> up to calendar-service -> up to root -> packages/database/migrations
-      return path.resolve(__dirname, '../../packages/database/migrations');
+      return path.resolve(__dirname, '../../../packages/database/migrations');
     } else {
       // From src/database -> up to calendar-service -> up to root -> packages/database/migrations
-      return path.resolve(__dirname, '../../packages/database/migrations');
+      return path.resolve(__dirname, '../../../packages/database/migrations');
     }
   }
 }
