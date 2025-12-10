@@ -269,14 +269,27 @@ export const CreateActivityForm: React.FC = () => {
     <ActivityOverviewSection
       relatedActivityOptions={relatedActivityOptions}
       jointOrganizationOptions={jointOrganizationOptions}
+      categories={lookups.categories}
+      organizations={lookups.organizations}
+      tags={lookups.tags}
     />
   ));
   Overview.displayName = 'overview';
 
-  const Approvals = React.memo(() => <ActivityApprovalsSection form={form} />);
+  const Approvals = React.memo(() => (
+    <ActivityApprovalsSection
+      form={form}
+      pitchStatusOptions={lookups.pitchStatuses}
+    />
+  ));
   Approvals.displayName = 'approvals';
 
-  const Schedule = React.memo(() => <ActivityScheduleSection form={form} />);
+  const Schedule = React.memo(() => (
+    <ActivityScheduleSection
+      form={form}
+      schedulingStatusOptions={lookups.schedulingStatuses}
+    />
+  ));
   Schedule.displayName = 'schedule';
 
   const Venue = React.memo(() => <ActivityVenueSection form={form} />);
@@ -289,6 +302,7 @@ export const CreateActivityForm: React.FC = () => {
     <ActivitySharingSection
       ownerOptions={ownerOptions}
       canEditUserOptions={canEditUserOptions}
+      sharedWithOrgOptions={lookups.organizations}
     />
   ));
   Sharing.displayName = 'Sharing';
@@ -329,24 +343,24 @@ export const CreateActivityForm: React.FC = () => {
               form={form}
               schedulingStatusOptions={lookups.schedulingStatuses}
             />
-            <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
+            {/* <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
               <Tab value="overview">Overview</Tab>
               <Tab value="approvals">Approvals</Tab>
               <Tab value="schedule">Schedule</Tab>
               <Tab value="venue">Venue</Tab>{' '}
               {/* I assume this becomes user's ministry, whatever it is */}
-              <Tab value="reports">Reports</Tab>
+            {/* <Tab value="reports">Reports</Tab>
               <Tab value="sharing">Sharing</Tab>
-            </TabList>
+            </TabList> */}
 
-            <div>
+            {/* <div>
               {selectedValue === 'overview' && <Overview />}
               {selectedValue === 'approvals' && <Approvals />}
               {selectedValue === 'schedule' && <Schedule />}
               {selectedValue === 'venue' && <Venue />}
               {selectedValue === 'reports' && <Reports />}
               {selectedValue === 'sharing' && <Sharing />}
-            </div>
+            </div> */}
             {/* <ActivityScheduleSection form={form} />
 
             <ActivityCommsSection

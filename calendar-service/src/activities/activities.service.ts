@@ -1285,31 +1285,6 @@ export class ActivitiesService {
     }
   }
 
-  /**
-   * Validate that all category IDs exist in the database
-   */
-  private async validateCategoryIds(categoryIds: number[]): Promise<void> {
-    if (categoryIds.length === 0) {
-      return;
-    }
-
-    const existingCategories = await this.databaseService.db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(
-        and(inArray(categories.id, categoryIds), eq(categories.isActive, true))
-      );
-
-    const existingIds = new Set(existingCategories.map((c) => c.id));
-    const missingIds = categoryIds.filter((id) => !existingIds.has(id));
-
-    if (missingIds.length > 0) {
-      throw new BadRequestException(
-        `Invalid category IDs: ${missingIds.join(', ')}. These categories do not exist or are not active.`
-      );
-    }
-  }
-
   public async fetchCategories(): Promise<Category[]> {
     const results = await this.databaseService.db
       .select()
