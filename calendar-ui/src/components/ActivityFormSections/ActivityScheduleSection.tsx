@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { mockSchedulingStatuses } from '../../data/mockLookups';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -24,11 +23,16 @@ type FormData = CreateActivityRequest;
 
 type ActivityScheduleSectionProps = {
   form: UseFormReturn<FormData>;
+  schedulingStatusOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
 };
 
 export const ActivityScheduleSection: React.FC<
   ActivityScheduleSectionProps
-> = ({ form }) => {
+> = ({ form, schedulingStatusOptions }) => {
   return (
     <ActivityFormSection title="Schedule">
       <FormField
@@ -47,7 +51,7 @@ export const ActivityScheduleSection: React.FC<
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {mockSchedulingStatuses.map((status) => (
+                {schedulingStatusOptions.map((status) => (
                   <SelectItem key={status.id} value={status.id.toString()}>
                     {status.displayName || status.name}
                   </SelectItem>

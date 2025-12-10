@@ -1,7 +1,109 @@
--- Seed Script for Remaining Lookup Tables
--- This script seeds lookup tables that were not included in 003_seed_lookup_tables.sql
--- Based on mock data from calendar-ui/src/data/mockLookups.ts
--- Run this after applying the base migration (0000_brown_the_executioner.sql) and 003_seed_lookup_tables.sql
+-- Seed Script for Lookup Tables
+-- This script seeds all lookup tables with their initial values
+-- Based on the current schema definitions in src/schema/lookups.ts
+-- Run this after applying the base migration (0000_brown_the_executioner.sql)
+
+-- ============================================================================
+-- ACTIVITY STATUSES
+-- Used for both activity entry status and field review statuses
+-- Values: 'new', 'queued', 'reviewed', 'changed', 'paused', 'deleted'
+-- ============================================================================
+
+INSERT INTO activity_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
+  ('new', 'New', 1, true, 'Newly created entry'),
+  ('queued', 'Queued', 2, true, 'Entry is queued for review'),
+  ('reviewed', 'Reviewed', 3, true, 'Entry has been reviewed'),
+  ('changed', 'Changed', 4, true, 'Entry has been changed'),
+  ('paused', 'Paused', 5, true, 'Entry is paused'),
+  ('deleted', 'Deleted', 6, true, 'Entry is deleted')
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM activity_statuses WHERE activity_statuses.name = v.name);
+
+-- ============================================================================
+-- PITCH STATUSES
+-- Pitch approval statuses
+-- Values: 'not required', 'submitted', 'pitched', 'approved'
+-- ============================================================================
+
+INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
+  ('not required', 'Not Required', 1, true, 'Pitch approval is not required'),
+  ('submitted', 'Submitted', 2, true, 'Pitch has been submitted'),
+  ('pitched', 'Pitched', 3, true, 'Pitch has been presented'),
+  ('approved', 'Approved', 4, true, 'Pitch has been approved')
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.name);
+
+-- ============================================================================
+-- SCHEDULING STATUSES
+-- Event scheduling statuses
+-- Values: 'unknown', 'tentative', 'confirmed'
+-- ============================================================================
+
+INSERT INTO scheduling_statuses (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
+  ('unknown', 'Unknown', 1, true, 'Scheduling status is unknown'),
+  ('tentative', 'Tentative', 2, true, 'Event is tentatively scheduled'),
+  ('confirmed', 'Confirmed', 3, true, 'Event is confirmed')
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM scheduling_statuses WHERE scheduling_statuses.name = v.name);
+
+-- ============================================================================
+-- CATEGORIES
+-- Classification categories for activities
+-- Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
+-- ============================================================================
+
+INSERT INTO categories (name, display_name, sort_order, pitch_not_required, is_active, description)
+SELECT * FROM (VALUES
+  ('event', 'Event', 1, false, true, 'Event category (may require pitch approval)'),
+  ('release', 'Release', 2, false, true, 'Release category (may require pitch approval)'),
+  ('awareness', 'Awareness', 3, false, true, 'Awareness category'),
+  ('conference', 'Conference', 4, false, true, 'Conference category'),
+  ('fyi', 'FYI', 5, true, true, 'For Your Information category'),
+  ('social media', 'Social Media', 6, false, true, 'Social Media category'),
+  ('speech', 'Speech', 7, false, true, 'Speech category'),
+  ('tv radio', 'TV/Radio', 8, false, true, 'TV/Radio category')
+) AS v(name, display_name, sort_order, pitch_not_required, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE categories.name = v.name);
+
+-- ============================================================================
+-- COMMS MATERIALS
+-- Communication materials types
+-- Common values: 'Media Advisory', 'Q&As', 'Key Messages', 'News Release', etc.
+-- ============================================================================
+
+INSERT INTO comms_materials (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
+  ('media advisory', 'Media Advisory', 1, true, 'Media advisory materials'),
+  ('q and a', 'Q&As', 2, true, 'Question and answer materials'),
+  ('key messages', 'Key Messages', 3, true, 'Key messaging materials'),
+  ('news release', 'News Release', 4, true, 'News release materials'),
+  ('backgrounder', 'Backgrounder', 5, true, 'Background information materials'),
+  ('factsheet', 'Factsheet', 6, true, 'Fact sheet materials'),
+  ('speaking notes', 'Speaking Notes', 7, true, 'Speaking notes materials')
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM comms_materials WHERE comms_materials.name = v.name);
+
+-- ============================================================================
+-- TRANSLATED LANGUAGES
+-- Languages for translations
+-- Common values: 'French', 'Chinese Simplified', 'Spanish', etc.
+-- ============================================================================
+
+INSERT INTO translated_languages (name, display_name, sort_order, is_active, description)
+SELECT * FROM (VALUES
+  ('french', 'French', 1, true, 'French translation required'),
+  ('chinese simplified', 'Chinese Simplified', 2, true, 'Simplified Chinese translation required'),
+  ('chinese traditional', 'Chinese Traditional', 3, true, 'Traditional Chinese translation required'),
+  ('spanish', 'Spanish', 4, true, 'Spanish translation required'),
+  ('punjabi', 'Punjabi', 5, true, 'Punjabi translation required'),
+  ('tagalog', 'Tagalog', 6, true, 'Tagalog translation required'),
+  ('arabic', 'Arabic', 7, true, 'Arabic translation required'),
+  ('hindi', 'Hindi', 8, true, 'Hindi translation required')
+) AS v(name, display_name, sort_order, is_active, description)
+WHERE NOT EXISTS (SELECT 1 FROM translated_languages WHERE translated_languages.name = v.name);
 
 -- ============================================================================
 -- CITIES
@@ -27,10 +129,53 @@ ON CONFLICT (id) DO NOTHING;
 -- Representatives for activities
 -- ============================================================================
 
-INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title) VALUES
-  (1, 'Premier', 'Premier Eby', 1, true, 'Premier of British Columbia'),
-  (2, 'Minister', 'Minister Osborne', 2, true, 'Minister of')
-ON CONFLICT (id) DO NOTHING;
+
+-- PREMIER
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type) VALUES
+  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', '00000000-0000-4000-8000-000000000001', 'premier')
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name,
+      display_name = EXCLUDED.display_name,
+      sort_order = EXCLUDED.sort_order,
+      is_active = EXCLUDED.is_active,
+      title = EXCLUDED.title,
+      ministry_id = EXCLUDED.ministry_id,
+      representative_type = EXCLUDED.representative_type;
+
+-- MINISTERS
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type) VALUES
+  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', '00000000-0000-4000-8000-000000000002', 'minister'),
+  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', '00000000-0000-4000-8000-000000000003', 'minister'),
+  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', '00000000-0000-4000-8000-000000000004', 'minister'),
+  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', '00000000-0000-4000-8000-000000000005', 'minister'),
+  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', '00000000-0000-4000-8000-000000000006', 'minister'),
+  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', '00000000-0000-4000-8000-000000000007', 'minister'),
+  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', '00000000-0000-4000-8000-000000000008', 'minister'),
+  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', '00000000-0000-4000-8000-000000000009', 'minister'),
+  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', '00000000-0000-4000-8000-000000000010', 'minister'),
+  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', '00000000-0000-4000-8000-000000000011', 'minister'),
+  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', '00000000-0000-4000-8000-000000000012', 'minister'),
+  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', '00000000-0000-4000-8000-000000000013', 'minister'),
+  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', '00000000-0000-4000-8000-000000000014', 'minister'),
+  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', '00000000-0000-4000-8000-000000000015', 'minister'),
+  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', '00000000-0000-4000-8000-000000000017', 'minister'),
+  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', '00000000-0000-4000-8000-000000000018', 'minister'),
+  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', '00000000-0000-4000-8000-000000000019', 'minister'),
+  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', '00000000-0000-4000-8000-000000000020', 'minister'),
+  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', '00000000-0000-4000-8000-000000000021', 'minister'),
+  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', '00000000-0000-4000-8000-000000000022', 'minister'),
+  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', '00000000-0000-4000-8000-000000000023', 'minister'),
+  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', '00000000-0000-4000-8000-000000000024', 'minister'),
+  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', '00000000-0000-4000-8000-000000000025', 'minister')
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name,
+      display_name = EXCLUDED.display_name,
+      sort_order = EXCLUDED.sort_order,
+      is_active = EXCLUDED.is_active,
+      title = EXCLUDED.title,
+      ministry_id = EXCLUDED.ministry_id,
+      representative_type = EXCLUDED.representative_type;
+
 
 -- ============================================================================
 -- TAGS
@@ -187,4 +332,3 @@ INSERT INTO system_users (id, username, first_name, last_name, email, role, is_a
   (5, 'emily.wang', 'Emily', 'Wang', 'emily.wang@gov.bc.ca', 'ReadOnly', true, 'Policy'),
   (6, 'michael.brown', 'Michael', 'Brown', 'michael.brown@gov.bc.ca', 'ReadOnly', true, 'Research')
 ON CONFLICT (id) DO NOTHING;
-

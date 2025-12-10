@@ -1,6 +1,5 @@
 import {
   pgTable,
-  PgTableWithColumns,
   serial,
   timestamp,
   date,
@@ -45,7 +44,7 @@ import {
  * Activity table - Core entity for calendar events
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Activity.cs
  */
-export const activities: PgTableWithColumns<any> = pgTable('activities', {
+export const activities = pgTable('activities', {
   id: serial('id').primaryKey(),
 
   // Display ID (computed: MIN-###### format)
@@ -85,13 +84,13 @@ export const activities: PgTableWithColumns<any> = pgTable('activities', {
   ownerId: integer('owner_id'), // FK to SystemUser
 
   // Foreign keys
-  nrDistributionId: integer('nr_distribution_id'), // FK to NRDistribution
-  premierRequestedId: integer('premier_requested_id'), // FK to PremierRequested
   contactMinistryId: uuid('contact_ministry_id'), // FK to Ministry
   cityId: integer('city_id'), // FK to City
 
   // Boolean flags (new)
   isAllDay: boolean('is_all_day').notNull().default(false),
+  isTimeConfirmed: boolean('is_time_confirmed').notNull().default(false),
+  isDateConfirmed: boolean('is_date_confirmed').notNull().default(false),
   oicRelated: boolean('oic_related').notNull().default(false), // New
   notForLookAhead: boolean('not_for_look_ahead').notNull().default(false), // New
   planningReport: boolean('planning_report').notNull().default(false), // New
@@ -101,8 +100,7 @@ export const activities: PgTableWithColumns<any> = pgTable('activities', {
 
   // Boolean flags
   isActive: boolean('is_active').notNull().default(true), // Relates to activityStatusId
-
-  isConfidential: boolean('is_confidential').notNull().default(false), // Deprecated - use confidential
+  isConfidential: boolean('is_confidential').notNull().default(false),
   isIssue: boolean('is_issue').notNull().default(false),
 
   // Enums (stored as varchar)

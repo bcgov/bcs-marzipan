@@ -3,7 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { eq, and, SQL, gte, lte, inArray } from 'drizzle-orm';
+// Import operators from drizzle-orm (these are exported by drizzle-orm)
+import { eq, and, gte, lte, inArray } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import {
   activities,
   pitchStatuses,
@@ -26,7 +28,7 @@ import {
   translatedLanguages,
   systemUsers,
 } from '@corpcal/database/schema';
-import type { Activity, NewActivity } from '@corpcal/database/types';
+import type { Activity } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
@@ -34,31 +36,19 @@ import type {
 } from '@corpcal/shared/schemas';
 import type { ActivityResponse } from '@corpcal/shared/api';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
+import { ActivityResponseDto } from '@corpcal/shared/dto';
+import { ensureMatchesSchema } from '@corpcal/shared/utils';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class ActivitiesService {
   constructor(private readonly databaseService: DatabaseService) {}
   /**
-   * Create a new activity
+   * Create a new activity with related junction table records
    */
-  async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
-    // Extract junction table data from DTO
-    // Type assertion needed because CreateActivityRequest extends the base schema
-    const dtoWithJunctions = dto as CreateActivityRequest & {
-      categoryIds?: number[];
-      tagIds?: string[];
-      jointOrganizationIds?: string[];
-      relatedActivityIds?: number[];
-      commsMaterialIds?: number[];
-      translationLanguageIds?: number[];
-      jointEventOrganizationIds?: string[];
-      representativeIds?: number[];
-      sharedWithOrganizationIds?: string[];
-      canEditUserIds?: number[];
-      canViewUserIds?: number[];
-    };
-
+  async create(dto: CreateActivityRequest): Promise<ActivityResponseDto> {
+    // Extract junction table IDs from the DTO
+    // These fields are defined in createActivityRequestSchema but not in the base activity schema
     const {
       categoryIds,
       tagIds,
@@ -67,151 +57,157 @@ export class ActivitiesService {
       commsMaterialIds,
       translationLanguageIds,
       jointEventOrganizationIds,
-      representativeIds,
       sharedWithOrganizationIds,
       canEditUserIds,
       canViewUserIds,
+      // Note: representativeIds is excluded - activityRepresentatives uses free-text representativeName
       ...activityData
-    } = dtoWithJunctions;
+    } = dto as CreateActivityRequest & {
+      categoryIds?: number[];
+      tagIds?: string[];
+      jointOrganizationIds?: string[];
+      relatedActivityIds?: number[];
+      commsMaterialIds?: number[];
+      translationLanguageIds?: number[];
+      jointEventOrganizationIds?: string[];
+      // FIXME:
+      // representativeIds?: number[];
+      sharedWithOrganizationIds?: string[];
+      canEditUserIds?: number[];
+      canViewUserIds?: number[];
+    };
 
-    // TODO: Replace with actual authenticated user ID
-    const currentUserId = 1;
-
-    // Validate foreign key references before starting transaction
+    // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
       await this.validateCategoryIds(categoryIds);
     }
 
-    // Use transaction to ensure all inserts succeed or fail together
+    // TODO: Get current user ID from auth context
+    const currentUserId = activityData.createdBy ?? 1;
+    const now = new Date();
+
+    // Use transaction to ensure atomicity of activity and junction table inserts
     const result = await this.databaseService.db.transaction(async (tx) => {
-      const newActivity: NewActivity = {
-        ...(activityData as Partial<NewActivity>),
-        createdDateTime: new Date(),
+      // Prepare activity data with audit fields
+      const newActivity = {
+        ...activityData,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
       };
 
+      // Insert the activity
       const [created] = await tx
         .insert(activities)
-        .values(newActivity)
+        .values(newActivity as typeof activities.$inferInsert)
         .returning();
 
       const activityId = created.id;
-      const now = new Date();
 
-      // Insert junction table relationships using helper function
-      await this.insertJunctionRecords(
-        tx,
-        activityCategories,
-        activityId,
-        categoryIds,
-        (categoryId) => ({ categoryId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityTags,
-        activityId,
-        tagIds,
-        (tagId) => ({ tagId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityJointOrganizations,
-        activityId,
-        jointOrganizationIds,
-        (orgId) => ({ organizationId: orgId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityRelatedEntries,
-        activityId,
-        relatedActivityIds,
-        (relatedId) => ({ relatedActivityId: relatedId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityCommsMaterials,
-        activityId,
-        commsMaterialIds,
-        (materialId) => ({ commsMaterialId: materialId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityTranslationLanguages,
-        activityId,
-        translationLanguageIds,
-        (languageId) => ({ languageId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityJointEventOrganizations,
-        activityId,
-        jointEventOrganizationIds,
-        (orgId) => ({ organizationId: orgId }),
-        currentUserId,
-        now
-      );
-
-      // Special case: activityRepresentatives has additional attendingStatus field
-      if (representativeIds && representativeIds.length > 0) {
-        await tx.insert(activityRepresentatives).values(
-          representativeIds.map((repId) => ({
-            activityId,
-            representativeId: repId,
-            attendingStatus: 'requested', // Default status
-            createdBy: currentUserId,
-            lastUpdatedBy: currentUserId,
-            createdDateTime: now,
-            lastUpdatedDateTime: now,
-          }))
-        );
-      }
-
-      await this.insertJunctionRecords(
-        tx,
-        activitySharedWithOrganizations,
-        activityId,
-        sharedWithOrganizationIds,
-        (orgId) => ({ organizationId: orgId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityCanEditUsers,
-        activityId,
-        canEditUserIds,
-        (userId) => ({ userId }),
-        currentUserId,
-        now
-      );
-
-      await this.insertJunctionRecords(
-        tx,
-        activityCanViewUsers,
-        activityId,
-        canViewUserIds,
-        (userId) => ({ userId }),
-        currentUserId,
-        now
-      );
+      // Insert junction table records in parallel
+      await Promise.all([
+        // Categories
+        this.insertJunctionRecords(
+          tx,
+          activityCategories,
+          activityId,
+          categoryIds,
+          (id: number) => ({ categoryId: id }),
+          currentUserId,
+          now
+        ),
+        // Tags
+        this.insertJunctionRecords(
+          tx,
+          activityTags,
+          activityId,
+          tagIds,
+          (id: string) => ({ tagId: id }),
+          currentUserId,
+          now
+        ),
+        // Joint Organizations
+        this.insertJunctionRecords(
+          tx,
+          activityJointOrganizations,
+          activityId,
+          jointOrganizationIds,
+          (id: string) => ({ organizationId: id }),
+          currentUserId,
+          now
+        ),
+        // Related Activities
+        this.insertJunctionRecords(
+          tx,
+          activityRelatedEntries,
+          activityId,
+          relatedActivityIds,
+          (id: number) => ({ relatedActivityId: id }),
+          currentUserId,
+          now
+        ),
+        // Comms Materials
+        this.insertJunctionRecords(
+          tx,
+          activityCommsMaterials,
+          activityId,
+          commsMaterialIds,
+          (id: number) => ({ commsMaterialId: id }),
+          currentUserId,
+          now
+        ),
+        // Translation Languages
+        this.insertJunctionRecords(
+          tx,
+          activityTranslationLanguages,
+          activityId,
+          translationLanguageIds,
+          (id: number) => ({ languageId: id }),
+          currentUserId,
+          now
+        ),
+        // Joint Event Organizations
+        this.insertJunctionRecords(
+          tx,
+          activityJointEventOrganizations,
+          activityId,
+          jointEventOrganizationIds,
+          (id: string) => ({ organizationId: id }),
+          currentUserId,
+          now
+        ),
+        // Shared With Organizations
+        this.insertJunctionRecords(
+          tx,
+          activitySharedWithOrganizations,
+          activityId,
+          sharedWithOrganizationIds,
+          (id: string) => ({ organizationId: id }),
+          currentUserId,
+          now
+        ),
+        // Can Edit Users
+        this.insertJunctionRecords(
+          tx,
+          activityCanEditUsers,
+          activityId,
+          canEditUserIds,
+          (id: number) => ({ userId: id }),
+          currentUserId,
+          now
+        ),
+        // Can View Users
+        this.insertJunctionRecords(
+          tx,
+          activityCanViewUsers,
+          activityId,
+          canViewUserIds,
+          (id: number) => ({ userId: id }),
+          currentUserId,
+          now
+        ),
+      ]);
 
       return created;
     });
@@ -262,21 +258,21 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    */
-  async findAll(filters?: FilterActivities): Promise<ActivityResponse[]> {
+  async findAll(filters?: FilterActivities): Promise<ActivityResponseDto[]> {
     let activityResults: Activity[];
 
     if (filters) {
       const conditions: SQL[] = [];
       if (filters.title) {
-        conditions.push(eq(activities.title as any, filters.title));
+        conditions.push(eq(activities.title, filters.title));
       }
       if (filters.activityStatusId !== undefined) {
         conditions.push(
-          eq(activities.activityStatusId as any, filters.activityStatusId)
+          eq(activities.activityStatusId, filters.activityStatusId)
         );
       }
       if (filters.isActive !== undefined) {
-        conditions.push(eq(activities.isActive as any, filters.isActive));
+        conditions.push(eq(activities.isActive, filters.isActive));
       }
       if (filters.isConfidential !== undefined) {
         conditions.push(eq(activities.isConfidential, filters.isConfidential));
@@ -373,7 +369,7 @@ export class ActivitiesService {
   /**
    * Find one activity by ID
    */
-  async findOne(id: number): Promise<ActivityResponse> {
+  async findOne(id: number): Promise<ActivityResponseDto> {
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -438,7 +434,7 @@ export class ActivitiesService {
   async update(
     id: number,
     dto: UpdateActivityRequest
-  ): Promise<ActivityResponse> {
+  ): Promise<ActivityResponseDto> {
     // Verify activity exists (throws NotFoundException if not found)
     await this.findOne(id);
 
@@ -514,7 +510,7 @@ export class ActivitiesService {
   /**
    * Soft delete (set isActive to false)
    */
-  async softDelete(id: number): Promise<ActivityResponse> {
+  async softDelete(id: number): Promise<ActivityResponseDto> {
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
@@ -1116,7 +1112,7 @@ export class ActivitiesService {
       canEdit?: string[];
       canView?: string[];
     }
-  ): ActivityResponse {
+  ): ActivityResponseDto {
     // Format date to YYYY-MM-DD
     const formatDate = (date: Date | string | null): string | null => {
       if (!date) return null;
@@ -1169,6 +1165,8 @@ export class ActivitiesService {
       startTime: formatTime(activity.startTime),
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
+      isTimeConfirmed: activity.isTimeConfirmed ?? false,
+      isDateConfirmed: activity.isDateConfirmed ?? false,
       schedulingConsiderations: activity.schedulingConsiderations ?? null,
 
       // Comms
@@ -1235,11 +1233,15 @@ export class ActivitiesService {
       lastUpdatedBy: activity.lastUpdatedBy?.toString() ?? 'unknown',
     };
 
+    // Compile-time validation: ensure the mapping produces a value that matches the schema
+    // This provides compile-time guarantee that the mapping is correct
+    const validatedDto = ensureMatchesSchema(activityResponseSchema, dto);
+
     // Runtime validation to ensure DTO matches schema contract
     // This catches misalignment between the mapping logic and the schema
     // Runs in all environments to catch issues early
     try {
-      activityResponseSchema.parse(dto);
+      activityResponseSchema.parse(validatedDto);
     } catch (error) {
       // Log validation errors with context for debugging
       const errorMessage =
@@ -1248,16 +1250,14 @@ export class ActivitiesService {
         `[ActivitiesService] Response DTO validation failed for activity ${activity.id}:`,
         errorMessage
       );
-      // In production, we might want to throw here to prevent invalid responses
-      // For now, we log and continue to avoid breaking the API
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(
-          `Response DTO validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
-        );
-      }
+      // Fail-fast in all environments to prevent invalid responses
+      throw new Error(
+        `Response DTO validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
+      );
     }
 
-    return dto;
+    // Return as DTO class instance for better IDE support and explicit contracts
+    return ActivityResponseDto.from(validatedDto);
   }
 
   /**
