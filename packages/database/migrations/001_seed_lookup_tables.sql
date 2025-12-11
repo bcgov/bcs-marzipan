@@ -55,18 +55,17 @@ WHERE NOT EXISTS (SELECT 1 FROM scheduling_statuses WHERE scheduling_statuses.na
 -- Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
 -- ============================================================================
 
-INSERT INTO categories (name, display_name, sort_order, pitch_not_required, is_active, description)
-SELECT * FROM (VALUES
-  ('event', 'Event', 1, false, true, 'Event category (may require pitch approval)'),
-  ('release', 'Release', 2, false, true, 'Release category (may require pitch approval)'),
-  ('awareness', 'Awareness', 3, false, true, 'Awareness category'),
-  ('conference', 'Conference', 4, false, true, 'Conference category'),
-  ('fyi', 'FYI', 5, true, true, 'For Your Information category'),
-  ('social media', 'Social Media', 6, false, true, 'Social Media category'),
-  ('speech', 'Speech', 7, false, true, 'Speech category'),
-  ('tv radio', 'TV/Radio', 8, false, true, 'TV/Radio category')
-) AS v(name, display_name, sort_order, pitch_not_required, is_active, description)
-WHERE NOT EXISTS (SELECT 1 FROM categories WHERE categories.name = v.name);
+INSERT INTO categories (id, name, display_name, sort_order, pitch_not_required, is_active, description)
+VALUES
+  (1, 'event', 'Event', 1, false, true, 'Event category (may require pitch approval)'),
+  (2, 'release', 'Release', 2, false, true, 'Release category (may require pitch approval)'),
+  (3, 'awareness', 'Awareness', 3, false, true, 'Awareness category'),
+  (4, 'conference', 'Conference', 4, false, true, 'Conference category'),
+  (5, 'fyi', 'FYI', 5, true, true, 'For Your Information category'),
+  (6, 'social media', 'Social Media', 6, false, true, 'Social Media category'),
+  (7, 'speech', 'Speech', 7, false, true, 'Speech category'),
+  (8, 'tv radio', 'TV/Radio', 8, false, true, 'TV/Radio category')
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- COMMS MATERIALS
@@ -74,17 +73,16 @@ WHERE NOT EXISTS (SELECT 1 FROM categories WHERE categories.name = v.name);
 -- Common values: 'Media Advisory', 'Q&As', 'Key Messages', 'News Release', etc.
 -- ============================================================================
 
-INSERT INTO comms_materials (name, display_name, sort_order, is_active, description)
-SELECT * FROM (VALUES
-  ('media advisory', 'Media Advisory', 1, true, 'Media advisory materials'),
-  ('q and a', 'Q&As', 2, true, 'Question and answer materials'),
-  ('key messages', 'Key Messages', 3, true, 'Key messaging materials'),
-  ('news release', 'News Release', 4, true, 'News release materials'),
-  ('backgrounder', 'Backgrounder', 5, true, 'Background information materials'),
-  ('factsheet', 'Factsheet', 6, true, 'Fact sheet materials'),
-  ('speaking notes', 'Speaking Notes', 7, true, 'Speaking notes materials')
-) AS v(name, display_name, sort_order, is_active, description)
-WHERE NOT EXISTS (SELECT 1 FROM comms_materials WHERE comms_materials.name = v.name);
+INSERT INTO comms_materials (id, name, display_name, sort_order, is_active, description)
+VALUES
+  (1, 'media advisory', 'Media Advisory', 1, true, 'Media advisory materials'),
+  (2, 'q and a', 'Q&As', 2, true, 'Question and answer materials'),
+  (3, 'key messages', 'Key Messages', 3, true, 'Key messaging materials'),
+  (4, 'news release', 'News Release', 4, true, 'News release materials'),
+  (5, 'backgrounder', 'Backgrounder', 5, true, 'Background information materials'),
+  (6, 'factsheet', 'Factsheet', 6, true, 'Fact sheet materials'),
+  (7, 'speaking notes', 'Speaking Notes', 7, true, 'Speaking notes materials')
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
@@ -92,18 +90,17 @@ WHERE NOT EXISTS (SELECT 1 FROM comms_materials WHERE comms_materials.name = v.n
 -- Common values: 'French', 'Chinese Simplified', 'Spanish', etc.
 -- ============================================================================
 
-INSERT INTO translated_languages (name, display_name, sort_order, is_active, description)
-SELECT * FROM (VALUES
-  ('french', 'French', 1, true, 'French translation required'),
-  ('chinese simplified', 'Chinese Simplified', 2, true, 'Simplified Chinese translation required'),
-  ('chinese traditional', 'Chinese Traditional', 3, true, 'Traditional Chinese translation required'),
-  ('spanish', 'Spanish', 4, true, 'Spanish translation required'),
-  ('punjabi', 'Punjabi', 5, true, 'Punjabi translation required'),
-  ('tagalog', 'Tagalog', 6, true, 'Tagalog translation required'),
-  ('arabic', 'Arabic', 7, true, 'Arabic translation required'),
-  ('hindi', 'Hindi', 8, true, 'Hindi translation required')
-) AS v(name, display_name, sort_order, is_active, description)
-WHERE NOT EXISTS (SELECT 1 FROM translated_languages WHERE translated_languages.name = v.name);
+INSERT INTO translated_languages (id, name, display_name, sort_order, is_active, description)
+VALUES
+  (1, 'french', 'French', 1, true, 'French translation required'),
+  (2, 'chinese simplified', 'Chinese Simplified', 2, true, 'Simplified Chinese translation required'),
+  (3, 'chinese traditional', 'Chinese Traditional', 3, true, 'Traditional Chinese translation required'),
+  (4, 'spanish', 'Spanish', 4, true, 'Spanish translation required'),
+  (5, 'punjabi', 'Punjabi', 5, true, 'Punjabi translation required'),
+  (6, 'tagalog', 'Tagalog', 6, true, 'Tagalog translation required'),
+  (7, 'arabic', 'Arabic', 7, true, 'Arabic translation required'),
+  (8, 'hindi', 'Hindi', 8, true, 'Hindi translation required')
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- CITIES

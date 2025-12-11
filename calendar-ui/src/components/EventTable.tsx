@@ -281,7 +281,9 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       none: 'Reviewed',
       changed: 'Changed',
     };
-  const status = statusMap[activity.lookAheadStatus] || 'Reviewed';
+  const status = activity.lookAheadStatus
+    ? statusMap[activity.lookAheadStatus] || 'Reviewed'
+    : 'Reviewed';
 
   // Check if confirmed
   const confirmed = activity.schedulingStatus?.toLowerCase() === 'confirmed';

@@ -265,47 +265,33 @@ export const CreateActivityForm: React.FC = () => {
       </div>
     );
   };
-  const Overview = React.memo(() => (
-    <ActivityOverviewSection
-      relatedActivityOptions={relatedActivityOptions}
-      jointOrganizationOptions={jointOrganizationOptions}
-      categories={lookups.categories}
-      organizations={lookups.organizations}
-      tags={lookups.tags}
-    />
-  ));
-  Overview.displayName = 'overview';
+  // const Overview = React.memo(() => (
+  //   <ActivityOverviewSection
+  //     relatedActivityOptions={relatedActivityOptions}
+  //     jointOrganizationOptions={jointOrganizationOptions}
+  //   />
+  // ));
+  // Overview.displayName = 'overview';
 
-  const Approvals = React.memo(() => (
-    <ActivityApprovalsSection
-      form={form}
-      pitchStatusOptions={lookups.pitchStatuses}
-    />
-  ));
-  Approvals.displayName = 'approvals';
+  // const Approvals = React.memo(() => <ActivityApprovalsSection form={form} />);
+  // Approvals.displayName = 'approvals';
 
-  const Schedule = React.memo(() => (
-    <ActivityScheduleSection
-      form={form}
-      schedulingStatusOptions={lookups.schedulingStatuses}
-    />
-  ));
-  Schedule.displayName = 'schedule';
+  // const Schedule = React.memo(() => <ActivityScheduleSection form={form} />);
+  // Schedule.displayName = 'schedule';
 
-  const Venue = React.memo(() => <ActivityVenueSection form={form} />);
-  Venue.displayName = 'venue';
+  // const Venue = React.memo(() => <ActivityVenueSection form={form} />);
+  // Venue.displayName = 'venue';
 
-  const Reports = React.memo(() => <ActivityReportsSection form={form} />);
-  Reports.displayName = 'reports';
+  // const Reports = React.memo(() => <ActivityReportsSection form={form} />);
+  // Reports.displayName = 'reports';
 
-  const Sharing = React.memo(() => (
-    <ActivitySharingSection
-      ownerOptions={ownerOptions}
-      canEditUserOptions={canEditUserOptions}
-      sharedWithOrgOptions={lookups.organizations}
-    />
-  ));
-  Sharing.displayName = 'Sharing';
+  // const Sharing = React.memo(() => (
+  //   <ActivitySharingSection
+  //     ownerOptions={ownerOptions}
+  //     canEditUserOptions={canEditUserOptions}
+  //   />
+  // ));
+  // Sharing.displayName = 'Sharing';
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -351,9 +337,9 @@ export const CreateActivityForm: React.FC = () => {
               {/* I assume this becomes user's ministry, whatever it is */}
             {/* <Tab value="reports">Reports</Tab>
               <Tab value="sharing">Sharing</Tab>
-            </TabList> */}
+            </TabList>
 
-            {/* <div>
+            <div>
               {selectedValue === 'overview' && <Overview />}
               {selectedValue === 'approvals' && <Approvals />}
               {selectedValue === 'schedule' && <Schedule />}
@@ -361,7 +347,7 @@ export const CreateActivityForm: React.FC = () => {
               {selectedValue === 'reports' && <Reports />}
               {selectedValue === 'sharing' && <Sharing />}
             </div> */}
-            {/* <ActivityScheduleSection form={form} />
+            <ActivityScheduleSection form={form} schedulingStatusOptions={[]} />
 
             <ActivityCommsSection
               commsLeadOptions={lookups.users}
