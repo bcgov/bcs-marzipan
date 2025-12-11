@@ -83,7 +83,7 @@ export class ActivitiesService {
     }
 
     // TODO: Get current user ID from auth context
-    const currentUserId = activityData.createdBy ?? 1;
+    const currentUserId = 1; //dto.createdBy ?? 1;
     const now = new Date();
 
     // Use transaction to ensure atomicity of activity and junction table inserts
