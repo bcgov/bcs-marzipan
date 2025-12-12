@@ -65,7 +65,7 @@ type EventRow = {
   id: string;
   title: string;
   category: string[] | undefined;
-  type: string;
+  // type: string;
   status: 'New' | 'Reviewed' | 'Changed' | 'Deleted';
   confirmed: boolean;
   dateCreated: string;
@@ -86,119 +86,7 @@ type EventRow = {
 };
 
 // Dummy table data
-export const eventData: EventRow[] = [
-  // {
-  //   startDate: new Date('2025-01-21T09:30:00'),
-  //   endDate: new Date('2025-03-29'),
-  //   date: 'Jan 21 – Mar 29',
-  //   id: 'PSFS-113714',
-  //   title: '$6M to increase Indigenous learners...',
-  //   category: ['Release'],
-  //   type: 'News Release',
-  //   status: 'New',
-  //   confirmed: false,
-  //   dateCreated: 'Jan 03 2025',
-  //   //dateCreated:  new Date('2025-01-03T10:30:00Z'), we'll probably use actual dates in the future
-  //   dateModified: undefined,
-  //   mine: true,
-  //   sharedWithMe: false,
-  //   ministry: 'hlth',
-  //   confidential: undefined,
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: ['Premier Eby', 'Minister Gauss', 'Minister Euler'],
-  //   leads: ['Johannes Kepler', 'Tycho Brahe', 'Caroline Herschel'],
-  //   commsMaterials: [
-  //     'Event or media plan',
-  //     'Media advisory',
-  //     'Q&As',
-  //     'Speaking notes',
-  //   ],
-  //   reports: [
-  //     { id: '1', name: 'Planning Report', type: 'planning' },
-  //     { id: '2', name: 'Look Ahead', type: 'look-ahead' },
-  //   ],
-  //   tags: undefined,
-  //   location: undefined,
-  // },
-  // {
-  //   date: 'Feb 4 – Mar 27',
-  //   startDate: new Date('2025-02-04T09:30:00'),
-  //   endDate: new Date('2025-03-27'),
-  //   id: 'TACS-116305',
-  //   title: 'Royal BC Museum Phase 2 Conversations',
-  //   category: ['Issue'],
-  //   type: 'Issue',
-  //   status: 'Reviewed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-11-16T03:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: true,
-  //   ministry: 'hlth',
-  //   confidential: 'CONFIDENTIAL Issue',
-  //   summary: undefined,
-  //   representatives: ['Minister Smith', 'Deputy Minister Johnson'],
-  //   leads: ['Lead One', 'Lead Two'],
-  //   commsMaterials: ['Event or media plan', 'Media advisory'],
-  //   reports: [
-  //     { id: '3', name: '30/60/90 Report', type: '30-60-90' },
-  //     { id: '4', name: 'Look Ahead', type: 'look-ahead' },
-  //   ],
-  //   tags: ['ECC'],
-  //   location: 'BC Legislature, Victoria BC',
-  // },
-  // {
-  //   date: 'Feb 29 – Apr 8',
-  //   startDate: new Date('2025-02-29T09:30:00'),
-  //   endDate: new Date('2025-04-08'),
-  //   id: 'MOTI-112502',
-  //   title: 'Pattullo Bridge Project milestone',
-  //   category: ['Release'],
-  //   type: 'News Release',
-  //   status: 'Changed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-11-16T03:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: false,
-  //   ministry: 'citz',
-  //   confidential: 'Confidential',
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: undefined,
-  //   leads: undefined,
-  //   commsMaterials: undefined,
-  //   reports: [{ id: '5', name: 'Planning Report', type: 'planning' }],
-  //   tags: ['Infrastructure', 'Transportation'],
-  //   location: undefined,
-  // },
-  // {
-  //   date: 'Mar 1 – Mar 31',
-  //   startDate: new Date('2025-03-01T09:30:00'),
-  //   endDate: new Date('2025-03-31'),
-  //   id: 'HLTH-116081',
-  //   title: 'Pharmacy Appreciation Month',
-  //   category: ['Event'],
-  //   type: 'Awareness Date',
-  //   status: 'Reviewed',
-  //   confirmed: true,
-  //   dateCreated: 'Jan 03 2025',
-  //   dateModified: new Date('2025-09-10T10:30:00Z'),
-  //   mine: false,
-  //   sharedWithMe: false,
-  //   ministry: 'hlth',
-  //   confidential: undefined,
-  //   summary:
-  //     'Lorem ipsum dolor sit amet. Sed optio deserunt est ullam unde et dolorem saepe non asperiores pariatur id dignissimos cupiditate. Est laborum cumque ad unde odit aut sapiente impedit vel laboriosam omnis non rerum laudantium quo dolore sunt ab sapiente consectetur.',
-  //   representatives: undefined,
-  //   leads: undefined,
-  //   commsMaterials: undefined,
-  //   reports: undefined,
-  //   tags: ['Health', 'Pharmacy'],
-  //   location: undefined,
-  // },
-];
+export const eventData: EventRow[] = [];
 
 const getLastModifiedString = (modified: Date | undefined) => {
   if (!modified) {
@@ -251,9 +139,6 @@ const getDaysDifference = (date1: Date, date2: Date): number => {
 
 const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
   // Map ActivityResponse to EventRow format
-  // Adjust the mapping based on your actual ActivityResponse structure
-  // we'll probably ditch this altogether and just use ActivityResponse DTO directly eventually
-
   // Format date range
   const startDate = activity.startDate
     ? new Date(activity.startDate)
@@ -281,7 +166,9 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       none: 'Reviewed',
       changed: 'Changed',
     };
-  const status = statusMap[activity.lookAheadStatus] || 'Reviewed';
+  const status = activity.lookAheadStatus
+    ? statusMap[activity.lookAheadStatus] || 'Reviewed'
+    : 'Reviewed';
 
   // Check if confirmed
   const confirmed = activity.schedulingStatus?.toLowerCase() === 'confirmed';
@@ -315,7 +202,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       activity.category && activity.category.length > 0
         ? activity.category
         : undefined,
-    type: activity.isIssue ? 'Issue' : activity.category?.[0] || 'Event',
+    // type: activity.type || 'General',
     status,
     confirmed,
     dateCreated: new Date(activity.createdDateTime).toLocaleDateString(
@@ -419,6 +306,7 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [eventData, setEventData] = useState<EventRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Fetch activities from API
   useEffect(() => {
@@ -493,7 +381,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         header: 'Overview',
         enableResizing: false,
         enablePinning: true,
-        size: 200,
+        size: 180,
         cell: ({ row }) => (
           <div>
             {/* todo: Let's make these complicated columns separate components, and pass everything in as props*/}
@@ -516,6 +404,11 @@ export const EventTable: React.FC<EventTableProps> = ({
                     ? 'filled'
                     : 'outline'
                 }
+                style={{
+                  whiteSpace: 'normal',
+                  height: 'auto',
+                  minHeight: '20px',
+                }}
               >
                 {row.original.category?.[0]}
               </Badge>
@@ -540,7 +433,15 @@ export const EventTable: React.FC<EventTableProps> = ({
             >
               {row.original.tags && row.original.tags.length
                 ? row.original.tags.map((tag) => (
-                    <Badge key={tag} appearance="filled">
+                    <Badge
+                      key={tag}
+                      appearance="filled"
+                      style={{
+                        whiteSpace: 'normal',
+                        height: 'auto',
+                        minHeight: '20px',
+                      }}
+                    >
                       {tag}
                     </Badge>
                   ))
@@ -626,7 +527,15 @@ export const EventTable: React.FC<EventTableProps> = ({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {row.original.representatives && row.original.representatives.length
               ? row.original.representatives.map((rep) => (
-                  <Badge key={rep} appearance="outline">
+                  <Badge
+                    key={rep}
+                    appearance="outline"
+                    style={{
+                      whiteSpace: 'normal',
+                      height: 'auto',
+                      minHeight: '20px',
+                    }}
+                  >
                     {rep}
                   </Badge>
                 ))
@@ -676,7 +585,15 @@ export const EventTable: React.FC<EventTableProps> = ({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {row.original.reports && row.original.reports.length
               ? row.original.reports.map((report) => (
-                  <Badge key={report.id} appearance="filled">
+                  <Badge
+                    key={report.id}
+                    appearance="filled"
+                    style={{
+                      whiteSpace: 'normal',
+                      height: 'auto',
+                      minHeight: '20px',
+                    }}
+                  >
                     {report.name}
                   </Badge>
                 ))
@@ -730,8 +647,14 @@ export const EventTable: React.FC<EventTableProps> = ({
           const lowerSelected = selected.map((s: string) =>
             String(s).toLowerCase()
           );
-          const rowCat = String(row.original.category || '').toLowerCase();
-          return lowerSelected.includes(rowCat);
+          const rowCategories = row.original.category || [];
+          const lowerRowCategories = rowCategories.map((cat) =>
+            cat.toLowerCase()
+          );
+          // Return true if any selected category is in the row's categories
+          return lowerSelected.some((selected) =>
+            lowerRowCategories.includes(selected)
+          );
         },
       }),
       columnHelper.accessor('title', {
@@ -855,6 +778,10 @@ export const EventTable: React.FC<EventTableProps> = ({
       {!isLoading && !error && (
         <>
           <div
+            onScroll={(e) => {
+              const scrollLeft = (e.target as HTMLDivElement).scrollLeft;
+              setIsScrolled(scrollLeft > 0);
+            }}
             style={{
               overflowX: 'auto',
               overflowY: 'auto',
@@ -890,10 +817,17 @@ export const EventTable: React.FC<EventTableProps> = ({
                                 ? `${header.column.getStart('left') + 16}px`
                                 : `${header.column.getStart('left')}px`
                               : 'auto',
-                            zIndex: header.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
+                            zIndex:
+                              header.column.getIsPinned() && isScrolled
+                                ? 1
+                                : 'auto', // Only apply z-index when scrolled
                             background: header.column.getIsPinned()
                               ? '#fff'
                               : 'transparent', // Optional: Match table background
+                            boxShadow:
+                              header.column.getIsPinned() && isScrolled
+                                ? '2px 0 4px rgba(0, 0, 0, 0.1)'
+                                : 'none', // Add shadow when scrolled
                           }}
                         >
                           {flexRender(
@@ -928,13 +862,20 @@ export const EventTable: React.FC<EventTableProps> = ({
                                 ? `${cell.column.getStart('left') + 16}px`
                                 : `${cell.column.getStart('left')}px`
                               : 'auto',
-                            zIndex: cell.column.getIsPinned() ? 1 : 'auto', // Ensure it stays on top
+                            zIndex:
+                              cell.column.getIsPinned() && isScrolled
+                                ? 1
+                                : 'auto', // Only apply z-index when scrolled
                             background: cell.column.getIsPinned()
                               ? '#fff'
                               : 'transparent', // Optional: Match row background
                             boxSizing: 'border-box', // Include padding in width calculation
                             width: cell.column.columnDef.size,
                             minWidth: cell.column.columnDef.size,
+                            boxShadow:
+                              cell.column.getIsPinned() && isScrolled
+                                ? '2px 0 4px rgba(0, 0, 0, 0.1)'
+                                : 'none', // Add shadow when scrolled
                           }}
                         >
                           {flexRender(

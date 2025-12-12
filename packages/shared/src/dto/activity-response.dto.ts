@@ -87,6 +87,7 @@ export class ActivityResponseDto implements ActivityResponse {
   createdBy!: string;
   lastUpdatedDateTime!: string;
   lastUpdatedBy!: string;
+  createdBy?: number;
 
   /**
    * Factory method to create an ActivityResponseDto from an ActivityResponse object

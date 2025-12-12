@@ -21,6 +21,13 @@ import React, { useEffect } from 'react';
 import { set } from 'zod';
 import { eventData } from './EventTable';
 import { useCookies } from 'react-cookie';
+import {
+  fetchCategories,
+  fetchSchedulingStatuses,
+  fetchTags,
+  fetchGovernmentRepresentatives,
+  LookupItem,
+} from '../api/lookupsApi';
 
 interface FilterProps {
   onFiltersChanged: (filters: ColumnFiltersState) => void;
@@ -202,6 +209,52 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     onKeywordFilterChanged(keywordFilter || '');
   }, [keywordFilter]);
 
+  // get Categories, Tags, etc. from API
+  const [categories, setCategories] = React.useState<LookupItem[]>([]);
+  const [tags, setTags] = React.useState<LookupItem[]>([]);
+  const [representatives, setRepresentatives] = React.useState<LookupItem[]>(
+    []
+  );
+  const [locations, setLocations] = React.useState<LookupItem[]>([]);
+  const [leads, setLeads] = React.useState<LookupItem[]>([]);
+  const [statuses, setStatuses] = React.useState<LookupItem[]>([]);
+  const [lookAheadStatuses, setLookAheadStatuses] = React.useState<
+    LookupItem[]
+  >([]);
+  const [cities, setCities] = React.useState<LookupItem[]>([]);
+  useEffect(() => {
+    fetchCategories()
+      .then((data) => {
+        setCategories(data);
+      })
+      .catch((error) => {
+        console.error('Error fetching categories:', error);
+      });
+
+    fetchTags()
+      .then((data) => {
+        setTags(data);
+      })
+      .catch((error) => {
+        console.error('Error fetching tags:', error);
+      });
+
+    fetchSchedulingStatuses()
+      .then((data) => {
+        setStatuses(data);
+      })
+      .catch((error) => {
+        console.error('Error fetching statuses:', error);
+      });
+    fetchGovernmentRepresentatives()
+      .then((data) => {
+        setRepresentatives(data);
+      })
+      .catch((error) => {
+        console.error('Error fetching representatives:', error);
+      });
+  });
+
   const setFiltersFromCookie = () => {
     const filterCookie = cookies['filtersCookie'];
     if (filterCookie) {
@@ -297,15 +350,15 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItemCheckbox name="category" value="release">
-              Release
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="category" value="issue">
-              Issue
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="category" value="event">
-              Event
-            </MenuItemCheckbox>
+            {categories.map((category) => (
+              <MenuItemCheckbox
+                key={category.id}
+                name="category"
+                value={category.label}
+              >
+                {category.label}
+              </MenuItemCheckbox>
+            ))}
           </MenuList>
         </MenuPopover>
       </Menu>
@@ -323,18 +376,15 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItemCheckbox name="status" value="new">
-              New
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="status" value="reviewed">
-              Reviewed
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="status" value="changed">
-              Changed
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="status" value="deleted">
-              Deleted
-            </MenuItemCheckbox>
+            {statuses.map((status) => (
+              <MenuItemCheckbox
+                key={status.id}
+                name="status"
+                value={status.label}
+              >
+                {status.label}
+              </MenuItemCheckbox>
+            ))}
           </MenuList>
         </MenuPopover>
       </Menu>
@@ -417,15 +467,13 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            {Array.from(
-              new Set(eventData.flatMap((event) => event.representatives || []))
-            ).map((representative) => (
+            {representatives.map((rep) => (
               <MenuItemCheckbox
-                key={representative}
+                key={rep.id}
                 name="representative"
-                value={representative}
+                value={rep.label}
               >
-                {representative}
+                {rep.label}
               </MenuItemCheckbox>
             ))}
           </MenuList>
@@ -470,21 +518,11 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItemCheckbox name="tag" value="Infrastructure">
-              Infrastructure
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="tag" value="Transportation">
-              Transportation
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="tag" value="Health">
-              Health
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="tag" value="Pharmacy">
-              Pharmacy
-            </MenuItemCheckbox>
-            <MenuItemCheckbox name="tag" value="ECC">
-              ECC
-            </MenuItemCheckbox>
+            {tags.map((tag) => (
+              <MenuItemCheckbox key={tag.id} name="tag" value={tag.label}>
+                {tag.label}
+              </MenuItemCheckbox>
+            ))}
           </MenuList>
         </MenuPopover>
       </Menu>
