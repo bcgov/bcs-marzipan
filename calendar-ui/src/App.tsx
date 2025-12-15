@@ -1,4 +1,4 @@
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider, webLightTheme, Toaster } from '@fluentui/react-components';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 
@@ -13,6 +13,7 @@ import { CreateActivityForm } from './pages/CreateActivityForm';
 function App() {
   return (
     <FluentProvider theme={webLightTheme}>
+      <Toaster position="top-end" />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />

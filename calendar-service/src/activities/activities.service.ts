@@ -39,10 +39,14 @@ import { activityResponseSchema } from '@corpcal/shared/schemas';
 import { ActivityResponseDto } from '@corpcal/shared/dto';
 import { ensureMatchesSchema } from '@corpcal/shared/utils';
 import { DatabaseService } from '../database/database.service';
+import { ActivitiesGateway } from './activities.gateway';
 
 @Injectable()
 export class ActivitiesService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activitiesGateway: ActivitiesGateway
+  ) {}
   /**
    * Create a new activity with related junction table records
    */
@@ -480,7 +484,7 @@ export class ActivitiesService {
       this.fetchCanViewUsersForActivities([id]),
     ]);
 
-    return this.mapToResponseDto(updated, {
+    const result = this.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
       pitchStatus: pitchStatus.get(id),
@@ -495,6 +499,11 @@ export class ActivitiesService {
       canEdit: canEdit.get(id) ?? [],
       canView: canView.get(id) ?? [],
     });
+
+    // Notify connected clients viewing this activity
+    this.activitiesGateway.notifyActivityUpdate(id, result);
+
+    return result;
   }
 
   /**

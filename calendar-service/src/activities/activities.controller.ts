@@ -117,10 +117,9 @@ export class ActivitiesController {
   @ApiResponse({ status: 200, description: 'Activity updated' })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @Patch(':id')
-  @UsePipes(new ZodValidationPipe(updateActivityRequestSchema))
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateActivityRequest
+    @Body(new ZodValidationPipe(updateActivityRequestSchema)) body: UpdateActivityRequest
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     // body is now validated and typed by ZodValidationPipe
     const result = await this.activitiesService.update(id, body);

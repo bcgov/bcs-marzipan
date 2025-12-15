@@ -114,7 +114,7 @@ export const createActivityRequestSchema = createActivitySchema
  * Note: The base schema from drizzle-zod already handles date/time fields correctly
  * No need to override since we're using date() and time() types, not timestamp()
  */
-export const updateActivityRequestSchema = updateActivitySchema;
+export const updateActivityRequestSchema = updateActivitySchema.partial();
 
 /**
  * Schema for filtering activities (query parameters)
