@@ -7,7 +7,8 @@ spec:
     type: Git
     git:
       uri: https://github.com/bcgov/bcs-marzipan.git
-    contextDir: backend
+      ref: corpcal-openshift-changes
+    contextDir: calendar-service
   strategy:
     type: Docker
     dockerStrategy:
