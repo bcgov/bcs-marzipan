@@ -3,6 +3,21 @@
 -- Run this after applying the lookup tables seed (001_seed_lookup_tables.sql)
 
 -- ============================================================================
+-- SYSTEM USERS
+-- System users for authentication and authorization
+-- Must be seeded first as activities reference these users
+-- ============================================================================
+
+INSERT INTO system_users (id, username, first_name, last_name, email, role, is_active, department) VALUES
+  (1, 'john.doe', 'John', 'Doe', 'john.doe@gov.bc.ca', 'Admin', true, 'Office of the Premier'),
+  (2, 'jane.smith', 'Jane', 'Smith', 'jane.smith@gov.bc.ca', 'Editor', true, 'Communications'),
+  (3, 'sam.wilson', 'Sam', 'Wilson', 'sam.wilson@gov.bc.ca', 'Editor', true, 'Public Affairs'),
+  (4, 'david.chen', 'David', 'Chen', 'david.chen@gov.bc.ca', 'Editor', true, 'Media Relations'),
+  (5, 'emily.wang', 'Emily', 'Wang', 'emily.wang@gov.bc.ca', 'ReadOnly', true, 'Policy'),
+  (6, 'michael.brown', 'Michael', 'Brown', 'michael.brown@gov.bc.ca', 'ReadOnly', true, 'Research')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- ACTIVITIES
 -- Sample calendar activities with various statuses and configurations
 -- ============================================================================

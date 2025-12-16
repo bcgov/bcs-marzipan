@@ -63,8 +63,49 @@ export class SeedService {
         try {
           const sqlContent = fs.readFileSync(filePath, 'utf-8');
 
-          // Execute the SQL content
-          await this.db.execute(sql.raw(sqlContent));
+          // Split SQL content by semicolons to handle multiple statements
+          // Remove all comments and filter out empty statements
+          const statements = sqlContent
+            .split(';')
+            .map((stmt) => {
+              // Remove all SQL comment lines (lines starting with --)
+              const withoutComments = stmt
+                .split('\n')
+                .filter((line) => !line.trim().startsWith('--'))
+                .join('\n')
+                .trim();
+              return withoutComments;
+            })
+            .filter((stmt) => stmt.length > 0);
+
+          this.logger.log(
+            `Found ${statements.length} SQL statements in ${seedFile}`,
+            'SeedService'
+          );
+
+          // Execute each statement individually
+          for (let i = 0; i < statements.length; i++) {
+            const statement = statements[i];
+            try {
+              await this.db.execute(sql.raw(statement));
+            } catch (stmtError) {
+              this.logger.error(
+                `Error executing statement ${i + 1} of ${seedFile}: ${stmtError instanceof Error ? stmtError.message : String(stmtError)}`,
+                stmtError instanceof Error ? stmtError.stack : undefined,
+                'SeedService'
+              );
+              // Log the failing statement (truncated for readability)
+              const preview =
+                statement.length > 200
+                  ? statement.substring(0, 200) + '...'
+                  : statement;
+              this.logger.debug(
+                `Failing statement preview: ${preview}`,
+                'SeedService'
+              );
+              throw stmtError; // Re-throw to be caught by outer catch
+            }
+          }
 
           this.logger.log(
             `Successfully executed seed file: ${seedFile}`,

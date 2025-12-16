@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
   FormField,
@@ -26,7 +26,6 @@ import { Plus, X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
-import { fetchCategories } from '../../api/activitiesApi';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
