@@ -688,6 +688,33 @@ export const EventTable: React.FC<EventTableProps> = ({
           } else return true;
         },
       }),
+      // Hidden column for updatedDateRange filtering
+      columnHelper.accessor('dateModified', {
+        id: 'updatedDateRange',
+        enableHiding: true,
+        cell: (info) => info.getValue(),
+        filterFn: (
+          row,
+          columnId,
+          filterValue: { start: string; end: string } | undefined
+        ) => {
+          if (!filterValue || !filterValue.start || !filterValue.end)
+            return true;
+
+          const dateModified = row.original.dateModified;
+          if (!dateModified) return false;
+
+          const startDate = new Date(filterValue.start);
+          startDate.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(filterValue.end);
+          endDate.setHours(23, 59, 59, 999);
+
+          const modifiedDate = new Date(dateModified);
+
+          return modifiedDate >= startDate && modifiedDate <= endDate;
+        },
+      }),
     ],
     [columnHelper, styles.statusBadge]
   );
@@ -708,6 +735,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         title: false,
         category: false,
         tags: false,
+        updatedDateRange: false,
       },
       columnPinning: { left: ['select', 'id'] },
     },
