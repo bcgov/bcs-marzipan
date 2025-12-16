@@ -1,0 +1,10 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: calendar-service
+spec:
+  to:
+    kind: Service
+    name: calendar-service
+  tls:
+    termination: edge

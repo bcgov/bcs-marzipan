@@ -1,0 +1,20 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: calendar-service-build
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/bcgov/bcs-marzipan.git
+    contextDir: backend
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: calendar-service:latest
+  triggers:
+    - type: ConfigChange
