@@ -10,7 +10,7 @@ COPY packages/ ./packages/
 COPY calendar-service/ ./calendar-service/
 
 # Install all dependencies for building (skip optional platform-specific binaries)
-RUN npm ci --ignore-scripts --no-optional
+RUN npm ci --ignore-scripts --omit=optional
 
 # Build packages first, then service
 RUN npm run build --workspace=packages/database && \
