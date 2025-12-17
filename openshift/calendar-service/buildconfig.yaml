@@ -8,11 +8,14 @@ spec:
     git:
       uri: https://github.com/bcgov/bcs-marzipan.git
       ref: corpcal-openshift-changes
-    contextDir: calendar-service
+    # Use repository root as build context so Dockerfile can access root files
+    # (tsconfig.base.json, package*.json, packages/)
+    contextDir: .
   strategy:
     type: Docker
     dockerStrategy:
-      dockerfilePath: Dockerfile
+      # Dockerfile path is relative to the contextDir above
+      dockerfilePath: calendar-service/Dockerfile
   output:
     to:
       kind: ImageStreamTag
