@@ -831,6 +831,7 @@ export const EventTable: React.FC<EventTableProps> = ({
     manualPagination: false,
     manualSorting: false,
     enableColumnFilters: true,
+    autoResetPageIndex: false, // Preserve current page when data updates
   });
 
   const filteredRows = table.getFilteredRowModel().rows;
