@@ -11,11 +11,7 @@ COPY calendar-service/ ./calendar-service/
 
 # Ensure npm skips optional dependencies (platform-specific binaries)
 ENV NPM_CONFIG_OPTIONAL=false
-# Add helper to remove windows-only optional entries from lockfile
-COPY scripts/remove-windows-optional-lock.js ./scripts/remove-windows-optional-lock.js
-RUN node ./scripts/remove-windows-optional-lock.js || true
-# Install all dependencies for building (skip optional platform-specific binaries)
-RUN npm ci --ignore-scripts --no-optional
+RUN npm ci --ignore-scripts
 
 # Build packages first, then service
 RUN npm run build --workspace=packages/database && \

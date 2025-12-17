@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: calendar-service
+  name: calendar-ui
 spec:
   selector:
-    app: calendar-service
+    app: calendar-ui
   ports:
     - protocol: TCP
-      port: 3001
-      targetPort: 3001
+      port: 80
+      targetPort: 80
       name: http

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calendar-ui-config
+data:
+  NODE_ENV: development
+  VITE_API_BASE_URL: https://calendar-service-b3237c-dev.apps.gold.devops.gov.bc.ca

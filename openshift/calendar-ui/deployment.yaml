@@ -1,53 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: calendar-service
+  name: calendar-ui
   labels:
-    app: calendar-service
+    app: calendar-ui
   annotations:
     image.openshift.io/triggers: |
       [
         {
           "from": {
             "kind": "ImageStreamTag",
-            "name": "calendar-service:latest"
+            "name": "calendar-ui:latest"
           },
-          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-service')].image"
+          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-ui')].image"
         }
       ]
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: calendar-service
+      app: calendar-ui
   template:
     metadata:
       labels:
-        app: calendar-service
+        app: calendar-ui
     spec:
       containers:
-        - name: calendar-service
-          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-service:latest
+        - name: calendar-ui
+          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-ui:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               protocol: TCP
-              containerPort: 3001
+              containerPort: 80
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: calendar-ui-secrets
                   key: DATABASE_URL
           readinessProbe:
             httpGet:
               path: /ready
-              port: 3001
+              port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 3001
+              port: 80
             initialDelaySeconds: 30
             periodSeconds: 20

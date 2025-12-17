@@ -11,18 +11,20 @@ COPY calendar-ui/ ./calendar-ui/
 
 # Ensure npm skips optional dependencies (platform-specific binaries)
 ENV NPM_CONFIG_OPTIONAL=false
-# Add helper to remove windows-only optional entries from lockfile
-COPY scripts/remove-windows-optional-lock.js ./scripts/remove-windows-optional-lock.js
-RUN node ./scripts/remove-windows-optional-lock.js || true
-# Install all dependencies for building (skip optional platform-specific binaries)
-RUN npm ci --ignore-scripts --omit=optional
+RUN npm ci --ignore-scripts
+
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Build shared packages, then the UI
-RUN npm run build --workspace=packages/shared && \
+RUN npm run build --workspace=packages/database && \
+    npm run build --workspace=packages/shared && \
     npm run build --workspace=calendar-ui
 
 FROM docker.io/library/nginx:alpine
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html
 COPY --from=build /app/calendar-ui/nginx.conf /etc/nginx/conf.d/default.conf
+RUN chmod -R g+rwX /var/cache/nginx /var/run /usr/share/nginx/html \
+    && chgrp -R 0 /var/cache/nginx /var/run /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
