@@ -19,8 +19,7 @@
       "@corpcal/shared": ["../packages/shared/dist/esm"],
       "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
       "@corpcal/database": ["../packages/database/dist/esm"],
-      "@corpcal/database/*": ["../packages/database/dist/esm/*"],
-      "react": ["./node_modules/@types/react"] // clears errors around icons (ts:2786)
+      "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
   "include": ["src", "../.local/draft_components/tagpicker.tsx"],
