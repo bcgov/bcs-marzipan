@@ -126,7 +126,10 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     });
   };
 
-  const handleUpdatedDateRangeChange = (field: 'start' | 'end', value: string) => {
+  const handleUpdatedDateRangeChange = (
+    field: 'start' | 'end',
+    value: string
+  ) => {
     setUpdatedDateRange((prev) => {
       const updated = { ...prev, [field]: value };
       // Apply filter whenever either date changes
@@ -333,7 +336,8 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         if (parsed.tags) setCheckedTagsValues(parsed.tags);
         if (parsed.leads) setCheckedLeadsValues(parsed.leads);
         if (parsed.dateRange) setDateRange(parsed.dateRange);
-        if (parsed.updatedDateRange) setUpdatedDateRange(parsed.updatedDateRange);
+        if (parsed.updatedDateRange)
+          setUpdatedDateRange(parsed.updatedDateRange);
         // No applyFilters() here—let the useEffect handle it
       } catch (error) {
         // Optional: Clear the bad cookie and reset to defaults
@@ -614,9 +618,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
             }
           >
             {`Updated${
-              updatedDateRange.start && updatedDateRange.end
-                ? ' (✓)'
-                : ''
+              updatedDateRange.start && updatedDateRange.end ? ' (✓)' : ''
             } `}
           </MenuButton>
         </MenuTrigger>

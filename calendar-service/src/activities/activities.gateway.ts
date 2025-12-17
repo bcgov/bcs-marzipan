@@ -57,7 +57,9 @@ export class ActivitiesGateway
    */
   notifyActivityUpdate(activityId: number, data: any) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
-    this.logger.log(`Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`);
+    this.logger.log(
+      `Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`
+    );
 
     // Find all clients viewing this activity
     let notifiedCount = 0;
