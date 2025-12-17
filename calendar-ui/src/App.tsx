@@ -1,4 +1,8 @@
-import { FluentProvider, webLightTheme, Toaster } from '@fluentui/react-components';
+import {
+  FluentProvider,
+  webLightTheme,
+  Toaster,
+} from '@fluentui/react-components';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 

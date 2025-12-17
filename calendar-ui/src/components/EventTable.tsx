@@ -10,7 +10,13 @@ import {
   Button,
   makeStyles,
   Spinner,
+  Toast,
+  ToastTitle,
+  ToastBody,
+  Link,
+  useToastController,
 } from '@fluentui/react-components';
+import io from 'socket.io-client';
 
 import {
   Calendar24Regular,
@@ -307,38 +313,101 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { dispatchToast } = useToastController();
 
   // Fetch activities from API
-  useEffect(() => {
-    const loadActivities = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const activities = await fetchActivities();
+  const loadActivities = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const activities = await fetchActivities();
 
-        // Check if activities is an array
-        if (!Array.isArray(activities)) {
-          console.error('Activities response is not an array:', activities);
-          setError('Invalid response format from server');
-          setEventData([]);
-          return;
-        }
-
-        const mappedData = activities.map(mapActivityToEventRow);
-        setEventData(mappedData);
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch activities'
-        );
-        setEventData([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
+      // Check if activities is an array
+      if (!Array.isArray(activities)) {
+        console.error('Activities response is not an array:', activities);
+        setError('Invalid response format from server');
+        setEventData([]);
+        return;
       }
-    };
 
+      const mappedData = activities.map(mapActivityToEventRow);
+      setEventData(mappedData);
+    } catch (err) {
+      console.error('Error fetching activities:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch activities'
+      );
+      setEventData([]); // Set to empty array on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     void loadActivities();
   }, []);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const socket = io(apiUrl);
+
+    socket.on('connect', () => {
+      console.log('EventTable WebSocket connected:', socket.id);
+      // Subscribe to activity table updates
+      socket.emit('subscribeToActivities');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('EventTable WebSocket connection error:', error);
+    });
+
+    // Listen for new activity created
+    socket.on('activityCreated', async (data) => {
+      console.log('Activity created:', data);
+
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>New Activity Created</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 5000 }
+      );
+    });
+
+    // Listen for activity updated
+    socket.on('activityUpdated', async (data) => {
+      console.log('Activity updated:', data);
+
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Activity Updated</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'info', timeout: 5000 }
+      );
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.emit('unsubscribeFromActivities');
+      socket.off('activityCreated');
+      socket.off('activityUpdated');
+      socket.disconnect();
+    };
+  }, [dispatchToast]);
 
   useEffect(() => {
     setColumnFilters(filters);

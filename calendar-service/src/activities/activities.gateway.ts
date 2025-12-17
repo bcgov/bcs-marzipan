@@ -52,12 +52,31 @@ export class ActivitiesGateway
     }
   }
 
+  @SubscribeMessage('subscribeToActivities')
+  handleSubscribeToActivities(client: Socket) {
+    this.logger.debug(
+      `Client ${client.id} subscribed to activities table updates`
+    );
+    // Join a room for table-level updates
+    client.join('activities-table');
+  }
+
+  @SubscribeMessage('unsubscribeFromActivities')
+  handleUnsubscribeFromActivities(client: Socket) {
+    this.logger.debug(
+      `Client ${client.id} unsubscribed from activities table updates`
+    );
+    client.leave('activities-table');
+  }
+
   /**
    * Notify all clients viewing a specific activity that it has been updated
    */
   notifyActivityUpdate(activityId: number, data: any) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
-    this.logger.log(`Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`);
+    this.logger.log(
+      `Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`
+    );
 
     // Find all clients viewing this activity
     let notifiedCount = 0;
@@ -72,5 +91,24 @@ export class ActivitiesGateway
       }
     }
     this.logger.log(`Notified ${notifiedCount} client(s)`);
+
+    // Also broadcast to activities table subscribers
+    this.broadcastActivityUpdated(data);
+  }
+
+  /**
+   * Broadcast to all clients subscribed to the activities table that a new activity was created
+   */
+  broadcastActivityCreated(data: any) {
+    this.logger.log(`Broadcasting activity created: ${data.id}`);
+    this.server.to('activities-table').emit('activityCreated', data);
+  }
+
+  /**
+   * Broadcast to all clients subscribed to the activities table that an activity was updated
+   */
+  broadcastActivityUpdated(data: any) {
+    this.logger.log(`Broadcasting activity updated: ${data.id}`);
+    this.server.to('activities-table').emit('activityUpdated', data);
   }
 }
