@@ -40,7 +40,7 @@ describe('ActivitiesController (e2e)', () => {
         endTime: '12:00',
         isTimeConfirmed: true,
         isDateConfirmed: true,
-        confidential: false,
+        isConfidential: false,
         notForLookAhead: false,
         planningReport: false,
         thirtySixtyNinetyReport: false,
