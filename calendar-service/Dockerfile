@@ -9,8 +9,8 @@ COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY calendar-service/ ./calendar-service/
 
-# Install all dependencies for building
-RUN npm ci --ignore-scripts
+# Install all dependencies for building (skip optional platform-specific binaries)
+RUN npm ci --ignore-scripts --no-optional
 
 # Build packages first, then service
 RUN npm run build --workspace=packages/database && \
@@ -37,8 +37,8 @@ COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
 COPY --from=build /app/calendar-service/dist ./calendar-service/dist/
 
 # Install production dependencies only for the workspace
-# This reads package*.json files and installs only prod deps
-RUN npm ci --production --ignore-scripts --workspaces --workspace-root
+# Skip optional packages (e.g. platform-specific rollup binaries)
+RUN npm ci --production --ignore-scripts --no-optional --workspaces --workspace-root
 
 EXPOSE 3001
 WORKDIR /app/calendar-service

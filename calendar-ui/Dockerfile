@@ -9,8 +9,8 @@ COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY calendar-ui/ ./calendar-ui/
 
-# Install all dependencies for building
-RUN npm ci --ignore-scripts
+# Install all dependencies for building (skip optional platform-specific binaries)
+RUN npm ci --ignore-scripts --no-optional
 
 # Build shared packages, then the UI
 RUN npm run build --workspace=packages/shared && \
