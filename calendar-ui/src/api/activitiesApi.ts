@@ -1,8 +1,5 @@
 import api from './axios.js';
-import type {
-  ActivityResponse,
-  ActivityCategory,
-} from '@corpcal/shared/api/types';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
@@ -76,11 +73,10 @@ export async function deleteActivity(id: number): Promise<void> {
   await api.delete(`/activities/${id}`);
 }
 
-export async function fetchActivityCategories(): Promise<ActivityCategory[]> {
-  const res = await api.get<{ success: boolean; data: ActivityCategory[] }>(
+export async function fetchActivityCategories(): Promise<any[]> {
+  const res = await api.get<{ success: boolean; data: any[] }>(
     '/activities/categories'
   );
-  // Handle different response structures
   if (res.data && res.data.data) {
     return res.data.data;
   }
