@@ -9,6 +9,11 @@ COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY calendar-ui/ ./calendar-ui/
 
+# Ensure npm skips optional dependencies (platform-specific binaries)
+ENV NPM_CONFIG_OPTIONAL=false
+# Add helper to remove windows-only optional entries from lockfile
+COPY scripts/remove-windows-optional-lock.js ./scripts/remove-windows-optional-lock.js
+RUN node ./scripts/remove-windows-optional-lock.js || true
 # Install all dependencies for building (skip optional platform-specific binaries)
 RUN npm ci --ignore-scripts --omit=optional
 
