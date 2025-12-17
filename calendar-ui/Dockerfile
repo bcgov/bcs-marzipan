@@ -9,8 +9,6 @@ COPY tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY calendar-ui/ ./calendar-ui/
 
-# Ensure npm skips optional dependencies (platform-specific binaries)
-ENV NPM_CONFIG_OPTIONAL=false
 RUN npm ci --ignore-scripts
 
 ARG VITE_API_BASE_URL
