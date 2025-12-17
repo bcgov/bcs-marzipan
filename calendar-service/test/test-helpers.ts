@@ -100,6 +100,7 @@ export const wait = (ms: number): Promise<void> => {
 
 /**
  * Mock database service for unit tests
+ * Provides a complete mock of the Drizzle ORM query builder
  */
 export const createMockDatabaseService = () => ({
   db: {
@@ -114,5 +115,21 @@ export const createMockDatabaseService = () => ({
     update: jest.fn().mockReturnThis(),
     set: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+  },
+});
+
+/**
+ * Mock ActivitiesGateway for unit tests
+ * Provides mocks for WebSocket notification methods
+ */
+export const createMockActivitiesGateway = () => ({
+  notifyActivityUpdate: jest.fn(),
+  server: {
+    to: jest.fn().mockReturnThis(),
+    emit: jest.fn(),
   },
 });
