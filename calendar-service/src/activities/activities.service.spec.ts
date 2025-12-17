@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesService } from './activities.service';
 import { DatabaseService } from '../database/database.service';
+import { ActivitiesGateway } from './activities.gateway';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 import type { Activity } from '@corpcal/database/types';
 import type {
@@ -12,14 +13,35 @@ import { NotFoundException } from '@nestjs/common';
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
   let databaseService: DatabaseService;
+  let activitiesGateway: ActivitiesGateway;
 
   // Mock database service
   const mockDatabaseService = {
     db: {
-      select: jest.fn(),
-      insert: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      returning: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      delete: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+    },
+  };
+
+  // Mock activities gateway
+  const mockActivitiesGateway = {
+    notifyActivityUpdate: jest.fn(),
+    server: {
+      to: jest.fn().mockReturnThis(),
+      emit: jest.fn(),
     },
   };
 
@@ -83,11 +105,16 @@ describe('ActivitiesService', () => {
           provide: DatabaseService,
           useValue: mockDatabaseService,
         },
+        {
+          provide: ActivitiesGateway,
+          useValue: mockActivitiesGateway,
+        },
       ],
     }).compile();
 
     service = module.get<ActivitiesService>(ActivitiesService);
     databaseService = module.get<DatabaseService>(DatabaseService);
+    activitiesGateway = module.get<ActivitiesGateway>(ActivitiesGateway);
 
     // Reset all mocks
     jest.clearAllMocks();

@@ -265,33 +265,6 @@ export const CreateActivityForm: React.FC = () => {
       </div>
     );
   };
-  // const Overview = React.memo(() => (
-  //   <ActivityOverviewSection
-  //     relatedActivityOptions={relatedActivityOptions}
-  //     jointOrganizationOptions={jointOrganizationOptions}
-  //   />
-  // ));
-  // Overview.displayName = 'overview';
-
-  // const Approvals = React.memo(() => <ActivityApprovalsSection form={form} />);
-  // Approvals.displayName = 'approvals';
-
-  // const Schedule = React.memo(() => <ActivityScheduleSection form={form} />);
-  // Schedule.displayName = 'schedule';
-
-  // const Venue = React.memo(() => <ActivityVenueSection form={form} />);
-  // Venue.displayName = 'venue';
-
-  // const Reports = React.memo(() => <ActivityReportsSection form={form} />);
-  // Reports.displayName = 'reports';
-
-  // const Sharing = React.memo(() => (
-  //   <ActivitySharingSection
-  //     ownerOptions={ownerOptions}
-  //     canEditUserOptions={canEditUserOptions}
-  //   />
-  // ));
-  // Sharing.displayName = 'Sharing';
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
@@ -329,25 +302,6 @@ export const CreateActivityForm: React.FC = () => {
               form={form}
               schedulingStatusOptions={lookups.schedulingStatuses}
             />
-            {/* <TabList selectedValue={selectedValue} onTabSelect={onTabSelect}>
-              <Tab value="overview">Overview</Tab>
-              <Tab value="approvals">Approvals</Tab>
-              <Tab value="schedule">Schedule</Tab>
-              <Tab value="venue">Venue</Tab>{' '}
-              {/* I assume this becomes user's ministry, whatever it is */}
-            {/* <Tab value="reports">Reports</Tab>
-              <Tab value="sharing">Sharing</Tab>
-            </TabList>
-
-            <div>
-              {selectedValue === 'overview' && <Overview />}
-              {selectedValue === 'approvals' && <Approvals />}
-              {selectedValue === 'schedule' && <Schedule />}
-              {selectedValue === 'venue' && <Venue />}
-              {selectedValue === 'reports' && <Reports />}
-              {selectedValue === 'sharing' && <Sharing />}
-            </div> */}
-            <ActivityScheduleSection form={form} schedulingStatusOptions={[]} />
 
             <ActivityCommsSection
               commsLeadOptions={lookups.users}
