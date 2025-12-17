@@ -533,7 +533,7 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldValue}>
                   {activityData.venueAddress
                     ? `${activityData.venueAddress.street}, ${activityData.venueAddress.city}, ${activityData.venueAddress.provinceOrState}, ${activityData.venueAddress.country}`
-                    : 'Provincial Legislature - Media Room 3'}
+                    : 'Not specified'}
                 </Text>
               </div>
             </div>
