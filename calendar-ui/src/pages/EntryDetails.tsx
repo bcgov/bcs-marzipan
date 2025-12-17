@@ -575,7 +575,7 @@ export const EntryDetails = () => {
             <div>
               <Text className={styles.fieldLabel}>Executive Summary</Text>
               <Text className={styles.fieldValue}>
-                {'<Not supported by Schema>'}
+                {'Not specified'}
               </Text>
             </div>
             <div className={styles.twoColumnGrid}>
