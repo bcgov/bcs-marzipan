@@ -64,7 +64,6 @@
   "dependencies": {
     "@nestjs/platform-socket.io": "^11.1.9",
     "@nestjs/websockets": "^11.1.9",
-    "@rollup/rollup-win32-x64-msvc": "^4.53.3",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"
   }
