@@ -68,11 +68,12 @@ export class SeedService {
           const statements = sqlContent
             .split(';')
             .map((stmt) => {
-              // Remove all SQL comment lines (lines starting with --)
+              // Remove both line comments (--) and block comments (/* ... */)
               const withoutComments = stmt
-                .split('\n')
-                .filter((line) => !line.trim().startsWith('--'))
-                .join('\n')
+                // Remove block comments
+                .replace(/\/\*[\s\S]*?\*\//g, '')
+                // Remove line comments
+                .replace(/--.*$/gm, '')
                 .trim();
               return withoutComments;
             })
