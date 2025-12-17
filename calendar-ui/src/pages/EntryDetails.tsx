@@ -572,12 +572,6 @@ export const EntryDetails = () => {
             <Text className={styles.sectionHeader}>
               <ClockRegular /> Look Ahead
             </Text>
-            <div>
-              <Text className={styles.fieldLabel}>Executive Summary</Text>
-              <Text className={styles.fieldValue}>
-                {'Not specified'}
-              </Text>
-            </div>
             <div className={styles.twoColumnGrid}>
               <div>
                 <Text className={styles.fieldLabel}>Report Status</Text>
