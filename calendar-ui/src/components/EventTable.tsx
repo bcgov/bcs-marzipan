@@ -784,6 +784,33 @@ export const EventTable: React.FC<EventTableProps> = ({
           return modifiedDate >= startDate && modifiedDate <= endDate;
         },
       }),
+      // Hidden column for createdDateRange filtering
+      columnHelper.accessor('dateCreated', {
+        id: 'createdDateRange',
+        enableHiding: true,
+        cell: (info) => info.getValue(),
+        filterFn: (
+          row,
+          columnId,
+          filterValue: { start: string; end: string } | undefined
+        ) => {
+          if (!filterValue || !filterValue.start || !filterValue.end)
+            return true;
+
+          const dateCreated = row.original.dateCreated;
+          if (!dateCreated) return false;
+
+          const startDate = new Date(filterValue.start);
+          startDate.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(filterValue.end);
+          endDate.setHours(23, 59, 59, 999);
+
+          const createdDate = new Date(dateCreated);
+
+          return createdDate >= startDate && createdDate <= endDate;
+        },
+      }),
     ],
     [columnHelper, styles.statusBadge]
   );
@@ -805,6 +832,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         category: false,
         tags: false,
         updatedDateRange: false,
+        createdDateRange: false,
       },
       columnPinning: { left: ['select', 'id'] },
     },
