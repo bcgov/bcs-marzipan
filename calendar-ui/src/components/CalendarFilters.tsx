@@ -367,6 +367,8 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         if (parsed.dateRange) setDateRange(parsed.dateRange);
         if (parsed.updatedDateRange)
           setUpdatedDateRange(parsed.updatedDateRange);
+        if (parsed.createdDateRange)
+          setCreatedDateRange(parsed.createdDateRange);
         // No applyFilters() here—let the useEffect handle it
       } catch (error) {
         // Optional: Clear the bad cookie and reset to defaults
