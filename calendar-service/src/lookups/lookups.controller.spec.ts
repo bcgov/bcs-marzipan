@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-
 import { LookupsController } from './lookups.controller';
-import { type LookupItem, LookupsService } from './lookups.service';
+import { LookupsService, type LookupItem } from './lookups.service';
 
 describe('LookupsController', () => {
   let controller: LookupsController;

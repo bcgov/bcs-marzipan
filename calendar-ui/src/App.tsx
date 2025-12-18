@@ -1,19 +1,18 @@
-import './styles/App.css';
-
 import {
   FluentProvider,
-  Toaster,
   webLightTheme,
+  Toaster,
 } from '@fluentui/react-components';
-import { Route, Routes } from 'react-router-dom';
-
+import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
+
 import { CalendarEntriesList } from './pages/CalendarEntriesList';
-import { CreateActivityForm } from './pages/CreateActivityForm';
-import { Dashboard } from './pages/Dashboard';
-import DraftsPage from './pages/Drafts';
 import { EntryDetails } from './pages/EntryDetails';
+import { Dashboard } from './pages/Dashboard';
+import './styles/App.css';
 import PitchSubmissionsPage from './pages/PitchSubmissions';
+import DraftsPage from './pages/Drafts';
+import { CreateActivityForm } from './pages/CreateActivityForm';
 
 function App() {
   return (

@@ -1,5 +1,4 @@
 import { ColumnDef } from '@tanstack/react-table';
-
 import { GenericDataTable } from './GenericDataTable';
 
 export interface DraftEntry {

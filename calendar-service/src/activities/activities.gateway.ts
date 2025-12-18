@@ -1,12 +1,11 @@
 import {
+  WebSocketGateway,
+  WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
-  WebSocketGateway,
-  WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-
 import { AppLogger } from '../common/logger/logger.service';
 
 @WebSocketGateway({

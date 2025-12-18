@@ -1,32 +1,31 @@
-import { Category } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api';
-import type {
-  CreateActivityRequest,
-  FilterActivities,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
 import {
-  createActivityRequestSchema,
-  filterActivitiesSchema,
-  updateActivityRequestSchema,
-} from '@corpcal/shared/schemas';
-import {
-  Body,
   Controller,
-  Delete,
   Get,
-  Param,
-  ParseIntPipe,
-  Patch,
   Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  ParseIntPipe,
   Query,
   UsePipes,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
-import { AppLogger } from '../common/logger/logger.service';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { ActivitiesService } from './activities.service';
+import {
+  createActivityRequestSchema,
+  updateActivityRequestSchema,
+  filterActivitiesSchema,
+} from '@corpcal/shared/schemas';
+import type { ActivityResponse } from '@corpcal/shared/api';
+import type {
+  CreateActivityRequest,
+  UpdateActivityRequest,
+  FilterActivities,
+} from '@corpcal/shared/schemas';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { AppLogger } from '../common/logger/logger.service';
+import { Category } from '@corpcal/shared';
 
 @ApiTags('activities')
 @Controller('activities')

@@ -1,6 +1,6 @@
+import * as React from 'react';
 import { makeStyles, shorthands } from '@fluentui/react-components';
 import { CheckmarkCircle24Filled } from '@fluentui/react-icons';
-import * as React from 'react';
 
 const useStyles = makeStyles({
   stepper: {

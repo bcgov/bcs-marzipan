@@ -1,9 +1,9 @@
+export { ActivityOverviewSection } from './ActivityOverviewSection';
 export { ActivityApprovalsSection } from './ActivityApprovalsSection';
+export { ActivityScheduleSection } from './ActivityScheduleSection';
 export { ActivityCommsSection } from './ActivityCommsSection';
 export { ActivityEventSection } from './ActivityEventSection';
-export { ActivityFormSection } from './ActivityFormSection';
-export { ActivityOverviewSection } from './ActivityOverviewSection';
-export { ActivityReportsSection } from './ActivityReportsSection';
-export { ActivityScheduleSection } from './ActivityScheduleSection';
-export { ActivitySharingSection } from './ActivitySharingSection';
 export { ActivityVenueSection } from './ActivityVenueSection';
+export { ActivityReportsSection } from './ActivityReportsSection';
+export { ActivitySharingSection } from './ActivitySharingSection';
+export { ActivityFormSection } from './ActivityFormSection';

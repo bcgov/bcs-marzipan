@@ -1,12 +1,11 @@
+import * as React from 'react';
 import {
+  Title2,
   Caption1,
   makeStyles,
-  shorthands,
-  Title2,
   tokens,
+  shorthands,
 } from '@fluentui/react-components';
-import * as React from 'react';
-
 import { StepSchema } from '../../schemas/types';
 
 const useStyles = makeStyles({

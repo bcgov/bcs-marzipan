@@ -1,19 +1,15 @@
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
-import { X } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-
-import { useMultiSelect } from '../../hooks/useMultiSelect';
-import { Badge } from '../ui/badge';
 import {
-  FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
+  FormDescription,
 } from '../ui/form';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Badge } from '../ui/badge';
 import {
   Select,
   SelectContent,
@@ -21,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { X } from 'lucide-react';
+import { useMultiSelect } from '../../hooks/useMultiSelect';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {

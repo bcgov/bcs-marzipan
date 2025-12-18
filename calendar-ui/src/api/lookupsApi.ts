@@ -1,5 +1,5 @@
-import { createLogger } from '../lib/logger';
 import api from './axios.js';
+import { createLogger } from '../lib/logger';
 
 const logger = createLogger('LookupsAPI');
 

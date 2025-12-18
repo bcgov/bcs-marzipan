@@ -1,8 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-
 import { AppModule } from '../app.module';
-import { AppLogger } from '../common/logger/logger.service';
 import { SeedService } from '../database/seed.service';
+import { AppLogger } from '../common/logger/logger.service';
 
 /**
  * CLI command to seed the database with lookup table data.

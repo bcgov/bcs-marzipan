@@ -1,21 +1,15 @@
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { UseFormReturn } from 'react-hook-form';
-
 import {
-  lookAheadSectionOptions,
-  lookAheadStatusOptions,
-} from '../../data/mockLookups';
-import { Badge } from '../ui/badge';
-import { Checkbox } from '../ui/checkbox';
-import {
-  FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
+  FormDescription,
 } from '../ui/form';
 import { Label } from '../ui/label';
+import { Badge } from '../ui/badge';
+import { Checkbox } from '../ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -23,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import {
+  lookAheadStatusOptions,
+  lookAheadSectionOptions,
+} from '../../data/mockLookups';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

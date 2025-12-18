@@ -1,15 +1,14 @@
 // /hooks/useCalendar.ts (TanStack Query v5)
-import type { ActivityResponse } from '@corpcal/shared/api/types';
-import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  createActivity,
-  deleteActivity,
   fetchActivities,
   fetchActivity,
+  createActivity,
   updateActivity,
+  deleteActivity,
 } from '../api/activitiesApi';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
 
 // List
 export function useActivityList() {

@@ -1,12 +1,11 @@
+import api from './axios.js';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
-  FilterActivities,
   UpdateActivityRequest,
+  FilterActivities,
 } from '@corpcal/shared/schemas';
-
 import { createLogger } from '../lib/logger';
-import api from './axios.js';
 
 const logger = createLogger('ActivitiesAPI');
 

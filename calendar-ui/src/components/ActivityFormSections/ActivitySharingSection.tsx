@@ -1,16 +1,11 @@
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { useFormContext } from 'react-hook-form';
-
-import { calendarVisibilityOptions } from '../../data/mockLookups';
-import { useMultiSelect } from '../../hooks/useMultiSelect';
-import { Combobox } from '../ui/combobox';
 import {
-  FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
+  FormDescription,
 } from '../ui/form';
 import {
   Select,
@@ -19,6 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { Combobox } from '../ui/combobox';
+import { calendarVisibilityOptions } from '../../data/mockLookups';
+import { useMultiSelect } from '../../hooks/useMultiSelect';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {

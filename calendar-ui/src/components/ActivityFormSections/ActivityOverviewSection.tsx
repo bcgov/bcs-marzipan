@@ -1,23 +1,18 @@
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
-import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-
-import { useMultiSelect } from '../../hooks/useMultiSelect';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
-import { Combobox } from '../ui/combobox';
 import {
-  FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
+  FormDescription,
 } from '../ui/form';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { Checkbox } from '../ui/checkbox';
+import { Badge } from '../ui/badge';
 import {
   Select,
   SelectContent,
@@ -25,7 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Textarea } from '../ui/textarea';
+import { Button } from '../ui/button';
+import { Combobox } from '../ui/combobox';
+import { Plus, X } from 'lucide-react';
+import { useMultiSelect } from '../../hooks/useMultiSelect';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {

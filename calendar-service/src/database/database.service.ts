@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-
-import { type Database, DATABASE_CLIENT } from './database.provider';
+import { DATABASE_CLIENT, type Database } from './database.provider';
 
 @Injectable()
 export class DatabaseService {

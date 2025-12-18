@@ -1,13 +1,9 @@
-import { Category } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
 import { Test, TestingModule } from '@nestjs/testing';
-
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
+import type { CreateActivityRequest, UpdateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityResponse } from '@corpcal/shared/api';
+import { Category } from '@corpcal/shared';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
@@ -156,26 +152,8 @@ describe('ActivitiesController', () => {
   describe('fetchCategories', () => {
     it('should return all categories', async () => {
       const categories: Category[] = [
-        {
-          id: 1,
-          name: 'Education',
-          displayName: 'Education',
-          sortOrder: 1,
-          isActive: true,
-          pitchNotRequired: false,
-          description: '',
-          timestamp: new Date(),
-        },
-        {
-          id: 2,
-          name: 'Health',
-          displayName: 'Health',
-          sortOrder: 2,
-          isActive: true,
-          pitchNotRequired: false,
-          description: '',
-          timestamp: new Date(),
-        },
+        { id: 1, name: 'Education', displayName: 'Education', sortOrder: 1, isActive: true, pitchNotRequired: false, description: '', timestamp: new Date() },
+        { id: 2, name: 'Health', displayName: 'Health', sortOrder: 2, isActive: true, pitchNotRequired: false, description: '', timestamp: new Date() },
       ];
       mockActivitiesService.fetchCategories.mockResolvedValue(categories);
 

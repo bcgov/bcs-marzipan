@@ -1,18 +1,17 @@
-import {
-  activities,
-  categories,
-  commsMaterials,
-  governmentRepresentatives,
-  organizations,
-  pitchStatuses,
-  schedulingStatuses,
-  systemUsers,
-  tags,
-  translatedLanguages,
-} from '@corpcal/database/schema';
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-
+import {
+  categories,
+  organizations,
+  systemUsers,
+  tags,
+  pitchStatuses,
+  schedulingStatuses,
+  commsMaterials,
+  translatedLanguages,
+  governmentRepresentatives,
+  activities,
+} from '@corpcal/database/schema';
 import { DatabaseService } from '../database/database.service';
 
 export interface LookupItem {

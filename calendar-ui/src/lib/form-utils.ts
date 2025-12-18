@@ -1,4 +1,4 @@
-import type { FieldErrors, FieldValues, FormState } from 'react-hook-form';
+import type { FormState, FieldValues, FieldErrors } from 'react-hook-form';
 
 type VenueAddress = {
   street?: string;

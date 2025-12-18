@@ -1,10 +1,9 @@
 import * as React from 'react';
-
+import { WizardStepForm } from './WizardStepForm';
+import { WizardHeader } from './WizardHeader';
+import { WizardFooter } from './WizardFooter';
 import { zodForStep } from '../../schemas/buildZod';
 import { StepSchema } from '../../schemas/types';
-import { WizardFooter } from './WizardFooter';
-import { WizardHeader } from './WizardHeader';
-import { WizardStepForm } from './WizardStepForm';
 
 type WizardProps = {
   title: string;

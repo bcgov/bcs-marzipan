@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-
-import { DATABASE_CLIENT, databaseProvider } from './database.provider';
+import { databaseProvider, DATABASE_CLIENT } from './database.provider';
 import { DatabaseService } from './database.service';
 import { SeedService } from './seed.service';
 

@@ -1,6 +1,5 @@
 import * as React from 'react';
-
-import { DraftEntry, DraftTable } from '../components/Table/DraftTable';
+import { DraftTable, DraftEntry } from '../components/Table/DraftTable';
 
 const dummyDrafts: DraftEntry[] = [
   {

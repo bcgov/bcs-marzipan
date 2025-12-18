@@ -1,8 +1,10 @@
 import { DrawerProps } from '@fluentui/react-components';
+import * as React from 'react';
+
+import { Link, useLocation } from 'react-router-dom';
 import {
   AppItem,
   Hamburger,
-  makeStyles,
   NavCategory,
   NavCategoryItem,
   NavDrawer,
@@ -12,16 +14,14 @@ import {
   NavSectionHeader,
   NavSubItem,
   NavSubItemGroup,
-  tokens,
   Tooltip,
+  makeStyles,
+  tokens,
   useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import {
   Board20Filled,
   Board20Regular,
-  bundleIcon,
-  Calendar20Filled,
-  Calendar20Regular,
   HeartPulse20Filled,
   HeartPulse20Regular,
   MegaphoneLoud20Filled,
@@ -29,17 +29,18 @@ import {
   NotePin20Filled,
   NotePin20Regular,
   Person20Filled,
-  Person20Regular,
-  PersonCircle32Regular,
   PersonLightbulb20Filled,
   PersonLightbulb20Regular,
+  Person20Regular,
   PersonSearch20Filled,
   PersonSearch20Regular,
   PreviewLink20Filled,
   PreviewLink20Regular,
+  bundleIcon,
+  PersonCircle32Regular,
+  Calendar20Regular,
+  Calendar20Filled,
 } from '@fluentui/react-icons';
-import * as React from 'react';
-import { Link, useLocation } from 'react-router-dom';
 
 const useStyles = makeStyles({
   root: {

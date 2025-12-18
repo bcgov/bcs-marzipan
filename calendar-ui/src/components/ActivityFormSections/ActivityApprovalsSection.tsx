@@ -1,13 +1,12 @@
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { UseFormReturn } from 'react-hook-form';
-
 import {
-  FormControl,
   FormField,
   FormItem,
   FormLabel,
+  FormControl,
   FormMessage,
 } from '../ui/form';
+import { Textarea } from '../ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Textarea } from '../ui/textarea';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;
