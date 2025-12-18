@@ -7,6 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AppLogger } from '../common/logger/logger.service';
+import type { ActivityResponseDto } from '@corpcal/shared/dto';
 
 @WebSocketGateway({
   cors: {
@@ -29,6 +30,8 @@ export class ActivitiesGateway
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
     this.viewingActivities.delete(client.id);
+    // Remove client from activities-table room
+    client.leave('activities-table');
   }
 
   @SubscribeMessage('viewActivity')
@@ -72,7 +75,7 @@ export class ActivitiesGateway
   /**
    * Notify all clients viewing a specific activity that it has been updated
    */
-  notifyActivityUpdate(activityId: number, data: any) {
+  notifyActivityUpdate(activityId: number, data: ActivityResponseDto) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
     this.logger.log(
       `Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`
@@ -99,7 +102,7 @@ export class ActivitiesGateway
   /**
    * Broadcast to all clients subscribed to the activities table that a new activity was created
    */
-  broadcastActivityCreated(data: any) {
+  broadcastActivityCreated(data: ActivityResponseDto) {
     this.logger.log(`Broadcasting activity created: ${data.id}`);
     this.server.to('activities-table').emit('activityCreated', data);
   }
@@ -107,7 +110,7 @@ export class ActivitiesGateway
   /**
    * Broadcast to all clients subscribed to the activities table that an activity was updated
    */
-  broadcastActivityUpdated(data: any) {
+  broadcastActivityUpdated(data: ActivityResponseDto) {
     this.logger.log(`Broadcasting activity updated: ${data.id}`);
     this.server.to('activities-table').emit('activityUpdated', data);
   }
