@@ -58,6 +58,10 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     start: string;
     end: string;
   }>({ start: '', end: '' });
+  const [createdDateRange, setCreatedDateRange] = React.useState<{
+    start: string;
+    end: string;
+  }>({ start: '', end: '' });
   const [checkedReportsValues, setCheckedReportsValues] = React.useState<
     Record<string, string[]>
   >({ reports: [] });
@@ -138,6 +142,18 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     });
   };
 
+  const handleCreatedDateRangeChange = (
+    field: 'start' | 'end',
+    value: string
+  ) => {
+    setCreatedDateRange((prev) => {
+      const updated = { ...prev, [field]: value };
+      // Apply filter whenever either date changes
+      applyFilters();
+      return updated;
+    });
+  };
+
   // Cookie handling: "C" is for "Cookie", and that's good enough for me
   const [cookies, setCookie, removeCookie] = useCookies(['filtersCookie']);
 
@@ -153,6 +169,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
       leads: checkedLeadsValues,
       dateRange: dateRange,
       updatedDateRange: updatedDateRange,
+      createdDateRange: createdDateRange,
     };
     setCookie('filtersCookie', filterCookieValue, { path: '/' });
   };
@@ -217,6 +234,16 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         },
       });
     }
+    // Add createdDateRange filter if both dates are set
+    if (createdDateRange.start && createdDateRange.end) {
+      filterArr.push({
+        id: 'createdDateRange',
+        value: {
+          start: createdDateRange.start,
+          end: createdDateRange.end,
+        },
+      });
+    }
     onFiltersChanged(filterArr);
     handleSetCookie();
   };
@@ -238,6 +265,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     setCheckedLeadsValues({ leads: [] });
     setDateRange({ start: '', end: '' });
     setUpdatedDateRange({ start: '', end: '' });
+    setCreatedDateRange({ start: '', end: '' });
     onFiltersChanged([]);
   };
 
@@ -251,6 +279,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     checkedTagsValues,
     checkedLeadsValues,
     updatedDateRange,
+    createdDateRange,
   ]);
 
   useEffect(() => {
@@ -648,6 +677,44 @@ export const CalendarFilters: React.FC<FilterProps> = ({
                     onChange={(e) =>
                       handleUpdatedDateRangeChange('end', e.target.value)
                     }
+                    style={{ marginLeft: 8 }}
+                  />
+                </label>
+              </div>
+            </MenuItem>
+          </MenuList>
+        </MenuPopover>
+      </Menu>
+      <Menu>
+        <MenuTrigger disableButtonEnhancement>
+          <MenuButton
+            appearance={createdDateRange.start && createdDateRange.end ? 'primary' : 'secondary'}
+          >
+            {`Created${createdDateRange.start && createdDateRange.end ? ' (✓)' : ''} `}
+          </MenuButton>
+        </MenuTrigger>
+        <MenuPopover>
+          <MenuList>
+            <MenuItem>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <label>
+                  Start Date:
+                  <input
+                    type="date"
+                    value={createdDateRange.start}
+                    onChange={(e) => handleCreatedDateRangeChange('start', e.target.value)}
+                    style={{ marginLeft: 8 }}
+                  />
+                </label>
+                <label>
+                  End Date:
+                  <input
+                    type="date"
+                    value={createdDateRange.end}
+                    onChange={(e) => handleCreatedDateRangeChange('end', e.target.value)}
                     style={{ marginLeft: 8 }}
                   />
                 </label>
