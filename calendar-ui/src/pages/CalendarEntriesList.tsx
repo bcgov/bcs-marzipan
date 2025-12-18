@@ -1,9 +1,10 @@
-import { EventTable } from '../components/EventTable';
-import { CalendarFilters } from '../components/CalendarFilters';
 import { Button } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
 import { ColumnFiltersState } from '@tanstack/react-table';
 import { useState } from 'react';
+
+import { CalendarFilters } from '../components/CalendarFilters';
+import { EventTable } from '../components/EventTable';
 
 export const CalendarEntriesList = () => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);

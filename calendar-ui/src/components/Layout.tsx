@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+
 import Header from './Header/Header';
 import { Sidebar } from './Sidebar';
-import { Outlet } from 'react-router-dom';
 
 export const Layout = () => {
   const [isOpen, setIsOpen] = useState(true);

@@ -1,34 +1,34 @@
 import {
-  Tab,
-  TabList,
-  SelectTabData,
-  SelectTabEvent,
   Menu,
   MenuButton,
+  MenuCheckedValueChangeData,
   MenuItem,
+  MenuItemCheckbox,
   MenuList,
   MenuPopover,
-  MenuTrigger,
-  MenuItemCheckbox,
   MenuProps,
-  MenuCheckedValueChangeData,
+  MenuTrigger,
   SearchBox,
+  SelectTabData,
+  SelectTabEvent,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
 import { FilterRegular } from '@fluentui/react-icons';
-
 import { ColumnFiltersState } from '@tanstack/react-table';
 import React, { useEffect } from 'react';
-import { set } from 'zod';
-import { eventData } from './EventTable';
 import { useCookies } from 'react-cookie';
+import { set } from 'zod';
+
+import { fetchActivities } from '../api/activitiesApi';
 import {
   fetchCategories,
+  fetchGovernmentRepresentatives,
   fetchSchedulingStatuses,
   fetchTags,
-  fetchGovernmentRepresentatives,
   LookupItem,
 } from '../api/lookupsApi';
-import { fetchActivities } from '../api/activitiesApi';
+import { eventData } from './EventTable';
 
 interface FilterProps {
   onFiltersChanged: (filters: ColumnFiltersState) => void;

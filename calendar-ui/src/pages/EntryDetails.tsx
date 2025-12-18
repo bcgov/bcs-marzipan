@@ -1,23 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
-  useToastController,
-  Toast,
-  ToastTitle,
-  ToastBody,
-  Link,
-  Spinner,
   Badge,
-  Text,
-  makeStyles,
-  typographyStyles,
-  Divider,
   Checkbox,
+  Divider,
+  Link,
+  makeStyles,
+  Spinner,
+  Text,
+  Toast,
+  ToastBody,
+  ToastTitle,
+  typographyStyles,
+  useToastController,
 } from '@fluentui/react-components';
+import {
+  Calendar16Regular,
+  ClockRegular,
+  DocumentRegular,
+  DocumentText16Regular,
+  PeopleRegular,
+  Settings16Regular,
+  ShareRegular,
+} from '@fluentui/react-icons';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import io from 'socket.io-client';
+
 import { fetchActivity } from '../api/activitiesApi';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
-import { DocumentText16Regular, Settings16Regular, Calendar16Regular, ShareRegular, PeopleRegular, DocumentRegular, ClockRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   title: typographyStyles.title2,
@@ -266,11 +275,7 @@ export const EntryDetails = () => {
 
           {/* Issue and Order in Council Checkboxes */}
           <div className={styles.checkboxGroup}>
-            <Checkbox
-              checked={activityData.isIssue}
-              disabled
-              label="Issue"
-            />
+            <Checkbox checked={activityData.isIssue} disabled label="Issue" />
             <Checkbox
               checked={activityData.oicRelated}
               disabled
@@ -338,7 +343,9 @@ export const EntryDetails = () => {
               </div>
             </div>
             <div>
-              <Text className={styles.fieldLabel}>Pitch and Approval Notes</Text>
+              <Text className={styles.fieldLabel}>
+                Pitch and Approval Notes
+              </Text>
               <Text className={styles.fieldValue}>
                 {activityData.pitchComments || 'No notes'}
               </Text>
@@ -370,11 +377,14 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Start Date</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.startDate
-                    ? new Date(activityData.startDate).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })
+                    ? new Date(activityData.startDate).toLocaleDateString(
+                        'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        }
+                      )
                     : 'Not specified'}
                 </Text>
               </div>
@@ -382,11 +392,14 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>End Date</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.endDate
-                    ? new Date(activityData.endDate).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })
+                    ? new Date(activityData.endDate).toLocaleDateString(
+                        'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        }
+                      )
                     : 'Not specified'}
                 </Text>
               </div>
@@ -406,7 +419,9 @@ export const EntryDetails = () => {
               </div>
             </div>
             <div>
-              <Text className={styles.fieldLabel}>Scheduling Considerations</Text>
+              <Text className={styles.fieldLabel}>
+                Scheduling Considerations
+              </Text>
               <Text className={styles.fieldValue}>
                 {activityData.schedulingConsiderations || 'None'}
               </Text>
@@ -428,7 +443,8 @@ export const EntryDetails = () => {
               <div>
                 <Text className={styles.fieldLabel}>Comms Materials</Text>
                 <Text className={styles.fieldValue}>
-                  {activityData.commsMaterials && activityData.commsMaterials.length > 0
+                  {activityData.commsMaterials &&
+                  activityData.commsMaterials.length > 0
                     ? activityData.commsMaterials.join(', ')
                     : 'Not specified'}
                 </Text>
@@ -441,7 +457,7 @@ export const EntryDetails = () => {
                 {(activityData as any).strategy || 'Not specified'}
               </Text>
             </div>
-            
+
             {/* News Release Subsection */}
             <div className={styles.subsection}>
               <Text className={styles.subsectionTitle}>News Release</Text>
@@ -450,7 +466,10 @@ export const EntryDetails = () => {
                   <Text className={styles.fieldLabel}>Link Release</Text>
                   <Text className={styles.fieldValue}>
                     {activityData.newsReleaseId ? (
-                      <Link href={`https://news.gov.bc.ca/releases/${activityData.newsReleaseId}`} target="_blank">
+                      <Link
+                        href={`https://news.gov.bc.ca/releases/${activityData.newsReleaseId}`}
+                        target="_blank"
+                      >
                         {activityData.newsReleaseId}
                       </Link>
                     ) : (
@@ -459,9 +478,12 @@ export const EntryDetails = () => {
                   </Text>
                 </div>
                 <div>
-                  <Text className={styles.fieldLabel}>Translations Required</Text>
+                  <Text className={styles.fieldLabel}>
+                    Translations Required
+                  </Text>
                   <Text className={styles.fieldValue}>
-                    {activityData.translationsRequired && activityData.translationsRequired.length > 0
+                    {activityData.translationsRequired &&
+                    activityData.translationsRequired.length > 0
                       ? activityData.translationsRequired.join(', ')
                       : 'Not specified'}
                   </Text>
@@ -477,7 +499,9 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>Event Lead Organization</Text>
+                <Text className={styles.fieldLabel}>
+                  Event Lead Organization
+                </Text>
                 <Text className={styles.fieldValue}>
                   {activityData.eventLeadOrg || 'Not specified'}
                 </Text>
@@ -485,7 +509,9 @@ export const EntryDetails = () => {
               <div>
                 <Text className={styles.fieldLabel}>Event Planner</Text>
                 <Text className={styles.fieldValue}>
-                  {activityData.eventLead || activityData.eventLeadName || 'Not specified'}
+                  {activityData.eventLead ||
+                    activityData.eventLeadName ||
+                    'Not specified'}
                 </Text>
               </div>
             </div>
@@ -493,26 +519,58 @@ export const EntryDetails = () => {
               <Text className={styles.fieldLabel}>Event Personnel</Text>
               <div>
                 {/* Event personnel badges - using sample data from screenshot */}
-                <Badge appearance="tint" className={styles.tagBadge}>Media Relations Team</Badge>
-                <Badge appearance="tint" className={styles.tagBadge}>Communications Team</Badge>
-                <Badge appearance="tint" className={styles.tagBadge}>Executive Support</Badge>
+                <Badge appearance="tint" className={styles.tagBadge}>
+                  Media Relations Team
+                </Badge>
+                <Badge appearance="tint" className={styles.tagBadge}>
+                  Communications Team
+                </Badge>
+                <Badge appearance="tint" className={styles.tagBadge}>
+                  Executive Support
+                </Badge>
               </div>
             </div>
             <div>
-              <Text className={styles.fieldLabel}>Representatives Attending</Text>
+              <Text className={styles.fieldLabel}>
+                Representatives Attending
+              </Text>
               <div>
-                {activityData.representativesAttending && activityData.representativesAttending.length > 0 ? (
+                {activityData.representativesAttending &&
+                activityData.representativesAttending.length > 0 ? (
                   activityData.representativesAttending.map((rep, index) => (
-                    <Badge key={index} appearance="filled" color="brand" className={styles.tagBadge}>
+                    <Badge
+                      key={index}
+                      appearance="filled"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
                       {rep.representative}
                     </Badge>
                   ))
                 ) : (
                   <div>
                     {/* Using sample data from screenshot */}
-                    <Badge appearance="filled" color="brand" className={styles.tagBadge}>Minister</Badge>
-                    <Badge appearance="filled" color="brand" className={styles.tagBadge}>Deputy Minister</Badge>
-                    <Badge appearance="filled" color="brand" className={styles.tagBadge}>ADM Education</Badge>
+                    <Badge
+                      appearance="filled"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      Minister
+                    </Badge>
+                    <Badge
+                      appearance="filled"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      Deputy Minister
+                    </Badge>
+                    <Badge
+                      appearance="filled"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      ADM Education
+                    </Badge>
                   </div>
                 )}
               </div>
@@ -612,14 +670,22 @@ export const EntryDetails = () => {
               <div>
                 {activityData.canEdit && activityData.canEdit.length > 0 ? (
                   activityData.canEdit.map((editor, index) => (
-                    <Badge key={index} appearance="tint" className={styles.tagBadge}>
+                    <Badge
+                      key={index}
+                      appearance="tint"
+                      className={styles.tagBadge}
+                    >
                       {editor}
                     </Badge>
                   ))
                 ) : (
                   <div>
-                    <Badge appearance="tint" className={styles.tagBadge}>Communications Team</Badge>
-                    <Badge appearance="tint" className={styles.tagBadge}>Executive Office</Badge>
+                    <Badge appearance="tint" className={styles.tagBadge}>
+                      Communications Team
+                    </Badge>
+                    <Badge appearance="tint" className={styles.tagBadge}>
+                      Executive Office
+                    </Badge>
                   </div>
                 )}
               </div>
@@ -627,17 +693,41 @@ export const EntryDetails = () => {
             <div>
               <Text className={styles.fieldLabel}>Shared With</Text>
               <div>
-                {activityData.sharedWith && activityData.sharedWith.length > 0 ? (
+                {activityData.sharedWith &&
+                activityData.sharedWith.length > 0 ? (
                   activityData.sharedWith.map((shared, index) => (
-                    <Badge key={index} appearance="tint" color="brand" className={styles.tagBadge}>
+                    <Badge
+                      key={index}
+                      appearance="tint"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
                       {shared}
                     </Badge>
                   ))
                 ) : (
                   <div>
-                    <Badge appearance="tint" color="brand" className={styles.tagBadge}>Ministry Leadership</Badge>
-                    <Badge appearance="tint" color="brand" className={styles.tagBadge}>Communications</Badge>
-                    <Badge appearance="tint" color="brand" className={styles.tagBadge}>Planning Team</Badge>
+                    <Badge
+                      appearance="tint"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      Ministry Leadership
+                    </Badge>
+                    <Badge
+                      appearance="tint"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      Communications
+                    </Badge>
+                    <Badge
+                      appearance="tint"
+                      color="brand"
+                      className={styles.tagBadge}
+                    >
+                      Planning Team
+                    </Badge>
                   </div>
                 )}
               </div>

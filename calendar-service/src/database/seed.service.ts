@@ -1,9 +1,10 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DATABASE_CLIENT, type Database } from './database.provider';
+
 import { AppLogger } from '../common/logger/logger.service';
+import { type Database, DATABASE_CLIENT } from './database.provider';
 
 /**
  * Seed Service

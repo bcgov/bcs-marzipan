@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
+
+import { ActivitiesModule } from './activities/activities.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DatabaseModule } from './database/database.module';
-import { ActivitiesModule } from './activities/activities.module';
-import { LookupsModule } from './lookups/lookups.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { DatabaseModule } from './database/database.module';
+import { LookupsModule } from './lookups/lookups.module';
 
 /**
  * Resolves the root .env file path.

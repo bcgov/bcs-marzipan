@@ -1,21 +1,21 @@
-import * as React from 'react';
+import { ComboBox } from '@fluentui/react';
 import {
   Button,
   Checkbox,
+  Dropdown,
   Field,
   Input,
-  Textarea,
-  Dropdown,
-  Option,
   Label,
   makeStyles,
+  Option,
   shorthands,
-  Title3,
+  Textarea,
   Title1,
+  Title3,
 } from '@fluentui/react-components';
+import * as React from 'react';
 
 import { createActivity } from '../api/activitiesApi';
-import { ComboBox } from '@fluentui/react';
 import { Stepper } from '../components/Stepper';
 
 const useStyles = makeStyles({

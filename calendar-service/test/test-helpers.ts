@@ -1,5 +1,8 @@
-import type { CreateActivityRequest, UpdateActivityRequest } from '@corpcal/shared/schemas';
 import type { ActivityResponse } from '@corpcal/shared/api';
+import type {
+  CreateActivityRequest,
+  UpdateActivityRequest,
+} from '@corpcal/shared/schemas';
 
 /**
  * Test Data Factory

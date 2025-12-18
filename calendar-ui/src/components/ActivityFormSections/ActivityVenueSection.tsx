@@ -1,13 +1,14 @@
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { UseFormReturn } from 'react-hook-form';
+
 import {
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from '../ui/form';
 import { Input } from '../ui/input';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

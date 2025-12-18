@@ -1,8 +1,9 @@
-import * as React from 'react';
-import { calendarWizardSchema } from '../schemas/calendarWizard.schema';
-import { createActivity } from '../api/activitiesApi';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import * as React from 'react';
+
+import { createActivity } from '../api/activitiesApi';
 import Wizard from '../components/DynamicWizard/Wizard';
+import { calendarWizardSchema } from '../schemas/calendarWizard.schema';
 
 const makeStyles = () => ({
   container: {

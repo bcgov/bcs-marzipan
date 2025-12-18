@@ -1,17 +1,16 @@
-import React from 'react';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
   Badge,
   Button,
   makeStyles,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
 } from '@fluentui/react-components';
-
 import {
   Calendar24Regular,
   CheckmarkCircle24Regular,
@@ -19,23 +18,23 @@ import {
   Location20Regular,
 } from '@fluentui/react-icons';
 import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getSortedRowModel,
-  getPaginationRowModel,
-  SortingState,
-  getFilteredRowModel,
   ColumnFiltersState,
   createColumnHelper,
-  SortingFn,
   FilterFn,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingFn,
+  SortingState,
+  useReactTable,
 } from '@tanstack/react-table';
-
+import React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
 import { fetchActivities } from '../api/activitiesApi';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
 
 const useStyles = makeStyles({
   statusBadge: {

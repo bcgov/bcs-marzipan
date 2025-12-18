@@ -8,6 +8,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import json from '@eslint/json';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
 
 /**
  * Helper function to create type-checked ESLint configs for a specific project
@@ -83,6 +84,16 @@ export default [
   {
     ...eslint.configs.recommended,
     files: ['**/*.js', '**/*.mjs', '**/*.cjs', '**/*.ts', '**/*.tsx'],
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+    },
+    rules: {
+      // Disable built-in sort-imports in favor of simple-import-sort which can auto-fix
+      'sort-imports': 'off',
+      // Use simple-import-sort for better auto-fix support
+      'simple-import-sort/imports': 'warn',
+      'simple-import-sort/exports': 'warn',
+    },
   },
   // Restrict to TypeScript files only
   ...tseslint.configs.recommended.map((config) => ({
@@ -91,10 +102,10 @@ export default [
   })),
 
   // Calendar Service (NestJS) specific config - adopting Nest.js defaults
-  // Apply type-checked configs for calendar-service
+  // Apply type-checked configs for calendar-service (using tsconfig.eslint.json to include test files)
   ...createTypeCheckedConfigs({
     files: ['calendar-service/**/*.ts'],
-    tsconfigPath: './calendar-service/tsconfig.json',
+    tsconfigPath: './calendar-service/tsconfig.eslint.json',
     globals: {
       ...globals.node,
       ...globals.jest,

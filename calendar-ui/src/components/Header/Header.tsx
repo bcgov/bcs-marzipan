@@ -1,8 +1,9 @@
-import React from 'react';
-import logo from '../../assets/Logo.svg';
 import { Avatar, Button, Tooltip } from '@fluentui/react-components';
 import { Alert24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import { Link } from 'react-router-dom';
+
+import logo from '../../assets/Logo.svg';
 
 const Header = () => {
   return (

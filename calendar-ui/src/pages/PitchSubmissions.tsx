@@ -1,14 +1,14 @@
 import {
   FluentProvider,
-  webLightTheme,
   Title1,
+  webLightTheme,
 } from '@fluentui/react-components';
-import { PitchTable, PitchEntry } from '../components/Table/PitchTable';
-import { PaginationFooter } from '../components/PaginationFooter';
-import { EventTable } from '../components/EventTable';
-
-import * as React from 'react';
 import { ColumnFiltersState } from '@tanstack/react-table';
+import * as React from 'react';
+
+import { EventTable } from '../components/EventTable';
+import { PaginationFooter } from '../components/PaginationFooter';
+import { PitchEntry, PitchTable } from '../components/Table/PitchTable';
 
 const dummyPitches: PitchEntry[] = [
   {

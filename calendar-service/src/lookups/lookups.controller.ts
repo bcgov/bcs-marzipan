@@ -1,12 +1,13 @@
-import { Controller, Get, Query, Header } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import {
-  LookupsService,
-  type LookupItem,
-  type LookupQueryParams,
-} from './lookups.service';
+import { Controller, Get, Header, Query } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
+import {
+  type LookupItem,
+  type LookupQueryParams,
+  LookupsService,
+} from './lookups.service';
 
 @ApiTags('lookups')
 @Controller('lookups')

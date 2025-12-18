@@ -1,18 +1,26 @@
-import { useForm } from 'react-hook-form';
+import {
+  type CreateActivityRequest,
+  createActivityRequestSchema,
+} from '@corpcal/shared/schemas';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
+import React from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import {
-  createActivityRequestSchema,
-  type CreateActivityRequest,
-} from '@corpcal/shared/schemas';
+import { useForm } from 'react-hook-form';
+
 import { createActivity } from '../api/activitiesApi';
+import {
+  ActivityApprovalsSection,
+  ActivityCommsSection,
+  ActivityEventSection,
+  ActivityOverviewSection,
+  ActivityReportsSection,
+  ActivityScheduleSection,
+  ActivitySharingSection,
+  ActivityVenueSection,
+} from '../components/ActivityFormSections';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
-import {
-  normalizeVenueAddress,
-  getMissingRequiredFields,
-} from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
@@ -20,23 +28,9 @@ import {
 } from '../components/ui/popover';
 import { useFormLookups } from '../hooks/useFormLookups';
 import {
-  ActivityOverviewSection,
-  ActivityApprovalsSection,
-  ActivityScheduleSection,
-  ActivityCommsSection,
-  ActivityEventSection,
-  ActivityVenueSection,
-  ActivityReportsSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
-import React from 'react';
-import {
-  TabList,
-  Tab,
-  TabValue,
-  SelectTabData,
-  SelectTabEvent,
-} from '@fluentui/react-components';
+  getMissingRequiredFields,
+  normalizeVenueAddress,
+} from '../lib/form-utils';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -56,11 +50,6 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
-
-  const [selectedValue, setSelectedValue] = useState<TabValue>('overview');
-  const onTabSelect = (event: SelectTabEvent, data: SelectTabData) => {
-    setSelectedValue(data.value);
-  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
