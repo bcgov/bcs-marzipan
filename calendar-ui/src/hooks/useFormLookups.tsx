@@ -1,15 +1,16 @@
 import { useQueries } from '@tanstack/react-query';
+
 import {
+  useActivitiesForLookup,
   useCategories,
+  useCommsMaterials,
+  useGovernmentRepresentatives,
   useOrganizations,
-  useUsers,
-  useTags,
   usePitchStatuses,
   useSchedulingStatuses,
-  useCommsMaterials,
+  useTags,
   useTranslationLanguages,
-  useGovernmentRepresentatives,
-  useActivitiesForLookup,
+  useUsers,
 } from './useLookups';
 
 export interface FormLookupData {

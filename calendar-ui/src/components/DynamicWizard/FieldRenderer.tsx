@@ -1,14 +1,15 @@
-import * as React from 'react';
 import {
+  Checkbox,
+  Dropdown,
   Field,
   Input,
-  Textarea,
-  Dropdown,
-  Option,
-  Checkbox,
   makeStyles,
+  Option,
+  Textarea,
   tokens,
 } from '@fluentui/react-components';
+import * as React from 'react';
+
 import { FieldSchema, StepSchema } from '../../schemas/types';
 
 const useStyles = makeStyles({

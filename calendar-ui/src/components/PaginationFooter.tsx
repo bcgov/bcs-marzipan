@@ -1,4 +1,4 @@
-import { Dropdown, Option, Button } from '@fluentui/react-components';
+import { Button, Dropdown, Option } from '@fluentui/react-components';
 
 export const PaginationFooter = () => (
   <div

@@ -1,43 +1,44 @@
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-// Import operators from drizzle-orm (these are exported by drizzle-orm)
-import { eq, and, gte, lte, inArray } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
-import {
   activities,
-  pitchStatuses,
-  schedulingStatuses,
-  activityCategories,
-  activityTags,
-  categories,
-  tags,
-  activityJointOrganizations,
-  activityRelatedEntries,
-  activityCommsMaterials,
-  activityTranslationLanguages,
-  activityJointEventOrganizations,
-  activityRepresentatives,
-  activitySharedWithOrganizations,
   activityCanEditUsers,
   activityCanViewUsers,
-  organizations,
+  activityCategories,
+  activityCommsMaterials,
+  activityJointEventOrganizations,
+  activityJointOrganizations,
+  activityRelatedEntries,
+  activityRepresentatives,
+  activitySharedWithOrganizations,
+  activityTags,
+  activityTranslationLanguages,
+  categories,
   commsMaterials,
-  translatedLanguages,
+  organizations,
+  pitchStatuses,
+  schedulingStatuses,
   systemUsers,
+  tags,
+  translatedLanguages,
 } from '@corpcal/database/schema';
 import type { Activity, Category, NewActivity } from '@corpcal/database/types';
+import type { ActivityResponse } from '@corpcal/shared/api';
+import { ActivityResponseDto } from '@corpcal/shared/dto';
 import type {
   CreateActivityRequest,
-  UpdateActivityRequest,
   FilterActivities,
+  UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/api';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
-import { ActivityResponseDto } from '@corpcal/shared/dto';
 import { ensureMatchesSchema } from '@corpcal/shared/utils';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { SQL } from 'drizzle-orm';
+// Import operators from drizzle-orm (these are exported by drizzle-orm)
+import { and, eq, gte, inArray, lte } from 'drizzle-orm';
+
 import { DatabaseService } from '../database/database.service';
 import { ActivitiesGateway } from './activities.gateway';
 

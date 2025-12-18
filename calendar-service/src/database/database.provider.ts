@@ -1,7 +1,8 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { ConfigService } from '@nestjs/config';
 import { schema } from '@corpcal/database';
+import { ConfigService } from '@nestjs/config';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import * as postgresModule from 'postgres';
+
 import { AppLogger } from '../common/logger/logger.service';
 
 export const DATABASE_CLIENT = 'DATABASE_CLIENT';

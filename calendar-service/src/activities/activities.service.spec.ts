@@ -1,14 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ActivitiesService } from './activities.service';
-import { DatabaseService } from '../database/database.service';
-import { ActivitiesGateway } from './activities.gateway';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
 import type { Activity } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { activityResponseSchema } from '@corpcal/shared/schemas';
 import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
+import { DatabaseService } from '../database/database.service';
+import { ActivitiesGateway } from './activities.gateway';
+import { ActivitiesService } from './activities.service';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;

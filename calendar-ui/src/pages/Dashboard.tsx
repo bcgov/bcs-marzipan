@@ -1,25 +1,25 @@
-import React from 'react';
 import {
-  Card,
   Badge,
+  Card,
   Table,
-  TableHeader,
-  TableRow,
-  TableHeaderCell,
   TableBody,
   TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
 } from '@fluentui/react-components';
-// You can use a chart library like recharts or chart.js for graphs
-import { Bar } from 'react-chartjs-2';
 import {
-  Chart,
   BarElement,
   CategoryScale,
+  Chart,
+  Legend,
   LinearScale,
   Title,
   Tooltip,
-  Legend,
 } from 'chart.js';
+import React from 'react';
+// You can use a chart library like recharts or chart.js for graphs
+import { Bar } from 'react-chartjs-2';
 
 // Dummy data for demonstration
 const recentChanges = [

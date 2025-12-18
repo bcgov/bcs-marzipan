@@ -1,15 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
+
 import {
+  fetchActivitiesForLookup,
   fetchCategories,
+  fetchCommsMaterials,
+  fetchGovernmentRepresentatives,
   fetchOrganizations,
-  fetchUsers,
-  fetchTags,
   fetchPitchStatuses,
   fetchSchedulingStatuses,
-  fetchCommsMaterials,
+  fetchTags,
   fetchTranslationLanguages,
-  fetchGovernmentRepresentatives,
-  fetchActivitiesForLookup,
+  fetchUsers,
   type LookupItem,
   type LookupQueryParams,
 } from '../api/lookupsApi';

@@ -1,8 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type {
+  CreateActivityRequest,
+  UpdateActivityRequest,
+} from '@corpcal/shared/schemas';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
+
 import { AppModule } from '../src/app.module';
-import type { CreateActivityRequest, UpdateActivityRequest } from '@corpcal/shared/schemas';
 
 describe('ActivitiesController (e2e)', () => {
   let app: INestApplication;
@@ -14,10 +18,10 @@ describe('ActivitiesController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Apply the same pipes as in main.ts
     app.useGlobalPipes(new ValidationPipe());
-    
+
     await app.init();
   });
 
@@ -54,9 +58,15 @@ describe('ActivitiesController (e2e)', () => {
           expect(res.body).toHaveProperty('success', true);
           expect(res.body).toHaveProperty('data');
           expect(res.body.data).toHaveProperty('id');
-          expect(res.body.data).toHaveProperty('title', createActivityDto.title);
-          expect(res.body.data).toHaveProperty('summary', createActivityDto.summary);
-          
+          expect(res.body.data).toHaveProperty(
+            'title',
+            createActivityDto.title
+          );
+          expect(res.body.data).toHaveProperty(
+            'summary',
+            createActivityDto.summary
+          );
+
           // Store the created activity ID for later tests
           createdActivityId = res.body.data.id;
         });
@@ -147,9 +157,7 @@ describe('ActivitiesController (e2e)', () => {
     });
 
     it('should return 404 for non-existent activity', () => {
-      return request(app.getHttpServer())
-        .get('/activities/999999')
-        .expect(404);
+      return request(app.getHttpServer()).get('/activities/999999').expect(404);
     });
 
     it('should return 400 for invalid ID format', () => {
