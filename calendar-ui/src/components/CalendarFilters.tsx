@@ -690,7 +690,11 @@ export const CalendarFilters: React.FC<FilterProps> = ({
       <Menu>
         <MenuTrigger disableButtonEnhancement>
           <MenuButton
-            appearance={createdDateRange.start && createdDateRange.end ? 'primary' : 'secondary'}
+            appearance={
+              createdDateRange.start && createdDateRange.end
+                ? 'primary'
+                : 'secondary'
+            }
           >
             {`Created${createdDateRange.start && createdDateRange.end ? ' (✓)' : ''} `}
           </MenuButton>
@@ -707,7 +711,9 @@ export const CalendarFilters: React.FC<FilterProps> = ({
                   <input
                     type="date"
                     value={createdDateRange.start}
-                    onChange={(e) => handleCreatedDateRangeChange('start', e.target.value)}
+                    onChange={(e) =>
+                      handleCreatedDateRangeChange('start', e.target.value)
+                    }
                     style={{ marginLeft: 8 }}
                   />
                 </label>
@@ -716,7 +722,9 @@ export const CalendarFilters: React.FC<FilterProps> = ({
                   <input
                     type="date"
                     value={createdDateRange.end}
-                    onChange={(e) => handleCreatedDateRangeChange('end', e.target.value)}
+                    onChange={(e) =>
+                      handleCreatedDateRangeChange('end', e.target.value)
+                    }
                     style={{ marginLeft: 8 }}
                   />
                 </label>
