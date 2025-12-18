@@ -234,10 +234,10 @@ export const EntryDetails = () => {
           <Divider style={{ margin: '24px 0' }} />
 
           <div>
-            <Text as="h2" className={typographyStyles.subtitle1}>
+            <Text as="h2" className={typographyStyles.subtitle1.fontSize}>
               <DocumentText16Regular /> Overview
             </Text>
-            <p>{activityData.details}</p>
+            <p>{activityData.summary}</p>
             {/* Add more fields as needed */}
           </div>
           <Divider style={{ margin: '24px 0' }} />
@@ -255,10 +255,11 @@ export const EntryDetails = () => {
               <Text className={styles.sectionTitle}>Related Entries</Text>
               {activityData.relatedActivities &&
               activityData.relatedActivities.length > 0 ? (
+                // TODO: update when entry and detail page paths are aligned
                 <ul>
                   {activityData.relatedActivities.map((entry) => (
-                    <li key={entry.id}>
-                      <Link href={`/entry/${entry.id}`}>{entry.title}</Link>
+                    <li key={entry}>
+                      <Link href={`/entry/${entry}`}>{entry}</Link>
                     </li>
                   ))}
                 </ul>
