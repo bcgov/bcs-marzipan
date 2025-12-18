@@ -28,7 +28,7 @@ describe('LookupsController (e2e)', () => {
           expect(res.body).toHaveProperty('success', true);
           expect(res.body).toHaveProperty('data');
           expect(Array.isArray(res.body.data)).toBe(true);
-          
+
           // Verify structure of category items
           if (res.body.data.length > 0) {
             expect(res.body.data[0]).toHaveProperty('id');
@@ -163,7 +163,7 @@ describe('LookupsController (e2e)', () => {
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('data');
         expect(Array.isArray(response.body.data)).toBe(true);
-        
+
         // If data exists, verify each item has id and label
         if (response.body.data.length > 0) {
           response.body.data.forEach((item: any) => {
