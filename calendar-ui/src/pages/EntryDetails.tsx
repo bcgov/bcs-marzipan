@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   useToastController,
   Toast,
@@ -13,7 +13,7 @@ import {
   Divider,
   Checkbox,
 } from '@fluentui/react-components';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { fetchActivity } from '../api/activitiesApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
@@ -111,7 +111,7 @@ export const EntryDetails = () => {
   console.log('Numeric ID for WebSocket:', numericId);
 
   // Fetch activity data from server
-  const refreshActivityData = async () => {
+  const refreshActivityData = useCallback(async () => {
     if (!numericId) return;
 
     try {
@@ -125,20 +125,16 @@ export const EntryDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [numericId]);
 
   // Load activity data on mount - always fetch fresh data
   useEffect(() => {
     if (numericId) {
       void refreshActivityData();
     }
-  }, []);
+  }, [numericId, refreshActivityData]);
 
-  const [selectedTab, setSelectedTab] = useState('overview');
-
-  // Update notifications stuff
-  const [hasUpdate, setHasUpdate] = useState(false);
-  const [latestData, setLatestData] = useState<any>(null);
+  // Update notifications
   const { dispatchToast } = useToastController();
 
   useEffect(() => {
@@ -167,8 +163,6 @@ export const EntryDetails = () => {
       // Only show toast if this update is for the activity we're viewing
       if (data.activityId === numericId) {
         console.log('IDs match! Showing toast...');
-        setLatestData(data);
-        setHasUpdate(true);
 
         dispatchToast(
           <Toast>
@@ -177,7 +171,6 @@ export const EntryDetails = () => {
               This activity has been modified by another user.{' '}
               <Link
                 onClick={() => {
-                  setHasUpdate(false);
                   void refreshActivityData();
                 }}
               >
@@ -198,7 +191,7 @@ export const EntryDetails = () => {
       socket.off('dataUpdated');
       socket.disconnect();
     };
-  }, [numericId, dispatchToast]);
+  }, [numericId, dispatchToast, refreshActivityData]);
 
   const styles = useStyles();
 

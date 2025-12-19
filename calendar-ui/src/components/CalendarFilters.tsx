@@ -18,8 +18,6 @@ import { FilterRegular } from '@fluentui/react-icons';
 
 import { ColumnFiltersState } from '@tanstack/react-table';
 import React, { useEffect } from 'react';
-import { set } from 'zod';
-import { eventData } from './EventTable';
 import { useCookies } from 'react-cookie';
 import {
   fetchCategories,
