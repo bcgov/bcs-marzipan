@@ -638,7 +638,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
                 name="leads"
                 value={lead.id.toString()}
               >
-                {lead.name}
+                {lead.label}
               </MenuItemCheckbox>
             ))}
           </MenuList>

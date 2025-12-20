@@ -1,10 +1,7 @@
 import { Controller, Get, Query, Header } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import {
-  LookupsService,
-  type LookupItem,
-  type LookupQueryParams,
-} from './lookups.service';
+import type { LookupItem, LookupQueryParams } from '@corpcal/shared/api/types';
+import { LookupsService } from './lookups.service';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 

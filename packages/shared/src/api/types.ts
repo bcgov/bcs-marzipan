@@ -15,6 +15,37 @@ export type {
   PaginatedActivityResponse,
 } from '../schemas/activity-response.schema';
 
+// Lookup types - re-exported from lookup schema
+export type {
+  LookupItem,
+  ExtendedLookupItem,
+  LookupQueryParams,
+  CategoryResponse,
+  CategoryLookupItem,
+  TagResponse,
+  TagLookupItem,
+  OrganizationResponse,
+  OrganizationLookupItem,
+  MinistryResponse,
+  MinistryLookupItem,
+  SystemUserResponse,
+  UserLookupItem,
+  PitchStatusResponse,
+  PitchStatusLookupItem,
+  SchedulingStatusResponse,
+  SchedulingStatusLookupItem,
+  ActivityStatusResponse,
+  ActivityStatusLookupItem,
+  CityResponse,
+  CityLookupItem,
+  CommsMaterialsResponse,
+  CommsMaterialsLookupItem,
+  TranslationLanguageResponse,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeResponse,
+  GovernmentRepresentativeLookupItem,
+} from '../schemas/lookup.schema';
+
 /**
  * Paginated Response Type
  * Generic type for paginated API responses.

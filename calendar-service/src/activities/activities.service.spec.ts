@@ -113,8 +113,6 @@ describe('ActivitiesService', () => {
     }).compile();
 
     service = module.get<ActivitiesService>(ActivitiesService);
-    databaseService = module.get<DatabaseService>(DatabaseService);
-    activitiesGateway = module.get<ActivitiesGateway>(ActivitiesGateway);
 
     // Reset all mocks
     jest.clearAllMocks();

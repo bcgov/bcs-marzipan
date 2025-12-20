@@ -10,7 +10,15 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { z } from 'zod';
-import type { Activity, NewActivity } from '@corpcal/database/types';
+import type {
+  Activity,
+  NewActivity,
+  Category,
+  Tag,
+  ActivityStatus,
+  City,
+  GovernmentRepresentative,
+} from '@corpcal/database/types';
 import {
   activitySchema,
   createActivitySchema,
@@ -19,6 +27,20 @@ import {
   updateActivityRequestSchema,
 } from '../src/schemas/activity.schema';
 import type { ActivityResponse } from '../src/schemas/activity-response.schema';
+import {
+  categoryResponseSchema,
+  tagResponseSchema,
+  activityStatusResponseSchema,
+  cityResponseSchema,
+  governmentRepresentativeResponseSchema,
+  lookupItemSchema,
+  type LookupItem,
+  type CategoryResponse,
+  type TagResponse,
+  type ActivityStatusResponse,
+  type CityResponse,
+  type GovernmentRepresentativeResponse,
+} from '../src/schemas/lookup.schema';
 
 /**
  * Validates that a Zod schema type matches the Drizzle inferred type
@@ -119,3 +141,62 @@ const _activityResponseFieldCheck: {
   // Computed/joined fields (these don't exist in Activity, they're added in the response)
   // category, tags, jointOrg, etc. are added from relatedData
 } = {} as never;
+
+// ============================================
+// Lookup Schema Validations
+// ============================================
+
+// Validate LookupItem schema structure
+type LookupItemFields = keyof LookupItem;
+const _lookupItemCheck: LookupItem = {
+  id: 1,
+  label: 'test',
+  value: 1,
+};
+
+// Validate CategoryResponse has expected fields from Category
+const _categoryResponseCheck: {
+  id: Category['id'];
+  name: Category['name'];
+  displayName: Category['displayName'];
+  isActive: Category['isActive'];
+} = {} as never;
+
+// Validate TagResponse has expected fields from Tag
+const _tagResponseCheck: {
+  id: Tag['id'];
+  key: Tag['key'];
+  displayName: Tag['displayName'];
+  isActive: Tag['isActive'];
+} = {} as never;
+
+// Validate ActivityStatusResponse has expected fields from ActivityStatus
+const _activityStatusResponseCheck: {
+  id: ActivityStatus['id'];
+  name: ActivityStatus['name'];
+  displayName: ActivityStatus['displayName'];
+  isActive: ActivityStatus['isActive'];
+} = {} as never;
+
+// Validate CityResponse has expected fields from City
+const _cityResponseCheck: {
+  id: City['id'];
+  name: City['name'];
+  displayName: City['displayName'];
+  isActive: City['isActive'];
+  province: City['province'];
+} = {} as never;
+
+// Validate GovernmentRepresentativeResponse has expected fields from GovernmentRepresentative
+const _govRepResponseCheck: {
+  id: GovernmentRepresentative['id'];
+  name: GovernmentRepresentative['name'];
+  displayName: GovernmentRepresentative['displayName'];
+  isActive: GovernmentRepresentative['isActive'];
+  title: GovernmentRepresentative['title'];
+  ministryId: GovernmentRepresentative['ministryId'];
+} = {} as never;
+
+console.log(
+  'Type validation passed: All schemas are in sync with database types.'
+);

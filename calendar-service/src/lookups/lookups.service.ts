@@ -12,20 +12,20 @@ import {
   governmentRepresentatives,
   activities,
 } from '@corpcal/database/schema';
+import type {
+  LookupItem,
+  LookupQueryParams,
+  CategoryLookupItem,
+  OrganizationLookupItem,
+  UserLookupItem,
+  TagLookupItem,
+  PitchStatusLookupItem,
+  SchedulingStatusLookupItem,
+  CommsMaterialsLookupItem,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeLookupItem,
+} from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
-
-export interface LookupItem {
-  id: string | number;
-  label: string;
-  value: string | number;
-  [key: string]: unknown;
-}
-
-export interface LookupQueryParams {
-  userId?: number;
-  role?: string;
-  organizationId?: string;
-}
 
 @Injectable()
 export class LookupsService {
@@ -34,7 +34,7 @@ export class LookupsService {
   /**
    * Get all active categories
    */
-  async getCategories(): Promise<LookupItem[]> {
+  async getCategories(): Promise<CategoryLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: categories.id,
@@ -58,7 +58,9 @@ export class LookupsService {
    * Get all active organizations
    * TODO: Implement scoping based on userId, role, organizationId
    */
-  async getOrganizations(_params?: LookupQueryParams): Promise<LookupItem[]> {
+  async getOrganizations(
+    _params?: LookupQueryParams
+  ): Promise<OrganizationLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: organizations.id,
@@ -83,7 +85,7 @@ export class LookupsService {
    * Computes display name from firstName/lastName or falls back to username
    * TODO: Implement scoping based on userId, role, organizationId
    */
-  async getUsers(_params?: LookupQueryParams): Promise<LookupItem[]> {
+  async getUsers(_params?: LookupQueryParams): Promise<UserLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: systemUsers.id,
@@ -115,7 +117,7 @@ export class LookupsService {
   /**
    * Get all active tags
    */
-  async getTags(): Promise<LookupItem[]> {
+  async getTags(): Promise<TagLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: tags.id,
@@ -138,7 +140,7 @@ export class LookupsService {
   /**
    * Get all active pitch statuses
    */
-  async getPitchStatuses(): Promise<LookupItem[]> {
+  async getPitchStatuses(): Promise<PitchStatusLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: pitchStatuses.id,
@@ -161,7 +163,7 @@ export class LookupsService {
   /**
    * Get all active scheduling statuses
    */
-  async getSchedulingStatuses(): Promise<LookupItem[]> {
+  async getSchedulingStatuses(): Promise<SchedulingStatusLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: schedulingStatuses.id,
@@ -184,7 +186,7 @@ export class LookupsService {
   /**
    * Get all active comms materials
    */
-  async getCommsMaterials(): Promise<LookupItem[]> {
+  async getCommsMaterials(): Promise<CommsMaterialsLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: commsMaterials.id,
@@ -207,7 +209,7 @@ export class LookupsService {
   /**
    * Get all active translation languages
    */
-  async getTranslationLanguages(): Promise<LookupItem[]> {
+  async getTranslationLanguages(): Promise<TranslationLanguageLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: translatedLanguages.id,
@@ -230,7 +232,9 @@ export class LookupsService {
   /**
    * Get all active government representatives
    */
-  async getGovernmentRepresentatives(): Promise<LookupItem[]> {
+  async getGovernmentRepresentatives(): Promise<
+    GovernmentRepresentativeLookupItem[]
+  > {
     const results = await this.databaseService.db
       .select({
         id: governmentRepresentatives.id,

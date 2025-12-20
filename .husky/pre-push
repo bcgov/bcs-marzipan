@@ -1,11 +1,61 @@
-# Branch naming validation hook
+# Pre-push validation hook
+# 1. Validates schema types are in sync
+# 2. Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
+
+# ============================================
+# Type Validation
+# ============================================
+# Ensures database schemas and shared types are in sync
+# This runs for all branches to catch type drift early
+
+echo "Running type validation..."
+
+# Build packages first (required for type validation)
+npm run build --workspace=packages/database --silent 2>/dev/null || {
+  echo ""
+  echo "Failed to build database package. Skipping type validation."
+  echo "Run 'npm run build --workspace=packages/database' to debug."
+  echo ""
+}
+
+npm run build --workspace=packages/shared --silent 2>/dev/null || {
+  echo ""
+  echo "Failed to build shared package. Skipping type validation."
+  echo "Run 'npm run build --workspace=packages/shared' to debug."
+  echo ""
+}
+
+# Run type validation
+npm run validate-types --workspace=packages/shared --silent 2>/dev/null
+validation_result=$?
+
+if [ $validation_result -ne 0 ]; then
+  echo ""
+  echo "Type validation failed!"
+  echo ""
+  echo "Schema types are out of sync. Please fix the following:"
+  echo "  1. Run: npm run validate-types --workspace=packages/shared"
+  echo "  2. Review the output for type mismatches"
+  echo "  3. Update schemas or types as needed"
+  echo ""
+  echo "See docs/SCHEMA_README.md for guidance on schema updates."
+  echo ""
+  exit 1
+fi
+
+echo "Type validation passed."
+echo ""
+
+# ============================================
+# Branch Naming Validation
+# ============================================
 # Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
 # Blocks push if branch name is invalid
 
 # Get the current branch name
 branch_name=$(git rev-parse --abbrev-ref HEAD)
 
-# Skip validation for main/master branches
+# Skip branch naming validation for main/master branches
 if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ]; then
   exit 0
 fi
@@ -18,7 +68,7 @@ pattern="^(feat|fix|docs|style|refactor|test|build|chore)/CORPCAL-[0-9]+-[a-z0-9
 
 if ! echo "$branch_name" | grep -qE "$pattern"; then
   echo ""
-  echo "❌ Invalid branch name: $branch_name"
+  echo "Invalid branch name: $branch_name"
   echo ""
   echo "Branch names must follow the format: <type>/CORPCAL-<number>-<short-description>"
   echo ""
@@ -27,15 +77,14 @@ if ! echo "$branch_name" | grep -qE "$pattern"; then
   echo "Description: all lowercase, hyphens allowed, no spaces"
   echo ""
   echo "Example:"
-  echo "  ✅ feat/CORPCAL-123-add-user-authentication"
+  echo "  feat/CORPCAL-123-add-user-authentication"
   echo ""
-  echo "❌ Invalid examples:"
-  echo "  ❌ feature/CORPCAL-123 (wrong type)"
-  echo "  ❌ feat/corcal-123 (wrong Jira key format)"
-  echo "  ❌ feat/CORPCAL-123 (missing description)"
+  echo "Invalid examples:"
+  echo "  feature/CORPCAL-123 (wrong type)"
+  echo "  feat/corcal-123 (wrong Jira key format)"
+  echo "  feat/CORPCAL-123 (missing description)"
   echo ""
   exit 1
 fi
 
 echo "Branch name is valid: $branch_name"
-

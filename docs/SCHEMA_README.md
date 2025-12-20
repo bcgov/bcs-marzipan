@@ -139,28 +139,55 @@ This ensures the API response schema automatically stays in sync with database s
 
 ## Common Patterns
 
+### Schema Sources of Truth
+
+Before updating schemas, understand where the root definitions live:
+
+- **Activity Schema**: `packages/database/src/schema/activity.ts` - The Drizzle schema definition for the `activities` table
+- **Lookup Table Schemas**: `packages/database/src/schema/lookups.ts` - The Drizzle schema definitions for all lookup tables (activityStatuses, cities, categories, tags, pitchStatuses, schedulingStatuses, etc.)
+
+These Drizzle schemas are the **single source of truth** for database structure. All other type definitions are derived from or must be manually aligned with these schemas.
+
 ### How to Update the Schema
 
-When adding or modifying fields in a database schema, follow these steps to ensure type safety across all layers:
+When adding or modifying fields in a database schema, follow these step-by-step instructions to ensure type safety across all layers.
 
-#### Step 1: Generate Database Migration
+#### For Activity Schema Updates
 
-After modifying the Drizzle schema (e.g., `packages/database/src/schema/activity.ts`), generate a migration:
+##### Step 1: Update the Drizzle Schema
+
+Modify the activity schema definition in `packages/database/src/schema/activity.ts`:
+
+```typescript
+export const activities = pgTable('activities', {
+  // ... existing fields
+  newField: varchar('new_field', { length: 255 }),
+  // ... rest of fields
+});
+```
+
+##### Step 2: Generate Database Migration
+
+Generate a migration file from your schema changes:
 
 ```bash
 npm run db:generate --workspace=packages/database
 ```
 
-This creates a migration file that will update your database schema. Review the generated migration to ensure it matches your intent.
+This creates a new migration file in `packages/database/migrations/` (e.g., `0003_migration_name.sql`).
 
-**Note**: Always let Drizzle generate migrations from your schema rather than writing ALTER TABLE statements manually. This ensures consistency and maintains the schema as the single source of truth.
+**Important**:
 
-#### Step 2: Update API Response Schema
+- Always let Drizzle generate migrations from your schema rather than writing ALTER TABLE statements manually
+- Review the generated migration file to ensure it matches your intent
+- Migration files are versioned and should be committed to version control
 
-If the field should be exposed in API responses, update the response schema file (e.g., `packages/shared/src/schemas/activity-response.schema.ts`):
+##### Step 3: Update API Response Schema
 
-1. **Add to `.pick()` section**: Include the field in the fields to keep from the base schema
-2. **Add to `.extend()` section**: Add explicit type definition for the field (required due to drizzle-zod type inference limitations)
+If the field should be exposed in API responses, update `packages/shared/src/schemas/activity-response.schema.ts`:
+
+1. **Add to `.pick()` section** (around line 33-68): Include the field in the fields to keep from the base schema
+2. **Add to `.extend()` section** (around line 69-157): Add explicit type definition for the field (required due to drizzle-zod type inference limitations)
 
 Example:
 
@@ -169,51 +196,246 @@ Example:
 export const activityResponseSchema = baseActivitySchema
   .pick({
     // ... existing fields
-    isTimeConfirmed: true,
-    isDateConfirmed: true,
+    newField: true, // Add here
   })
 
   // In .extend() section
   .extend({
     // ... existing fields
-    isTimeConfirmed: z.boolean(),
-    isDateConfirmed: z.boolean(),
+    newField: z.string().nullable(), // Add explicit type here
   });
 ```
 
-#### Step 3: Update Response DTO
+**Note**: If the field needs transformation (e.g., date to string, number to string), define the transformed type in the `.extend()` section.
 
-Update the DTO class (e.g., `packages/shared/src/dto/activity-response.dto.ts`) to include the new field as a property:
+##### Step 4: Update Response DTO
+
+Update the DTO class in `packages/shared/src/dto/activity-response.dto.ts` to include the new field as a property:
 
 ```typescript
 export class ActivityResponseDto implements ActivityResponse {
   // ... existing properties
-  isTimeConfirmed!: boolean;
-  isDateConfirmed!: boolean;
+  newField!: string | null; // Add property matching the schema type
 }
 ```
 
-The DTO class must implement the `ActivityResponse` type, so adding the property ensures compile-time type safety.
+The DTO class must implement the `ActivityResponse` type, so adding the property ensures compile-time type safety. The compile-time check on line 118 will catch any mismatches.
 
-#### Additional Steps (as needed)
+##### Step 5: Update Service Mapping (if needed)
 
-- **Request/Validation Schemas**: Automatically updated via `drizzle-zod` - no manual changes needed
-- **Mapping Functions**: Update `mapToResponseDto()` if field needs transformation
-- **UI Forms**: Add form fields in the appropriate component sections
-- **Form Defaults**: Add default values in form initialization
-- **Validation**: Run `npm run validate-types --workspace=packages/shared` to verify types match
+If the field requires transformation or special handling, update the mapping function in `calendar-service/src/activities/activities.service.ts`:
+
+- Locate the `mapToResponseDto()` method
+- Add the field mapping logic if transformation is needed
+- The `ensureMatchesSchema()` helper will catch type mismatches at compile time
+
+##### Step 6: Run Type Validation
+
+Verify that all types are aligned:
+
+```bash
+npm run validate-types --workspace=packages/shared
+```
+
+This script validates that:
+
+- Zod schemas match their corresponding Drizzle types
+- `ActivityResponse` fields are derived from `Activity`
+- Request schemas are valid
+
+##### Step 7: Apply Migration and Test
+
+Apply the migration to your database:
+
+```bash
+npm run db:migrate --workspace=packages/database
+```
+
+Then test your changes:
+
+- Run integration tests
+- Test API endpoints
+- Verify frontend forms if applicable
+
+#### For Lookup Table Schema Updates
+
+##### Step 1: Update the Drizzle Schema
+
+Modify the lookup table schema in `packages/database/src/schema/lookups.ts`:
+
+```typescript
+export const categories = pgTable('categories', {
+  // ... existing fields
+  newField: varchar('new_field', { length: 255 }),
+  // ... rest of fields
+});
+```
+
+##### Step 2: Generate Database Migration
+
+Generate a migration file:
+
+```bash
+npm run db:generate --workspace=packages/database
+```
+
+Review the generated migration file to ensure it's correct.
+
+##### Step 3: Update Lookup Response Schema
+
+Update `packages/shared/src/schemas/lookup.schema.ts` for the specific lookup type:
+
+1. **Find the corresponding schema section** (e.g., Category schema starts around line 56)
+2. **Add to `.pick()` section**: Include the field in the fields to keep
+3. **Add to `.extend()` section**: Add explicit type definition
+4. **Update the `*LookupItemSchema`** if the field should appear in lookup items
+
+Example for Category:
+
+```typescript
+// Around line 59-67 - Add to .pick() section
+export const categoryResponseSchema = baseCategorySchema
+  .pick({
+    id: true,
+    name: true,
+    // ... existing fields
+    newField: true, // Add here
+  })
+  .extend({
+    // Around line 68-76 - Add to .extend() section
+    id: z.number().int(),
+    name: z.string(),
+    // ... existing fields
+    newField: z.string().nullable(), // Add explicit type here
+  });
+
+// Around line 78-81 - Update lookup item schema if needed
+export const categoryLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string().nullable(),
+  newField: z.string().nullable(), // Add if needed in lookup items
+});
+```
+
+**Note**: The pattern is repeated for each lookup type:
+
+- Categories (lines 56-81)
+- Tags (lines 87-108)
+- Organizations (lines 114-141)
+- Ministries (lines 147-170)
+- System Users (lines 176-200)
+- Pitch Statuses (lines 206-229)
+- Scheduling Statuses (lines 235-258)
+- Activity Statuses (lines 264-287)
+- Cities (lines 293-317)
+- Comms Materials (lines 323-346)
+- Translation Languages (lines 352-375)
+- Government Representatives (lines 381-417)
+
+##### Step 4: Update SQL Seed File (if needed)
+
+If you're adding new lookup values or modifying seed data, update the appropriate seed file:
+
+- **Lookup Tables**: `packages/database/migrations/001_seed_lookup_tables.sql`
+- **Activities**: `packages/database/migrations/002_seed_activities.sql`
+
+Example for adding a new category:
+
+```sql
+-- In 001_seed_lookup_tables.sql, find the CATEGORIES section (around line 58)
+INSERT INTO categories (id, name, display_name, sort_order, pitch_not_required, is_active, description, new_field)
+VALUES
+  (9, 'new_category', 'New Category', 9, false, true, 'Description of new category', 'default_value')
+ON CONFLICT (id) DO NOTHING;
+```
+
+**Important**:
+
+- Seed files use `ON CONFLICT DO NOTHING` or `WHERE NOT EXISTS` to make them idempotent
+- Seed files are executed by the `SeedService` when running `npm run seed --workspace=calendar-service`
+- Always test seed files after modification
+
+##### Step 5: Run Type Validation
+
+Verify types are aligned:
+
+```bash
+npm run validate-types --workspace=packages/shared
+```
+
+##### Step 6: Apply Migration and Seed
+
+Apply the migration:
+
+```bash
+npm run db:migrate --workspace=packages/database
+```
+
+If you updated seed files, run the seed command:
+
+```bash
+npm run seed --workspace=calendar-service
+```
+
+#### Additional Notes
+
+- **Request/Validation Schemas**: Automatically updated via `drizzle-zod` - no manual changes needed for `activity.schema.ts` request schemas
+- **UI Forms**: Add form fields in the appropriate component sections if the field is user-editable
+- **Form Defaults**: Add default values in form initialization if needed
+- **Database Types**: Types in `packages/database/src/types.ts` are automatically inferred from Drizzle schemas - no manual updates needed
 
 ### Transforming a Field
 
-1. Update API response schema transformation
-2. Update mapping function to apply transformation
-3. Compile-time check ensures mapping matches schema
+When a field needs transformation (e.g., date to string, number to string):
+
+1. Update API response schema transformation in the `.extend()` section
+2. Update mapping function in `mapToResponseDto()` to apply the transformation
+3. Compile-time check via `ensureMatchesSchema()` ensures mapping matches schema
 
 ### Adding a Computed Field
 
-1. Add field to API response schema
+For fields that don't exist in the database but are computed from other data:
+
+1. Add field to API response schema in the `.extend()` section (don't add to `.pick()`)
 2. Update mapping function to compute the value
 3. Compile-time check ensures mapping matches schema
+
+### SQL Seeding Files
+
+The application uses SQL seed files to populate lookup tables and initial data. These files are located in `packages/database/migrations/`:
+
+- **`001_seed_lookup_tables.sql`**: Seeds all lookup tables with their initial values
+  - Activity statuses, pitch statuses, scheduling statuses
+  - Categories, tags, themes
+  - Cities, government representatives
+  - Comms materials, translated languages
+  - Communication contacts, event planners, videographers
+  - Ministries, organizations, system users
+
+- **`002_seed_activities.sql`**: Seeds initial activity data (if needed)
+
+#### Creating and Updating Seed Files
+
+1. **Seed files are idempotent**: They use `ON CONFLICT DO NOTHING` or `WHERE NOT EXISTS` clauses to prevent duplicate inserts
+2. **Seed files are executed by SeedService**: The `SeedService` in `calendar-service/src/database/seed.service.ts` reads and executes these files
+3. **Running seeds**: Execute seeds using:
+   ```bash
+   npm run seed --workspace=calendar-service
+   ```
+
+#### When to Update Seed Files
+
+- **Adding new lookup values**: When you add new categories, statuses, or other lookup values
+- **Modifying existing values**: When you need to update display names, descriptions, or other seed data
+- **Initial data setup**: When you need to populate tables with reference data
+
+#### Seed File Best Practices
+
+- Always use idempotent INSERT statements (with `ON CONFLICT` or `WHERE NOT EXISTS`)
+- Include comments explaining what each section seeds
+- Group related inserts together with clear section headers
+- Use consistent formatting for readability
+- Test seed files after modification to ensure they work correctly
 
 ## Troubleshooting
 

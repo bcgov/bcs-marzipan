@@ -12,6 +12,15 @@ import {
   fetchActivitiesForLookup,
   type LookupItem,
   type LookupQueryParams,
+  type CategoryLookupItem,
+  type OrganizationLookupItem,
+  type UserLookupItem,
+  type TagLookupItem,
+  type PitchStatusLookupItem,
+  type SchedulingStatusLookupItem,
+  type CommsMaterialsLookupItem,
+  type TranslationLanguageLookupItem,
+  type GovernmentRepresentativeLookupItem,
 } from '../api/lookupsApi';
 
 // Small lookups (<20 items) - cache for 1 hour
@@ -21,7 +30,7 @@ const SMALL_LOOKUP_STALE_TIME = 3600000; // 1 hour
 const LARGE_LOOKUP_STALE_TIME = 300000; // 5 minutes
 
 export function useCategories() {
-  return useQuery<LookupItem[]>({
+  return useQuery<CategoryLookupItem[]>({
     queryKey: ['lookups', 'categories'],
     queryFn: () => fetchCategories(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -29,7 +38,7 @@ export function useCategories() {
 }
 
 export function useOrganizations(params?: LookupQueryParams) {
-  return useQuery<LookupItem[]>({
+  return useQuery<OrganizationLookupItem[]>({
     queryKey: ['lookups', 'organizations', params],
     queryFn: () => fetchOrganizations(params),
     staleTime: LARGE_LOOKUP_STALE_TIME,
@@ -37,7 +46,7 @@ export function useOrganizations(params?: LookupQueryParams) {
 }
 
 export function useUsers(params?: LookupQueryParams) {
-  return useQuery<LookupItem[]>({
+  return useQuery<UserLookupItem[]>({
     queryKey: ['lookups', 'users', params],
     queryFn: () => fetchUsers(params),
     staleTime: LARGE_LOOKUP_STALE_TIME,
@@ -45,7 +54,7 @@ export function useUsers(params?: LookupQueryParams) {
 }
 
 export function useTags() {
-  return useQuery<LookupItem[]>({
+  return useQuery<TagLookupItem[]>({
     queryKey: ['lookups', 'tags'],
     queryFn: () => fetchTags(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -53,7 +62,7 @@ export function useTags() {
 }
 
 export function usePitchStatuses() {
-  return useQuery<LookupItem[]>({
+  return useQuery<PitchStatusLookupItem[]>({
     queryKey: ['lookups', 'pitch-statuses'],
     queryFn: () => fetchPitchStatuses(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -61,7 +70,7 @@ export function usePitchStatuses() {
 }
 
 export function useSchedulingStatuses() {
-  return useQuery<LookupItem[]>({
+  return useQuery<SchedulingStatusLookupItem[]>({
     queryKey: ['lookups', 'scheduling-statuses'],
     queryFn: () => fetchSchedulingStatuses(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -69,7 +78,7 @@ export function useSchedulingStatuses() {
 }
 
 export function useCommsMaterials() {
-  return useQuery<LookupItem[]>({
+  return useQuery<CommsMaterialsLookupItem[]>({
     queryKey: ['lookups', 'comms-materials'],
     queryFn: () => fetchCommsMaterials(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -77,7 +86,7 @@ export function useCommsMaterials() {
 }
 
 export function useTranslationLanguages() {
-  return useQuery<LookupItem[]>({
+  return useQuery<TranslationLanguageLookupItem[]>({
     queryKey: ['lookups', 'translation-languages'],
     queryFn: () => fetchTranslationLanguages(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
@@ -85,7 +94,7 @@ export function useTranslationLanguages() {
 }
 
 export function useGovernmentRepresentatives() {
-  return useQuery<LookupItem[]>({
+  return useQuery<GovernmentRepresentativeLookupItem[]>({
     queryKey: ['lookups', 'government-representatives'],
     queryFn: () => fetchGovernmentRepresentatives(),
     staleTime: SMALL_LOOKUP_STALE_TIME,

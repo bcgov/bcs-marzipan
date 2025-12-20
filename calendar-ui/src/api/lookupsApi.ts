@@ -1,20 +1,35 @@
 import api from './axios.js';
+import type {
+  LookupItem,
+  LookupQueryParams,
+  CategoryLookupItem,
+  OrganizationLookupItem,
+  UserLookupItem,
+  TagLookupItem,
+  PitchStatusLookupItem,
+  SchedulingStatusLookupItem,
+  CommsMaterialsLookupItem,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeLookupItem,
+} from '@corpcal/shared/api/types';
 
-export interface LookupItem {
-  id: string | number;
-  label: string;
-  value: string | number;
-  [key: string]: unknown;
-}
+// Re-export types for components that import from this file
+export type {
+  LookupItem,
+  LookupQueryParams,
+  CategoryLookupItem,
+  OrganizationLookupItem,
+  UserLookupItem,
+  TagLookupItem,
+  PitchStatusLookupItem,
+  SchedulingStatusLookupItem,
+  CommsMaterialsLookupItem,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeLookupItem,
+};
 
-export interface LookupQueryParams {
-  userId?: number;
-  role?: string;
-  organizationId?: string;
-}
-
-export async function fetchCategories(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+export async function fetchCategories(): Promise<CategoryLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: CategoryLookupItem[] }>(
     '/lookups/categories'
   );
   return res.data.data;
@@ -22,20 +37,20 @@ export async function fetchCategories(): Promise<LookupItem[]> {
 
 export async function fetchOrganizations(
   params?: LookupQueryParams
-): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/organizations',
-    {
-      params,
-    }
-  );
+): Promise<OrganizationLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: OrganizationLookupItem[];
+  }>('/lookups/organizations', {
+    params,
+  });
   return res.data.data;
 }
 
 export async function fetchUsers(
   params?: LookupQueryParams
-): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+): Promise<UserLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: UserLookupItem[] }>(
     '/lookups/users',
     {
       params,
@@ -44,45 +59,58 @@ export async function fetchUsers(
   return res.data.data;
 }
 
-export async function fetchTags(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+export async function fetchTags(): Promise<TagLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
     '/lookups/tags'
   );
   return res.data.data;
 }
 
-export async function fetchPitchStatuses(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/pitch-statuses'
-  );
+export async function fetchPitchStatuses(): Promise<PitchStatusLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: PitchStatusLookupItem[];
+  }>('/lookups/pitch-statuses');
   return res.data.data;
 }
 
-export async function fetchSchedulingStatuses(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/scheduling-statuses'
-  );
+export async function fetchSchedulingStatuses(): Promise<
+  SchedulingStatusLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: SchedulingStatusLookupItem[];
+  }>('/lookups/scheduling-statuses');
   return res.data.data;
 }
 
-export async function fetchCommsMaterials(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/comms-materials'
-  );
+export async function fetchCommsMaterials(): Promise<
+  CommsMaterialsLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: CommsMaterialsLookupItem[];
+  }>('/lookups/comms-materials');
   return res.data.data;
 }
 
-export async function fetchTranslationLanguages(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/translation-languages'
-  );
+export async function fetchTranslationLanguages(): Promise<
+  TranslationLanguageLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: TranslationLanguageLookupItem[];
+  }>('/lookups/translation-languages');
   return res.data.data;
 }
 
-export async function fetchGovernmentRepresentatives(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/government-representatives'
-  );
+export async function fetchGovernmentRepresentatives(): Promise<
+  GovernmentRepresentativeLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: GovernmentRepresentativeLookupItem[];
+  }>('/lookups/government-representatives');
   return res.data.data;
 }
 
