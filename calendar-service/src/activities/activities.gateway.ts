@@ -58,7 +58,7 @@ export class ActivitiesGateway
       `Client ${client.id} subscribed to activities table updates`
     );
     // Join a room for table-level updates
-    client.join('activities-table');
+    void client.join('activities-table');
   }
 
   @SubscribeMessage('unsubscribeFromActivities')
@@ -66,7 +66,7 @@ export class ActivitiesGateway
     this.logger.debug(
       `Client ${client.id} unsubscribed from activities table updates`
     );
-    client.leave('activities-table');
+    void client.leave('activities-table');
   }
 
   /**

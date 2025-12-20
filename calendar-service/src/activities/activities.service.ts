@@ -28,7 +28,7 @@ import {
   translatedLanguages,
   systemUsers,
 } from '@corpcal/database/schema';
-import type { Activity, Category, NewActivity } from '@corpcal/database/types';
+import type { Activity, Category } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
