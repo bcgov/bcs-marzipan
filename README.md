@@ -376,3 +376,44 @@ git commit --no-verify -m "your message"
 ```
 
 **Note:** It's generally recommended to let the hooks run since they auto-fix many issues and provide useful feedback.
+
+## Developer Guide
+
+This project enforces development conventions through Git hooks. See [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md) for detailed information.
+
+### Commit Message Convention
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>(<scope>): <subject>
+```
+
+- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `build`
+- **scope**: Optional (e.g., `activities`, `auth`)
+- **subject**: Short description (max 100 characters)
+
+**Examples:**
+
+- `feat(activities): add filtering by date range`
+- `fix(auth): resolve API key validation issue`
+- `docs: update README with developer guide`
+
+Use `npm run commit` for an interactive commit prompt (optional).
+
+### Branch Naming Convention
+
+Format: `<type>/CORPCAL-<number>-<short-description>`
+
+- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `build`, `chore`
+- **Jira key**: `CORPCAL-<number>` (uppercase, e.g., `CORPCAL-123`)
+- **description**: Lowercase, hyphens allowed, no spaces
+
+**Examples:**
+
+- `feat/CORPCAL-123-add-user-authentication`
+- `fix/CORPCAL-456-resolve-login-bug`
+
+Protected branches (`main`, `master`, `develop`) skip validation.
+
+For detailed examples, troubleshooting, and hook configuration, see [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md).

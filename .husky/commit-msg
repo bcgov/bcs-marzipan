@@ -1,0 +1,8 @@
+# Commit message validation hook
+# Validates commit messages against Conventional Commits format
+# Blocks commits that don't follow the format
+
+echo "Validating commit message..."
+
+npx --no -- commitlint --edit "$1"
+
