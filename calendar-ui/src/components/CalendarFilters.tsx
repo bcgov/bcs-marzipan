@@ -17,7 +17,7 @@ import {
 import { FilterRegular } from '@fluentui/react-icons';
 
 import { ColumnFiltersState } from '@tanstack/react-table';
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useCookies } from 'react-cookie';
 import {
   fetchCategories,
@@ -100,20 +100,6 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     });
   };
 
-  const filterData = {
-    category: { id: 'category', value: [''] },
-    status: { id: 'status', value: [''] },
-    // keyword: { id: 'keyword', value: '' },
-    tabListFilter: { id: 'tabListFilter', value: tabFilterValue },
-    reports: { id: 'reports', value: checkedReportsValues.reports || [] },
-    representatives: {
-      id: 'representatives',
-      value: checkedRepresentativesValues.representative || [],
-    },
-    tags: { id: 'tags', value: checkedTagsValues.tag || [] },
-    leads: { id: 'leads', value: checkedLeadsValues.leads || [] },
-  };
-
   // Helper to handle date range change and apply filter
   const handleDateRangeChange = (field: 'start' | 'end', value: string) => {
     setDateRange((prev) => {
@@ -155,7 +141,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
   // Cookie handling: "C" is for "Cookie", and that's good enough for me
   const [cookies, setCookie, removeCookie] = useCookies(['filtersCookie']);
 
-  const handleSetCookie = () => {
+  const handleSetCookie = useCallback(() => {
     const filterCookieValue = {
       status: checkedStatusValues,
       category: checkedCategoryValues,
@@ -170,81 +156,108 @@ export const CalendarFilters: React.FC<FilterProps> = ({
       createdDateRange: createdDateRange,
     };
     setCookie('filtersCookie', filterCookieValue, { path: '/' });
-  };
+  }, [
+    checkedStatusValues,
+    checkedCategoryValues,
+    keywordFilter,
+    tabFilterValue,
+    checkedReportsValues,
+    checkedRepresentativesValues,
+    checkedTagsValues,
+    checkedLeadsValues,
+    dateRange,
+    updatedDateRange,
+    createdDateRange,
+    setCookie,
+  ]);
 
   const handleRemoveCookie = () => {
     removeCookie('filtersCookie', { path: '/' });
   };
 
-  const applyFilters = (
-    tabValue?: string,
-    startDate?: string,
-    endDate?: string
-  ) => {
-    const currentTabValue = tabValue || tabFilterValue; // Use passed value if provided, else fall back to state
-    filterData.category = {
-      id: 'category',
-      value: checkedCategoryValues.category || [],
-    };
-    filterData.status = {
-      id: 'status',
-      value: checkedStatusValues.status || [],
-    };
-    // filterData.keyword = { id: 'keyword', value: keywordFilter || '' };
-    filterData.tabListFilter = { id: 'mine', value: currentTabValue };
-    filterData.reports = {
-      id: 'reports',
-      value: checkedReportsValues.reports || [],
-    };
-    filterData.representatives = {
-      id: 'representatives',
-      value: checkedRepresentativesValues.representative || [],
-    };
-    filterData.tags = { id: 'tags', value: checkedTagsValues.tag || [] };
-    filterData.leads = { id: 'leads', value: checkedLeadsValues.leads || [] };
-    const filterArr: ColumnFiltersState = [
-      filterData.category,
-      filterData.status,
-      // filterData.keyword,
-      filterData.tabListFilter,
-      filterData.reports,
-      filterData.representatives,
-      filterData.tags,
-      filterData.leads,
-    ];
-    // Add dateRange filter if both dates are set
-    if ((startDate && endDate) || (dateRange.start && dateRange.end)) {
-      filterArr.unshift({
-        id: 'dateRange',
-        value: {
-          start: startDate || dateRange.start,
-          end: endDate || dateRange.end,
+  const applyFilters = useCallback(
+    (tabValue?: string, startDate?: string, endDate?: string) => {
+      const currentTabValue = tabValue || tabFilterValue; // Use passed value if provided, else fall back to state
+      const filterData = {
+        category: {
+          id: 'category',
+          value: checkedCategoryValues.category || [],
         },
-      });
-    }
-    // Add updatedDateRange filter if both dates are set
-    if (updatedDateRange.start && updatedDateRange.end) {
-      filterArr.push({
-        id: 'updatedDateRange',
-        value: {
-          start: updatedDateRange.start,
-          end: updatedDateRange.end,
+        status: {
+          id: 'status',
+          value: checkedStatusValues.status || [],
         },
-      });
-    }
-    // Add createdDateRange filter if both dates are set
-    if (createdDateRange.start && createdDateRange.end) {
-      filterArr.push({
-        id: 'createdDateRange',
-        value: {
-          start: createdDateRange.start,
-          end: createdDateRange.end,
+        // keyword: { id: 'keyword', value: keywordFilter || '' },
+        tabListFilter: { id: 'mine', value: currentTabValue },
+        reports: {
+          id: 'reports',
+          value: checkedReportsValues.reports || [],
         },
-      });
-    }
-    onFiltersChanged(filterArr);
-    handleSetCookie();
-  };
+        representatives: {
+          id: 'representatives',
+          value: checkedRepresentativesValues.representative || [],
+        },
+        tags: { id: 'tags', value: checkedTagsValues.tag || [] },
+        leads: { id: 'leads', value: checkedLeadsValues.leads || [] },
+      };
+      const filterArr: ColumnFiltersState = [
+        filterData.category,
+        filterData.status,
+        // filterData.keyword,
+        filterData.tabListFilter,
+        filterData.reports,
+        filterData.representatives,
+        filterData.tags,
+        filterData.leads,
+      ];
+      // Add dateRange filter if both dates are set
+      if ((startDate && endDate) || (dateRange.start && dateRange.end)) {
+        filterArr.unshift({
+          id: 'dateRange',
+          value: {
+            start: startDate || dateRange.start,
+            end: endDate || dateRange.end,
+          },
+        });
+      }
+      // Add updatedDateRange filter if both dates are set
+      if (updatedDateRange.start && updatedDateRange.end) {
+        filterArr.push({
+          id: 'updatedDateRange',
+          value: {
+            start: updatedDateRange.start,
+            end: updatedDateRange.end,
+          },
+        });
+      }
+      // Add createdDateRange filter if both dates are set
+      if (createdDateRange.start && createdDateRange.end) {
+        filterArr.push({
+          id: 'createdDateRange',
+          value: {
+            start: createdDateRange.start,
+            end: createdDateRange.end,
+          },
+        });
+      }
+      onFiltersChanged(filterArr);
+      handleSetCookie();
+    },
+    [
+      tabFilterValue,
+      checkedCategoryValues,
+      checkedStatusValues,
+      checkedReportsValues,
+      checkedRepresentativesValues,
+      checkedTagsValues,
+      checkedLeadsValues,
+      dateRange,
+      updatedDateRange,
+      createdDateRange,
+      onFiltersChanged,
+      handleSetCookie,
+    ]
+  );
 
   const onTabSelect = (event: SelectTabEvent, data: SelectTabData) => {
     const newValue = data.value as string;
@@ -269,20 +282,11 @@ export const CalendarFilters: React.FC<FilterProps> = ({
 
   useEffect(() => {
     applyFilters();
-  }, [
-    checkedStatusValues,
-    checkedCategoryValues,
-    checkedReportsValues,
-    checkedRepresentativesValues,
-    checkedTagsValues,
-    checkedLeadsValues,
-    updatedDateRange,
-    createdDateRange,
-  ]);
+  }, [applyFilters]);
 
   useEffect(() => {
     onKeywordFilterChanged(keywordFilter || '');
-  }, [keywordFilter]);
+  }, [keywordFilter, onKeywordFilterChanged]);
 
   // get Categories, Tags, etc. from API
   const [categories, setCategories] = React.useState<LookupItem[]>([]);
@@ -290,13 +294,14 @@ export const CalendarFilters: React.FC<FilterProps> = ({
   const [representatives, setRepresentatives] = React.useState<LookupItem[]>(
     []
   );
-  const [locations, setLocations] = React.useState<LookupItem[]>([]);
   const [leads, setLeads] = React.useState<LookupItem[]>([]);
   const [statuses, setStatuses] = React.useState<LookupItem[]>([]);
-  const [lookAheadStatuses, setLookAheadStatuses] = React.useState<
-    LookupItem[]
-  >([]);
-  const [cities, setCities] = React.useState<LookupItem[]>([]);
+  // TODO: when schema for these is finalized
+  // const [locations, setLocations] = React.useState<LookupItem[]>([]);
+  // const [lookAheadStatuses, setLookAheadStatuses] = React.useState<
+  //   LookupItem[]
+  // >([]);
+  // const [cities, setCities] = React.useState<LookupItem[]>([]);
   useEffect(() => {
     fetchCategories()
       .then((data) => {
@@ -372,13 +377,15 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         // Optional: Clear the bad cookie and reset to defaults
         handleRemoveCookie();
         handleClearFilters();
+        // TODO: handle error
+        console.error('Error parsing filters cookie:', error);
       }
     }
   };
 
   useEffect(() => {
     setFiltersFromCookie();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div>
