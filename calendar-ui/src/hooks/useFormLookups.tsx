@@ -1,4 +1,3 @@
-import { useQueries } from '@tanstack/react-query';
 import {
   useCategories,
   useOrganizations,
