@@ -13,7 +13,6 @@ import {
   Toast,
   ToastTitle,
   ToastBody,
-  Link,
   useToastController,
 } from '@fluentui/react-components';
 import io from 'socket.io-client';
@@ -39,7 +38,7 @@ import {
 } from '@tanstack/react-table';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchActivities } from '../api/activitiesApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 
@@ -90,9 +89,6 @@ type EventRow = {
   endDate: Date | undefined;
   location: string | undefined;
 };
-
-// Dummy table data
-export const eventData: EventRow[] = [];
 
 const getLastModifiedString = (modified: Date | undefined) => {
   if (!modified) {
@@ -812,7 +808,13 @@ export const EventTable: React.FC<EventTableProps> = ({
         },
       }),
     ],
-    [columnHelper, styles.statusBadge]
+    [
+      columnHelper,
+      styles.overviewConfidential,
+      styles.overviewInline,
+      styles.overviewTitle,
+      styles.statusBadge,
+    ]
   );
 
   const table = useReactTable({

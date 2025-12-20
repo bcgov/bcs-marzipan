@@ -12,8 +12,8 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
-  let databaseService: DatabaseService;
-  let activitiesGateway: ActivitiesGateway;
+  // let databaseService: DatabaseService;
+  // let activitiesGateway: ActivitiesGateway;
 
   // Mock database service
   const mockDatabaseService = {

@@ -10,14 +10,15 @@ import { AppLogger } from '../common/logger/logger.service';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // In production, restrict this to your frontend domain
+    // TODO: In production, restrict to frontend domain
+    origin: '*',
   },
 })
 export class ActivitiesGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new AppLogger(ActivitiesGateway.name);
   private readonly viewingActivities = new Map<string, Set<number>>();
@@ -35,11 +36,13 @@ export class ActivitiesGateway
   handleViewActivity(client: Socket, activityId: number) {
     this.logger.debug(`Client ${client.id} is viewing activity ${activityId}`);
 
-    if (!this.viewingActivities.has(client.id)) {
-      this.viewingActivities.set(client.id, new Set());
+    let viewing = this.viewingActivities.get(client.id);
+    if (!viewing) {
+      viewing = new Set();
+      this.viewingActivities.set(client.id, viewing);
     }
 
-    this.viewingActivities.get(client.id).add(activityId);
+    viewing.add(activityId);
   }
 
   @SubscribeMessage('leaveActivity')
@@ -58,7 +61,7 @@ export class ActivitiesGateway
       `Client ${client.id} subscribed to activities table updates`
     );
     // Join a room for table-level updates
-    client.join('activities-table');
+    void client.join('activities-table');
   }
 
   @SubscribeMessage('unsubscribeFromActivities')
@@ -66,7 +69,7 @@ export class ActivitiesGateway
     this.logger.debug(
       `Client ${client.id} unsubscribed from activities table updates`
     );
-    client.leave('activities-table');
+    void client.leave('activities-table');
   }
 
   /**

@@ -4,7 +4,6 @@ import { LookupsService, type LookupItem } from './lookups.service';
 
 describe('LookupsController', () => {
   let controller: LookupsController;
-  let service: LookupsService;
 
   const mockLookupItems: LookupItem[] = [
     { id: '1', label: 'Category 1', value: '1' },
@@ -28,7 +27,6 @@ describe('LookupsController', () => {
     }).compile();
 
     controller = module.get<LookupsController>(LookupsController);
-    service = module.get<LookupsService>(LookupsService);
   });
 
   afterEach(() => {
@@ -49,7 +47,7 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(service.getCategories).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.getCategories).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -63,7 +61,7 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(service.getOrganizations).toHaveBeenCalledWith({
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
         userId: undefined,
         role: undefined,
         organizationId: undefined,
@@ -79,7 +77,7 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(service.getOrganizations).toHaveBeenCalledWith({
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
         userId: 1,
         role: undefined,
         organizationId: undefined,
@@ -95,7 +93,7 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(service.getOrganizations).toHaveBeenCalledWith({
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
         userId: undefined,
         role: 'admin',
         organizationId: undefined,

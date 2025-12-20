@@ -112,7 +112,7 @@ class Logger {
   /**
    * Log an error message
    */
-  error(message: string, error?: Error | unknown, ...args: unknown[]): void {
+  error(message: string, error?: unknown, ...args: unknown[]): void {
     if (this.shouldLog(LogLevel.ERROR)) {
       const formattedMessage = this.formatMessage('ERROR', message);
       if (error instanceof Error) {

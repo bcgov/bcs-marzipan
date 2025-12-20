@@ -43,7 +43,8 @@
     "lint": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" --fix",
     "lint:check": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\"",
     "lint:service": "eslint \"calendar-service/**/*.ts\" --fix",
-    "lint:ui": "eslint \"calendar-ui/**/*.{ts,tsx}\" --fix"
+    "lint:ui": "eslint \"calendar-ui/**/*.{ts,tsx}\" --fix",
+    "lint:staged": "lint-staged"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -59,6 +60,23 @@
     "husky": "^9.1.7",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "lint-staged": "^15.2.11"
+  },
+  "lint-staged": {
+    "calendar-service/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/jest-related.js"
+    ],
+    "calendar-ui/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js"
+    ],
+    "packages/**/*.ts": [
+      "eslint --fix"
+    ],
+    "**/*.{json,md,css,scss,less,html,yaml,yml}": [
+      "prettier --write"
+    ]
   }
 }

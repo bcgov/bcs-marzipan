@@ -10,7 +10,6 @@ import { Category } from '@corpcal/shared';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
-  let service: ActivitiesService;
 
   const mockActivityResponse: ActivityResponse = {
     id: 1,
@@ -78,7 +77,6 @@ describe('ActivitiesController', () => {
     }).compile();
 
     controller = module.get<ActivitiesController>(ActivitiesController);
-    service = module.get<ActivitiesService>(ActivitiesService);
   });
 
   afterEach(() => {
@@ -118,8 +116,8 @@ describe('ActivitiesController', () => {
         success: true,
         data: mockActivityResponse,
       });
-      expect(service.create).toHaveBeenCalledWith(createDto);
-      expect(service.create).toHaveBeenCalledTimes(1);
+      expect(mockActivitiesService.create).toHaveBeenCalledWith(createDto);
+      expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -134,7 +132,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(service.findAll).toHaveBeenCalledWith(undefined);
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined);
     });
 
     it('should return filtered activities', async () => {
@@ -148,7 +146,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(service.findAll).toHaveBeenCalledWith(filters);
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters);
     });
   });
 
@@ -184,7 +182,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: categories,
       });
-      expect(service.fetchCategories).toHaveBeenCalledTimes(1);
+      expect(mockActivitiesService.fetchCategories).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -198,8 +196,8 @@ describe('ActivitiesController', () => {
         success: true,
         data: mockActivityResponse,
       });
-      expect(service.findOne).toHaveBeenCalledWith(1);
-      expect(service.findOne).toHaveBeenCalledTimes(1);
+      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(1);
+      expect(mockActivitiesService.findOne).toHaveBeenCalledTimes(1);
     });
 
     it('should throw NotFoundException for non-existent activity', async () => {
@@ -208,7 +206,7 @@ describe('ActivitiesController', () => {
       );
 
       await expect(controller.findOne(999)).rejects.toThrow();
-      expect(service.findOne).toHaveBeenCalledWith(999);
+      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(999);
     });
   });
 
@@ -232,8 +230,8 @@ describe('ActivitiesController', () => {
         success: true,
         data: updatedActivity,
       });
-      expect(service.update).toHaveBeenCalledWith(1, updateDto);
-      expect(service.update).toHaveBeenCalledTimes(1);
+      expect(mockActivitiesService.update).toHaveBeenCalledWith(1, updateDto);
+      expect(mockActivitiesService.update).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error when updating non-existent activity', async () => {
@@ -246,7 +244,7 @@ describe('ActivitiesController', () => {
       );
 
       await expect(controller.update(999, updateDto)).rejects.toThrow();
-      expect(service.update).toHaveBeenCalledWith(999, updateDto);
+      expect(mockActivitiesService.update).toHaveBeenCalledWith(999, updateDto);
     });
   });
 
@@ -258,8 +256,8 @@ describe('ActivitiesController', () => {
       const result = await controller.remove(1);
 
       expect(result).toEqual(deleteResponse);
-      expect(service.remove).toHaveBeenCalledWith(1);
-      expect(service.remove).toHaveBeenCalledTimes(1);
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(1);
+      expect(mockActivitiesService.remove).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error when deleting non-existent activity', async () => {
@@ -268,7 +266,7 @@ describe('ActivitiesController', () => {
       );
 
       await expect(controller.remove(999)).rejects.toThrow();
-      expect(service.remove).toHaveBeenCalledWith(999);
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(999);
     });
   });
 });
