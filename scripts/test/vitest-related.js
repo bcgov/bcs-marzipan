@@ -18,7 +18,12 @@ if (files.length === 0) {
 // Filter to only calendar-ui source files
 const sourceFiles = files.filter((f) => {
   const ext = path.extname(f);
-  return /\.(ts|tsx)$/.test(f) && f.startsWith('calendar-ui/') && !f.includes('.test.') && !f.includes('.spec.');
+  return (
+    /\.(ts|tsx)$/.test(f) &&
+    f.startsWith('calendar-ui/') &&
+    !f.includes('.test.') &&
+    !f.includes('.spec.')
+  );
 });
 
 if (sourceFiles.length === 0) {
@@ -28,12 +33,13 @@ if (sourceFiles.length === 0) {
 
 // Convert paths to be relative to calendar-ui directory
 // Vitest will find related test files automatically when given source files
-const fileArgs = sourceFiles.map((f) => f.replace('calendar-ui/', '')).join(' ');
+const fileArgs = sourceFiles
+  .map((f) => f.replace('calendar-ui/', ''))
+  .join(' ');
 const cmd = `cd calendar-ui && npx vitest run ${fileArgs}`;
 
 try {
-  execSync(cmd, { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+  execSync(cmd, { stdio: 'inherit', cwd: path.join(__dirname, '..', '..') });
 } catch (err) {
   process.exitCode = err.status || 1;
 }
-

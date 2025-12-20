@@ -66,11 +66,11 @@
   "lint-staged": {
     "calendar-service/**/*.ts": [
       "eslint --fix",
-      "npm run test --workspace=calendar-service -- --findRelatedTests --passWithNoTests --testPathIgnorePatterns=e2e"
+      "node scripts/test/jest-related.js"
     ],
     "calendar-ui/**/*.{ts,tsx}": [
       "eslint --fix",
-      "node scripts/vitest-related.js"
+      "node scripts/test/vitest-related.js"
     ],
     "packages/**/*.ts": [
       "eslint --fix"
