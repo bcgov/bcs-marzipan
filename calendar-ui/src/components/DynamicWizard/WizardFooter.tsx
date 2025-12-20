@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Button, makeStyles } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
@@ -23,7 +22,7 @@ interface WizardFooterProps {
 }
 
 export const WizardFooter: React.FC<WizardFooterProps> = ({
-  stepKey,
+  // stepKey,
   onNext,
   onBack,
   isLast,

@@ -91,10 +91,19 @@ export default [
   })),
 
   // Calendar Service (NestJS) specific config - adopting Nest.js defaults
-  // Apply type-checked configs for calendar-service
+  // Apply type-checked configs for calendar-service source files
   ...createTypeCheckedConfigs({
-    files: ['calendar-service/**/*.ts'],
+    files: ['calendar-service/src/**/*.ts'],
     tsconfigPath: './calendar-service/tsconfig.json',
+    globals: {
+      ...globals.node,
+    },
+    sourceType: 'commonjs',
+  }),
+  // Apply type-checked configs for calendar-service test files
+  ...createTypeCheckedConfigs({
+    files: ['calendar-service/test/**/*.ts'],
+    tsconfigPath: './calendar-service/tsconfig.test.json',
     globals: {
       ...globals.node,
       ...globals.jest,
