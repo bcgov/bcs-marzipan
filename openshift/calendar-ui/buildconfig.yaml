@@ -14,7 +14,7 @@ spec:
   strategy:
     type: Docker
     dockerStrategy:
-      buildArgs:
+      env:
         - name: VITE_API_BASE_URL
           valueFrom:
             configMapKeyRef:
