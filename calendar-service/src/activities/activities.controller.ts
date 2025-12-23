@@ -119,7 +119,8 @@ export class ActivitiesController {
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateActivityRequestSchema)) body: UpdateActivityRequest
+    @Body(new ZodValidationPipe(updateActivityRequestSchema))
+    body: UpdateActivityRequest
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     // body is now validated and typed by ZodValidationPipe
     const result = await this.activitiesService.update(id, body);

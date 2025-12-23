@@ -7,6 +7,6 @@ spec:
     app: calendar-ui
   ports:
     - protocol: TCP
-      port: 80
+      port: 8080
       targetPort: http
       name: http
