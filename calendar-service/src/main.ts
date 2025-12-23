@@ -11,6 +11,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new RateLimitInterceptor(configService));
 
   const allowedOrigins = [
+    'https://calendar-ui-b3237c-dev.apps.gold.devops.gov.bc.ca',
     'http://localhost:3000',
     'http://localhost:4173',
     'http://localhost:8080',
@@ -24,7 +25,7 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   });
 
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
 }
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();
