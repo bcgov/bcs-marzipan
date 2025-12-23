@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { FieldSchema, StepSchema } from '../../schemas/types';
+import { StepSchema } from '../../schemas/types';
 
 type WizardStepFormProps = {
   step: StepSchema;

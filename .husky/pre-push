@@ -1,0 +1,41 @@
+# Branch naming validation hook
+# Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
+# Blocks push if branch name is invalid
+
+# Get the current branch name
+branch_name=$(git rev-parse --abbrev-ref HEAD)
+
+# Skip validation for main/master branches
+if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ]; then
+  exit 0
+fi
+
+# Branch naming pattern: <type>/CORPCAL-<number>-<short-description>
+# Types: feat, fix, docs, style, refactor, test, build, chore
+# Jira key: CORPCAL- followed by digits
+# Description: lowercase, hyphens allowed, no spaces
+pattern="^(feat|fix|docs|style|refactor|test|build|chore)/CORPCAL-[0-9]+-[a-z0-9-]+$"
+
+if ! echo "$branch_name" | grep -qE "$pattern"; then
+  echo ""
+  echo "❌ Invalid branch name: $branch_name"
+  echo ""
+  echo "Branch names must follow the format: <type>/CORPCAL-<number>-<short-description>"
+  echo ""
+  echo "Valid types: feat, fix, docs, style, refactor, test, build, chore"
+  echo "Jira key format: CORPCAL-<number> (must be uppercase, e.g., CORPCAL-123)"
+  echo "Description: all lowercase, hyphens allowed, no spaces"
+  echo ""
+  echo "Example:"
+  echo "  ✅ feat/CORPCAL-123-add-user-authentication"
+  echo ""
+  echo "❌ Invalid examples:"
+  echo "  ❌ feature/CORPCAL-123 (wrong type)"
+  echo "  ❌ feat/corcal-123 (wrong Jira key format)"
+  echo "  ❌ feat/CORPCAL-123 (missing description)"
+  echo ""
+  exit 1
+fi
+
+echo "Branch name is valid: $branch_name"
+

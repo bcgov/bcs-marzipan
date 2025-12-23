@@ -1,7 +1,7 @@
 import { DrawerProps } from '@fluentui/react-components';
 import * as React from 'react';
 
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   AppItem,
   Hamburger,
@@ -24,8 +24,6 @@ import {
   Board20Regular,
   HeartPulse20Filled,
   HeartPulse20Regular,
-  MegaphoneLoud20Filled,
-  MegaphoneLoud20Regular,
   NotePin20Filled,
   NotePin20Regular,
   Person20Filled,
@@ -34,8 +32,6 @@ import {
   Person20Regular,
   PersonSearch20Filled,
   PersonSearch20Regular,
-  PreviewLink20Filled,
-  PreviewLink20Regular,
   bundleIcon,
   PersonCircle32Regular,
   Calendar20Regular,
@@ -74,16 +70,16 @@ const useStyles = makeStyles({
 const Person = bundleIcon(Person20Filled, Person20Regular);
 const Dashboard = bundleIcon(Board20Filled, Board20Regular);
 const Calendar = bundleIcon(Calendar20Filled, Calendar20Regular);
-const Announcements = bundleIcon(MegaphoneLoud20Filled, MegaphoneLoud20Regular);
+// const Announcements = bundleIcon(MegaphoneLoud20Filled, MegaphoneLoud20Regular);
 const EmployeeSpotlight = bundleIcon(
   PersonLightbulb20Filled,
   PersonLightbulb20Regular
 );
 const Search = bundleIcon(PersonSearch20Filled, PersonSearch20Regular);
-const PerformanceReviews = bundleIcon(
-  PreviewLink20Filled,
-  PreviewLink20Regular
-);
+// const PerformanceReviews = bundleIcon(
+//   PreviewLink20Filled,
+//   PreviewLink20Regular
+// );
 const JobPostings = bundleIcon(NotePin20Filled, NotePin20Regular);
 const HealthPlans = bundleIcon(HeartPulse20Filled, HeartPulse20Regular);
 
@@ -96,9 +92,9 @@ type SidebarProps = {
 
 export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   const styles = useStyles();
-  const [enabledLinks, setEnabledLinks] = React.useState(true);
-  const [type, setType] = React.useState<DrawerType>('inline');
-  const [isMultiple, setIsMultiple] = React.useState(true);
+  const [enabledLinks] = React.useState(true);
+  const [type] = React.useState<DrawerType>('inline');
+  const [isMultiple] = React.useState(true);
   const location = useLocation();
 
   // Tabster prop used to restore focus to the navigation trigger for overlay nav drawers

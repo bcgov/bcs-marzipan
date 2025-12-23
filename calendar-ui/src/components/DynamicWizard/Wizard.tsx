@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useState, type FC } from 'react';
 import { WizardStepForm } from './WizardStepForm';
 import { WizardHeader } from './WizardHeader';
 import { WizardFooter } from './WizardFooter';
@@ -13,17 +13,16 @@ type WizardProps = {
   onSubmit: (values: Record<string, any>) => Promise<void>;
 };
 
-const Wizard: React.FC<WizardProps> = ({
+const Wizard: FC<WizardProps> = ({
   title,
   entryId,
   schema,
   initialValues = {},
   onSubmit,
 }) => {
-  const [stepIndex, setStepIndex] = React.useState(0);
-  const [values, setValues] =
-    React.useState<Record<string, any>>(initialValues);
-  const [errors, setErrors] = React.useState<Record<string, any>>({});
+  const [stepIndex, setStepIndex] = useState(0);
+  const [values, setValues] = useState<Record<string, any>>(initialValues);
+  const [errors, setErrors] = useState<Record<string, any>>({});
 
   const stepSchema = schema[stepIndex];
 
@@ -76,9 +75,16 @@ const Wizard: React.FC<WizardProps> = ({
       <WizardFooter
         stepKey={stepSchema.key}
         onBack={handleBack}
-        onNext={handleNext}
-        onSubmit={() => onSubmit(values)}
-        onSaveDraft={() => onSubmit(values)} // Placeholder for draft saving
+        onNext={() => {
+          void handleNext();
+        }}
+        onSubmit={() => {
+          void onSubmit(values);
+        }}
+        onSaveDraft={() => {
+          // Placeholder for draft saving - currently calls onSubmit
+          void onSubmit(values);
+        }}
         isLast={stepIndex === schema.length - 1}
         stepIndex={stepIndex}
       />

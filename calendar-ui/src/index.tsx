@@ -1,5 +1,5 @@
 // src/index.tsx
-import React from 'react';
+import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
@@ -11,11 +11,13 @@ const queryClient = new QueryClient();
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <CookiesProvider>
-        <App />
-      </CookiesProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <CookiesProvider>
+          <App />
+        </CookiesProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  </StrictMode>
 );

@@ -10,7 +10,12 @@ import {
   Button,
   makeStyles,
   Spinner,
+  Toast,
+  ToastTitle,
+  ToastBody,
+  useToastController,
 } from '@fluentui/react-components';
+import io from 'socket.io-client';
 
 import {
   Calendar24Regular,
@@ -33,7 +38,7 @@ import {
 } from '@tanstack/react-table';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchActivities } from '../api/activitiesApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 
@@ -84,9 +89,6 @@ type EventRow = {
   endDate: Date | undefined;
   location: string | undefined;
 };
-
-// Dummy table data
-export const eventData: EventRow[] = [];
 
 const getLastModifiedString = (modified: Date | undefined) => {
   if (!modified) {
@@ -307,38 +309,101 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { dispatchToast } = useToastController();
 
   // Fetch activities from API
-  useEffect(() => {
-    const loadActivities = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const activities = await fetchActivities();
+  const loadActivities = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const activities = await fetchActivities();
 
-        // Check if activities is an array
-        if (!Array.isArray(activities)) {
-          console.error('Activities response is not an array:', activities);
-          setError('Invalid response format from server');
-          setEventData([]);
-          return;
-        }
-
-        const mappedData = activities.map(mapActivityToEventRow);
-        setEventData(mappedData);
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch activities'
-        );
-        setEventData([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
+      // Check if activities is an array
+      if (!Array.isArray(activities)) {
+        console.error('Activities response is not an array:', activities);
+        setError('Invalid response format from server');
+        setEventData([]);
+        return;
       }
-    };
 
+      const mappedData = activities.map(mapActivityToEventRow);
+      setEventData(mappedData);
+    } catch (err) {
+      console.error('Error fetching activities:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch activities'
+      );
+      setEventData([]); // Set to empty array on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     void loadActivities();
   }, []);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const socket = io(apiUrl);
+
+    socket.on('connect', () => {
+      console.log('EventTable WebSocket connected:', socket.id);
+      // Subscribe to activity table updates
+      socket.emit('subscribeToActivities');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('EventTable WebSocket connection error:', error);
+    });
+
+    // Listen for new activity created
+    socket.on('activityCreated', async (data) => {
+      console.log('Activity created:', data);
+
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>New Activity Created</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 5000 }
+      );
+    });
+
+    // Listen for activity updated
+    socket.on('activityUpdated', async (data) => {
+      console.log('Activity updated:', data);
+
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Activity Updated</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'info', timeout: 5000 }
+      );
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.emit('unsubscribeFromActivities');
+      socket.off('activityCreated');
+      socket.off('activityUpdated');
+      socket.disconnect();
+    };
+  }, [dispatchToast]);
 
   useEffect(() => {
     setColumnFilters(filters);
@@ -715,8 +780,41 @@ export const EventTable: React.FC<EventTableProps> = ({
           return modifiedDate >= startDate && modifiedDate <= endDate;
         },
       }),
+      // Hidden column for createdDateRange filtering
+      columnHelper.accessor('dateCreated', {
+        id: 'createdDateRange',
+        enableHiding: true,
+        cell: (info) => info.getValue(),
+        filterFn: (
+          row,
+          columnId,
+          filterValue: { start: string; end: string } | undefined
+        ) => {
+          if (!filterValue || !filterValue.start || !filterValue.end)
+            return true;
+
+          const dateCreated = row.original.dateCreated;
+          if (!dateCreated) return false;
+
+          const startDate = new Date(filterValue.start);
+          startDate.setHours(0, 0, 0, 0);
+
+          const endDate = new Date(filterValue.end);
+          endDate.setHours(23, 59, 59, 999);
+
+          const createdDate = new Date(dateCreated);
+
+          return createdDate >= startDate && createdDate <= endDate;
+        },
+      }),
     ],
-    [columnHelper, styles.statusBadge]
+    [
+      columnHelper,
+      styles.overviewConfidential,
+      styles.overviewInline,
+      styles.overviewTitle,
+      styles.statusBadge,
+    ]
   );
 
   const table = useReactTable({
@@ -736,6 +834,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         category: false,
         tags: false,
         updatedDateRange: false,
+        createdDateRange: false,
       },
       columnPinning: { left: ['select', 'id'] },
     },
@@ -762,6 +861,7 @@ export const EventTable: React.FC<EventTableProps> = ({
     manualPagination: false,
     manualSorting: false,
     enableColumnFilters: true,
+    autoResetPageIndex: false, // Preserve current page when data updates
   });
 
   const filteredRows = table.getFilteredRowModel().rows;

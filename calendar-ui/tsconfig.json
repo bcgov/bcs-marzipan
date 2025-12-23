@@ -1,26 +1,20 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
+    "noEmit": true,
     "jsx": "react-jsx",
+    "allowJs": true,
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
       "@corpcal/shared": ["../packages/shared/dist/esm"],
       "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
       "@corpcal/database": ["../packages/database/dist/esm"],
-      "@corpcal/database/*": ["../packages/database/dist/esm/*"],
-      "react": ["./node_modules/@types/react"] // clears errors around icons (ts:2786)
+      "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
   "include": ["src", "../.local/draft_components/tagpicker.tsx"],

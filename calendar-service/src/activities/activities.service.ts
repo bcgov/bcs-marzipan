@@ -28,7 +28,7 @@ import {
   translatedLanguages,
   systemUsers,
 } from '@corpcal/database/schema';
-import type { Activity, Category, NewActivity } from '@corpcal/database/types';
+import type { Activity, Category } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
@@ -217,7 +217,12 @@ export class ActivitiesService {
     });
 
     // Fetch the created activity with all related data
-    return this.findOne(result.id);
+    const createdActivity = await this.findOne(result.id);
+
+    // Broadcast to all clients that a new activity was created
+    this.activitiesGateway.broadcastActivityCreated(createdActivity);
+
+    return createdActivity;
   }
 
   /**

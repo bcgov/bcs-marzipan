@@ -10,14 +10,15 @@ import { AppLogger } from '../common/logger/logger.service';
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // In production, restrict this to your frontend domain
+    // TODO: In production, restrict to frontend domain
+    origin: '*',
   },
 })
 export class ActivitiesGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new AppLogger(ActivitiesGateway.name);
   private readonly viewingActivities = new Map<string, Set<number>>();
@@ -35,11 +36,13 @@ export class ActivitiesGateway
   handleViewActivity(client: Socket, activityId: number) {
     this.logger.debug(`Client ${client.id} is viewing activity ${activityId}`);
 
-    if (!this.viewingActivities.has(client.id)) {
-      this.viewingActivities.set(client.id, new Set());
+    let viewing = this.viewingActivities.get(client.id);
+    if (!viewing) {
+      viewing = new Set();
+      this.viewingActivities.set(client.id, viewing);
     }
 
-    this.viewingActivities.get(client.id).add(activityId);
+    viewing.add(activityId);
   }
 
   @SubscribeMessage('leaveActivity')
@@ -50,6 +53,23 @@ export class ActivitiesGateway
     if (viewing) {
       viewing.delete(activityId);
     }
+  }
+
+  @SubscribeMessage('subscribeToActivities')
+  handleSubscribeToActivities(client: Socket) {
+    this.logger.debug(
+      `Client ${client.id} subscribed to activities table updates`
+    );
+    // Join a room for table-level updates
+    void client.join('activities-table');
+  }
+
+  @SubscribeMessage('unsubscribeFromActivities')
+  handleUnsubscribeFromActivities(client: Socket) {
+    this.logger.debug(
+      `Client ${client.id} unsubscribed from activities table updates`
+    );
+    void client.leave('activities-table');
   }
 
   /**
@@ -74,5 +94,24 @@ export class ActivitiesGateway
       }
     }
     this.logger.log(`Notified ${notifiedCount} client(s)`);
+
+    // Also broadcast to activities table subscribers
+    this.broadcastActivityUpdated(data);
+  }
+
+  /**
+   * Broadcast to all clients subscribed to the activities table that a new activity was created
+   */
+  broadcastActivityCreated(data: any) {
+    this.logger.log(`Broadcasting activity created: ${data.id}`);
+    this.server.to('activities-table').emit('activityCreated', data);
+  }
+
+  /**
+   * Broadcast to all clients subscribed to the activities table that an activity was updated
+   */
+  broadcastActivityUpdated(data: any) {
+    this.logger.log(`Broadcasting activity updated: ${data.id}`);
+    this.server.to('activities-table').emit('activityUpdated', data);
   }
 }

@@ -1,7 +1,4 @@
 import api from './axios.js';
-import { createLogger } from '../lib/logger';
-
-const logger = createLogger('LookupsAPI');
 
 export interface LookupItem {
   id: string | number;
