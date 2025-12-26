@@ -98,7 +98,7 @@ export function useFormLookups(): FormLookupData {
   const categories =
     categoriesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -127,7 +127,7 @@ export function useFormLookups(): FormLookupData {
   const pitchStatuses =
     pitchStatusesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -135,7 +135,7 @@ export function useFormLookups(): FormLookupData {
   const schedulingStatuses =
     schedulingStatusesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -143,7 +143,7 @@ export function useFormLookups(): FormLookupData {
   const commsMaterials =
     commsMaterialsQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -151,7 +151,7 @@ export function useFormLookups(): FormLookupData {
   const translationLanguages =
     translationLanguagesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -159,7 +159,7 @@ export function useFormLookups(): FormLookupData {
   const governmentRepresentatives =
     governmentRepresentativesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
       title: item.title as string | undefined,
     })) || [];
