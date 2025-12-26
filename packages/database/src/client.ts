@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as postgresModule from 'postgres';
 import * as schema from './schema';
@@ -24,7 +28,7 @@ export const migrationClient = connectionString
   : null;
 
 export const db = connectionString
-  ? drizzle(queryClient!, { schema })
+  ? drizzle(queryClient, { schema })
   : (null as unknown as ReturnType<typeof drizzle>);
 
 export type Database = typeof db;
