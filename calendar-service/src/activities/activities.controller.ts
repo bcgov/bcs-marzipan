@@ -73,10 +73,9 @@ export class ActivitiesController {
       query.endDateFrom !== undefined ||
       query.endDateTo !== undefined ||
       query.activityStatusId !== undefined ||
-      query.contactMinistryId !== undefined ||
-      query.cityId !== undefined ||
+      query.ministryOwnerId !== undefined ||
+      query.city !== undefined ||
       query.isActive !== undefined ||
-      query.isConfidential !== undefined ||
       query.isIssue !== undefined;
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters);

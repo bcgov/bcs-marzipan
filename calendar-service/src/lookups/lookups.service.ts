@@ -82,34 +82,30 @@ export class LookupsService {
 
   /**
    * Get all active system users
-   * Computes display name from firstName/lastName or falls back to username
+   * Computes display name from adDisplayName or falls back to adUsername
    * TODO: Implement scoping based on userId, role, organizationId
    */
   async getUsers(_params?: LookupQueryParams): Promise<UserLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: systemUsers.id,
-        username: systemUsers.username,
-        firstName: systemUsers.firstName,
-        lastName: systemUsers.lastName,
-        email: systemUsers.email,
+        adUsername: systemUsers.adUsername,
+        adDisplayName: systemUsers.adDisplayName,
+        adEmail: systemUsers.adEmail,
       })
       .from(systemUsers)
       .where(eq(systemUsers.isActive, true))
-      .orderBy(systemUsers.lastName, systemUsers.firstName);
+      .orderBy(systemUsers.adDisplayName, systemUsers.adUsername);
 
     return results.map((user) => {
-      const name =
-        user.firstName && user.lastName
-          ? `${user.firstName} ${user.lastName}`
-          : user.username || `User ${user.id}`;
+      const name = user.adDisplayName || user.adUsername || `User ${user.id}`;
       return {
         id: user.id,
         label: name,
         value: user.id,
         name,
-        email: user.email,
-        username: user.username,
+        email: user.adEmail,
+        username: user.adUsername,
       };
     });
   }

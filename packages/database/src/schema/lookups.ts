@@ -7,9 +7,11 @@ import {
   text,
   timestamp,
   uuid,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { ministries } from './ministry';
+import { systemUsers } from './user';
 
 /**
  * ActivityStatus lookup table - Activity statuses
@@ -20,13 +22,134 @@ import { ministries } from './ministry';
 export const activityStatuses = pgTable('activity_statuses', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
+});
+
+/**
+ * Category lookup table - Classification categories for activities
+ * Extensible by admins via admin UI.
+ * Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
+ */
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  pitchRequired: boolean('pitch_required').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
+});
+
+/**
+ * DateStatus lookup table - Date statuses
+ * Values: 'unknown', 'tentative', 'confirmed'
+ */
+export const dateStatuses = pgTable('date_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
+});
+
+/**
+ * TimeStatus lookup table - Time statuses
+ * Values: 'unknown', 'tentative', 'confirmed'
+ */
+export const timeStatuses = pgTable('time_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
+});
+
+/**
+ * VenueStatus lookup table - Venue statuses
+ * Values: 'unknown', 'tentative', 'confirmed'
+ */
+export const venueStatuses = pgTable('venue_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -37,13 +160,52 @@ export const activityStatuses = pgTable('activity_statuses', {
 export const cities = pgTable('cities', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   province: varchar('province', { length: 100 }),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
+});
+
+/**
+ * Venue lookup table - Venues for activities
+ * TODO: Consider address complete common component
+ */
+export const venues = pgTable('venues', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  address: jsonb('address'), // {street, city, provinceOrState, country} (address complete common component)
+  acId: varchar('ac_id', { length: 255 }), // AC ID (address complete ID)
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -61,9 +223,20 @@ export const governmentRepresentatives = pgTable('government_representatives', {
   email: varchar('email', { length: 255 }),
   ministryId: uuid('ministry_id').references(() => ministries.id), // Nullable FK - links ministers to ministries
   representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'cabinet_member', 'mla', 'other'
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -79,14 +252,26 @@ export const communicationContacts = pgTable('communication_contacts', {
   isActive: boolean('is_active').notNull().default(true),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
  * Event Planner lookup table - Event planners for activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/EventPlanner.cs
+ * TODO: Consider replacing with systemUsers table
  */
 export const eventPlanners = pgTable('event_planners', {
   id: serial('id').primaryKey(),
@@ -96,16 +281,28 @@ export const eventPlanners = pgTable('event_planners', {
   isActive: boolean('is_active').notNull().default(true),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
- * Videographer lookup table - Videographers for activities
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Videographer.cs
+ * Graphics lookup table - Graphics for activities
+ * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Graphic.cs
+ * TODO: Consider replacing with systemUsers table
  */
-export const videographers = pgTable('videographers', {
+export const graphicsUsers = pgTable('graphics', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
@@ -113,28 +310,20 @@ export const videographers = pgTable('videographers', {
   isActive: boolean('is_active').notNull().default(true),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
-
-/**
- * Category lookup table - Classification categories for activities
- * Extensible by admins via admin UI.
- * Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Category.cs
- */
-export const categories = pgTable('categories', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
-  sortOrder: integer('sort_order').notNull().default(0),
-  pitchNotRequired: boolean('pitch_not_required').notNull().default(false),
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
     .notNull()
     .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -148,11 +337,22 @@ export const themes = pgTable('themes', {
   displayName: varchar('display_name', { length: 255 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
-  timestamp: timestamp('timestamp', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
   topReleaseId: uuid('top_release_id'), // FK to News Release (integration)
   featureReleaseId: uuid('feature_release_id'), // FK to News Release (integration)
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -166,6 +366,20 @@ export const tags = pgTable('tags', {
   displayName: varchar('display_name', { length: 255 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -179,9 +393,20 @@ export const pitchStatuses = pgTable('pitch_statuses', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -195,9 +420,20 @@ export const schedulingStatuses = pgTable('scheduling_statuses', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -211,9 +447,20 @@ export const commsMaterials = pgTable('comms_materials', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 /**
@@ -227,9 +474,20 @@ export const translatedLanguages = pgTable('translated_languages', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
-  timestamp: timestamp('timestamp', { withTimezone: true })
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => systemUsers.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => systemUsers.id),
 });
 
 // Relations for lookup tables

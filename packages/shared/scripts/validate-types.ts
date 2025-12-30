@@ -25,6 +25,10 @@ import {
   updateActivitySchema,
   createActivityRequestSchema,
   updateActivityRequestSchema,
+  type CreateActivity,
+  type UpdateActivity,
+  type CreateActivityRequest,
+  type UpdateActivityRequest,
 } from '../src/schemas/activity.schema';
 import type { ActivityResponse } from '../src/schemas/activity-response.schema';
 import {
@@ -76,21 +80,17 @@ validateTypeMatch(
 
 // Validate UpdateActivity schema (partial update - all fields optional)
 // This is a compile-time check that the schema structure is correct
-type UpdateActivity = z.infer<z.ZodTypeAny & typeof updateActivitySchema>;
+// Using exported type from activity.schema.ts
 const _updateActivityCheck: Partial<Activity> = {} as UpdateActivity;
 
 // Validate CreateActivityRequest schema
 // This extends CreateActivity with request-specific transformations
-type CreateActivityRequest = z.infer<
-  z.ZodTypeAny & typeof createActivityRequestSchema
->;
+// Using exported type from activity.schema.ts
 const _createActivityRequestCheck: CreateActivityRequest =
   {} as CreateActivityRequest;
 
 // Validate UpdateActivityRequest schema
-type UpdateActivityRequest = z.infer<
-  z.ZodTypeAny & typeof updateActivityRequestSchema
->;
+// Using exported type from activity.schema.ts
 const _updateActivityRequestCheck: UpdateActivityRequest =
   {} as UpdateActivityRequest;
 
@@ -111,7 +111,6 @@ const _activityResponseFieldCheck: {
   title: Activity['title'];
   summary: Activity['summary'];
   isIssue: Activity['isIssue'];
-  oicRelated: Activity['oicRelated'];
   isActive: Activity['isActive'];
   significance: Activity['significance'];
   pitchComments: Activity['pitchComments'];
@@ -120,10 +119,13 @@ const _activityResponseFieldCheck: {
   newsReleaseId: Activity['newsReleaseId'];
   eventLeadName: Activity['eventLeadName'];
   notForLookAhead: Activity['notForLookAhead'];
-  planningReport: Activity['planningReport'];
-  thirtySixtyNinetyReport: Activity['thirtySixtyNinetyReport'];
+  notForThirtySixtyNinety: Activity['notForThirtySixtyNinety'];
   // Transformed fields (these exist in Activity but with different types)
   activityStatusId: Activity['activityStatusId']; // number in Activity, string in Response
+  pitchStatusId: Activity['pitchStatusId']; // number in Activity, string in Response
+  dateStatusId: Activity['dateStatusId']; // number in Activity, string in Response
+  timeStatusId: Activity['timeStatusId']; // number in Activity, string in Response
+  venueStatusId: Activity['venueStatusId']; // number in Activity, string in Response
   startDate: Activity['startDate']; // Date in Activity, string in Response
   endDate: Activity['endDate']; // Date in Activity, string in Response
   startTime: Activity['startTime']; // time in Activity, string in Response
@@ -132,14 +134,27 @@ const _activityResponseFieldCheck: {
   lastUpdatedDateTime: Activity['lastUpdatedDateTime']; // Date in Activity, string in Response
   createdBy: Activity['createdBy']; // number in Activity, string in Response
   lastUpdatedBy: Activity['lastUpdatedBy']; // number in Activity, string in Response
+  venue: Activity['venue'];
   venueAddress: Activity['venueAddress'];
   lookAheadStatus: Activity['lookAheadStatus'];
   lookAheadSection: Activity['lookAheadSection'];
   calendarVisibility: Activity['calendarVisibility'];
-  // Renamed fields
-  confidential: Activity['isConfidential']; // isConfidential in Activity, confidential in Response
+  // Organization fields
+  leadOrgId: Activity['leadOrgId'];
+  leadOrgName: Activity['leadOrgName'];
+  eventLeadOrgId: Activity['eventLeadOrgId'];
+  eventLeadOrgName: Activity['eventLeadOrgName'];
+  // User ID fields
+  eventLeadId: Activity['eventLeadId'];
+  graphicsUserId: Activity['graphicsUserId'];
+  ownerId: Activity['ownerId'];
+  additionalOwnerId: Activity['additionalOwnerId'];
+  ministryOwnerId: Activity['ministryOwnerId'];
   // Computed/joined fields (these don't exist in Activity, they're added in the response)
-  // category, tags, jointOrg, etc. are added from relatedData
+  // category, tags, jointOrg, relatedActivities, commsMaterials, translationsRequired,
+  // jointEventOrg, representativesAttending, sharedWith, canEdit, canView are added from relatedData
+  // leadOrg, eventLeadOrg, eventLead, graphics, owner are computed/renamed fields
+  // pitchStatus, dateStatus, timeStatus, venueStatus are computed from lookups
 } = {} as never;
 
 // ============================================

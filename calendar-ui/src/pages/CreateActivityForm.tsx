@@ -55,14 +55,10 @@ export const CreateActivityForm: React.FC = () => {
     mode: 'onChange', // Validate on change to enable real-time validation
     defaultValues: {
       isAllDay: false,
-      oicRelated: false,
       isIssue: false,
       notForLookAhead: false,
-      planningReport: false,
-      thirtySixtyNinetyReport: false,
       // TODO: Remove hardcoded user id 8 - this is temporary for development
       ownerId: 8,
-      commsLeadId: 8,
       categoryIds: [],
       relatedActivityIds: [],
       tagIds: [],
@@ -74,7 +70,7 @@ export const CreateActivityForm: React.FC = () => {
       sharedWithOrganizationIds: [],
       canEditUserIds: [],
       canViewUserIds: [],
-    } as FormData,
+    } as Partial<FormData>,
   });
 
   const handleCancel = () => {
@@ -180,8 +176,7 @@ export const CreateActivityForm: React.FC = () => {
       schedulingStatusId: 'Scheduling Status',
       pitchStatusId: 'Pitch Status',
       activityStatusId: 'Activity Status',
-      contactMinistryId: 'Contact Ministry',
-      cityId: 'City',
+      ministryOwnerId: 'Ministry Owner',
       venueAddress: 'Venue Address',
       street: 'Street Address',
       city: 'City',
@@ -286,13 +281,9 @@ export const CreateActivityForm: React.FC = () => {
               pitchStatusOptions={lookups.pitchStatuses}
             />
 
-            <ActivityScheduleSection
-              form={form}
-              schedulingStatusOptions={lookups.schedulingStatuses}
-            />
+            <ActivityScheduleSection form={form} />
 
             <ActivityCommsSection
-              commsLeadOptions={lookups.users}
               commsMaterialOptions={lookups.commsMaterials}
               translationLanguageOptions={lookups.translationLanguages}
             />

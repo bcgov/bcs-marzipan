@@ -6,8 +6,10 @@ import type {
   MinistryLookupItem,
   UserLookupItem,
   PitchStatusLookupItem,
-  SchedulingStatusLookupItem,
   ActivityStatusLookupItem,
+  DateStatusLookupItem,
+  TimeStatusLookupItem,
+  VenueStatusLookupItem,
   CityLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
@@ -136,23 +138,6 @@ export class PitchStatusLookupItemDto implements PitchStatusLookupItem {
 }
 
 /**
- * SchedulingStatusLookupItemDto
- */
-export class SchedulingStatusLookupItemDto implements SchedulingStatusLookupItem {
-  id!: string | number;
-  label!: string;
-  value!: string | number;
-  name!: string;
-  displayName!: string | null;
-
-  static from(data: SchedulingStatusLookupItem): SchedulingStatusLookupItemDto {
-    const dto = new SchedulingStatusLookupItemDto();
-    Object.assign(dto, data);
-    return dto;
-  }
-}
-
-/**
  * ActivityStatusLookupItemDto
  */
 export class ActivityStatusLookupItemDto implements ActivityStatusLookupItem {
@@ -164,6 +149,57 @@ export class ActivityStatusLookupItemDto implements ActivityStatusLookupItem {
 
   static from(data: ActivityStatusLookupItem): ActivityStatusLookupItemDto {
     const dto = new ActivityStatusLookupItemDto();
+    Object.assign(dto, data);
+    return dto;
+  }
+}
+
+/**
+ * DateStatusLookupItemDto
+ */
+export class DateStatusLookupItemDto implements DateStatusLookupItem {
+  id!: string | number;
+  label!: string;
+  value!: string | number;
+  name!: string;
+  displayName!: string | null;
+
+  static from(data: DateStatusLookupItem): DateStatusLookupItemDto {
+    const dto = new DateStatusLookupItemDto();
+    Object.assign(dto, data);
+    return dto;
+  }
+}
+
+/**
+ * TimeStatusLookupItemDto
+ */
+export class TimeStatusLookupItemDto implements TimeStatusLookupItem {
+  id!: string | number;
+  label!: string;
+  value!: string | number;
+  name!: string;
+  displayName!: string | null;
+
+  static from(data: TimeStatusLookupItem): TimeStatusLookupItemDto {
+    const dto = new TimeStatusLookupItemDto();
+    Object.assign(dto, data);
+    return dto;
+  }
+}
+
+/**
+ * VenueStatusLookupItemDto
+ */
+export class VenueStatusLookupItemDto implements VenueStatusLookupItem {
+  id!: string | number;
+  label!: string;
+  value!: string | number;
+  name!: string;
+  displayName!: string | null;
+
+  static from(data: VenueStatusLookupItem): VenueStatusLookupItemDto {
+    const dto = new VenueStatusLookupItemDto();
     Object.assign(dto, data);
     return dto;
   }
@@ -253,10 +289,11 @@ const _orgCheck: OrganizationLookupItem = {} as OrganizationLookupItemDto;
 const _ministryCheck: MinistryLookupItem = {} as MinistryLookupItemDto;
 const _userCheck: UserLookupItem = {} as UserLookupItemDto;
 const _pitchStatusCheck: PitchStatusLookupItem = {} as PitchStatusLookupItemDto;
-const _schedulingStatusCheck: SchedulingStatusLookupItem =
-  {} as SchedulingStatusLookupItemDto;
 const _activityStatusCheck: ActivityStatusLookupItem =
   {} as ActivityStatusLookupItemDto;
+const _dateStatusCheck: DateStatusLookupItem = {} as DateStatusLookupItemDto;
+const _timeStatusCheck: TimeStatusLookupItem = {} as TimeStatusLookupItemDto;
+const _venueStatusCheck: VenueStatusLookupItem = {} as VenueStatusLookupItemDto;
 const _cityCheck: CityLookupItem = {} as CityLookupItemDto;
 const _commsMaterialsCheck: CommsMaterialsLookupItem =
   {} as CommsMaterialsLookupItemDto;
@@ -273,8 +310,10 @@ void _orgCheck;
 void _ministryCheck;
 void _userCheck;
 void _pitchStatusCheck;
-void _schedulingStatusCheck;
 void _activityStatusCheck;
+void _dateStatusCheck;
+void _timeStatusCheck;
+void _venueStatusCheck;
 void _cityCheck;
 void _commsMaterialsCheck;
 void _translationCheck;

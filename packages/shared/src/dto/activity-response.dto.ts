@@ -21,15 +21,20 @@ import type {
  */
 export class ActivityResponseDto implements ActivityResponse {
   id!: number;
-  displayId!: string | null;
+  displayId!: string;
   activityStatusId!: string;
+  pitchStatusId!: string;
+  dateStatusId!: string;
+  timeStatusId!: string;
+  venueStatusId!: string | null;
   category!: string[];
   title!: string;
-  summary!: string | null;
+  summary!: string;
   isIssue!: boolean;
-  oicRelated!: boolean;
   isActive!: boolean;
-  leadOrg!: string | null;
+  leadOrgId!: string | null;
+  leadOrgName!: string | null;
+  leadOrg!: string | null; // Backward compatibility
   jointOrg?: string[] | undefined;
   relatedActivities?: string[] | undefined;
   tags?:
@@ -38,24 +43,24 @@ export class ActivityResponseDto implements ActivityResponse {
         text: string;
       }>
     | undefined;
-  significance!: string | null;
+  significance!: string;
   pitchStatus!: string;
+  dateStatus!: string;
+  timeStatus!: string;
+  venueStatus!: string | null;
   pitchComments!: string | null;
-  confidential!: boolean;
-  schedulingStatus!: string;
   isAllDay!: boolean;
   startDate!: string | null;
   startTime!: string | null;
   endDate!: string | null;
   endTime!: string | null;
-  isTimeConfirmed!: boolean;
-  isDateConfirmed!: boolean;
-  schedulingConsiderations!: string | null;
-  commsLead!: string | null;
+  schedulingConsiderations!: string;
   commsMaterials?: string[] | undefined;
   newsReleaseId!: string | null;
   translationsRequired?: string[] | undefined;
-  eventLeadOrg!: string | null;
+  eventLeadOrgId!: string | null;
+  eventLeadOrgName!: string | null;
+  eventLeadOrg!: string | null; // Backward compatibility
   jointEventOrg?: string[] | undefined;
   representativesAttending?:
     | Array<{
@@ -69,20 +74,24 @@ export class ActivityResponseDto implements ActivityResponse {
     provinceOrState: string;
     country: string;
   } | null;
-  eventLead!: string | null;
+  venue!: string | null;
+  eventLeadId!: string | null;
+  eventLead!: string | null; // Computed from eventLeadId
   eventLeadName!: string | null;
-  videographer!: string | null;
-  graphics!: string | null;
+  graphicsUserId!: string | null;
+  graphics!: string | null; // Computed from graphicsUserId
   notForLookAhead!: boolean;
+  notForThirtySixtyNinety!: boolean;
   lookAheadStatus!: LookAheadStatus | null;
   lookAheadSection!: LookAheadSection | null;
-  planningReport!: boolean;
-  thirtySixtyNinetyReport!: boolean;
-  owner!: string | null;
+  ownerId!: string;
+  owner!: string; // Computed from ownerId
+  additionalOwnerId!: string | null;
+  ministryOwnerId!: string | null;
   sharedWith?: string[] | undefined;
   canEdit?: string[] | undefined;
   canView?: string[] | undefined;
-  calendarVisibility!: CalendarVisibility | null;
+  calendarVisibility!: CalendarVisibility;
   createdDateTime!: string;
   createdBy!: string;
   lastUpdatedDateTime!: string;

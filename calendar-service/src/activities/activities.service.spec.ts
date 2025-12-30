@@ -55,44 +55,42 @@ describe('ActivitiesService', () => {
       title: 'Test Activity',
       summary: 'Test summary',
       isIssue: false,
-      oicRelated: false,
       isActive: true,
       leadOrgId: null,
-      significance: null,
+      leadOrgName: null,
+      significance: '',
       pitchStatusId: 1,
       pitchComments: null,
-      isConfidential: false,
-      schedulingStatusId: 1,
+      dateStatusId: 1,
+      timeStatusId: 1,
+      venueStatusId: null,
       isAllDay: false,
       startDate: new Date('2024-01-15'),
       startTime: '10:00',
       endDate: new Date('2024-01-15'),
       endTime: '12:00',
-      schedulingConsiderations: null,
-      commsLeadId: null,
+      schedulingConsiderations: '',
       newsReleaseId: null,
       eventLeadOrgId: null,
-      venueAddress: null,
+      eventLeadOrgName: null,
       eventLeadId: null,
       eventLeadName: null,
-      graphicsId: null,
+      graphicsUserId: null,
+      venue: null,
+      venueAddress: null,
       notForLookAhead: false,
+      notForThirtySixtyNinety: false,
       lookAheadStatus: 'none',
       lookAheadSection: 'events',
-      planningReport: false,
-      thirtySixtyNinetyReport: false,
-      ownerId: null,
+      ownerId: 1,
+      additionalOwnerId: null,
+      ministryOwnerId: null,
       calendarVisibility: 'visible',
       createdDateTime: now,
       createdBy: 1,
       lastUpdatedDateTime: now,
       lastUpdatedBy: 1,
       rowVersion: 0,
-      rowGuid: null,
-      // Additional fields that might exist
-      contactMinistryId: null,
-      cityId: null,
-      hqSection: 0,
       ...overrides,
     } as Activity;
   };
@@ -142,29 +140,30 @@ describe('ActivitiesService', () => {
         displayId: 'MIN-000123',
         summary: 'A detailed summary',
         isIssue: true,
-        oicRelated: true,
         leadOrgId: '123e4567-e89b-12d3-a456-426614174000',
+        leadOrgName: 'Test Organization',
         significance: 'High significance',
         pitchComments: 'Some pitch comments',
-        isConfidential: true,
         schedulingConsiderations: 'Consider scheduling',
-        commsLeadId: 2,
         newsReleaseId: '123e4567-e89b-12d3-a456-426614174001',
         eventLeadOrgId: '123e4567-e89b-12d3-a456-426614174002',
+        eventLeadOrgName: 'Event Org',
         venueAddress: {
           street: '123 Main St',
           city: 'Victoria',
           provinceOrState: 'BC',
           country: 'Canada',
         },
+        venue: 'Test Venue',
         eventLeadId: 3,
-        graphicsId: 5,
+        graphicsUserId: 5,
         notForLookAhead: true,
+        notForThirtySixtyNinety: true,
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
-        planningReport: true,
-        thirtySixtyNinetyReport: true,
         ownerId: 6,
+        additionalOwnerId: 7,
+        ministryOwnerId: '123e4567-e89b-12d3-a456-426614174003',
         calendarVisibility: 'partial',
         startDate: new Date('2024-02-20') as any,
         startTime: '14:30',
@@ -305,21 +304,21 @@ describe('ActivitiesService', () => {
       // Verify all required fields from schema are present
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('activityStatusId');
+      expect(result).toHaveProperty('pitchStatusId');
+      expect(result).toHaveProperty('dateStatusId');
+      expect(result).toHaveProperty('timeStatusId');
       expect(result).toHaveProperty('category');
       expect(result).toHaveProperty('title');
       expect(result).toHaveProperty('isIssue');
-      expect(result).toHaveProperty('oicRelated');
       expect(result).toHaveProperty('isActive');
       expect(result).toHaveProperty('pitchStatus');
-      expect(result).toHaveProperty('confidential');
-      expect(result).toHaveProperty('schedulingStatus');
       expect(result).toHaveProperty('isAllDay');
       expect(result).toHaveProperty('notForLookAhead');
+      expect(result).toHaveProperty('notForThirtySixtyNinety');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
-      expect(result).toHaveProperty('planningReport');
-      expect(result).toHaveProperty('thirtySixtyNinetyReport');
       expect(result).toHaveProperty('calendarVisibility');
+      expect(result).toHaveProperty('ownerId');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
       expect(result).toHaveProperty('lastUpdatedDateTime');
@@ -417,17 +416,19 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         isActive: true,
         isIssue: false,
-        oicRelated: false,
         isAllDay: false,
-        isConfidential: false,
         notForLookAhead: false,
-        planningReport: false,
-        thirtySixtyNinetyReport: false,
+        notForThirtySixtyNinety: false,
       } as unknown as CreateActivityRequest;
 
       const createdActivity = createMockActivity({
-        ...createDto,
         id: 2,
+        title: 'New Activity',
+        isActive: true,
+        isIssue: false,
+        isAllDay: false,
+        notForLookAhead: false,
+        notForThirtySixtyNinety: false,
       });
 
       const mockInsert = {

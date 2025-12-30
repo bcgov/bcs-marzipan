@@ -17,14 +17,17 @@ import {
 import { FilterRegular } from '@fluentui/react-icons';
 
 import { ColumnFiltersState } from '@tanstack/react-table';
-import React, { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+
 import { useCookies } from 'react-cookie';
 import {
   fetchCategories,
   fetchSchedulingStatuses,
   fetchTags,
   fetchGovernmentRepresentatives,
+  fetchUsers,
   LookupItem,
+  UserLookupItem,
 } from '../api/lookupsApi';
 import { fetchActivities } from '../api/activitiesApi';
 
@@ -37,39 +40,39 @@ export const CalendarFilters: React.FC<FilterProps> = ({
   onFiltersChanged,
   onKeywordFilterChanged,
 }) => {
-  const [keywordFilter, setKeywordFilter] = React.useState<string>();
-  const [tabFilterValue, setTabFilterValue] = React.useState<string>('all');
+  const [keywordFilter, setKeywordFilter] = useState<string>();
+  const [tabFilterValue, setTabFilterValue] = useState<string>('all');
 
-  const [checkedStatusValues, setCheckedStatusValues] = React.useState<
+  const [checkedStatusValues, setCheckedStatusValues] = useState<
     Record<string, string[]>
   >({ status: [] });
   // ({ status: ["new", "reviewed", "changed", "deleted"] });
-  const [checkedCategoryValues, setCheckedCategoryValues] = React.useState<
+  const [checkedCategoryValues, setCheckedCategoryValues] = useState<
     Record<string, string[]>
   >({ category: [] });
   // ({ category: ["release", "issue", "event"] });
-  const [dateRange, setDateRange] = React.useState<{
+  const [dateRange, setDateRange] = useState<{
     start: string;
     end: string;
   }>({ start: '', end: '' });
-  const [updatedDateRange, setUpdatedDateRange] = React.useState<{
+  const [updatedDateRange, setUpdatedDateRange] = useState<{
     start: string;
     end: string;
   }>({ start: '', end: '' });
-  const [createdDateRange, setCreatedDateRange] = React.useState<{
+  const [createdDateRange, setCreatedDateRange] = useState<{
     start: string;
     end: string;
   }>({ start: '', end: '' });
-  const [checkedReportsValues, setCheckedReportsValues] = React.useState<
+  const [checkedReportsValues, setCheckedReportsValues] = useState<
     Record<string, string[]>
   >({ reports: [] });
   const [checkedRepresentativesValues, setCheckedRepresentativesValues] =
-    React.useState<Record<string, string[]>>({ representative: [] });
+    useState<Record<string, string[]>>({ representative: [] });
 
-  const [checkedTagsValues, setCheckedTagsValues] = React.useState<
+  const [checkedTagsValues, setCheckedTagsValues] = useState<
     Record<string, string[]>
   >({ tag: [] });
-  const [checkedLeadsValues, setCheckedLeadsValues] = React.useState<
+  const [checkedLeadsValues, setCheckedLeadsValues] = useState<
     Record<string, string[]>
   >({ leads: [] });
 
@@ -289,19 +292,17 @@ export const CalendarFilters: React.FC<FilterProps> = ({
   }, [keywordFilter, onKeywordFilterChanged]);
 
   // get Categories, Tags, etc. from API
-  const [categories, setCategories] = React.useState<LookupItem[]>([]);
-  const [tags, setTags] = React.useState<LookupItem[]>([]);
-  const [representatives, setRepresentatives] = React.useState<LookupItem[]>(
-    []
-  );
-  const [leads, setLeads] = React.useState<LookupItem[]>([]);
-  const [statuses, setStatuses] = React.useState<LookupItem[]>([]);
+  const [categories, setCategories] = useState<LookupItem[]>([]);
+  const [tags, setTags] = useState<LookupItem[]>([]);
+  const [representatives, setRepresentatives] = useState<LookupItem[]>([]);
+  const [leads, setLeads] = useState<UserLookupItem[]>([]);
+  const [statuses, setStatuses] = useState<LookupItem[]>([]);
   // TODO: when schema for these is finalized
-  // const [locations, setLocations] = React.useState<LookupItem[]>([]);
-  // const [lookAheadStatuses, setLookAheadStatuses] = React.useState<
+  // const [locations, setLocations] = useState<LookupItem[]>([]);
+  // const [lookAheadStatuses, setLookAheadStatuses] = useState<
   //   LookupItem[]
   // >([]);
-  // const [cities, setCities] = React.useState<LookupItem[]>([]);
+  // const [cities, setCities] = useState<LookupItem[]>([]);
   useEffect(() => {
     fetchCategories()
       .then((data) => {
@@ -334,21 +335,43 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         console.error('Error fetching representatives:', error);
       });
 
-    // Fetch unique leads from activities
+    // Extract unique owner IDs from activities first, then fetch only those users
     fetchActivities()
       .then((activities) => {
-        const uniqueLeads = new Set<string>();
+        // Get unique owner IDs from activities
+        const uniqueOwnerIds = new Set<string>();
         activities.forEach((activity) => {
-          if (activity.commsLead) uniqueLeads.add(activity.commsLead);
-          if (activity.eventLead) uniqueLeads.add(activity.eventLead);
+          if (activity.ownerId) {
+            uniqueOwnerIds.add(activity.ownerId.toString());
+          }
         });
-        const leadsArray = Array.from(uniqueLeads)
-          .sort()
-          .map((lead) => ({ id: lead, name: lead, label: lead, value: lead }));
-        setLeads(leadsArray);
+
+        // If no owners found, set empty array
+        if (uniqueOwnerIds.size === 0) {
+          setLeads([]);
+          return;
+        }
+
+        // Fetch all users (since API doesn't support filtering by IDs)
+        // Then filter to only owners and sort by name
+        fetchUsers()
+          .then((users) => {
+            const ownerUsers = users
+              .filter((user) => uniqueOwnerIds.has(user.id.toString()))
+              .sort((a, b) => {
+                // Sort by name (first or last name if available)
+                const nameA = a.name || a.label || '';
+                const nameB = b.name || b.label || '';
+                return nameA.localeCompare(nameB);
+              });
+            setLeads(ownerUsers);
+          })
+          .catch((error) => {
+            console.error('Error fetching users:', error);
+          });
       })
       .catch((error) => {
-        console.error('Error fetching leads:', error);
+        console.error('Error fetching activities:', error);
       });
   }, []); // Empty dependency array - only run once on mount
 
@@ -638,7 +661,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
                 name="leads"
                 value={lead.id.toString()}
               >
-                {lead.label}
+                {lead.name || lead.label}
               </MenuItemCheckbox>
             ))}
           </MenuList>

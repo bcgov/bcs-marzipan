@@ -269,11 +269,6 @@ export const EntryDetails = () => {
           {/* Issue and Order in Council Checkboxes */}
           <div className={styles.checkboxGroup}>
             <Checkbox checked={activityData.isIssue} disabled label="Issue" />
-            <Checkbox
-              checked={activityData.oicRelated}
-              disabled
-              label="Order in Council Related"
-            />
           </div>
 
           {/* Tags Section */}
@@ -352,12 +347,6 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>Scheduling Status</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.schedulingStatus || 'Not specified'}
-                </Text>
-              </div>
-              <div>
                 <Checkbox
                   checked={activityData.isAllDay}
                   disabled
@@ -427,12 +416,6 @@ export const EntryDetails = () => {
               <ShareRegular /> Communications
             </Text>
             <div className={styles.twoColumnGrid}>
-              <div>
-                <Text className={styles.fieldLabel}>Comms Lead</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.commsLead || 'Not specified'}
-                </Text>
-              </div>
               <div>
                 <Text className={styles.fieldLabel}>Comms Materials</Text>
                 <Text className={styles.fieldValue}>
@@ -596,20 +579,6 @@ export const EntryDetails = () => {
               <DocumentRegular /> Reports
             </Text>
             <div>
-              <Checkbox
-                checked={activityData.thirtySixtyNinetyReport}
-                disabled
-                label="30-60-90"
-              />
-            </div>
-            <div style={{ marginTop: '8px' }}>
-              <Checkbox
-                checked={activityData.planningReport}
-                disabled
-                label="Planning Report"
-              />
-            </div>
-            <div style={{ marginTop: '8px' }}>
               <Checkbox
                 checked={activityData.notForLookAhead}
                 disabled

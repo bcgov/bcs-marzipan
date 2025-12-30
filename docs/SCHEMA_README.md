@@ -92,7 +92,9 @@ This ensures the API response schema automatically stays in sync with database s
 - **Validation Script**: `packages/shared/scripts/validate-types.ts`
   - Validates all schemas match their corresponding Drizzle types
   - Checks that `ActivityResponse` fields are derived from `Activity`
+  - Validates lookup response schemas match their database types
   - Validates request schemas
+  - **Must be updated** when adding or removing fields from schemas (see schema update steps)
 
 ### 3. Runtime Validation
 
@@ -122,7 +124,7 @@ This ensures the API response schema automatically stays in sync with database s
 ### Utility Files
 
 - `packages/shared/src/utils/schema-helpers.ts` - Schema helper functions
-- `packages/shared/scripts/validate-types.ts` - Type validation script
+- `packages/shared/scripts/validate-types.ts` - Type validation script (validates schemas match database types)
 
 ### Service Files
 
@@ -186,8 +188,8 @@ This creates a new migration file in `packages/database/migrations/` (e.g., `000
 
 If the field should be exposed in API responses, update `packages/shared/src/schemas/activity-response.schema.ts`:
 
-1. **Add to `.pick()` section** (around line 33-68): Include the field in the fields to keep from the base schema
-2. **Add to `.extend()` section** (around line 69-157): Add explicit type definition for the field (required due to drizzle-zod type inference limitations)
+1. **Add to `.pick()` section**: Include the field in the fields to keep from the base schema
+2. **Add to `.extend()` section**: Add explicit type definition for the field (required due to drizzle-zod type inference limitations)
 
 Example:
 
@@ -229,7 +231,23 @@ If the field requires transformation or special handling, update the mapping fun
 - Add the field mapping logic if transformation is needed
 - The `ensureMatchesSchema()` helper will catch type mismatches at compile time
 
-##### Step 6: Run Type Validation
+##### Step 6: Update Type Validation File (if needed)
+
+If you added or removed fields from the Activity schema, update `packages/shared/scripts/validate-types.ts`:
+
+- **For new fields**: Add the field to the `_activityResponseFieldCheck` object to ensure it's validated
+- **For removed fields**: Remove the field from the validation check
+- **For transformed fields**: Ensure the validation reflects the transformation (e.g., number → string)
+
+The validation file ensures compile-time type safety by checking that:
+
+- Zod schemas match their corresponding Drizzle types
+- `ActivityResponse` fields are derived from `Activity`
+- Request schemas are valid
+
+**Note**: If you only modified existing fields (e.g., changed nullability), you typically don't need to update this file - the type system will catch mismatches automatically.
+
+##### Step 7: Run Type Validation
 
 Verify that all types are aligned:
 
@@ -242,8 +260,41 @@ This script validates that:
 - Zod schemas match their corresponding Drizzle types
 - `ActivityResponse` fields are derived from `Activity`
 - Request schemas are valid
+- Lookup response schemas match their database types
 
-##### Step 7: Apply Migration and Test
+**Important**: If the validation fails, review the errors and update the relevant schema files or the validation file (`packages/shared/scripts/validate-types.ts`) as needed.
+
+##### Step 8: Update Migration Log
+
+Document your schema changes in `packages/database/migrations/MIGRATION_LOG.md`:
+
+1. Add a new entry with the current date
+2. Reference the migration file(s) created
+3. List all changes made
+4. Note any breaking changes
+5. Include migration notes if needed
+
+Example:
+
+```markdown
+### 2025-01-XX - Add New Field to Activities
+
+**Migration File(s):** `0003_add_new_field.sql`
+
+**Changes:**
+
+- Added `newField` varchar column to activities table
+
+**Breaking Changes:**
+
+- None
+
+**Notes:**
+
+- Field is nullable, existing records will have NULL values
+```
+
+##### Step 9: Apply Migration and Test
 
 Apply the migration to your database:
 
@@ -355,7 +406,26 @@ ON CONFLICT (id) DO NOTHING;
 - Seed files are executed by the `SeedService` when running `npm run seed --workspace=calendar-service`
 - Always test seed files after modification
 
-##### Step 5: Run Type Validation
+##### Step 5: Update Type Validation File (if needed)
+
+If you added or removed fields from the lookup schema, update `packages/shared/scripts/validate-types.ts`:
+
+- **For new fields**: Add the field to the corresponding lookup validation check (e.g., `_categoryResponseCheck`, `_tagResponseCheck`, `_activityStatusResponseCheck`, `_cityResponseCheck`, `_govRepResponseCheck`, etc.)
+- **For removed fields**: Remove the field from the validation check
+
+**Note**: If you only modified existing fields (e.g., changed nullability), you typically don't need to update this file - the type system will catch mismatches automatically.
+
+##### Step 6: Update Migration Log
+
+Document your schema changes in `packages/database/migrations/MIGRATION_LOG.md`:
+
+1. Add a new entry with the current date
+2. Reference the migration file(s) created
+3. List all changes made
+4. Note any breaking changes
+5. Include migration notes if needed
+
+##### Step 7: Run Type Validation
 
 Verify types are aligned:
 
@@ -363,7 +433,15 @@ Verify types are aligned:
 npm run validate-types --workspace=packages/shared
 ```
 
-##### Step 6: Apply Migration and Seed
+This script validates that:
+
+- Zod schemas match their corresponding Drizzle types
+- Lookup response schemas match their database types
+- Request schemas are valid
+
+**Important**: If the validation fails, review the errors and update the relevant schema files or the validation file (`packages/shared/scripts/validate-types.ts`) as needed.
+
+##### Step 8: Apply Migration and Seed
 
 Apply the migration:
 
@@ -436,6 +514,57 @@ The application uses SQL seed files to populate lookup tables and initial data. 
 - Group related inserts together with clear section headers
 - Use consistent formatting for readability
 - Test seed files after modification to ensure they work correctly
+
+### Migration Logging
+
+All schema changes must be documented in `packages/database/migrations/MIGRATION_LOG.md`. This log serves as a historical record of database schema evolution and helps track breaking changes.
+
+#### When to Update the Migration Log
+
+- **Always** when creating a new migration file
+- **Always** when modifying existing schema definitions
+- **Always** when adding or removing fields, constraints, or indexes
+- **Always** when changing field types or nullability
+
+#### What to Include
+
+Each log entry should include:
+
+1. **Date**: The date the changes were made (YYYY-MM-DD format)
+2. **Migration File(s)**: Reference to the migration SQL file(s)
+3. **Changes**: Detailed list of all schema changes
+4. **Breaking Changes**: Any changes that require application updates
+5. **Notes**: Additional context, migration instructions, or important considerations
+
+#### Example Entry
+
+```markdown
+### 2025-01-15 - Add User Preferences Table
+
+**Migration File(s):** `0004_add_user_preferences.sql`
+
+**Changes:**
+
+- Created new `user_preferences` table
+- Added `preferences` JSONB column to `system_users` table
+- Added foreign key constraint: `user_preferences.user_id` → `system_users.id`
+
+**Breaking Changes:**
+
+- None (new table, existing tables unchanged)
+
+**Notes:**
+
+- User preferences are optional, existing users will have NULL preferences
+- Consider backfilling default preferences for existing users
+```
+
+#### Benefits
+
+- **Historical Record**: Track when and why schema changes were made
+- **Breaking Change Tracking**: Easily identify changes that require application updates
+- **Migration Planning**: Understand dependencies between migrations
+- **Documentation**: Provides context for future developers
 
 ## Troubleshooting
 

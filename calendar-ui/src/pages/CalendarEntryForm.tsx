@@ -15,6 +15,7 @@ import {
 } from '@fluentui/react-components';
 
 import { createActivity } from '../api/activitiesApi';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ComboBox } from '@fluentui/react';
 import { Stepper } from '../components/Stepper';
 
@@ -77,7 +78,23 @@ export const CalendarEntryForm: React.FC = () => {
     e.preventDefault();
     void (async () => {
       try {
-        const res = await createActivity(formData);
+        // Convert form data to CreateActivityRequest format
+        const activityData: CreateActivityRequest = {
+          title: formData.title,
+          summary: formData.summary,
+          pitchStatusId: 1, // Default value - should come from form
+          dateStatusId: 1, // Default value - should come from form
+          timeStatusId: 1, // Default value - should come from form
+          calendarVisibility: 'visible', // Default value
+          ownerId: 8, // TODO: Get from current user
+          activityStatusId: 1, // Default value
+          startDate: formData.startDate || null,
+          startTime: formData.startTime || null,
+          endDate: formData.endDate || null,
+          endTime: formData.endTime || null,
+          isAllDay: false,
+        };
+        const res = await createActivity(activityData);
         if (!res) throw new Error('Failed to save entry');
         console.log('Entry saved:', res);
         alert('✅ Entry saved successfully!');

@@ -38,6 +38,11 @@ export const activityHistory = pgTable(
     index('activity_history_activity_id_idx').on(table.activityId),
     index('activity_history_user_id_idx').on(table.userId),
     index('activity_history_timestamp_idx').on(table.timestamp),
+    // Composite index for efficient chronological queries per activity
+    index('activity_history_activity_id_timestamp_idx').on(
+      table.activityId,
+      table.timestamp
+    ),
   ]
 );
 

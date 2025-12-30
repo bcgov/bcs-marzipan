@@ -35,61 +35,23 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
 }) => {
   return (
     <ActivityFormSection title="Reports">
-      <div className="grid grid-cols-3 gap-4">
-        <FormField
-          control={form.control}
-          name="thirtySixtyNinetyReport"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>30-60-90</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="planningReport"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Planning Report</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="notForLookAhead"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Not for Look Ahead</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="notForLookAhead"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel>Not for Look Ahead</FormLabel>
+            </div>
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}

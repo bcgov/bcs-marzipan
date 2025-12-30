@@ -8,7 +8,7 @@ import {
   governmentRepresentatives,
   communicationContacts,
   eventPlanners,
-  videographers,
+  graphicsUsers,
   categories,
   themes,
   tags,
@@ -29,6 +29,10 @@ import {
  * but the database types themselves remain internal-only.
  */
 
+// ============================================================================
+// Core Entity Types
+// ============================================================================
+
 // Activity types
 export type Activity = InferSelectModel<typeof activities>;
 export type NewActivity = InferInsertModel<typeof activities>;
@@ -41,13 +45,19 @@ export type NewSystemUser = InferInsertModel<typeof systemUsers>;
 export type Ministry = InferSelectModel<typeof ministries>;
 export type NewMinistry = InferInsertModel<typeof ministries>;
 
-// Lookup types
+// ============================================================================
+// Lookup Table Types
+// ============================================================================
+
+// Activity Status
 export type ActivityStatus = InferSelectModel<typeof activityStatuses>;
 export type NewActivityStatus = InferInsertModel<typeof activityStatuses>;
 
+// Location
 export type City = InferSelectModel<typeof cities>;
 export type NewCity = InferInsertModel<typeof cities>;
 
+// Contacts
 export type GovernmentRepresentative = InferSelectModel<
   typeof governmentRepresentatives
 >;
@@ -65,9 +75,10 @@ export type NewCommunicationContact = InferInsertModel<
 export type EventPlanner = InferSelectModel<typeof eventPlanners>;
 export type NewEventPlanner = InferInsertModel<typeof eventPlanners>;
 
-export type Videographer = InferSelectModel<typeof videographers>;
-export type NewVideographer = InferInsertModel<typeof videographers>;
+export type GraphicsUser = InferSelectModel<typeof graphicsUsers>;
+export type NewGraphicsUser = InferInsertModel<typeof graphicsUsers>;
 
+// Content Classification
 export type Category = InferSelectModel<typeof categories>;
 export type NewCategory = InferInsertModel<typeof categories>;
 

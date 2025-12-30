@@ -9,6 +9,9 @@ import {
   translatedLanguages,
   governmentRepresentatives,
   activityStatuses,
+  dateStatuses,
+  timeStatuses,
+  venueStatuses,
   cities,
 } from '@corpcal/database/schema';
 import { organizations } from '@corpcal/database/schema';
@@ -63,7 +66,7 @@ export const categoryResponseSchema = baseCategorySchema
     sortOrder: true,
     isActive: true,
     description: true,
-    pitchNotRequired: true,
+    pitchRequired: true,
   })
   .extend({
     id: z.number().int(),
@@ -72,7 +75,7 @@ export const categoryResponseSchema = baseCategorySchema
     sortOrder: z.number().int(),
     isActive: z.boolean(),
     description: z.string().nullable(),
-    pitchNotRequired: z.boolean(),
+    pitchRequired: z.boolean(),
   });
 
 export const categoryLookupItemSchema = lookupItemSchema.extend({
@@ -178,19 +181,19 @@ const baseSystemUserSchema = createSelectSchema(systemUsers);
 export const systemUserResponseSchema = baseSystemUserSchema
   .pick({
     id: true,
-    username: true,
-    firstName: true,
-    lastName: true,
-    email: true,
+    adUsername: true,
+    adDisplayName: true,
+    adEmail: true,
     isActive: true,
+    role: true,
   })
   .extend({
     id: z.number().int(),
-    username: z.string().nullable(),
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
-    email: z.string().nullable(),
+    adUsername: z.string().nullable(),
+    adDisplayName: z.string().nullable(),
+    adEmail: z.string().nullable(),
     isActive: z.boolean(),
+    role: z.string(),
   });
 
 export const userLookupItemSchema = lookupItemSchema.extend({
@@ -282,6 +285,93 @@ export const activityStatusResponseSchema = baseActivityStatusSchema
   });
 
 export const activityStatusLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string().nullable(),
+});
+
+// ============================================
+// Date Status Schema
+// ============================================
+
+const baseDateStatusSchema = createSelectSchema(dateStatuses);
+
+export const dateStatusResponseSchema = baseDateStatusSchema
+  .pick({
+    id: true,
+    name: true,
+    displayName: true,
+    sortOrder: true,
+    isActive: true,
+    description: true,
+  })
+  .extend({
+    id: z.number().int(),
+    name: z.string(),
+    displayName: z.string().nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    description: z.string().nullable(),
+  });
+
+export const dateStatusLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string().nullable(),
+});
+
+// ============================================
+// Time Status Schema
+// ============================================
+
+const baseTimeStatusSchema = createSelectSchema(timeStatuses);
+
+export const timeStatusResponseSchema = baseTimeStatusSchema
+  .pick({
+    id: true,
+    name: true,
+    displayName: true,
+    sortOrder: true,
+    isActive: true,
+    description: true,
+  })
+  .extend({
+    id: z.number().int(),
+    name: z.string(),
+    displayName: z.string().nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    description: z.string().nullable(),
+  });
+
+export const timeStatusLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string().nullable(),
+});
+
+// ============================================
+// Venue Status Schema
+// ============================================
+
+const baseVenueStatusSchema = createSelectSchema(venueStatuses);
+
+export const venueStatusResponseSchema = baseVenueStatusSchema
+  .pick({
+    id: true,
+    name: true,
+    displayName: true,
+    sortOrder: true,
+    isActive: true,
+    description: true,
+  })
+  .extend({
+    id: z.number().int(),
+    name: z.string(),
+    displayName: z.string().nullable(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
+    description: z.string().nullable(),
+  });
+
+export const venueStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string().nullable(),
 });
@@ -458,6 +548,15 @@ export type ActivityStatusResponse = z.infer<
 export type ActivityStatusLookupItem = z.infer<
   typeof activityStatusLookupItemSchema
 >;
+
+export type DateStatusResponse = z.infer<typeof dateStatusResponseSchema>;
+export type DateStatusLookupItem = z.infer<typeof dateStatusLookupItemSchema>;
+
+export type TimeStatusResponse = z.infer<typeof timeStatusResponseSchema>;
+export type TimeStatusLookupItem = z.infer<typeof timeStatusLookupItemSchema>;
+
+export type VenueStatusResponse = z.infer<typeof venueStatusResponseSchema>;
+export type VenueStatusLookupItem = z.infer<typeof venueStatusLookupItemSchema>;
 
 export type CityResponse = z.infer<typeof cityResponseSchema>;
 export type CityLookupItem = z.infer<typeof cityLookupItemSchema>;

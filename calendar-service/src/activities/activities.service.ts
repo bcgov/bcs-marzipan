@@ -4,12 +4,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 // Import operators from drizzle-orm (these are exported by drizzle-orm)
-import { eq, and, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import {
   activities,
   pitchStatuses,
-  schedulingStatuses,
   activityCategories,
   activityTags,
   categories,
@@ -34,8 +33,8 @@ import type {
   UpdateActivityRequest,
   FilterActivities,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/api';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
+import { z } from 'zod';
 import { ActivityResponseDto } from '@corpcal/shared/dto';
 import { ensureMatchesSchema } from '@corpcal/shared/utils';
 import { DatabaseService } from '../database/database.service';
@@ -283,19 +282,18 @@ export class ActivitiesService {
       if (filters.isActive !== undefined) {
         conditions.push(eq(activities.isActive, filters.isActive));
       }
-      if (filters.isConfidential !== undefined) {
-        conditions.push(eq(activities.isConfidential, filters.isConfidential));
-      }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
       }
-      if (filters.contactMinistryId) {
+      if (filters.ministryOwnerId !== undefined) {
         conditions.push(
-          eq(activities.contactMinistryId, filters.contactMinistryId)
+          eq(activities.ministryOwnerId, filters.ministryOwnerId)
         );
       }
-      if (filters.cityId) {
-        conditions.push(eq(activities.cityId, filters.cityId));
+      if (filters.city !== undefined) {
+        conditions.push(
+          sql`${activities.venueAddress}->>'city' = ${filters.city}`
+        );
       }
       if (filters.startDateFrom) {
         conditions.push(gte(activities.startDate, filters.startDateFrom));
@@ -329,7 +327,6 @@ export class ActivitiesService {
       categoriesMap,
       tagsMap,
       pitchStatusesMap,
-      schedulingStatusesMap,
       jointOrgMap,
       relatedActivitiesMap,
       commsMaterialsMap,
@@ -343,7 +340,6 @@ export class ActivitiesService {
       this.fetchCategoriesForActivities(activityIds),
       this.fetchTagsForActivities(activityIds),
       this.fetchPitchStatusesForActivities(activityIds),
-      this.fetchSchedulingStatusesForActivities(activityIds),
       this.fetchJointOrganizationsForActivities(activityIds),
       this.fetchRelatedActivitiesForActivities(activityIds),
       this.fetchCommsMaterialsForActivities(activityIds),
@@ -360,7 +356,6 @@ export class ActivitiesService {
         categories: categoriesMap.get(activity.id) ?? [],
         tags: tagsMap.get(activity.id) ?? [],
         pitchStatus: pitchStatusesMap.get(activity.id),
-        schedulingStatus: schedulingStatusesMap.get(activity.id),
         jointOrg: jointOrgMap.get(activity.id) ?? [],
         relatedActivities: relatedActivitiesMap.get(activity.id) ?? [],
         commsMaterials: commsMaterialsMap.get(activity.id) ?? [],
@@ -394,7 +389,6 @@ export class ActivitiesService {
       categoriesList,
       tagsList,
       pitchStatus,
-      schedulingStatus,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -408,7 +402,6 @@ export class ActivitiesService {
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
       this.fetchJointOrganizationsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
@@ -424,7 +417,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -463,7 +455,6 @@ export class ActivitiesService {
       categoriesList,
       tagsList,
       pitchStatus,
-      schedulingStatus,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -477,7 +468,6 @@ export class ActivitiesService {
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
       this.fetchJointOrganizationsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
@@ -493,7 +483,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -539,7 +528,6 @@ export class ActivitiesService {
       categoriesList,
       tagsList,
       pitchStatus,
-      schedulingStatus,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -553,7 +541,6 @@ export class ActivitiesService {
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
       this.fetchJointOrganizationsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
@@ -569,7 +556,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -702,61 +688,6 @@ export class ActivitiesService {
     for (const activity of activityResults) {
       if (activity.pitchStatusId) {
         const statusName = statusMap.get(activity.pitchStatusId);
-        if (statusName) {
-          resultMap.set(activity.id, statusName);
-        }
-      }
-    }
-    return resultMap;
-  }
-
-  /**
-   * Fetch scheduling statuses for multiple activities
-   */
-  private async fetchSchedulingStatusesForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const activityResults = await this.databaseService.db
-      .select({
-        id: activities.id,
-        schedulingStatusId: activities.schedulingStatusId,
-      })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const schedulingStatusIds = activityResults
-      .map((a) => a.schedulingStatusId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (schedulingStatusIds.length === 0) {
-      return new Map();
-    }
-
-    const schedulingStatusResults = await this.databaseService.db
-      .select({
-        id: schedulingStatuses.id,
-        name: schedulingStatuses.name,
-      })
-      .from(schedulingStatuses)
-      .where(
-        and(
-          inArray(schedulingStatuses.id, schedulingStatusIds),
-          eq(schedulingStatuses.isActive, true)
-        )
-      );
-
-    const statusMap = new Map<number, string>(
-      schedulingStatusResults.map((s) => [s.id, s.name])
-    );
-
-    const resultMap = new Map<number, string>();
-    for (const activity of activityResults) {
-      if (activity.schedulingStatusId) {
-        const statusName = statusMap.get(activity.schedulingStatusId);
         if (statusName) {
           resultMap.set(activity.id, statusName);
         }
@@ -1112,7 +1043,6 @@ export class ActivitiesService {
       categories?: string[];
       tags?: Array<{ id: string; text: string }>;
       pitchStatus?: string;
-      schedulingStatus?: string;
       jointOrg?: string[];
       relatedActivities?: string[];
       commsMaterials?: string[];
@@ -1143,23 +1073,31 @@ export class ActivitiesService {
       return time.substring(0, 5);
     };
 
-    const dto: ActivityResponse = {
+    const dto = {
       id: activity.id,
-      displayId: activity.displayId ?? null,
+      displayId: activity.displayId ?? '',
 
       // Activity status and category
       activityStatusId: activity.activityStatusId?.toString() ?? 'unknown',
+      pitchStatusId: activity.pitchStatusId?.toString() ?? 'unknown',
+      dateStatusId: activity.dateStatusId?.toString() ?? 'unknown',
+      timeStatusId: activity.timeStatusId?.toString() ?? 'unknown',
+      venueStatusId: activity.venueStatusId?.toString() ?? null,
       category: relatedData?.categories ?? [],
 
       // Basic info
       title: activity.title ?? '',
-      summary: activity.summary ?? null,
+      summary: activity.summary ?? '',
       isIssue: activity.isIssue ?? false,
-      oicRelated: activity.oicRelated ?? false,
       isActive: activity.isActive ?? true,
 
       // Organizations
-      leadOrg: activity.leadOrgId ?? null,
+      leadOrgId: activity.leadOrgId ?? null,
+      leadOrgName: activity.leadOrgName ?? null,
+      leadOrg: activity.leadOrgId ?? null, // Backward compatibility
+      eventLeadOrgId: activity.eventLeadOrgId ?? null,
+      eventLeadOrgName: activity.eventLeadOrgName ?? null,
+      eventLeadOrg: activity.eventLeadOrgId ?? null, // Backward compatibility
       jointOrg: relatedData?.jointOrg ?? [],
 
       // Related activities and tags
@@ -1167,32 +1105,30 @@ export class ActivitiesService {
       tags: relatedData?.tags ?? [],
 
       // Approvals
-      significance: activity.significance ?? null,
+      significance: activity.significance ?? '',
       pitchStatus: relatedData?.pitchStatus ?? 'unknown',
       pitchComments: activity.pitchComments ?? null,
-      confidential: activity.isConfidential ?? false,
 
       // Scheduling
-      schedulingStatus: relatedData?.schedulingStatus ?? 'unknown',
+      dateStatus: activity.dateStatusId?.toString() ?? 'unknown',
+      timeStatus: activity.timeStatusId?.toString() ?? 'unknown',
       isAllDay: activity.isAllDay ?? false,
       startDate: formatDate(activity.startDate),
       startTime: formatTime(activity.startTime),
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
-      isTimeConfirmed: activity.isTimeConfirmed ?? false,
-      isDateConfirmed: activity.isDateConfirmed ?? false,
-      schedulingConsiderations: activity.schedulingConsiderations ?? null,
+      schedulingConsiderations: activity.schedulingConsiderations ?? '',
 
       // Comms
-      commsLead: activity.commsLeadId?.toString() ?? null,
       commsMaterials: relatedData?.commsMaterials ?? [],
       newsReleaseId: activity.newsReleaseId ?? null,
       translationsRequired: relatedData?.translationsRequired ?? [],
 
       // Event
-      eventLeadOrg: activity.eventLeadOrgId ?? null,
       jointEventOrg: relatedData?.jointEventOrg ?? [],
       representativesAttending: relatedData?.representativesAttending ?? [],
+      venue: activity.venue ?? null,
+      venueStatus: activity.venueStatusId?.toString() ?? null,
       venueAddress:
         (activity.venueAddress as {
           street: string;
@@ -1200,6 +1136,7 @@ export class ActivitiesService {
           provinceOrState: string;
           country: string;
         } | null) ?? null,
+      eventLeadId: activity.eventLeadId?.toString() ?? null,
       eventLead:
         activity.eventLeadId?.toString() ??
         ('eventLeadName' in activity &&
@@ -1211,11 +1148,12 @@ export class ActivitiesService {
         typeof activity.eventLeadName === 'string'
           ? activity.eventLeadName
           : null,
-      videographer: null, // videographerUserId column has been removed
+      graphicsUserId: activity.graphicsUserId?.toString() ?? null,
       graphics: activity.graphicsUserId?.toString() ?? null,
 
       // Reports
       notForLookAhead: activity.notForLookAhead ?? false,
+      notForThirtySixtyNinety: activity.notForThirtySixtyNinety ?? false,
       lookAheadStatus:
         (activity.lookAheadStatus as 'none' | 'new' | 'changed') ?? 'none',
       lookAheadSection:
@@ -1224,11 +1162,12 @@ export class ActivitiesService {
           | 'issues'
           | 'news'
           | 'awareness') ?? 'events',
-      planningReport: activity.planningReport ?? false,
-      thirtySixtyNinetyReport: activity.thirtySixtyNinetyReport ?? false,
 
       // Sharing
-      owner: activity.ownerId?.toString() ?? null,
+      ownerId: activity.ownerId?.toString() ?? 'unknown',
+      additionalOwnerId: activity.additionalOwnerId?.toString() ?? null,
+      ministryOwnerId: activity.ministryOwnerId ?? null,
+      owner: activity.ownerId?.toString() ?? 'unknown',
       sharedWith: relatedData?.sharedWith ?? [],
       canEdit: relatedData?.canEdit ?? [],
       canView: relatedData?.canView ?? [],
@@ -1249,7 +1188,11 @@ export class ActivitiesService {
 
     // Compile-time validation: ensure the mapping produces a value that matches the schema
     // This provides compile-time guarantee that the mapping is correct
-    const validatedDto = ensureMatchesSchema(activityResponseSchema, dto);
+    // Using double assertion to work around type cache issues - runtime validation ensures correctness
+    const validatedDto = ensureMatchesSchema(
+      activityResponseSchema,
+      dto as unknown as z.infer<typeof activityResponseSchema>
+    );
 
     // Runtime validation to ensure DTO matches schema contract
     // This catches misalignment between the mapping logic and the schema

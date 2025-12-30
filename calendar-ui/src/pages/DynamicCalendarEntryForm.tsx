@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { calendarWizardSchema } from '../schemas/calendarWizard.schema';
 import { createActivity } from '../api/activitiesApi';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import Wizard from '../components/DynamicWizard/Wizard';
 
@@ -18,7 +19,9 @@ export const DynamicCalendarEntryForm: React.FC = () => {
   // This is the function that will send the data to your API
   const handleSubmit = async (formValues: Record<string, any>) => {
     try {
-      await createActivity(formValues); // Call your API function
+      // Convert form values to CreateActivityRequest format
+      // The wizard schema should already provide the correct structure
+      await createActivity(formValues as CreateActivityRequest); // Call your API function
       // Optionally show a success message or redirect
       alert('Activity saved!');
     } catch (err) {
