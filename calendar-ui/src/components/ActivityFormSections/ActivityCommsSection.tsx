@@ -123,7 +123,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 // Clear freeform name when selecting from dropdown
                 form.setValue('newsReleaseOriginName', null);
               }}
-              value={field.value || ''}
+              value={field.value || undefined}
             >
               <FormControl>
                 <SelectTrigger>
@@ -131,7 +131,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
                 {organizations.map((org) => (
                   <SelectItem key={org.value} value={org.value}>
                     {org.label}
