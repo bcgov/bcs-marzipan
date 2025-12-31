@@ -1,6 +1,7 @@
 // @ts-check
 
 import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -10,40 +11,55 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import json from '@eslint/json';
 
 /**
- * Helper function to create type-checked ESLint configs for a specific project
+ * Creates a type-checked ESLint configuration for TypeScript files.
+ * Uses layered config pattern: spreads base configs, then adds languageOptions separately.
+ *
+ * @param {string[]} files - Glob patterns for files to match
+ * @param {string[]} projects - Paths to tsconfig.json files
+ * @param {import('eslint').Linter.LanguageOptions} [languageOptions] - Language options to apply
  */
-function createTypeCheckedConfigs(options) {
-  const {
-    files,
-    tsconfigPath,
-    globals: configGlobals,
-    sourceType = 'module',
-    ecmaFeatures,
-  } = options;
-
-  return tseslint.configs.recommendedTypeChecked.map((config) => {
-    const baseConfig = config;
-    // @ts-expect-error - languageOptions may exist on config but TypeScript doesn't know
-    const existingLanguageOptions = baseConfig.languageOptions || {};
-    return {
-      ...baseConfig,
+function typeCheckedConfig(files, projects, languageOptions = {}) {
+  return [
+    // Apply base type-checked configs with file scope
+    ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+      ...config,
+      files,
+    })),
+    // Add languageOptions in separate config (ESLint merges configs for same files)
+    {
       files,
       languageOptions: {
-        ...existingLanguageOptions,
-        globals: configGlobals,
-        sourceType,
+        ...languageOptions,
         parserOptions: {
-          project: [tsconfigPath],
+          ...languageOptions.parserOptions,
+          project: projects,
           tsconfigRootDir: import.meta.dirname,
-          ...(ecmaFeatures && { ecmaFeatures }),
         },
       },
-    };
-  });
+    },
+  ];
 }
 
-export default [
-  // Global ignores
+/** @type {Partial<import('eslint').Linter.RulesRecord>} */
+const nestjsSharedRules = {
+  // NestJS uses decorators and dynamic patterns that produce 'any' types by design
+  '@typescript-eslint/no-explicit-any': 'off',
+  '@typescript-eslint/no-floating-promises': 'warn',
+  '@typescript-eslint/no-unsafe-assignment': 'off',
+  '@typescript-eslint/no-unsafe-member-access': 'off',
+  '@typescript-eslint/no-unsafe-call': 'off',
+  '@typescript-eslint/no-unsafe-return': 'off',
+  '@typescript-eslint/explicit-function-return-type': 'off',
+  '@typescript-eslint/explicit-module-boundary-types': 'off',
+  '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+  '@typescript-eslint/no-misused-promises': 'off',
+  'prettier/prettier': ['error', { endOfLine: 'auto' }],
+};
+
+export default defineConfig(
+  // ============================================
+  // Global Ignores
+  // ============================================
   {
     ignores: [
       'eslint.config.mjs',
@@ -53,93 +69,88 @@ export default [
       '**/coverage/**',
       '**/*.config.js',
       '**/*.config.ts',
-      '**/tsconfig*.json', // TypeScript config files
+      '**/tsconfig*.json',
       '.local/**',
       '**/*.md',
       'scripts/**',
-      'package-lock.json', // Generated file - too large and changes frequently
-      '**/migrations/meta/**', // Generated migration metadata
+      'package-lock.json',
+      '**/migrations/meta/**',
     ],
   },
 
-  // JSON linting configuration
-  {
-    plugins: {
-      json,
-    },
-  },
+  // ============================================
+  // JSON Linting
+  // ============================================
   {
     files: ['**/*.json'],
+    plugins: { json },
     language: 'json/json',
     rules: {
       'json/no-duplicate-keys': 'error',
       'json/no-empty-keys': 'error',
       'json/no-unsafe-values': 'error',
-      'json/sort-keys': 'off', // Let Prettier handle sorting
     },
   },
 
-  // Base recommended configs
+  // ============================================
+  // Base JavaScript/TypeScript Rules
+  // ============================================
   {
-    ...eslint.configs.recommended,
     files: ['**/*.js', '**/*.mjs', '**/*.cjs', '**/*.ts', '**/*.tsx'],
+    ...eslint.configs.recommended,
   },
-  // Restrict to TypeScript files only
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
     files: ['**/*.ts', '**/*.tsx'],
   })),
 
-  // Calendar Service (NestJS) specific config - adopting Nest.js defaults
-  // Apply type-checked configs for calendar-service
-  ...createTypeCheckedConfigs({
-    files: ['calendar-service/**/*.ts'],
-    tsconfigPath: './calendar-service/tsconfig.json',
-    globals: {
-      ...globals.node,
-      ...globals.jest,
-    },
-    sourceType: 'commonjs',
-  }),
+  // ============================================
+  // Calendar Service (NestJS) - Source Files
+  // ============================================
+  ...typeCheckedConfig(
+    ['calendar-service/src/**/*.ts'],
+    ['./calendar-service/tsconfig.json'],
+    { globals: globals.node, sourceType: 'commonjs' }
+  ),
   {
-    files: ['calendar-service/**/*.ts'],
-    plugins: {
-      '@typescript-eslint': tseslint.plugin,
-    },
+    files: ['calendar-service/src/**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
-      // Nest.js default rules
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-floating-promises': 'warn',
+      ...nestjsSharedRules,
       '@typescript-eslint/no-unsafe-argument': 'warn',
-      // Disable unsafe rules for Nest.js - ExecutionContext.getRequest() returns 'any' by design
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_' },
-      ],
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
-      '@typescript-eslint/no-misused-promises': 'off',
     },
   },
 
-  // Calendar UI (React) specific config
-  // Apply type-checked configs for calendar-ui
-  ...createTypeCheckedConfigs({
-    files: ['calendar-ui/**/*.ts', 'calendar-ui/**/*.tsx'],
-    tsconfigPath: './calendar-ui/tsconfig.json',
-    globals: {
-      ...globals.browser,
-      ...globals.es2021,
+  // ============================================
+  // Calendar Service (NestJS) - Test Files
+  // ============================================
+  ...typeCheckedConfig(
+    ['calendar-service/test/**/*.ts'],
+    ['./calendar-service/tsconfig.test.json'],
+    { globals: { ...globals.node, ...globals.jest }, sourceType: 'commonjs' }
+  ),
+  {
+    files: ['calendar-service/test/**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      ...nestjsSharedRules,
+      // Supertest + NestJS getHttpServer() has type inference limitations safe in test context
+      '@typescript-eslint/no-unsafe-argument': 'off',
     },
-    ecmaFeatures: {
-      jsx: true,
-    },
-  }),
+  },
+
+  // ============================================
+  // Calendar UI (React/Vite)
+  // ============================================
+  ...typeCheckedConfig(
+    ['calendar-ui/**/*.ts', 'calendar-ui/**/*.tsx'],
+    ['./calendar-ui/tsconfig.json'],
+    {
+      globals: { ...globals.browser, ...globals.es2021 },
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    }
+  ),
   {
     files: ['calendar-ui/**/*.ts', 'calendar-ui/**/*.tsx'],
     plugins: {
@@ -149,55 +160,51 @@ export default [
       'react-refresh': reactRefresh,
     },
     settings: {
-      react: {
-        version: 'detect',
-      },
+      react: { version: 'detect' },
     },
     rules: {
-      // React-specific rules
+      // React rules
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'react/prop-types': 'off', // Using TypeScript for prop validation
-      'react/react-in-jsx-scope': 'off', // Using TypeScript for JSX
+      'react/prop-types': 'off',
+      'react/react-in-jsx-scope': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
-      // TypeScript rules for React files
+      // TypeScript rules
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_' },
       ],
-      // TODO: TEMPORARY RULES - Remove these rules after fixing `any` type issues
-      // These rules are temporarily disabled to silence linting errors related to `any` types
+      // TODO: Re-enable these rules after fixing `any` type issues in calendar-ui
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
-      // END TEMPORARY RULES - Remove the above
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 
-  // Packages (database, shared) - type-checked configs
-  // Apply type-checked configs for packages/database
-  ...createTypeCheckedConfigs({
-    files: ['packages/database/**/*.ts'],
-    tsconfigPath: './packages/database/tsconfig.json',
-    globals: globals.node,
-  }),
-  // Apply type-checked configs for packages/shared
-  ...createTypeCheckedConfigs({
-    files: ['packages/shared/**/*.ts'],
-    tsconfigPath: './packages/shared/tsconfig.json',
-    globals: globals.node,
-  }),
+  // ============================================
+  // Shared Packages (database, shared)
+  // ============================================
+  ...typeCheckedConfig(
+    ['packages/database/**/*.ts'],
+    ['./packages/database/tsconfig.json'],
+    { globals: globals.node }
+  ),
+  ...typeCheckedConfig(
+    ['packages/shared/**/*.ts'],
+    ['./packages/shared/tsconfig.json'],
+    { globals: globals.node }
+  ),
 
-  // Prettier integration (must be last to override formatting rules)
-  // eslint-plugin-prettier/recommended includes both prettier plugin and disables conflicting rules
-  // Include JSON files so Prettier can format them (after JSON linting validates them)
+  // ============================================
+  // Prettier (must be last to override formatting rules)
+  // ============================================
   {
     ...eslintPluginPrettierRecommended,
     files: [
@@ -208,5 +215,5 @@ export default [
       '**/*.tsx',
       '**/*.json',
     ],
-  },
-];
+  }
+);

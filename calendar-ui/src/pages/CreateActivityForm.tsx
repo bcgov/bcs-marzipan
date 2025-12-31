@@ -30,13 +30,6 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import React from 'react';
-import {
-  TabList,
-  Tab,
-  TabValue,
-  SelectTabData,
-  SelectTabEvent,
-} from '@fluentui/react-components';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -56,11 +49,6 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
-
-  const [selectedValue, setSelectedValue] = useState<TabValue>('overview');
-  const onTabSelect = (event: SelectTabEvent, data: SelectTabData) => {
-    setSelectedValue(data.value);
-  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,

@@ -4,7 +4,14 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()] as PluginOption[],
+  plugins: [
+    react({
+      babel: {
+        plugins: ['babel-plugin-react-compiler'], // must run first!
+      },
+    }),
+    tailwindcss(),
+  ] as PluginOption[],
   server: {
     port: 3000,
     host: true,
