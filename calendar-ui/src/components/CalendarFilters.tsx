@@ -22,10 +22,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useCookies } from 'react-cookie';
 import {
   fetchCategories,
-  fetchSchedulingStatuses,
   fetchTags,
   fetchGovernmentRepresentatives,
   fetchUsers,
+  fetchActivityStatuses,
   LookupItem,
   UserLookupItem,
 } from '../api/lookupsApi';
@@ -320,13 +320,14 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         console.error('Error fetching tags:', error);
       });
 
-    fetchSchedulingStatuses()
+    fetchActivityStatuses()
       .then((data) => {
         setStatuses(data);
       })
       .catch((error) => {
-        console.error('Error fetching statuses:', error);
+        console.error('Error fetching activity statuses:', error);
       });
+
     fetchGovernmentRepresentatives()
       .then((data) => {
         setRepresentatives(data);

@@ -32,8 +32,6 @@ export type {
   UserLookupItem,
   PitchStatusResponse,
   PitchStatusLookupItem,
-  SchedulingStatusResponse,
-  SchedulingStatusLookupItem,
   ActivityStatusResponse,
   ActivityStatusLookupItem,
   CityResponse,

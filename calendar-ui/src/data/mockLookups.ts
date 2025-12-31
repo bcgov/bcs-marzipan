@@ -11,12 +11,6 @@ export interface MockCategory {
   displayName?: string;
 }
 
-export interface MockSchedulingStatus {
-  id: number;
-  name: string;
-  displayName?: string;
-}
-
 export interface MockPitchStatus {
   id: number;
   name: string;
@@ -109,16 +103,6 @@ export const mockCategories: MockCategory[] = [
   { id: 6, name: 'social media', displayName: 'Social Media' },
   { id: 7, name: 'speech', displayName: 'Speech' },
   { id: 8, name: 'tv radio', displayName: 'TV/Radio' },
-];
-
-/**
- * Mock scheduling statuses based on database seed data
- * Values: 'unknown', 'tentative', 'confirmed'
- */
-export const mockSchedulingStatuses: MockSchedulingStatus[] = [
-  { id: 1, name: 'unknown', displayName: 'Unknown' },
-  { id: 2, name: 'tentative', displayName: 'Tentative' },
-  { id: 3, name: 'confirmed', displayName: 'Confirmed' },
 ];
 
 /**

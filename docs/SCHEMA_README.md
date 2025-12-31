@@ -146,7 +146,7 @@ This ensures the API response schema automatically stays in sync with database s
 Before updating schemas, understand where the root definitions live:
 
 - **Activity Schema**: `packages/database/src/schema/activity.ts` - The Drizzle schema definition for the `activities` table
-- **Lookup Table Schemas**: `packages/database/src/schema/lookups.ts` - The Drizzle schema definitions for all lookup tables (activityStatuses, cities, categories, tags, pitchStatuses, schedulingStatuses, etc.)
+- **Lookup Table Schemas**: `packages/database/src/schema/lookups.ts` - The Drizzle schema definitions for all lookup tables (activityStatuses, cities, categories, tags, pitchStatuses, etc.)
 
 These Drizzle schemas are the **single source of truth** for database structure. All other type definitions are derived from or must be manually aligned with these schemas.
 
@@ -487,7 +487,7 @@ The application uses SQL seed files to populate lookup tables and initial data. 
   - Categories, tags, themes
   - Cities, government representatives
   - Comms materials, translated languages
-  - Communication contacts, event planners, videographers
+  - Communication contacts, graphics users
   - Ministries, organizations, system users
 
 - **`002_seed_activities.sql`**: Seeds initial activity data (if needed)

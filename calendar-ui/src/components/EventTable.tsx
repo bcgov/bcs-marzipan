@@ -814,7 +814,6 @@ export const EventTable: React.FC<EventTableProps> = ({
     ],
     [
       columnHelper,
-      styles.overviewConfidential,
       styles.overviewInline,
       styles.overviewTitle,
       styles.statusBadge,

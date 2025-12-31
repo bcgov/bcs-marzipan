@@ -7,7 +7,6 @@ import {
   cities,
   governmentRepresentatives,
   communicationContacts,
-  eventPlanners,
   graphicsUsers,
   categories,
   themes,
@@ -71,9 +70,6 @@ export type CommunicationContact = InferSelectModel<
 export type NewCommunicationContact = InferInsertModel<
   typeof communicationContacts
 >;
-
-export type EventPlanner = InferSelectModel<typeof eventPlanners>;
-export type NewEventPlanner = InferInsertModel<typeof eventPlanners>;
 
 export type GraphicsUser = InferSelectModel<typeof graphicsUsers>;
 export type NewGraphicsUser = InferInsertModel<typeof graphicsUsers>;

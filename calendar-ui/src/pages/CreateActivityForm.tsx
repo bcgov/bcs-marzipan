@@ -170,7 +170,6 @@ export const CreateActivityForm: React.FC = () => {
       ownerId: 'Owner',
       commsLeadId: 'Comms Lead',
       eventLeadId: 'Event Planner',
-      schedulingStatusId: 'Scheduling Status',
       pitchStatusId: 'Pitch Status',
       activityStatusId: 'Activity Status',
       ministryOwnerId: 'Ministry Owner',
@@ -289,7 +288,7 @@ export const CreateActivityForm: React.FC = () => {
             <ActivityEventSection
               jointOrgOptions={jointOrgOptions}
               eventLeadOrgOptions={lookups.organizations}
-              eventPlannerOptions={lookups.users}
+              userOptions={lookups.users}
               representativeOptions={lookups.governmentRepresentatives}
             />
 

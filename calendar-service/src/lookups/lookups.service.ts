@@ -6,7 +6,7 @@ import {
   systemUsers,
   tags,
   pitchStatuses,
-  schedulingStatuses,
+  activityStatuses,
   commsMaterials,
   translatedLanguages,
   governmentRepresentatives,
@@ -20,7 +20,6 @@ import type {
   UserLookupItem,
   TagLookupItem,
   PitchStatusLookupItem,
-  SchedulingStatusLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
@@ -134,6 +133,29 @@ export class LookupsService {
   }
 
   /**
+   * Get all active activity statuses
+   */
+  async getActivityStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+        displayName: activityStatuses.displayName,
+      })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.isActive, true))
+      .orderBy(activityStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
    * Get all active pitch statuses
    */
   async getPitchStatuses(): Promise<PitchStatusLookupItem[]> {
@@ -146,29 +168,6 @@ export class LookupsService {
       .from(pitchStatuses)
       .where(eq(pitchStatuses.isActive, true))
       .orderBy(pitchStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName || status.name,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
-    }));
-  }
-
-  /**
-   * Get all active scheduling statuses
-   */
-  async getSchedulingStatuses(): Promise<SchedulingStatusLookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: schedulingStatuses.id,
-        name: schedulingStatuses.name,
-        displayName: schedulingStatuses.displayName,
-      })
-      .from(schedulingStatuses)
-      .where(eq(schedulingStatuses.isActive, true))
-      .orderBy(schedulingStatuses.sortOrder);
 
     return results.map((status) => ({
       id: status.id,

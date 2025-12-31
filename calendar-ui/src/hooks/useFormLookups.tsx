@@ -4,7 +4,6 @@ import {
   useUsers,
   useTags,
   usePitchStatuses,
-  useSchedulingStatuses,
   useCommsMaterials,
   useTranslationLanguages,
   useGovernmentRepresentatives,
@@ -26,9 +25,6 @@ export interface FormLookupData {
 
   // Pitch Statuses - for Select
   pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
-
-  // Scheduling Statuses - for Select
-  schedulingStatuses: Array<{ id: number; name: string; displayName?: string }>;
 
   // Comms Materials - for Badge components
   commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
@@ -64,7 +60,6 @@ export function useFormLookups(): FormLookupData {
   const usersQuery = useUsers();
   const tagsQuery = useTags();
   const pitchStatusesQuery = usePitchStatuses();
-  const schedulingStatusesQuery = useSchedulingStatuses();
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
   const governmentRepresentativesQuery = useGovernmentRepresentatives();
@@ -76,7 +71,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isLoading ||
     tagsQuery.isLoading ||
     pitchStatusesQuery.isLoading ||
-    schedulingStatusesQuery.isLoading ||
     commsMaterialsQuery.isLoading ||
     translationLanguagesQuery.isLoading ||
     governmentRepresentativesQuery.isLoading ||
@@ -88,7 +82,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isError ||
     tagsQuery.isError ||
     pitchStatusesQuery.isError ||
-    schedulingStatusesQuery.isError ||
     commsMaterialsQuery.isError ||
     translationLanguagesQuery.isError ||
     governmentRepresentativesQuery.isError ||
@@ -126,14 +119,6 @@ export function useFormLookups(): FormLookupData {
   // Transform pitch statuses for Select
   const pitchStatuses =
     pitchStatusesQuery.data?.map((item) => ({
-      id: item.id as number,
-      name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
-    })) || [];
-
-  // Transform scheduling statuses for Select
-  const schedulingStatuses =
-    schedulingStatusesQuery.data?.map((item) => ({
       id: item.id as number,
       name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
@@ -177,7 +162,6 @@ export function useFormLookups(): FormLookupData {
     users,
     tags,
     pitchStatuses,
-    schedulingStatuses,
     commsMaterials,
     translationLanguages,
     governmentRepresentatives,

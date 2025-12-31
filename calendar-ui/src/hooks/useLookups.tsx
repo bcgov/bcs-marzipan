@@ -5,7 +5,6 @@ import {
   fetchUsers,
   fetchTags,
   fetchPitchStatuses,
-  fetchSchedulingStatuses,
   fetchCommsMaterials,
   fetchTranslationLanguages,
   fetchGovernmentRepresentatives,
@@ -17,7 +16,6 @@ import {
   type UserLookupItem,
   type TagLookupItem,
   type PitchStatusLookupItem,
-  type SchedulingStatusLookupItem,
   type CommsMaterialsLookupItem,
   type TranslationLanguageLookupItem,
   type GovernmentRepresentativeLookupItem,
@@ -65,14 +63,6 @@ export function usePitchStatuses() {
   return useQuery<PitchStatusLookupItem[]>({
     queryKey: ['lookups', 'pitch-statuses'],
     queryFn: () => fetchPitchStatuses(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
-  });
-}
-
-export function useSchedulingStatuses() {
-  return useQuery<SchedulingStatusLookupItem[]>({
-    queryKey: ['lookups', 'scheduling-statuses'],
-    queryFn: () => fetchSchedulingStatuses(),
     staleTime: SMALL_LOOKUP_STALE_TIME,
   });
 }

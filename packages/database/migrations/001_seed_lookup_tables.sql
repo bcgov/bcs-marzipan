@@ -326,20 +326,6 @@ INSERT INTO communication_contacts (id, name, display_name, sort_order, is_activ
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- EVENT PLANNERS
--- Event planners for activities
--- ============================================================================
-
-INSERT INTO event_planners (id, name, display_name, sort_order, is_active, email, phone, created_by, last_updated_by) VALUES
-  (1, 'Lisa Anderson', 'Lisa Anderson', 1, true, 'lisa.anderson@gov.bc.ca', '250-555-0201', 1, 1),
-  (2, 'James Martinez', 'James Martinez', 2, true, 'james.martinez@gov.bc.ca', '250-555-0202', 1, 1),
-  (3, 'Patricia Brown', 'Patricia Brown', 3, true, 'patricia.brown@gov.bc.ca', '250-555-0203', 1, 1),
-  (4, 'Christopher Lee', 'Christopher Lee', 4, true, 'christopher.lee@gov.bc.ca', '250-555-0204', 1, 1),
-  (5, 'Amanda White', 'Amanda White', 5, true, 'amanda.white@gov.bc.ca', '250-555-0205', 1, 1),
-  (6, 'Daniel Harris', 'Daniel Harris', 6, true, 'daniel.harris@gov.bc.ca', '250-555-0206', 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================================
 -- GRAPHICS USERS
 -- Graphics users for activities
 -- NOTE: Table was renamed from videographers to graphics_users in migration 0003

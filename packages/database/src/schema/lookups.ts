@@ -242,38 +242,9 @@ export const governmentRepresentatives = pgTable('government_representatives', {
 /**
  * Communication Contact lookup table - Communication contacts for activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/CommunicationContact.cs
- * TODO: this might be related to user accounts in the future
+ * TODO: this might be related to user accounts in the future and replaced by AD integration
  */
 export const communicationContacts = pgTable('communication_contacts', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  email: varchar('email', { length: 255 }),
-  phone: varchar('phone', { length: 50 }),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => systemUsers.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => systemUsers.id),
-});
-
-/**
- * Event Planner lookup table - Event planners for activities
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/EventPlanner.cs
- * TODO: Consider replacing with systemUsers table
- */
-export const eventPlanners = pgTable('event_planners', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
@@ -387,33 +358,6 @@ export const tags = pgTable('tags', {
  * Values: 'not required', 'submitted', 'pitched', 'approved'
  */
 export const pitchStatuses = pgTable('pitch_statuses', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => systemUsers.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => systemUsers.id),
-});
-
-/**
- * SchedulingStatus lookup table - Event scheduling statuses
- * Values: 'unknown', 'tentative', 'confirmed'
- */
-export const schedulingStatuses = pgTable('scheduling_statuses', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),

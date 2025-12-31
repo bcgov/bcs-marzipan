@@ -4,7 +4,6 @@ import {
   categories,
   tags,
   pitchStatuses,
-  schedulingStatuses,
   commsMaterials,
   translatedLanguages,
   governmentRepresentatives,
@@ -227,35 +226,6 @@ export const pitchStatusResponseSchema = basePitchStatusSchema
   });
 
 export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
-  name: z.string(),
-  displayName: z.string().nullable(),
-});
-
-// ============================================
-// Scheduling Status Schema
-// ============================================
-
-const baseSchedulingStatusSchema = createSelectSchema(schedulingStatuses);
-
-export const schedulingStatusResponseSchema = baseSchedulingStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
-
-export const schedulingStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string().nullable(),
 });
@@ -534,13 +504,6 @@ export type UserLookupItem = z.infer<typeof userLookupItemSchema>;
 
 export type PitchStatusResponse = z.infer<typeof pitchStatusResponseSchema>;
 export type PitchStatusLookupItem = z.infer<typeof pitchStatusLookupItemSchema>;
-
-export type SchedulingStatusResponse = z.infer<
-  typeof schedulingStatusResponseSchema
->;
-export type SchedulingStatusLookupItem = z.infer<
-  typeof schedulingStatusLookupItemSchema
->;
 
 export type ActivityStatusResponse = z.infer<
   typeof activityStatusResponseSchema

@@ -70,6 +70,21 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all activity statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity statuses retrieved successfully',
+  })
+  @Get('activity-statuses')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getActivityStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getActivityStatuses();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all pitch statuses' })
   @ApiResponse({
     status: 200,
@@ -79,21 +94,6 @@ export class LookupsController {
   @Header('Cache-Control', 'public, max-age=3600')
   async getPitchStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getPitchStatuses();
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get all scheduling statuses' })
-  @ApiResponse({
-    status: 200,
-    description: 'Scheduling statuses retrieved successfully',
-  })
-  @Get('scheduling-statuses')
-  @Header('Cache-Control', 'public, max-age=3600')
-  async getSchedulingStatuses(): Promise<{
-    success: boolean;
-    data: LookupItem[];
-  }> {
-    const data = await this.lookupsService.getSchedulingStatuses();
     return { success: true, data };
   }
 

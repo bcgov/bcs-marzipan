@@ -7,7 +7,6 @@ import type {
   UserLookupItem,
   TagLookupItem,
   PitchStatusLookupItem,
-  SchedulingStatusLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
@@ -22,7 +21,6 @@ export type {
   UserLookupItem,
   TagLookupItem,
   PitchStatusLookupItem,
-  SchedulingStatusLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
@@ -66,21 +64,18 @@ export async function fetchTags(): Promise<TagLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchActivityStatuses(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/activity-statuses'
+  );
+  return res.data.data;
+}
+
 export async function fetchPitchStatuses(): Promise<PitchStatusLookupItem[]> {
   const res = await api.get<{
     success: boolean;
     data: PitchStatusLookupItem[];
   }>('/lookups/pitch-statuses');
-  return res.data.data;
-}
-
-export async function fetchSchedulingStatuses(): Promise<
-  SchedulingStatusLookupItem[]
-> {
-  const res = await api.get<{
-    success: boolean;
-    data: SchedulingStatusLookupItem[];
-  }>('/lookups/scheduling-statuses');
   return res.data.data;
 }
 

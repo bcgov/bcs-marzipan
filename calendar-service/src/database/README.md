@@ -61,7 +61,7 @@ npm run seed
 
 This will execute the seed SQL file located in `packages/database/migrations/`:
 
-- `001_seed_lookup_tables.sql` - Seeds all lookup tables including activity_statuses, pitch_statuses, scheduling_statuses, categories, comms_materials, translated_languages, cities, government_representatives, tags, ministries, organizations, communication_contacts, event_planners, videographers, themes, and system_users
+- `001_seed_lookup_tables.sql` - Seeds all lookup tables including activity_statuses, pitch_statuses, categories, comms_materials, translated_languages, cities, government_representatives, tags, ministries, organizations, communication_contacts, graphics_users, themes, and system_users
 
 ### Seed Service
 

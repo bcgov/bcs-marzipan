@@ -18,7 +18,6 @@ Creates a new calendar activity with related junction table records.
   "startTime": "14:30",
   "endDate": "2026-03-13",
   "endTime": "16:00",
-  "schedulingStatusId": 8,
   "schedulingConsiderations": "Room booking required",
   "title": "Ministry Event",
   "summary": "Important event description",
@@ -363,26 +362,6 @@ Lookup endpoints provide reference data for dropdowns and filters.
 
 ---
 
-### Get Scheduling Statuses
-
-**GET** `/lookups/scheduling-statuses`
-
-**Response:** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 8, "name": "Confirmed" },
-    { "id": 9, "name": "Tentative" }
-  ]
-}
-```
-
-**Cache:** 1 hour
-
----
-
 ### Get Comms Materials
 
 **GET** `/lookups/comms-materials`
@@ -531,7 +510,6 @@ Server error occurred.
   startTime: string | null;    // HH:mm
   endDate: string;
   endTime: string | null;
-  schedulingStatusId: number;
   schedulingConsiderations: string;
   title: string;
   summary: string;

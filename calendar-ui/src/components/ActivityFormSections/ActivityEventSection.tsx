@@ -32,7 +32,7 @@ type FormData = CreateActivityRequest & {
 type ActivityEventSectionProps = {
   jointOrgOptions: Array<{ value: string; label: string }>;
   eventLeadOrgOptions: Array<{ value: string; label: string }>;
-  eventPlannerOptions: Array<{ value: string; label: string }>;
+  userOptions: Array<{ value: string; label: string }>;
   representativeOptions: Array<{
     id: number;
     name: string;
@@ -44,7 +44,7 @@ type ActivityEventSectionProps = {
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   jointOrgOptions,
   eventLeadOrgOptions,
-  eventPlannerOptions,
+  userOptions,
   representativeOptions,
 }) => {
   const form = useFormContext<FormData>();
@@ -131,7 +131,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {eventPlannerOptions.map((user) => (
+                {userOptions.map((user) => (
                   <SelectItem key={user.value} value={user.value}>
                     {user.label}
                   </SelectItem>
