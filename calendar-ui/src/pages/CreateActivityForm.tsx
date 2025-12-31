@@ -35,12 +35,12 @@ type FormData = CreateActivityRequest & {
   categoryIds?: number[];
   relatedActivityIds?: number[];
   tagIds?: string[];
-  jointOrganizationIds?: string[];
+  jointOrgIds?: string[];
   commsMaterialIds?: number[];
   translationLanguageIds?: number[];
-  jointEventOrganizationIds?: string[];
+  jointEventOrgIds?: string[];
   representativeIds?: number[];
-  sharedWithOrganizationIds?: string[];
+  sharedWithOrgIds?: string[];
   canEditUserIds?: number[];
   canViewUserIds?: number[];
 };
@@ -62,12 +62,12 @@ export const CreateActivityForm: React.FC = () => {
       categoryIds: [],
       relatedActivityIds: [],
       tagIds: [],
-      jointOrganizationIds: [],
+      jointOrgIds: [],
       commsMaterialIds: [],
       translationLanguageIds: [],
-      jointEventOrganizationIds: [],
+      jointEventOrgIds: [],
       representativeIds: [],
-      sharedWithOrganizationIds: [],
+      sharedWithOrgIds: [],
       canEditUserIds: [],
       canViewUserIds: [],
     } as Partial<FormData>,
@@ -106,10 +106,9 @@ export const CreateActivityForm: React.FC = () => {
           formValues.relatedActivityIds.length > 0
             ? formValues.relatedActivityIds
             : undefined,
-        jointOrganizationIds:
-          formValues.jointOrganizationIds &&
-          formValues.jointOrganizationIds.length > 0
-            ? formValues.jointOrganizationIds
+        jointOrgIds:
+          formValues.jointOrgIds && formValues.jointOrgIds.length > 0
+            ? formValues.jointOrgIds
             : undefined,
         commsMaterialIds:
           formValues.commsMaterialIds && formValues.commsMaterialIds.length > 0
@@ -120,20 +119,18 @@ export const CreateActivityForm: React.FC = () => {
           formValues.translationLanguageIds.length > 0
             ? formValues.translationLanguageIds
             : undefined,
-        jointEventOrganizationIds:
-          formValues.jointEventOrganizationIds &&
-          formValues.jointEventOrganizationIds.length > 0
-            ? formValues.jointEventOrganizationIds
+        jointEventOrgIds:
+          formValues.jointEventOrgIds && formValues.jointEventOrgIds.length > 0
+            ? formValues.jointEventOrgIds
             : undefined,
         representativeIds:
           formValues.representativeIds &&
           formValues.representativeIds.length > 0
             ? formValues.representativeIds
             : undefined,
-        sharedWithOrganizationIds:
-          formValues.sharedWithOrganizationIds &&
-          formValues.sharedWithOrganizationIds.length > 0
-            ? formValues.sharedWithOrganizationIds
+        sharedWithOrgIds:
+          formValues.sharedWithOrgIds && formValues.sharedWithOrgIds.length > 0
+            ? formValues.sharedWithOrgIds
             : undefined,
         canEditUserIds:
           formValues.canEditUserIds && formValues.canEditUserIds.length > 0
@@ -212,7 +209,7 @@ export const CreateActivityForm: React.FC = () => {
   }
 
   // Transform data for form sections
-  const jointOrganizationOptions = lookups.organizations;
+  const jointOrgOptions = lookups.organizations;
   const ownerOptions = lookups.users;
   const canEditUserOptions = lookups.users;
   const relatedActivityOptions = lookups.relatedActivities;
@@ -270,7 +267,7 @@ export const CreateActivityForm: React.FC = () => {
           >
             <ActivityOverviewSection
               relatedActivityOptions={relatedActivityOptions}
-              jointOrganizationOptions={jointOrganizationOptions}
+              jointOrgOptions={jointOrgOptions}
               categories={lookups.categories}
               organizations={lookups.organizations}
               tags={lookups.tags}
@@ -286,10 +283,11 @@ export const CreateActivityForm: React.FC = () => {
             <ActivityCommsSection
               commsMaterialOptions={lookups.commsMaterials}
               translationLanguageOptions={lookups.translationLanguages}
+              organizations={lookups.organizations}
             />
 
             <ActivityEventSection
-              jointOrganizationOptions={jointOrganizationOptions}
+              jointOrgOptions={jointOrgOptions}
               eventLeadOrgOptions={lookups.organizations}
               eventPlannerOptions={lookups.users}
               representativeOptions={lookups.governmentRepresentatives}

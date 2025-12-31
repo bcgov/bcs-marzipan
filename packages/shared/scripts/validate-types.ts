@@ -105,7 +105,7 @@ type ActivityFields = keyof Activity;
 // (accounting for transformations like leadOrgId → leadOrg, dates → strings, etc.)
 // This is a compile-time check that ensures the mapping is valid
 const _activityResponseFieldCheck: {
-  // Core fields that should exist in Activity (possibly with different names)
+  // Core fields that should exist in Activity
   id: Activity['id'];
   displayId: Activity['displayId'];
   title: Activity['title'];
@@ -148,12 +148,11 @@ const _activityResponseFieldCheck: {
   eventLeadId: Activity['eventLeadId'];
   graphicsUserId: Activity['graphicsUserId'];
   ownerId: Activity['ownerId'];
-  additionalOwnerId: Activity['additionalOwnerId'];
   ministryOwnerId: Activity['ministryOwnerId'];
   // Computed/joined fields (these don't exist in Activity, they're added in the response)
   // category, tags, jointOrg, relatedActivities, commsMaterials, translationsRequired,
-  // jointEventOrg, representativesAttending, sharedWith, canEdit, canView are added from relatedData
-  // leadOrg, eventLeadOrg, eventLead, graphics, owner are computed/renamed fields
+  // jointEventOrg, representativesAttending, sharedWith, canEdit, canView, additionalOwners are added from relatedData
+  // leadOrg, eventLeadOrg, eventLead, graphicsUser, owner are computed/renamed fields
   // pitchStatus, dateStatus, timeStatus, venueStatus are computed from lookups
 } = {} as never;
 

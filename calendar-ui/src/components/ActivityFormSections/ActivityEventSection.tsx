@@ -25,12 +25,12 @@ import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {
-  jointEventOrganizationIds?: string[];
+  jointEventOrgIds?: string[];
   representativeIds?: number[];
 };
 
 type ActivityEventSectionProps = {
-  jointOrganizationOptions: Array<{ value: string; label: string }>;
+  jointOrgOptions: Array<{ value: string; label: string }>;
   eventLeadOrgOptions: Array<{ value: string; label: string }>;
   eventPlannerOptions: Array<{ value: string; label: string }>;
   representativeOptions: Array<{
@@ -42,21 +42,20 @@ type ActivityEventSectionProps = {
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
-  jointOrganizationOptions,
+  jointOrgOptions,
   eventLeadOrgOptions,
   eventPlannerOptions,
   representativeOptions,
 }) => {
   const form = useFormContext<FormData>();
-  const [showJointEventOrganizations, setShowJointEventOrganizations] =
-    useState(false);
+  const [showjointEventOrgs, setShowjointEventOrgs] = useState(false);
 
   // Move useMultiSelect hooks into the component
-  const [selectedJointEventOrganizations, toggleJointEventOrganization] =
-    useMultiSelect<FormData, 'jointEventOrganizationIds', string>(
-      form,
-      'jointEventOrganizationIds'
-    );
+  const [selectedjointEventOrgs, togglejointEventOrg] = useMultiSelect<
+    FormData,
+    'jointEventOrgIds',
+    string
+  >(form, 'jointEventOrgIds');
 
   const [selectedRepresentatives, toggleRepresentative] = useMultiSelect<
     FormData,
@@ -89,14 +88,12 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           </FormItem>
         )}
       />
-      {!showJointEventOrganizations && (
+      {!showjointEventOrgs && (
         <div className="flex justify-end">
           <Button
             type="button"
             variant="ghost"
-            onClick={() =>
-              setShowJointEventOrganizations(!showJointEventOrganizations)
-            }
+            onClick={() => setShowjointEventOrgs(!showjointEventOrgs)}
             className="text-muted-foreground hover:text-foreground"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -104,13 +101,13 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           </Button>
         </div>
       )}
-      {showJointEventOrganizations && (
+      {showjointEventOrgs && (
         <div>
           <Label className="mb-3 block">Joint event organization</Label>
           <Combobox
-            options={jointOrganizationOptions}
-            selectedValues={selectedJointEventOrganizations}
-            onSelect={toggleJointEventOrganization}
+            options={jointOrgOptions}
+            selectedValues={selectedjointEventOrgs}
+            onSelect={togglejointEventOrg}
             placeholder="Select"
             searchPlaceholder="Search organizations"
             emptyMessage="No organizations found."

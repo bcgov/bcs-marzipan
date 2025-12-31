@@ -298,11 +298,11 @@ export const eventPlanners = pgTable('event_planners', {
 });
 
 /**
- * Graphics lookup table - Graphics for activities
+ * Graphics users lookup table - Graphics usersfor activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Graphic.cs
  * TODO: Consider replacing with systemUsers table
  */
-export const graphicsUsers = pgTable('graphics', {
+export const graphicsUsers = pgTable('graphics_users', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),

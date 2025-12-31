@@ -9,6 +9,18 @@
  */
 
 /**
+ * Pitch Status - Pitch approval status
+ * Used in pitchStatusId and pitchStatus fields
+ */
+export const PITCH_STATUS = [
+  'not required',
+  'required',
+  'pitched',
+  'approved',
+] as const;
+export type PitchStatus = (typeof PITCH_STATUS)[number];
+
+/**
  * Attending Status - Representative attendance status
  * Used in representativesAttending array
  */

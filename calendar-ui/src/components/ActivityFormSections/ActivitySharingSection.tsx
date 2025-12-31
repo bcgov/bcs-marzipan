@@ -22,7 +22,7 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {
   canEditUserIds?: number[];
-  sharedWithOrganizationIds?: string[];
+  sharedWithOrgIds?: string[];
 };
 
 type ActivitySharingSectionProps = {
@@ -103,7 +103,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="sharedWithOrganizationIds"
+        name="sharedWithOrgIds"
         render={({ field }) => {
           const currentValue = Array.isArray(field.value)
             ? field.value[0] || ''

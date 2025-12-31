@@ -57,6 +57,8 @@ export class ActivityResponseDto implements ActivityResponse {
   schedulingConsiderations!: string;
   commsMaterials?: string[] | undefined;
   newsReleaseId!: string | null;
+  newsReleaseOriginId!: string | null;
+  newsReleaseOriginName!: string | null;
   translationsRequired?: string[] | undefined;
   eventLeadOrgId!: string | null;
   eventLeadOrgName!: string | null;
@@ -79,14 +81,14 @@ export class ActivityResponseDto implements ActivityResponse {
   eventLead!: string | null; // Computed from eventLeadId
   eventLeadName!: string | null;
   graphicsUserId!: string | null;
-  graphics!: string | null; // Computed from graphicsUserId
+  graphicsUser!: string | null; // Computed from graphicsUserId
   notForLookAhead!: boolean;
   notForThirtySixtyNinety!: boolean;
   lookAheadStatus!: LookAheadStatus | null;
   lookAheadSection!: LookAheadSection | null;
   ownerId!: string;
   owner!: string; // Computed from ownerId
-  additionalOwnerId!: string | null;
+  additionalOwners?: string[] | undefined;
   ministryOwnerId!: string | null;
   sharedWith?: string[] | undefined;
   canEdit?: string[] | undefined;
@@ -123,5 +125,7 @@ export class ActivityResponseDto implements ActivityResponse {
 
 // Compile-time check: ensure ActivityResponseDto implements ActivityResponse correctly
 // If this doesn't compile, the class definition doesn't match the type
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _typeCheck: ActivityResponse = {} as ActivityResponseDto;
+
+// Silence unused variable warnings
+void _typeCheck;

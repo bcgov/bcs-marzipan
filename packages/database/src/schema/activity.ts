@@ -29,16 +29,16 @@ import {
   activityThemes,
   activityTags,
   activityCategories,
-  activityJointOrganizations,
+  activityJointOrgs,
   activityRelatedEntries,
   activityCommsMaterials,
-  activityTranslationLanguages,
-  activityJointEventOrganizations,
+  activityTranslationsRequired,
+  activityJointEventOrgs,
   activityRepresentatives,
-  activitySharedWithOrganizations,
+  activitySharedWithOrgs,
   activityCanEditUsers,
   activityCanViewUsers,
-  activityFieldReviewStatuses,
+  activityAdditionalOwners,
 } from './relations';
 import { ministries } from './ministry';
 
@@ -86,6 +86,10 @@ export const activities = pgTable(
       .default(''), // (500 char limit)
 
     // News Release
+    newsReleaseOriginId: uuid('news_release_origin_id').references(
+      () => organizations.id
+    ), // FK to Organizations (mutually exclusive with newsReleaseOriginName)
+    newsReleaseOriginName: varchar('news_release_origin_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with newsReleaseOriginId)
     newsReleaseId: uuid('news_release_id'),
 
     // Event
@@ -121,13 +125,11 @@ export const activities = pgTable(
     ownerId: integer('owner_id')
       .notNull()
       .references(() => systemUsers.id), // FK to SystemUser (replaces commsLeadId)
-    additionalOwnerId: integer('additional_owner_id').references(
-      () => systemUsers.id
-    ), // FK to SystemUser
     ministryOwnerId: uuid('ministry_owner_id').references(() => ministries.id), // FK to Ministry
     activityStatusId: integer('entry_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
+
     // Audit fields
     createdBy: integer('created_by')
       .notNull()
@@ -146,20 +148,25 @@ export const activities = pgTable(
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
   },
   (table) => [
-    // CHECK constraint: at least one of leadOrgId or leadOrgName must be provided
+    // CHECK constraint: exactly one of leadOrgId or leadOrgName must be provided (XOR)
     check(
-      'lead_org_check',
-      sql`${table.leadOrgId} IS NOT NULL OR ${table.leadOrgName} IS NOT NULL`
+      'lead_org_xor',
+      sql`(${table.leadOrgId} IS NULL) <> (${table.leadOrgName} IS NULL)`
     ),
-    // CHECK constraint: at least one of eventLeadOrgId or eventLeadOrgName must be provided
+    // CHECK constraint: exactly one of eventLeadOrgId or eventLeadOrgName must be provided (XOR)
     check(
-      'event_lead_org_check',
-      sql`${table.eventLeadOrgId} IS NOT NULL OR ${table.eventLeadOrgName} IS NOT NULL`
+      'event_lead_org_xor',
+      sql`(${table.eventLeadOrgId} IS NULL) <> (${table.eventLeadOrgName} IS NULL)`
     ),
-    // CHECK constraint: at least one of eventLeadId or eventLeadName must be provided
+    // CHECK constraint: exactly one of eventLeadId or eventLeadName must be provided (XOR)
     check(
-      'event_lead_check',
-      sql`${table.eventLeadId} IS NOT NULL OR ${table.eventLeadName} IS NOT NULL`
+      'event_lead_xor',
+      sql`(${table.eventLeadId} IS NULL) <> (${table.eventLeadName} IS NULL)`
+    ),
+    // CHECK constraint: exactly one of newsReleaseOriginId or newsReleaseOriginName must be provided (XOR)
+    check(
+      'news_release_origin_xor',
+      sql`(${table.newsReleaseOriginId} IS NULL) <> (${table.newsReleaseOriginName} IS NULL)`
     ),
   ]
 );
@@ -191,15 +198,20 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [organizations.id],
     relationName: 'eventLeadOrg',
   }),
+  newsReleaseOrigin: one(organizations, {
+    fields: [activities.newsReleaseOriginId],
+    references: [organizations.id],
+    relationName: 'newsReleaseOrigin',
+  }),
   eventLead: one(systemUsers, {
     fields: [activities.eventLeadId],
     references: [systemUsers.id],
     relationName: 'eventLead',
   }),
-  graphics: one(systemUsers, {
+  graphicsUser: one(systemUsers, {
     fields: [activities.graphicsUserId],
     references: [systemUsers.id],
-    relationName: 'graphics',
+    relationName: 'graphicsUser',
   }),
   owner: one(systemUsers, {
     fields: [activities.ownerId],
@@ -228,16 +240,16 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
 
   // Junction tables (new)
   activityCategories: many(activityCategories),
-  activityJointOrganizations: many(activityJointOrganizations),
+  activityJointOrgs: many(activityJointOrgs),
   activityRelatedEntries: many(activityRelatedEntries),
   activityCommsMaterials: many(activityCommsMaterials),
-  activityTranslationLanguages: many(activityTranslationLanguages),
-  activityJointEventOrganizations: many(activityJointEventOrganizations),
+  activityTranslationsRequired: many(activityTranslationsRequired),
+  activityJointEventOrgs: many(activityJointEventOrgs),
   activityRepresentatives: many(activityRepresentatives),
-  activitySharedWithOrganizations: many(activitySharedWithOrganizations),
+  activitySharedWithOrgs: many(activitySharedWithOrgs),
   activityCanEditUsers: many(activityCanEditUsers),
   activityCanViewUsers: many(activityCanViewUsers),
-  activityFieldReviewStatuses: many(activityFieldReviewStatuses),
+  activityAdditionalOwners: many(activityAdditionalOwners),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
 }));

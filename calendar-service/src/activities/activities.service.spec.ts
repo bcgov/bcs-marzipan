@@ -4,11 +4,11 @@ import { DatabaseService } from '../database/database.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 import type { Activity } from '@corpcal/database/types';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
 import { NotFoundException } from '@nestjs/common';
+import {
+  createMockActivityRequest,
+  createMockUpdateRequest,
+} from '../common/test-utils';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -83,7 +83,6 @@ describe('ActivitiesService', () => {
       lookAheadStatus: 'none',
       lookAheadSection: 'events',
       ownerId: 1,
-      additionalOwnerId: null,
       ministryOwnerId: null,
       calendarVisibility: 'visible',
       createdDateTime: now,
@@ -162,7 +161,6 @@ describe('ActivitiesService', () => {
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
         ownerId: 6,
-        additionalOwnerId: 7,
         ministryOwnerId: '123e4567-e89b-12d3-a456-426614174003',
         calendarVisibility: 'partial',
         startDate: new Date('2024-02-20') as any,
@@ -412,14 +410,14 @@ describe('ActivitiesService', () => {
 
   describe('create', () => {
     it('should create an activity and return a valid ActivityResponse', async () => {
-      const createDto = {
+      const createDto = createMockActivityRequest({
         title: 'New Activity',
         isActive: true,
         isIssue: false,
         isAllDay: false,
         notForLookAhead: false,
         notForThirtySixtyNinety: false,
-      } as unknown as CreateActivityRequest;
+      });
 
       const createdActivity = createMockActivity({
         id: 2,
@@ -473,9 +471,9 @@ describe('ActivitiesService', () => {
         .mockReturnValue(mockSelectQuery);
       mockDatabaseService.db.update = jest.fn().mockReturnValue(mockUpdate);
 
-      const updateDto = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Activity',
-      } as unknown as UpdateActivityRequest;
+      });
       const result = await service.update(1, updateDto);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();

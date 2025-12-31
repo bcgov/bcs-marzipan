@@ -10,6 +10,13 @@ import {
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 import { X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
@@ -32,11 +39,13 @@ type ActivityCommsSectionProps = {
     name: string;
     displayName?: string;
   }>;
+  organizations: Array<{ value: string; label: string }>;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   translationLanguageOptions,
+  organizations,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -96,6 +105,72 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormDescription>
               Enter a valid UUID (e.g., 123e4567-e89b-12d3-a456-426614174001) or
               leave empty
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseOriginId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>News Release Origin Organization</FormLabel>
+            <Select
+              onValueChange={(value) => {
+                field.onChange(value || null);
+                // Clear freeform name when selecting from dropdown
+                form.setValue('newsReleaseOriginName', null);
+              }}
+              value={field.value || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.value} value={org.value}>
+                    {org.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormDescription>
+              Select an organization from the list, or enter a freeform name
+              below
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseOriginName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>News Release Origin Name (Freeform)</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Enter organization name"
+                {...field}
+                value={field.value || ''}
+                onChange={(e) => {
+                  field.onChange(e.target.value || null);
+                  // Clear organization ID when entering freeform name
+                  if (e.target.value) {
+                    form.setValue('newsReleaseOriginId', null);
+                  }
+                }}
+              />
+            </FormControl>
+            <FormDescription>
+              Enter a freeform organization name, or select from the dropdown
+              above
             </FormDescription>
             <FormMessage />
           </FormItem>

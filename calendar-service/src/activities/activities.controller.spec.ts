@@ -1,68 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
 import { Category } from '@corpcal/shared';
+import {
+  createMockActivityRequest,
+  createMockUpdateRequest,
+  createMockActivityResponse,
+} from '../common/test-utils';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
 
-  const mockActivityResponse = {
-    id: 1,
-    displayId: 'ACT-1',
-    activityStatusId: '1',
-    pitchStatusId: '1',
-    dateStatusId: '1',
-    timeStatusId: '1',
-    venueStatusId: null,
-    title: 'Test Activity',
-    summary: 'Test summary',
-    isIssue: false,
-    isActive: true,
-    leadOrgId: null,
-    leadOrgName: null,
-    leadOrg: null,
-    eventLeadOrgId: null,
-    eventLeadOrgName: null,
-    eventLeadOrg: null,
-    significance: '',
-    pitchStatus: 'Pending',
-    dateStatus: '1',
-    timeStatus: '1',
-    venueStatus: null,
-    pitchComments: null,
-    isAllDay: false,
-    startDate: '2025-01-15',
-    startTime: '10:00',
-    endDate: '2025-01-15',
-    endTime: '12:00',
-    schedulingConsiderations: '',
-    eventLeadId: null,
-    eventLead: null,
-    eventLeadName: null,
-    graphicsUserId: null,
-    graphics: null,
-    venue: null,
-    venueAddress: null,
-    newsReleaseId: null,
-    notForLookAhead: false,
-    notForThirtySixtyNinety: false,
+  const mockActivityResponse = createMockActivityResponse({
     lookAheadStatus: 'none',
     lookAheadSection: 'events',
-    planningReport: false,
-    ownerId: '1',
-    additionalOwnerId: null,
-    ministryOwnerId: null,
-    owner: '1',
-    calendarVisibility: 'visible',
-    createdDateTime: new Date().toISOString(),
-    lastUpdatedDateTime: new Date().toISOString(),
-    createdBy: '1',
-    lastUpdatedBy: '1',
-    category: ['Education'],
     tags: undefined,
     jointOrg: undefined,
     relatedActivities: undefined,
@@ -73,7 +24,7 @@ describe('ActivitiesController', () => {
     sharedWith: undefined,
     canEdit: undefined,
     canView: undefined,
-  };
+  });
 
   const mockActivitiesService = {
     create: jest.fn(),
@@ -108,24 +59,10 @@ describe('ActivitiesController', () => {
 
   describe('create', () => {
     it('should create a new activity', async () => {
-      const createDto: CreateActivityRequest = {
+      const createDto = createMockActivityRequest({
         title: 'New Activity',
         summary: 'New summary',
-        isIssue: false,
-        isActive: true,
-        isAllDay: false,
-        startDate: '2025-01-15',
-        startTime: '10:00',
-        endDate: '2025-01-15',
-        endTime: '12:00',
-        notForLookAhead: false,
-        pitchStatusId: 1,
-        dateStatusId: 1,
-        timeStatusId: 1,
-        calendarVisibility: 'visible',
-        ownerId: 1,
-        activityStatusId: 1,
-      };
+      });
 
       mockActivitiesService.create.mockResolvedValue(mockActivityResponse);
 
@@ -237,10 +174,10 @@ describe('ActivitiesController', () => {
 
   describe('update', () => {
     it('should update an activity', async () => {
-      const updateDto = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Title',
         summary: 'Updated summary',
-      } as unknown as UpdateActivityRequest;
+      });
 
       const updatedActivity = {
         ...mockActivityResponse,
@@ -260,9 +197,9 @@ describe('ActivitiesController', () => {
     });
 
     it('should throw error when updating non-existent activity', async () => {
-      const updateDto = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Title',
-      } as unknown as UpdateActivityRequest;
+      });
 
       mockActivitiesService.update.mockRejectedValue(
         new Error('Activity not found')
