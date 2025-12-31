@@ -49,14 +49,34 @@ export class LookupsController {
   @ApiQuery({ name: 'userId', required: false, type: Number })
   @ApiQuery({ name: 'role', required: false, type: String })
   @ApiQuery({ name: 'organizationId', required: false, type: String })
+  @ApiQuery({
+    name: 'userIds',
+    required: false,
+    type: String,
+    description: 'Comma-separated list of user IDs to filter by',
+  })
   @Get('users')
   @Header('Cache-Control', 'public, max-age=300')
   async getUsers(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string
+    @Query('organizationId') organizationId?: string,
+    @Query('userIds') userIds?: string
   ): Promise<{ success: boolean; data: LookupItem[] }> {
-    const params: LookupQueryParams = { userId, role, organizationId };
+    // Parse comma-separated userIds string into array of numbers
+    const parsedUserIds = userIds
+      ? userIds
+          .split(',')
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((id) => !isNaN(id))
+      : undefined;
+
+    const params: LookupQueryParams = {
+      userId,
+      role,
+      organizationId,
+      userIds: parsedUserIds,
+    };
     const data = await this.lookupsService.getUsers(params);
     return { success: true, data };
   }

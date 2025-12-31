@@ -550,6 +550,17 @@ export const lookupQueryParamsSchema = z.object({
   userId: z.coerce.number().int().optional(),
   role: z.string().optional(),
   organizationId: z.string().uuid().optional(),
+  userIds: z
+    .union([
+      z.array(z.coerce.number().int()),
+      z.string().transform((val) =>
+        val
+          .split(',')
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((id) => !isNaN(id))
+      ),
+    ])
+    .optional(),
 });
 
 export type LookupQueryParams = z.infer<typeof lookupQueryParamsSchema>;

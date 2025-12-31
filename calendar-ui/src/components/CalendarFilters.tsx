@@ -336,36 +336,36 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         console.error('Error fetching representatives:', error);
       });
 
-    // Extract unique owner IDs from activities first, then fetch only those users
+    // Extract unique owner IDs and event lead IDs from activities, then fetch only those users
     fetchActivities()
       .then((activities) => {
-        // Get unique owner IDs from activities
-        const uniqueOwnerIds = new Set<string>();
+        // Get unique owner IDs and event lead IDs from activities
+        const uniqueLeadIds = new Set<number>();
         activities.forEach((activity) => {
           if (activity.ownerId) {
-            uniqueOwnerIds.add(activity.ownerId.toString());
+            uniqueLeadIds.add(parseInt(activity.ownerId.toString(), 10));
+          }
+          if (activity.eventLeadId) {
+            uniqueLeadIds.add(parseInt(activity.eventLeadId.toString(), 10));
           }
         });
 
-        // If no owners found, set empty array
-        if (uniqueOwnerIds.size === 0) {
+        // If no leads found, set empty array
+        if (uniqueLeadIds.size === 0) {
           setLeads([]);
           return;
         }
 
-        // Fetch all users (since API doesn't support filtering by IDs)
-        // Then filter to only owners and sort by name
-        fetchUsers()
+        // Fetch users filtered by IDs (API now supports userIds parameter)
+        fetchUsers({ userIds: Array.from(uniqueLeadIds) })
           .then((users) => {
-            const ownerUsers = users
-              .filter((user) => uniqueOwnerIds.has(user.id.toString()))
-              .sort((a, b) => {
-                // Sort by name (first or last name if available)
-                const nameA = a.name || a.label || '';
-                const nameB = b.name || b.label || '';
-                return nameA.localeCompare(nameB);
-              });
-            setLeads(ownerUsers);
+            // Sort by name
+            const sortedUsers = users.sort((a, b) => {
+              const nameA = a.name || a.label || '';
+              const nameB = b.name || b.label || '';
+              return nameA.localeCompare(nameB);
+            });
+            setLeads(sortedUsers);
           })
           .catch((error) => {
             console.error('Error fetching users:', error);

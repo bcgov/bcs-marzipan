@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray, type SQL } from 'drizzle-orm';
 import {
   categories,
   organizations,
@@ -82,9 +82,20 @@ export class LookupsService {
   /**
    * Get all active system users
    * Computes display name from adDisplayName or falls back to adUsername
-   * TODO: Implement scoping based on userId, role, organizationId
+   * Supports filtering by userIds to fetch specific users
+   * TODO: Implement scoping based on role, organizationId
    */
-  async getUsers(_params?: LookupQueryParams): Promise<UserLookupItem[]> {
+  async getUsers(params?: LookupQueryParams): Promise<UserLookupItem[]> {
+    // Build where conditions
+    const conditions: SQL[] = [eq(systemUsers.isActive, true)];
+
+    // Filter by specific user IDs if provided
+    if (params?.userIds && params.userIds.length > 0) {
+      // Controller already parses userIds into number array, but TypeScript needs explicit type
+      const userIdsArray = params.userIds;
+      conditions.push(inArray(systemUsers.id, userIdsArray));
+    }
+
     const results = await this.databaseService.db
       .select({
         id: systemUsers.id,
@@ -93,7 +104,7 @@ export class LookupsService {
         adEmail: systemUsers.adEmail,
       })
       .from(systemUsers)
-      .where(eq(systemUsers.isActive, true))
+      .where(and(...conditions))
       .orderBy(systemUsers.adDisplayName, systemUsers.adUsername);
 
     return results.map((user) => {

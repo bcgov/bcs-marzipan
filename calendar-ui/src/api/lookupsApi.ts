@@ -48,10 +48,18 @@ export async function fetchOrganizations(
 export async function fetchUsers(
   params?: LookupQueryParams
 ): Promise<UserLookupItem[]> {
+  // Convert userIds array to comma-separated string for API
+  const apiParams = params
+    ? {
+        ...params,
+        userIds: params.userIds?.join(','),
+      }
+    : undefined;
+
   const res = await api.get<{ success: boolean; data: UserLookupItem[] }>(
     '/lookups/users',
     {
-      params,
+      params: apiParams,
     }
   );
   return res.data.data;
