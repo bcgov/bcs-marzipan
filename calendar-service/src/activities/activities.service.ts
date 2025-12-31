@@ -220,7 +220,10 @@ export class ActivitiesService {
     const createdActivity = await this.findOne(result.id);
 
     // Broadcast to all clients that a new activity was created
-    this.activitiesGateway.broadcastActivityCreated(createdActivity);
+    // Only broadcast if the activity was successfully fetched
+    if (createdActivity) {
+      this.activitiesGateway.broadcastActivityCreated(createdActivity);
+    }
 
     return createdActivity;
   }

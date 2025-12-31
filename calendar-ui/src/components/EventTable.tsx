@@ -16,6 +16,7 @@ import {
   useToastController,
 } from '@fluentui/react-components';
 import io from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 import {
   Calendar24Regular,
@@ -37,8 +38,8 @@ import {
   FilterFn,
 } from '@tanstack/react-table';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { fetchActivities } from '../api/activitiesApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 
@@ -310,9 +311,14 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const { dispatchToast } = useToastController();
+  
+  // Ref to track if component is mounted to prevent setState after unmount
+  const isMountedRef = useRef(true);
+  // Ref to track socket instance to prevent duplicate connections
+  const socketRef = useRef<Socket | null>(null);
 
   // Fetch activities from API
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -327,17 +333,26 @@ export const EventTable: React.FC<EventTableProps> = ({
       }
 
       const mappedData = activities.map(mapActivityToEventRow);
-      setEventData(mappedData);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setEventData(mappedData);
+      }
     } catch (err) {
       console.error('Error fetching activities:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch activities'
-      );
-      setEventData([]); // Set to empty array on error
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to fetch activities'
+        );
+        setEventData([]); // Set to empty array on error
+      }
     } finally {
-      setIsLoading(false);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadActivities();
@@ -345,8 +360,14 @@ export const EventTable: React.FC<EventTableProps> = ({
 
   // WebSocket connection for real-time updates
   useEffect(() => {
+    // Prevent duplicate connections
+    if (socketRef.current) {
+      return;
+    }
+
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
     const socket = io(apiUrl);
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('EventTable WebSocket connected:', socket.id);
@@ -362,48 +383,58 @@ export const EventTable: React.FC<EventTableProps> = ({
     socket.on('activityCreated', async (data) => {
       console.log('Activity created:', data);
 
-      // Refresh the table data
-      await loadActivities();
+      // Only call loadActivities if component is still mounted
+      if (isMountedRef.current) {
+        // Refresh the table data
+        await loadActivities();
 
-      // Show toast notification
-      dispatchToast(
-        <Toast>
-          <ToastTitle>New Activity Created</ToastTitle>
-          <ToastBody>
-            {data.displayId || `ACT-${data.id}`}: {data.title}
-          </ToastBody>
-        </Toast>,
-        { intent: 'success', timeout: 5000 }
-      );
+        // Show toast notification
+        dispatchToast(
+          <Toast>
+            <ToastTitle>New Activity Created</ToastTitle>
+            <ToastBody>
+              {data.displayId || `ACT-${data.id}`}: {data.title}
+            </ToastBody>
+          </Toast>,
+          { intent: 'success', timeout: 5000 }
+        );
+      }
     });
 
     // Listen for activity updated
     socket.on('activityUpdated', async (data) => {
       console.log('Activity updated:', data);
 
-      // Refresh the table data
-      await loadActivities();
+      // Only call loadActivities if component is still mounted
+      if (isMountedRef.current) {
+        // Refresh the table data
+        await loadActivities();
 
-      // Show toast notification
-      dispatchToast(
-        <Toast>
-          <ToastTitle>Activity Updated</ToastTitle>
-          <ToastBody>
-            {data.displayId || `ACT-${data.id}`}: {data.title}
-          </ToastBody>
-        </Toast>,
-        { intent: 'info', timeout: 5000 }
-      );
+        // Show toast notification
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Activity Updated</ToastTitle>
+            <ToastBody>
+              {data.displayId || `ACT-${data.id}`}: {data.title}
+            </ToastBody>
+          </Toast>,
+          { intent: 'info', timeout: 5000 }
+        );
+      }
     });
 
     // Cleanup on unmount
     return () => {
+      isMountedRef.current = false;
       socket.emit('unsubscribeFromActivities');
+      socket.off('connect');
+      socket.off('connect_error');
       socket.off('activityCreated');
       socket.off('activityUpdated');
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [dispatchToast]);
+  }, [dispatchToast, loadActivities]);
 
   useEffect(() => {
     setColumnFilters(filters);
