@@ -529,7 +529,7 @@ Server error occurred.
   leadOrgName: string | null;
   eventLeadOrgId: string | null;      // UUID
   eventLeadOrgName: string | null;
-  eventLeadId: string | null;
+  eventPlannerId: string | null;
   graphicsUserId: string | null;
   ownerId: string;
   additionalOwnerId: string | null;

@@ -25,7 +25,7 @@ import type {
 } from '@corpcal/shared/schemas';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
-import { Category } from '@corpcal/shared';
+import type { Category } from '@corpcal/database/types';
 
 @ApiTags('activities')
 @Controller('activities')

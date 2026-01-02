@@ -30,6 +30,7 @@ import {
   commsMaterials,
   translatedLanguages,
   systemUsers,
+  ministries,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import type {
@@ -37,10 +38,10 @@ import type {
   UpdateActivityRequest,
   FilterActivities,
 } from '@corpcal/shared/schemas';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
-import { z } from 'zod';
-import { ActivityResponseDto } from '@corpcal/shared/dto';
-import { ensureMatchesSchema } from '@corpcal/shared/utils';
+import {
+  activityResponseSchema,
+  type ActivityResponse,
+} from '@corpcal/shared/schemas';
 import { DatabaseService } from '../database/database.service';
 import { ActivitiesGateway } from './activities.gateway';
 
@@ -53,7 +54,7 @@ export class ActivitiesService {
   /**
    * Create a new activity with related junction table records
    */
-  async create(dto: CreateActivityRequest): Promise<ActivityResponseDto> {
+  async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
     // Extract junction table IDs from the DTO
     // These fields are defined in createActivityRequestSchema but not in the base activity schema
     const {
@@ -92,14 +93,15 @@ export class ActivitiesService {
     }
 
     // TODO: Get current user ID from auth context
-    const currentUserId = 1; //dto.createdBy ?? 1;
+    const currentUserId = 1;
     const now = new Date();
 
     // Use transaction to ensure atomicity of activity and junction table inserts
     const result = await this.databaseService.db.transaction(async (tx) => {
-      // Prepare activity data with audit fields
+      // Insert activity with displayId: null (will be updated after getting activity ID)
       const newActivity = {
         ...activityData,
+        displayId: null as string | null,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
         createdDateTime: now,
@@ -109,10 +111,41 @@ export class ActivitiesService {
       // Insert the activity
       const [created] = await tx
         .insert(activities)
-        .values(newActivity as typeof activities.$inferInsert)
+        .values(newActivity as unknown as typeof activities.$inferInsert)
         .returning();
 
       const activityId = created.id;
+
+      // Fetch ministry abbreviation to generate displayId
+      // ministryOwnerId is required, so it should always be present
+      // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
+      if (!activityData.ministryOwnerId) {
+        throw new BadRequestException('ministryOwnerId is required');
+      }
+
+      const [ministry] = await tx
+        .select({ abbreviation: ministries.abbreviation })
+        .from(ministries)
+        .where(eq(ministries.id, activityData.ministryOwnerId))
+        .limit(1);
+
+      if (!ministry || !ministry.abbreviation) {
+        throw new BadRequestException(
+          `Ministry with ID ${activityData.ministryOwnerId} not found or missing abbreviation`
+        );
+      }
+
+      // Generate displayId using ministry abbreviation and activity ID
+      const displayId = this.generateDisplayId(
+        ministry.abbreviation,
+        activityId
+      );
+
+      // Update activity with generated displayId
+      await tx
+        .update(activities)
+        .set({ displayId })
+        .where(eq(activities.id, activityId));
 
       // Insert junction table records in parallel
       await Promise.all([
@@ -241,6 +274,25 @@ export class ActivitiesService {
   }
 
   /**
+   * Generate displayId from ministry abbreviation and activity ID
+   * Format: <ACRONYM>-<last 6 digits of id>
+   * Example: AG-000123 (Attorney General, activity ID 123)
+   * Example: HLTH-456789 (Health, activity ID 123456789)
+   *
+   * @param ministryAbbreviation - Ministry abbreviation from ministries table
+   * @param activityId - Activity ID (serial)
+   * @returns Formatted displayId string
+   */
+  private generateDisplayId(
+    ministryAbbreviation: string,
+    activityId: number
+  ): string {
+    // Get last 6 digits of activity ID
+    const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
+    return `${ministryAbbreviation.toUpperCase().trim()}-${lastSixDigits}`;
+  }
+
+  /**
    * Helper function to insert junction table records
    * Reduces code duplication for common junction table insert patterns
    *
@@ -282,7 +334,7 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    */
-  async findAll(filters?: FilterActivities): Promise<ActivityResponseDto[]> {
+  async findAll(filters?: FilterActivities): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
     if (filters) {
@@ -401,7 +453,7 @@ export class ActivitiesService {
   /**
    * Find one activity by ID
    */
-  async findOne(id: number): Promise<ActivityResponseDto> {
+  async findOne(id: number): Promise<ActivityResponse> {
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -475,7 +527,7 @@ export class ActivitiesService {
   async update(
     id: number,
     dto: UpdateActivityRequest
-  ): Promise<ActivityResponseDto> {
+  ): Promise<ActivityResponse> {
     // Verify activity exists (throws NotFoundException if not found)
     await this.findOne(id);
 
@@ -483,6 +535,27 @@ export class ActivitiesService {
       ...(dto as Partial<Activity>),
       lastUpdatedDateTime: new Date(),
     };
+
+    // If ministryOwnerId is being updated, recalculate displayId
+    // TODO: consider if users still need to reference previous displayId.
+    if (dto.ministryOwnerId !== undefined && dto.ministryOwnerId !== null) {
+      // Fetch the new ministry abbreviation
+      const [ministry] = await this.databaseService.db
+        .select({ abbreviation: ministries.abbreviation })
+        .from(ministries)
+        .where(eq(ministries.id, dto.ministryOwnerId))
+        .limit(1);
+
+      if (!ministry || !ministry.abbreviation) {
+        throw new BadRequestException(
+          `Ministry with ID ${dto.ministryOwnerId} not found or missing abbreviation`
+        );
+      }
+
+      // Generate new displayId using the new ministry abbreviation
+      const newDisplayId = this.generateDisplayId(ministry.abbreviation, id);
+      updateData.displayId = newDisplayId;
+    }
 
     const [updated] = await this.databaseService.db
       .update(activities)
@@ -565,7 +638,7 @@ export class ActivitiesService {
   /**
    * Soft delete (set isActive to false)
    */
-  async softDelete(id: number): Promise<ActivityResponseDto> {
+  async softDelete(id: number): Promise<ActivityResponse> {
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
@@ -1330,7 +1403,7 @@ export class ActivitiesService {
       canView?: string[];
       additionalOwners?: string[];
     }
-  ): ActivityResponseDto {
+  ): ActivityResponse {
     // Format date to YYYY-MM-DD
     const formatDate = (date: Date | string | null): string | null => {
       if (!date) return null;
@@ -1347,9 +1420,9 @@ export class ActivitiesService {
       return time.substring(0, 5);
     };
 
-    const dto = {
+    const dto: ActivityResponse = {
       id: activity.id,
-      displayId: activity.displayId ?? '',
+      displayId: activity.displayId ?? null,
 
       // Activity status and category
       activityStatusId: activity.activityStatusId?.toString() ?? 'unknown',
@@ -1412,17 +1485,17 @@ export class ActivitiesService {
           provinceOrState: string;
           country: string;
         } | null) ?? null,
-      eventLeadId: activity.eventLeadId?.toString() ?? null,
+      eventPlannerId: activity.eventPlannerId?.toString() ?? null,
       eventLead:
-        activity.eventLeadId?.toString() ??
-        ('eventLeadName' in activity &&
-        typeof activity.eventLeadName === 'string'
-          ? activity.eventLeadName
+        activity.eventPlannerId?.toString() ??
+        ('eventPlannerName' in activity &&
+        typeof activity.eventPlannerName === 'string'
+          ? activity.eventPlannerName
           : null),
-      eventLeadName:
-        'eventLeadName' in activity &&
-        typeof activity.eventLeadName === 'string'
-          ? activity.eventLeadName
+      eventPlannerName:
+        'eventPlannerName' in activity &&
+        typeof activity.eventPlannerName === 'string'
+          ? activity.eventPlannerName
           : null,
       graphicsUserId: activity.graphicsUserId?.toString() ?? null,
       graphicsUser: activity.graphicsUserId?.toString() ?? null,
@@ -1430,6 +1503,7 @@ export class ActivitiesService {
       // Reports
       notForLookAhead: activity.notForLookAhead ?? false,
       notForThirtySixtyNinety: activity.notForThirtySixtyNinety ?? false,
+      executiveSummary: activity.executiveSummary ?? null,
       lookAheadStatus:
         (activity.lookAheadStatus as 'none' | 'new' | 'changed') ?? 'none',
       lookAheadSection:
@@ -1462,35 +1536,24 @@ export class ActivitiesService {
       lastUpdatedBy: activity.lastUpdatedBy?.toString() ?? 'unknown',
     };
 
-    // Compile-time validation: ensure the mapping produces a value that matches the schema
-    // This provides compile-time guarantee that the mapping is correct
-    // Using double assertion to work around type cache issues - runtime validation ensures correctness
-    const validatedDto = ensureMatchesSchema(
-      activityResponseSchema,
-      dto as unknown as z.infer<typeof activityResponseSchema>
-    );
-
-    // Runtime validation to ensure DTO matches schema contract
+    // Runtime validation to ensure response matches schema contract
     // This catches misalignment between the mapping logic and the schema
     // Runs in all environments to catch issues early
     try {
-      activityResponseSchema.parse(validatedDto);
+      return activityResponseSchema.parse(dto);
     } catch (error) {
       // Log validation errors with context for debugging
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown validation error';
       console.error(
-        `[ActivitiesService] Response DTO validation failed for activity ${activity.id}:`,
+        `[ActivitiesService] Response validation failed for activity ${activity.id}:`,
         errorMessage
       );
       // Fail-fast in all environments to prevent invalid responses
       throw new Error(
-        `Response DTO validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
+        `Response validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
       );
     }
-
-    // Return as DTO class instance for better IDE support and explicit contracts
-    return ActivityResponseDto.from(validatedDto);
   }
 
   /**

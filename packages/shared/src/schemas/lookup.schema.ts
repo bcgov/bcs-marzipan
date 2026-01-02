@@ -1,31 +1,16 @@
 import { z } from 'zod';
-import { createSelectSchema } from 'drizzle-zod';
-import {
-  categories,
-  tags,
-  pitchStatuses,
-  commsMaterials,
-  translatedLanguages,
-  governmentRepresentatives,
-  activityStatuses,
-  dateStatuses,
-  timeStatuses,
-  venueStatuses,
-  cities,
-} from '@corpcal/database/schema';
-import { organizations } from '@corpcal/database/schema';
-import { ministries } from '@corpcal/database/schema';
-import { systemUsers } from '@corpcal/database/schema';
 import { REPRESENTATIVE_TYPE } from '../constants/activity-enums';
 
 /**
  * Lookup Response Schemas
  *
- * These schemas are automatically generated from Drizzle table schemas
- * using createSelectSchema, then transformed to match the API contract.
- *
+ * These schemas use pure Zod to define API response types for lookup tables.
  * Each lookup type has its own schema for full type safety while also
  * providing a common LookupItem interface for generic dropdown components.
+ *
+ * Fields are defined explicitly to match the database schema with API-appropriate
+ * types. See validate-types.ts for compile-time verification that fields align
+ * with database types.
  */
 
 // ============================================
@@ -55,27 +40,19 @@ export const extendedLookupItemSchema = lookupItemSchema.extend({
 // Category Schema
 // ============================================
 
-const baseCategorySchema = createSelectSchema(categories);
-
-export const categoryResponseSchema = baseCategorySchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-    pitchRequired: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-    pitchRequired: z.boolean(),
-  });
+/**
+ * Category Response Schema
+ * Fields from the categories table exposed via API
+ */
+export const categoryResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+  pitchRequired: z.boolean(),
+});
 
 export const categoryLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -86,23 +63,17 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
 // Tag Schema
 // ============================================
 
-const baseTagSchema = createSelectSchema(tags);
-
-export const tagResponseSchema = baseTagSchema
-  .pick({
-    id: true,
-    key: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-  })
-  .extend({
-    id: z.string().uuid(),
-    key: z.string().nullable(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-  });
+/**
+ * Tag Response Schema
+ * Fields from the tags table exposed via API
+ */
+export const tagResponseSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string().nullable(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+});
 
 export const tagLookupItemSchema = lookupItemSchema.extend({
   key: z.string().nullable(),
@@ -113,29 +84,20 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
 // Organization Schema
 // ============================================
 
-const baseOrganizationSchema = createSelectSchema(organizations);
-
-export const organizationResponseSchema = baseOrganizationSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    organizationType: true,
-    ministryId: true,
-    isActive: true,
-    sortOrder: true,
-    description: true,
-  })
-  .extend({
-    id: z.string().uuid(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    organizationType: z.string().nullable(),
-    ministryId: z.string().uuid().nullable(),
-    isActive: z.boolean(),
-    sortOrder: z.number().int(),
-    description: z.string().nullable(),
-  });
+/**
+ * Organization Response Schema
+ * Fields from the organizations table exposed via API
+ */
+export const organizationResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  organizationType: z.string().nullable(),
+  ministryId: z.string().uuid().nullable(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int(),
+  description: z.string().nullable(),
+});
 
 export const organizationLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -146,25 +108,18 @@ export const organizationLookupItemSchema = lookupItemSchema.extend({
 // Ministry Schema
 // ============================================
 
-const baseMinistrySchema = createSelectSchema(ministries);
-
-export const ministryResponseSchema = baseMinistrySchema
-  .pick({
-    id: true,
-    displayName: true,
-    abbreviation: true,
-    sortOrder: true,
-    isActive: true,
-    ministerName: true,
-  })
-  .extend({
-    id: z.string().uuid(),
-    displayName: z.string().nullable(),
-    abbreviation: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    ministerName: z.string().nullable(),
-  });
+/**
+ * Ministry Response Schema
+ * Fields from the ministries table exposed via API
+ */
+export const ministryResponseSchema = z.object({
+  id: z.string().uuid(),
+  displayName: z.string().nullable(),
+  abbreviation: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  ministerName: z.string().nullable(),
+});
 
 export const ministryLookupItemSchema = lookupItemSchema.extend({
   displayName: z.string().nullable(),
@@ -175,25 +130,18 @@ export const ministryLookupItemSchema = lookupItemSchema.extend({
 // System User Schema
 // ============================================
 
-const baseSystemUserSchema = createSelectSchema(systemUsers);
-
-export const systemUserResponseSchema = baseSystemUserSchema
-  .pick({
-    id: true,
-    adUsername: true,
-    adDisplayName: true,
-    adEmail: true,
-    isActive: true,
-    role: true,
-  })
-  .extend({
-    id: z.number().int(),
-    adUsername: z.string().nullable(),
-    adDisplayName: z.string().nullable(),
-    adEmail: z.string().nullable(),
-    isActive: z.boolean(),
-    role: z.string(),
-  });
+/**
+ * System User Response Schema
+ * Fields from the system_users table exposed via API
+ */
+export const systemUserResponseSchema = z.object({
+  id: z.number().int(),
+  adUsername: z.string().nullable(),
+  adDisplayName: z.string().nullable(),
+  adEmail: z.string().nullable(),
+  isActive: z.boolean(),
+  role: z.string(),
+});
 
 export const userLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -205,25 +153,18 @@ export const userLookupItemSchema = lookupItemSchema.extend({
 // Pitch Status Schema
 // ============================================
 
-const basePitchStatusSchema = createSelectSchema(pitchStatuses);
-
-export const pitchStatusResponseSchema = basePitchStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Pitch Status Response Schema
+ * Fields from the pitch_statuses table exposed via API
+ */
+export const pitchStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -234,25 +175,18 @@ export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
 // Activity Status Schema
 // ============================================
 
-const baseActivityStatusSchema = createSelectSchema(activityStatuses);
-
-export const activityStatusResponseSchema = baseActivityStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Activity Status Response Schema
+ * Fields from the activity_statuses table exposed via API
+ */
+export const activityStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const activityStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -263,25 +197,18 @@ export const activityStatusLookupItemSchema = lookupItemSchema.extend({
 // Date Status Schema
 // ============================================
 
-const baseDateStatusSchema = createSelectSchema(dateStatuses);
-
-export const dateStatusResponseSchema = baseDateStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Date Status Response Schema
+ * Fields from the date_statuses table exposed via API
+ */
+export const dateStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const dateStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -292,25 +219,18 @@ export const dateStatusLookupItemSchema = lookupItemSchema.extend({
 // Time Status Schema
 // ============================================
 
-const baseTimeStatusSchema = createSelectSchema(timeStatuses);
-
-export const timeStatusResponseSchema = baseTimeStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Time Status Response Schema
+ * Fields from the time_statuses table exposed via API
+ */
+export const timeStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const timeStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -321,25 +241,18 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 // Venue Status Schema
 // ============================================
 
-const baseVenueStatusSchema = createSelectSchema(venueStatuses);
-
-export const venueStatusResponseSchema = baseVenueStatusSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Venue Status Response Schema
+ * Fields from the venue_statuses table exposed via API
+ */
+export const venueStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const venueStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -350,25 +263,18 @@ export const venueStatusLookupItemSchema = lookupItemSchema.extend({
 // City Schema
 // ============================================
 
-const baseCitySchema = createSelectSchema(cities);
-
-export const cityResponseSchema = baseCitySchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    province: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    province: z.string().nullable(),
-  });
+/**
+ * City Response Schema
+ * Fields from the cities table exposed via API
+ */
+export const cityResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  province: z.string().nullable(),
+});
 
 export const cityLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -380,25 +286,18 @@ export const cityLookupItemSchema = lookupItemSchema.extend({
 // Comms Materials Schema
 // ============================================
 
-const baseCommsMaterialsSchema = createSelectSchema(commsMaterials);
-
-export const commsMaterialsResponseSchema = baseCommsMaterialsSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Comms Materials Response Schema
+ * Fields from the comms_materials table exposed via API
+ */
+export const commsMaterialsResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -409,25 +308,18 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 // Translation Languages Schema
 // ============================================
 
-const baseTranslatedLanguagesSchema = createSelectSchema(translatedLanguages);
-
-export const translationLanguageResponseSchema = baseTranslatedLanguagesSchema
-  .pick({
-    id: true,
-    name: true,
-    displayName: true,
-    sortOrder: true,
-    isActive: true,
-    description: true,
-  })
-  .extend({
-    id: z.number().int(),
-    name: z.string(),
-    displayName: z.string().nullable(),
-    sortOrder: z.number().int(),
-    isActive: z.boolean(),
-    description: z.string().nullable(),
-  });
+/**
+ * Translation Language Response Schema
+ * Fields from the translated_languages table exposed via API
+ */
+export const translationLanguageResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
 
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -438,34 +330,21 @@ export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
 // Government Representatives Schema
 // ============================================
 
-const baseGovernmentRepresentativeSchema = createSelectSchema(
-  governmentRepresentatives
-);
-
-export const governmentRepresentativeResponseSchema =
-  baseGovernmentRepresentativeSchema
-    .pick({
-      id: true,
-      name: true,
-      displayName: true,
-      sortOrder: true,
-      isActive: true,
-      title: true,
-      email: true,
-      ministryId: true,
-      representativeType: true,
-    })
-    .extend({
-      id: z.number().int(),
-      name: z.string(),
-      displayName: z.string().nullable(),
-      sortOrder: z.number().int(),
-      isActive: z.boolean(),
-      title: z.string().nullable(),
-      email: z.string().nullable(),
-      ministryId: z.string().uuid().nullable(),
-      representativeType: z.enum(REPRESENTATIVE_TYPE).nullable(),
-    });
+/**
+ * Government Representative Response Schema
+ * Fields from the government_representatives table exposed via API
+ */
+export const governmentRepresentativeResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  title: z.string().nullable(),
+  email: z.string().nullable(),
+  ministryId: z.string().uuid().nullable(),
+  representativeType: z.enum(REPRESENTATIVE_TYPE).nullable(),
+});
 
 export const governmentRepresentativeLookupItemSchema = lookupItemSchema.extend(
   {

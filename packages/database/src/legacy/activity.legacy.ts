@@ -67,7 +67,7 @@ export const legacyActivities = pgTable('activities_legacy_reference', {
   contactMinistryId: uuid('contact_ministry_id'), // FK to Ministry
   governmentRepresentativeId: integer('government_representative_id'), // FK to GovernmentRepresentative
   communicationContactId: integer('communication_contact_id'), // FK to CommunicationContact
-  // eventPlannerId: integer('event_planner_id'), // FK to EventPlanner (removed - replaced by eventLeadId in new schema)
+  // eventPlannerId: integer('event_planner_id'), // FK to EventPlanner (removed - replaced by eventPlannerId in new schema)
   // videographerId: integer('videographer_id'), // FK to Videographer
   cityId: integer('city_id'), // FK to City
 
@@ -144,7 +144,7 @@ export const legacyActivities = pgTable('activities_legacy_reference', {
     .notNull()
     .default(false),
   isVenueNeedsReview: boolean('is_venue_needs_review').notNull().default(false),
-  // isEventPlannerNeedsReview: boolean('is_event_planner_needs_review') (removed - replaced by eventLeadId in new schema)
+  // isEventPlannerNeedsReview: boolean('is_event_planner_needs_review') (removed - replaced by eventPlannerId in new schema)
   isDigitalNeedsReview: boolean('is_digital_needs_review')
     .notNull()
     .default(false),
@@ -190,7 +190,7 @@ export const legacyActivitiesRelations = relations(
       fields: [legacyActivities.communicationContactId],
       references: [communicationContacts.id],
     }),
-    // eventPlanner: one(eventPlanners, { (removed - replaced by eventLeadId in new schema)
+    // eventPlanner: one(eventPlanners, { (removed - replaced by eventPlannerId in new schema)
     //   fields: [legacyActivities.eventPlannerId],
     //   references: [eventPlanners.id],
     // }),

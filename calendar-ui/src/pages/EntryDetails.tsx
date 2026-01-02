@@ -486,7 +486,7 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Event Planner</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.eventLead ||
-                    activityData.eventLeadName ||
+                    activityData.eventPlannerName ||
                     'Not specified'}
                 </Text>
               </div>

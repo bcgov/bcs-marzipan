@@ -117,7 +117,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="eventLeadId"
+        name="eventPlannerId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Event Planner</FormLabel>

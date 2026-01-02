@@ -55,7 +55,6 @@
   "dependencies": {
     "@corpcal/database": "*",
     "drizzle-orm": "^0.44.7",
-    "drizzle-zod": "^0.8.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {

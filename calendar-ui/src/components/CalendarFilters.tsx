@@ -345,8 +345,8 @@ export const CalendarFilters: React.FC<FilterProps> = ({
           if (activity.ownerId) {
             uniqueLeadIds.add(parseInt(activity.ownerId.toString(), 10));
           }
-          if (activity.eventLeadId) {
-            uniqueLeadIds.add(parseInt(activity.eventLeadId.toString(), 10));
+          if (activity.eventPlannerId) {
+            uniqueLeadIds.add(parseInt(activity.eventPlannerId.toString(), 10));
           }
         });
 

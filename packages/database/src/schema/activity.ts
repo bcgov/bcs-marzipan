@@ -51,9 +51,9 @@ export const activities = pgTable(
   {
     id: serial('id').primaryKey().notNull(),
 
-    // Display ID (computed: MIN-###### format)
-    // TODO: derive display ID from ministry and activity ID
-    displayId: varchar('display_id', { length: 50 }).unique().notNull(), // Computed field: {ministryAcronym}-{paddedId}
+    // Display ID (computed: {ministryAbbreviation}-{paddedLast6Digits} format)
+    // Format: <ACRONYM>-<000001> (e.g., AG-000123, HLTH-456789)
+    displayId: varchar('display_id', { length: 50 }).unique(), // Computed field: {ministryAbbreviation}-{paddedLast6Digits}
     isActive: boolean('is_active').notNull().default(true),
 
     // Overview and approval
@@ -94,7 +94,7 @@ export const activities = pgTable(
 
     // Event
     venue: varchar('venue', { length: 100 }), // Venue name
-    venueAddress: jsonb('venue_address'), // {street, city, provinceOrState, country
+    venueAddress: jsonb('venue_address'), // {street, city, provinceOrState, country}
     venueStatusId: integer('venue_status_id').references(
       () => venueStatuses.id
     ), // FK to VenueStatus
@@ -103,8 +103,8 @@ export const activities = pgTable(
       () => organizations.id
     ), // FK to Organizations (mutually exclusive with eventLeadOrgName)
     eventLeadOrgName: varchar('event_lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with eventLeadOrgId)
-    eventLeadId: integer('event_lead_id').references(() => systemUsers.id), // FK to SystemUser (mutually exclusive with eventLeadName)
-    eventLeadName: varchar('event_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventLeadId)
+    eventPlannerId: integer('event_lead_id').references(() => systemUsers.id), // FK to SystemUser (mutually exclusive with eventPlannerName)
+    eventPlannerName: varchar('event_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventPlannerId)
     graphicsUserId: integer('graphics_user_id').references(
       () => systemUsers.id
     ), // FK to SystemUser (replaces graphicsId lookup)
@@ -115,7 +115,8 @@ export const activities = pgTable(
       .notNull()
       .default(false),
 
-    // Enums (stored as varchar)
+    // Look Ahead
+    executiveSummary: text('executive_summary'),
     lookAheadStatus: varchar('look_ahead_status', { length: 50 }), // 'none', 'new', 'changed'
     lookAheadSection: varchar('look_ahead_section', { length: 50 }), // 'events', 'issues', 'news', 'awareness'
     calendarVisibility: varchar('calendar_visibility', {
@@ -125,7 +126,9 @@ export const activities = pgTable(
     ownerId: integer('owner_id')
       .notNull()
       .references(() => systemUsers.id), // FK to SystemUser (replaces commsLeadId)
-    ministryOwnerId: uuid('ministry_owner_id').references(() => ministries.id), // FK to Ministry
+    ministryOwnerId: uuid('ministry_owner_id')
+      .notNull()
+      .references(() => ministries.id), // FK to Ministry (required for displayId generation)
     activityStatusId: integer('entry_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
@@ -158,10 +161,10 @@ export const activities = pgTable(
       'event_lead_org_xor',
       sql`(${table.eventLeadOrgId} IS NULL) <> (${table.eventLeadOrgName} IS NULL)`
     ),
-    // CHECK constraint: exactly one of eventLeadId or eventLeadName must be provided (XOR)
+    // CHECK constraint: exactly one of eventPlannerId or eventPlannerName must be provided (XOR)
     check(
       'event_lead_xor',
-      sql`(${table.eventLeadId} IS NULL) <> (${table.eventLeadName} IS NULL)`
+      sql`(${table.eventPlannerId} IS NULL) <> (${table.eventPlannerName} IS NULL)`
     ),
     // CHECK constraint: exactly one of newsReleaseOriginId or newsReleaseOriginName must be provided (XOR)
     check(
@@ -204,7 +207,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     relationName: 'newsReleaseOrigin',
   }),
   eventLead: one(systemUsers, {
-    fields: [activities.eventLeadId],
+    fields: [activities.eventPlannerId],
     references: [systemUsers.id],
     relationName: 'eventLead',
   }),

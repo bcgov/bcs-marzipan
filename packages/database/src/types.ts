@@ -11,7 +11,12 @@ import {
   categories,
   themes,
   tags,
+  pitchStatuses,
+  dateStatuses,
+  timeStatuses,
+  venueStatuses,
 } from './schema/lookups';
+import { organizations } from './schema/organizations';
 
 /**
  * TypeScript types inferred from Drizzle schema tables
@@ -21,11 +26,10 @@ import {
  * They should NOT be exposed directly via API endpoints.
  *
  * For API responses:
- * - Backend: Use DTOs from @corpcal/shared/dto (e.g., ActivityResponseDto)
- * - Frontend: Use API types from @corpcal/shared/api/types (e.g., ActivityResponse)
+ * - Backend/Frontend: Use ActivityResponse from @corpcal/shared/schemas
  *
- * Note: API response schemas are derived from the database schema via Zod,
- * but the database types themselves remain internal-only.
+ * API response schemas are defined with Zod in @corpcal/shared/schemas
+ * with compile-time assertions ensuring alignment with these database types.
  */
 
 // ============================================================================
@@ -83,3 +87,20 @@ export type NewTheme = InferInsertModel<typeof themes>;
 
 export type Tag = InferSelectModel<typeof tags>;
 export type NewTag = InferInsertModel<typeof tags>;
+
+// Status lookups
+export type PitchStatus = InferSelectModel<typeof pitchStatuses>;
+export type NewPitchStatus = InferInsertModel<typeof pitchStatuses>;
+
+export type DateStatus = InferSelectModel<typeof dateStatuses>;
+export type NewDateStatus = InferInsertModel<typeof dateStatuses>;
+
+export type TimeStatus = InferSelectModel<typeof timeStatuses>;
+export type NewTimeStatus = InferInsertModel<typeof timeStatuses>;
+
+export type VenueStatus = InferSelectModel<typeof venueStatuses>;
+export type NewVenueStatus = InferInsertModel<typeof venueStatuses>;
+
+// Organizations
+export type Organization = InferSelectModel<typeof organizations>;
+export type NewOrganization = InferInsertModel<typeof organizations>;

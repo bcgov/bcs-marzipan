@@ -570,7 +570,7 @@ Each log entry should include:
 
 ### Type Assertion Errors
 
-If you see type assertion errors with `z.ZodTypeAny & typeof schema`, this is expected. The drizzle-zod library's type definitions require this pattern. The types are still safe - the assertion just helps TypeScript recognize the compatibility.
+If you see type assertion errors with `z.ZodType & typeof schema`, this is expected. The drizzle-zod library's type definitions require this pattern. The types are still safe - the assertion just helps TypeScript recognize the compatibility.
 
 ### Schema Drift
 

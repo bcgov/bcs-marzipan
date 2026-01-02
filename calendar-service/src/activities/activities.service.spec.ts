@@ -73,8 +73,8 @@ describe('ActivitiesService', () => {
       newsReleaseId: null,
       eventLeadOrgId: null,
       eventLeadOrgName: null,
-      eventLeadId: null,
-      eventLeadName: null,
+      eventPlannerId: null,
+      eventPlannerName: null,
       graphicsUserId: null,
       venue: null,
       venueAddress: null,
@@ -154,7 +154,7 @@ describe('ActivitiesService', () => {
           country: 'Canada',
         },
         venue: 'Test Venue',
-        eventLeadId: 3,
+        eventPlannerId: 3,
         graphicsUserId: 5,
         notForLookAhead: true,
         notForThirtySixtyNinety: true,
@@ -218,10 +218,10 @@ describe('ActivitiesService', () => {
       expect(result.endTime).toBeNull();
     });
 
-    it('should map an activity with eventLeadName instead of eventLeadId', async () => {
+    it('should map an activity with eventPlannerName instead of eventPlannerId', async () => {
       const mockActivity = createMockActivity({
-        eventLeadId: null,
-        eventLeadName: 'External Event Lead',
+        eventPlannerId: null,
+        eventPlannerName: 'External Event Lead',
       });
 
       const mockDbQuery = {
@@ -237,7 +237,7 @@ describe('ActivitiesService', () => {
       // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.eventLead).toBe('External Event Lead');
-      expect(result.eventLeadName).toBe('External Event Lead');
+      expect(result.eventPlannerName).toBe('External Event Lead');
     });
 
     it('should format dates correctly in ActivityResponse', async () => {

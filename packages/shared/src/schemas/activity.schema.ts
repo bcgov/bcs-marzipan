@@ -1,129 +1,168 @@
 import { z } from 'zod';
-import {
-  createSelectSchema,
-  createInsertSchema,
-  createUpdateSchema,
-} from 'drizzle-zod';
-import { activities } from '@corpcal/database/schema';
 import { CALENDAR_VISIBILITY } from '../constants/activity-enums';
 
 /**
- * Activity Zod schemas automatically generated from Drizzle schema
- * These schemas ensure validation matches the database schema exactly
+ * Activity Zod Schemas
  *
- * Generated from: packages/database/src/schema/activity.ts
+ * These schemas are source of truth for and define API request/response contracts.
+ * The database schema (Drizzle) is the source of truth for DB types.
+ * Compile-time checks in schema-helpers.ts ensure alignment.
  */
 
-/**
- * Schema for selecting activities from the database
- * Matches the shape of data returned from database queries
- */
-export const activitySchema = createSelectSchema(activities);
+// ============================================================================
+// Shared Field Schemas
+// ============================================================================
 
 /**
- * Schema for creating a new activity (insert)
- * Automatically excludes generated columns (id, audit fields, etc.)
+ * Venue Address Schema
  */
-export const createActivitySchema = createInsertSchema(activities);
+const venueAddressSchema = z
+  .object({
+    street: z.string(),
+    city: z.string(),
+    provinceOrState: z.string(),
+    country: z.string(),
+  })
+  .nullable()
+  .optional();
 
 /**
- * Schema for updating an activity (partial update)
- * Automatically excludes generated columns and makes all fields optional
+ * Preprocess helper for venueAddress that handles legacy string formats
  */
-export const updateActivitySchema = createUpdateSchema(activities);
+const normalizeVenueAddress = (val: unknown) => {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'string') return null; // Legacy format - can't parse
+  if (typeof val === 'object') return val;
+  return null;
+};
 
 /**
- * Schema for creating a new activity via HTTP request
- * Dates are accepted as ISO date strings (YYYY-MM-DD) and time strings (HH:mm)
- * This is the schema that should be used for API request validation
+ * Preprocess helper for UUID fields that may receive empty strings from forms
  */
-export const createActivityRequestSchema = createInsertSchema(activities, {
-  // Required fields that must be explicitly included to ensure TypeScript type checking
-  // These fields are .notNull() in the database schema but drizzle-zod may not enforce them properly
+const emptyStringToNull = (val: unknown) => (val === '' ? null : val);
+
+// ============================================================================
+// Database Field Schemas (for request validation)
+// ============================================================================
+
+/**
+ * Core activity fields schema
+ * These fields exist in the database activities table
+ */
+const activityCoreFieldsSchema = z.object({
+  // Required fields
+  title: z.string().min(1).max(255),
+  summary: z.string().default(''),
+  significance: z.string().default(''),
+  schedulingConsiderations: z.string().default(''),
+
+  // Status IDs (required, numbers for database)
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
   pitchStatusId: z.number().int(),
   activityStatusId: z.number().int(),
   ownerId: z.number().int(),
   calendarVisibility: z.enum(CALENDAR_VISIBILITY),
-  // Transform empty strings to null for nullable UUID fields
-  // This handles form inputs where empty fields send "" instead of null
-  newsReleaseId: z.preprocess(
-    (val) => (val === '' ? null : val),
-    z.string().uuid().nullable().optional()
-  ),
+
+  // Boolean flags
+  isActive: z.boolean().default(true),
+  isIssue: z.boolean().default(false),
+  isAllDay: z.boolean().default(false),
+  notForLookAhead: z.boolean().default(false),
+  notForThirtySixtyNinety: z.boolean().default(false),
+
+  // Optional scheduling fields
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  startTime: z.string().nullable().optional(),
+  endTime: z.string().nullable().optional(),
+
+  // Optional text fields
+  pitchComments: z.string().nullable().optional(),
+  executiveSummary: z.string().nullable().optional(),
+  venue: z.string().max(100).nullable().optional(),
+
+  // Optional enum fields
+  lookAheadStatus: z.string().nullable().optional(),
+  lookAheadSection: z.string().nullable().optional(),
+
+  // Optional foreign key fields (with empty string preprocessing)
   leadOrgId: z.preprocess(
-    (val) => (val === '' ? null : val),
+    emptyStringToNull,
     z.string().uuid().nullable().optional()
   ),
+  leadOrgName: z.string().max(255).nullable().optional(),
   eventLeadOrgId: z.preprocess(
-    (val) => (val === '' ? null : val),
+    emptyStringToNull,
+    z.string().uuid().nullable().optional()
+  ),
+  eventLeadOrgName: z.string().max(255).nullable().optional(),
+  newsReleaseId: z.preprocess(
+    emptyStringToNull,
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.preprocess(
-    (val) => (val === '' ? null : val),
+    emptyStringToNull,
     z.string().uuid().nullable().optional()
   ),
-  // Transform venueAddress: handle both string (legacy) and object formats
-  // If string is provided, convert to null (can't reliably parse free-form string)
-  // If object is provided, validate it has the correct structure
-  venueAddress: z.preprocess(
-    (val) => {
-      // If it's already null or undefined, return as-is
-      if (val === null || val === undefined) return null;
-      // If it's a string, return null (legacy format - can't parse reliably)
-      if (typeof val === 'string') return null;
-      // If it's an object, return it (will be validated by the schema)
-      if (typeof val === 'object') return val;
-      // For any other type, return null
-      return null;
-    },
-    z
-      .object({
-        street: z.string(),
-        city: z.string(),
-        provinceOrState: z.string(),
-        country: z.string(),
-      })
-      .nullable()
-      .optional()
-  ),
-})
-  .omit({
-    id: true, // Exclude id - it's auto-generated by the database
-    displayId: true, // Exclude computed field
-    rowVersion: true, // Exclude row version - set by backend
-    createdBy: true, // Exclude audit fields - set by backend
-    lastUpdatedBy: true,
-    createdDateTime: true,
-    lastUpdatedDateTime: true,
-  })
-  .extend({
-    // Junction table data - arrays of IDs to create relationships
-    categoryIds: z.array(z.number().int()).optional(),
-    tagIds: z.array(z.string().uuid()).optional(),
-    jointOrgIds: z.array(z.string().uuid()).optional(),
-    relatedActivityIds: z.array(z.number().int()).optional(),
-    commsMaterialIds: z.array(z.number().int()).optional(),
-    translationLanguageIds: z.array(z.number().int()).optional(),
-    jointEventOrgIds: z.array(z.string().uuid()).optional(),
-    representativeIds: z.array(z.number().int()).optional(), // For activityRepresentatives
-    sharedWithOrgIds: z.array(z.string().uuid()).optional(),
-    canEditUserIds: z.array(z.number().int()).optional(),
-    canViewUserIds: z.array(z.number().int()).optional(),
-    additionalOwnerIds: z.array(z.number().int()).optional(),
-  });
+  newsReleaseOriginName: z.string().max(255).nullable().optional(),
+  ministryOwnerId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
+
+  // Optional user ID fields
+  eventPlannerId: z.number().int().nullable().optional(),
+  eventPlannerName: z.string().max(255).nullable().optional(),
+  graphicsUserId: z.number().int().nullable().optional(),
+  venueStatusId: z.number().int().nullable().optional(),
+
+  // Venue address with preprocessing for legacy formats
+  venueAddress: z.preprocess(normalizeVenueAddress, venueAddressSchema),
+});
+
+// ============================================================================
+// Request Schemas
+// ============================================================================
+
+/**
+ * Junction table ID arrays for request payloads
+ * These fields create many-to-many relationships
+ */
+const junctionTableIdsSchema = z.object({
+  categoryIds: z.array(z.number().int()).optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
+  jointOrgIds: z.array(z.string().uuid()).optional(),
+  relatedActivityIds: z.array(z.number().int()).optional(),
+  commsMaterialIds: z.array(z.number().int()).optional(),
+  translationLanguageIds: z.array(z.number().int()).optional(),
+  jointEventOrgIds: z.array(z.string().uuid()).optional(),
+  representativeIds: z.array(z.number().int()).optional(),
+  sharedWithOrgIds: z.array(z.string().uuid()).optional(),
+  canEditUserIds: z.array(z.number().int()).optional(),
+  canViewUserIds: z.array(z.number().int()).optional(),
+  additionalOwnerIds: z.array(z.number().int()).optional(),
+});
+
+/**
+ * Schema for creating a new activity via HTTP request
+ *
+ * Includes core activity fields plus junction table ID arrays.
+ * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
+ */
+// merge is deprecated in favor of extend, but extend causes type inference issues.
+export const createActivityRequestSchema = activityCoreFieldsSchema.merge(
+  junctionTableIdsSchema
+);
 
 /**
  * Schema for updating an activity via HTTP request
- * Dates are accepted as ISO date strings (YYYY-MM-DD) and time strings (HH:mm)
- * ID is not included in the request body (it comes from the URL parameter)
- * This is the schema that should be used for API request validation
  *
- * Note: XOR validation (leadOrgId/leadOrgName, etc.) is handled by database CHECK constraints
- * in the Drizzle schema, so we don't need to duplicate it here in Zod.
+ * All fields are optional (partial update).
+ * ID comes from URL parameter, not request body.
+ *
+ * Note: XOR validation (leadOrgId/leadOrgName, etc.) is handled by
+ * database CHECK constraints, not duplicated here.
  */
-export const updateActivityRequestSchema = updateActivitySchema.partial();
+export const updateActivityRequestSchema =
+  createActivityRequestSchema.partial();
 
 /**
  * Schema for filtering activities (query parameters)
@@ -131,12 +170,12 @@ export const updateActivityRequestSchema = updateActivitySchema.partial();
  */
 export const filterActivitiesSchema = z.object({
   title: z.string().optional(),
-  startDateFrom: z.iso.date().optional(),
-  startDateTo: z.iso.date().optional(),
-  endDateFrom: z.iso.date().optional(),
-  endDateTo: z.iso.date().optional(),
+  startDateFrom: z.string().date().optional(),
+  startDateTo: z.string().date().optional(),
+  endDateFrom: z.string().date().optional(),
+  endDateTo: z.string().date().optional(),
   activityStatusId: z.coerce.number().int().optional(),
-  ministryOwnerId: z.uuid().optional(),
+  ministryOwnerId: z.string().uuid().optional(),
   city: z.string().optional(),
   isActive: z.coerce.boolean().optional(),
   isIssue: z.coerce.boolean().optional(),
@@ -144,19 +183,17 @@ export const filterActivitiesSchema = z.object({
   limit: z.coerce.number().int().positive().min(1).max(100).default(20),
 });
 
+// ============================================================================
+// TypeScript Types
+// ============================================================================
+
 /**
  * TypeScript types inferred from Zod schemas
  *
- * These types are automatically inferred from the Zod schemas generated by drizzle-zod.
- * They should match the types from @corpcal/database/types, but are validated at runtime
- * through the Zod schemas.
- *
- * Note: Activity type is not exported here to avoid conflict with @corpcal/database/types.
- * Use Activity from @corpcal/database/types or @corpcal/shared for the database type.
+ * These are the single source of truth for API request types.
+ * For API response types, use ActivityResponse from activity-response.schema.ts.
+ * For database types, use Activity from @corpcal/database/types.
  */
-// Activity type is available from @corpcal/database/types - not exported here to avoid conflicts
-export type CreateActivity = z.infer<typeof createActivitySchema>;
-export type UpdateActivity = z.infer<typeof updateActivitySchema>;
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type FilterActivities = z.infer<typeof filterActivitiesSchema>;
