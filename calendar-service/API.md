@@ -110,6 +110,7 @@ GET /activities?startDateFrom=2026-01-01&isActive=true&page=1&limit=20
       "title": "Activity Title",
       "summary": "Activity description",
       "category": ["Event", "Release"],
+      "categoryIds": [1, 2],
       "tags": ["high-priority"]
       // ... full activity objects
     }
@@ -220,11 +221,56 @@ Updates an existing activity. Only provided fields are updated (partial update).
 
 ---
 
-### Delete Activity
+### Soft Delete Activity
+
+**DELETE** `/activities/:id/soft-delete`
+
+Soft deletes an activity by setting `isActive` to false. Requires a reason to be provided for audit purposes.
+
+**URL Parameters:**
+
+- `id` (integer, required): Activity ID
+
+**Request Body:**
+
+```json
+{
+  "reason": "Activity cancelled due to scheduling conflict"
+}
+```
+
+**Validation Rules:**
+
+- `reason` (string, required): Must be between 10 and 1000 characters
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "title": "Example Activity",
+    "isActive": false
+    // ... full activity object
+  }
+}
+```
+
+**Notes:**
+
+- The reason is stored in the `activityHistory` table with action type `soft_deleted`
+- The activity's `lastUpdatedBy` field is updated to the current user
+- A history entry is created with the reason and change tracking
+
+---
+
+### Delete Activity (Hard Delete)
 
 **DELETE** `/activities/:id`
 
-Soft deletes an activity by setting `isActive` to false.
+Permanently deletes an activity from the database.
+Should only be performed by admins and sysAdmins (TODO)
 
 **URL Parameters:**
 
@@ -234,9 +280,14 @@ Soft deletes an activity by setting `isActive` to false.
 
 ```json
 {
-  "message": "Activity with id 1 has been deleted"
+  "message": "Activity #1 deleted successfully"
 }
 ```
+
+**Notes:**
+
+- This is a hard delete that permanently removes the activity from the database
+- Use soft delete (`/activities/:id/soft-delete`) if you want to preserve the record for audit purposes
 
 ---
 
@@ -521,6 +572,7 @@ Server error occurred.
   } | null;
   significance: string;
   pitchComments: string;
+  activityStatusId: string;
   pitchStatusId: string;
   dateStatusId: string;
   timeStatusId: string;
@@ -539,7 +591,8 @@ Server error occurred.
   notForThirtySixtyNinety: boolean;
   isActive: boolean;
   isIssue: boolean;
-  category: string[];          // Category names
+  category: string[];          // Category names (display values)
+  categoryIds: number[];       // Category IDs (for form submission)
   tags: string[];              // Tag names
   createdDateTime: string;     // ISO 8601
   lastUpdatedDateTime: string;

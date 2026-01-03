@@ -8,13 +8,11 @@ import type {
   ActivityStatus,
   City,
   GovernmentRepresentative,
-} from '@corpcal/database/types';
-import type {
-  Organization as DbOrganization,
-  PitchStatus as DbPitchStatus,
-  DateStatus as DbDateStatus,
-  TimeStatus as DbTimeStatus,
-  VenueStatus as DbVenueStatus,
+  Organization,
+  PitchStatus,
+  DateStatus,
+  TimeStatus,
+  VenueStatus,
 } from '@corpcal/database/types';
 import type { ActivityDbFields } from '../schemas/activity-response.schema';
 import type {
@@ -132,7 +130,7 @@ type AssertTagFieldsExist = {
 };
 
 type AssertOrganizationFieldsExist = {
-  [K in keyof OrganizationResponse]: K extends keyof DbOrganization
+  [K in keyof OrganizationResponse]: K extends keyof Organization
     ? true
     : `Field '${K & string}' in OrganizationResponse does not exist in Organization database type`;
 };
@@ -156,25 +154,25 @@ type AssertActivityStatusFieldsExist = {
 };
 
 type AssertPitchStatusFieldsExist = {
-  [K in keyof PitchStatusResponse]: K extends keyof DbPitchStatus
+  [K in keyof PitchStatusResponse]: K extends keyof PitchStatus
     ? true
     : `Field '${K & string}' in PitchStatusResponse does not exist in PitchStatus database type`;
 };
 
 type AssertDateStatusFieldsExist = {
-  [K in keyof DateStatusResponse]: K extends keyof DbDateStatus
+  [K in keyof DateStatusResponse]: K extends keyof DateStatus
     ? true
     : `Field '${K & string}' in DateStatusResponse does not exist in DateStatus database type`;
 };
 
 type AssertTimeStatusFieldsExist = {
-  [K in keyof TimeStatusResponse]: K extends keyof DbTimeStatus
+  [K in keyof TimeStatusResponse]: K extends keyof TimeStatus
     ? true
     : `Field '${K & string}' in TimeStatusResponse does not exist in TimeStatus database type`;
 };
 
 type AssertVenueStatusFieldsExist = {
-  [K in keyof VenueStatusResponse]: K extends keyof DbVenueStatus
+  [K in keyof VenueStatusResponse]: K extends keyof VenueStatus
     ? true
     : `Field '${K & string}' in VenueStatusResponse does not exist in VenueStatus database type`;
 };

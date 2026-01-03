@@ -103,7 +103,7 @@ export const activityDbFieldsSchema = z.object({
 
   // Ownership
   ownerId: z.string(),
-  ministryOwnerId: z.string().uuid().nullable(),
+  ministryOwnerId: z.string().uuid(),
   activityStatusId: z.string(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -136,25 +136,32 @@ const representativeAttendingSchema = z.object({
  * directly in the database activities table.
  * They are populated by the service layer during response mapping.
  *
+ * IMPORTANT: Display names/values from lookups.
+ * Forms submit IDs for database storage.
+ * UI components should display these name fields.
  */
 export const activityComputedFieldsSchema = z.object({
   // Junction table data (from many-to-many relationships)
-  category: z.array(z.string()),
-  tags: z.array(tagSchema).optional(),
-  jointOrg: z.array(z.string().uuid()).optional(),
-  relatedActivities: z.array(z.string()).optional(),
-  commsMaterials: z.array(z.string()).optional(),
-  translationsRequired: z.array(z.string()).optional(),
-  jointEventOrg: z.array(z.string().uuid()).optional(),
-  representativesAttending: z.array(representativeAttendingSchema).optional(),
-  sharedWith: z.array(z.string().uuid()).optional(),
-  canEdit: z.array(z.string()).optional(),
-  canView: z.array(z.string()).optional(),
-  additionalOwners: z.array(z.string()).optional(),
+  // These arrays contain names or display names from lookups.
+  // Using .default([]) ensures clients always receive arrays instead of undefined.
+  category: z.array(z.string()).default([]),
+  tags: z.array(tagSchema).default([]),
+  jointOrg: z.array(z.string()).default([]),
+  relatedActivities: z.array(z.string()).default([]),
+  commsMaterials: z.array(z.string()).default([]),
+  translationsRequired: z.array(z.string()).default([]),
+  jointEventOrg: z.array(z.string()).default([]),
+  representativesAttending: z.array(representativeAttendingSchema).default([]),
+  sharedWith: z.array(z.string()).default([]),
+  canEdit: z.array(z.string()).default([]),
+  canView: z.array(z.string()).default([]),
+  additionalOwners: z.array(z.string()).default([]),
 
-  // Backward compatibility aliases (same value as *Id fields)
-  leadOrg: z.string().uuid().nullable(),
-  eventLeadOrg: z.string().uuid().nullable(),
+  // Computed organization names (from organization ID lookups or free text names)
+  // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
+  leadOrg: z.string().nullable(),
+  // Uses organization displayName/name if eventLeadOrgId is set, otherwise uses eventLeadOrgName
+  eventLeadOrg: z.string().nullable(),
 
   // Computed user names (from user ID lookups)
   eventLead: z.string().nullable(),
@@ -166,6 +173,7 @@ export const activityComputedFieldsSchema = z.object({
   dateStatus: z.string(),
   timeStatus: z.string(),
   venueStatus: z.string().nullable(),
+  activityStatus: z.string(),
 });
 
 /**

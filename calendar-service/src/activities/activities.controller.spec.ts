@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './activities.service';
-import { Category } from '@corpcal/shared';
+import type { Category } from '@corpcal/database/types';
 import {
   createMockActivityRequest,
   createMockUpdateRequest,

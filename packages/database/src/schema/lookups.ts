@@ -305,6 +305,7 @@ export const graphicsUsers = pgTable('graphics_users', {
 export const themes = pgTable('themes', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: varchar('key', { length: 100 }),
+  name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),

@@ -12,8 +12,6 @@ import {
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
-  // let databaseService: DatabaseService;
-  // let activitiesGateway: ActivitiesGateway;
 
   // Mock database service
   const mockDatabaseService = {
@@ -65,12 +63,14 @@ describe('ActivitiesService', () => {
       timeStatusId: 1,
       venueStatusId: null,
       isAllDay: false,
-      startDate: new Date('2024-01-15'),
+      startDate: new Date('2024-01-15').toISOString(),
       startTime: '10:00',
-      endDate: new Date('2024-01-15'),
+      endDate: new Date('2024-01-15').toISOString(),
       endTime: '12:00',
       schedulingConsiderations: '',
       newsReleaseId: null,
+      newsReleaseOriginId: null,
+      newsReleaseOriginName: null,
       eventLeadOrgId: null,
       eventLeadOrgName: null,
       eventPlannerId: null,
@@ -80,10 +80,11 @@ describe('ActivitiesService', () => {
       venueAddress: null,
       notForLookAhead: false,
       notForThirtySixtyNinety: false,
+      executiveSummary: null,
       lookAheadStatus: 'none',
       lookAheadSection: 'events',
       ownerId: 1,
-      ministryOwnerId: null,
+      ministryOwnerId: '00000000-0000-4000-8000-000000000000',
       calendarVisibility: 'visible',
       createdDateTime: now,
       createdBy: 1,
@@ -91,7 +92,7 @@ describe('ActivitiesService', () => {
       lastUpdatedBy: 1,
       rowVersion: 0,
       ...overrides,
-    } as Activity;
+    };
   };
 
   beforeEach(async () => {
@@ -302,6 +303,7 @@ describe('ActivitiesService', () => {
       // Verify all required fields from schema are present
       expect(result).toHaveProperty('id');
       expect(result).toHaveProperty('activityStatusId');
+      expect(result).toHaveProperty('activityStatus');
       expect(result).toHaveProperty('pitchStatusId');
       expect(result).toHaveProperty('dateStatusId');
       expect(result).toHaveProperty('timeStatusId');

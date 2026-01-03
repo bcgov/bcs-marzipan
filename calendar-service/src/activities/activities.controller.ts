@@ -16,12 +16,14 @@ import {
   createActivityRequestSchema,
   updateActivityRequestSchema,
   filterActivitiesSchema,
+  softDeleteRequestSchema,
 } from '@corpcal/shared/schemas';
 import type { ActivityResponse } from '@corpcal/shared/api';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
   FilterActivities,
+  SoftDeleteRequest,
 } from '@corpcal/shared/schemas';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
@@ -129,7 +131,34 @@ export class ActivitiesController {
     };
   }
 
-  @ApiOperation({ summary: 'Delete activity' })
+  @ApiOperation({ summary: 'Soft delete activity' })
+  @ApiResponse({ status: 200, description: 'Activity soft deleted' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiBody({ description: 'Soft delete request with reason' })
+  @Delete(':id/soft-delete')
+  async softDelete(
+    @Param('id', ParseIntPipe) id: number,
+    // Note: False positives - ESLint has type resolution limitations with Zod v4's type inference.
+    // The schema is properly typed and validated at runtime by ZodValidationPipe.
+
+    @Body(new ZodValidationPipe(softDeleteRequestSchema))
+    body: SoftDeleteRequest
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    // TODO: Get current user ID from auth context
+    const currentUserId = 1;
+    const result = await this.activitiesService.softDelete(
+      id,
+
+      body.reason,
+      currentUserId
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({ summary: 'Delete activity (hard delete)' })
   @ApiResponse({ status: 200, description: 'Activity deleted' })
   @Delete(':id')
   async remove(

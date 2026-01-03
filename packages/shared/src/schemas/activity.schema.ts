@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { CALENDAR_VISIBILITY } from '../constants/activity-enums';
+import {
+  CALENDAR_VISIBILITY,
+  LOOK_AHEAD_STATUS,
+  LOOK_AHEAD_SECTION,
+} from '../constants/activity-enums';
 
 /**
  * Activity Zod Schemas
@@ -52,9 +56,9 @@ const emptyStringToNull = (val: unknown) => (val === '' ? null : val);
 const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.string().min(1).max(255),
-  summary: z.string().default(''),
-  significance: z.string().default(''),
-  schedulingConsiderations: z.string().default(''),
+  summary: z.string().max(1000).default(''),
+  significance: z.string().max(1000).default(''),
+  schedulingConsiderations: z.string().max(500).default(''),
 
   // Status IDs (required, numbers for database)
   dateStatusId: z.number().int(),
@@ -71,11 +75,11 @@ const activityCoreFieldsSchema = z.object({
   notForLookAhead: z.boolean().default(false),
   notForThirtySixtyNinety: z.boolean().default(false),
 
-  // Optional scheduling fields
-  startDate: z.string().nullable().optional(),
-  endDate: z.string().nullable().optional(),
-  startTime: z.string().nullable().optional(),
-  endTime: z.string().nullable().optional(),
+  // Optional scheduling fields (YYYY-MM-DD for dates, HH:mm for times)
+  startDate: z.string().date().nullable().optional(),
+  endDate: z.string().date().nullable().optional(),
+  startTime: z.string().time().nullable().optional(),
+  endTime: z.string().time().nullable().optional(),
 
   // Optional text fields
   pitchComments: z.string().nullable().optional(),
@@ -83,8 +87,8 @@ const activityCoreFieldsSchema = z.object({
   venue: z.string().max(100).nullable().optional(),
 
   // Optional enum fields
-  lookAheadStatus: z.string().nullable().optional(),
-  lookAheadSection: z.string().nullable().optional(),
+  lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
+  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable().optional(),
 
   // Optional foreign key fields (with empty string preprocessing)
   leadOrgId: z.preprocess(
@@ -183,6 +187,18 @@ export const filterActivitiesSchema = z.object({
   limit: z.coerce.number().int().positive().min(1).max(100).default(20),
 });
 
+/**
+ * Schema for soft deleting an activity
+ * Requires a reason to be provided for audit and admin review purposes
+ */
+export const softDeleteRequestSchema = z.object({
+  reason: z
+    .string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(1000, 'Reason must not exceed 1000 characters')
+    .trim(),
+});
+
 // ============================================================================
 // TypeScript Types
 // ============================================================================
@@ -197,3 +213,4 @@ export const filterActivitiesSchema = z.object({
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type FilterActivities = z.infer<typeof filterActivitiesSchema>;
+export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;

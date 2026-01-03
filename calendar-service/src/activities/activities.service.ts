@@ -8,6 +8,7 @@ import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import {
   activities,
+  activityStatuses,
   pitchStatuses,
   dateStatuses,
   timeStatuses,
@@ -31,6 +32,7 @@ import {
   translatedLanguages,
   systemUsers,
   ministries,
+  activityHistory,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import type {
@@ -42,6 +44,17 @@ import {
   activityResponseSchema,
   type ActivityResponse,
 } from '@corpcal/shared/schemas';
+import type {
+  AttendingStatus,
+  LookAheadStatus,
+  LookAheadSection,
+  CalendarVisibility,
+} from '@corpcal/shared';
+import {
+  LOOK_AHEAD_STATUS,
+  LOOK_AHEAD_SECTION,
+  CALENDAR_VISIBILITY,
+} from '@corpcal/shared';
 import { DatabaseService } from '../database/database.service';
 import { ActivitiesGateway } from './activities.gateway';
 
@@ -391,9 +404,18 @@ export class ActivitiesService {
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
+    // Collect all user IDs that need to be fetched
+    const userIds = new Set<number>();
+    for (const activity of activityResults) {
+      if (activity.ownerId) userIds.add(activity.ownerId);
+      if (activity.eventPlannerId) userIds.add(activity.eventPlannerId);
+      if (activity.graphicsUserId) userIds.add(activity.graphicsUserId);
+    }
+
     const [
-      categoriesMap,
+      categoriesResult,
       tagsMap,
+      activityStatusesMap,
       pitchStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
@@ -408,9 +430,13 @@ export class ActivitiesService {
       canEditMap,
       canViewMap,
       additionalOwnersMap,
+      userNamesMap,
+      leadOrgNamesMap,
+      eventLeadOrgNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities(activityIds),
       this.fetchTagsForActivities(activityIds),
+      this.fetchActivityStatusesForActivities(activityIds),
       this.fetchPitchStatusesForActivities(activityIds),
       this.fetchDateStatusesForActivities(activityIds),
       this.fetchTimeStatusesForActivities(activityIds),
@@ -425,12 +451,20 @@ export class ActivitiesService {
       this.fetchCanEditUsersForActivities(activityIds),
       this.fetchCanViewUsersForActivities(activityIds),
       this.fetchAdditionalOwnersForActivities(activityIds),
+      this.fetchUserNamesForUserIds(Array.from(userIds)),
+      this.fetchLeadOrgNamesForActivities(activityResults),
+      this.fetchEventLeadOrgNamesForActivities(activityResults),
     ]);
+
+    const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
+      categoriesResult;
 
     return activityResults.map((activity) =>
       this.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
+        categoryIds: categoryIdsMap.get(activity.id) ?? [],
         tags: tagsMap.get(activity.id) ?? [],
+        activityStatus: activityStatusesMap.get(activity.id),
         pitchStatus: pitchStatusesMap.get(activity.id),
         dateStatus: dateStatusesMap.get(activity.id),
         timeStatus: timeStatusesMap.get(activity.id),
@@ -446,6 +480,17 @@ export class ActivitiesService {
         canEdit: canEditMap.get(activity.id) ?? [],
         canView: canViewMap.get(activity.id) ?? [],
         additionalOwners: additionalOwnersMap.get(activity.id) ?? [],
+        ownerName: activity.ownerId
+          ? (userNamesMap.get(activity.ownerId) ?? null)
+          : null,
+        eventLeadName: activity.eventPlannerId
+          ? (userNamesMap.get(activity.eventPlannerId) ?? null)
+          : null,
+        graphicsUserName: activity.graphicsUserId
+          ? (userNamesMap.get(activity.graphicsUserId) ?? null)
+          : null,
+        leadOrgName: leadOrgNamesMap.get(activity.id) ?? null,
+        eventLeadOrgName: eventLeadOrgNamesMap.get(activity.id) ?? null,
       })
     );
   }
@@ -464,10 +509,17 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity #${id} not found`);
     }
 
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (activity.ownerId) userIds.push(activity.ownerId);
+    if (activity.eventPlannerId) userIds.push(activity.eventPlannerId);
+    if (activity.graphicsUserId) userIds.push(activity.graphicsUserId);
+
     // Fetch related data
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
       dateStatus,
       timeStatus,
@@ -482,9 +534,13 @@ export class ActivitiesService {
       canEdit,
       canView,
       additionalOwners,
+      userNamesMap,
+      leadOrgNamesMap,
+      eventLeadOrgNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
       this.fetchDateStatusesForActivities([id]),
       this.fetchTimeStatusesForActivities([id]),
@@ -499,11 +555,19 @@ export class ActivitiesService {
       this.fetchCanEditUsersForActivities([id]),
       this.fetchCanViewUsersForActivities([id]),
       this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
+      this.fetchLeadOrgNamesForActivities([activity]),
+      this.fetchEventLeadOrgNamesForActivities([activity]),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     return this.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
@@ -518,6 +582,17 @@ export class ActivitiesService {
       canEdit: canEdit.get(id) ?? [],
       canView: canView.get(id) ?? [],
       additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: activity.ownerId
+        ? (userNamesMap.get(activity.ownerId) ?? null)
+        : null,
+      eventLeadName: activity.eventPlannerId
+        ? (userNamesMap.get(activity.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: activity.graphicsUserId
+        ? (userNamesMap.get(activity.graphicsUserId) ?? null)
+        : null,
+      leadOrgName: leadOrgNamesMap.get(id) ?? null,
+      eventLeadOrgName: eventLeadOrgNamesMap.get(id) ?? null,
     });
   }
 
@@ -563,10 +638,17 @@ export class ActivitiesService {
       .where(eq(activities.id, id))
       .returning();
 
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (updated.ownerId) userIds.push(updated.ownerId);
+    if (updated.eventPlannerId) userIds.push(updated.eventPlannerId);
+    if (updated.graphicsUserId) userIds.push(updated.graphicsUserId);
+
     // Fetch related data for the updated activity
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
       dateStatus,
       timeStatus,
@@ -581,9 +663,11 @@ export class ActivitiesService {
       canEdit,
       canView,
       additionalOwners,
+      userNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
       this.fetchDateStatusesForActivities([id]),
       this.fetchTimeStatusesForActivities([id]),
@@ -598,11 +682,17 @@ export class ActivitiesService {
       this.fetchCanEditUsersForActivities([id]),
       this.fetchCanViewUsersForActivities([id]),
       this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     const result = this.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
@@ -617,6 +707,15 @@ export class ActivitiesService {
       canEdit: canEdit.get(id) ?? [],
       canView: canView.get(id) ?? [],
       additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: updated.ownerId
+        ? (userNamesMap.get(updated.ownerId) ?? null)
+        : null,
+      eventLeadName: updated.eventPlannerId
+        ? (userNamesMap.get(updated.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: updated.graphicsUserId
+        ? (userNamesMap.get(updated.graphicsUserId) ?? null)
+        : null,
     });
 
     // Notify connected clients viewing this activity
@@ -638,20 +737,65 @@ export class ActivitiesService {
   /**
    * Soft delete (set isActive to false)
    */
-  async softDelete(id: number): Promise<ActivityResponse> {
+  async softDelete(
+    id: number,
+    reason: string,
+    userId: number
+  ): Promise<ActivityResponse> {
+    // Validate reason is provided and not empty
+    // Required for audit and admin review purposes
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException('A reason is required for soft deletion');
+    }
+
+    // Get the current activity state before update
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    // Update activity to soft delete
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
         isActive: false,
         lastUpdatedDateTime: new Date(),
+        lastUpdatedBy: userId,
       })
       .where(eq(activities.id, id))
       .returning();
 
+    // Create activity history entry with the reason
+    await this.databaseService.db.insert(activityHistory).values({
+      activityId: id,
+      userId: userId,
+      actionType: 'soft_deleted',
+      notes: reason.trim(),
+      changes: [
+        {
+          field: 'isActive',
+          oldValue: existing.isActive,
+          newValue: false,
+        },
+      ],
+    });
+
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (updated.ownerId) userIds.push(updated.ownerId);
+    if (updated.eventPlannerId) userIds.push(updated.eventPlannerId);
+    if (updated.graphicsUserId) userIds.push(updated.graphicsUserId);
+
     // Fetch related data for the soft-deleted activity
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
       dateStatus,
       timeStatus,
@@ -666,9 +810,11 @@ export class ActivitiesService {
       canEdit,
       canView,
       additionalOwners,
+      userNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
       this.fetchDateStatusesForActivities([id]),
       this.fetchTimeStatusesForActivities([id]),
@@ -683,11 +829,17 @@ export class ActivitiesService {
       this.fetchCanEditUsersForActivities([id]),
       this.fetchCanViewUsersForActivities([id]),
       this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     return this.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
@@ -702,22 +854,34 @@ export class ActivitiesService {
       canEdit: canEdit.get(id) ?? [],
       canView: canView.get(id) ?? [],
       additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: updated.ownerId
+        ? (userNamesMap.get(updated.ownerId) ?? null)
+        : null,
+      eventLeadName: updated.eventPlannerId
+        ? (userNamesMap.get(updated.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: updated.graphicsUserId
+        ? (userNamesMap.get(updated.graphicsUserId) ?? null)
+        : null,
     });
   }
 
   /**
    * Fetch categories for multiple activities
+   * Returns both category names and IDs for each activity
    */
-  private async fetchCategoriesForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
+  private async fetchCategoriesForActivities(activityIds: number[]): Promise<{
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  }> {
     if (activityIds.length === 0) {
-      return new Map();
+      return { namesMap: new Map(), idsMap: new Map() };
     }
 
     const results = await this.databaseService.db
       .select({
         activityId: activityCategories.activityId,
+        categoryId: activityCategories.categoryId,
         categoryName: categories.name,
       })
       .from(activityCategories)
@@ -730,13 +894,20 @@ export class ActivitiesService {
         )
       );
 
-    const map = new Map<number, string[]>();
+    const namesMap = new Map<number, string[]>();
+    const idsMap = new Map<number, number[]>();
     for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push(row.categoryName);
-      map.set(row.activityId, existing);
+      // Add category name
+      const existingNames = namesMap.get(row.activityId) ?? [];
+      existingNames.push(row.categoryName);
+      namesMap.set(row.activityId, existingNames);
+
+      // Add category ID
+      const existingIds = idsMap.get(row.activityId) ?? [];
+      existingIds.push(row.categoryId);
+      idsMap.set(row.activityId, existingIds);
     }
-    return map;
+    return { namesMap, idsMap };
   }
 
   /**
@@ -1004,7 +1175,63 @@ export class ActivitiesService {
   }
 
   /**
+   * Fetch activity statuses for multiple activities
+   */
+  private async fetchActivityStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        activityStatusId: activities.activityStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const activityStatusIds = activityResults
+      .map((a) => a.activityStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (activityStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const activityStatusResults = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+      })
+      .from(activityStatuses)
+      .where(
+        and(
+          inArray(activityStatuses.id, activityStatusIds),
+          eq(activityStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      activityStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.activityStatusId) {
+        const statusName = statusMap.get(activity.activityStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
    * Fetch joint organizations for multiple activities
+   * Returns organization name or dispaly name for UI
    */
   private async fetchJointOrgsForActivities(
     activityIds: number[]
@@ -1016,7 +1243,10 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activityJointOrgs.activityId,
-        organizationId: organizations.id,
+        organizationName:
+          sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            'organizationName'
+          ),
       })
       .from(activityJointOrgs)
       .innerJoin(
@@ -1026,14 +1256,15 @@ export class ActivitiesService {
       .where(
         and(
           inArray(activityJointOrgs.activityId, activityIds),
-          eq(activityJointOrgs.isActive, true)
+          eq(activityJointOrgs.isActive, true),
+          eq(organizations.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.organizationName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1041,6 +1272,7 @@ export class ActivitiesService {
 
   /**
    * Fetch related activities for multiple activities
+   * Returns activity displayIds (or generated from ministryOwner displayName + last 6 digits of id if displayId is null) for UI display
    */
   private async fetchRelatedActivitiesForActivities(
     activityIds: number[]
@@ -1049,23 +1281,40 @@ export class ActivitiesService {
       return new Map();
     }
 
+    // Create alias for related activities table to avoid conflict with main activities table
+    const relatedActivities = activities;
+
     const results = await this.databaseService.db
       .select({
         activityId: activityRelatedEntries.activityId,
-        relatedActivityId: activityRelatedEntries.relatedActivityId,
+        relatedActivityDisplay: sql<string>`
+          COALESCE(
+            ${relatedActivities.displayId},
+            ${ministries.displayName} || '-' || LPAD(RIGHT(${relatedActivities.id}::text, 6), 6, '0')
+          )
+        `.as('relatedActivityDisplay'),
       })
       .from(activityRelatedEntries)
+      .innerJoin(
+        relatedActivities,
+        eq(activityRelatedEntries.relatedActivityId, relatedActivities.id)
+      )
+      .innerJoin(
+        ministries,
+        eq(relatedActivities.ministryOwnerId, ministries.id)
+      )
       .where(
         and(
           inArray(activityRelatedEntries.activityId, activityIds),
-          eq(activityRelatedEntries.isActive, true)
+          eq(activityRelatedEntries.isActive, true),
+          eq(relatedActivities.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.relatedActivityId.toString());
+      existing.push(row.relatedActivityDisplay);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1147,6 +1396,7 @@ export class ActivitiesService {
 
   /**
    * Fetch joint event organizations for multiple activities
+   * Returns organization display names (or names if displayName is null) for UI display
    */
   private async fetchjointEventOrgsForActivities(
     activityIds: number[]
@@ -1158,7 +1408,10 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activityJointEventOrgs.activityId,
-        organizationId: organizations.id,
+        organizationName:
+          sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            'organizationName'
+          ),
       })
       .from(activityJointEventOrgs)
       .innerJoin(
@@ -1168,14 +1421,15 @@ export class ActivitiesService {
       .where(
         and(
           inArray(activityJointEventOrgs.activityId, activityIds),
-          eq(activityJointEventOrgs.isActive, true)
+          eq(activityJointEventOrgs.isActive, true),
+          eq(organizations.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.organizationName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1191,7 +1445,7 @@ export class ActivitiesService {
       number,
       Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>
     >
   > {
@@ -1217,17 +1471,14 @@ export class ActivitiesService {
       number,
       Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>
     >();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
       // Use representativeName (governmentRepresentatives lookup table has been removed)
       if (row.representativeName) {
-        const attendingStatus = row.attendingStatus as
-          | 'requested'
-          | 'declined'
-          | 'confirmed';
+        const attendingStatus = row.attendingStatus as AttendingStatus;
         existing.push({
           representative: row.representativeName,
           attendingStatus,
@@ -1240,6 +1491,7 @@ export class ActivitiesService {
 
   /**
    * Fetch shared with organizations for multiple activities
+   * Returns organization display names (or names if displayName is null) for UI display
    */
   private async fetchSharedWithOrgsForActivities(
     activityIds: number[]
@@ -1251,7 +1503,10 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activitySharedWithOrgs.activityId,
-        organizationId: organizations.id,
+        organizationName:
+          sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            'organizationName'
+          ),
       })
       .from(activitySharedWithOrgs)
       .innerJoin(
@@ -1261,14 +1516,15 @@ export class ActivitiesService {
       .where(
         and(
           inArray(activitySharedWithOrgs.activityId, activityIds),
-          eq(activitySharedWithOrgs.isActive, true)
+          eq(activitySharedWithOrgs.isActive, true),
+          eq(organizations.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.organizationName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1276,6 +1532,7 @@ export class ActivitiesService {
 
   /**
    * Fetch can edit users for multiple activities
+   * Returns user display names (adDisplayName or adUsername) for UI display
    */
   private async fetchCanEditUsersForActivities(
     activityIds: number[]
@@ -1287,21 +1544,25 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activityCanEditUsers.activityId,
-        userId: systemUsers.id,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
       })
       .from(activityCanEditUsers)
       .innerJoin(systemUsers, eq(activityCanEditUsers.userId, systemUsers.id))
       .where(
         and(
           inArray(activityCanEditUsers.activityId, activityIds),
-          eq(activityCanEditUsers.isActive, true)
+          eq(activityCanEditUsers.isActive, true),
+          eq(systemUsers.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userId.toString());
+      existing.push(row.userName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1309,6 +1570,7 @@ export class ActivitiesService {
 
   /**
    * Fetch can view users for multiple activities
+   * Returns user display names (adDisplayName or adUsername) for UI display
    */
   private async fetchCanViewUsersForActivities(
     activityIds: number[]
@@ -1320,21 +1582,25 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activityCanViewUsers.activityId,
-        userId: systemUsers.id,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
       })
       .from(activityCanViewUsers)
       .innerJoin(systemUsers, eq(activityCanViewUsers.userId, systemUsers.id))
       .where(
         and(
           inArray(activityCanViewUsers.activityId, activityIds),
-          eq(activityCanViewUsers.isActive, true)
+          eq(activityCanViewUsers.isActive, true),
+          eq(systemUsers.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userId.toString());
+      existing.push(row.userName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -1342,6 +1608,7 @@ export class ActivitiesService {
 
   /**
    * Fetch additional owners for multiple activities
+   * Returns user display names (adDisplayName or adUsername) for UI display
    */
   private async fetchAdditionalOwnersForActivities(
     activityIds: number[]
@@ -1353,7 +1620,10 @@ export class ActivitiesService {
     const results = await this.databaseService.db
       .select({
         activityId: activityAdditionalOwners.activityId,
-        userId: systemUsers.id,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
       })
       .from(activityAdditionalOwners)
       .innerJoin(
@@ -1363,16 +1633,164 @@ export class ActivitiesService {
       .where(
         and(
           inArray(activityAdditionalOwners.activityId, activityIds),
-          eq(activityAdditionalOwners.isActive, true)
+          eq(activityAdditionalOwners.isActive, true),
+          eq(systemUsers.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userId.toString());
+      existing.push(row.userName);
       map.set(row.activityId, existing);
     }
+    return map;
+  }
+
+  /**
+   * Fetch user names for multiple user IDs
+   * Returns a map of userId -> user display name for UI display
+   */
+  private async fetchUserNamesForUserIds(
+    userIds: number[]
+  ): Promise<Map<number, string>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+
+    const results = await this.databaseService.db
+      .select({
+        userId: systemUsers.id,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
+      })
+      .from(systemUsers)
+      .where(
+        and(inArray(systemUsers.id, userIds), eq(systemUsers.isActive, true))
+      );
+
+    return new Map(results.map((row) => [row.userId, row.userName]));
+  }
+
+  /**
+   * Fetch organization names for leadOrg and eventLeadOrg
+   * Returns maps of activityId -> organization name
+   * Uses free text name if available, otherwise looks up from organizations table
+   */
+  private async fetchLeadOrgNamesForActivities(
+    activities: Activity[]
+  ): Promise<Map<number, string | null>> {
+    const map = new Map<number, string | null>();
+
+    // Collect organization IDs that need to be looked up
+    const orgIdsToLookup = new Set<string>();
+    const activityIdToOrgId = new Map<number, string>();
+
+    for (const activity of activities) {
+      // If free text name exists, use it
+      if (activity.leadOrgName) {
+        map.set(activity.id, activity.leadOrgName);
+      } else if (activity.leadOrgId) {
+        // Need to look up organization name
+        orgIdsToLookup.add(activity.leadOrgId);
+        activityIdToOrgId.set(activity.id, activity.leadOrgId);
+      } else {
+        // No lead org
+        map.set(activity.id, null);
+      }
+    }
+
+    // Bulk lookup organization names
+    if (orgIdsToLookup.size > 0) {
+      const results = await this.databaseService.db
+        .select({
+          orgId: organizations.id,
+          orgName:
+            sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+              'orgName'
+            ),
+        })
+        .from(organizations)
+        .where(
+          and(
+            inArray(organizations.id, Array.from(orgIdsToLookup)),
+            eq(organizations.isActive, true)
+          )
+        );
+
+      const orgIdToName = new Map(
+        results.map((row) => [row.orgId, row.orgName])
+      );
+
+      // Map organization names back to activities
+      for (const [activityId, orgId] of activityIdToOrgId.entries()) {
+        const orgName = orgIdToName.get(orgId);
+        map.set(activityId, orgName ?? null);
+      }
+    }
+
+    return map;
+  }
+
+  /**
+   * Fetch organization names for eventLeadOrg
+   * Returns maps of activityId -> organization name
+   * Uses free text name if available, otherwise looks up from organizations table
+   */
+  private async fetchEventLeadOrgNamesForActivities(
+    activities: Activity[]
+  ): Promise<Map<number, string | null>> {
+    const map = new Map<number, string | null>();
+
+    // Collect organization IDs that need to be looked up
+    const orgIdsToLookup = new Set<string>();
+    const activityIdToOrgId = new Map<number, string>();
+
+    for (const activity of activities) {
+      // If free text name exists, use it
+      if (activity.eventLeadOrgName) {
+        map.set(activity.id, activity.eventLeadOrgName);
+      } else if (activity.eventLeadOrgId) {
+        // Need to look up organization name
+        orgIdsToLookup.add(activity.eventLeadOrgId);
+        activityIdToOrgId.set(activity.id, activity.eventLeadOrgId);
+      } else {
+        // No event lead org
+        map.set(activity.id, null);
+      }
+    }
+
+    // Bulk lookup organization names
+    if (orgIdsToLookup.size > 0) {
+      const results = await this.databaseService.db
+        .select({
+          orgId: organizations.id,
+          orgName:
+            sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+              'orgName'
+            ),
+        })
+        .from(organizations)
+        .where(
+          and(
+            inArray(organizations.id, Array.from(orgIdsToLookup)),
+            eq(organizations.isActive, true)
+          )
+        );
+
+      const orgIdToName = new Map(
+        results.map((row) => [row.orgId, row.orgName])
+      );
+
+      // Map organization names back to activities
+      for (const [activityId, orgId] of activityIdToOrgId.entries()) {
+        const orgName = orgIdToName.get(orgId);
+        map.set(activityId, orgName ?? null);
+      }
+    }
+
     return map;
   }
 
@@ -1384,7 +1802,9 @@ export class ActivitiesService {
     activity: Activity,
     relatedData?: {
       categories?: string[];
+      categoryIds?: number[];
       tags?: Array<{ id: string; text: string }>;
+      activityStatus?: string;
       pitchStatus?: string;
       dateStatus?: string;
       timeStatus?: string;
@@ -1396,12 +1816,17 @@ export class ActivitiesService {
       jointEventOrg?: string[];
       representativesAttending?: Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>;
       sharedWith?: string[];
       canEdit?: string[];
       canView?: string[];
       additionalOwners?: string[];
+      ownerName: string | null;
+      eventLeadName?: string | null;
+      graphicsUserName?: string | null;
+      leadOrgName?: string | null;
+      eventLeadOrgName?: string | null;
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -1441,10 +1866,10 @@ export class ActivitiesService {
       // Organizations
       leadOrgId: activity.leadOrgId ?? null,
       leadOrgName: activity.leadOrgName ?? null,
-      leadOrg: activity.leadOrgId ?? null, // Backward compatibility
+      leadOrg: relatedData?.leadOrgName ?? null,
       eventLeadOrgId: activity.eventLeadOrgId ?? null,
       eventLeadOrgName: activity.eventLeadOrgName ?? null,
-      eventLeadOrg: activity.eventLeadOrgId ?? null, // Backward compatibility
+      eventLeadOrg: relatedData?.eventLeadOrgName ?? null,
       jointOrg: relatedData?.jointOrg ?? [],
 
       // Related activities and tags
@@ -1453,6 +1878,7 @@ export class ActivitiesService {
 
       // Approvals
       significance: activity.significance ?? '',
+      activityStatus: relatedData?.activityStatus ?? 'unknown',
       pitchStatus: relatedData?.pitchStatus ?? 'unknown',
       pitchComments: activity.pitchComments ?? null,
 
@@ -1479,51 +1905,51 @@ export class ActivitiesService {
       venue: activity.venue ?? null,
       venueStatus: relatedData?.venueStatus ?? null,
       venueAddress:
-        (activity.venueAddress as {
-          street: string;
-          city: string;
-          provinceOrState: string;
-          country: string;
-        } | null) ?? null,
+        activity.venueAddress && typeof activity.venueAddress === 'object'
+          ? (activity.venueAddress as {
+              street: string;
+              city: string;
+              provinceOrState: string;
+              country: string;
+            } | null)
+          : null,
       eventPlannerId: activity.eventPlannerId?.toString() ?? null,
       eventLead:
-        activity.eventPlannerId?.toString() ??
-        ('eventPlannerName' in activity &&
-        typeof activity.eventPlannerName === 'string'
-          ? activity.eventPlannerName
-          : null),
-      eventPlannerName:
-        'eventPlannerName' in activity &&
-        typeof activity.eventPlannerName === 'string'
-          ? activity.eventPlannerName
-          : null,
+        // Use free-text name if available, otherwise use fetched user name
+        activity.eventPlannerName ?? relatedData?.eventLeadName ?? null,
+      eventPlannerName: activity.eventPlannerName ?? null,
       graphicsUserId: activity.graphicsUserId?.toString() ?? null,
-      graphicsUser: activity.graphicsUserId?.toString() ?? null,
+      graphicsUser: relatedData?.graphicsUserName ?? null,
 
       // Reports
       notForLookAhead: activity.notForLookAhead ?? false,
       notForThirtySixtyNinety: activity.notForThirtySixtyNinety ?? false,
       executiveSummary: activity.executiveSummary ?? null,
-      lookAheadStatus:
-        (activity.lookAheadStatus as 'none' | 'new' | 'changed') ?? 'none',
-      lookAheadSection:
-        (activity.lookAheadSection as
-          | 'events'
-          | 'issues'
-          | 'news'
-          | 'awareness') ?? 'events',
+      lookAheadStatus: LOOK_AHEAD_STATUS.includes(
+        activity.lookAheadStatus as LookAheadStatus
+      )
+        ? (activity.lookAheadStatus as LookAheadStatus)
+        : 'none',
+      lookAheadSection: LOOK_AHEAD_SECTION.includes(
+        activity.lookAheadSection as LookAheadSection
+      )
+        ? (activity.lookAheadSection as LookAheadSection)
+        : 'events',
 
       // Sharing
       ownerId: activity.ownerId?.toString() ?? 'unknown',
-      ministryOwnerId: activity.ministryOwnerId ?? null,
-      owner: activity.ownerId?.toString() ?? 'unknown',
+      ministryOwnerId: activity.ministryOwnerId,
+      owner:
+        relatedData?.ownerName ?? activity.ownerId?.toString() ?? 'unknown',
       sharedWith: relatedData?.sharedWith ?? [],
       canEdit: relatedData?.canEdit ?? [],
       canView: relatedData?.canView ?? [],
       additionalOwners: relatedData?.additionalOwners ?? [],
-      calendarVisibility:
-        (activity.calendarVisibility as 'visible' | 'partial' | 'hidden') ??
-        'visible',
+      calendarVisibility: CALENDAR_VISIBILITY.includes(
+        activity.calendarVisibility as CalendarVisibility
+      )
+        ? (activity.calendarVisibility as CalendarVisibility)
+        : 'visible',
 
       // Meta
       createdDateTime:
@@ -1537,8 +1963,6 @@ export class ActivitiesService {
     };
 
     // Runtime validation to ensure response matches schema contract
-    // This catches misalignment between the mapping logic and the schema
-    // Runs in all environments to catch issues early
     try {
       return activityResponseSchema.parse(dto);
     } catch (error) {
