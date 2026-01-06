@@ -38,19 +38,11 @@ This installs dependencies for all workspaces (root, calendar-service, calendar-
 
 ### 2. Environment Setup
 
-Create a `.env` file in the project root (see [Environment Variables](#environment-variables) section or copy from `.env.example`):
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set at minimum:
+Create a `.env` file in the project root (copy from `.env.example` if available) and set:
 
 - `DATABASE_URL` - PostgreSQL connection string
 
 ### 3. Database Setup
-
-Set up the database schema:
 
 ```bash
 # Generate migrations from schema changes
@@ -65,8 +57,6 @@ npm run seed --workspace=calendar-service
 
 ### 4. Run the Application
 
-Start both services in development mode:
-
 ```bash
 npm start
 ```
@@ -74,21 +64,16 @@ npm start
 This runs:
 
 - Backend API at `http://localhost:3001`
-- Frontend UI at `http://localhost:3000` (Vite dev server)
+- Frontend UI at `http://localhost:3000`
 
-Alternatively, run services individually:
+Run services individually:
 
 ```bash
-# Backend only
-npm run start:dev --workspace=calendar-service
-
-# Frontend only
-npm run dev --workspace=calendar-ui
+npm run start:dev --workspace=calendar-service  # Backend only
+npm run dev --workspace=calendar-ui              # Frontend only
 ```
 
 ## Environment Variables
-
-Create a `.env` file in the project root with the following variables:
 
 | Variable             | Description                              | Required | Default               |
 | -------------------- | ---------------------------------------- | -------- | --------------------- |
@@ -100,21 +85,7 @@ Create a `.env` file in the project root with the following variables:
 | `DB_IDLE_TIMEOUT`    | Database idle timeout (seconds)          | No       | 20                    |
 | `DB_CONNECT_TIMEOUT` | Database connection timeout (seconds)    | No       | 10                    |
 
-See `.env.example` for a template with all available variables.
-
-### API Authentication
-
-The API uses API key authentication via the `X-API-Key` header:
-
-- **Development**: If `API_KEY` is not set, all requests are allowed (except health/readiness endpoints are always public)
-- **Production**: `API_KEY` must be set and all requests require a valid `X-API-Key` header
-- **Public Endpoints**: `/health` and `/ready` endpoints do not require authentication
-
-Example API request:
-
-```bash
-curl -H "X-API-Key: your-api-key" http://localhost:3001/activities
-```
+**API Authentication**: The API uses API key authentication via the `X-API-Key` header. In development, if `API_KEY` is not set, all requests are allowed. `/health` and `/ready` endpoints are always public.
 
 ## Project Structure
 
@@ -125,7 +96,7 @@ bcs-marzipan/
 │   │   ├── activities/        # Activities module (CRUD operations)
 │   │   ├── lookups/           # Lookup data endpoints
 │   │   ├── database/          # Database module (Drizzle integration)
-│   │   ├── auth/              # Authentication guards
+│   │   ├── commands/          # CLI commands (seed, etc.)
 │   │   └── common/            # Shared utilities, pipes, interceptors
 │   └── package.json
 ├── calendar-ui/               # React frontend (Vite)
@@ -145,88 +116,40 @@ bcs-marzipan/
 │   └── shared/                # Shared package
 │       ├── src/
 │       │   ├── schemas/       # Zod validation schemas
-│       │   ├── dto/           # Data Transfer Objects
 │       │   ├── api/           # API type definitions
 │       │   └── utils/         # Utility functions
 │       └── package.json
 ├── docs/                      # Additional documentation
 │   ├── SCHEMA_README.md       # Schema and type safety documentation
-│   └── DOCKER_DEPLOYMENT.md   # Docker deployment guide
+│   ├── DOCKER_DEPLOYMENT.md   # Docker deployment guide
+│   └── PRE_COMMIT_HOOKS.md    # Git hooks documentation
 └── package.json               # Root workspace configuration
 ```
 
 ## Development Workflow
 
-### Building Packages
-
-Workspace packages must be built before the services can use them:
+### Building
 
 ```bash
-# Build all packages
-npm run build:packages
-
-# Build specific package
-npm run build --workspace=packages/database
-npm run build --workspace=packages/shared
+npm run build              # Build all services and packages
+npm run build:packages    # Build packages only
 ```
-
-### Building Services
-
-Build all services and packages:
-
-```bash
-npm run build
-```
-
-This builds packages first, then the services.
 
 ### Type Checking
 
-Type check all workspaces:
-
 ```bash
-npm run typecheck
-```
-
-Type check packages only:
-
-```bash
-npm run typecheck:packages
+npm run typecheck         # Check all workspaces
+npm run typecheck:packages # Check packages only
 ```
 
 ### Database Operations
 
 ```bash
-# Generate migrations from schema changes
-npm run db:generate --workspace=packages/database
-
-# Run migrations
-npm run db:migrate --workspace=packages/database
-
-# Push schema directly (development only - bypasses migrations)
-npm run db:push --workspace=packages/database
-
-# Open Drizzle Studio (database GUI)
-npm run db:studio --workspace=packages/database
-
-# Seed lookup tables
-npm run seed --workspace=calendar-service
-```
-
-### Code Quality
-
-```bash
-# Format all code
-npm run format
-
-# Check formatting
-npm run format:check
-
-# Lint and auto-fix
-npm run lint
-
-# Lint check only
-npm run lint:check
+npm run db:generate --workspace=packages/database  # Generate migrations
+npm run db:migrate --workspace=packages/database    # Run migrations
+npm run db:push --workspace=packages/database       # Push schema (dev only)
+npm run db:studio --workspace=packages/database      # Open Drizzle Studio
+npm run seed --workspace=calendar-service           # Seed lookup tables
 ```
 
 ## API Documentation
@@ -249,8 +172,6 @@ The API provides endpoints for:
 
 Database package containing Drizzle ORM schemas and database client.
 
-**Usage:**
-
 ```typescript
 import { db } from '@corpcal/database';
 import { activities } from '@corpcal/database/schema';
@@ -260,15 +181,7 @@ See [packages/database/README.md](packages/database/README.md) for details.
 
 ### @corpcal/shared
 
-Shared package containing types, schemas, DTOs, and utilities used by both frontend and backend.
-
-**Exports:**
-
-- `@corpcal/shared/schemas` - Zod validation schemas
-- `@corpcal/shared/api/types` - API type definitions (for frontend)
-- `@corpcal/shared/dto` - Data Transfer Objects
-
-**Usage:**
+Shared package containing types, schemas, and utilities.
 
 ```typescript
 import type { ActivityResponse } from '@corpcal/shared/api/types';
@@ -284,38 +197,15 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 
 ## Troubleshooting
 
-### Port Already in Use
-
-```bash
-# Find process using port
-lsof -i :3001
-
-# Kill process (replace PID)
-kill -9 <PID>
-```
-
-### Database Connection Issues
-
-- Verify `DATABASE_URL` is set correctly in `.env`
-- Ensure PostgreSQL is running
-- Check database credentials and network access
-- Test connection: `npm run test:db --workspace=calendar-service`
-
 ### Build Errors
 
-If packages fail to build:
-
 ```bash
-# Clean and rebuild
-npm run clean --workspace=packages/database
-npm run clean --workspace=packages/shared
-npm run build:packages
+npm run build:packages  # Rebuild packages
 ```
 
 ### Dependency Issues
 
 ```bash
-# Clean install
 rm -rf node_modules package-lock.json
 rm -rf calendar-service/node_modules calendar-ui/node_modules
 rm -rf packages/*/node_modules
@@ -325,95 +215,73 @@ npm install
 
 ### Type Errors
 
-If TypeScript errors occur:
-
-1. Ensure packages are built: `npm run build:packages`
+1. Build packages: `npm run build:packages`
 2. Run type checking: `npm run typecheck`
 3. Validate types: `npm run validate-types --workspace=packages/shared`
 
 ## Contributing
 
-### Code Formatting
-
-This project uses **Prettier** for code formatting and **ESLint** for code quality checks.
-
-#### VS Code Users
-
-The project includes workspace settings that automatically format code on save. Make sure you have the [Prettier VS Code extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) installed.
-
-#### Manual Formatting
+### Code Quality
 
 ```bash
 # Format all code
 npm run format
 
-# Check formatting without modifying files
+# Check formatting
 npm run format:check
 
-# Lint and auto-fix issues
+# Lint and auto-fix
 npm run lint
 
-# Check linting without auto-fixing
+# Check linting
 npm run lint:check
 ```
 
-### Pre-commit Hooks
+### Git Hooks
 
-This project uses **Husky** to run pre-commit checks. When you commit code, the hook will:
+This project uses **Husky** to enforce code quality. See [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md) for details.
 
-1. Auto-fix linting issues where possible
-2. Check for type errors (currently only runs in ~/packages)
-3. Check code formatting (non-blocking)
+**Pre-commit hook** (blocking):
 
-The hooks are currently **non-blocking**, meaning they will show warnings but won't prevent commits. This allows you to see issues and fix them while still being able to commit during active development.
+- Runs ESLint with auto-fix on staged files
+- Runs Prettier on non-code files
+- Runs tests for affected files
 
-#### Skipping Hooks
+**Pre-push hook** (blocking):
 
-If you need to skip pre-commit checks (e.g., for WIP commits), use:
+- Validates full project build
+- Runs all test suites
+- Validates schema types are in sync
+- Validates branch naming convention
 
-```bash
-git commit --no-verify -m "your message"
-```
+**Commit-msg hook** (non-blocking):
 
-**Note:** It's generally recommended to let the hooks run since they auto-fix many issues and provide useful feedback.
+- Validates commit message format (Conventional Commits)
 
 ## Developer Guide
 
-This project enforces development conventions through Git hooks. See [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md) for detailed information.
+### Commit Messages
 
-### Commit Message Convention
+Follow [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <subject>`
 
-Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
-```
-<type>(<scope>): <subject>
-```
-
-- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `build`
-- **scope**: Optional (e.g., `activities`, `auth`)
+- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `build`, `chore`
+- **scope**: Optional (e.g., `activities`, `database`)
 - **subject**: Short description (max 100 characters)
 
-**Examples:**
+Examples: `feat(activities): add filtering`, `fix(database): resolve connection issue`
 
-- `feat(activities): add filtering by date range`
-- `fix(auth): resolve API key validation issue`
-- `docs: update README with developer guide`
+Use `npm run commit` for an interactive prompt.
 
-Use `npm run commit` for an interactive commit prompt (optional).
-
-### Branch Naming Convention
+### Branch Naming
 
 Format: `<type>/CORPCAL-<number>-<short-description>`
 
 - **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `build`, `chore`
-- **Jira key**: `CORPCAL-<number>` (uppercase, e.g., `CORPCAL-123`)
-- **description**: Lowercase, hyphens allowed, no spaces
+- **Jira key**: `CORPCAL-<number>` (uppercase)
+- **description**: Lowercase, hyphens only
 
-**Examples:**
-
-- `feat/CORPCAL-123-add-user-authentication`
-- `fix/CORPCAL-456-resolve-login-bug`
+Example: `feat/CORPCAL-123-add-user-authentication`
 
 Protected branches (`main`, `master`, `develop`) skip validation.
 
-For detailed examples, troubleshooting, and hook configuration, see [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md).
+For detailed hook documentation, see [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md).
