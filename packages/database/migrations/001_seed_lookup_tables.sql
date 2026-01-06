@@ -345,13 +345,13 @@ ON CONFLICT (id) DO NOTHING;
 -- Venues for activities
 -- ============================================================================
 
-INSERT INTO venues (id, name, display_name, sort_order, is_active, address, ac_id, created_by, last_updated_by) VALUES
-  (1, 'Victoria Conference Centre', 'Victoria Conference Centre', 1, true, NULL, NULL, 1, 1),
-  (2, 'Vancouver Convention Centre', 'Vancouver Convention Centre', 2, true, NULL, NULL, 1, 1),
-  (3, 'Parliament Buildings', 'Parliament Buildings', 3, true, NULL, NULL, 1, 1),
-  (4, 'Placeholder Venue 1', 'Placeholder Venue 1', 4, true, NULL, NULL, 1, 1),
-  (5, 'Placeholder Venue 2', 'Placeholder Venue 2', 5, true, NULL, NULL, 1, 1),
-  (6, 'Placeholder Venue 3', 'Placeholder Venue 3', 6, true, NULL, NULL, 1, 1)
+INSERT INTO venues (id, name, display_name, sort_order, is_active, address, created_by, last_updated_by) VALUES
+  (1, 'Victoria Conference Centre', 'Victoria Conference Centre', 1, true, NULL, 1, 1),
+  (2, 'Vancouver Convention Centre', 'Vancouver Convention Centre', 2, true, NULL, 1, 1),
+  (3, 'Parliament Buildings', 'Parliament Buildings', 3, true, NULL, 1, 1),
+  (4, 'Placeholder Venue 1', 'Placeholder Venue 1', 4, true, NULL, 1, 1),
+  (5, 'Placeholder Venue 2', 'Placeholder Venue 2', 5, true, NULL, 1, 1),
+  (6, 'Placeholder Venue 3', 'Placeholder Venue 3', 6, true, NULL, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -360,12 +360,12 @@ ON CONFLICT (id) DO NOTHING;
 -- Uses UUID primary key
 -- ============================================================================
 
-INSERT INTO themes (id, key, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
-  ('00000000-0000-4000-8000-000000000201', 'health-care', 'Health Care', 1, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000202', 'education', 'Education', 2, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000203', 'environment', 'Environment', 3, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000204', 'infrastructure', 'Infrastructure', 4, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000205', 'economy', 'Economy', 5, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000206', 'housing', 'Housing', 6, true, 1, 1)
+INSERT INTO themes (id, key, name, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
+  ('00000000-0000-4000-8000-000000000201', 'health-care', 'health care', 'Health Care', 1, true, 1, 1),
+  ('00000000-0000-4000-8000-000000000202', 'education', 'education', 'Education', 2, true, 1, 1),
+  ('00000000-0000-4000-8000-000000000203', 'environment', 'environment', 'Environment', 3, true, 1, 1),
+  ('00000000-0000-4000-8000-000000000204', 'infrastructure', 'infrastructure', 'Infrastructure', 4, true, 1, 1),
+  ('00000000-0000-4000-8000-000000000205', 'economy', 'economy', 'Economy', 5, true, 1, 1),
+  ('00000000-0000-4000-8000-000000000206', 'housing', 'housing', 'Housing', 6, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 

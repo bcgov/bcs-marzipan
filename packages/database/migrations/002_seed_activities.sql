@@ -34,12 +34,10 @@ INSERT INTO activities (
   scheduling_considerations,
   title,
   summary,
-  venue,
-  venue_address,
   venue_status_id,
   significance,
   pitch_comments,
-  entry_status_id,
+  activity_status_id,
   pitch_status_id,
   lead_org_id,
   lead_org_name,
@@ -78,8 +76,6 @@ INSERT INTO activities (
     'Event requires security clearance. Media will be present.',
     'Premier''s Address on Climate Action',
     'The Premier will deliver a keynote address on British Columbia''s climate action plan and renewable energy initiatives. The event will highlight new investments in clean technology and partnerships with First Nations communities.',
-    'Vancouver Convention Centre',
-    '{"street": "1055 Canada Place", "city": "Vancouver", "provinceOrState": "BC", "country": "Canada"}'::jsonb,
     3,
     'High-profile announcement expected to generate significant media coverage. Coordination with multiple ministries required.',
     'Pitch approved by communications director.',
@@ -122,8 +118,6 @@ INSERT INTO activities (
     'Tentative timing pending confirmation from Minister''s office.',
     'Health Care Facility Opening',
     'Official opening ceremony for the new community health centre in Victoria. The Minister of Health will cut the ribbon and tour the facility.',
-    'Victoria Community Health Centre',
-    '{"street": "1234 Government Street", "city": "Victoria", "provinceOrState": "BC", "country": "Canada"}'::jsonb,
     2,
     'Important community milestone. Local media expected.',
     NULL,
@@ -166,8 +160,6 @@ INSERT INTO activities (
     'All-day event. Specific times to be confirmed.',
     'Education Summit 2025',
     'Annual education summit bringing together educators, administrators, and policy makers to discuss innovations in K-12 education and early childhood development programs.',
-    'Kelowna Conference Centre',
-    '{"street": "1310 Water Street", "city": "Kelowna", "provinceOrState": "BC", "country": "Canada"}'::jsonb,
     1,
     'Major policy announcement expected. Provincial significance.',
     'Pitch submission in progress.',
@@ -210,8 +202,6 @@ INSERT INTO activities (
     'Confirmed schedule. Field trip component included.',
     'Forest Conservation Initiative Announcement',
     'Announcement of new protected areas and forest conservation partnerships. Includes field visit to conservation site and media availability.',
-    'Prince George Regional Office',
-    '{"street": "4567 5th Avenue", "city": "Prince George", "provinceOrState": "BC", "country": "Canada"}'::jsonb,
     3,
     'Significant environmental policy announcement. National media interest expected.',
     'Pitch approved. Key messages finalized.',
@@ -254,8 +244,6 @@ INSERT INTO activities (
     'Confirmed. Media scrum following announcement.',
     'Affordable Housing Project Groundbreaking',
     'Groundbreaking ceremony for new affordable housing development in Vancouver. Minister will speak and participate in ceremonial shovel turn.',
-    'Vancouver Housing Development Site',
-    '{"street": "789 Main Street", "city": "Vancouver", "provinceOrState": "BC", "country": "Canada"}'::jsonb,
     3,
     'High-profile housing announcement. Part of provincial housing strategy rollout.',
     'Pitch approved. Media kit prepared.',
@@ -297,12 +285,10 @@ ON CONFLICT (id) DO UPDATE
       scheduling_considerations = EXCLUDED.scheduling_considerations,
       title = EXCLUDED.title,
       summary = EXCLUDED.summary,
-      venue = EXCLUDED.venue,
-      venue_address = EXCLUDED.venue_address,
       venue_status_id = EXCLUDED.venue_status_id,
       significance = EXCLUDED.significance,
       pitch_comments = EXCLUDED.pitch_comments,
-      entry_status_id = EXCLUDED.entry_status_id,
+      activity_status_id = EXCLUDED.activity_status_id,
       pitch_status_id = EXCLUDED.pitch_status_id,
       lead_org_id = EXCLUDED.lead_org_id,
       lead_org_name = EXCLUDED.lead_org_name,
@@ -328,6 +314,24 @@ ON CONFLICT (id) DO UPDATE
       last_updated_date_time = EXCLUDED.last_updated_date_time,
       last_updated_by = EXCLUDED.last_updated_by,
       row_version = EXCLUDED.row_version;
+
+-- ============================================================================
+-- VENUE ADDRESSES
+-- Link venue address information to activities
+-- ============================================================================
+
+INSERT INTO venue_addresses (activity_id, venue_name, street, city, province_or_state, country) VALUES
+  (1, 'Vancouver Convention Centre', '1055 Canada Place', 'Vancouver', 'BC', 'Canada'),
+  (2, 'Victoria Community Health Centre', '1234 Government Street', 'Victoria', 'BC', 'Canada'),
+  (3, 'Kelowna Conference Centre', '1310 Water Street', 'Kelowna', 'BC', 'Canada'),
+  (4, 'Prince George Regional Office', '4567 5th Avenue', 'Prince George', 'BC', 'Canada'),
+  (5, 'Vancouver Housing Development Site', '789 Main Street', 'Vancouver', 'BC', 'Canada')
+ON CONFLICT (activity_id) DO UPDATE
+  SET venue_name = EXCLUDED.venue_name,
+      street = EXCLUDED.street,
+      city = EXCLUDED.city,
+      province_or_state = EXCLUDED.province_or_state,
+      country = EXCLUDED.country;
 
 -- ============================================================================
 -- ACTIVITY CATEGORIES
@@ -446,15 +450,15 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================================
--- ACTIVITY SHARED WITH ORGANIZATIONS
--- Link activities to organizations that can view them
+-- ACTIVITY SHARED WITH MINISTRIES
+-- Link activities to ministries that can view them
 -- ============================================================================
 
-INSERT INTO activity_shared_with_organizations (activity_id, organization_id, is_active, timestamp) VALUES
+INSERT INTO activity_shared_with_organizations (activity_id, ministry_id, is_active, timestamp) VALUES
   (1, '00000000-0000-4000-8000-000000000008', true, now()),
   (4, '00000000-0000-4000-8000-000000000011', true, now()),
   (4, '00000000-0000-4000-8000-000000000014', true, now())
-ON CONFLICT (activity_id, organization_id) DO UPDATE
+ON CONFLICT (activity_id, ministry_id) DO UPDATE
   SET is_active = EXCLUDED.is_active,
       timestamp = now();
 
