@@ -12,8 +12,8 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
-  // let databaseService: DatabaseService;
-  // let activitiesGateway: ActivitiesGateway;
+  let databaseService: DatabaseService;
+  let activitiesGateway: ActivitiesGateway;
 
   // Mock database service
   const mockDatabaseService = {
@@ -33,16 +33,62 @@ describe('ActivitiesService', () => {
       orderBy: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       offset: jest.fn().mockReturnThis(),
+      transaction: jest.fn(),
     },
   };
 
   // Mock activities gateway
   const mockActivitiesGateway = {
     notifyActivityUpdate: jest.fn(),
+    broadcastActivityCreated: jest.fn(),
     server: {
       to: jest.fn().mockReturnThis(),
       emit: jest.fn(),
     },
+  };
+
+  // Helper function to setup mocks for related data fetching
+  const setupRelatedDataMocks = () => {
+    // Mock all the fetch methods that retrieve related data
+    jest
+      .spyOn(service as any, 'fetchCategoriesForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchTagsForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchPitchStatusesForActivities')
+      .mockResolvedValue(new Map([[1, 'Not Started']]));
+    jest
+      .spyOn(service as any, 'fetchSchedulingStatusesForActivities')
+      .mockResolvedValue(new Map([[1, 'Tentative']]));
+    jest
+      .spyOn(service as any, 'fetchJointOrganizationsForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchRelatedActivitiesForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchCommsMaterialsForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchTranslationsRequiredForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchJointEventOrganizationsForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchRepresentativesAttendingForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchSharedWithOrganizationsForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchCanEditUsersForActivities')
+      .mockResolvedValue(new Map());
+    jest
+      .spyOn(service as any, 'fetchCanViewUsersForActivities')
+      .mockResolvedValue(new Map());
   };
 
   // Helper to create a minimal valid Activity object for testing
@@ -113,8 +159,9 @@ describe('ActivitiesService', () => {
     }).compile();
 
     service = module.get<ActivitiesService>(ActivitiesService);
-    databaseService = module.get<DatabaseService>(DatabaseService);
-    activitiesGateway = module.get<ActivitiesGateway>(ActivitiesGateway);
+
+    // Setup related data mocks after service is created
+    setupRelatedDataMocks();
 
     // Reset all mocks
     jest.clearAllMocks();
@@ -430,20 +477,43 @@ describe('ActivitiesService', () => {
       const createdActivity = createMockActivity({
         ...createDto,
         id: 2,
+        title: 'New Activity',
       });
 
-      const mockInsert = {
-        values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([createdActivity]),
-      };
+      // Mock the transaction
+      mockDatabaseService.db.transaction = jest
+        .fn()
+        .mockImplementation((callback) => {
+          // Create a mock transaction context
+          const mockTx = {
+            insert: jest.fn().mockReturnValue({
+              values: jest.fn().mockReturnValue({
+                returning: jest.fn().mockResolvedValue([createdActivity]),
+              }),
+            }),
+            delete: jest.fn().mockReturnThis(),
+            from: jest.fn().mockReturnThis(),
+            where: jest.fn().mockResolvedValue([]),
+          };
+          return callback(mockTx);
+        });
 
-      mockDatabaseService.db.insert = jest.fn().mockReturnValue(mockInsert);
+      // Mock findOne to return the created activity
+      const mockSelectQuery = {
+        from: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([createdActivity]),
+      };
+      mockDatabaseService.db.select = jest
+        .fn()
+        .mockReturnValue(mockSelectQuery);
 
       const result = await service.create(createDto);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.id).toBe(2);
       expect(result.title).toBe('New Activity');
+      expect(mockActivitiesGateway.broadcastActivityCreated).toHaveBeenCalled();
     });
   });
 

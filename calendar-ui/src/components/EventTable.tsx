@@ -311,7 +311,7 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const { dispatchToast } = useToastController();
-  
+
   // Ref to track if component is mounted to prevent setState after unmount
   const isMountedRef = useRef(true);
   // Ref to track socket instance to prevent duplicate connections
@@ -352,6 +352,14 @@ export const EventTable: React.FC<EventTableProps> = ({
         setIsLoading(false);
       }
     }
+  }, []);
+
+  // Set mounted ref on mount, unset on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -425,7 +433,6 @@ export const EventTable: React.FC<EventTableProps> = ({
 
     // Cleanup on unmount
     return () => {
-      isMountedRef.current = false;
       socket.emit('unsubscribeFromActivities');
       socket.off('connect');
       socket.off('connect_error');
