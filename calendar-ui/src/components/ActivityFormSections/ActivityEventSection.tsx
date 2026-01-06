@@ -19,20 +19,32 @@ import {
 } from '../ui/select';
 import { Button } from '../ui/button';
 import { Combobox } from '../ui/combobox';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
 import { Plus, X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
+import { ATTENDING_STATUS } from '@corpcal/shared';
+import type { AttendingStatus } from '@corpcal/shared';
 
-type FormData = CreateActivityRequest & {
-  jointEventOrganizationIds?: string[];
-  representativeIds?: number[];
+type RepresentativeFormData = {
+  representativeId?: number;
+  representativeName?: string;
+  attendingStatus: string;
+};
+
+type FormData = Omit<CreateActivityRequest, 'representatives'> & {
+  jointEventOrgIds?: string[];
+  representatives?: RepresentativeFormData[];
 };
 
 type ActivityEventSectionProps = {
-  jointOrganizationOptions: Array<{ value: string; label: string }>;
+  jointOrgOptions: Array<{ value: string; label: string }>;
   eventLeadOrgOptions: Array<{ value: string; label: string }>;
-  eventPlannerOptions: Array<{ value: string; label: string }>;
+  userOptions: Array<{ value: string; label: string }>;
   representativeOptions: Array<{
     id: number;
     name: string;
@@ -42,27 +54,118 @@ type ActivityEventSectionProps = {
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
-  jointOrganizationOptions,
+  jointOrgOptions,
   eventLeadOrgOptions,
-  eventPlannerOptions,
+  userOptions,
   representativeOptions,
 }) => {
   const form = useFormContext<FormData>();
-  const [showJointEventOrganizations, setShowJointEventOrganizations] =
-    useState(false);
+  const [showjointEventOrgs, setShowjointEventOrgs] = useState(false);
 
   // Move useMultiSelect hooks into the component
-  const [selectedJointEventOrganizations, toggleJointEventOrganization] =
-    useMultiSelect<FormData, 'jointEventOrganizationIds', string>(
-      form,
-      'jointEventOrganizationIds'
-    );
-
-  const [selectedRepresentatives, toggleRepresentative] = useMultiSelect<
+  const [selectedjointEventOrgs, togglejointEventOrg] = useMultiSelect<
     FormData,
-    'representativeIds',
-    number
-  >(form, 'representativeIds');
+    'jointEventOrgIds',
+    string
+  >(form, 'jointEventOrgIds');
+
+  const representatives = form.watch('representatives') || [];
+  const [representativeComboboxValue, setRepresentativeComboboxValue] =
+    useState<FreeformComboboxValue>(null);
+
+  // Convert representative options to FreeformCombobox format
+  const representativeComboboxOptions = representativeOptions.map((rep) => ({
+    value: rep.id.toString(),
+    label: rep.displayName || rep.name,
+  }));
+
+  // Get a unique key for a representative (either ID or name)
+  const getRepresentativeKey = (rep: RepresentativeFormData) => {
+    if (rep.representativeId !== undefined) {
+      return `id-${rep.representativeId}`;
+    }
+    return `name-${rep.representativeName}`;
+  };
+
+  // Check if a representative is already added
+  const isRepresentativeAdded = (value: FreeformComboboxValue): boolean => {
+    if (!value) return false;
+    const current = form.getValues('representatives') || [];
+    if (value.type === 'option') {
+      const id = parseInt(value.value, 10);
+      return current.some((r) => r.representativeId === id);
+    } else {
+      return current.some((r) => r.representativeName === value.value);
+    }
+  };
+
+  const addRepresentative = (value: FreeformComboboxValue) => {
+    if (!value || isRepresentativeAdded(value)) {
+      return;
+    }
+    const current = form.getValues('representatives') || [];
+    if (value.type === 'option') {
+      const representativeId = parseInt(value.value, 10);
+      form.setValue('representatives', [
+        ...current,
+        { representativeId, attendingStatus: 'requested' as AttendingStatus },
+      ]);
+    } else {
+      form.setValue('representatives', [
+        ...current,
+        {
+          representativeName: value.value,
+          attendingStatus: 'requested' as AttendingStatus,
+        },
+      ]);
+    }
+    setRepresentativeComboboxValue(null);
+  };
+
+  const removeRepresentative = (rep: RepresentativeFormData) => {
+    const current = form.getValues('representatives') || [];
+    form.setValue(
+      'representatives',
+      current.filter((r) => {
+        if (rep.representativeId !== undefined) {
+          return r.representativeId !== rep.representativeId;
+        }
+        return r.representativeName !== rep.representativeName;
+      })
+    );
+  };
+
+  const updateAttendingStatus = (
+    rep: RepresentativeFormData,
+    attendingStatus: string
+  ) => {
+    const current = form.getValues('representatives') || [];
+    form.setValue(
+      'representatives',
+      current.map((r) => {
+        const matches =
+          rep.representativeId !== undefined
+            ? r.representativeId === rep.representativeId
+            : r.representativeName === rep.representativeName;
+        return matches
+          ? { ...r, attendingStatus: attendingStatus as AttendingStatus }
+          : r;
+      })
+    );
+  };
+
+  // Get display name for a representative
+  const getRepresentativeDisplayName = (
+    rep: RepresentativeFormData
+  ): string => {
+    if (rep.representativeId !== undefined) {
+      const repInfo = representativeOptions.find(
+        (r) => r.id === rep.representativeId
+      );
+      return repInfo?.displayName || repInfo?.name || 'Unknown';
+    }
+    return rep.representativeName || 'Unknown';
+  };
   return (
     <ActivityFormSection title="Event">
       <FormField
@@ -89,14 +192,12 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           </FormItem>
         )}
       />
-      {!showJointEventOrganizations && (
+      {!showjointEventOrgs && (
         <div className="flex justify-end">
           <Button
             type="button"
             variant="ghost"
-            onClick={() =>
-              setShowJointEventOrganizations(!showJointEventOrganizations)
-            }
+            onClick={() => setShowjointEventOrgs(!showjointEventOrgs)}
             className="text-muted-foreground hover:text-foreground"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -104,13 +205,13 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           </Button>
         </div>
       )}
-      {showJointEventOrganizations && (
+      {showjointEventOrgs && (
         <div>
           <Label className="mb-3 block">Joint event organization</Label>
           <Combobox
-            options={jointOrganizationOptions}
-            selectedValues={selectedJointEventOrganizations}
-            onSelect={toggleJointEventOrganization}
+            options={jointOrgOptions}
+            selectedValues={selectedjointEventOrgs}
+            onSelect={togglejointEventOrg}
             placeholder="Select"
             searchPlaceholder="Search organizations"
             emptyMessage="No organizations found."
@@ -120,55 +221,146 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="eventLeadId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Event Planner</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={field.value?.toString()}
-            >
+        name="eventPlannerId"
+        render={({ field }) => {
+          // Derive the combobox value from form state
+          const eventPlannerId = field.value;
+          const eventPlannerName = form.watch('eventPlannerName');
+
+          const comboboxValue: FreeformComboboxValue = eventPlannerId
+            ? { type: 'option', value: eventPlannerId.toString() }
+            : eventPlannerName
+              ? { type: 'freeform', value: eventPlannerName }
+              : null;
+
+          const handleChange = (value: FreeformComboboxValue) => {
+            if (!value) {
+              field.onChange(null);
+              form.setValue('eventPlannerName', null);
+            } else if (value.type === 'option') {
+              // Convert string value to integer for eventPlannerId
+              field.onChange(parseInt(value.value, 10));
+              form.setValue('eventPlannerName', null);
+            } else {
+              field.onChange(null);
+              form.setValue('eventPlannerName', value.value);
+            }
+          };
+
+          return (
+            <FormItem>
+              <FormLabel>Event Planner</FormLabel>
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select event planner" />
-                </SelectTrigger>
+                <FreeformCombobox
+                  options={userOptions}
+                  value={comboboxValue}
+                  onChange={handleChange}
+                  placeholder="Select event planner"
+                  searchPlaceholder="Search users..."
+                  emptyMessage="No users found."
+                  freeformLabel="Other"
+                  freeformDescription="Can't find the event planner?"
+                />
               </FormControl>
-              <SelectContent>
-                {eventPlannerOptions.map((user) => (
-                  <SelectItem key={user.value} value={user.value}>
-                    {user.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <FormDescription>
+                Select an event planner from the list, or type to enter a custom
+                name
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
+
+      <FormField
+        control={form.control}
+        name="representatives"
+        render={() => (
+          <FormItem>
+            <FormLabel>Representatives Attending</FormLabel>
+            <div className="space-y-4">
+              <FreeformCombobox
+                options={representativeComboboxOptions}
+                value={representativeComboboxValue}
+                onChange={(value) => {
+                  setRepresentativeComboboxValue(value);
+                  if (value) {
+                    addRepresentative(value);
+                  }
+                }}
+                placeholder="Select or type a representative name"
+                searchPlaceholder="Search representatives..."
+                emptyMessage="No representatives found."
+                freeformLabel="Add as"
+                freeformDescription="Add custom representative name"
+              />
+              {representatives.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <Label className="text-sm font-medium">
+                    Selected Representatives
+                  </Label>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {representatives.map((rep) => (
+                      <Badge
+                        key={getRepresentativeKey(rep)}
+                        variant="default"
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm"
+                      >
+                        {getRepresentativeDisplayName(rep)}
+                        <button
+                          type="button"
+                          onClick={() => removeRepresentative(rep)}
+                          className="hover:bg-background/20 ml-1 rounded-full p-0.5"
+                          aria-label={`Remove ${getRepresentativeDisplayName(rep)}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Label className="text-sm font-medium">
+                    Set Attending Status
+                  </Label>
+                  {representatives.map((rep) => (
+                    <div
+                      key={getRepresentativeKey(rep)}
+                      className="flex items-center justify-between gap-4 rounded-md border p-3"
+                    >
+                      <span className="text-sm font-medium">
+                        {getRepresentativeDisplayName(rep)}
+                      </span>
+                      <Select
+                        value={rep.attendingStatus}
+                        onValueChange={(value) =>
+                          updateAttendingStatus(rep, value)
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ATTENDING_STATUS.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <FormDescription className="mt-2">
+              Select representatives from the list or type a custom name. Set
+              attending status for each representative.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
-
-      <div>
-        <Label className="mb-3 block">Representatives Attending</Label>
-        <div className="flex flex-wrap gap-2">
-          {representativeOptions.map((rep) => (
-            <Badge
-              key={rep.id}
-              variant={
-                selectedRepresentatives.includes(rep.id) ? 'default' : 'outline'
-              }
-              className="cursor-pointer px-4 py-2 text-sm"
-              onClick={() => toggleRepresentative(rep.id)}
-            >
-              {rep.displayName || rep.name}
-              {selectedRepresentatives.includes(rep.id) && (
-                <X className="ml-2 h-3 w-3" />
-              )}
-            </Badge>
-          ))}
-        </div>
-        <FormDescription className="mt-2">
-          Select representatives attending if applicable
-        </FormDescription>
-      </div>
     </ActivityFormSection>
   );
 };

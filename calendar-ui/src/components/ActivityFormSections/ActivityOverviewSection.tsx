@@ -13,15 +13,12 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Badge } from '../ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
 import { Button } from '../ui/button';
 import { Combobox } from '../ui/combobox';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
 import { Plus, X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
@@ -31,12 +28,12 @@ type FormData = CreateActivityRequest & {
   categoryIds?: number[];
   relatedActivityIds?: number[];
   tagIds?: string[];
-  jointOrganizationIds?: string[];
+  jointOrgIds?: string[];
 };
 
 type ActivityOverviewSectionProps = {
   relatedActivityOptions: Array<{ value: string; label: string }>;
-  jointOrganizationOptions: Array<{ value: string; label: string }>;
+  jointOrgOptions: Array<{ value: string; label: string }>;
   categories: Array<{ id: number; name: string; displayName?: string }>;
   organizations: Array<{ value: string; label: string }>;
   tags: Array<{ id: string; text: string }>;
@@ -46,13 +43,13 @@ export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
 > = ({
   relatedActivityOptions,
-  jointOrganizationOptions,
+  jointOrgOptions,
   categories,
   organizations,
   tags,
 }) => {
   const form = useFormContext<FormData>();
-  const [showJointOrganizations, setShowJointOrganizations] = useState(false);
+  const [showJointOrgs, setShowJointOrgs] = useState(false);
 
   // const [categories, setCategories] = useState<any[]>([]);
   // Move useMultiSelect hooks into the component
@@ -89,11 +86,11 @@ export const ActivityOverviewSection: React.FC<
     number
   >(form, 'relatedActivityIds');
 
-  const [selectedJointOrganizations, toggleJointOrganization] = useMultiSelect<
+  const [selectedJointOrgs, togglejointOrg] = useMultiSelect<
     FormData,
-    'jointOrganizationIds',
+    'jointOrgIds',
     string
-  >(form, 'jointOrganizationIds');
+  >(form, 'jointOrgIds');
   return (
     <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
       <div>
@@ -140,33 +137,60 @@ export const ActivityOverviewSection: React.FC<
       <FormField
         control={form.control}
         name="leadOrgId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Lead Organization</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ''}>
+        render={({ field }) => {
+          // Derive the combobox value from form state
+          const leadOrgId = field.value;
+          const leadOrgName = form.watch('leadOrgName');
+
+          const comboboxValue: FreeformComboboxValue = leadOrgId
+            ? { type: 'option', value: leadOrgId }
+            : leadOrgName
+              ? { type: 'freeform', value: leadOrgName }
+              : null;
+
+          const handleChange = (value: FreeformComboboxValue) => {
+            if (!value) {
+              field.onChange(null);
+              form.setValue('leadOrgName', null);
+            } else if (value.type === 'option') {
+              field.onChange(value.value);
+              form.setValue('leadOrgName', null);
+            } else {
+              field.onChange(null);
+              form.setValue('leadOrgName', value.value);
+            }
+          };
+
+          return (
+            <FormItem>
+              <FormLabel>Lead Organization</FormLabel>
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lead organization" />
-                </SelectTrigger>
+                <FreeformCombobox
+                  options={organizations}
+                  value={comboboxValue}
+                  onChange={handleChange}
+                  placeholder="Select lead organization"
+                  searchPlaceholder="Search organizations..."
+                  emptyMessage="No organizations found."
+                  freeformLabel="Other"
+                  freeformDescription="Can't find the organization?"
+                />
               </FormControl>
-              <SelectContent>
-                {organizations.map((org) => (
-                  <SelectItem key={org.value} value={org.value}>
-                    {org.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
+              <FormDescription>
+                Select an organization from the list, or type to enter a custom
+                name
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
-      {!showJointOrganizations && (
+      {!showJointOrgs && (
         <div className="flex justify-end">
           <Button
             type="button"
             variant="ghost"
-            onClick={() => setShowJointOrganizations(!showJointOrganizations)}
+            onClick={() => setShowJointOrgs(!showJointOrgs)}
             className="text-muted-foreground hover:text-foreground"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -174,13 +198,13 @@ export const ActivityOverviewSection: React.FC<
           </Button>
         </div>
       )}
-      {showJointOrganizations && (
+      {showJointOrgs && (
         <div>
           <Label className="mb-3 block">Joint Organization</Label>
           <Combobox
-            options={jointOrganizationOptions}
-            selectedValues={selectedJointOrganizations}
-            onSelect={toggleJointOrganization}
+            options={jointOrgOptions}
+            selectedValues={selectedJointOrgs}
+            onSelect={togglejointOrg}
             placeholder="Search organizations..."
             searchPlaceholder="Search organizations..."
             emptyMessage="No organizations found."
@@ -206,43 +230,23 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="isIssue"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Issue</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="oicRelated"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Order in Council Related</FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="isIssue"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel>Issue</FormLabel>
+            </div>
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}

@@ -269,11 +269,6 @@ export const EntryDetails = () => {
           {/* Issue and Order in Council Checkboxes */}
           <div className={styles.checkboxGroup}>
             <Checkbox checked={activityData.isIssue} disabled label="Issue" />
-            <Checkbox
-              checked={activityData.oicRelated}
-              disabled
-              label="Order in Council Related"
-            />
           </div>
 
           {/* Tags Section */}
@@ -352,12 +347,6 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>Scheduling Status</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.schedulingStatus || 'Not specified'}
-                </Text>
-              </div>
-              <div>
                 <Checkbox
                   checked={activityData.isAllDay}
                   disabled
@@ -428,12 +417,6 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>Comms Lead</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.commsLead || 'Not specified'}
-                </Text>
-              </div>
-              <div>
                 <Text className={styles.fieldLabel}>Comms Materials</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.commsMaterials &&
@@ -503,7 +486,7 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Event Planner</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.eventLead ||
-                    activityData.eventLeadName ||
+                    activityData.eventPlannerName ||
                     'Not specified'}
                 </Text>
               </div>
@@ -583,7 +566,14 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Venue</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.venueAddress
-                    ? `${activityData.venueAddress.street}, ${activityData.venueAddress.city}, ${activityData.venueAddress.provinceOrState}, ${activityData.venueAddress.country}`
+                    ? [
+                        activityData.venueAddress.street,
+                        activityData.venueAddress.city,
+                        activityData.venueAddress.provinceOrState,
+                        activityData.venueAddress.country,
+                      ]
+                        .filter((part) => part)
+                        .join(', ') || 'Not specified'
                     : 'Not specified'}
                 </Text>
               </div>
@@ -596,20 +586,6 @@ export const EntryDetails = () => {
               <DocumentRegular /> Reports
             </Text>
             <div>
-              <Checkbox
-                checked={activityData.thirtySixtyNinetyReport}
-                disabled
-                label="30-60-90"
-              />
-            </div>
-            <div style={{ marginTop: '8px' }}>
-              <Checkbox
-                checked={activityData.planningReport}
-                disabled
-                label="Planning Report"
-              />
-            </div>
-            <div style={{ marginTop: '8px' }}>
               <Checkbox
                 checked={activityData.notForLookAhead}
                 disabled
@@ -656,31 +632,6 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldValue}>
                   {activityData.calendarVisibility || 'Not specified'}
                 </Text>
-              </div>
-            </div>
-            <div>
-              <Text className={styles.fieldLabel}>Can Edit</Text>
-              <div>
-                {activityData.canEdit && activityData.canEdit.length > 0 ? (
-                  activityData.canEdit.map((editor, index) => (
-                    <Badge
-                      key={index}
-                      appearance="tint"
-                      className={styles.tagBadge}
-                    >
-                      {editor}
-                    </Badge>
-                  ))
-                ) : (
-                  <div>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Communications Team
-                    </Badge>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Executive Office
-                    </Badge>
-                  </div>
-                )}
               </div>
             </div>
             <div>

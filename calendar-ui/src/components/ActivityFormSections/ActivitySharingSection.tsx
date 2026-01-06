@@ -15,35 +15,24 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Combobox } from '../ui/combobox';
-import { calendarVisibilityOptions } from '../../data/mockLookups';
-import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { calendarVisibilityOptions } from '../../constants/form-options';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest & {
-  canEditUserIds?: number[];
-  sharedWithOrganizationIds?: string[];
+  sharedWithMinistryIds?: string[];
 };
 
 type ActivitySharingSectionProps = {
   ownerOptions: Array<{ value: string; label: string }>;
-  canEditUserOptions: Array<{ value: string; label: string }>;
-  sharedWithOrgOptions: Array<{ value: string; label: string }>;
+  sharedWithMinistryOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   ownerOptions,
-  canEditUserOptions,
-  sharedWithOrgOptions,
+  sharedWithMinistryOptions,
 }) => {
   const form = useFormContext<FormData>();
-
-  // Move useMultiSelect hook into the component
-  const [selectedCanEdit, toggleCanEdit] = useMultiSelect<
-    FormData,
-    'canEditUserIds',
-    number
-  >(form, 'canEditUserIds');
   return (
     <ActivityFormSection title="Sharing">
       <FormField
@@ -76,34 +65,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="canEditUserIds"
-        render={({ field: _field }) => (
-          <FormItem>
-            <FormLabel>Can Edit</FormLabel>
-            <FormControl>
-              <Combobox
-                options={canEditUserOptions}
-                selectedValues={selectedCanEdit.map((id) => id.toString())}
-                onSelect={(value) => {
-                  const userId = parseInt(value);
-                  toggleCanEdit(userId);
-                }}
-                placeholder="Select users who can edit"
-                searchPlaceholder="Search users..."
-                emptyMessage="No users found."
-              />
-            </FormControl>
-            <FormDescription>
-              Select users who can edit this activity
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="sharedWithOrganizationIds"
+        name="sharedWithMinistryIds"
         render={({ field }) => {
           const currentValue = Array.isArray(field.value)
             ? field.value[0] || ''
@@ -119,19 +81,19 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
+                    <SelectValue placeholder="Select ministry" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {sharedWithOrgOptions.map((org) => (
-                    <SelectItem key={org.value} value={org.value}>
-                      {org.label}
+                  {sharedWithMinistryOptions.map((ministry) => (
+                    <SelectItem key={ministry.value} value={ministry.value}>
+                      {ministry.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FormDescription>
-                These groups can view but not edit the entry
+                These ministries can view but not edit the entry
               </FormDescription>
               <FormMessage />
             </FormItem>

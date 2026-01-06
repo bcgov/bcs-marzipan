@@ -4,7 +4,7 @@ import { FieldSchema, StepSchema } from './types';
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-function fieldToZod(field: FieldSchema): z.ZodTypeAny {
+function fieldToZod(field: FieldSchema): z.ZodType {
   const v = field.validation || {};
 
   switch (field.type) {
@@ -56,7 +56,7 @@ function fieldToZod(field: FieldSchema): z.ZodTypeAny {
     }
 
     case 'checkbox': {
-      let schema: z.ZodTypeAny = z.coerce.boolean();
+      let schema: z.ZodType = z.coerce.boolean();
       if (v.required) {
         schema = schema.refine(Boolean, 'Required');
       } else {
@@ -71,7 +71,7 @@ function fieldToZod(field: FieldSchema): z.ZodTypeAny {
 }
 
 export function zodForStep(step: StepSchema) {
-  const shape: Record<string, z.ZodTypeAny> = {};
+  const shape: Record<string, z.ZodType> = {};
   step.fields.forEach((f) => {
     shape[f.name] = fieldToZod(f);
   });

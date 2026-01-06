@@ -11,12 +11,10 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
+
 import { X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
@@ -28,7 +26,6 @@ type FormData = CreateActivityRequest & {
 };
 
 type ActivityCommsSectionProps = {
-  commsLeadOptions: Array<{ value: string; label: string }>;
   commsMaterialOptions: Array<{
     id: number;
     name: string;
@@ -39,12 +36,13 @@ type ActivityCommsSectionProps = {
     name: string;
     displayName?: string;
   }>;
+  organizations: Array<{ value: string; label: string }>;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
-  commsLeadOptions,
   commsMaterialOptions,
   translationLanguageOptions,
+  organizations,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -62,34 +60,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     );
   return (
     <ActivityFormSection title="Comms">
-      <FormField
-        control={form.control}
-        name="commsLeadId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Comms Lead</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={field.value?.toString()}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select comms lead" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {commsLeadOptions.map((user) => (
-                  <SelectItem key={user.value} value={user.value}>
-                    {user.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <div>
         <Label className="mb-3 block">Comms Materials</Label>
         <div className="flex flex-wrap gap-2">
@@ -136,6 +106,58 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormMessage />
           </FormItem>
         )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseOriginId"
+        render={({ field }) => {
+          // Derive the combobox value from form state
+          const originId = field.value;
+          const originName = form.watch('newsReleaseOriginName');
+
+          const comboboxValue: FreeformComboboxValue = originId
+            ? { type: 'option', value: originId }
+            : originName
+              ? { type: 'freeform', value: originName }
+              : null;
+
+          const handleChange = (value: FreeformComboboxValue) => {
+            if (!value) {
+              field.onChange(null);
+              form.setValue('newsReleaseOriginName', null);
+            } else if (value.type === 'option') {
+              field.onChange(value.value);
+              form.setValue('newsReleaseOriginName', null);
+            } else {
+              field.onChange(null);
+              form.setValue('newsReleaseOriginName', value.value);
+            }
+          };
+
+          return (
+            <FormItem>
+              <FormLabel>News Release Origin Organization</FormLabel>
+              <FormControl>
+                <FreeformCombobox
+                  options={organizations}
+                  value={comboboxValue}
+                  onChange={handleChange}
+                  placeholder="Select organization"
+                  searchPlaceholder="Search organizations..."
+                  emptyMessage="No organizations found."
+                  freeformLabel="Other"
+                  freeformDescription="Can't find the organization?"
+                />
+              </FormControl>
+              <FormDescription>
+                Select an organization from the list, or type to enter a custom
+                name
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
 
       <div>
