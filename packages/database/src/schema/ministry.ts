@@ -9,6 +9,8 @@ import {
 import { relations } from 'drizzle-orm';
 import { systemUsers } from './user';
 import { activities } from './activity';
+import { activitySharedWithMinistries, ministrySystemUsers } from './relations';
+import { governmentRepresentatives } from './lookups';
 
 /**
  * Ministry table - Government departments
@@ -61,12 +63,7 @@ export const ministriesRelations = relations(ministries, ({ one, many }) => ({
   }),
   children: many(ministries, { relationName: 'parent' }),
   activities: many(activities),
-  // Keep string references for junction tables that don't exist yet
-  // TODO: Replace with actual table objects once junction tables are defined
-  // @ts-expect-error - Junction table not yet defined
-  activitySharedWiths: many('activitySharedWiths'),
-  // @ts-expect-error - Junction table not yet defined
-  systemUserMinistries: many('systemUserMinistries'),
-  // @ts-expect-error - Import would cause circular dependency
-  governmentRepresentatives: many('governmentRepresentatives'),
+  activitySharedWiths: many(activitySharedWithMinistries),
+  ministrySystemUsers: many(ministrySystemUsers),
+  governmentRepresentatives: many(governmentRepresentatives),
 }));

@@ -17,14 +17,15 @@ import {
 
 /**
  * Venue Address Schema
- * Typed object for venue address JSONB field
+ * Typed object for venue address from venue_addresses table
  */
 const venueAddressSchema = z
   .object({
-    street: z.string(),
-    city: z.string(),
-    provinceOrState: z.string(),
-    country: z.string(),
+    venueName: z.string().nullable(),
+    street: z.string().nullable(),
+    city: z.string().nullable(),
+    provinceOrState: z.string().nullable(),
+    country: z.string().nullable(),
   })
   .nullable();
 
@@ -70,7 +71,7 @@ export const activityDbFieldsSchema = z.object({
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
   timeStatusId: z.string(),
-  schedulingConsiderations: z.string(),
+  schedulingConsiderations: z.string().nullable(),
 
   // News Release
   newsReleaseOriginId: z.string().uuid().nullable(),
@@ -78,8 +79,6 @@ export const activityDbFieldsSchema = z.object({
   newsReleaseId: z.string().uuid().nullable(),
 
   // Venue/Event
-  venue: z.string().nullable(),
-  venueAddress: venueAddressSchema,
   venueStatusId: z.string().nullable(),
 
   // Event organization (mutually exclusive: either ID or Name)
@@ -153,8 +152,6 @@ export const activityComputedFieldsSchema = z.object({
   jointEventOrg: z.array(z.string()).default([]),
   representativesAttending: z.array(representativeAttendingSchema).default([]),
   sharedWith: z.array(z.string()).default([]),
-  canEdit: z.array(z.string()).default([]),
-  canView: z.array(z.string()).default([]),
   additionalOwners: z.array(z.string()).default([]),
 
   // Computed organization names (from organization ID lookups or free text names)
@@ -174,6 +171,9 @@ export const activityComputedFieldsSchema = z.object({
   timeStatus: z.string(),
   venueStatus: z.string().nullable(),
   activityStatus: z.string(),
+
+  // Venue address (from venue_addresses table join)
+  venueAddress: venueAddressSchema,
 });
 
 /**

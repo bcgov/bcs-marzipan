@@ -3,6 +3,7 @@ import {
   CALENDAR_VISIBILITY,
   LOOK_AHEAD_STATUS,
   LOOK_AHEAD_SECTION,
+  ATTENDING_STATUS,
 } from '../constants/activity-enums';
 
 /**
@@ -18,27 +19,23 @@ import {
 // ============================================================================
 
 /**
- * Venue Address Schema
+ * Venue Address Schema - nested object for venue address fields
  */
-const venueAddressSchema = z
+export const venueAddressFieldsSchema = z
   .object({
-    street: z.string(),
-    city: z.string(),
-    provinceOrState: z.string(),
-    country: z.string(),
+    venueName: z.string().nullable(),
+    street: z.string().nullable(),
+    city: z.string().nullable(),
+    provinceOrState: z.string().nullable(),
+    country: z.string().nullable(),
   })
   .nullable()
   .optional();
 
 /**
- * Preprocess helper for venueAddress that handles legacy string formats
+ * Venue Address type inferred from schema
  */
-const normalizeVenueAddress = (val: unknown) => {
-  if (val === null || val === undefined) return null;
-  if (typeof val === 'string') return null; // Legacy format - can't parse
-  if (typeof val === 'object') return val;
-  return null;
-};
+export type VenueAddress = z.infer<typeof venueAddressFieldsSchema>;
 
 /**
  * Preprocess helper for UUID fields that may receive empty strings from forms
@@ -56,9 +53,9 @@ const emptyStringToNull = (val: unknown) => (val === '' ? null : val);
 const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.string().min(1).max(255),
-  summary: z.string().max(1000).default(''),
-  significance: z.string().max(1000).default(''),
-  schedulingConsiderations: z.string().max(500).default(''),
+  summary: z.string().max(1000),
+  significance: z.string().max(1000),
+  schedulingConsiderations: z.string().max(500).optional().nullable(),
 
   // Status IDs (required, numbers for database)
   dateStatusId: z.number().int(),
@@ -84,7 +81,6 @@ const activityCoreFieldsSchema = z.object({
   // Optional text fields
   pitchComments: z.string().nullable().optional(),
   executiveSummary: z.string().nullable().optional(),
-  venue: z.string().max(100).nullable().optional(),
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
@@ -117,14 +113,19 @@ const activityCoreFieldsSchema = z.object({
   eventPlannerName: z.string().max(255).nullable().optional(),
   graphicsUserId: z.number().int().nullable().optional(),
   venueStatusId: z.number().int().nullable().optional(),
-
-  // Venue address with preprocessing for legacy formats
-  venueAddress: z.preprocess(normalizeVenueAddress, venueAddressSchema),
 });
 
 // ============================================================================
 // Request Schemas
 // ============================================================================
+
+/**
+ * Representative with attending status schema
+ */
+const representativeWithStatusSchema = z.object({
+  representativeId: z.number().int(),
+  attendingStatus: z.enum(ATTENDING_STATUS),
+});
 
 /**
  * Junction table ID arrays for request payloads
@@ -138,23 +139,23 @@ const junctionTableIdsSchema = z.object({
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
   jointEventOrgIds: z.array(z.string().uuid()).optional(),
-  representativeIds: z.array(z.number().int()).optional(),
-  sharedWithOrgIds: z.array(z.string().uuid()).optional(),
-  canEditUserIds: z.array(z.number().int()).optional(),
-  canViewUserIds: z.array(z.number().int()).optional(),
+  representatives: z.array(representativeWithStatusSchema).optional(),
+  sharedWithMinistryIds: z.array(z.string().uuid()).optional(),
   additionalOwnerIds: z.array(z.number().int()).optional(),
 });
 
 /**
  * Schema for creating a new activity via HTTP request
  *
- * Includes core activity fields plus junction table ID arrays.
+ * Includes core activity fields plus junction table ID arrays and venue address.
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  */
 // merge is deprecated in favor of extend, but extend causes type inference issues.
-export const createActivityRequestSchema = activityCoreFieldsSchema.merge(
-  junctionTableIdsSchema
-);
+export const createActivityRequestSchema = activityCoreFieldsSchema
+  .merge(junctionTableIdsSchema)
+  .extend({
+    venueAddress: venueAddressFieldsSchema,
+  });
 
 /**
  * Schema for updating an activity via HTTP request

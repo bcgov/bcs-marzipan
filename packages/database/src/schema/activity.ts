@@ -10,7 +10,6 @@ import {
   boolean,
   uuid,
   bigint,
-  jsonb,
   check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -35,12 +34,11 @@ import {
   activityTranslationsRequired,
   activityJointEventOrgs,
   activityRepresentatives,
-  activitySharedWithOrgs,
-  activityCanEditUsers,
-  activityCanViewUsers,
+  activitySharedWithMinistries,
   activityAdditionalOwners,
 } from './relations';
 import { ministries } from './ministry';
+import { venueAddresses } from './venue-address';
 
 /**
  * Activity table - Core entity for calendar events
@@ -60,8 +58,8 @@ export const activities = pgTable(
     title: varchar('title', { length: 255 }).notNull(),
     leadOrgId: uuid('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
     leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
-    summary: text('summary').notNull().default(''), // Renamed from details (1000 char limit in new type)
-    significance: text('significance').notNull().default(''),
+    summary: text('summary').notNull(),
+    significance: text('significance').notNull(),
     isIssue: boolean('is_issue').notNull().default(false),
     pitchStatusId: integer('pitch_status_id')
       .notNull()
@@ -81,9 +79,7 @@ export const activities = pgTable(
       .notNull()
       .references(() => timeStatuses.id), // FK to TimeStatus
 
-    schedulingConsiderations: text('scheduling_considerations')
-      .notNull()
-      .default(''), // (500 char limit)
+    schedulingConsiderations: text('scheduling_considerations'), // (500 char limit)
 
     // News Release
     newsReleaseOriginId: uuid('news_release_origin_id').references(
@@ -93,8 +89,6 @@ export const activities = pgTable(
     newsReleaseId: uuid('news_release_id'),
 
     // Event
-    venue: varchar('venue', { length: 100 }), // Venue name
-    venueAddress: jsonb('venue_address'), // {street, city, provinceOrState, country}
     venueStatusId: integer('venue_status_id').references(
       () => venueStatuses.id
     ), // FK to VenueStatus
@@ -244,10 +238,12 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityTranslationsRequired: many(activityTranslationsRequired),
   activityJointEventOrgs: many(activityJointEventOrgs),
   activityRepresentatives: many(activityRepresentatives),
-  activitySharedWithOrgs: many(activitySharedWithOrgs),
-  activityCanEditUsers: many(activityCanEditUsers),
-  activityCanViewUsers: many(activityCanViewUsers),
+  activitySharedWithMinistries: many(activitySharedWithMinistries),
   activityAdditionalOwners: many(activityAdditionalOwners),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
+  venueAddress: one(venueAddresses, {
+    fields: [activities.id],
+    references: [venueAddresses.activityId],
+  }),
 }));

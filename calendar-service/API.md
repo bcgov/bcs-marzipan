@@ -40,9 +40,7 @@ Creates a new calendar activity with related junction table records.
   "thirtySixtyNinetyReport": false,
   "isIssue": false,
   "categoryIds": [2, 5],
-  "tagIds": ["00000000-0000-4000-8000-000000000105"],
-  "canViewUserIds": [1, 2, 3],
-  "canEditUserIds": [1]
+  "tagIds": ["00000000-0000-4000-8000-000000000105"]
 }
 ```
 

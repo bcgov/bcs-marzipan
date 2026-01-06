@@ -190,8 +190,7 @@ export const venues = pgTable('venues', {
   displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
-  address: jsonb('address'), // {street, city, provinceOrState, country} (address complete common component)
-  acId: varchar('ac_id', { length: 255 }), // AC ID (address complete ID)
+  address: jsonb('address'), // {street, city, provinceOrState, country}
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),

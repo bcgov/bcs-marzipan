@@ -21,7 +21,8 @@
     "src",
     "../.local/draft_components/tagpicker.tsx",
     "../.local/draft_components/DynamicWizard",
-    "../.local/draft_components/DynamicCalendarEntryForm.tsx"
+    "../.local/draft_components/DynamicCalendarEntryForm.tsx",
+    "../.local/draft_components/data"
   ],
   "exclude": ["node_modules"]
 }

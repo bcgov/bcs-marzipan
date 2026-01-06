@@ -213,7 +213,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
     mine: false, // TODO: check if current user is owner
-    sharedWithMe: false, // TODO: check if user in canView/canEdit
+    sharedWithMe: false, // TODO: check if user in sharedWith
     ministry: activity.leadOrg || '',
     summary: activity.summary || undefined,
     representatives:
@@ -233,7 +233,13 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     startDate,
     endDate,
     location: activity.venueAddress
-      ? `${activity.venueAddress.street}, ${activity.venueAddress.city}, ${activity.venueAddress.provinceOrState}`
+      ? [
+          activity.venueAddress.street,
+          activity.venueAddress.city,
+          activity.venueAddress.provinceOrState,
+        ]
+          .filter((part) => part)
+          .join(', ') || undefined
       : undefined,
     date: formatDateRange(),
   };

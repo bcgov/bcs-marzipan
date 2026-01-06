@@ -20,7 +20,7 @@ import {
 import {
   lookAheadStatusOptions,
   lookAheadSectionOptions,
-} from '../../data/mockLookups';
+} from '../../../../.local/draft_components/data/mockLookups';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 

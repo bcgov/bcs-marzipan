@@ -566,7 +566,14 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Venue</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.venueAddress
-                    ? `${activityData.venueAddress.street}, ${activityData.venueAddress.city}, ${activityData.venueAddress.provinceOrState}, ${activityData.venueAddress.country}`
+                    ? [
+                        activityData.venueAddress.street,
+                        activityData.venueAddress.city,
+                        activityData.venueAddress.provinceOrState,
+                        activityData.venueAddress.country,
+                      ]
+                        .filter((part) => part)
+                        .join(', ') || 'Not specified'
                     : 'Not specified'}
                 </Text>
               </div>
@@ -625,31 +632,6 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldValue}>
                   {activityData.calendarVisibility || 'Not specified'}
                 </Text>
-              </div>
-            </div>
-            <div>
-              <Text className={styles.fieldLabel}>Can Edit</Text>
-              <div>
-                {activityData.canEdit && activityData.canEdit.length > 0 ? (
-                  activityData.canEdit.map((editor, index) => (
-                    <Badge
-                      key={index}
-                      appearance="tint"
-                      className={styles.tagBadge}
-                    >
-                      {editor}
-                    </Badge>
-                  ))
-                ) : (
-                  <div>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Communications Team
-                    </Badge>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Executive Office
-                    </Badge>
-                  </div>
-                )}
               </div>
             </div>
             <div>

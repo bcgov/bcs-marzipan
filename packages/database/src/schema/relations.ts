@@ -18,6 +18,7 @@ import {
   translatedLanguages,
 } from './lookups';
 import { organizations } from './organizations';
+import { ministries } from './ministry';
 import { systemUsers } from './user';
 
 /**
@@ -211,14 +212,14 @@ export const activityJointEventOrgs = pgTable(
 
 /**
  * ActivityRepresentatives junction table - Many-to-many relationship between Activities and Representatives with attending status
- * Uses free-text representativeName (governmentRepresentatives lookup table has been removed)
+ * Optional free text representativeName for representatives not in the governmentRepresentatives lookup table
  */
 export const activityRepresentatives = pgTable('activity_representatives', {
   id: serial('id').primaryKey(),
   activityId: integer('activity_id')
     .notNull()
     .references(() => activities.id),
-  representativeId: integer('representative_id'), // Legacy field - no longer references governmentRepresentatives
+  representativeId: integer('representative_id'),
   representativeName: varchar('representative_name', { length: 255 }), // Free text for representatives
   attendingStatus: varchar('attending_status', { length: 50 }).notNull(), // 'requested', 'declined', 'confirmed'
   isActive: boolean('is_active').notNull().default(true),
@@ -228,63 +229,23 @@ export const activityRepresentatives = pgTable('activity_representatives', {
 });
 
 /**
- * ActivitySharedWithOrgs junction table - Many-to-many relationship between Activities and Organizations shared with
+ * activitySharedWithMinistries junction table - Many-to-many relationship between Activities and ministries the activity is shared with
  */
-export const activitySharedWithOrgs = pgTable(
+export const activitySharedWithMinistries = pgTable(
   'activity_shared_with_organizations',
   {
     activityId: integer('activity_id')
       .notNull()
       .references(() => activities.id),
-    organizationId: uuid('organization_id')
+    ministryId: uuid('ministry_id')
       .notNull()
-      .references(() => organizations.id),
+      .references(() => ministries.id),
     isActive: boolean('is_active').notNull().default(true),
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.activityId, table.organizationId] })]
-);
-
-/**
- * ActivityCanEditUsers junction table - Many-to-many relationship between Activities and SystemUsers (can edit)
- */
-export const activityCanEditUsers = pgTable(
-  'activity_can_edit_users',
-  {
-    activityId: integer('activity_id')
-      .notNull()
-      .references(() => activities.id),
-    userId: integer('user_id')
-      .notNull()
-      .references(() => systemUsers.id),
-    isActive: boolean('is_active').notNull().default(true),
-    timestamp: timestamp('timestamp', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [primaryKey({ columns: [table.activityId, table.userId] })]
-);
-
-/**
- * ActivityCanViewUsers junction table - Many-to-many relationship between Activities and SystemUsers (can view)
- */
-export const activityCanViewUsers = pgTable(
-  'activity_can_view_users',
-  {
-    activityId: integer('activity_id')
-      .notNull()
-      .references(() => activities.id),
-    userId: integer('user_id')
-      .notNull()
-      .references(() => systemUsers.id),
-    isActive: boolean('is_active').notNull().default(true),
-    timestamp: timestamp('timestamp', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [primaryKey({ columns: [table.activityId, table.userId] })]
+  (table) => [primaryKey({ columns: [table.activityId, table.ministryId] })]
 );
 
 /**
@@ -404,44 +365,16 @@ export const activityRepresentativesRelations = relations(
   })
 );
 
-export const activitySharedWithOrgsRelations = relations(
-  activitySharedWithOrgs,
+export const activitySharedWithMinistriesRelations = relations(
+  activitySharedWithMinistries,
   ({ one }) => ({
     activity: one(activities, {
-      fields: [activitySharedWithOrgs.activityId],
+      fields: [activitySharedWithMinistries.activityId],
       references: [activities.id],
     }),
-    organization: one(organizations, {
-      fields: [activitySharedWithOrgs.organizationId],
-      references: [organizations.id],
-    }),
-  })
-);
-
-export const activityCanEditUsersRelations = relations(
-  activityCanEditUsers,
-  ({ one }) => ({
-    activity: one(activities, {
-      fields: [activityCanEditUsers.activityId],
-      references: [activities.id],
-    }),
-    user: one(systemUsers, {
-      fields: [activityCanEditUsers.userId],
-      references: [systemUsers.id],
-    }),
-  })
-);
-
-export const activityCanViewUsersRelations = relations(
-  activityCanViewUsers,
-  ({ one }) => ({
-    activity: one(activities, {
-      fields: [activityCanViewUsers.activityId],
-      references: [activities.id],
-    }),
-    user: one(systemUsers, {
-      fields: [activityCanViewUsers.userId],
-      references: [systemUsers.id],
+    ministry: one(ministries, {
+      fields: [activitySharedWithMinistries.ministryId],
+      references: [ministries.id],
     }),
   })
 );
@@ -455,6 +388,40 @@ export const activityAdditionalOwnersRelations = relations(
     }),
     user: one(systemUsers, {
       fields: [activityAdditionalOwners.userId],
+      references: [systemUsers.id],
+    }),
+  })
+);
+
+/**
+ * MinistrySystemUsers junction table - Many-to-many relationship between Ministries and SystemUsers
+ */
+export const ministrySystemUsers = pgTable(
+  'ministry_system_users',
+  {
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministries.id),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => systemUsers.id),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.ministryId, table.userId] })]
+);
+
+export const ministrySystemUsersRelations = relations(
+  ministrySystemUsers,
+  ({ one }) => ({
+    ministry: one(ministries, {
+      fields: [ministrySystemUsers.ministryId],
+      references: [ministries.id],
+    }),
+    user: one(systemUsers, {
+      fields: [ministrySystemUsers.userId],
       references: [systemUsers.id],
     }),
   })

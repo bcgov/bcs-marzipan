@@ -22,8 +22,6 @@ describe('ActivitiesController', () => {
     jointEventOrg: undefined,
     representativesAttending: undefined,
     sharedWith: undefined,
-    canEdit: undefined,
-    canView: undefined,
   });
 
   const mockActivitiesService = {

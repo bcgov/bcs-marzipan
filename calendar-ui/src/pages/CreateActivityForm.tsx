@@ -9,10 +9,7 @@ import {
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
-import {
-  normalizeVenueAddress,
-  getMissingRequiredFields,
-} from '../lib/form-utils';
+import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
@@ -39,10 +36,11 @@ type FormData = CreateActivityRequest & {
   commsMaterialIds?: number[];
   translationLanguageIds?: number[];
   jointEventOrgIds?: string[];
-  representativeIds?: number[];
-  sharedWithOrgIds?: string[];
-  canEditUserIds?: number[];
-  canViewUserIds?: number[];
+  representatives?: Array<{
+    representativeId: number;
+    attendingStatus: string;
+  }>;
+  sharedWithMinistryIds?: string[];
 };
 
 export const CreateActivityForm: React.FC = () => {
@@ -66,10 +64,8 @@ export const CreateActivityForm: React.FC = () => {
       commsMaterialIds: [],
       translationLanguageIds: [],
       jointEventOrgIds: [],
-      representativeIds: [],
-      sharedWithOrgIds: [],
-      canEditUserIds: [],
-      canViewUserIds: [],
+      representatives: [],
+      sharedWithMinistryIds: [],
     } as Partial<FormData>,
   });
 
@@ -81,9 +77,6 @@ export const CreateActivityForm: React.FC = () => {
     console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
-      // Transform venueAddress to ensure it's a proper object or null
-      const venueAddress = normalizeVenueAddress(data.venueAddress);
-
       // Prepare submit data with junction table arrays
       const formValues = form.getValues();
       const submitData = {
@@ -92,7 +85,6 @@ export const CreateActivityForm: React.FC = () => {
         endDate: data.endDate || null,
         startTime: data.startTime || null,
         endTime: data.endTime || null,
-        venueAddress: venueAddress,
         categoryIds:
           formValues.categoryIds && formValues.categoryIds.length > 0
             ? formValues.categoryIds
@@ -123,18 +115,14 @@ export const CreateActivityForm: React.FC = () => {
           formValues.jointEventOrgIds && formValues.jointEventOrgIds.length > 0
             ? formValues.jointEventOrgIds
             : undefined,
-        representativeIds:
-          formValues.representativeIds &&
-          formValues.representativeIds.length > 0
-            ? formValues.representativeIds
+        representatives:
+          formValues.representatives && formValues.representatives.length > 0
+            ? formValues.representatives
             : undefined,
-        sharedWithOrgIds:
-          formValues.sharedWithOrgIds && formValues.sharedWithOrgIds.length > 0
-            ? formValues.sharedWithOrgIds
-            : undefined,
-        canEditUserIds:
-          formValues.canEditUserIds && formValues.canEditUserIds.length > 0
-            ? formValues.canEditUserIds
+        sharedWithMinistryIds:
+          formValues.sharedWithMinistryIds &&
+          formValues.sharedWithMinistryIds.length > 0
+            ? formValues.sharedWithMinistryIds
             : undefined,
       };
 
@@ -210,7 +198,6 @@ export const CreateActivityForm: React.FC = () => {
   // Transform data for form sections
   const jointOrgOptions = lookups.organizations;
   const ownerOptions = lookups.users;
-  const canEditUserOptions = lookups.users;
   const relatedActivityOptions = lookups.relatedActivities;
 
   const ErrorFallback = ({
@@ -298,8 +285,7 @@ export const CreateActivityForm: React.FC = () => {
 
             <ActivitySharingSection
               ownerOptions={ownerOptions}
-              canEditUserOptions={canEditUserOptions}
-              sharedWithOrgOptions={lookups.organizations}
+              sharedWithMinistryOptions={lookups.organizations}
             />
 
             {/* Form Actions */}
