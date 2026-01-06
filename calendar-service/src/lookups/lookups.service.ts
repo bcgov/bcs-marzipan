@@ -1,31 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray, type SQL } from 'drizzle-orm';
 import {
   categories,
   organizations,
   systemUsers,
   tags,
   pitchStatuses,
-  schedulingStatuses,
+  activityStatuses,
   commsMaterials,
   translatedLanguages,
   governmentRepresentatives,
   activities,
 } from '@corpcal/database/schema';
+import type {
+  LookupItem,
+  LookupQueryParams,
+  CategoryLookupItem,
+  OrganizationLookupItem,
+  UserLookupItem,
+  TagLookupItem,
+  PitchStatusLookupItem,
+  CommsMaterialsLookupItem,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeLookupItem,
+} from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
-
-export interface LookupItem {
-  id: string | number;
-  label: string;
-  value: string | number;
-  [key: string]: unknown;
-}
-
-export interface LookupQueryParams {
-  userId?: number;
-  role?: string;
-  organizationId?: string;
-}
 
 @Injectable()
 export class LookupsService {
@@ -34,7 +33,7 @@ export class LookupsService {
   /**
    * Get all active categories
    */
-  async getCategories(): Promise<LookupItem[]> {
+  async getCategories(): Promise<CategoryLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: categories.id,
@@ -58,7 +57,9 @@ export class LookupsService {
    * Get all active organizations
    * TODO: Implement scoping based on userId, role, organizationId
    */
-  async getOrganizations(_params?: LookupQueryParams): Promise<LookupItem[]> {
+  async getOrganizations(
+    _params?: LookupQueryParams
+  ): Promise<OrganizationLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: organizations.id,
@@ -80,34 +81,41 @@ export class LookupsService {
 
   /**
    * Get all active system users
-   * Computes display name from firstName/lastName or falls back to username
-   * TODO: Implement scoping based on userId, role, organizationId
+   * Computes display name from adDisplayName or falls back to adUsername
+   * Supports filtering by userIds to fetch specific users
+   * TODO: Implement scoping based on role, organizationId
    */
-  async getUsers(_params?: LookupQueryParams): Promise<LookupItem[]> {
+  async getUsers(params?: LookupQueryParams): Promise<UserLookupItem[]> {
+    // Build where conditions
+    const conditions: SQL[] = [eq(systemUsers.isActive, true)];
+
+    // Filter by specific user IDs if provided
+    if (params?.userIds && params.userIds.length > 0) {
+      // Controller already parses userIds into number array, but TypeScript needs explicit type
+      const userIdsArray = params.userIds;
+      conditions.push(inArray(systemUsers.id, userIdsArray));
+    }
+
     const results = await this.databaseService.db
       .select({
         id: systemUsers.id,
-        username: systemUsers.username,
-        firstName: systemUsers.firstName,
-        lastName: systemUsers.lastName,
-        email: systemUsers.email,
+        adUsername: systemUsers.adUsername,
+        adDisplayName: systemUsers.adDisplayName,
+        adEmail: systemUsers.adEmail,
       })
       .from(systemUsers)
-      .where(eq(systemUsers.isActive, true))
-      .orderBy(systemUsers.lastName, systemUsers.firstName);
+      .where(and(...conditions))
+      .orderBy(systemUsers.adDisplayName, systemUsers.adUsername);
 
     return results.map((user) => {
-      const name =
-        user.firstName && user.lastName
-          ? `${user.firstName} ${user.lastName}`
-          : user.username || `User ${user.id}`;
+      const name = user.adDisplayName || user.adUsername || `User ${user.id}`;
       return {
         id: user.id,
         label: name,
         value: user.id,
         name,
-        email: user.email,
-        username: user.username,
+        email: user.adEmail,
+        username: user.adUsername,
       };
     });
   }
@@ -115,7 +123,7 @@ export class LookupsService {
   /**
    * Get all active tags
    */
-  async getTags(): Promise<LookupItem[]> {
+  async getTags(): Promise<TagLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: tags.id,
@@ -136,9 +144,32 @@ export class LookupsService {
   }
 
   /**
+   * Get all active activity statuses
+   */
+  async getActivityStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+        displayName: activityStatuses.displayName,
+      })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.isActive, true))
+      .orderBy(activityStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
    * Get all active pitch statuses
    */
-  async getPitchStatuses(): Promise<LookupItem[]> {
+  async getPitchStatuses(): Promise<PitchStatusLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: pitchStatuses.id,
@@ -159,32 +190,9 @@ export class LookupsService {
   }
 
   /**
-   * Get all active scheduling statuses
-   */
-  async getSchedulingStatuses(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: schedulingStatuses.id,
-        name: schedulingStatuses.name,
-        displayName: schedulingStatuses.displayName,
-      })
-      .from(schedulingStatuses)
-      .where(eq(schedulingStatuses.isActive, true))
-      .orderBy(schedulingStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName || status.name,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
-    }));
-  }
-
-  /**
    * Get all active comms materials
    */
-  async getCommsMaterials(): Promise<LookupItem[]> {
+  async getCommsMaterials(): Promise<CommsMaterialsLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: commsMaterials.id,
@@ -207,7 +215,7 @@ export class LookupsService {
   /**
    * Get all active translation languages
    */
-  async getTranslationLanguages(): Promise<LookupItem[]> {
+  async getTranslationLanguages(): Promise<TranslationLanguageLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: translatedLanguages.id,
@@ -230,7 +238,9 @@ export class LookupsService {
   /**
    * Get all active government representatives
    */
-  async getGovernmentRepresentatives(): Promise<LookupItem[]> {
+  async getGovernmentRepresentatives(): Promise<
+    GovernmentRepresentativeLookupItem[]
+  > {
     const results = await this.databaseService.db
       .select({
         id: governmentRepresentatives.id,

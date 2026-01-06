@@ -1,10 +1,7 @@
 import { Controller, Get, Query, Header } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import {
-  LookupsService,
-  type LookupItem,
-  type LookupQueryParams,
-} from './lookups.service';
+import type { LookupItem, LookupQueryParams } from '@corpcal/shared/api/types';
+import { LookupsService } from './lookups.service';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 
@@ -52,14 +49,34 @@ export class LookupsController {
   @ApiQuery({ name: 'userId', required: false, type: Number })
   @ApiQuery({ name: 'role', required: false, type: String })
   @ApiQuery({ name: 'organizationId', required: false, type: String })
+  @ApiQuery({
+    name: 'userIds',
+    required: false,
+    type: String,
+    description: 'Comma-separated list of user IDs to filter by',
+  })
   @Get('users')
   @Header('Cache-Control', 'public, max-age=300')
   async getUsers(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string
+    @Query('organizationId') organizationId?: string,
+    @Query('userIds') userIds?: string
   ): Promise<{ success: boolean; data: LookupItem[] }> {
-    const params: LookupQueryParams = { userId, role, organizationId };
+    // Parse comma-separated userIds string into array of numbers
+    const parsedUserIds = userIds
+      ? userIds
+          .split(',')
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((id) => !isNaN(id))
+      : undefined;
+
+    const params: LookupQueryParams = {
+      userId,
+      role,
+      organizationId,
+      userIds: parsedUserIds,
+    };
     const data = await this.lookupsService.getUsers(params);
     return { success: true, data };
   }
@@ -73,6 +90,21 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all activity statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity statuses retrieved successfully',
+  })
+  @Get('activity-statuses')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getActivityStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getActivityStatuses();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all pitch statuses' })
   @ApiResponse({
     status: 200,
@@ -82,21 +114,6 @@ export class LookupsController {
   @Header('Cache-Control', 'public, max-age=3600')
   async getPitchStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getPitchStatuses();
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get all scheduling statuses' })
-  @ApiResponse({
-    status: 200,
-    description: 'Scheduling statuses retrieved successfully',
-  })
-  @Get('scheduling-statuses')
-  @Header('Cache-Control', 'public, max-age=3600')
-  async getSchedulingStatuses(): Promise<{
-    success: boolean;
-    data: LookupItem[];
-  }> {
-    const data = await this.lookupsService.getSchedulingStatuses();
     return { success: true, data };
   }
 

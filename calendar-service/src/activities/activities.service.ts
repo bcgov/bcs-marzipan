@@ -3,30 +3,35 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-// Import operators from drizzle-orm (these are exported by drizzle-orm)
-import { eq, and, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import {
   activities,
+  activityStatuses,
   pitchStatuses,
-  schedulingStatuses,
+  dateStatuses,
+  timeStatuses,
+  venueStatuses,
+  venueAddresses,
   activityCategories,
   activityTags,
   categories,
   tags,
-  activityJointOrganizations,
+  activityJointOrgs,
   activityRelatedEntries,
   activityCommsMaterials,
-  activityTranslationLanguages,
-  activityJointEventOrganizations,
+  activityTranslationsRequired,
+  activityJointEventOrgs,
   activityRepresentatives,
-  activitySharedWithOrganizations,
-  activityCanEditUsers,
-  activityCanViewUsers,
+  activitySharedWithMinistries,
+  activityAdditionalOwners,
   organizations,
   commsMaterials,
   translatedLanguages,
   systemUsers,
+  ministries,
+  activityHistory,
+  governmentRepresentatives,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import type {
@@ -34,10 +39,21 @@ import type {
   UpdateActivityRequest,
   FilterActivities,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/api';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
-import { ActivityResponseDto } from '@corpcal/shared/dto';
-import { ensureMatchesSchema } from '@corpcal/shared/utils';
+import {
+  activityResponseSchema,
+  type ActivityResponse,
+} from '@corpcal/shared/schemas';
+import type {
+  AttendingStatus,
+  LookAheadStatus,
+  LookAheadSection,
+  CalendarVisibility,
+} from '@corpcal/shared';
+import {
+  LOOK_AHEAD_STATUS,
+  LOOK_AHEAD_SECTION,
+  CALENDAR_VISIBILITY,
+} from '@corpcal/shared';
 import { DatabaseService } from '../database/database.service';
 import { ActivitiesGateway } from './activities.gateway';
 
@@ -47,39 +63,27 @@ export class ActivitiesService {
     private readonly databaseService: DatabaseService,
     private readonly activitiesGateway: ActivitiesGateway
   ) {}
+
   /**
    * Create a new activity with related junction table records
    */
-  async create(dto: CreateActivityRequest): Promise<ActivityResponseDto> {
-    // Extract junction table IDs from the DTO
+  async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
+    // Extract junction table IDs and venue address from the DTO
     // These fields are defined in createActivityRequestSchema but not in the base activity schema
     const {
       categoryIds,
       tagIds,
-      jointOrganizationIds,
+      jointOrgIds,
       relatedActivityIds,
       commsMaterialIds,
       translationLanguageIds,
-      jointEventOrganizationIds,
-      sharedWithOrganizationIds,
-      canEditUserIds,
-      canViewUserIds,
-      // Note: representativeIds is excluded - activityRepresentatives uses free-text representativeName
+      jointEventOrgIds,
+      sharedWithMinistryIds,
+      additionalOwnerIds,
+      representatives,
+      venueAddress,
       ...activityData
-    } = dto as CreateActivityRequest & {
-      categoryIds?: number[];
-      tagIds?: string[];
-      jointOrganizationIds?: string[];
-      relatedActivityIds?: number[];
-      commsMaterialIds?: number[];
-      translationLanguageIds?: number[];
-      jointEventOrganizationIds?: string[];
-      // FIXME:
-      // representativeIds?: number[];
-      sharedWithOrganizationIds?: string[];
-      canEditUserIds?: number[];
-      canViewUserIds?: number[];
-    };
+    } = dto;
 
     // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
@@ -87,14 +91,15 @@ export class ActivitiesService {
     }
 
     // TODO: Get current user ID from auth context
-    const currentUserId = 1; //dto.createdBy ?? 1;
+    const currentUserId = 1;
     const now = new Date();
 
     // Use transaction to ensure atomicity of activity and junction table inserts
     const result = await this.databaseService.db.transaction(async (tx) => {
-      // Prepare activity data with audit fields
+      // Insert activity with displayId: null (will be updated after getting activity ID)
       const newActivity = {
         ...activityData,
+        displayId: null as string | null,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
         createdDateTime: now,
@@ -104,10 +109,53 @@ export class ActivitiesService {
       // Insert the activity
       const [created] = await tx
         .insert(activities)
-        .values(newActivity as typeof activities.$inferInsert)
+        .values(newActivity as unknown as typeof activities.$inferInsert)
         .returning();
 
       const activityId = created.id;
+
+      // Fetch ministry abbreviation to generate displayId
+      // ministryOwnerId is required, so it should always be present
+      // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
+      if (!activityData.ministryOwnerId) {
+        throw new BadRequestException('ministryOwnerId is required');
+      }
+
+      const [ministry] = await tx
+        .select({ abbreviation: ministries.abbreviation })
+        .from(ministries)
+        .where(eq(ministries.id, activityData.ministryOwnerId))
+        .limit(1);
+
+      if (!ministry || !ministry.abbreviation) {
+        throw new BadRequestException(
+          `Ministry with ID ${activityData.ministryOwnerId} not found or missing abbreviation`
+        );
+      }
+
+      // Generate displayId using ministry abbreviation and activity ID
+      const displayId = this.generateDisplayId(
+        ministry.abbreviation,
+        activityId
+      );
+
+      // Update activity with generated displayId
+      await tx
+        .update(activities)
+        .set({ displayId })
+        .where(eq(activities.id, activityId));
+
+      // Insert venue address if provided
+      if (venueAddress) {
+        await tx.insert(venueAddresses).values({
+          activityId,
+          venueName: venueAddress.venueName,
+          street: venueAddress.street,
+          city: venueAddress.city,
+          provinceOrState: venueAddress.provinceOrState,
+          country: venueAddress.country,
+        });
+      }
 
       // Insert junction table records in parallel
       await Promise.all([
@@ -134,9 +182,9 @@ export class ActivitiesService {
         // Joint Organizations
         this.insertJunctionRecords(
           tx,
-          activityJointOrganizations,
+          activityJointOrgs,
           activityId,
-          jointOrganizationIds,
+          jointOrgIds,
           (id: string) => ({ organizationId: id }),
           currentUserId,
           now
@@ -164,7 +212,7 @@ export class ActivitiesService {
         // Translation Languages
         this.insertJunctionRecords(
           tx,
-          activityTranslationLanguages,
+          activityTranslationsRequired,
           activityId,
           translationLanguageIds,
           (id: number) => ({ languageId: id }),
@@ -174,43 +222,35 @@ export class ActivitiesService {
         // Joint Event Organizations
         this.insertJunctionRecords(
           tx,
-          activityJointEventOrganizations,
+          activityJointEventOrgs,
           activityId,
-          jointEventOrganizationIds,
+          jointEventOrgIds,
           (id: string) => ({ organizationId: id }),
           currentUserId,
           now
         ),
-        // Shared With Organizations
+        // Shared With Ministries
         this.insertJunctionRecords(
           tx,
-          activitySharedWithOrganizations,
+          activitySharedWithMinistries,
           activityId,
-          sharedWithOrganizationIds,
-          (id: string) => ({ organizationId: id }),
+          sharedWithMinistryIds,
+          (id: string) => ({ ministryId: id }),
           currentUserId,
           now
         ),
-        // Can Edit Users
+        // Additional Owners
         this.insertJunctionRecords(
           tx,
-          activityCanEditUsers,
+          activityAdditionalOwners,
           activityId,
-          canEditUserIds,
+          additionalOwnerIds,
           (id: number) => ({ userId: id }),
           currentUserId,
           now
         ),
-        // Can View Users
-        this.insertJunctionRecords(
-          tx,
-          activityCanViewUsers,
-          activityId,
-          canViewUserIds,
-          (id: number) => ({ userId: id }),
-          currentUserId,
-          now
-        ),
+        // Representatives with attending status
+        this.insertRepresentatives(tx, activityId, representatives, now),
       ]);
 
       return created;
@@ -223,6 +263,25 @@ export class ActivitiesService {
     this.activitiesGateway.broadcastActivityCreated(createdActivity);
 
     return createdActivity;
+  }
+
+  /**
+   * Generate displayId from ministry abbreviation and activity ID
+   * Format: <ACRONYM>-<last 6 digits of id>
+   * Example: AG-000123 (Attorney General, activity ID 123)
+   * Example: HLTH-456789 (Health, activity ID 123456789)
+   *
+   * @param ministryAbbreviation - Ministry abbreviation from ministries table
+   * @param activityId - Activity ID (serial)
+   * @returns Formatted displayId string
+   */
+  private generateDisplayId(
+    ministryAbbreviation: string,
+    activityId: number
+  ): string {
+    // Get last 6 digits of activity ID
+    const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
+    return `${ministryAbbreviation.toUpperCase().trim()}-${lastSixDigits}`;
   }
 
   /**
@@ -265,9 +324,95 @@ export class ActivitiesService {
   }
 
   /**
+   * Insert representatives with attending status into activityRepresentatives table
+   *
+   * @param tx - Database transaction
+   * @param activityId - ID of the activity
+   * @param representatives - Array of representatives with attending status
+   *   Supports either representativeId (from lookup table) or representativeName (freeform text)
+   * @param currentUserId - ID of the user creating the records
+   * @param now - Current timestamp
+   */
+  private async insertRepresentatives(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    representatives:
+      | Array<{
+          representativeId?: number;
+          representativeName?: string;
+          attendingStatus: AttendingStatus;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    // Skip if representatives are not provided or empty
+    if (
+      !representatives ||
+      !Array.isArray(representatives) ||
+      representatives.length === 0
+    ) {
+      return;
+    }
+
+    // Filter out entries without at least one identifier (representativeId or representativeName)
+    const validRepresentatives = representatives.filter(
+      (r) =>
+        (typeof r.representativeId === 'number' && r.representativeId > 0) ||
+        (typeof r.representativeName === 'string' &&
+          r.representativeName.trim().length > 0)
+    );
+
+    // Skip if no valid representatives after filtering
+    if (validRepresentatives.length === 0) {
+      return;
+    }
+
+    // Fetch representative names from lookup table for entries with representativeId
+    const representativeIds = validRepresentatives
+      .map((r) => r.representativeId)
+      .filter((id): id is number => typeof id === 'number' && id > 0);
+
+    let repMap = new Map<number, string>();
+    if (representativeIds.length > 0) {
+      const repLookup = await tx
+        .select({
+          id: governmentRepresentatives.id,
+          name: governmentRepresentatives.name,
+          displayName: governmentRepresentatives.displayName,
+        })
+        .from(governmentRepresentatives)
+        .where(inArray(governmentRepresentatives.id, representativeIds));
+
+      repMap = new Map(repLookup.map((r) => [r.id, r.displayName || r.name]));
+    }
+
+    // Insert representatives with attending status
+    await tx.insert(activityRepresentatives).values(
+      validRepresentatives.map((rep) => {
+        // If representativeId is provided, use lookup name; otherwise use provided representativeName
+        const representativeName =
+          rep.representativeId && repMap.has(rep.representativeId)
+            ? repMap.get(rep.representativeId) || null
+            : rep.representativeName || null;
+
+        return {
+          activityId,
+          representativeId: rep.representativeId || null,
+          representativeName,
+          attendingStatus: rep.attendingStatus,
+          isActive: true,
+          timestamp: now,
+        };
+      })
+    );
+  }
+
+  /**
    * Find all activities with optional filtering
    */
-  async findAll(filters?: FilterActivities): Promise<ActivityResponseDto[]> {
+  async findAll(filters?: FilterActivities): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
     if (filters) {
@@ -283,20 +428,16 @@ export class ActivitiesService {
       if (filters.isActive !== undefined) {
         conditions.push(eq(activities.isActive, filters.isActive));
       }
-      if (filters.isConfidential !== undefined) {
-        conditions.push(eq(activities.isConfidential, filters.isConfidential));
-      }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
       }
-      if (filters.contactMinistryId) {
+      if (filters.ministryOwnerId !== undefined) {
         conditions.push(
-          eq(activities.contactMinistryId, filters.contactMinistryId)
+          eq(activities.ministryOwnerId, filters.ministryOwnerId)
         );
       }
-      if (filters.cityId) {
-        conditions.push(eq(activities.cityId, filters.cityId));
-      }
+      // Note: City filter is handled after initial query with a separate join
+      // TODO: Optimize with proper join in main query
       if (filters.startDateFrom) {
         conditions.push(gte(activities.startDate, filters.startDateFrom));
       }
@@ -323,13 +464,40 @@ export class ActivitiesService {
       activityResults = await this.databaseService.db.select().from(activities);
     }
 
+    // Handle city filter with proper join if needed
+    if (filters && filters.city !== undefined) {
+      const activitiesWithCity = await this.databaseService.db
+        .select({ activityId: venueAddresses.activityId })
+        .from(venueAddresses)
+        .where(eq(venueAddresses.city, filters.city));
+
+      const activityIdsWithCity = new Set(
+        activitiesWithCity.map((a) => a.activityId)
+      );
+      activityResults = activityResults.filter((a) =>
+        activityIdsWithCity.has(a.id)
+      );
+    }
+
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
+    // Collect all user IDs that need to be fetched
+    const userIds = new Set<number>();
+    for (const activity of activityResults) {
+      if (activity.ownerId) userIds.add(activity.ownerId);
+      if (activity.eventPlannerId) userIds.add(activity.eventPlannerId);
+      if (activity.graphicsUserId) userIds.add(activity.graphicsUserId);
+    }
+
     const [
-      categoriesMap,
+      categoriesResult,
       tagsMap,
+      activityStatusesMap,
       pitchStatusesMap,
-      schedulingStatusesMap,
+      dateStatusesMap,
+      timeStatusesMap,
+      venueStatusesMap,
+      venueAddressesMap,
       jointOrgMap,
       relatedActivitiesMap,
       commsMaterialsMap,
@@ -337,30 +505,46 @@ export class ActivitiesService {
       jointEventOrgMap,
       representativesAttendingMap,
       sharedWithMap,
-      canEditMap,
-      canViewMap,
+      additionalOwnersMap,
+      userNamesMap,
+      leadOrgNamesMap,
+      eventLeadOrgNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities(activityIds),
       this.fetchTagsForActivities(activityIds),
+      this.fetchActivityStatusesForActivities(activityIds),
       this.fetchPitchStatusesForActivities(activityIds),
-      this.fetchSchedulingStatusesForActivities(activityIds),
-      this.fetchJointOrganizationsForActivities(activityIds),
+      this.fetchDateStatusesForActivities(activityIds),
+      this.fetchTimeStatusesForActivities(activityIds),
+      this.fetchVenueStatusesForActivities(activityIds),
+      this.fetchVenueAddressesForActivities(activityIds),
+      this.fetchJointOrgsForActivities(activityIds),
       this.fetchRelatedActivitiesForActivities(activityIds),
       this.fetchCommsMaterialsForActivities(activityIds),
       this.fetchTranslationsRequiredForActivities(activityIds),
-      this.fetchJointEventOrganizationsForActivities(activityIds),
+      this.fetchjointEventOrgsForActivities(activityIds),
       this.fetchRepresentativesAttendingForActivities(activityIds),
-      this.fetchSharedWithOrganizationsForActivities(activityIds),
-      this.fetchCanEditUsersForActivities(activityIds),
-      this.fetchCanViewUsersForActivities(activityIds),
+      this.fetchSharedWithOrgsForActivities(activityIds),
+      this.fetchAdditionalOwnersForActivities(activityIds),
+      this.fetchUserNamesForUserIds(Array.from(userIds)),
+      this.fetchLeadOrgNamesForActivities(activityResults),
+      this.fetchEventLeadOrgNamesForActivities(activityResults),
     ]);
+
+    const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
+      categoriesResult;
 
     return activityResults.map((activity) =>
       this.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
+        categoryIds: categoryIdsMap.get(activity.id) ?? [],
         tags: tagsMap.get(activity.id) ?? [],
+        activityStatus: activityStatusesMap.get(activity.id),
         pitchStatus: pitchStatusesMap.get(activity.id),
-        schedulingStatus: schedulingStatusesMap.get(activity.id),
+        dateStatus: dateStatusesMap.get(activity.id),
+        timeStatus: timeStatusesMap.get(activity.id),
+        venueStatus: venueStatusesMap.get(activity.id) ?? null,
+        venueAddress: venueAddressesMap.get(activity.id) ?? null,
         jointOrg: jointOrgMap.get(activity.id) ?? [],
         relatedActivities: relatedActivitiesMap.get(activity.id) ?? [],
         commsMaterials: commsMaterialsMap.get(activity.id) ?? [],
@@ -369,8 +553,18 @@ export class ActivitiesService {
         representativesAttending:
           representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: sharedWithMap.get(activity.id) ?? [],
-        canEdit: canEditMap.get(activity.id) ?? [],
-        canView: canViewMap.get(activity.id) ?? [],
+        additionalOwners: additionalOwnersMap.get(activity.id) ?? [],
+        ownerName: activity.ownerId
+          ? (userNamesMap.get(activity.ownerId) ?? null)
+          : null,
+        eventLeadName: activity.eventPlannerId
+          ? (userNamesMap.get(activity.eventPlannerId) ?? null)
+          : null,
+        graphicsUserName: activity.graphicsUserId
+          ? (userNamesMap.get(activity.graphicsUserId) ?? null)
+          : null,
+        leadOrgName: leadOrgNamesMap.get(activity.id) ?? null,
+        eventLeadOrgName: eventLeadOrgNamesMap.get(activity.id) ?? null,
       })
     );
   }
@@ -378,7 +572,7 @@ export class ActivitiesService {
   /**
    * Find one activity by ID
    */
-  async findOne(id: number): Promise<ActivityResponseDto> {
+  async findOne(id: number): Promise<ActivityResponse> {
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -389,12 +583,22 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity #${id} not found`);
     }
 
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (activity.ownerId) userIds.push(activity.ownerId);
+    if (activity.eventPlannerId) userIds.push(activity.eventPlannerId);
+    if (activity.graphicsUserId) userIds.push(activity.graphicsUserId);
+
     // Fetch related data
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
-      schedulingStatus,
+      dateStatus,
+      timeStatus,
+      venueStatus,
+      venueAddressesMap,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -402,29 +606,45 @@ export class ActivitiesService {
       jointEventOrg,
       representativesAttending,
       sharedWith,
-      canEdit,
-      canView,
+      additionalOwners,
+      userNamesMap,
+      leadOrgNamesMap,
+      eventLeadOrgNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
-      this.fetchJointOrganizationsForActivities([id]),
+      this.fetchDateStatusesForActivities([id]),
+      this.fetchTimeStatusesForActivities([id]),
+      this.fetchVenueStatusesForActivities([id]),
+      this.fetchVenueAddressesForActivities([id]),
+      this.fetchJointOrgsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
       this.fetchTranslationsRequiredForActivities([id]),
-      this.fetchJointEventOrganizationsForActivities([id]),
+      this.fetchjointEventOrgsForActivities([id]),
       this.fetchRepresentativesAttendingForActivities([id]),
-      this.fetchSharedWithOrganizationsForActivities([id]),
-      this.fetchCanEditUsersForActivities([id]),
-      this.fetchCanViewUsersForActivities([id]),
+      this.fetchSharedWithOrgsForActivities([id]),
+      this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
+      this.fetchLeadOrgNamesForActivities([activity]),
+      this.fetchEventLeadOrgNamesForActivities([activity]),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     return this.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
+      dateStatus: dateStatus.get(id),
+      timeStatus: timeStatus.get(id),
+      venueStatus: venueStatus.get(id) ?? null,
+      venueAddress: venueAddressesMap.get(id) ?? null,
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -432,8 +652,18 @@ export class ActivitiesService {
       jointEventOrg: jointEventOrg.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      canEdit: canEdit.get(id) ?? [],
-      canView: canView.get(id) ?? [],
+      additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: activity.ownerId
+        ? (userNamesMap.get(activity.ownerId) ?? null)
+        : null,
+      eventLeadName: activity.eventPlannerId
+        ? (userNamesMap.get(activity.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: activity.graphicsUserId
+        ? (userNamesMap.get(activity.graphicsUserId) ?? null)
+        : null,
+      leadOrgName: leadOrgNamesMap.get(id) ?? null,
+      eventLeadOrgName: eventLeadOrgNamesMap.get(id) ?? null,
     });
   }
 
@@ -443,27 +673,110 @@ export class ActivitiesService {
   async update(
     id: number,
     dto: UpdateActivityRequest
-  ): Promise<ActivityResponseDto> {
+  ): Promise<ActivityResponse> {
     // Verify activity exists (throws NotFoundException if not found)
     await this.findOne(id);
 
+    // Extract venueAddress from DTO
+    const { venueAddress, ...activityUpdateData } = dto;
+
     const updateData: Partial<Activity> = {
-      ...(dto as Partial<Activity>),
+      ...(activityUpdateData as Partial<Activity>),
       lastUpdatedDateTime: new Date(),
     };
 
-    const [updated] = await this.databaseService.db
-      .update(activities)
-      .set(updateData)
-      .where(eq(activities.id, id))
-      .returning();
+    // TODO: Get current user ID from auth context
+    // const currentUserId = 1;
+
+    // Use transaction to ensure atomicity of activity and venue address updates
+    const updated = await this.databaseService.db.transaction(async (tx) => {
+      // If ministryOwnerId is being updated, recalculate displayId
+      // TODO: consider if users still need to reference previous displayId.
+      if (dto.ministryOwnerId !== undefined && dto.ministryOwnerId !== null) {
+        // Fetch the new ministry abbreviation
+        const [ministry] = await tx
+          .select({ abbreviation: ministries.abbreviation })
+          .from(ministries)
+          .where(eq(ministries.id, dto.ministryOwnerId))
+          .limit(1);
+
+        if (!ministry || !ministry.abbreviation) {
+          throw new BadRequestException(
+            `Ministry with ID ${dto.ministryOwnerId} not found or missing abbreviation`
+          );
+        }
+
+        // Generate new displayId using the new ministry abbreviation
+        const newDisplayId = this.generateDisplayId(ministry.abbreviation, id);
+        updateData.displayId = newDisplayId;
+      }
+
+      const [updatedActivity] = await tx
+        .update(activities)
+        .set(updateData)
+        .where(eq(activities.id, id))
+        .returning();
+
+      // Handle venue address update
+      if (venueAddress !== undefined) {
+        if (venueAddress === null) {
+          // Delete venue address if explicitly set to null
+          await tx
+            .delete(venueAddresses)
+            .where(eq(venueAddresses.activityId, id));
+        } else {
+          // Upsert venue address
+          const existingAddress = await tx
+            .select()
+            .from(venueAddresses)
+            .where(eq(venueAddresses.activityId, id))
+            .limit(1);
+
+          if (existingAddress.length > 0) {
+            // Update existing address
+            await tx
+              .update(venueAddresses)
+              .set({
+                venueName: venueAddress.venueName,
+                street: venueAddress.street,
+                city: venueAddress.city,
+                provinceOrState: venueAddress.provinceOrState,
+                country: venueAddress.country,
+              })
+              .where(eq(venueAddresses.activityId, id));
+          } else {
+            // Insert new address
+            await tx.insert(venueAddresses).values({
+              activityId: id,
+              venueName: venueAddress.venueName,
+              street: venueAddress.street,
+              city: venueAddress.city,
+              provinceOrState: venueAddress.provinceOrState,
+              country: venueAddress.country,
+            });
+          }
+        }
+      }
+
+      return updatedActivity;
+    });
+
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (updated.ownerId) userIds.push(updated.ownerId);
+    if (updated.eventPlannerId) userIds.push(updated.eventPlannerId);
+    if (updated.graphicsUserId) userIds.push(updated.graphicsUserId);
 
     // Fetch related data for the updated activity
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
-      schedulingStatus,
+      dateStatus,
+      timeStatus,
+      venueStatus,
+      venueAddressesMap,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -471,29 +784,41 @@ export class ActivitiesService {
       jointEventOrg,
       representativesAttending,
       sharedWith,
-      canEdit,
-      canView,
+      additionalOwners,
+      userNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
-      this.fetchJointOrganizationsForActivities([id]),
+      this.fetchDateStatusesForActivities([id]),
+      this.fetchTimeStatusesForActivities([id]),
+      this.fetchVenueStatusesForActivities([id]),
+      this.fetchVenueAddressesForActivities([id]),
+      this.fetchJointOrgsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
       this.fetchTranslationsRequiredForActivities([id]),
-      this.fetchJointEventOrganizationsForActivities([id]),
+      this.fetchjointEventOrgsForActivities([id]),
       this.fetchRepresentativesAttendingForActivities([id]),
-      this.fetchSharedWithOrganizationsForActivities([id]),
-      this.fetchCanEditUsersForActivities([id]),
-      this.fetchCanViewUsersForActivities([id]),
+      this.fetchSharedWithOrgsForActivities([id]),
+      this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     const result = this.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
+      dateStatus: dateStatus.get(id),
+      timeStatus: timeStatus.get(id),
+      venueStatus: venueStatus.get(id) ?? null,
+      venueAddress: venueAddressesMap.get(id) ?? null,
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -501,8 +826,16 @@ export class ActivitiesService {
       jointEventOrg: jointEventOrg.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      canEdit: canEdit.get(id) ?? [],
-      canView: canView.get(id) ?? [],
+      additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: updated.ownerId
+        ? (userNamesMap.get(updated.ownerId) ?? null)
+        : null,
+      eventLeadName: updated.eventPlannerId
+        ? (userNamesMap.get(updated.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: updated.graphicsUserId
+        ? (userNamesMap.get(updated.graphicsUserId) ?? null)
+        : null,
     });
 
     // Notify connected clients viewing this activity
@@ -524,22 +857,69 @@ export class ActivitiesService {
   /**
    * Soft delete (set isActive to false)
    */
-  async softDelete(id: number): Promise<ActivityResponseDto> {
+  async softDelete(
+    id: number,
+    reason: string,
+    userId: number
+  ): Promise<ActivityResponse> {
+    // Validate reason is provided and not empty
+    // Required for audit and admin review purposes
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException('A reason is required for soft deletion');
+    }
+
+    // Get the current activity state before update
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    // Update activity to soft delete
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
         isActive: false,
         lastUpdatedDateTime: new Date(),
+        lastUpdatedBy: userId,
       })
       .where(eq(activities.id, id))
       .returning();
 
+    // Create activity history entry with the reason
+    await this.databaseService.db.insert(activityHistory).values({
+      activityId: id,
+      userId: userId,
+      actionType: 'soft_deleted',
+      notes: reason.trim(),
+      changes: [
+        {
+          field: 'isActive',
+          oldValue: existing.isActive,
+          newValue: false,
+        },
+      ],
+    });
+
+    // Collect user IDs that need to be fetched
+    const userIds: number[] = [];
+    if (updated.ownerId) userIds.push(updated.ownerId);
+    if (updated.eventPlannerId) userIds.push(updated.eventPlannerId);
+    if (updated.graphicsUserId) userIds.push(updated.graphicsUserId);
+
     // Fetch related data for the soft-deleted activity
     const [
-      categoriesList,
+      categoriesResult,
       tagsList,
+      activityStatus,
       pitchStatus,
-      schedulingStatus,
+      dateStatus,
+      timeStatus,
+      venueStatus,
       jointOrg,
       relatedActivities,
       commsMaterials,
@@ -547,29 +927,39 @@ export class ActivitiesService {
       jointEventOrg,
       representativesAttending,
       sharedWith,
-      canEdit,
-      canView,
+      additionalOwners,
+      userNamesMap,
     ] = await Promise.all([
       this.fetchCategoriesForActivities([id]),
       this.fetchTagsForActivities([id]),
+      this.fetchActivityStatusesForActivities([id]),
       this.fetchPitchStatusesForActivities([id]),
-      this.fetchSchedulingStatusesForActivities([id]),
-      this.fetchJointOrganizationsForActivities([id]),
+      this.fetchDateStatusesForActivities([id]),
+      this.fetchTimeStatusesForActivities([id]),
+      this.fetchVenueStatusesForActivities([id]),
+      this.fetchJointOrgsForActivities([id]),
       this.fetchRelatedActivitiesForActivities([id]),
       this.fetchCommsMaterialsForActivities([id]),
       this.fetchTranslationsRequiredForActivities([id]),
-      this.fetchJointEventOrganizationsForActivities([id]),
+      this.fetchjointEventOrgsForActivities([id]),
       this.fetchRepresentativesAttendingForActivities([id]),
-      this.fetchSharedWithOrganizationsForActivities([id]),
-      this.fetchCanEditUsersForActivities([id]),
-      this.fetchCanViewUsersForActivities([id]),
+      this.fetchSharedWithOrgsForActivities([id]),
+      this.fetchAdditionalOwnersForActivities([id]),
+      this.fetchUserNamesForUserIds(userIds),
     ]);
+
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      categoriesResult;
 
     return this.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      activityStatus: activityStatus.get(id),
       pitchStatus: pitchStatus.get(id),
-      schedulingStatus: schedulingStatus.get(id),
+      dateStatus: dateStatus.get(id),
+      timeStatus: timeStatus.get(id),
+      venueStatus: venueStatus.get(id) ?? null,
       jointOrg: jointOrg.get(id) ?? [],
       relatedActivities: relatedActivities.get(id) ?? [],
       commsMaterials: commsMaterials.get(id) ?? [],
@@ -577,24 +967,35 @@ export class ActivitiesService {
       jointEventOrg: jointEventOrg.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      canEdit: canEdit.get(id) ?? [],
-      canView: canView.get(id) ?? [],
+      additionalOwners: additionalOwners.get(id) ?? [],
+      ownerName: updated.ownerId
+        ? (userNamesMap.get(updated.ownerId) ?? null)
+        : null,
+      eventLeadName: updated.eventPlannerId
+        ? (userNamesMap.get(updated.eventPlannerId) ?? null)
+        : null,
+      graphicsUserName: updated.graphicsUserId
+        ? (userNamesMap.get(updated.graphicsUserId) ?? null)
+        : null,
     });
   }
 
   /**
    * Fetch categories for multiple activities
+   * Returns both category names and IDs for each activity
    */
-  private async fetchCategoriesForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
+  private async fetchCategoriesForActivities(activityIds: number[]): Promise<{
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  }> {
     if (activityIds.length === 0) {
-      return new Map();
+      return { namesMap: new Map(), idsMap: new Map() };
     }
 
     const results = await this.databaseService.db
       .select({
         activityId: activityCategories.activityId,
+        categoryId: activityCategories.categoryId,
         categoryName: categories.name,
       })
       .from(activityCategories)
@@ -607,13 +1008,20 @@ export class ActivitiesService {
         )
       );
 
-    const map = new Map<number, string[]>();
+    const namesMap = new Map<number, string[]>();
+    const idsMap = new Map<number, number[]>();
     for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push(row.categoryName);
-      map.set(row.activityId, existing);
+      // Add category name
+      const existingNames = namesMap.get(row.activityId) ?? [];
+      existingNames.push(row.categoryName);
+      namesMap.set(row.activityId, existingNames);
+
+      // Add category ID
+      const existingIds = idsMap.get(row.activityId) ?? [];
+      existingIds.push(row.categoryId);
+      idsMap.set(row.activityId, existingIds);
     }
-    return map;
+    return { namesMap, idsMap };
   }
 
   /**
@@ -711,9 +1119,9 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch scheduling statuses for multiple activities
+   * Fetch date statuses for multiple activities
    */
-  private async fetchSchedulingStatusesForActivities(
+  private async fetchDateStatusesForActivities(
     activityIds: number[]
   ): Promise<Map<number, string>> {
     if (activityIds.length === 0) {
@@ -723,40 +1131,269 @@ export class ActivitiesService {
     const activityResults = await this.databaseService.db
       .select({
         id: activities.id,
-        schedulingStatusId: activities.schedulingStatusId,
+        dateStatusId: activities.dateStatusId,
       })
       .from(activities)
       .where(inArray(activities.id, activityIds));
 
-    const schedulingStatusIds = activityResults
-      .map((a) => a.schedulingStatusId)
+    const dateStatusIds = activityResults
+      .map((a) => a.dateStatusId)
       .filter((id): id is number => id !== null && id !== undefined);
 
-    if (schedulingStatusIds.length === 0) {
+    if (dateStatusIds.length === 0) {
       return new Map();
     }
 
-    const schedulingStatusResults = await this.databaseService.db
+    const dateStatusResults = await this.databaseService.db
       .select({
-        id: schedulingStatuses.id,
-        name: schedulingStatuses.name,
+        id: dateStatuses.id,
+        name: dateStatuses.name,
       })
-      .from(schedulingStatuses)
+      .from(dateStatuses)
       .where(
         and(
-          inArray(schedulingStatuses.id, schedulingStatusIds),
-          eq(schedulingStatuses.isActive, true)
+          inArray(dateStatuses.id, dateStatusIds),
+          eq(dateStatuses.isActive, true)
         )
       );
 
     const statusMap = new Map<number, string>(
-      schedulingStatusResults.map((s) => [s.id, s.name])
+      dateStatusResults.map((s) => [s.id, s.name])
     );
 
     const resultMap = new Map<number, string>();
     for (const activity of activityResults) {
-      if (activity.schedulingStatusId) {
-        const statusName = statusMap.get(activity.schedulingStatusId);
+      if (activity.dateStatusId) {
+        const statusName = statusMap.get(activity.dateStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch time statuses for multiple activities
+   */
+  private async fetchTimeStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        timeStatusId: activities.timeStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const timeStatusIds = activityResults
+      .map((a) => a.timeStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (timeStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const timeStatusResults = await this.databaseService.db
+      .select({
+        id: timeStatuses.id,
+        name: timeStatuses.name,
+      })
+      .from(timeStatuses)
+      .where(
+        and(
+          inArray(timeStatuses.id, timeStatusIds),
+          eq(timeStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      timeStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.timeStatusId) {
+        const statusName = statusMap.get(activity.timeStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch venue statuses for multiple activities
+   * Streamlined to use nullish coalescing
+   */
+  private async fetchVenueStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        venueStatusId: activities.venueStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const venueStatusIds = activityResults
+      .map((a) => a.venueStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (venueStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const venueStatusResults = await this.databaseService.db
+      .select({
+        id: venueStatuses.id,
+        name: venueStatuses.name,
+      })
+      .from(venueStatuses)
+      .where(
+        and(
+          inArray(venueStatuses.id, venueStatusIds),
+          eq(venueStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      venueStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.venueStatusId) {
+        const statusName = statusMap.get(activity.venueStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch venue addresses for multiple activities
+   */
+  private async fetchVenueAddressesForActivities(
+    activityIds: number[]
+  ): Promise<
+    Map<
+      number,
+      {
+        venueName: string | null;
+        street: string | null;
+        city: string | null;
+        provinceOrState: string | null;
+        country: string | null;
+      } | null
+    >
+  > {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const venueAddressResults = await this.databaseService.db
+      .select({
+        activityId: venueAddresses.activityId,
+        venueName: venueAddresses.venueName,
+        street: venueAddresses.street,
+        city: venueAddresses.city,
+        provinceOrState: venueAddresses.provinceOrState,
+        country: venueAddresses.country,
+      })
+      .from(venueAddresses)
+      .where(inArray(venueAddresses.activityId, activityIds));
+
+    const resultMap = new Map<
+      number,
+      {
+        venueName: string | null;
+        street: string | null;
+        city: string | null;
+        provinceOrState: string | null;
+        country: string | null;
+      } | null
+    >();
+
+    // Initialize all activities with null (no address)
+    for (const activityId of activityIds) {
+      resultMap.set(activityId, null);
+    }
+
+    // Set addresses for activities that have them
+    for (const address of venueAddressResults) {
+      resultMap.set(address.activityId, {
+        venueName: address.venueName,
+        street: address.street,
+        city: address.city,
+        provinceOrState: address.provinceOrState,
+        country: address.country,
+      });
+    }
+
+    return resultMap;
+  }
+
+  /**
+   * Fetch activity statuses for multiple activities
+   */
+  private async fetchActivityStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        activityStatusId: activities.activityStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const activityStatusIds = activityResults
+      .map((a) => a.activityStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (activityStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const activityStatusResults = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+      })
+      .from(activityStatuses)
+      .where(
+        and(
+          inArray(activityStatuses.id, activityStatusIds),
+          eq(activityStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      activityStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.activityStatusId) {
+        const statusName = statusMap.get(activity.activityStatusId);
         if (statusName) {
           resultMap.set(activity.id, statusName);
         }
@@ -767,8 +1404,9 @@ export class ActivitiesService {
 
   /**
    * Fetch joint organizations for multiple activities
+   * Returns organization name or dispaly name for UI
    */
-  private async fetchJointOrganizationsForActivities(
+  private async fetchJointOrgsForActivities(
     activityIds: number[]
   ): Promise<Map<number, string[]>> {
     if (activityIds.length === 0) {
@@ -777,25 +1415,29 @@ export class ActivitiesService {
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityJointOrganizations.activityId,
-        organizationId: organizations.id,
+        activityId: activityJointOrgs.activityId,
+        organizationName:
+          sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            'organizationName'
+          ),
       })
-      .from(activityJointOrganizations)
+      .from(activityJointOrgs)
       .innerJoin(
         organizations,
-        eq(activityJointOrganizations.organizationId, organizations.id)
+        eq(activityJointOrgs.organizationId, organizations.id)
       )
       .where(
         and(
-          inArray(activityJointOrganizations.activityId, activityIds),
-          eq(activityJointOrganizations.isActive, true)
+          inArray(activityJointOrgs.activityId, activityIds),
+          eq(activityJointOrgs.isActive, true),
+          eq(organizations.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.organizationName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -803,6 +1445,7 @@ export class ActivitiesService {
 
   /**
    * Fetch related activities for multiple activities
+   * Returns activity displayIds (or generated from ministryOwner displayName + last 6 digits of id if displayId is null) for UI display
    */
   private async fetchRelatedActivitiesForActivities(
     activityIds: number[]
@@ -811,23 +1454,40 @@ export class ActivitiesService {
       return new Map();
     }
 
+    // Create alias for related activities table to avoid conflict with main activities table
+    const relatedActivities = activities;
+
     const results = await this.databaseService.db
       .select({
         activityId: activityRelatedEntries.activityId,
-        relatedActivityId: activityRelatedEntries.relatedActivityId,
+        relatedActivityDisplay: sql<string>`
+          COALESCE(
+            ${relatedActivities.displayId},
+            ${ministries.displayName} || '-' || LPAD(RIGHT(${relatedActivities.id}::text, 6), 6, '0')
+          )
+        `.as('relatedActivityDisplay'),
       })
       .from(activityRelatedEntries)
+      .innerJoin(
+        relatedActivities,
+        eq(activityRelatedEntries.relatedActivityId, relatedActivities.id)
+      )
+      .innerJoin(
+        ministries,
+        eq(relatedActivities.ministryOwnerId, ministries.id)
+      )
       .where(
         and(
           inArray(activityRelatedEntries.activityId, activityIds),
-          eq(activityRelatedEntries.isActive, true)
+          eq(activityRelatedEntries.isActive, true),
+          eq(relatedActivities.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.relatedActivityId.toString());
+      existing.push(row.relatedActivityDisplay);
       map.set(row.activityId, existing);
     }
     return map;
@@ -882,18 +1542,18 @@ export class ActivitiesService {
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityTranslationLanguages.activityId,
+        activityId: activityTranslationsRequired.activityId,
         languageName: translatedLanguages.name,
       })
-      .from(activityTranslationLanguages)
+      .from(activityTranslationsRequired)
       .innerJoin(
         translatedLanguages,
-        eq(activityTranslationLanguages.languageId, translatedLanguages.id)
+        eq(activityTranslationsRequired.languageId, translatedLanguages.id)
       )
       .where(
         and(
-          inArray(activityTranslationLanguages.activityId, activityIds),
-          eq(activityTranslationLanguages.isActive, true),
+          inArray(activityTranslationsRequired.activityId, activityIds),
+          eq(activityTranslationsRequired.isActive, true),
           eq(translatedLanguages.isActive, true)
         )
       );
@@ -909,8 +1569,9 @@ export class ActivitiesService {
 
   /**
    * Fetch joint event organizations for multiple activities
+   * Returns organization display names (or names if displayName is null) for UI display
    */
-  private async fetchJointEventOrganizationsForActivities(
+  private async fetchjointEventOrgsForActivities(
     activityIds: number[]
   ): Promise<Map<number, string[]>> {
     if (activityIds.length === 0) {
@@ -919,25 +1580,29 @@ export class ActivitiesService {
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityJointEventOrganizations.activityId,
-        organizationId: organizations.id,
+        activityId: activityJointEventOrgs.activityId,
+        organizationName:
+          sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            'organizationName'
+          ),
       })
-      .from(activityJointEventOrganizations)
+      .from(activityJointEventOrgs)
       .innerJoin(
         organizations,
-        eq(activityJointEventOrganizations.organizationId, organizations.id)
+        eq(activityJointEventOrgs.organizationId, organizations.id)
       )
       .where(
         and(
-          inArray(activityJointEventOrganizations.activityId, activityIds),
-          eq(activityJointEventOrganizations.isActive, true)
+          inArray(activityJointEventOrgs.activityId, activityIds),
+          eq(activityJointEventOrgs.isActive, true),
+          eq(organizations.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.organizationName);
       map.set(row.activityId, existing);
     }
     return map;
@@ -953,7 +1618,7 @@ export class ActivitiesService {
       number,
       Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>
     >
   > {
@@ -979,17 +1644,14 @@ export class ActivitiesService {
       number,
       Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>
     >();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
       // Use representativeName (governmentRepresentatives lookup table has been removed)
       if (row.representativeName) {
-        const attendingStatus = row.attendingStatus as
-          | 'requested'
-          | 'declined'
-          | 'confirmed';
+        const attendingStatus = row.attendingStatus as AttendingStatus;
         existing.push({
           representative: row.representativeName,
           attendingStatus,
@@ -1001,9 +1663,10 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch shared with organizations for multiple activities
+   * Fetch shared with ministries for multiple activities
+   * Returns ministry display names for UI display
    */
-  private async fetchSharedWithOrganizationsForActivities(
+  private async fetchSharedWithOrgsForActivities(
     activityIds: number[]
   ): Promise<Map<number, string[]>> {
     if (activityIds.length === 0) {
@@ -1012,34 +1675,36 @@ export class ActivitiesService {
 
     const results = await this.databaseService.db
       .select({
-        activityId: activitySharedWithOrganizations.activityId,
-        organizationId: organizations.id,
+        activityId: activitySharedWithMinistries.activityId,
+        ministryName: sql<string>`${ministries.displayName}`.as('ministryName'),
       })
-      .from(activitySharedWithOrganizations)
+      .from(activitySharedWithMinistries)
       .innerJoin(
-        organizations,
-        eq(activitySharedWithOrganizations.organizationId, organizations.id)
+        ministries,
+        eq(activitySharedWithMinistries.ministryId, ministries.id)
       )
       .where(
         and(
-          inArray(activitySharedWithOrganizations.activityId, activityIds),
-          eq(activitySharedWithOrganizations.isActive, true)
+          inArray(activitySharedWithMinistries.activityId, activityIds),
+          eq(activitySharedWithMinistries.isActive, true),
+          eq(ministries.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.organizationId);
+      existing.push(row.ministryName);
       map.set(row.activityId, existing);
     }
     return map;
   }
 
   /**
-   * Fetch can edit users for multiple activities
+   * Fetch additional owners for multiple activities
+   * Returns user display names (adDisplayName or adUsername) for UI display
    */
-  private async fetchCanEditUsersForActivities(
+  private async fetchAdditionalOwnersForActivities(
     activityIds: number[]
   ): Promise<Map<number, string[]>> {
     if (activityIds.length === 0) {
@@ -1048,57 +1713,178 @@ export class ActivitiesService {
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityCanEditUsers.activityId,
-        userId: systemUsers.id,
+        activityId: activityAdditionalOwners.activityId,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
       })
-      .from(activityCanEditUsers)
-      .innerJoin(systemUsers, eq(activityCanEditUsers.userId, systemUsers.id))
+      .from(activityAdditionalOwners)
+      .innerJoin(
+        systemUsers,
+        eq(activityAdditionalOwners.userId, systemUsers.id)
+      )
       .where(
         and(
-          inArray(activityCanEditUsers.activityId, activityIds),
-          eq(activityCanEditUsers.isActive, true)
+          inArray(activityAdditionalOwners.activityId, activityIds),
+          eq(activityAdditionalOwners.isActive, true),
+          eq(systemUsers.isActive, true)
         )
       );
 
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userId.toString());
+      existing.push(row.userName);
       map.set(row.activityId, existing);
     }
     return map;
   }
 
   /**
-   * Fetch can view users for multiple activities
+   * Fetch user names for multiple user IDs
+   * Returns a map of userId -> user display name for UI display
    */
-  private async fetchCanViewUsersForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
-    if (activityIds.length === 0) {
+  private async fetchUserNamesForUserIds(
+    userIds: number[]
+  ): Promise<Map<number, string>> {
+    if (userIds.length === 0) {
       return new Map();
     }
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityCanViewUsers.activityId,
         userId: systemUsers.id,
+        userName:
+          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+            'userName'
+          ),
       })
-      .from(activityCanViewUsers)
-      .innerJoin(systemUsers, eq(activityCanViewUsers.userId, systemUsers.id))
+      .from(systemUsers)
       .where(
-        and(
-          inArray(activityCanViewUsers.activityId, activityIds),
-          eq(activityCanViewUsers.isActive, true)
-        )
+        and(inArray(systemUsers.id, userIds), eq(systemUsers.isActive, true))
       );
 
-    const map = new Map<number, string[]>();
-    for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userId.toString());
-      map.set(row.activityId, existing);
+    return new Map(results.map((row) => [row.userId, row.userName]));
+  }
+
+  /**
+   * Fetch organization names for leadOrg and eventLeadOrg
+   * Returns maps of activityId -> organization name
+   * Uses free text name if available, otherwise looks up from organizations table
+   */
+  private async fetchLeadOrgNamesForActivities(
+    activities: Activity[]
+  ): Promise<Map<number, string | null>> {
+    const map = new Map<number, string | null>();
+
+    // Collect organization IDs that need to be looked up
+    const orgIdsToLookup = new Set<string>();
+    const activityIdToOrgId = new Map<number, string>();
+
+    for (const activity of activities) {
+      // If free text name exists, use it
+      if (activity.leadOrgName) {
+        map.set(activity.id, activity.leadOrgName);
+      } else if (activity.leadOrgId) {
+        // Need to look up organization name
+        orgIdsToLookup.add(activity.leadOrgId);
+        activityIdToOrgId.set(activity.id, activity.leadOrgId);
+      } else {
+        // No lead org
+        map.set(activity.id, null);
+      }
     }
+
+    // Bulk lookup organization names
+    if (orgIdsToLookup.size > 0) {
+      const results = await this.databaseService.db
+        .select({
+          orgId: organizations.id,
+          orgName:
+            sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+              'orgName'
+            ),
+        })
+        .from(organizations)
+        .where(
+          and(
+            inArray(organizations.id, Array.from(orgIdsToLookup)),
+            eq(organizations.isActive, true)
+          )
+        );
+
+      const orgIdToName = new Map(
+        results.map((row) => [row.orgId, row.orgName])
+      );
+
+      // Map organization names back to activities
+      for (const [activityId, orgId] of activityIdToOrgId.entries()) {
+        const orgName = orgIdToName.get(orgId);
+        map.set(activityId, orgName ?? null);
+      }
+    }
+
+    return map;
+  }
+
+  /**
+   * Fetch organization names for eventLeadOrg
+   * Returns maps of activityId -> organization name
+   * Uses free text name if available, otherwise looks up from organizations table
+   */
+  private async fetchEventLeadOrgNamesForActivities(
+    activities: Activity[]
+  ): Promise<Map<number, string | null>> {
+    const map = new Map<number, string | null>();
+
+    // Collect organization IDs that need to be looked up
+    const orgIdsToLookup = new Set<string>();
+    const activityIdToOrgId = new Map<number, string>();
+
+    for (const activity of activities) {
+      // If free text name exists, use it
+      if (activity.eventLeadOrgName) {
+        map.set(activity.id, activity.eventLeadOrgName);
+      } else if (activity.eventLeadOrgId) {
+        // Need to look up organization name
+        orgIdsToLookup.add(activity.eventLeadOrgId);
+        activityIdToOrgId.set(activity.id, activity.eventLeadOrgId);
+      } else {
+        // No event lead org
+        map.set(activity.id, null);
+      }
+    }
+
+    // Bulk lookup organization names
+    if (orgIdsToLookup.size > 0) {
+      const results = await this.databaseService.db
+        .select({
+          orgId: organizations.id,
+          orgName:
+            sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+              'orgName'
+            ),
+        })
+        .from(organizations)
+        .where(
+          and(
+            inArray(organizations.id, Array.from(orgIdsToLookup)),
+            eq(organizations.isActive, true)
+          )
+        );
+
+      const orgIdToName = new Map(
+        results.map((row) => [row.orgId, row.orgName])
+      );
+
+      // Map organization names back to activities
+      for (const [activityId, orgId] of activityIdToOrgId.entries()) {
+        const orgName = orgIdToName.get(orgId);
+        map.set(activityId, orgName ?? null);
+      }
+    }
+
     return map;
   }
 
@@ -1110,9 +1896,20 @@ export class ActivitiesService {
     activity: Activity,
     relatedData?: {
       categories?: string[];
+      categoryIds?: number[];
       tags?: Array<{ id: string; text: string }>;
+      activityStatus?: string;
       pitchStatus?: string;
-      schedulingStatus?: string;
+      dateStatus?: string;
+      timeStatus?: string;
+      venueStatus?: string | null;
+      venueAddress?: {
+        venueName: string | null;
+        street: string | null;
+        city: string | null;
+        provinceOrState: string | null;
+        country: string | null;
+      } | null;
       jointOrg?: string[];
       relatedActivities?: string[];
       commsMaterials?: string[];
@@ -1120,13 +1917,17 @@ export class ActivitiesService {
       jointEventOrg?: string[];
       representativesAttending?: Array<{
         representative: string;
-        attendingStatus: 'requested' | 'declined' | 'confirmed';
+        attendingStatus: AttendingStatus;
       }>;
       sharedWith?: string[];
-      canEdit?: string[];
-      canView?: string[];
+      additionalOwners?: string[];
+      ownerName: string | null;
+      eventLeadName?: string | null;
+      graphicsUserName?: string | null;
+      leadOrgName?: string | null;
+      eventLeadOrgName?: string | null;
     }
-  ): ActivityResponseDto {
+  ): ActivityResponse {
     // Format date to YYYY-MM-DD
     const formatDate = (date: Date | string | null): string | null => {
       if (!date) return null;
@@ -1149,17 +1950,25 @@ export class ActivitiesService {
 
       // Activity status and category
       activityStatusId: activity.activityStatusId?.toString() ?? 'unknown',
+      pitchStatusId: activity.pitchStatusId?.toString() ?? 'unknown',
+      dateStatusId: activity.dateStatusId?.toString() ?? 'unknown',
+      timeStatusId: activity.timeStatusId?.toString() ?? 'unknown',
+      venueStatusId: activity.venueStatusId?.toString() ?? null,
       category: relatedData?.categories ?? [],
 
       // Basic info
       title: activity.title ?? '',
-      summary: activity.summary ?? null,
+      summary: activity.summary ?? '',
       isIssue: activity.isIssue ?? false,
-      oicRelated: activity.oicRelated ?? false,
       isActive: activity.isActive ?? true,
 
       // Organizations
-      leadOrg: activity.leadOrgId ?? null,
+      leadOrgId: activity.leadOrgId ?? null,
+      leadOrgName: activity.leadOrgName ?? null,
+      leadOrg: relatedData?.leadOrgName ?? null,
+      eventLeadOrgId: activity.eventLeadOrgId ?? null,
+      eventLeadOrgName: activity.eventLeadOrgName ?? null,
+      eventLeadOrg: relatedData?.eventLeadOrgName ?? null,
       jointOrg: relatedData?.jointOrg ?? [],
 
       // Related activities and tags
@@ -1167,74 +1976,68 @@ export class ActivitiesService {
       tags: relatedData?.tags ?? [],
 
       // Approvals
-      significance: activity.significance ?? null,
+      significance: activity.significance ?? '',
+      activityStatus: relatedData?.activityStatus ?? 'unknown',
       pitchStatus: relatedData?.pitchStatus ?? 'unknown',
       pitchComments: activity.pitchComments ?? null,
-      confidential: activity.isConfidential ?? false,
 
       // Scheduling
-      schedulingStatus: relatedData?.schedulingStatus ?? 'unknown',
+      dateStatus: relatedData?.dateStatus ?? 'unknown',
+      timeStatus: relatedData?.timeStatus ?? 'unknown',
       isAllDay: activity.isAllDay ?? false,
       startDate: formatDate(activity.startDate),
       startTime: formatTime(activity.startTime),
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
-      isTimeConfirmed: activity.isTimeConfirmed ?? false,
-      isDateConfirmed: activity.isDateConfirmed ?? false,
       schedulingConsiderations: activity.schedulingConsiderations ?? null,
 
       // Comms
-      commsLead: activity.commsLeadId?.toString() ?? null,
       commsMaterials: relatedData?.commsMaterials ?? [],
       newsReleaseId: activity.newsReleaseId ?? null,
+      newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
+      newsReleaseOriginName: activity.newsReleaseOriginName ?? null,
       translationsRequired: relatedData?.translationsRequired ?? [],
 
       // Event
-      eventLeadOrg: activity.eventLeadOrgId ?? null,
       jointEventOrg: relatedData?.jointEventOrg ?? [],
       representativesAttending: relatedData?.representativesAttending ?? [],
-      venueAddress:
-        (activity.venueAddress as {
-          street: string;
-          city: string;
-          provinceOrState: string;
-          country: string;
-        } | null) ?? null,
+      venueStatus: relatedData?.venueStatus ?? null,
+      venueAddress: relatedData?.venueAddress ?? null,
+      eventPlannerId: activity.eventPlannerId?.toString() ?? null,
       eventLead:
-        activity.eventLeadId?.toString() ??
-        ('eventLeadName' in activity &&
-        typeof activity.eventLeadName === 'string'
-          ? activity.eventLeadName
-          : null),
-      eventLeadName:
-        'eventLeadName' in activity &&
-        typeof activity.eventLeadName === 'string'
-          ? activity.eventLeadName
-          : null,
-      videographer: null, // videographerUserId column has been removed
-      graphics: activity.graphicsUserId?.toString() ?? null,
+        // Use free-text name if available, otherwise use fetched user name
+        activity.eventPlannerName ?? relatedData?.eventLeadName ?? null,
+      eventPlannerName: activity.eventPlannerName ?? null,
+      graphicsUserId: activity.graphicsUserId?.toString() ?? null,
+      graphicsUser: relatedData?.graphicsUserName ?? null,
 
       // Reports
       notForLookAhead: activity.notForLookAhead ?? false,
-      lookAheadStatus:
-        (activity.lookAheadStatus as 'none' | 'new' | 'changed') ?? 'none',
-      lookAheadSection:
-        (activity.lookAheadSection as
-          | 'events'
-          | 'issues'
-          | 'news'
-          | 'awareness') ?? 'events',
-      planningReport: activity.planningReport ?? false,
-      thirtySixtyNinetyReport: activity.thirtySixtyNinetyReport ?? false,
+      notForThirtySixtyNinety: activity.notForThirtySixtyNinety ?? false,
+      executiveSummary: activity.executiveSummary ?? null,
+      lookAheadStatus: LOOK_AHEAD_STATUS.includes(
+        activity.lookAheadStatus as LookAheadStatus
+      )
+        ? (activity.lookAheadStatus as LookAheadStatus)
+        : 'none',
+      lookAheadSection: LOOK_AHEAD_SECTION.includes(
+        activity.lookAheadSection as LookAheadSection
+      )
+        ? (activity.lookAheadSection as LookAheadSection)
+        : 'events',
 
       // Sharing
-      owner: activity.ownerId?.toString() ?? null,
+      ownerId: activity.ownerId?.toString() ?? 'unknown',
+      ministryOwnerId: activity.ministryOwnerId,
+      owner:
+        relatedData?.ownerName ?? activity.ownerId?.toString() ?? 'unknown',
       sharedWith: relatedData?.sharedWith ?? [],
-      canEdit: relatedData?.canEdit ?? [],
-      canView: relatedData?.canView ?? [],
-      calendarVisibility:
-        (activity.calendarVisibility as 'visible' | 'partial' | 'hidden') ??
-        'visible',
+      additionalOwners: relatedData?.additionalOwners ?? [],
+      calendarVisibility: CALENDAR_VISIBILITY.includes(
+        activity.calendarVisibility as CalendarVisibility
+      )
+        ? (activity.calendarVisibility as CalendarVisibility)
+        : 'visible',
 
       // Meta
       createdDateTime:
@@ -1247,31 +2050,22 @@ export class ActivitiesService {
       lastUpdatedBy: activity.lastUpdatedBy?.toString() ?? 'unknown',
     };
 
-    // Compile-time validation: ensure the mapping produces a value that matches the schema
-    // This provides compile-time guarantee that the mapping is correct
-    const validatedDto = ensureMatchesSchema(activityResponseSchema, dto);
-
-    // Runtime validation to ensure DTO matches schema contract
-    // This catches misalignment between the mapping logic and the schema
-    // Runs in all environments to catch issues early
+    // Runtime validation to ensure response matches schema contract
     try {
-      activityResponseSchema.parse(validatedDto);
+      return activityResponseSchema.parse(dto);
     } catch (error) {
       // Log validation errors with context for debugging
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown validation error';
       console.error(
-        `[ActivitiesService] Response DTO validation failed for activity ${activity.id}:`,
+        `[ActivitiesService] Response validation failed for activity ${activity.id}:`,
         errorMessage
       );
       // Fail-fast in all environments to prevent invalid responses
       throw new Error(
-        `Response DTO validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
+        `Response validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
       );
     }
-
-    // Return as DTO class instance for better IDE support and explicit contracts
-    return ActivityResponseDto.from(validatedDto);
   }
 
   /**

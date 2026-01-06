@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
+import {
+  createMockActivityRequest,
+  createMockUpdateRequest,
+} from './test-helpers';
 
 describe('ActivitiesController (e2e)', () => {
   let app: INestApplication;
@@ -30,24 +30,10 @@ describe('ActivitiesController (e2e)', () => {
 
   describe('/activities (POST)', () => {
     it('should create a new activity', () => {
-      const createActivityDto: CreateActivityRequest = {
+      const createActivityDto = createMockActivityRequest({
         title: 'E2E Test Activity',
         summary: 'This is a test activity created via E2E tests',
-        isIssue: false,
-        oicRelated: false,
-        isActive: true,
-        isAllDay: false,
-        startDate: '2025-01-15',
-        startTime: '10:00',
-        endDate: '2025-01-15',
-        endTime: '12:00',
-        isTimeConfirmed: true,
-        isDateConfirmed: true,
-        isConfidential: false,
-        notForLookAhead: false,
-        planningReport: false,
-        thirtySixtyNinetyReport: false,
-      };
+      });
 
       return request(app.getHttpServer())
         .post('/activities')
@@ -168,10 +154,10 @@ describe('ActivitiesController (e2e)', () => {
 
   describe('/activities/:id (PATCH)', () => {
     it('should update an activity', () => {
-      const updateDto: UpdateActivityRequest = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated E2E Test Activity',
         summary: 'This activity has been updated via E2E tests',
-      };
+      });
 
       return request(app.getHttpServer())
         .patch(`/activities/${createdActivityId}`)
@@ -187,9 +173,9 @@ describe('ActivitiesController (e2e)', () => {
     });
 
     it('should return 404 when updating non-existent activity', () => {
-      const updateDto: UpdateActivityRequest = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Title',
-      };
+      });
 
       return request(app.getHttpServer())
         .patch('/activities/999999')
