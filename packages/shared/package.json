@@ -18,12 +18,6 @@
       "require": "./dist/cjs/schemas/index.js",
       "default": "./dist/esm/schemas/index.js"
     },
-    "./types": {
-      "types": "./dist/esm/types/index.d.ts",
-      "import": "./dist/esm/types/index.js",
-      "require": "./dist/cjs/types/index.js",
-      "default": "./dist/esm/types/index.js"
-    },
     "./utils": {
       "types": "./dist/esm/utils/index.d.ts",
       "import": "./dist/esm/utils/index.js",
@@ -47,6 +41,12 @@
       "import": "./dist/esm/dto/index.js",
       "require": "./dist/cjs/dto/index.js",
       "default": "./dist/esm/dto/index.js"
+    },
+    "./constants/activity-enums": {
+      "types": "./dist/esm/constants/activity-enums.d.ts",
+      "import": "./dist/esm/constants/activity-enums.js",
+      "require": "./dist/cjs/constants/activity-enums.js",
+      "default": "./dist/esm/constants/activity-enums.js"
     }
   },
   "scripts": {
@@ -61,7 +61,6 @@
   "dependencies": {
     "@corpcal/database": "*",
     "drizzle-orm": "^0.44.7",
-    "drizzle-zod": "^0.8.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {

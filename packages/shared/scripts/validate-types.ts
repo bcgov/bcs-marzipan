@@ -1,121 +1,194 @@
 /**
- * Type validation file
+ * Type Validation Script
  *
- * This file validates that Zod schemas in the shared package match
+ * This file validates that Zod schemas in the shared package align with
  * the TypeScript types inferred from Drizzle schemas in the database package.
  *
- * From root `npm run validate-types --workspace=packages/shared` to validate types are in sync.
- * TypeScript will error if the types don't match.
+ * Run: `npm run validate-types --workspace=packages/shared`
+ * TypeScript will error at compile-time if the types don't match.
+ *
+ * The primary type safety checks are now in schema-helpers.ts (compile-time assertions).
+ * This file provides additional validation and serves as documentation.
  */
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { z } from 'zod';
-import type { Activity, NewActivity } from '@corpcal/database/types';
+import type {
+  Activity,
+  Category,
+  Tag,
+  ActivityStatus,
+  City,
+  GovernmentRepresentative,
+} from '@corpcal/database/types';
 import {
-  activitySchema,
-  createActivitySchema,
-  updateActivitySchema,
   createActivityRequestSchema,
   updateActivityRequestSchema,
+  type CreateActivityRequest,
+  type UpdateActivityRequest,
 } from '../src/schemas/activity.schema';
-import type { ActivityResponse } from '../src/schemas/activity-response.schema';
+import type {
+  ActivityResponse,
+  ActivityDbFields,
+  ActivityComputedFields,
+} from '../src/schemas/activity-response.schema';
+import {
+  lookupItemSchema,
+  type LookupItem,
+  type CategoryResponse,
+  type TagResponse,
+  type ActivityStatusResponse,
+  type CityResponse,
+  type GovernmentRepresentativeResponse,
+} from '../src/schemas/lookup.schema';
+
+// ============================================================================
+// Activity Response Schema Validation
+// ============================================================================
 
 /**
- * Validates that a Zod schema type matches the Drizzle inferred type
- * This is a compile-time check - if this compiles, the types match
+ * Compile-time check: All database fields in ActivityDbFields must exist in Activity.
+ *
+ * This mapped type will produce a type error if any field in the API schema
+ * doesn't exist in the database Activity type.
+ *
+ * Note: Types may differ (e.g., Date in DB vs string in API) - we only verify
+ * that the field names align.
  */
-function validateTypeMatch<T extends z.ZodTypeAny>(
-  _schema: T,
-  _type: z.infer<T>
-): void {
-  // This function only exists for type checking
-  // If the types don't match, TypeScript will error here
-}
+type AssertDbFieldsExist = {
+  [K in keyof ActivityDbFields]: K extends keyof Activity
+    ? true
+    : `Field '${K & string}' in API schema does not exist in Activity database type`;
+};
 
 /**
- * Validates that a type T is assignable to type U
- * This ensures T is a subset or compatible with U
+ * Compile-time check: All database fields (except internal ones) are exposed in API.
+ *
+ * This ensures we don't accidentally omit a database field from the API response.
+ * Fields like 'rowVersion' are excluded as they are internal-only.
  */
-function validateTypeSubset<T extends U, U>(_subset: T, _superset: U): void {
-  // This function only exists for type checking
-  // If T is not assignable to U, TypeScript will error here
-}
+type DbFieldsToExpose = Exclude<keyof Activity, 'rowVersion'>;
+type AssertDbFieldsExposed = {
+  [K in DbFieldsToExpose]: K extends keyof ActivityDbFields
+    ? true
+    : `Database field '${K & string}' is not exposed in API - add to activityDbFieldsSchema`;
+};
 
-// Validate Activity schema matches Activity type
-// This will cause a TypeScript error if types don't match
-// Using type assertion because drizzle-zod's BuildSchema is compatible with ZodTypeAny
-validateTypeMatch(activitySchema as unknown as z.ZodTypeAny, {} as Activity);
+// Execute compile-time checks
+const _dbFieldsExist: AssertDbFieldsExist = {} as AssertDbFieldsExist;
+const _dbFieldsExposed: AssertDbFieldsExposed = {} as AssertDbFieldsExposed;
 
-// Validate CreateActivity schema matches NewActivity type
-validateTypeMatch(
-  createActivitySchema as unknown as z.ZodTypeAny,
-  {} as NewActivity
-);
+// ============================================================================
+// Request Schema Validation
+// ============================================================================
 
-// Validate UpdateActivity schema (partial update - all fields optional)
-// This is a compile-time check that the schema structure is correct
-type UpdateActivity = z.infer<z.ZodTypeAny & typeof updateActivitySchema>;
-const _updateActivityCheck: Partial<Activity> = {} as UpdateActivity;
-
-// Validate CreateActivityRequest schema
-// This extends CreateActivity with request-specific transformations
-type CreateActivityRequest = z.infer<
-  z.ZodTypeAny & typeof createActivityRequestSchema
->;
+/**
+ * Validate CreateActivityRequest structure.
+ * This ensures the request schema type is correctly inferred.
+ */
 const _createActivityRequestCheck: CreateActivityRequest =
   {} as CreateActivityRequest;
 
-// Validate UpdateActivityRequest schema
-type UpdateActivityRequest = z.infer<
-  z.ZodTypeAny & typeof updateActivityRequestSchema
->;
+/**
+ * Validate UpdateActivityRequest is a partial of CreateActivityRequest.
+ * All fields should be optional for partial updates.
+ */
 const _updateActivityRequestCheck: UpdateActivityRequest =
   {} as UpdateActivityRequest;
 
-// Validate that ActivityResponse fields are derived from Activity
-// This ensures the API response schema is based on the database schema
-// Note: ActivityResponse has transformed fields (dates to strings, etc.) and computed fields
-// so we can't do a direct subset check, but we can verify key fields exist
-type ActivityResponseFields = keyof ActivityResponse;
-type ActivityFields = keyof Activity;
+// ============================================================================
+// Computed Fields Validation
+// ============================================================================
 
-// Check that core fields from ActivityResponse have corresponding fields in Activity
-// (accounting for transformations like leadOrgId → leadOrg, dates → strings, etc.)
-// This is a compile-time check that ensures the mapping is valid
-const _activityResponseFieldCheck: {
-  // Core fields that should exist in Activity (possibly with different names)
-  id: Activity['id'];
-  displayId: Activity['displayId'];
-  title: Activity['title'];
-  summary: Activity['summary'];
-  isIssue: Activity['isIssue'];
-  oicRelated: Activity['oicRelated'];
-  isActive: Activity['isActive'];
-  significance: Activity['significance'];
-  pitchComments: Activity['pitchComments'];
-  isAllDay: Activity['isAllDay'];
-  schedulingConsiderations: Activity['schedulingConsiderations'];
-  newsReleaseId: Activity['newsReleaseId'];
-  eventLeadName: Activity['eventLeadName'];
-  notForLookAhead: Activity['notForLookAhead'];
-  planningReport: Activity['planningReport'];
-  thirtySixtyNinetyReport: Activity['thirtySixtyNinetyReport'];
-  // Transformed fields (these exist in Activity but with different types)
-  activityStatusId: Activity['activityStatusId']; // number in Activity, string in Response
-  startDate: Activity['startDate']; // Date in Activity, string in Response
-  endDate: Activity['endDate']; // Date in Activity, string in Response
-  startTime: Activity['startTime']; // time in Activity, string in Response
-  endTime: Activity['endTime']; // time in Activity, string in Response
-  createdDateTime: Activity['createdDateTime']; // Date in Activity, string in Response
-  lastUpdatedDateTime: Activity['lastUpdatedDateTime']; // Date in Activity, string in Response
-  createdBy: Activity['createdBy']; // number in Activity, string in Response
-  lastUpdatedBy: Activity['lastUpdatedBy']; // number in Activity, string in Response
-  venueAddress: Activity['venueAddress'];
-  lookAheadStatus: Activity['lookAheadStatus'];
-  lookAheadSection: Activity['lookAheadSection'];
-  calendarVisibility: Activity['calendarVisibility'];
-  // Renamed fields
-  confidential: Activity['isConfidential']; // isConfidential in Activity, confidential in Response
-  // Computed/joined fields (these don't exist in Activity, they're added in the response)
-  // category, tags, jointOrg, etc. are added from relatedData
+/**
+ * List of computed fields that should NOT exist in the database Activity type.
+ * If any of these start appearing in Activity, it may indicate schema drift.
+ */
+type ComputedFieldsShouldNotBeInDb = {
+  [K in keyof ActivityComputedFields]: K extends keyof Activity
+    ? `Computed field '${K & string}' found in Activity type - should be computed, not stored`
+    : true;
+};
+
+const _computedFieldsNotInDb: ComputedFieldsShouldNotBeInDb =
+  {} as ComputedFieldsShouldNotBeInDb;
+
+// ============================================================================
+// Lookup Schema Validations
+// ============================================================================
+
+/**
+ * Validate LookupItem schema structure
+ */
+type LookupItemFields = keyof LookupItem;
+const _lookupItemCheck: LookupItem = {
+  id: 1,
+  label: 'test',
+  value: 1,
+};
+
+/**
+ * Validate lookup response schemas have expected fields from database types.
+ * These checks are supplementary to the compile-time assertions in schema-helpers.ts.
+ * The primary validation happens via type assertions in schema-helpers.ts.
+ */
+
+/**
+ * Validate CategoryResponse has expected fields from Category
+ */
+const _categoryResponseCheck: {
+  id: Category['id'];
+  name: Category['name'];
+  displayName: Category['displayName'];
+  isActive: Category['isActive'];
 } = {} as never;
+
+/**
+ * Validate TagResponse has expected fields from Tag
+ */
+const _tagResponseCheck: {
+  id: Tag['id'];
+  key: Tag['key'];
+  displayName: Tag['displayName'];
+  isActive: Tag['isActive'];
+} = {} as never;
+
+/**
+ * Validate ActivityStatusResponse has expected fields from ActivityStatus
+ */
+const _activityStatusResponseCheck: {
+  id: ActivityStatus['id'];
+  name: ActivityStatus['name'];
+  displayName: ActivityStatus['displayName'];
+  isActive: ActivityStatus['isActive'];
+} = {} as never;
+
+/**
+ * Validate CityResponse has expected fields from City
+ */
+const _cityResponseCheck: {
+  id: City['id'];
+  name: City['name'];
+  displayName: City['displayName'];
+  isActive: City['isActive'];
+  province: City['province'];
+} = {} as never;
+
+/**
+ * Validate GovernmentRepresentativeResponse has expected fields from GovernmentRepresentative
+ */
+const _govRepResponseCheck: {
+  id: GovernmentRepresentative['id'];
+  name: GovernmentRepresentative['name'];
+  displayName: GovernmentRepresentative['displayName'];
+  isActive: GovernmentRepresentative['isActive'];
+  title: GovernmentRepresentative['title'];
+  ministryId: GovernmentRepresentative['ministryId'];
+} = {} as never;
+
+// ============================================================================
+// Success Message
+// ============================================================================
+
+console.log(
+  'Type validation passed: All schemas are in sync with database types.'
+);

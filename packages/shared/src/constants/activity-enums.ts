@@ -52,6 +52,26 @@ export const REPRESENTATIVE_TYPE = [
 export type RepresentativeType = (typeof REPRESENTATIVE_TYPE)[number];
 
 /**
+ * Activity Status - Status of activity entries
+ * Used in activityStatusId field
+ * Values match the 'name' field in activity_statuses table
+ */
+export const ACTIVITY_STATUS = [
+  'new',
+  'queued',
+  'reviewed',
+  'changed',
+  'paused',
+  'deleted',
+] as const;
+export type ActivityStatusName = (typeof ACTIVITY_STATUS)[number];
+
+/**
+ * Default activity status for new entries
+ */
+export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
+
+/**
  * Helper type for nullable enum values
  */
 export type NullableEnum<T extends readonly string[]> = T[number] | null;

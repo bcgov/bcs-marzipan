@@ -10,22 +10,33 @@
  */
 
 // Re-export types from Zod schemas (single source of truth)
-export type {
-  ActivityResponse,
-  PaginatedActivityResponse,
-} from '../schemas/activity-response.schema';
+export type { ActivityResponse } from '../schemas/activity-response.schema';
 
-/**
- * Paginated Response Type
- * Generic type for paginated API responses.
- * Use this for other endpoints that return paginated data.
- */
-export type PaginatedResponse<T> = {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
+// Lookup types - re-exported from lookup schema
+export type {
+  LookupItem,
+  ExtendedLookupItem,
+  LookupQueryParams,
+  CategoryResponse,
+  CategoryLookupItem,
+  TagResponse,
+  TagLookupItem,
+  OrganizationResponse,
+  OrganizationLookupItem,
+  MinistryResponse,
+  MinistryLookupItem,
+  SystemUserResponse,
+  UserLookupItem,
+  PitchStatusResponse,
+  PitchStatusLookupItem,
+  ActivityStatusResponse,
+  ActivityStatusLookupItem,
+  CityResponse,
+  CityLookupItem,
+  CommsMaterialsResponse,
+  CommsMaterialsLookupItem,
+  TranslationLanguageResponse,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeResponse,
+  GovernmentRepresentativeLookupItem,
+} from '../schemas/lookup.schema';

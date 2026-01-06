@@ -73,6 +73,7 @@ export default defineConfig(
       '.local/**',
       '**/*.md',
       'scripts/**',
+      'packages/*/scripts/**',
       'package-lock.json',
       '**/migrations/meta/**',
     ],
