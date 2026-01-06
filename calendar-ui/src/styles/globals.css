@@ -110,4 +110,12 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+  /* Prevent layout shift when Radix UI Select opens */
+  /* Radix UI adds margin-right to compensate for scrollbar width when it locks scroll */
+  /* Since the scrollbar remains visible, we need to prevent this compensation */
+  /* TODO: This may be browser-specific, works on MacOS Chrome */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
 }

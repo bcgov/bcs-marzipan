@@ -40,7 +40,9 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchActivities } from '../api/activitiesApi';
+import { fetchUsers } from '../api/lookupsApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { UserLookupItem } from '@corpcal/shared/api/types';
 
 const useStyles = makeStyles({
   statusBadge: {
@@ -78,7 +80,6 @@ type EventRow = {
   mine: boolean;
   sharedWithMe: boolean;
   ministry: string;
-  confidential: string | undefined;
   summary: string | undefined;
   representatives: string[] | undefined;
   leads: string[] | undefined;
@@ -172,27 +173,27 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     ? statusMap[activity.lookAheadStatus] || 'Reviewed'
     : 'Reviewed';
 
-  // Check if confirmed
-  const confirmed = activity.schedulingStatus?.toLowerCase() === 'confirmed';
+  // Check if confirmed - using dateStatus or timeStatus if available
+  const confirmed = false; // TODO: Determine confirmation status from available fields
 
   // Compile representatives
   const representatives = activity.representativesAttending?.map(
     (r) => r.representative
   );
 
-  // Compile leads
+  // Compile leads from ownerId and eventPlannerId (store IDs, not names)
   const leads: string[] = [];
-  if (activity.commsLead) leads.push(activity.commsLead);
-  if (activity.eventLead) leads.push(activity.eventLead);
+  // Add owner ID if present
+  if (activity.ownerId) {
+    leads.push(activity.ownerId);
+  }
+  // Add event planner ID if present (and different from owner)
+  if (activity.eventPlannerId && activity.eventPlannerId !== activity.ownerId) {
+    leads.push(activity.eventPlannerId);
+  }
 
   // Compile reports based on flags
   const reports: Report[] = [];
-  if (activity.planningReport) {
-    reports.push({ id: 'planning', name: 'Planning Report', type: 'planning' });
-  }
-  if (activity.thirtySixtyNinetyReport) {
-    reports.push({ id: '30-60-90', name: '30/60/90 Report', type: '30-60-90' });
-  }
   if (!activity.notForLookAhead) {
     reports.push({ id: 'look-ahead', name: 'Look Ahead', type: 'look-ahead' });
   }
@@ -219,13 +220,8 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
     mine: false, // TODO: check if current user is owner
-    sharedWithMe: false, // TODO: check if user in canView/canEdit
+    sharedWithMe: false, // TODO: check if user in sharedWith
     ministry: activity.leadOrg || '',
-    confidential: activity.confidential
-      ? activity.isIssue
-        ? 'CONFIDENTIAL Issue'
-        : 'Confidential'
-      : undefined,
     summary: activity.summary || undefined,
     representatives:
       representatives && representatives.length > 0
@@ -244,7 +240,13 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     startDate,
     endDate,
     location: activity.venueAddress
-      ? `${activity.venueAddress.street}, ${activity.venueAddress.city}, ${activity.venueAddress.provinceOrState}`
+      ? [
+          activity.venueAddress.street,
+          activity.venueAddress.city,
+          activity.venueAddress.provinceOrState,
+        ]
+          .filter((part) => part)
+          .join(', ') || undefined
       : undefined,
     date: formatDateRange(),
   };
@@ -309,14 +311,28 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [users, setUsers] = useState<UserLookupItem[]>([]);
   const { dispatchToast } = useToastController();
 
-  // Fetch activities from API
+  // Create a map from user ID to user name for display
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>();
+    users.forEach((user) => {
+      map.set(user.id.toString(), user.name || user.label);
+    });
+    return map;
+  }, [users]);
+
+  // Fetch activities and users from API
   const loadActivities = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const activities = await fetchActivities();
+      const [activities, usersData] = await Promise.all([
+        fetchActivities(),
+        fetchUsers(),
+      ]);
+      setUsers(usersData);
 
       // Check if activities is an array
       if (!Array.isArray(activities)) {
@@ -451,14 +467,7 @@ export const EventTable: React.FC<EventTableProps> = ({
           <div>
             {/* todo: Let's make these complicated columns separate components, and pass everything in as props*/}
             <div className={styles.overviewInline}>
-              <div>
-                {row.original.id}
-                {row.original.confidential && (
-                  <span className={styles.overviewConfidential}>
-                    {` ${row.original.confidential.toUpperCase()}`}
-                  </span>
-                )}
-              </div>
+              <div>{row.original.id}</div>
             </div>
             <div className={styles.overviewTitle}>{row.original.title}</div>
             <div>
@@ -611,22 +620,30 @@ export const EventTable: React.FC<EventTableProps> = ({
       columnHelper.accessor('leads', {
         header: 'Leads',
         size: 80,
-        cell: ({ row }) => (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {row.original.leads && row.original.leads.length
-              ? row.original.leads.map((lead) => (
-                  <div key={lead} style={{ fontWeight: 'bold' }}>
-                    {lead}
-                  </div>
-                ))
-              : null}
-          </div>
-        ),
+        cell: ({ row, table }) => {
+          const userMap = (
+            table.options.meta as { userMap?: Map<string, string> }
+          )?.userMap;
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {row.original.leads && row.original.leads.length
+                ? row.original.leads.map((lead) => {
+                    const displayName = userMap?.get(lead) || lead;
+                    return (
+                      <div key={lead} style={{ fontWeight: 'bold' }}>
+                        {displayName}
+                      </div>
+                    );
+                  })
+                : null}
+            </div>
+          );
+        },
         filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          // filterValue is an array of selected report names
+          // filterValue is an array of selected event lead IDs
           if (!filterValue || !filterValue.length) return true;
           const leads = row.original.leads || [];
-          // Only show rows that have at least one selected report
+          // Only show rows that have at least one selected event lead
           return filterValue.some((val: string) => leads.includes(val));
         },
       }),
@@ -810,7 +827,6 @@ export const EventTable: React.FC<EventTableProps> = ({
     ],
     [
       columnHelper,
-      styles.overviewConfidential,
       styles.overviewInline,
       styles.overviewTitle,
       styles.statusBadge,
@@ -818,6 +834,9 @@ export const EventTable: React.FC<EventTableProps> = ({
   );
 
   const table = useReactTable({
+    meta: {
+      userMap,
+    },
     data: eventData,
     columns,
     enableRowSelection: true,

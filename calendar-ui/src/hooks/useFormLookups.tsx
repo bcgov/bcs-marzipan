@@ -4,7 +4,7 @@ import {
   useUsers,
   useTags,
   usePitchStatuses,
-  useSchedulingStatuses,
+  useActivityStatuses,
   useCommsMaterials,
   useTranslationLanguages,
   useGovernmentRepresentatives,
@@ -27,8 +27,8 @@ export interface FormLookupData {
   // Pitch Statuses - for Select
   pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
 
-  // Scheduling Statuses - for Select
-  schedulingStatuses: Array<{ id: number; name: string; displayName?: string }>;
+  // Activity Statuses - for Select
+  activityStatuses: Array<{ id: number; name: string; displayName?: string }>;
 
   // Comms Materials - for Badge components
   commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
@@ -64,7 +64,7 @@ export function useFormLookups(): FormLookupData {
   const usersQuery = useUsers();
   const tagsQuery = useTags();
   const pitchStatusesQuery = usePitchStatuses();
-  const schedulingStatusesQuery = useSchedulingStatuses();
+  const activityStatusesQuery = useActivityStatuses();
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
   const governmentRepresentativesQuery = useGovernmentRepresentatives();
@@ -76,7 +76,7 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isLoading ||
     tagsQuery.isLoading ||
     pitchStatusesQuery.isLoading ||
-    schedulingStatusesQuery.isLoading ||
+    activityStatusesQuery.isLoading ||
     commsMaterialsQuery.isLoading ||
     translationLanguagesQuery.isLoading ||
     governmentRepresentativesQuery.isLoading ||
@@ -88,7 +88,7 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isError ||
     tagsQuery.isError ||
     pitchStatusesQuery.isError ||
-    schedulingStatusesQuery.isError ||
+    activityStatusesQuery.isError ||
     commsMaterialsQuery.isError ||
     translationLanguagesQuery.isError ||
     governmentRepresentativesQuery.isError ||
@@ -98,7 +98,7 @@ export function useFormLookups(): FormLookupData {
   const categories =
     categoriesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -127,15 +127,15 @@ export function useFormLookups(): FormLookupData {
   const pitchStatuses =
     pitchStatusesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
-  // Transform scheduling statuses for Select
-  const schedulingStatuses =
-    schedulingStatusesQuery.data?.map((item) => ({
+  // Transform activity statuses for Select
+  const activityStatuses =
+    activityStatusesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -143,7 +143,7 @@ export function useFormLookups(): FormLookupData {
   const commsMaterials =
     commsMaterialsQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -151,7 +151,7 @@ export function useFormLookups(): FormLookupData {
   const translationLanguages =
     translationLanguagesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
     })) || [];
 
@@ -159,7 +159,7 @@ export function useFormLookups(): FormLookupData {
   const governmentRepresentatives =
     governmentRepresentativesQuery.data?.map((item) => ({
       id: item.id as number,
-      name: (item.name as string) || item.label,
+      name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
       title: item.title as string | undefined,
     })) || [];
@@ -177,7 +177,7 @@ export function useFormLookups(): FormLookupData {
     users,
     tags,
     pitchStatuses,
-    schedulingStatuses,
+    activityStatuses,
     commsMaterials,
     translationLanguages,
     governmentRepresentatives,
