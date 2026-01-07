@@ -2,13 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install deps (including dev – this is OK for a Job)
-ENV NODE_ENV=development
+# Needed for npm workspaces
+COPY package.json package-lock.json ./
+COPY tsconfig.base.json ./
 
-COPY package*.json ./
+# Copy workspace packages
 COPY packages ./packages
 COPY calendar-service ./calendar-service
 
+# Install deps (including dev – this is OK for a Job)
+ENV NODE_ENV=development
 RUN npm ci
 
 # Build database package
