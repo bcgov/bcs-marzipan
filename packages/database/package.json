@@ -31,7 +31,8 @@
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "clean": "rm -rf dist",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate:local": "drizzle-kit migrate",
+    "db:migrate": "node dist/migrate.js",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit"
