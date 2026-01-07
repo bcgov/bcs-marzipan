@@ -3,30 +3,16 @@ kind: Job
 metadata:
   name: calendar-db-migrate
 spec:
-  backoffLimit: 3
+  backoffLimit: 1
   template:
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
         - name: migrate
-          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-service:latest
-          command:
-            - sh
-            - -c
-            - |
-              set -e
-              cd /app
-
-              echo "Running DB migrations..."
-              npm run db:migrate --workspace=packages/database
-
-              echo "Seeding lookup data..."
-              npm run seed --workspace=calendar-service
-
-              echo "DB initialized successfully"
+          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-db-migrate:latest
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: calendar-service-secrets
-                  key: database_url
+                  key: DATABASE_URL
