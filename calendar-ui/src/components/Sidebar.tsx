@@ -129,13 +129,13 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
         </NavDrawerHeader>
 
         <NavDrawerBody>
-          <AppItem
+          {/* <AppItem
             icon={<PersonCircle32Regular />}
             as="a"
             href={linkDestination}
-          >
+          > I kept this in case we want something here with the cool Person Icon -Alex C
             Marzipan HR
-          </AppItem>
+          </AppItem> */}
           <NavItem icon={<Dashboard />} as="a" href="/dashboard" value="1">
             Dashboard
           </NavItem>
