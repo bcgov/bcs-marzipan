@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
@@ -9,6 +9,7 @@ import {
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
+import { useAutoSave } from '../hooks/useAutoSave';
 import {
   normalizeVenueAddress,
   getMissingRequiredFields,
@@ -76,6 +77,31 @@ export const CreateActivityForm: React.FC = () => {
       canViewUserIds: [],
     } as FormData,
   });
+
+  // Get form values for autosave
+  const formValues = form.watch();
+
+  // Autosave integration
+  // TODO: Replace hardcoded userId with actual user from auth context
+  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
+    useAutoSave(
+      8, // userId (temporary hardcoded)
+      'activity',
+      formValues as Record<string, any>,
+      undefined,
+      {
+        debounceMs: 3000, // Save 3 seconds after user stops typing
+        enabled: !isSubmitting, // Disable during submission
+      }
+    );
+
+  // Load existing draft on mount
+  useEffect(() => {
+    if (existingDraft?.draftData && !form.formState.isDirty) {
+      console.log('Loading existing draft');
+      form.reset(existingDraft.draftData as FormData);
+    }
+  }, [existingDraft, form]);
 
   const handleCancel = () => {
     form.reset();
@@ -147,6 +173,10 @@ export const CreateActivityForm: React.FC = () => {
 
       console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
+
+      // Delete draft after successful creation
+      deleteDraft();
+
       alert('Activity created successfully!');
       // TODO: Navigate to activity detail page or list
       form.reset();
@@ -257,11 +287,28 @@ export const CreateActivityForm: React.FC = () => {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">
-            Fill in the activity details below
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+            <p className="text-muted-foreground">
+              Fill in the activity details below
+            </p>
+          </div>
+
+          {/* Autosave indicator */}
+          <div className="text-sm">
+            {isSaving && (
+              <span className="text-amber-600">💾 Saving draft...</span>
+            )}
+            {lastSaved && !isSaving && (
+              <span className="text-green-600">
+                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+            {isDraftLoading && (
+              <span className="text-gray-500">Loading draft...</span>
+            )}
+          </div>
         </div>
 
         <Form {...form}>
