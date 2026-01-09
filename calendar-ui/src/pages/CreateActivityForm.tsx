@@ -19,6 +19,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import {
+  ResumeDialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/resumeDraftDialog';
 import { useFormLookups } from '../hooks/useFormLookups';
 import {
   ActivityOverviewSection,
@@ -50,6 +58,8 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
@@ -95,13 +105,27 @@ export const CreateActivityForm: React.FC = () => {
       }
     );
 
-  // Load existing draft on mount
+  // Check for existing draft on mount and show dialog
   useEffect(() => {
-    if (existingDraft?.draftData && !form.formState.isDirty) {
+    if (!draftChecked && !isDraftLoading && existingDraft?.draftData) {
+      setShowDraftDialog(true);
+      setDraftChecked(true);
+    }
+  }, [existingDraft, isDraftLoading, draftChecked]);
+
+  const handleContinueDraft = () => {
+    if (existingDraft?.draftData) {
       console.log('Loading existing draft');
       form.reset(existingDraft.draftData as FormData);
     }
-  }, [existingDraft, form]);
+    setShowDraftDialog(false);
+  };
+
+  const handleStartFresh = () => {
+    console.log('Starting fresh - deleting draft');
+    deleteDraft();
+    setShowDraftDialog(false);
+  };
 
   const handleCancel = () => {
     form.reset();
@@ -286,6 +310,27 @@ export const CreateActivityForm: React.FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {/* Draft Recovery Dialog */}
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
+
       <div className="mx-auto max-w-200 px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
