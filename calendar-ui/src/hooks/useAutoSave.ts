@@ -100,6 +100,9 @@ export function useAutoSave(
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const lastSavedDataRef = useRef<string | null>(null);
+  const initialFormDataRef = useRef<string | null>(null);
+  const lastProcessedDataRef = useRef<string | null>(null);
 
   // Query key for caching
   const draftQueryKey = ['draft', userId, formType, entityId];
@@ -122,7 +125,19 @@ export function useAutoSave(
       logger.debug('Draft loaded', { formType, entityId });
       onDraftLoaded(existingDraft);
     }
+    // Initialize lastSavedDataRef when a draft is loaded
+    if (existingDraft?.draftData) {
+      lastSavedDataRef.current = JSON.stringify(existingDraft.draftData);
+    }
   }, [existingDraft, onDraftLoaded, formType, entityId]);
+
+  // Capture initial form data on first render
+  useEffect(() => {
+    if (initialFormDataRef.current === null && formData) {
+      initialFormDataRef.current = JSON.stringify(formData);
+      logger.debug('Captured initial form data');
+    }
+  }, [formData]);
 
   // Save draft mutation
   const { mutate: saveDraftMutation } = useMutation({
@@ -138,6 +153,8 @@ export function useAutoSave(
     onSuccess: (draft) => {
       setLastSaved(new Date());
       setIsSaving(false);
+      // Store the saved data for comparison
+      lastSavedDataRef.current = JSON.stringify(formData);
       logger.debug('Draft saved successfully', { draftId: draft.id });
 
       // Update cache
@@ -174,18 +191,42 @@ export function useAutoSave(
       return;
     }
 
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
     // Don't save if form data is empty
     if (!formData || Object.keys(formData).length === 0) {
       return;
     }
 
+    const currentDataString = JSON.stringify(formData);
+
+    // Check if data actually changed since last time we processed it
+    if (lastProcessedDataRef.current === currentDataString) {
+      // Data hasn't changed, don't reset the timer or do anything
+      return;
+    }
+
+    // Data has changed, update our tracking
+    lastProcessedDataRef.current = currentDataString;
+
+    // Clear existing timeout when form data changes (reset debounce)
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     // Set new timeout for debounced save
+    // The actual checks happen inside the timeout to ensure we only save once
     timeoutRef.current = setTimeout(() => {
+      // Check if form data matches initial state (no user input yet)
+      if (initialFormDataRef.current === currentDataString) {
+        logger.debug('Skipping autosave: form still in initial state');
+        return;
+      }
+
+      // Check if data has changed since last save
+      if (lastSavedDataRef.current === currentDataString) {
+        logger.debug('Skipping autosave: no changes since last save');
+        return;
+      }
+
       logger.debug('Auto-saving draft', { formType, entityId });
       saveDraftMutation();
     }, debounceMs);
