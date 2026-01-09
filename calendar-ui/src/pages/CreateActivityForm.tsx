@@ -107,8 +107,16 @@ export const CreateActivityForm: React.FC = () => {
 
   // Check for existing draft on mount and show dialog
   useEffect(() => {
-    if (!draftChecked && !isDraftLoading && existingDraft?.draftData) {
+    if (
+      !draftChecked &&
+      !isDraftLoading &&
+      existingDraft?.draftData &&
+      Object.keys(existingDraft.draftData).length > 0
+    ) {
       setShowDraftDialog(true);
+      setDraftChecked(true);
+    } else if (!draftChecked && !isDraftLoading) {
+      // No draft found, mark as checked so we don't show dialog
       setDraftChecked(true);
     }
   }, [existingDraft, isDraftLoading, draftChecked]);
