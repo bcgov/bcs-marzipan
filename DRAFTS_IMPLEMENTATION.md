@@ -9,7 +9,7 @@ The Draft Table Approach for autosaving in-progress forms has been successfully 
 ### Database Schema
 
 - ✅ `packages/database/src/schema/formDrafts.ts` - Drizzle schema for form_drafts table
-- ✅ `packages/database/migrations/0003_quiet_black_cat.sql` - Database migration
+- ✅ `packages/database/migrations/0003_draft_forms_table.sql` - Database migration
 - ✅ Updated `packages/database/src/schema/index.ts` - Export formDrafts schema
 - ✅ Updated `packages/database/src/index.ts` - Export Drizzle operators (lt, gt, isNull, isNotNull)
 
