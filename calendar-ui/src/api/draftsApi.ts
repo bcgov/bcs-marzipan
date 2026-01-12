@@ -125,11 +125,24 @@ export async function deleteDraftByForm(
   logger.debug('Deleting draft by form', { userId, formType, entityId });
 
   try {
-    await api.delete('/drafts/by-form', {
-      params: { userId, formType, entityId },
-    });
+    // Build params object, only including entityId if it's defined
+    const params: { userId: number; formType: string; entityId?: number } = {
+      userId,
+      formType,
+    };
+
+    if (entityId !== undefined) {
+      params.entityId = entityId;
+    }
+
+    await api.delete('/drafts/by-form', { params });
     logger.debug('Draft deleted successfully');
-  } catch (error) {
+  } catch (error: any) {
+    // Treat 400 and 404 as success (draft doesn't exist, which is the desired state)
+    if (error?.response?.status === 400 || error?.response?.status === 404) {
+      logger.debug('No draft found to delete (400/404) - treating as success');
+      return;
+    }
     logger.error('Failed to delete draft by form', error);
     throw error;
   }

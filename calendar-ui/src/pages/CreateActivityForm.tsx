@@ -107,16 +107,26 @@ export const CreateActivityForm: React.FC = () => {
 
   // Check for existing draft on mount and show dialog
   useEffect(() => {
+    console.log('Draft check effect running', {
+      draftChecked,
+      isDraftLoading,
+      hasDraft: !!existingDraft,
+      draftId: existingDraft?.id,
+      hasDraftData: !!existingDraft?.draftData,
+    });
+
     if (
       !draftChecked &&
       !isDraftLoading &&
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
+      console.log('Showing draft dialog for draft:', existingDraft.id);
       setShowDraftDialog(true);
       setDraftChecked(true);
     } else if (!draftChecked && !isDraftLoading) {
       // No draft found, mark as checked so we don't show dialog
+      console.log('No draft found, marking as checked');
       setDraftChecked(true);
     }
   }, [existingDraft, isDraftLoading, draftChecked]);
@@ -130,9 +140,52 @@ export const CreateActivityForm: React.FC = () => {
   };
 
   const handleStartFresh = () => {
-    console.log('Starting fresh - deleting draft');
+    console.log('Starting fresh - deleting draft ID:', existingDraft?.id);
+
+    if (existingDraft?.id) {
+      // Delete by ID directly - this is more reliable
+      fetch(
+        `${import.meta.env.VITE_API_BASE_URL || '/api'}/drafts/${existingDraft.id}?userId=8`,
+        {
+          method: 'DELETE',
+        }
+      )
+        .then(() => {
+          console.log('Draft deleted successfully');
+        })
+        .catch((error) => {
+          console.error('Failed to delete draft:', error);
+        });
+    }
+
+    // Also call the hook's delete function to clean up cache
     deleteDraft();
+
     setShowDraftDialog(false);
+    setDraftChecked(false);
+
+    // Reset the form
+    form.reset({
+      isAllDay: false,
+      oicRelated: false,
+      isIssue: false,
+      notForLookAhead: false,
+      planningReport: false,
+      thirtySixtyNinetyReport: false,
+      ownerId: 8,
+      commsLeadId: 8,
+      categoryIds: [],
+      relatedActivityIds: [],
+      tagIds: [],
+      jointOrganizationIds: [],
+      commsMaterialIds: [],
+      translationLanguageIds: [],
+      jointEventOrganizationIds: [],
+      representativeIds: [],
+      sharedWithOrganizationIds: [],
+      canEditUserIds: [],
+      canViewUserIds: [],
+    });
   };
 
   const handleCancel = () => {

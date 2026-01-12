@@ -176,12 +176,35 @@ export function useAutoSave(
 
   // Delete draft mutation
   const { mutate: deleteDraftMutation } = useMutation({
-    mutationFn: () => draftsApi.deleteDraftByForm(userId, formType, entityId),
-    onSuccess: () => {
-      logger.debug('Draft deleted successfully', { formType, entityId });
-      // Invalidate cache
-      void queryClient.invalidateQueries({ queryKey: draftQueryKey });
+    mutationFn: () => {
+      logger.debug('Calling deleteDraftByForm API', {
+        userId,
+        formType,
+        entityId,
+      });
+      return draftsApi.deleteDraftByForm(userId, formType, entityId);
+    },
+    onMutate: () => {
+      // Optimistically clear cache immediately when mutation starts
+      logger.debug('Optimistically clearing cache');
+      queryClient.setQueryData(draftQueryKey, null);
       setLastSaved(null);
+      lastSavedDataRef.current = null;
+    },
+    onSuccess: () => {
+      logger.debug('Draft deleted successfully from DB', {
+        formType,
+        entityId,
+      });
+      // Cache already cleared in onMutate
+      // Invalidate to ensure fresh data on next mount
+      void queryClient.invalidateQueries({ queryKey: draftQueryKey });
+      logger.debug('Query invalidated', { draftQueryKey });
+    },
+    onError: (error: any) => {
+      // Even on error, log it but keep the cache cleared
+      logger.error('Error deleting draft', error);
+      void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
   });
 
@@ -237,7 +260,15 @@ export function useAutoSave(
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [formData, enabled, userId, formType, entityId, debounceMs]);
+  }, [
+    formData,
+    enabled,
+    userId,
+    formType,
+    entityId,
+    debounceMs,
+    saveDraftMutation,
+  ]);
 
   // Manual save function (bypasses debounce)
   const saveNow = useCallback(() => {
