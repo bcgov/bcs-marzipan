@@ -178,6 +178,9 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
               </NavSubItem>
             </NavSubItemGroup>
           </NavCategory>
+          <NavItem value="15" as="a" href="/admin">
+            Administration
+          </NavItem>
         </NavDrawerBody>
       </NavDrawer>
       <div className={styles.content}>

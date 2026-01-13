@@ -12,6 +12,7 @@ import { Dashboard } from './pages/Dashboard';
 import './styles/App.css';
 import DraftsPage from './pages/Drafts';
 import { CreateActivityForm } from './pages/CreateActivityForm';
+import { Administration } from './pages/Administration';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
 
           <Route path="/details" element={<EntryDetails />} />
           {/* Add more routes here */}
+          <Route path="/admin" element={<Administration />} />
         </Route>
       </Routes>
     </FluentProvider>
