@@ -11,6 +11,10 @@ import {
   translatedLanguages,
   governmentRepresentatives,
   activities,
+  cities,
+  ministries,
+  themes,
+  activityStatuses,
 } from '@corpcal/database/schema';
 import { DatabaseService } from '../database/database.service';
 
@@ -276,6 +280,102 @@ export class LookupsService {
       label: activity.title || `Activity ${activity.id}`,
       value: activity.id,
       title: activity.title,
+    }));
+  }
+
+  /**
+   * Get all active cities
+   */
+  async getCities(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: cities.id,
+        name: cities.name,
+        displayName: cities.displayName,
+        province: cities.province,
+      })
+      .from(cities)
+      .where(eq(cities.isActive, true))
+      .orderBy(cities.sortOrder);
+
+    return results.map((city) => ({
+      id: city.id,
+      label: city.displayName || city.name,
+      value: city.id,
+      name: city.name,
+      displayName: city.displayName,
+      province: city.province,
+    }));
+  }
+
+  /**
+   * Get all active ministries
+   */
+  async getMinistries(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: ministries.id,
+        displayName: ministries.displayName,
+        abbreviation: ministries.abbreviation,
+        ministerName: ministries.ministerName,
+      })
+      .from(ministries)
+      .where(eq(ministries.isActive, true))
+      .orderBy(ministries.sortOrder);
+
+    return results.map((ministry) => ({
+      id: ministry.id,
+      label: ministry.displayName || ministry.abbreviation || ministry.id,
+      value: ministry.id,
+      displayName: ministry.displayName,
+      abbreviation: ministry.abbreviation,
+      ministerName: ministry.ministerName,
+    }));
+  }
+
+  /**
+   * Get all active themes
+   */
+  async getThemes(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: themes.id,
+        key: themes.key,
+        displayName: themes.displayName,
+      })
+      .from(themes)
+      .where(eq(themes.isActive, true))
+      .orderBy(themes.sortOrder);
+
+    return results.map((theme) => ({
+      id: theme.id,
+      label: theme.displayName || theme.key || theme.id,
+      value: theme.id,
+      key: theme.key,
+      displayName: theme.displayName,
+    }));
+  }
+
+  /**
+   * Get all active activity statuses
+   */
+  async getActivityStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+        displayName: activityStatuses.displayName,
+      })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.isActive, true))
+      .orderBy(activityStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
     }));
   }
 }

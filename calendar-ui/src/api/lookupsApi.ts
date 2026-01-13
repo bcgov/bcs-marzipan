@@ -97,3 +97,31 @@ export async function fetchActivitiesForLookup(
   );
   return res.data.data;
 }
+
+export async function fetchCities(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/cities'
+  );
+  return res.data.data;
+}
+
+export async function fetchMinistries(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/ministries'
+  );
+  return res.data.data;
+}
+
+export async function fetchThemes(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/themes'
+  );
+  return res.data.data;
+}
+
+export async function fetchActivityStatuses(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/activity-statuses'
+  );
+  return res.data.data;
+}

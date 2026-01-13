@@ -161,4 +161,55 @@ export class LookupsController {
     const data = await this.lookupsService.getActivitiesForLookup(params);
     return { success: true, data };
   }
+
+  @ApiOperation({ summary: 'Get all cities' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cities retrieved successfully',
+  })
+  @Get('cities')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getCities(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getCities();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all ministries' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministries retrieved successfully',
+  })
+  @Get('ministries')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getMinistries(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getMinistries();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all themes' })
+  @ApiResponse({
+    status: 200,
+    description: 'Themes retrieved successfully',
+  })
+  @Get('themes')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getThemes(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getThemes();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all activity statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity statuses retrieved successfully',
+  })
+  @Get('activity-statuses')
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getActivityStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getActivityStatuses();
+    return { success: true, data };
+  }
 }

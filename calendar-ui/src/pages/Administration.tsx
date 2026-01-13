@@ -2,20 +2,20 @@ import { Link } from '@fluentui/react-components';
 
 export const Administration = () => {
   const lookupTables = [
-    'Categories',
-    'Cities',
-    'CommunicationMaterials',
-    'GovernmentRepresentatives',
-    'HQ Tags',
-    'Ministries',
-    'News Subscribe',
-    'NRDistributions',
-    'NROrigins',
-    'PremierRequested',
-    'Roles',
-    'Status',
-    'SystemUsers',
-    'Themes',
+    { name: 'Categories', route: 'categories' },
+    { name: 'Cities', route: 'cities' },
+    { name: 'CommunicationMaterials', route: 'communication-materials' },
+    { name: 'GovernmentRepresentatives', route: 'government-representatives' },
+    { name: 'HQ Tags', route: 'hq-tags' },
+    { name: 'Ministries', route: 'ministries' },
+    { name: 'News Subscribe', route: 'news-subscribe' },
+    { name: 'NRDistributions', route: 'nr-distributions' },
+    { name: 'NROrigins', route: 'nr-origins' },
+    { name: 'PremierRequested', route: 'premier-requested' },
+    { name: 'Roles', route: 'roles' },
+    { name: 'Status', route: 'status' },
+    { name: 'SystemUsers', route: 'system-users' },
+    { name: 'Themes', route: 'themes' },
   ];
 
   return (
@@ -35,7 +35,7 @@ export const Administration = () => {
           letterSpacing: '0.5px',
         }}
       >
-        CORPORATE CALENDAR DATA ADMINISTRATION
+        Corporate Calendar Data Administration
       </h1>
 
       {/* Action Links */}
@@ -53,7 +53,7 @@ export const Administration = () => {
           Manage Users
         </Link>
         <Link
-          href="/transfer-activities"
+          href="./dataAdmin/transferActivities"
           style={{
             display: 'block',
             color: '#0078d4',
@@ -104,7 +104,7 @@ export const Administration = () => {
         <tbody>
           {lookupTables.map((table, index) => (
             <tr
-              key={table}
+              key={table.name}
               style={{
                 borderBottom:
                   index < lookupTables.length - 1
@@ -114,14 +114,14 @@ export const Administration = () => {
             >
               <td style={{ padding: '12px 16px' }}>
                 <Link
-                  href={`/admin/lookup/${table.toLowerCase().replace(/\s+/g, '-')}`}
+                  href={`/admin/lookup/${table.route}`}
                   style={{
                     color: '#0078d4',
                     textDecoration: 'underline',
                     fontSize: '14px',
                   }}
                 >
-                  {table}
+                  {table.name}
                 </Link>
               </td>
             </tr>
