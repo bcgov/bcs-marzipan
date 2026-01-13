@@ -1,3 +1,4 @@
+# Not used as of now, but kept for future reference
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
