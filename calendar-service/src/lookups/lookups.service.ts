@@ -18,6 +18,9 @@ import {
   premierRequested,
   newsReleaseOrigins,
   teamCategories,
+  cities,
+  ministries,
+  themes,
 } from '@corpcal/database/schema';
 import type {
   LookupItem,
@@ -30,6 +33,8 @@ import type {
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
+  MinistryLookupItem,
+  ThemeLookupItem,
 } from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
 
@@ -204,9 +209,10 @@ export class LookupsService {
         id: tags.id,
         name: tags.name,
         displayName: tags.displayName,
+        sortOrder: tags.sortOrder,
+        isActive: tags.isActive,
       })
       .from(tags)
-      .where(eq(tags.isActive, true))
       .orderBy(tags.sortOrder);
 
     return results.map((tag) => ({
@@ -215,29 +221,8 @@ export class LookupsService {
       value: tag.id,
       name: tag.name,
       displayName: tag.displayName,
-    }));
-  }
-
-  /**
-   * Get all active activity statuses
-   */
-  async getActivityStatuses(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: activityStatuses.id,
-        name: activityStatuses.name,
-        displayName: activityStatuses.displayName,
-      })
-      .from(activityStatuses)
-      .where(eq(activityStatuses.isActive, true))
-      .orderBy(activityStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName || status.name,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
+      sortOrder: tag.sortOrder,
+      isActive: tag.isActive,
     }));
   }
 
@@ -273,9 +258,10 @@ export class LookupsService {
         id: commsMaterials.id,
         name: commsMaterials.name,
         displayName: commsMaterials.displayName,
+        sortOrder: commsMaterials.sortOrder,
+        isActive: commsMaterials.isActive,
       })
       .from(commsMaterials)
-      .where(eq(commsMaterials.isActive, true))
       .orderBy(commsMaterials.sortOrder);
 
     return results.map((material) => ({
@@ -284,6 +270,8 @@ export class LookupsService {
       value: material.id,
       name: material.name,
       displayName: material.displayName,
+      sortOrder: material.sortOrder,
+      isActive: material.isActive,
     }));
   }
 
@@ -323,9 +311,10 @@ export class LookupsService {
         displayName: governmentRepresentatives.displayName,
         title: governmentRepresentatives.title,
         ministryId: governmentRepresentatives.ministryId,
+        sortOrder: governmentRepresentatives.sortOrder,
+        isActive: governmentRepresentatives.isActive,
       })
       .from(governmentRepresentatives)
-      .where(eq(governmentRepresentatives.isActive, true))
       .orderBy(governmentRepresentatives.sortOrder);
 
     return results.map((rep) => ({
@@ -336,6 +325,8 @@ export class LookupsService {
       displayName: rep.displayName,
       title: rep.title,
       ministryId: rep.ministryId,
+      sortOrder: rep.sortOrder,
+      isActive: rep.isActive,
     }));
   }
 
@@ -467,5 +458,651 @@ export class LookupsService {
       value: activity.id,
       title: activity.title,
     }));
+  }
+
+  /**
+   * Get all active cities
+   */
+  async getCities(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: cities.id,
+        name: cities.name,
+        displayName: cities.displayName,
+        province: cities.province,
+        sortOrder: cities.sortOrder,
+        isActive: cities.isActive,
+      })
+      .from(cities)
+      .orderBy(cities.sortOrder);
+
+    return results.map((city) => ({
+      id: city.id,
+      label: city.displayName || city.name,
+      value: city.id,
+      name: city.name,
+      displayName: city.displayName,
+      province: city.province,
+      sortOrder: city.sortOrder,
+      isActive: city.isActive,
+    }));
+  }
+
+  /**
+   * Get all active ministries
+   */
+  async getMinistries(): Promise<MinistryLookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: ministries.id,
+        displayName: ministries.displayName,
+        abbreviation: ministries.abbreviation,
+        ministerName: ministries.ministerName,
+        sortOrder: ministries.sortOrder,
+        isActive: ministries.isActive,
+      })
+      .from(ministries)
+      .orderBy(ministries.sortOrder);
+
+    return results.map((ministry) => ({
+      id: ministry.id,
+      label: ministry.displayName || ministry.abbreviation || ministry.id,
+      value: ministry.id,
+      displayName: ministry.displayName,
+      abbreviation: ministry.abbreviation,
+      ministerName: ministry.ministerName,
+      sortOrder: ministry.sortOrder,
+      isActive: ministry.isActive,
+    }));
+  }
+
+  /**
+   * Get all active themes
+   */
+  async getThemes(): Promise<ThemeLookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: themes.id,
+        key: themes.key,
+        displayName: themes.displayName,
+        sortOrder: themes.sortOrder,
+        isActive: themes.isActive,
+      })
+      .from(themes)
+      .orderBy(themes.sortOrder);
+
+    return results.map((theme) => ({
+      id: theme.id,
+      label: theme.displayName || theme.key || theme.id,
+      value: theme.id,
+      key: theme.key,
+      displayName: theme.displayName,
+      sortOrder: theme.sortOrder,
+      isActive: theme.isActive,
+    }));
+  }
+
+  /**
+   * Get all active activity statuses
+   */
+  async getActivityStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: activityStatuses.id,
+        name: activityStatuses.name,
+        displayName: activityStatuses.displayName,
+        sortOrder: activityStatuses.sortOrder,
+        isActive: activityStatuses.isActive,
+      })
+      .from(activityStatuses)
+      .orderBy(activityStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+      sortOrder: status.sortOrder,
+      isActive: status.isActive,
+    }));
+  }
+
+  /**
+   * Create a new category
+   */
+  async createCategory(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      visibility?: 'global' | 'team';
+      allowsPitch?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof categories.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(categories)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        visibility: data.visibility || 'global',
+        allowsPitch: data.allowsPitch ?? true,
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new city
+   */
+  async createCity(
+    data: {
+      name: string;
+      displayName?: string | null;
+      province?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof cities.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(cities)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
+        province: data.province ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new comms material
+   */
+  async createCommsMaterial(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof commsMaterials.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(commsMaterials)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new government representative
+   */
+  async createGovernmentRepresentative(
+    data: {
+      name: string;
+      displayName?: string | null;
+      title?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      ministryId?: string | null;
+      representativeType?: string | null;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof governmentRepresentatives.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(governmentRepresentatives)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? undefined,
+        title: data.title ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        ministryId: data.ministryId ?? undefined,
+        representativeType: data.representativeType ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new tag
+   */
+  async createTag(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      visibility?: 'global' | 'team';
+      description?: string | null;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof tags.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(tags)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        visibility: data.visibility || 'global',
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new ministry
+   */
+  async createMinistry(
+    data: {
+      displayName: string;
+      abbreviation: string; // Required by schema
+      ministerName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof ministries.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(ministries)
+      .values({
+        displayName: data.displayName,
+        abbreviation: data.abbreviation,
+        ministerName: data.ministerName ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new activity status
+   */
+  async createActivityStatus(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number = 1
+  ): Promise<typeof activityStatuses.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(activityStatuses)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new theme
+   */
+  async createTheme(
+    data: {
+      key?: string | null;
+      name: string;
+      displayName?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+    },
+    currentUserId: number = 1
+  ): Promise<any> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(themes)
+      .values({
+        key: data.key ?? null,
+        name: data.name,
+        displayName: data.displayName ?? null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Update methods
+   */
+
+  async updateCategory(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+      visibility: 'global' | 'team';
+      allowsPitch: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof categories.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof categories.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (data.allowsPitch !== undefined)
+      updateData.allowsPitch = data.allowsPitch;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(categories)
+      .set(updateData)
+      .where(eq(categories.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateCity(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      province: string | null;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof cities.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof cities.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName;
+    if (data.province !== undefined)
+      updateData.province = data.province ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const [result] = await this.databaseService.db
+      .update(cities)
+      .set(updateData)
+      .where(eq(cities.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateCommsMaterial(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof commsMaterials.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof commsMaterials.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(commsMaterials)
+      .set(updateData)
+      .where(eq(commsMaterials.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateGovernmentRepresentative(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      title: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      ministryId: string | null;
+      representativeType: string | null;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof governmentRepresentatives.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof governmentRepresentatives.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.title !== undefined) updateData.title = data.title ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.ministryId !== undefined)
+      updateData.ministryId = data.ministryId ?? undefined;
+    if (data.representativeType !== undefined)
+      updateData.representativeType = data.representativeType ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(governmentRepresentatives)
+      .set(updateData)
+      .where(eq(governmentRepresentatives.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTag(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      visibility: 'global' | 'team';
+      description: string | null;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof tags.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof tags.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(tags)
+      .set(updateData)
+      .where(eq(tags.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateMinistry(
+    id: string,
+    data: Partial<{
+      displayName: string;
+      abbreviation: string;
+      ministerName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof ministries.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof ministries.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName;
+    if (data.abbreviation !== undefined)
+      updateData.abbreviation = data.abbreviation;
+    if (data.ministerName !== undefined)
+      updateData.ministerName = data.ministerName ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const [result] = await this.databaseService.db
+      .update(ministries)
+      .set(updateData)
+      .where(eq(ministries.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateActivityStatus(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof activityStatuses.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof activityStatuses.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(activityStatuses)
+      .set(updateData)
+      .where(eq(activityStatuses.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTheme(
+    id: string,
+    data: Partial<{
+      key: string | null;
+      name: string;
+      displayName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+    currentUserId: number = 1
+  ): Promise<typeof themes.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof themes.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.key !== undefined) updateData.key = data.key ?? undefined;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const [result] = await this.databaseService.db
+      .update(themes)
+      .set(updateData)
+      .where(eq(themes.id, id))
+      .returning();
+    return result;
   }
 }

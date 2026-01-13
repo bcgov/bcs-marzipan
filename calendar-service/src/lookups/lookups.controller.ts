@@ -1,9 +1,26 @@
-import { Controller, Get, Query, Header } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Query,
+  Header,
+  Param,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 import type {
   LookupItem,
   LookupQueryParams,
   OrganizationLookupItem,
+  CategoryLookupItem,
 } from '@corpcal/shared/api/types';
 import {
   REFERENCE_LOOKUP_CACHE_SECONDS,
@@ -12,7 +29,52 @@ import {
 import { LookupsService } from './lookups.service';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
-import { LookupArrayResponseWrapperDto } from '../common/dto';
+import {
+  LookupArrayResponseWrapperDto,
+  CreateCategoryDto,
+  UpdateCategoryDto,
+  CategoryResponseWrapperDto,
+  CreateTagDto,
+  UpdateTagDto,
+  TagResponseWrapperDto,
+  CreateCityDto,
+  UpdateCityDto,
+  CityResponseWrapperDto,
+  CreateMinistryDto,
+  UpdateMinistryDto,
+  MinistryResponseWrapperDto,
+  CreateCommsMaterialDto,
+  UpdateCommsMaterialDto,
+  CommsMaterialResponseWrapperDto,
+  CreateGovernmentRepresentativeDto,
+  UpdateGovernmentRepresentativeDto,
+  GovernmentRepresentativeResponseWrapperDto,
+  CreateThemeDto,
+  UpdateThemeDto,
+  ThemeResponseWrapperDto,
+  CreateActivityStatusDto,
+  UpdateActivityStatusDto,
+  ActivityStatusResponseWrapperDto,
+} from '../common/dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  createCategoryRequestSchema,
+  updateCategoryRequestSchema,
+  createTagRequestSchema,
+  updateTagRequestSchema,
+  createCityRequestSchema,
+  updateCityRequestSchema,
+  createMinistryRequestSchema,
+  updateMinistryRequestSchema,
+  createCommsMaterialRequestSchema,
+  updateCommsMaterialRequestSchema,
+  createGovernmentRepresentativeRequestSchema,
+  updateGovernmentRepresentativeRequestSchema,
+  createThemeRequestSchema,
+  updateThemeRequestSchema,
+  createActivityStatusRequestSchema,
+  updateActivityStatusRequestSchema,
+} from '@corpcal/shared/schemas';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -33,11 +95,48 @@ export class LookupsController {
   })
   @Get('categories')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getCategories(): Promise<{ success: boolean; data: LookupItem[] }> {
+  async getCategories(): Promise<{
+    success: boolean;
+    data: CategoryLookupItem[];
+  }> {
     // TODO: Retrieve user teams from authentication context when user team retrieval is implemented
     // For now, passing undefined returns only global categories
     const userTeams: number[] | undefined = undefined;
     const data = await this.lookupsService.getCategories(userTeams);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new category' })
+  @ApiResponse({
+    status: 201,
+    description: 'Category created successfully',
+    type: CategoryResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateCategoryDto })
+  @Post('categories')
+  async createCategory(
+    @Body(new ZodValidationPipe(createCategoryRequestSchema))
+    body: CreateCategoryDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createCategory(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a category' })
+  @ApiResponse({
+    status: 200,
+    description: 'Category updated successfully',
+    type: CategoryResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
+  @ApiBody({ type: UpdateCategoryDto })
+  @Patch('categories/:id')
+  async updateCategory(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateCategoryRequestSchema))
+    body: UpdateCategoryDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCategory(Number(id), body);
     return { success: true, data };
   }
 
@@ -158,6 +257,40 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Create a new tag' })
+  @ApiResponse({
+    status: 201,
+    description: 'Tag created successfully',
+    type: TagResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateTagDto })
+  @Post('tags')
+  async createTag(
+    @Body(new ZodValidationPipe(createTagRequestSchema))
+    body: CreateTagDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createTag(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a tag' })
+  @ApiResponse({
+    status: 200,
+    description: 'Tag updated successfully',
+    type: TagResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Tag ID' })
+  @ApiBody({ type: UpdateTagDto })
+  @Patch('tags/:id')
+  async updateTag(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateTagRequestSchema))
+    body: UpdateTagDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTag(Number(id), body);
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all activity statuses' })
   @ApiResponse({
     status: 200,
@@ -171,6 +304,43 @@ export class LookupsController {
     data: LookupItem[];
   }> {
     const data = await this.lookupsService.getActivityStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new activity status' })
+  @ApiResponse({
+    status: 201,
+    description: 'Activity status created successfully',
+    type: ActivityStatusResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateActivityStatusDto })
+  @Post('activity-statuses')
+  async createActivityStatus(
+    @Body(new ZodValidationPipe(createActivityStatusRequestSchema))
+    body: CreateActivityStatusDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createActivityStatus(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update an activity status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity status updated successfully',
+    type: ActivityStatusResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Activity Status ID' })
+  @ApiBody({ type: UpdateActivityStatusDto })
+  @Patch('activity-statuses/:id')
+  async updateActivityStatus(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateActivityStatusRequestSchema))
+    body: UpdateActivityStatusDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateActivityStatus(
+      Number(id),
+      body
+    );
     return { success: true, data };
   }
 
@@ -197,6 +367,43 @@ export class LookupsController {
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
   async getCommsMaterials(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getCommsMaterials();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new comms material' })
+  @ApiResponse({
+    status: 201,
+    description: 'Comms material created successfully',
+    type: CommsMaterialResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateCommsMaterialDto })
+  @Post('comms-materials')
+  async createCommsMaterial(
+    @Body(new ZodValidationPipe(createCommsMaterialRequestSchema))
+    body: CreateCommsMaterialDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createCommsMaterial(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a communication material' })
+  @ApiResponse({
+    status: 200,
+    description: 'Communication material updated successfully',
+    type: CommsMaterialResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Comms Material ID' })
+  @ApiBody({ type: UpdateCommsMaterialDto })
+  @Patch('comms-materials/:id')
+  async updateCommsMaterial(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateCommsMaterialRequestSchema))
+    body: UpdateCommsMaterialDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCommsMaterial(
+      Number(id),
+      body
+    );
     return { success: true, data };
   }
 
@@ -229,6 +436,47 @@ export class LookupsController {
     data: LookupItem[];
   }> {
     const data = await this.lookupsService.getGovernmentRepresentatives();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new government representative' })
+  @ApiResponse({
+    status: 201,
+    description: 'Government representative created successfully',
+    type: GovernmentRepresentativeResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateGovernmentRepresentativeDto })
+  @Post('government-representatives')
+  async createGovernmentRepresentative(
+    @Body(new ZodValidationPipe(createGovernmentRepresentativeRequestSchema))
+    body: CreateGovernmentRepresentativeDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createGovernmentRepresentative(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a government representative' })
+  @ApiResponse({
+    status: 200,
+    description: 'Government representative updated successfully',
+    type: GovernmentRepresentativeResponseWrapperDto,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Government Representative ID',
+  })
+  @ApiBody({ type: UpdateGovernmentRepresentativeDto })
+  @Patch('government-representatives/:id')
+  async updateGovernmentRepresentative(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateGovernmentRepresentativeRequestSchema))
+    body: UpdateGovernmentRepresentativeDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateGovernmentRepresentative(
+      Number(id),
+      body
+    );
     return { success: true, data };
   }
 
@@ -323,6 +571,147 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: LookupItem[] }> {
     const params: LookupQueryParams = { userId, role };
     const data = await this.lookupsService.getActivitiesForLookup(params);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all cities' })
+  @ApiResponse({
+    status: 200,
+    description: 'Cities retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('cities')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getCities(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getCities();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new city' })
+  @ApiResponse({
+    status: 201,
+    description: 'City created successfully',
+    type: CityResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateCityDto })
+  @Post('cities')
+  async createCity(
+    @Body(new ZodValidationPipe(createCityRequestSchema))
+    body: CreateCityDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createCity(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a city' })
+  @ApiResponse({
+    status: 200,
+    description: 'City updated successfully',
+    type: CityResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'City ID' })
+  @ApiBody({ type: UpdateCityDto })
+  @Patch('cities/:id')
+  async updateCity(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateCityRequestSchema))
+    body: UpdateCityDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCity(Number(id), body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all ministries' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministries retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('ministries')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getMinistries(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getMinistries();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new ministry' })
+  @ApiResponse({
+    status: 201,
+    description: 'Ministry created successfully',
+    type: MinistryResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateMinistryDto })
+  @Post('ministries')
+  async createMinistry(
+    @Body(new ZodValidationPipe(createMinistryRequestSchema))
+    body: CreateMinistryDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createMinistry(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a ministry' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministry updated successfully',
+    type: MinistryResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Ministry ID (UUID)' })
+  @ApiBody({ type: UpdateMinistryDto })
+  @Patch('ministries/:id')
+  async updateMinistry(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateMinistryRequestSchema))
+    body: UpdateMinistryDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateMinistry(id, body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all themes' })
+  @ApiResponse({
+    status: 200,
+    description: 'Themes retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('themes')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getThemes(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getThemes();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new theme' })
+  @ApiResponse({
+    status: 201,
+    description: 'Theme created successfully',
+    type: ThemeResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateThemeDto })
+  @Post('themes')
+  async createTheme(
+    @Body(new ZodValidationPipe(createThemeRequestSchema))
+    body: CreateThemeDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createTheme(body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a theme' })
+  @ApiResponse({
+    status: 200,
+    description: 'Theme updated successfully',
+    type: ThemeResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Theme ID (UUID)' })
+  @ApiBody({ type: UpdateThemeDto })
+  @Patch('themes/:id')
+  async updateTheme(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateThemeRequestSchema))
+    body: UpdateThemeDto
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTheme(id, body);
     return { success: true, data };
   }
 }

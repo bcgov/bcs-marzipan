@@ -390,6 +390,31 @@ export const reportResponseSchema = z.object({
 });
 
 // ============================================
+// Theme Schema
+// ============================================
+
+/**
+ * Theme Response Schema
+ * Fields from the themes table exposed via API
+ */
+export const themeResponseSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string().nullable(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+});
+
+export const themeLookupItemSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
+  value: z.string().uuid(),
+  key: z.string().nullable(),
+  displayName: z.string().nullable(),
+});
+
+// ============================================
 // TypeScript Types (inferred from schemas)
 // ============================================
 
@@ -458,4 +483,183 @@ export type GovernmentRepresentativeLookupItem = z.infer<
   typeof governmentRepresentativeLookupItemSchema
 >;
 
+export type ThemeResponse = z.infer<typeof themeResponseSchema>;
+export type ThemeLookupItem = z.infer<typeof themeLookupItemSchema>;
+
 export type ReportResponse = z.infer<typeof reportResponseSchema>;
+
+// ============================================
+// Request Schemas (for create/update operations)
+// ============================================
+
+/**
+ * Create Category Request Schema
+ * Fields required for creating a new category
+ */
+export const createCategoryRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+  visibility: z.enum(VISIBILITY).default('global').optional(),
+  allowsPitch: z.boolean().default(true).optional(),
+  description: z.string().nullable().optional(),
+});
+
+/**
+ * Update Category Request Schema
+ * All fields optional for partial updates
+ */
+export const updateCategoryRequestSchema =
+  createCategoryRequestSchema.partial();
+
+/**
+ * Create Tag Request Schema
+ */
+export const createTagRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+  visibility: z.enum(['global', 'team']).default('global').optional(),
+  description: z.string().nullable().optional(),
+});
+
+/**
+ * Update Tag Request Schema
+ */
+export const updateTagRequestSchema = createTagRequestSchema.partial();
+
+/**
+ * Create City Request Schema
+ */
+export const createCityRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  province: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+});
+
+/**
+ * Update City Request Schema
+ */
+export const updateCityRequestSchema = createCityRequestSchema.partial();
+
+/**
+ * Create Ministry Request Schema
+ */
+export const createMinistryRequestSchema = z.object({
+  displayName: z.string().min(1).max(255),
+  abbreviation: z.string().max(255).nullable().optional(),
+  ministerName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+});
+
+/**
+ * Update Ministry Request Schema
+ */
+export const updateMinistryRequestSchema = createMinistryRequestSchema.partial();
+
+/**
+ * Create Comms Material Request Schema
+ */
+export const createCommsMaterialRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+  description: z.string().nullable().optional(),
+});
+
+/**
+ * Update Comms Material Request Schema
+ */
+export const updateCommsMaterialRequestSchema =
+  createCommsMaterialRequestSchema.partial();
+
+/**
+ * Create Government Representative Request Schema
+ */
+export const createGovernmentRepresentativeRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  title: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+  ministryId: z.string().uuid().nullable().optional(),
+  representativeType: z.enum(REPRESENTATIVE_TYPE).nullable().optional(),
+});
+
+/**
+ * Update Government Representative Request Schema
+ */
+export const updateGovernmentRepresentativeRequestSchema =
+  createGovernmentRepresentativeRequestSchema.partial();
+
+/**
+ * Create Theme Request Schema
+ */
+export const createThemeRequestSchema = z.object({
+  key: z.string().max(100).nullable().optional(),
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+});
+
+/**
+ * Update Theme Request Schema
+ */
+export const updateThemeRequestSchema = createThemeRequestSchema.partial();
+
+/**
+ * Create Activity Status Request Schema
+ */
+export const createActivityStatusRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().default(true).optional(),
+  description: z.string().nullable().optional(),
+});
+
+/**
+ * Update Activity Status Request Schema
+ */
+export const updateActivityStatusRequestSchema =
+  createActivityStatusRequestSchema.partial();
+
+// ============================================
+// Request Type Exports
+// ============================================
+
+export type CreateCategoryRequest = z.infer<typeof createCategoryRequestSchema>;
+export type UpdateCategoryRequest = z.infer<typeof updateCategoryRequestSchema>;
+export type CreateTagRequest = z.infer<typeof createTagRequestSchema>;
+export type UpdateTagRequest = z.infer<typeof updateTagRequestSchema>;
+export type CreateCityRequest = z.infer<typeof createCityRequestSchema>;
+export type UpdateCityRequest = z.infer<typeof updateCityRequestSchema>;
+export type CreateMinistryRequest = z.infer<typeof createMinistryRequestSchema>;
+export type UpdateMinistryRequest = z.infer<typeof updateMinistryRequestSchema>;
+export type CreateCommsMaterialRequest = z.infer<
+  typeof createCommsMaterialRequestSchema
+>;
+export type UpdateCommsMaterialRequest = z.infer<
+  typeof updateCommsMaterialRequestSchema
+>;
+export type CreateGovernmentRepresentativeRequest = z.infer<
+  typeof createGovernmentRepresentativeRequestSchema
+>;
+export type UpdateGovernmentRepresentativeRequest = z.infer<
+  typeof updateGovernmentRepresentativeRequestSchema
+>;
+export type CreateThemeRequest = z.infer<typeof createThemeRequestSchema>;
+export type UpdateThemeRequest = z.infer<typeof updateThemeRequestSchema>;
+export type CreateActivityStatusRequest = z.infer<
+  typeof createActivityStatusRequestSchema
+>;
+export type UpdateActivityStatusRequest = z.infer<
+  typeof updateActivityStatusRequestSchema
+>;

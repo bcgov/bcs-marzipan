@@ -41,5 +41,7 @@ export type {
   TranslationLanguageLookupItem,
   GovernmentRepresentativeResponse,
   GovernmentRepresentativeLookupItem,
+  ThemeResponse,
+  ThemeLookupItem,
   ReportResponse,
 } from '../schemas/lookup.schema';
