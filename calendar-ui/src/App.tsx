@@ -12,7 +12,7 @@ import { Dashboard } from './pages/Dashboard';
 import './styles/App.css';
 import DraftsPage from './pages/Drafts';
 import { CreateActivityForm } from './pages/CreateActivityForm';
-import { Administration } from './pages/Administration';
+import { Settings } from './pages/Settings';
 import { Categories } from './pages/dataAdmin/Categories';
 import { Cities } from './pages/dataAdmin/Cities';
 import { CommunicationMaterials } from './pages/dataAdmin/CommunicationMaterials';
@@ -46,7 +46,7 @@ function App() {
 
           <Route path="/details" element={<EntryDetails />} />
           {/* Add more routes here */}
-          <Route path="/administration" element={<Administration />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/manage-users" element={<UserAdmin />} />
           <Route path="/transfer-activities" element={<TransferActivities />} />
           <Route path="/admin/lookup/categories" element={<Categories />} />
