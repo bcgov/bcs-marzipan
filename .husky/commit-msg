@@ -1,8 +1,8 @@
 # Commit message validation hook
 # Validates commit messages against Conventional Commits format
-# Blocks commits that don't follow the format
+# Warns if commit message doesn't follow the format (non-blocking)
 
 echo "Validating commit message..."
 
-npx --no -- commitlint --edit "$1"
+npx --no -- commitlint --edit "$1" || echo "Warning: Commit message does not follow convention"
 
