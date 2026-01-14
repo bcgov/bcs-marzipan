@@ -18,7 +18,7 @@ type GovernmentRepresentative = {
 
 export const GovernmentRepresentatives = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: representatives,
     isLoading,
@@ -30,8 +30,10 @@ export const GovernmentRepresentatives = () => {
 
   const filteredData = useMemo(() => {
     if (!representatives) return [];
-    if (activeFilter === 'active') return representatives.filter(r => r.isActive);
-    if (activeFilter === 'inactive') return representatives.filter(r => !r.isActive);
+    if (activeFilter === 'active')
+      return representatives.filter((r) => r.isActive);
+    if (activeFilter === 'inactive')
+      return representatives.filter((r) => !r.isActive);
     return representatives;
   }, [representatives, activeFilter]);
 
@@ -120,8 +122,16 @@ export const GovernmentRepresentatives = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -135,7 +145,7 @@ export const GovernmentRepresentatives = () => {
           </div>
         )}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
         {filteredData && filteredData.length === 0 && (
           <div>No government representatives found</div>

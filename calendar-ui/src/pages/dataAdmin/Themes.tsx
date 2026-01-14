@@ -17,7 +17,7 @@ type Theme = {
 
 export const Themes = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: themes,
     isLoading,
@@ -29,8 +29,8 @@ export const Themes = () => {
 
   const filteredData = useMemo(() => {
     if (!themes) return [];
-    if (activeFilter === 'active') return themes.filter(t => t.isActive);
-    if (activeFilter === 'inactive') return themes.filter(t => !t.isActive);
+    if (activeFilter === 'active') return themes.filter((t) => t.isActive);
+    if (activeFilter === 'inactive') return themes.filter((t) => !t.isActive);
     return themes;
   }, [themes, activeFilter]);
 
@@ -114,8 +114,16 @@ export const Themes = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -125,9 +133,11 @@ export const Themes = () => {
         {isLoading && <Spinner label="Loading themes..." />}
         {error && <div style={{ color: 'red' }}>Error loading themes</div>}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
-        {filteredData && filteredData.length === 0 && <div>No themes found</div>}
+        {filteredData && filteredData.length === 0 && (
+          <div>No themes found</div>
+        )}
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ type City = {
 
 export const Cities = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: cities,
     isLoading,
@@ -30,8 +30,8 @@ export const Cities = () => {
 
   const filteredData = useMemo(() => {
     if (!cities) return [];
-    if (activeFilter === 'active') return cities.filter(c => c.isActive);
-    if (activeFilter === 'inactive') return cities.filter(c => !c.isActive);
+    if (activeFilter === 'active') return cities.filter((c) => c.isActive);
+    if (activeFilter === 'inactive') return cities.filter((c) => !c.isActive);
     return cities;
   }, [cities, activeFilter]);
 
@@ -120,8 +120,16 @@ export const Cities = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -131,9 +139,11 @@ export const Cities = () => {
         {isLoading && <Spinner label="Loading cities..." />}
         {error && <div style={{ color: 'red' }}>Error loading cities</div>}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
-        {filteredData && filteredData.length === 0 && <div>No cities found</div>}
+        {filteredData && filteredData.length === 0 && (
+          <div>No cities found</div>
+        )}
       </div>
     </div>
   );

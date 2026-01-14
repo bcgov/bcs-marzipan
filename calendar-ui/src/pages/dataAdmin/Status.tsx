@@ -17,7 +17,7 @@ type ActivityStatus = {
 
 export const Status = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: statuses,
     isLoading,
@@ -29,8 +29,8 @@ export const Status = () => {
 
   const filteredData = useMemo(() => {
     if (!statuses) return [];
-    if (activeFilter === 'active') return statuses.filter(s => s.isActive);
-    if (activeFilter === 'inactive') return statuses.filter(s => !s.isActive);
+    if (activeFilter === 'active') return statuses.filter((s) => s.isActive);
+    if (activeFilter === 'inactive') return statuses.filter((s) => !s.isActive);
     return statuses;
   }, [statuses, activeFilter]);
 
@@ -113,8 +113,16 @@ export const Status = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -124,9 +132,11 @@ export const Status = () => {
         {isLoading && <Spinner label="Loading statuses..." />}
         {error && <div style={{ color: 'red' }}>Error loading statuses</div>}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
-        {filteredData && filteredData.length === 0 && <div>No statuses found</div>}
+        {filteredData && filteredData.length === 0 && (
+          <div>No statuses found</div>
+        )}
       </div>
     </div>
   );

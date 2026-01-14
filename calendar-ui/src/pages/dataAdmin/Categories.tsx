@@ -17,7 +17,7 @@ type Category = {
 
 export const Categories = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: categories,
     isLoading,
@@ -29,8 +29,9 @@ export const Categories = () => {
 
   const filteredData = useMemo(() => {
     if (!categories) return [];
-    if (activeFilter === 'active') return categories.filter(c => c.isActive);
-    if (activeFilter === 'inactive') return categories.filter(c => !c.isActive);
+    if (activeFilter === 'active') return categories.filter((c) => c.isActive);
+    if (activeFilter === 'inactive')
+      return categories.filter((c) => !c.isActive);
     return categories;
   }, [categories, activeFilter]);
 
@@ -113,8 +114,16 @@ export const Categories = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -124,7 +133,7 @@ export const Categories = () => {
         {isLoading && <Spinner label="Loading categories..." />}
         {error && <div style={{ color: 'red' }}>Error loading categories</div>}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
         {filteredData && filteredData.length === 0 && (
           <div>No categories found</div>

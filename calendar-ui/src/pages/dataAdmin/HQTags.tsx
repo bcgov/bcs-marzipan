@@ -17,7 +17,7 @@ type Tag = {
 
 export const HQTags = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: tags,
     isLoading,
@@ -29,8 +29,8 @@ export const HQTags = () => {
 
   const filteredData = useMemo(() => {
     if (!tags) return [];
-    if (activeFilter === 'active') return tags.filter(t => t.isActive);
-    if (activeFilter === 'inactive') return tags.filter(t => !t.isActive);
+    if (activeFilter === 'active') return tags.filter((t) => t.isActive);
+    if (activeFilter === 'inactive') return tags.filter((t) => !t.isActive);
     return tags;
   }, [tags, activeFilter]);
 
@@ -114,8 +114,16 @@ export const HQTags = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -125,9 +133,11 @@ export const HQTags = () => {
         {isLoading && <Spinner label="Loading HQ tags..." />}
         {error && <div style={{ color: 'red' }}>Error loading HQ tags</div>}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
-        {filteredData && filteredData.length === 0 && <div>No HQ tags found</div>}
+        {filteredData && filteredData.length === 0 && (
+          <div>No HQ tags found</div>
+        )}
       </div>
     </div>
   );

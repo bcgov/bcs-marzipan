@@ -17,7 +17,7 @@ type CommsMaterial = {
 
 export const CommunicationMaterials = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  
+
   const {
     data: materials,
     isLoading,
@@ -29,8 +29,9 @@ export const CommunicationMaterials = () => {
 
   const filteredData = useMemo(() => {
     if (!materials) return [];
-    if (activeFilter === 'active') return materials.filter(m => m.isActive);
-    if (activeFilter === 'inactive') return materials.filter(m => !m.isActive);
+    if (activeFilter === 'active') return materials.filter((m) => m.isActive);
+    if (activeFilter === 'inactive')
+      return materials.filter((m) => !m.isActive);
     return materials;
   }, [materials, activeFilter]);
 
@@ -113,8 +114,16 @@ export const CommunicationMaterials = () => {
         <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
           <Dropdown
             placeholder="Filter by status"
-            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
-            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+            value={
+              activeFilter === 'all'
+                ? 'All'
+                : activeFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'
+            }
+            onOptionSelect={(_, data) =>
+              setActiveFilter(data.optionValue as string)
+            }
           >
             <Option value="all">All</Option>
             <Option value="active">Active</Option>
@@ -128,7 +137,7 @@ export const CommunicationMaterials = () => {
           </div>
         )}
         {filteredData && filteredData.length > 0 && (
-          <GenericDataTable data={filteredData} columns={columns} />
+          <GenericDataTable data={filteredData} columns={columns as any} />
         )}
         {filteredData && filteredData.length === 0 && (
           <div>No communication materials found</div>
