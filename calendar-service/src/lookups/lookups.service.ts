@@ -378,4 +378,178 @@ export class LookupsService {
       displayName: status.displayName,
     }));
   }
+
+  /**
+   * Create a new category
+   */
+  async createCategory(data: {
+    name: string;
+    displayName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(categories)
+      .values({
+        name: data.name,
+        displayName: data.displayName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new city
+   */
+  async createCity(data: {
+    name: string;
+    displayName?: string;
+    province?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(cities)
+      .values({
+        name: data.name,
+        displayName: data.displayName || null,
+        province: data.province || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new comms material
+   */
+  async createCommsMaterial(data: {
+    name: string;
+    displayName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(commsMaterials)
+      .values({
+        name: data.name,
+        displayName: data.displayName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new government representative
+   */
+  async createGovernmentRepresentative(data: {
+    name: string;
+    displayName?: string;
+    title?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(governmentRepresentatives)
+      .values({
+        name: data.name,
+        displayName: data.displayName || null,
+        title: data.title || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new tag
+   */
+  async createTag(data: {
+    key: string;
+    displayName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(tags)
+      .values({
+        key: data.key,
+        displayName: data.displayName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new ministry
+   */
+  async createMinistry(data: {
+    displayName: string;
+    abbreviation?: string;
+    ministerName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(ministries)
+      .values({
+        displayName: data.displayName,
+        abbreviation: data.abbreviation || null,
+        ministerName: data.ministerName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new activity status
+   */
+  async createActivityStatus(data: {
+    name: string;
+    displayName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(activityStatuses)
+      .values({
+        name: data.name,
+        displayName: data.displayName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Create a new theme
+   */
+  async createTheme(data: {
+    key: string;
+    displayName?: string;
+    sortOrder: number;
+    isActive?: boolean;
+  }): Promise<any> {
+    const [result] = await this.databaseService.db
+      .insert(themes)
+      .values({
+        key: data.key,
+        displayName: data.displayName || null,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+      })
+      .returning();
+    return result;
+  }
 }

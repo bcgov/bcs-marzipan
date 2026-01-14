@@ -1,5 +1,11 @@
-import { Controller, Get, Query, Header } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Query, Header } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBody,
+} from '@nestjs/swagger';
 import {
   LookupsService,
   type LookupItem,
@@ -24,6 +30,43 @@ export class LookupsController {
   @Header('Cache-Control', 'public, max-age=3600')
   async getCategories(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getCategories();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new category' })
+  @ApiResponse({
+    status: 201,
+    description: 'Category created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['name', 'sortOrder'],
+    },
+  })
+  @Post('categories')
+  async createCategory(
+    @Body()
+    body: {
+      name: string;
+      displayName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { name, displayName, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createCategory({
+      name,
+      displayName,
+      sortOrder,
+      isActive,
+    });
     return { success: true, data };
   }
 
@@ -73,6 +116,43 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Create a new tag' })
+  @ApiResponse({
+    status: 201,
+    description: 'Tag created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        key: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['key', 'sortOrder'],
+    },
+  })
+  @Post('tags')
+  async createTag(
+    @Body()
+    body: {
+      key: string;
+      displayName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { key, displayName, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createTag({
+      key,
+      displayName,
+      sortOrder,
+      isActive,
+    });
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all pitch statuses' })
   @ApiResponse({
     status: 200,
@@ -112,6 +192,43 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Create a new comms material' })
+  @ApiResponse({
+    status: 201,
+    description: 'Comms material created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['name', 'sortOrder'],
+    },
+  })
+  @Post('comms-materials')
+  async createCommsMaterial(
+    @Body()
+    body: {
+      name: string;
+      displayName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { name, displayName, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createCommsMaterial({
+      name,
+      displayName,
+      sortOrder,
+      isActive,
+    });
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all translation languages' })
   @ApiResponse({
     status: 200,
@@ -139,6 +256,46 @@ export class LookupsController {
     data: LookupItem[];
   }> {
     const data = await this.lookupsService.getGovernmentRepresentatives();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new government representative' })
+  @ApiResponse({
+    status: 201,
+    description: 'Government representative created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        title: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['name', 'sortOrder'],
+    },
+  })
+  @Post('government-representatives')
+  async createGovernmentRepresentative(
+    @Body()
+    body: {
+      name: string;
+      displayName?: string;
+      title?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { name, displayName, title, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createGovernmentRepresentative({
+      name,
+      displayName,
+      title,
+      sortOrder,
+      isActive,
+    });
     return { success: true, data };
   }
 
@@ -174,6 +331,46 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Create a new city' })
+  @ApiResponse({
+    status: 201,
+    description: 'City created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        province: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['name', 'sortOrder'],
+    },
+  })
+  @Post('cities')
+  async createCity(
+    @Body()
+    body: {
+      name: string;
+      displayName?: string;
+      province?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { name, displayName, province, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createCity({
+      name,
+      displayName,
+      province,
+      sortOrder,
+      isActive,
+    });
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all ministries' })
   @ApiResponse({
     status: 200,
@@ -183,6 +380,47 @@ export class LookupsController {
   @Header('Cache-Control', 'public, max-age=3600')
   async getMinistries(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getMinistries();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new ministry' })
+  @ApiResponse({
+    status: 201,
+    description: 'Ministry created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        displayName: { type: 'string' },
+        abbreviation: { type: 'string', nullable: true },
+        ministerName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['displayName', 'sortOrder'],
+    },
+  })
+  @Post('ministries')
+  async createMinistry(
+    @Body()
+    body: {
+      displayName: string;
+      abbreviation?: string;
+      ministerName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { displayName, abbreviation, ministerName, sortOrder, isActive } =
+      body;
+    const data = await this.lookupsService.createMinistry({
+      displayName,
+      abbreviation,
+      ministerName,
+      sortOrder,
+      isActive,
+    });
     return { success: true, data };
   }
 
@@ -198,6 +436,43 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Create a new theme' })
+  @ApiResponse({
+    status: 201,
+    description: 'Theme created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        key: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['key', 'sortOrder'],
+    },
+  })
+  @Post('themes')
+  async createTheme(
+    @Body()
+    body: {
+      key: string;
+      displayName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { key, displayName, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createTheme({
+      key,
+      displayName,
+      sortOrder,
+      isActive,
+    });
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all activity statuses' })
   @ApiResponse({
     status: 200,
@@ -210,6 +485,43 @@ export class LookupsController {
     data: LookupItem[];
   }> {
     const data = await this.lookupsService.getActivityStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new activity status' })
+  @ApiResponse({
+    status: 201,
+    description: 'Activity status created successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        displayName: { type: 'string', nullable: true },
+        sortOrder: { type: 'number' },
+        isActive: { type: 'boolean', default: true },
+      },
+      required: ['name', 'sortOrder'],
+    },
+  })
+  @Post('activity-statuses')
+  async createActivityStatus(
+    @Body()
+    body: {
+      name: string;
+      displayName?: string;
+      sortOrder: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const { name, displayName, sortOrder, isActive } = body;
+    const data = await this.lookupsService.createActivityStatus({
+      name,
+      displayName,
+      sortOrder,
+      isActive,
+    });
     return { success: true, data };
   }
 }
