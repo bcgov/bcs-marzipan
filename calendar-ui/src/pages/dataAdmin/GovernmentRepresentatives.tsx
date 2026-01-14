@@ -1,18 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchGovernmentRepresentatives } from '../../api/lookupsApi';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
-  Spinner,
-} from '@fluentui/react-components';
+import { Spinner, Dropdown, Option } from '@fluentui/react-components';
 import { Link } from 'react-router-dom';
 import { ChevronLeft24Regular } from '@fluentui/react-icons';
+import { ColumnDef } from '@tanstack/react-table';
+import { GenericDataTable } from '../../components/Table/GenericDataTable';
+import { useMemo, useState } from 'react';
+
+type GovernmentRepresentative = {
+  id: number;
+  name: string;
+  displayName: string | null;
+  title: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 export const GovernmentRepresentatives = () => {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  
   const {
     data: representatives,
     isLoading,
@@ -21,6 +27,46 @@ export const GovernmentRepresentatives = () => {
     queryKey: ['governmentRepresentatives'],
     queryFn: fetchGovernmentRepresentatives,
   });
+
+  const filteredData = useMemo(() => {
+    if (!representatives) return [];
+    if (activeFilter === 'active') return representatives.filter(r => r.isActive);
+    if (activeFilter === 'inactive') return representatives.filter(r => !r.isActive);
+    return representatives;
+  }, [representatives, activeFilter]);
+
+  const columns = useMemo<ColumnDef<GovernmentRepresentative>[]>(
+    () => [
+      {
+        accessorKey: 'id',
+        header: 'ID',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'displayName',
+        header: 'Display Name',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'title',
+        header: 'Title',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'sortOrder',
+        header: 'Sort Order',
+        enableSorting: true,
+      },
+    ],
+    []
+  );
 
   return (
     <div
@@ -32,15 +78,26 @@ export const GovernmentRepresentatives = () => {
     >
       <h1
         style={{
-          margin: '0 0 16px 0',
-          fontSize: '24px',
+          margin: '0 0 8px 0',
+          fontSize: '20px',
           fontWeight: 400,
           color: '#666',
           letterSpacing: '0.5px',
         }}
       >
-        GOVERNMENT REPRESENTATIVES
+        Corporate Calendar Data Administration
       </h1>
+
+      <h2
+        style={{
+          margin: '0 0 16px 0',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#333',
+        }}
+      >
+        Government Representatives
+      </h2>
 
       <Link
         to="/administration"
@@ -60,35 +117,27 @@ export const GovernmentRepresentatives = () => {
       <div
         style={{ backgroundColor: '#fff', padding: '24px', marginTop: '16px' }}
       >
+        <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
+          <Dropdown
+            placeholder="Filter by status"
+            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
+            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+          >
+            <Option value="all">All</Option>
+            <Option value="active">Active</Option>
+            <Option value="inactive">Inactive</Option>
+          </Dropdown>
+        </div>
         {isLoading && <Spinner label="Loading government representatives..." />}
         {error && (
           <div style={{ color: 'red' }}>
             Error loading government representatives
           </div>
         )}
-        {representatives && representatives.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>ID</TableHeaderCell>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Display Name</TableHeaderCell>
-                <TableHeaderCell>Title</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {representatives.map((rep) => (
-                <TableRow key={rep.id}>
-                  <TableCell>{rep.id}</TableCell>
-                  <TableCell>{rep.name}</TableCell>
-                  <TableCell>{rep.displayName || '-'}</TableCell>
-                  <TableCell>{rep.title || '-'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {filteredData && filteredData.length > 0 && (
+          <GenericDataTable data={filteredData} columns={columns} />
         )}
-        {representatives && representatives.length === 0 && (
+        {filteredData && filteredData.length === 0 && (
           <div>No government representatives found</div>
         )}
       </div>

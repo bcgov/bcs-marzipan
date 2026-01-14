@@ -1,18 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchMinistries } from '../../api/lookupsApi';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
-  Spinner,
-} from '@fluentui/react-components';
+import { Spinner, Dropdown, Option } from '@fluentui/react-components';
 import { Link } from 'react-router-dom';
 import { ChevronLeft24Regular } from '@fluentui/react-icons';
+import { ColumnDef } from '@tanstack/react-table';
+import { GenericDataTable } from '../../components/Table/GenericDataTable';
+import { useMemo, useState } from 'react';
+
+type Ministry = {
+  id: string;
+  displayName: string | null;
+  abbreviation: string | null;
+  ministerName: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 export const Ministries = () => {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  
   const {
     data: ministries,
     isLoading,
@@ -21,6 +27,47 @@ export const Ministries = () => {
     queryKey: ['ministries'],
     queryFn: fetchMinistries,
   });
+
+  const filteredData = useMemo(() => {
+    if (!ministries) return [];
+    if (activeFilter === 'active') return ministries.filter(m => m.isActive);
+    if (activeFilter === 'inactive') return ministries.filter(m => !m.isActive);
+    return ministries;
+  }, [ministries, activeFilter]);
+
+  const columns = useMemo<ColumnDef<Ministry>[]>(
+    () => [
+      {
+        accessorKey: 'id',
+        header: 'ID',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'displayName',
+        header: 'Display Name',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'abbreviation',
+        header: 'Abbreviation',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'ministerName',
+        header: 'Minister Name',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'sortOrder',
+        header: 'Sort Order',
+        enableSorting: true,
+      },
+    ],
+    []
+  );
 
   return (
     <div
@@ -32,15 +79,26 @@ export const Ministries = () => {
     >
       <h1
         style={{
-          margin: '0 0 16px 0',
-          fontSize: '24px',
+          margin: '0 0 8px 0',
+          fontSize: '20px',
           fontWeight: 400,
           color: '#666',
           letterSpacing: '0.5px',
         }}
       >
-        MINISTRIES
+        Corporate Calendar Data Administration
       </h1>
+
+      <h2
+        style={{
+          margin: '0 0 16px 0',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#333',
+        }}
+      >
+        Ministries
+      </h2>
 
       <Link
         to="/administration"
@@ -60,31 +118,23 @@ export const Ministries = () => {
       <div
         style={{ backgroundColor: '#fff', padding: '24px', marginTop: '16px' }}
       >
+        <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
+          <Dropdown
+            placeholder="Filter by status"
+            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
+            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+          >
+            <Option value="all">All</Option>
+            <Option value="active">Active</Option>
+            <Option value="inactive">Inactive</Option>
+          </Dropdown>
+        </div>
         {isLoading && <Spinner label="Loading ministries..." />}
         {error && <div style={{ color: 'red' }}>Error loading ministries</div>}
-        {ministries && ministries.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>ID</TableHeaderCell>
-                <TableHeaderCell>Display Name</TableHeaderCell>
-                <TableHeaderCell>Abbreviation</TableHeaderCell>
-                <TableHeaderCell>Minister Name</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ministries.map((ministry) => (
-                <TableRow key={ministry.id}>
-                  <TableCell>{ministry.id}</TableCell>
-                  <TableCell>{ministry.displayName || '-'}</TableCell>
-                  <TableCell>{ministry.abbreviation || '-'}</TableCell>
-                  <TableCell>{ministry.ministerName || '-'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {filteredData && filteredData.length > 0 && (
+          <GenericDataTable data={filteredData} columns={columns} />
         )}
-        {ministries && ministries.length === 0 && (
+        {filteredData && filteredData.length === 0 && (
           <div>No ministries found</div>
         )}
       </div>

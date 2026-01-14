@@ -21,33 +21,6 @@ export const TransferActivities = () => {
         Corportate Calendar Data Administration
       </h1>
 
-      {/* Action Links */}
-      <div style={{ marginBottom: '32px' }}>
-        <Link
-          href="/manage-users"
-          style={{
-            display: 'block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            marginBottom: '8px',
-            fontSize: '14px',
-          }}
-        >
-          Transfer Activities
-        </Link>
-        <Link
-          href="/transfer-activities"
-          style={{
-            display: 'block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            fontSize: '14px',
-          }}
-        >
-          Transfer Activities
-        </Link>
-      </div>
-
       {/* Lookup Tables Section */}
       <h2
         style={{

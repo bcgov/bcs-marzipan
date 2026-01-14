@@ -53,7 +53,7 @@ export const Administration = () => {
           Manage Users
         </Link>
         <Link
-          href="./dataAdmin/transferActivities"
+          href="/transfer-activities"
           style={{
             display: 'block',
             color: '#0078d4',

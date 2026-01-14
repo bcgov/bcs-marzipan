@@ -1,18 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchCategories } from '../../api/lookupsApi';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
-  Spinner,
-} from '@fluentui/react-components';
+import { Spinner, Dropdown, Option } from '@fluentui/react-components';
 import { Link } from 'react-router-dom';
 import { ChevronLeft24Regular } from '@fluentui/react-icons';
+import { ColumnDef } from '@tanstack/react-table';
+import { GenericDataTable } from '../../components/Table/GenericDataTable';
+import { useMemo, useState } from 'react';
+
+type Category = {
+  id: number;
+  name: string;
+  displayName: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 export const Categories = () => {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  
   const {
     data: categories,
     isLoading,
@@ -21,6 +26,40 @@ export const Categories = () => {
     queryKey: ['categories'],
     queryFn: fetchCategories,
   });
+
+  const filteredData = useMemo(() => {
+    if (!categories) return [];
+    if (activeFilter === 'active') return categories.filter(c => c.isActive);
+    if (activeFilter === 'inactive') return categories.filter(c => !c.isActive);
+    return categories;
+  }, [categories, activeFilter]);
+
+  const columns = useMemo<ColumnDef<Category>[]>(
+    () => [
+      {
+        accessorKey: 'id',
+        header: 'ID',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'name',
+        header: 'Name',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'displayName',
+        header: 'Display Name',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'sortOrder',
+        header: 'Sort Order',
+        enableSorting: true,
+      },
+    ],
+    []
+  );
 
   return (
     <div
@@ -32,15 +71,26 @@ export const Categories = () => {
     >
       <h1
         style={{
-          margin: '0 0 16px 0',
-          fontSize: '24px',
+          margin: '0 0 8px 0',
+          fontSize: '20px',
           fontWeight: 400,
           color: '#666',
           letterSpacing: '0.5px',
         }}
       >
-        CATEGORIES
+        Corporate Calendar Data Administration
       </h1>
+
+      <h2
+        style={{
+          margin: '0 0 16px 0',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#333',
+        }}
+      >
+        Categories
+      </h2>
 
       <Link
         to="/administration"
@@ -60,29 +110,23 @@ export const Categories = () => {
       <div
         style={{ backgroundColor: '#fff', padding: '24px', marginTop: '16px' }}
       >
+        <div style={{ marginBottom: '16px', maxWidth: '200px' }}>
+          <Dropdown
+            placeholder="Filter by status"
+            value={activeFilter === 'all' ? 'All' : activeFilter === 'active' ? 'Active' : 'Inactive'}
+            onOptionSelect={(_, data) => setActiveFilter(data.optionValue as string)}
+          >
+            <Option value="all">All</Option>
+            <Option value="active">Active</Option>
+            <Option value="inactive">Inactive</Option>
+          </Dropdown>
+        </div>
         {isLoading && <Spinner label="Loading categories..." />}
         {error && <div style={{ color: 'red' }}>Error loading categories</div>}
-        {categories && categories.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>ID</TableHeaderCell>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Display Name</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {categories.map((category) => (
-                <TableRow key={category.id}>
-                  <TableCell>{category.id}</TableCell>
-                  <TableCell>{category.name}</TableCell>
-                  <TableCell>{category.displayName || '-'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {filteredData && filteredData.length > 0 && (
+          <GenericDataTable data={filteredData} columns={columns} />
         )}
-        {categories && categories.length === 0 && (
+        {filteredData && filteredData.length === 0 && (
           <div>No categories found</div>
         )}
       </div>
