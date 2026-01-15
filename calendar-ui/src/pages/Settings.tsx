@@ -23,6 +23,10 @@ import {
   DialogContent,
   Field,
   Input,
+  Toast,
+  ToastTitle,
+  ToastBody,
+  useToastController,
 } from '@fluentui/react-components';
 import {
   Add20Regular,
@@ -321,6 +325,7 @@ const LookupSection = ({
 
 export const Settings = () => {
   const queryClient = useQueryClient();
+  const { dispatchToast } = useToastController();
 
   const [categoriesFilter, setCategoriesFilter] = useState('all');
   const [citiesFilter, setCitiesFilter] = useState('all');
@@ -593,123 +598,187 @@ export const Settings = () => {
 
   // Delete mutations (soft delete by setting isActive to false)
   const deleteCategoryMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const response = await api.patch(`/lookups/categories/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['categories'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Category {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteCityMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const response = await api.patch(`/lookups/cities/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['cities'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>City {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteCommsMaterialMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const response = await api.patch(`/lookups/comms-materials/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Comms Material {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteGovRepMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const response = await api.patch(
         `/lookups/government-representatives/${id}`,
-        { isActive: false }
+        { isActive: !isActive }
       );
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Government Representative {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteTagMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const response = await api.patch(`/lookups/tags/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['tags'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Tag {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteMinistryMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const response = await api.patch(`/lookups/ministries/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Ministry {action}</ToastTitle>
+          <ToastBody>{updatedData.data.displayName || updatedData.data.abbreviation} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteStatusMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
       const response = await api.patch(`/lookups/activity-statuses/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Activity Status {action}</ToastTitle>
+          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
   const deleteThemeMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       const response = await api.patch(`/lookups/themes/${id}`, {
-        isActive: false,
+        isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['themes'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
       });
+      const action = variables.isActive ? 'deactivated' : 'reactivated';
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Theme {action}</ToastTitle>
+          <ToastBody>{updatedData.data.displayName || updatedData.data.key} has been {action}.</ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 3000 }
+      );
     },
   });
 
@@ -812,10 +881,13 @@ export const Settings = () => {
               appearance="subtle"
               icon={<Delete20Regular />}
               onClick={() =>
-                deleteCategoryMutation.mutate(info.row.original.id)
+                deleteCategoryMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
               }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -856,9 +928,14 @@ export const Settings = () => {
             <Button
               appearance="subtle"
               icon={<Delete20Regular />}
-              onClick={() => deleteCityMutation.mutate(info.row.original.id)}
+              onClick={() =>
+                deleteCityMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
+              }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -894,10 +971,13 @@ export const Settings = () => {
               appearance="subtle"
               icon={<Delete20Regular />}
               onClick={() =>
-                deleteCommsMaterialMutation.mutate(info.row.original.id)
+                deleteCommsMaterialMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
               }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -938,9 +1018,14 @@ export const Settings = () => {
             <Button
               appearance="subtle"
               icon={<Delete20Regular />}
-              onClick={() => deleteGovRepMutation.mutate(info.row.original.id)}
+              onClick={() =>
+                deleteGovRepMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
+              }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -980,9 +1065,14 @@ export const Settings = () => {
             <Button
               appearance="subtle"
               icon={<Delete20Regular />}
-              onClick={() => deleteTagMutation.mutate(info.row.original.id)}
+              onClick={() =>
+                deleteTagMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
+              }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -1029,10 +1119,13 @@ export const Settings = () => {
               appearance="subtle"
               icon={<Delete20Regular />}
               onClick={() =>
-                deleteMinistryMutation.mutate(info.row.original.id)
+                deleteMinistryMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
               }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -1067,9 +1160,14 @@ export const Settings = () => {
             <Button
               appearance="subtle"
               icon={<Delete20Regular />}
-              onClick={() => deleteStatusMutation.mutate(info.row.original.id)}
+              onClick={() =>
+                deleteStatusMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
+              }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
@@ -1109,9 +1207,14 @@ export const Settings = () => {
             <Button
               appearance="subtle"
               icon={<Delete20Regular />}
-              onClick={() => deleteThemeMutation.mutate(info.row.original.id)}
+              onClick={() =>
+                deleteThemeMutation.mutate({
+                  id: info.row.original.id,
+                  isActive: info.row.original.isActive,
+                })
+              }
             >
-              Delete
+              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
           </div>
         ),
