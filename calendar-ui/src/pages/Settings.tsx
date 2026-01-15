@@ -364,7 +364,7 @@ export const Settings = () => {
       const response = await api.post('/lookups/categories', data);
       return response.data;
     },
-    onSuccess: async (newData) => {
+    onSuccess: (newData) => {
       queryClient.setQueryData(['categories'], (old: any) => {
         if (!old) return [newData];
         return [...old, newData];
@@ -476,7 +476,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['categories'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingCategory(null);
     },
@@ -491,7 +493,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['cities'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingCity(null);
     },
@@ -509,7 +513,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingCommsMaterial(null);
     },
@@ -527,7 +533,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingGovRep(null);
     },
@@ -542,7 +550,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['tags'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingTag(null);
     },
@@ -557,7 +567,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingMinistry(null);
     },
@@ -575,7 +587,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingStatus(null);
     },
@@ -590,7 +604,9 @@ export const Settings = () => {
     onSuccess: (updatedData) => {
       queryClient.setQueryData(['themes'], (old: any) => {
         if (!old) return [updatedData];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       setEditingTheme(null);
     },
@@ -607,13 +623,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['categories'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Category {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -630,13 +650,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['cities'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>City {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -653,13 +677,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Comms Material {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -677,13 +705,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Government Representative {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -700,13 +732,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['tags'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Tag {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -723,13 +759,18 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Ministry {action}</ToastTitle>
-          <ToastBody>{updatedData.data.displayName || updatedData.data.abbreviation} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.displayName || updatedData.data.abbreviation} has
+            been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -746,13 +787,17 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Activity Status {action}</ToastTitle>
-          <ToastBody>{updatedData.data.name} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.name} has been {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
@@ -769,13 +814,18 @@ export const Settings = () => {
     onSuccess: (updatedData, variables) => {
       queryClient.setQueryData(['themes'], (old: any) => {
         if (!old) return [];
-        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+        return old.map((item: any) =>
+          item.id === updatedData.data.id ? updatedData.data : item
+        );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
       dispatchToast(
         <Toast>
           <ToastTitle>Theme {action}</ToastTitle>
-          <ToastBody>{updatedData.data.displayName || updatedData.data.key} has been {action}.</ToastBody>
+          <ToastBody>
+            {updatedData.data.displayName || updatedData.data.key} has been{' '}
+            {action}.
+          </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
       );
