@@ -16,6 +16,7 @@ import {
   Link,
   Button,
   Dialog,
+  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,
@@ -114,15 +115,7 @@ const AddModal = ({
   });
 
   const handleSubmit = () => {
-    // Convert numeric fields from strings to numbers
-    const processedData = { ...formData };
-    fields.forEach((field) => {
-      if (field.type === 'number' && processedData[field.name]) {
-        processedData[field.name] = Number(processedData[field.name]);
-      }
-    });
-
-    onSubmit(processedData);
+    onSubmit(formData);
     setFormData({ isActive: true });
     onClose();
   };
@@ -208,7 +201,7 @@ const LookupSection = ({
     if (activeFilter === 'inactive')
       return data.filter((item) => !item.isActive);
     return data;
-  }, [data, activeFilter, entityType]);
+  }, [data, activeFilter]);
 
   return (
     <div style={{ marginBottom: '48px' }}>
@@ -295,7 +288,7 @@ const LookupSection = ({
   );
 };
 
-export const Settings = () => {
+export const Administration = () => {
   const queryClient = useQueryClient();
 
   const [categoriesFilter, setCategoriesFilter] = useState('all');

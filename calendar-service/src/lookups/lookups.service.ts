@@ -44,9 +44,10 @@ export class LookupsService {
         id: categories.id,
         name: categories.name,
         displayName: categories.displayName,
+        sortOrder: categories.sortOrder,
+        isActive: categories.isActive,
       })
       .from(categories)
-      .where(eq(categories.isActive, true))
       .orderBy(categories.sortOrder);
 
     return results.map((cat) => ({
@@ -55,6 +56,8 @@ export class LookupsService {
       value: cat.id,
       name: cat.name,
       displayName: cat.displayName,
+      sortOrder: cat.sortOrder,
+      isActive: cat.isActive,
     }));
   }
 
@@ -125,9 +128,10 @@ export class LookupsService {
         id: tags.id,
         key: tags.key,
         displayName: tags.displayName,
+        sortOrder: tags.sortOrder,
+        isActive: tags.isActive,
       })
       .from(tags)
-      .where(eq(tags.isActive, true))
       .orderBy(tags.sortOrder);
 
     return results.map((tag) => ({
@@ -136,6 +140,8 @@ export class LookupsService {
       value: tag.id,
       key: tag.key,
       displayName: tag.displayName,
+      sortOrder: tag.sortOrder,
+      isActive: tag.isActive,
     }));
   }
 
@@ -194,9 +200,10 @@ export class LookupsService {
         id: commsMaterials.id,
         name: commsMaterials.name,
         displayName: commsMaterials.displayName,
+        sortOrder: commsMaterials.sortOrder,
+        isActive: commsMaterials.isActive,
       })
       .from(commsMaterials)
-      .where(eq(commsMaterials.isActive, true))
       .orderBy(commsMaterials.sortOrder);
 
     return results.map((material) => ({
@@ -205,6 +212,8 @@ export class LookupsService {
       value: material.id,
       name: material.name,
       displayName: material.displayName,
+      sortOrder: material.sortOrder,
+      isActive: material.isActive,
     }));
   }
 
@@ -242,9 +251,10 @@ export class LookupsService {
         displayName: governmentRepresentatives.displayName,
         title: governmentRepresentatives.title,
         ministryId: governmentRepresentatives.ministryId,
+        sortOrder: governmentRepresentatives.sortOrder,
+        isActive: governmentRepresentatives.isActive,
       })
       .from(governmentRepresentatives)
-      .where(eq(governmentRepresentatives.isActive, true))
       .orderBy(governmentRepresentatives.sortOrder);
 
     return results.map((rep) => ({
@@ -255,6 +265,8 @@ export class LookupsService {
       displayName: rep.displayName,
       title: rep.title,
       ministryId: rep.ministryId,
+      sortOrder: rep.sortOrder,
+      isActive: rep.isActive,
     }));
   }
 
@@ -293,9 +305,10 @@ export class LookupsService {
         name: cities.name,
         displayName: cities.displayName,
         province: cities.province,
+        sortOrder: cities.sortOrder,
+        isActive: cities.isActive,
       })
       .from(cities)
-      .where(eq(cities.isActive, true))
       .orderBy(cities.sortOrder);
 
     return results.map((city) => ({
@@ -305,6 +318,8 @@ export class LookupsService {
       name: city.name,
       displayName: city.displayName,
       province: city.province,
+      sortOrder: city.sortOrder,
+      isActive: city.isActive,
     }));
   }
 
@@ -318,9 +333,10 @@ export class LookupsService {
         displayName: ministries.displayName,
         abbreviation: ministries.abbreviation,
         ministerName: ministries.ministerName,
+        sortOrder: ministries.sortOrder,
+        isActive: ministries.isActive,
       })
       .from(ministries)
-      .where(eq(ministries.isActive, true))
       .orderBy(ministries.sortOrder);
 
     return results.map((ministry) => ({
@@ -330,6 +346,8 @@ export class LookupsService {
       displayName: ministry.displayName,
       abbreviation: ministry.abbreviation,
       ministerName: ministry.ministerName,
+      sortOrder: ministry.sortOrder,
+      isActive: ministry.isActive,
     }));
   }
 
@@ -342,9 +360,10 @@ export class LookupsService {
         id: themes.id,
         key: themes.key,
         displayName: themes.displayName,
+        sortOrder: themes.sortOrder,
+        isActive: themes.isActive,
       })
       .from(themes)
-      .where(eq(themes.isActive, true))
       .orderBy(themes.sortOrder);
 
     return results.map((theme) => ({
@@ -353,6 +372,8 @@ export class LookupsService {
       value: theme.id,
       key: theme.key,
       displayName: theme.displayName,
+      sortOrder: theme.sortOrder,
+      isActive: theme.isActive,
     }));
   }
 
@@ -365,9 +386,10 @@ export class LookupsService {
         id: activityStatuses.id,
         name: activityStatuses.name,
         displayName: activityStatuses.displayName,
+        sortOrder: activityStatuses.sortOrder,
+        isActive: activityStatuses.isActive,
       })
       .from(activityStatuses)
-      .where(eq(activityStatuses.isActive, true))
       .orderBy(activityStatuses.sortOrder);
 
     return results.map((status) => ({
@@ -376,6 +398,8 @@ export class LookupsService {
       value: status.id,
       name: status.name,
       displayName: status.displayName,
+      sortOrder: status.sortOrder,
+      isActive: status.isActive,
     }));
   }
 

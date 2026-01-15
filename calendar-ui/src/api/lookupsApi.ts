@@ -4,6 +4,8 @@ export interface LookupItem {
   id: string | number;
   label: string;
   value: string | number;
+  sortOrder?: number;
+  isActive?: boolean;
   [key: string]: unknown;
 }
 
