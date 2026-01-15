@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Header } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Query, Header, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -67,6 +67,26 @@ export class LookupsController {
       sortOrder,
       isActive,
     });
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a category' })
+  @ApiResponse({
+    status: 200,
+    description: 'Category updated successfully',
+  })
+  @Patch('categories/:id')
+  async updateCategory(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      displayName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCategory(Number(id), body);
     return { success: true, data };
   }
 
@@ -153,6 +173,26 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Update a tag' })
+  @ApiResponse({
+    status: 200,
+    description: 'Tag updated successfully',
+  })
+  @Patch('tags/:id')
+  async updateTag(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      key?: string;
+      displayName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTag(id, body);
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all pitch statuses' })
   @ApiResponse({
     status: 200,
@@ -229,6 +269,26 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Update a communication material' })
+  @ApiResponse({
+    status: 200,
+    description: 'Communication material updated successfully',
+  })
+  @Patch('comms-materials/:id')
+  async updateCommsMaterial(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      displayName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCommsMaterial(Number(id), body);
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all translation languages' })
   @ApiResponse({
     status: 200,
@@ -296,6 +356,27 @@ export class LookupsController {
       sortOrder,
       isActive,
     });
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a government representative' })
+  @ApiResponse({
+    status: 200,
+    description: 'Government representative updated successfully',
+  })
+  @Patch('government-representatives/:id')
+  async updateGovernmentRepresentative(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      displayName?: string;
+      title?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateGovernmentRepresentative(Number(id), body);
     return { success: true, data };
   }
 
@@ -371,6 +452,27 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Update a city' })
+  @ApiResponse({
+    status: 200,
+    description: 'City updated successfully',
+  })
+  @Patch('cities/:id')
+  async updateCity(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      displayName?: string;
+      province?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateCity(Number(id), body);
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all ministries' })
   @ApiResponse({
     status: 200,
@@ -424,6 +526,27 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Update a ministry' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministry updated successfully',
+  })
+  @Patch('ministries/:id')
+  async updateMinistry(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      displayName?: string;
+      abbreviation?: string;
+      ministerName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateMinistry(id, body);
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all themes' })
   @ApiResponse({
     status: 200,
@@ -470,6 +593,26 @@ export class LookupsController {
       sortOrder,
       isActive,
     });
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a theme' })
+  @ApiResponse({
+    status: 200,
+    description: 'Theme updated successfully',
+  })
+  @Patch('themes/:id')
+  async updateTheme(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      key?: string;
+      displayName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTheme(id, body);
     return { success: true, data };
   }
 
@@ -522,6 +665,26 @@ export class LookupsController {
       sortOrder,
       isActive,
     });
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update an activity status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity status updated successfully',
+  })
+  @Patch('activity-statuses/:id')
+  async updateActivityStatus(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      displayName?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateActivityStatus(Number(id), body);
     return { success: true, data };
   }
 }

@@ -576,4 +576,188 @@ export class LookupsService {
       .returning();
     return result;
   }
+
+  /**
+   * Update methods
+   */
+
+  async updateCategory(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(categories)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+      })
+      .where(eq(categories.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateCity(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      province: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(cities)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+        province:
+          data.province !== undefined ? data.province || null : undefined,
+      })
+      .where(eq(cities.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateCommsMaterial(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(commsMaterials)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+      })
+      .where(eq(commsMaterials.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateGovernmentRepresentative(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      title: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(governmentRepresentatives)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+        title: data.title !== undefined ? data.title || null : undefined,
+      })
+      .where(eq(governmentRepresentatives.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTag(
+    id: string,
+    data: Partial<{
+      key: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(tags)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+      })
+      .where(eq(tags.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateMinistry(
+    id: string,
+    data: Partial<{
+      displayName: string;
+      abbreviation: string;
+      ministerName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(ministries)
+      .set({
+        ...data,
+        abbreviation:
+          data.abbreviation !== undefined
+            ? data.abbreviation || null
+            : undefined,
+        ministerName:
+          data.ministerName !== undefined
+            ? data.ministerName || null
+            : undefined,
+      })
+      .where(eq(ministries.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateActivityStatus(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(activityStatuses)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+      })
+      .where(eq(activityStatuses.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTheme(
+    id: string,
+    data: Partial<{
+      key: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>
+  ): Promise<any> {
+    const [result] = await this.databaseService.db
+      .update(themes)
+      .set({
+        ...data,
+        displayName:
+          data.displayName !== undefined ? data.displayName || null : undefined,
+      })
+      .where(eq(themes.id, id))
+      .returning();
+    return result;
+  }
 }

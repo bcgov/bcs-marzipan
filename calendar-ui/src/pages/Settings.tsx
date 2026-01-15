@@ -24,10 +24,14 @@ import {
   Field,
   Input,
 } from '@fluentui/react-components';
-import { Add20Regular } from '@fluentui/react-icons';
+import {
+  Add20Regular,
+  Edit20Regular,
+  Delete20Regular,
+} from '@fluentui/react-icons';
 import { ColumnDef } from '@tanstack/react-table';
 import { GenericDataTable } from '../components/Table/GenericDataTable';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import api from '../api/axios';
 
 type Category = {
@@ -100,6 +104,7 @@ type AddModalProps = {
     type: 'text' | 'number';
     required?: boolean;
   }>;
+  initialData?: Record<string, any>;
 };
 
 const AddModal = ({
@@ -108,10 +113,19 @@ const AddModal = ({
   onSubmit,
   title,
   fields,
+  initialData,
 }: AddModalProps) => {
   const [formData, setFormData] = useState<Record<string, any>>({
     isActive: true,
+    ...initialData,
   });
+
+  // Update form data when initialData changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setFormData({ isActive: true, ...initialData });
+    }
+  }, [open, initialData]);
 
   const handleSubmit = () => {
     // Convert numeric fields from strings to numbers
@@ -122,13 +136,23 @@ const AddModal = ({
       }
     });
 
-    onSubmit(processedData);
+    // Only include fields that are defined in the form fields, plus isActive
+    const filteredData: Record<string, any> = {
+      isActive: processedData.isActive,
+    };
+    fields.forEach((field) => {
+      if (processedData[field.name] !== undefined) {
+        filteredData[field.name] = processedData[field.name];
+      }
+    });
+
+    onSubmit(filteredData);
     setFormData({ isActive: true });
     onClose();
   };
 
   const handleCancel = () => {
-    setFormData({ isActive: true });
+    setFormData({ isActive: true, ...initialData });
     onClose();
   };
 
@@ -316,14 +340,30 @@ export const Settings = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
 
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingCity, setEditingCity] = useState<City | null>(null);
+  const [editingCommsMaterial, setEditingCommsMaterial] =
+    useState<CommsMaterial | null>(null);
+  const [editingGovRep, setEditingGovRep] =
+    useState<GovernmentRepresentative | null>(null);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [editingMinistry, setEditingMinistry] = useState<Ministry | null>(null);
+  const [editingStatus, setEditingStatus] = useState<ActivityStatus | null>(
+    null
+  );
+  const [editingTheme, setEditingTheme] = useState<Theme | null>(null);
+
   // Mutation for creating categories
   const createCategoryMutation = useMutation({
     mutationFn: async (data: Partial<Category>) => {
       const response = await api.post('/lookups/categories', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    onSuccess: async (newData) => {
+      queryClient.setQueryData(['categories'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -332,8 +372,11 @@ export const Settings = () => {
       const response = await api.post('/lookups/cities', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['cities'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['cities'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -342,8 +385,11 @@ export const Settings = () => {
       const response = await api.post('/lookups/comms-materials', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['commsMaterials'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['commsMaterials'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -355,9 +401,10 @@ export const Settings = () => {
       );
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['governmentRepresentatives'],
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
       });
     },
   });
@@ -367,8 +414,11 @@ export const Settings = () => {
       const response = await api.post('/lookups/tags', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['tags'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['tags'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -377,8 +427,11 @@ export const Settings = () => {
       const response = await api.post('/lookups/ministries', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['ministries'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['ministries'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -387,8 +440,11 @@ export const Settings = () => {
       const response = await api.post('/lookups/activity-statuses', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['activityStatuses'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['activityStatuses'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
     },
   });
 
@@ -397,8 +453,263 @@ export const Settings = () => {
       const response = await api.post('/lookups/themes', data);
       return response.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['themes'] });
+    onSuccess: (newData) => {
+      queryClient.setQueryData(['themes'], (old: any) => {
+        if (!old) return [newData];
+        return [...old, newData];
+      });
+    },
+  });
+
+  // Update mutations
+  const updateCategoryMutation = useMutation({
+    mutationFn: async (data: Category) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(`/lookups/categories/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['categories'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingCategory(null);
+    },
+  });
+
+  const updateCityMutation = useMutation({
+    mutationFn: async (data: City) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(`/lookups/cities/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['cities'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingCity(null);
+    },
+  });
+
+  const updateCommsMaterialMutation = useMutation({
+    mutationFn: async (data: CommsMaterial) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(
+        `/lookups/comms-materials/${id}`,
+        updateData
+      );
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['commsMaterials'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingCommsMaterial(null);
+    },
+  });
+
+  const updateGovRepMutation = useMutation({
+    mutationFn: async (data: GovernmentRepresentative) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(
+        `/lookups/government-representatives/${id}`,
+        updateData
+      );
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingGovRep(null);
+    },
+  });
+
+  const updateTagMutation = useMutation({
+    mutationFn: async (data: Tag) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(`/lookups/tags/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['tags'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingTag(null);
+    },
+  });
+
+  const updateMinistryMutation = useMutation({
+    mutationFn: async (data: Ministry) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(`/lookups/ministries/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['ministries'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingMinistry(null);
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (data: ActivityStatus) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(
+        `/lookups/activity-statuses/${id}`,
+        updateData
+      );
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['activityStatuses'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingStatus(null);
+    },
+  });
+
+  const updateThemeMutation = useMutation({
+    mutationFn: async (data: Theme) => {
+      const { id, ...updateData } = data;
+      const response = await api.patch(`/lookups/themes/${id}`, updateData);
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['themes'], (old: any) => {
+        if (!old) return [updatedData];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+      setEditingTheme(null);
+    },
+  });
+
+  // Delete mutations (soft delete by setting isActive to false)
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.patch(`/lookups/categories/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['categories'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteCityMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.patch(`/lookups/cities/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['cities'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteCommsMaterialMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.patch(`/lookups/comms-materials/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['commsMaterials'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteGovRepMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.patch(
+        `/lookups/government-representatives/${id}`,
+        { isActive: false }
+      );
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteTagMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.patch(`/lookups/tags/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['tags'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteMinistryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.patch(`/lookups/ministries/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['ministries'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteStatusMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.patch(`/lookups/activity-statuses/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['activityStatuses'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
+    },
+  });
+
+  const deleteThemeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.patch(`/lookups/themes/${id}`, {
+        isActive: false,
+      });
+      return response.data;
+    },
+    onSuccess: (updatedData) => {
+      queryClient.setQueryData(['themes'], (old: any) => {
+        if (!old) return [];
+        return old.map((item: any) => item.id === updatedData.data.id ? updatedData.data : item);
+      });
     },
   });
 
@@ -485,8 +796,32 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingCategory(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() =>
+                deleteCategoryMutation.mutate(info.row.original.id)
+              }
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteCategoryMutation]
   );
 
   const citiesColumns = useMemo<ColumnDef<City>[]>(
@@ -506,8 +841,30 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingCity(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() => deleteCityMutation.mutate(info.row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteCityMutation]
   );
 
   const commsMaterialsColumns = useMemo<ColumnDef<CommsMaterial>[]>(
@@ -521,8 +878,32 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingCommsMaterial(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() =>
+                deleteCommsMaterialMutation.mutate(info.row.original.id)
+              }
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteCommsMaterialMutation]
   );
 
   const govRepsColumns = useMemo<ColumnDef<GovernmentRepresentative>[]>(
@@ -542,8 +923,30 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingGovRep(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() => deleteGovRepMutation.mutate(info.row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteGovRepMutation]
   );
 
   const tagsColumns = useMemo<ColumnDef<Tag>[]>(
@@ -562,8 +965,30 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingTag(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() => deleteTagMutation.mutate(info.row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteTagMutation]
   );
 
   const ministriesColumns = useMemo<ColumnDef<Ministry>[]>(
@@ -588,8 +1013,32 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingMinistry(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() =>
+                deleteMinistryMutation.mutate(info.row.original.id)
+              }
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteMinistryMutation]
   );
 
   const statusColumns = useMemo<ColumnDef<ActivityStatus>[]>(
@@ -603,8 +1052,30 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingStatus(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() => deleteStatusMutation.mutate(info.row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteStatusMutation]
   );
 
   const themesColumns = useMemo<ColumnDef<Theme>[]>(
@@ -623,8 +1094,30 @@ export const Settings = () => {
         enableSorting: true,
       },
       { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              appearance="subtle"
+              icon={<Edit20Regular />}
+              onClick={() => setEditingTheme(info.row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              appearance="subtle"
+              icon={<Delete20Regular />}
+              onClick={() => deleteThemeMutation.mutate(info.row.original.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        ),
+      },
     ],
-    []
+    [deleteThemeMutation]
   );
 
   return (
@@ -690,6 +1183,26 @@ export const Settings = () => {
         ]}
       />
 
+      <AddModal
+        open={!!editingCategory}
+        onClose={() => setEditingCategory(null)}
+        onSubmit={(data) =>
+          updateCategoryMutation.mutate({ ...data, id: editingCategory?.id })
+        }
+        title="Edit Category"
+        initialData={editingCategory || undefined}
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
       <LookupSection
         title="Categories"
         entityType="Category"
@@ -707,6 +1220,27 @@ export const Settings = () => {
         onClose={() => setShowCityModal(false)}
         onSubmit={(data) => createCityMutation.mutate(data)}
         title="Add City"
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          { name: 'province', label: 'Province', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
+      <AddModal
+        open={!!editingCity}
+        onClose={() => setEditingCity(null)}
+        onSubmit={(data) =>
+          updateCityMutation.mutate({ ...data, id: editingCity?.id })
+        }
+        title="Edit City"
+        initialData={editingCity || undefined}
         fields={[
           { name: 'name', label: 'Name', type: 'text', required: true },
           { name: 'displayName', label: 'Display Name', type: 'text' },
@@ -749,6 +1283,29 @@ export const Settings = () => {
         ]}
       />
 
+      <AddModal
+        open={!!editingCommsMaterial}
+        onClose={() => setEditingCommsMaterial(null)}
+        onSubmit={(data) =>
+          updateCommsMaterialMutation.mutate({
+            ...data,
+            id: editingCommsMaterial?.id,
+          })
+        }
+        title="Edit Communication Material"
+        initialData={editingCommsMaterial || undefined}
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
       <LookupSection
         title="Communication Materials"
         entityType="Communication Material"
@@ -779,6 +1336,27 @@ export const Settings = () => {
         ]}
       />
 
+      <AddModal
+        open={!!editingGovRep}
+        onClose={() => setEditingGovRep(null)}
+        onSubmit={(data) =>
+          updateGovRepMutation.mutate({ ...data, id: editingGovRep?.id })
+        }
+        title="Edit Government Representative"
+        initialData={editingGovRep || undefined}
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          { name: 'title', label: 'Title', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
       <LookupSection
         title="Government Representatives"
         entityType="Government Representative"
@@ -796,6 +1374,26 @@ export const Settings = () => {
         onClose={() => setShowTagModal(false)}
         onSubmit={(data) => createTagMutation.mutate(data)}
         title="Add HQ Tag"
+        fields={[
+          { name: 'key', label: 'Key', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
+      <AddModal
+        open={!!editingTag}
+        onClose={() => setEditingTag(null)}
+        onSubmit={(data) =>
+          updateTagMutation.mutate({ ...data, id: editingTag?.id })
+        }
+        title="Edit HQ Tag"
+        initialData={editingTag || undefined}
         fields={[
           { name: 'key', label: 'Key', type: 'text', required: true },
           { name: 'displayName', label: 'Display Name', type: 'text' },
@@ -843,6 +1441,32 @@ export const Settings = () => {
         ]}
       />
 
+      <AddModal
+        open={!!editingMinistry}
+        onClose={() => setEditingMinistry(null)}
+        onSubmit={(data) =>
+          updateMinistryMutation.mutate({ ...data, id: editingMinistry?.id })
+        }
+        title="Edit Ministry"
+        initialData={editingMinistry || undefined}
+        fields={[
+          {
+            name: 'displayName',
+            label: 'Display Name',
+            type: 'text',
+            required: true,
+          },
+          { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
+          { name: 'ministerName', label: 'Minister Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
       <LookupSection
         title="Ministries"
         entityType="Ministry"
@@ -872,6 +1496,26 @@ export const Settings = () => {
         ]}
       />
 
+      <AddModal
+        open={!!editingStatus}
+        onClose={() => setEditingStatus(null)}
+        onSubmit={(data) =>
+          updateStatusMutation.mutate({ ...data, id: editingStatus?.id })
+        }
+        title="Edit Status"
+        initialData={editingStatus || undefined}
+        fields={[
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
       <LookupSection
         title="Status"
         entityType="Status"
@@ -889,6 +1533,26 @@ export const Settings = () => {
         onClose={() => setShowThemeModal(false)}
         onSubmit={(data) => createThemeMutation.mutate(data)}
         title="Add Theme"
+        fields={[
+          { name: 'key', label: 'Key', type: 'text', required: true },
+          { name: 'displayName', label: 'Display Name', type: 'text' },
+          {
+            name: 'sortOrder',
+            label: 'Sort Order',
+            type: 'number',
+            required: true,
+          },
+        ]}
+      />
+
+      <AddModal
+        open={!!editingTheme}
+        onClose={() => setEditingTheme(null)}
+        onSubmit={(data) =>
+          updateThemeMutation.mutate({ ...data, id: editingTheme?.id })
+        }
+        title="Edit Theme"
+        initialData={editingTheme || undefined}
         fields={[
           { name: 'key', label: 'Key', type: 'text', required: true },
           { name: 'displayName', label: 'Display Name', type: 'text' },
