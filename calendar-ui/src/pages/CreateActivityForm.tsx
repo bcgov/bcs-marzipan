@@ -54,6 +54,9 @@ type FormData = CreateActivityRequest & {
   canViewUserIds?: number[];
 };
 
+// TODO: Replace with actual user from auth context once authentication is implemented
+const TEMPORARY_USER_ID = 8;
+
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
@@ -71,9 +74,8 @@ export const CreateActivityForm: React.FC = () => {
       notForLookAhead: false,
       planningReport: false,
       thirtySixtyNinetyReport: false,
-      // TODO: Remove hardcoded user id 8 - this is temporary for development
-      ownerId: 8,
-      commsLeadId: 8,
+      ownerId: TEMPORARY_USER_ID,
+      commsLeadId: TEMPORARY_USER_ID,
       categoryIds: [],
       relatedActivityIds: [],
       tagIds: [],
@@ -92,10 +94,9 @@ export const CreateActivityForm: React.FC = () => {
   const formValues = form.watch();
 
   // Autosave integration
-  // TODO: Replace hardcoded userId with actual user from auth context
   const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
     useAutoSave(
-      8, // userId (temporary hardcoded)
+      TEMPORARY_USER_ID,
       'activity',
       formValues as Record<string, any>,
       undefined,
@@ -107,58 +108,29 @@ export const CreateActivityForm: React.FC = () => {
 
   // Check for existing draft on mount and show dialog
   useEffect(() => {
-    console.log('Draft check effect running', {
-      draftChecked,
-      isDraftLoading,
-      hasDraft: !!existingDraft,
-      draftId: existingDraft?.id,
-      hasDraftData: !!existingDraft?.draftData,
-    });
-
     if (
       !draftChecked &&
       !isDraftLoading &&
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
-      console.log('Showing draft dialog for draft:', existingDraft.id);
       setShowDraftDialog(true);
       setDraftChecked(true);
     } else if (!draftChecked && !isDraftLoading) {
       // No draft found, mark as checked so we don't show dialog
-      console.log('No draft found, marking as checked');
       setDraftChecked(true);
     }
   }, [existingDraft, isDraftLoading, draftChecked]);
 
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
-      console.log('Loading existing draft');
       form.reset(existingDraft.draftData as FormData);
     }
     setShowDraftDialog(false);
   };
 
   const handleStartFresh = () => {
-    console.log('Starting fresh - deleting draft ID:', existingDraft?.id);
-
-    if (existingDraft?.id) {
-      // Delete by ID directly - this is more reliable
-      fetch(
-        `${import.meta.env.VITE_API_BASE_URL || '/api'}/drafts/${existingDraft.id}?userId=8`,
-        {
-          method: 'DELETE',
-        }
-      )
-        .then(() => {
-          console.log('Draft deleted successfully');
-        })
-        .catch((error) => {
-          console.error('Failed to delete draft:', error);
-        });
-    }
-
-    // Also call the hook's delete function to clean up cache
+    // Use the hook's delete function to handle draft deletion and cache cleanup
     deleteDraft();
 
     setShowDraftDialog(false);
