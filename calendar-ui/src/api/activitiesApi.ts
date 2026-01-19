@@ -3,14 +3,14 @@ import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
-  FilterActivities,
+  FilterActivitiesQueryParams,
 } from '@corpcal/shared/schemas';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivitiesAPI');
 
 export async function fetchActivities(
-  filters?: FilterActivities
+  filters?: FilterActivitiesQueryParams
 ): Promise<ActivityResponse[]> {
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',
@@ -71,28 +71,4 @@ export async function updateActivity(
 
 export async function deleteActivity(id: number): Promise<void> {
   await api.delete(`/activities/${id}`);
-}
-
-export async function fetchActivityCategories(): Promise<any[]> {
-  const res = await api.get<{ success: boolean; data: any[] }>(
-    '/activities/categories'
-  );
-  if (res.data && res.data.data) {
-    return res.data.data;
-  }
-
-  // If the response is directly an array
-  if (Array.isArray(res.data)) {
-    return res.data;
-  }
-
-  console.error('Unexpected API response structure:', res.data);
-  return [];
-}
-
-export async function fetchCategories(): Promise<any[]> {
-  const res = await api.get<{ success: boolean; data: any[] }>(
-    `/activities/categories`
-  );
-  return res.data.data;
 }
