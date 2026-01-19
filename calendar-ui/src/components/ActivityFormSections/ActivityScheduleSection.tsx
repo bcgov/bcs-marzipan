@@ -9,13 +9,7 @@ import {
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -23,46 +17,13 @@ type FormData = CreateActivityRequest;
 
 type ActivityScheduleSectionProps = {
   form: UseFormReturn<FormData>;
-  schedulingStatusOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
 };
 
 export const ActivityScheduleSection: React.FC<
   ActivityScheduleSectionProps
-> = ({ form, schedulingStatusOptions }) => {
+> = ({ form }) => {
   return (
     <ActivityFormSection title="Schedule">
-      <FormField
-        control={form.control}
-        name="schedulingStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Scheduling Status</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={field.value?.toString()}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select scheduling status" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {schedulingStatusOptions.map((status) => (
-                  <SelectItem key={status.id} value={status.id.toString()}>
-                    {status.displayName || status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <FormField
         control={form.control}
         name="isAllDay"
@@ -147,7 +108,7 @@ export const ActivityScheduleSection: React.FC<
 
       <FormField
         control={form.control}
-        name="schedulingConsiderations"
+        name="schedulingNotes"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Scheduling Considerations</FormLabel>

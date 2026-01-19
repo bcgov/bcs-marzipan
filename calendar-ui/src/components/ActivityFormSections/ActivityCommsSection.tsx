@@ -28,7 +28,6 @@ type FormData = CreateActivityRequest & {
 };
 
 type ActivityCommsSectionProps = {
-  commsLeadOptions: Array<{ value: string; label: string }>;
   commsMaterialOptions: Array<{
     id: number;
     name: string;
@@ -39,12 +38,17 @@ type ActivityCommsSectionProps = {
     name: string;
     displayName?: string;
   }>;
+  newsReleaseDistributionOptions: Array<{ value: string; label: string }>;
+  premierRequestedOptions: Array<{ value: string; label: string }>;
+  newsReleaseOriginOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
-  commsLeadOptions,
   commsMaterialOptions,
   translationLanguageOptions,
+  newsReleaseDistributionOptions,
+  premierRequestedOptions,
+  newsReleaseOriginOptions,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -62,34 +66,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     );
   return (
     <ActivityFormSection title="Comms">
-      <FormField
-        control={form.control}
-        name="commsLeadId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Comms Lead</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={field.value?.toString()}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select comms lead" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {commsLeadOptions.map((user) => (
-                  <SelectItem key={user.value} value={user.value}>
-                    {user.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <div>
         <Label className="mb-3 block">Comms Materials</Label>
         <div className="flex flex-wrap gap-2">
@@ -133,6 +109,96 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               Enter a valid UUID (e.g., 123e4567-e89b-12d3-a456-426614174001) or
               leave empty
             </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseOriginId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>News Release Origin</FormLabel>
+            <Select
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select news release origin" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {newsReleaseOriginOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseDistributionId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>News Release Distribution</FormLabel>
+            <Select
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select news release distribution" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {newsReleaseDistributionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="premierRequestedId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Premier Requested</FormLabel>
+            <Select
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select premier requested option" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {premierRequestedOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
