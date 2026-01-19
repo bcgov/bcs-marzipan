@@ -29,11 +29,8 @@ import {
 
 const useStyles = makeStyles({
   title: typographyStyles.title2,
-  leadOrgAndRelatedEntries: {
+  leadOrg: {
     marginTop: '16px',
-    display: 'flex',
-    gap: '32px',
-    flexWrap: 'wrap',
   },
   section: {
     flex: '1 1 300px',
@@ -100,13 +97,7 @@ export const EntryDetails = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Extract numeric ID from displayId format (e.g., "ACT-6" -> 6) or use numeric id directly
-  const numericId = activityData
-    ? typeof activityData.id === 'number'
-      ? activityData.id
-      : typeof activityData.id === 'string' && activityData.id
-        ? parseInt((activityData.id as string).replace(/\D/g, ''), 10)
-        : null
-    : null;
+  const numericId = activityData?.id ?? null;
 
   console.log('Numeric ID for WebSocket:', numericId);
 
@@ -235,29 +226,13 @@ export const EntryDetails = () => {
           </div>
           <Divider style={{ margin: '24px 0' }} />
 
-          <div className={styles.leadOrgAndRelatedEntries}>
+          <div className={styles.leadOrg}>
             <div className={styles.section}>
               <Text className={styles.sectionTitle}>Lead Organization</Text>
               {activityData.leadOrg ? (
                 <div>{activityData.leadOrg}</div>
               ) : (
                 <div>No lead organization specified.</div>
-              )}
-            </div>
-            <div className={styles.section}>
-              <Text className={styles.sectionTitle}>Related Entries</Text>
-              {activityData.relatedActivities &&
-              activityData.relatedActivities.length > 0 ? (
-                // TODO: update when entry and detail page paths are aligned
-                <ul>
-                  {activityData.relatedActivities.map((entry) => (
-                    <li key={entry}>
-                      <Link href={`/entry/${entry}`}>{entry}</Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div>None</div>
               )}
             </div>
           </div>
@@ -269,11 +244,6 @@ export const EntryDetails = () => {
           {/* Issue and Order in Council Checkboxes */}
           <div className={styles.checkboxGroup}>
             <Checkbox checked={activityData.isIssue} disabled label="Issue" />
-            <Checkbox
-              checked={activityData.oicRelated}
-              disabled
-              label="Order in Council Related"
-            />
           </div>
 
           {/* Tags Section */}
@@ -328,21 +298,28 @@ export const EntryDetails = () => {
                   {activityData.significance || 'Not specified'}
                 </Text>
               </div>
-              <div>
-                <Text className={styles.fieldLabel}>Pitch Status</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.pitchStatus || 'Not specified'}
-                </Text>
-              </div>
             </div>
             <div>
-              <Text className={styles.fieldLabel}>
-                Pitch and Approval Notes
-              </Text>
+              <Text className={styles.fieldLabel}>Notes</Text>
               <Text className={styles.fieldValue}>
-                {activityData.pitchComments || 'No notes'}
+                {activityData.notes || 'No notes'}
               </Text>
             </div>
+            {activityData.pitchDate && (
+              <div>
+                <Text className={styles.fieldLabel}>Pitch Date</Text>
+                <Text className={styles.fieldValue}>
+                  {new Date(activityData.pitchDate).toLocaleDateString(
+                    'en-US',
+                    {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }
+                  )}
+                </Text>
+              </div>
+            )}
           </div>
 
           {/* Schedule Section */}
@@ -351,12 +328,6 @@ export const EntryDetails = () => {
               <Calendar16Regular /> Schedule
             </Text>
             <div className={styles.twoColumnGrid}>
-              <div>
-                <Text className={styles.fieldLabel}>Scheduling Status</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.schedulingStatus || 'Not specified'}
-                </Text>
-              </div>
               <div>
                 <Checkbox
                   checked={activityData.isAllDay}
@@ -416,7 +387,7 @@ export const EntryDetails = () => {
                 Scheduling Considerations
               </Text>
               <Text className={styles.fieldValue}>
-                {activityData.schedulingConsiderations || 'None'}
+                {activityData.schedulingNotes || 'None'}
               </Text>
             </div>
           </div>
@@ -427,12 +398,6 @@ export const EntryDetails = () => {
               <ShareRegular /> Communications
             </Text>
             <div className={styles.twoColumnGrid}>
-              <div>
-                <Text className={styles.fieldLabel}>Comms Lead</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.commsLead || 'Not specified'}
-                </Text>
-              </div>
               <div>
                 <Text className={styles.fieldLabel}>Comms Materials</Text>
                 <Text className={styles.fieldValue}>
@@ -492,18 +457,10 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>
-                  Event Lead Organization
-                </Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.eventLeadOrg || 'Not specified'}
-                </Text>
-              </div>
-              <div>
                 <Text className={styles.fieldLabel}>Event Planner</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.eventLead ||
-                    activityData.eventLeadName ||
+                    activityData.eventPlannerLeadName ||
                     'Not specified'}
                 </Text>
               </div>
@@ -583,7 +540,14 @@ export const EntryDetails = () => {
                 <Text className={styles.fieldLabel}>Venue</Text>
                 <Text className={styles.fieldValue}>
                   {activityData.venueAddress
-                    ? `${activityData.venueAddress.street}, ${activityData.venueAddress.city}, ${activityData.venueAddress.provinceOrState}, ${activityData.venueAddress.country}`
+                    ? [
+                        activityData.venueAddress.street,
+                        activityData.venueAddress.city,
+                        activityData.venueAddress.provinceOrState,
+                        activityData.venueAddress.country,
+                      ]
+                        .filter((part) => part)
+                        .join(', ') || 'Not specified'
                     : 'Not specified'}
                 </Text>
               </div>
@@ -595,27 +559,37 @@ export const EntryDetails = () => {
             <Text className={styles.sectionHeader}>
               <DocumentRegular /> Reports
             </Text>
-            <div>
-              <Checkbox
-                checked={activityData.thirtySixtyNinetyReport}
-                disabled
-                label="30-60-90"
-              />
+            <div className={styles.twoColumnGrid}>
+              <div>
+                <Text className={styles.fieldLabel}>Confidential</Text>
+                <Text className={styles.fieldValue}>
+                  {activityData.isConfidential ? 'Yes' : 'No'}
+                </Text>
+              </div>
             </div>
-            <div style={{ marginTop: '8px' }}>
-              <Checkbox
-                checked={activityData.planningReport}
-                disabled
-                label="Planning Report"
-              />
-            </div>
-            <div style={{ marginTop: '8px' }}>
-              <Checkbox
-                checked={activityData.notForLookAhead}
-                disabled
-                label="Not for Look Ahead"
-              />
-            </div>
+            {(() => {
+              // Compute omitted reports from reportSettings where omitted === true
+              const omittedFromReports =
+                activityData.reportSettings?.filter(
+                  (report) => report.omitted === true
+                ) ?? [];
+              return omittedFromReports.length > 0 ? (
+                <div className="mt-4">
+                  <Text className={styles.fieldLabel}>
+                    Omitted from Reports
+                  </Text>
+                  <ul className={styles.fieldValue}>
+                    {omittedFromReports.map((report) => (
+                      <li key={report.id}>{report.displayName}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <Text className={styles.fieldValue}>No reports omitted</Text>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Look Ahead Section */}
@@ -646,43 +620,32 @@ export const EntryDetails = () => {
             </Text>
             <div className={styles.twoColumnGrid}>
               <div>
-                <Text className={styles.fieldLabel}>Owner</Text>
+                <Text className={styles.fieldLabel}>Visibility</Text>
                 <Text className={styles.fieldValue}>
-                  {activityData.owner || 'Not specified'}
-                </Text>
-              </div>
-              <div>
-                <Text className={styles.fieldLabel}>Calendar Visibility</Text>
-                <Text className={styles.fieldValue}>
-                  {activityData.calendarVisibility || 'Not specified'}
+                  {activityData.visibility === 'global'
+                    ? 'Global'
+                    : 'Team Only'}
                 </Text>
               </div>
             </div>
-            <div>
-              <Text className={styles.fieldLabel}>Can Edit</Text>
+            {activityData.newsReleaseDistribution && (
               <div>
-                {activityData.canEdit && activityData.canEdit.length > 0 ? (
-                  activityData.canEdit.map((editor, index) => (
-                    <Badge
-                      key={index}
-                      appearance="tint"
-                      className={styles.tagBadge}
-                    >
-                      {editor}
-                    </Badge>
-                  ))
-                ) : (
-                  <div>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Communications Team
-                    </Badge>
-                    <Badge appearance="tint" className={styles.tagBadge}>
-                      Executive Office
-                    </Badge>
-                  </div>
-                )}
+                <Text className={styles.fieldLabel}>
+                  News Release Distribution
+                </Text>
+                <Text className={styles.fieldValue}>
+                  {activityData.newsReleaseDistribution}
+                </Text>
               </div>
-            </div>
+            )}
+            {activityData.premierRequested && (
+              <div>
+                <Text className={styles.fieldLabel}>Premier Requested</Text>
+                <Text className={styles.fieldValue}>
+                  {activityData.premierRequested}
+                </Text>
+              </div>
+            )}
             <div>
               <Text className={styles.fieldLabel}>Shared With</Text>
               <div>

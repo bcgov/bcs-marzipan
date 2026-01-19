@@ -15,40 +15,27 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Combobox } from '../ui/combobox';
-import { calendarVisibilityOptions } from '../../data/mockLookups';
-import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { Visibility } from '@corpcal/shared/constants/constants';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest & {
-  canEditUserIds?: number[];
-  sharedWithOrganizationIds?: string[];
-};
+type FormData = CreateActivityRequest;
 
 type ActivitySharingSectionProps = {
   ownerOptions: Array<{ value: string; label: string }>;
-  canEditUserOptions: Array<{ value: string; label: string }>;
-  sharedWithOrgOptions: Array<{ value: string; label: string }>;
+  sharedWithTeamOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   ownerOptions,
-  canEditUserOptions,
-  sharedWithOrgOptions,
+  sharedWithTeamOptions,
 }) => {
   const form = useFormContext<FormData>();
-
-  // Move useMultiSelect hook into the component
-  const [selectedCanEdit, toggleCanEdit] = useMultiSelect<
-    FormData,
-    'canEditUserIds',
-    number
-  >(form, 'canEditUserIds');
   return (
     <ActivityFormSection title="Sharing">
       <FormField
         control={form.control}
-        name="ownerId"
+        name="commsContactLeadId"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Owner</FormLabel>
@@ -76,25 +63,29 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="canEditUserIds"
-        render={({ field: _field }) => (
+        name="visibility"
+        render={({ field }) => (
           <FormItem>
-            <FormLabel>Can Edit</FormLabel>
-            <FormControl>
-              <Combobox
-                options={canEditUserOptions}
-                selectedValues={selectedCanEdit.map((id) => id.toString())}
-                onSelect={(value) => {
-                  const userId = parseInt(value);
-                  toggleCanEdit(userId);
-                }}
-                placeholder="Select users who can edit"
-                searchPlaceholder="Search users..."
-                emptyMessage="No users found."
-              />
-            </FormControl>
+            <FormLabel>Visibility</FormLabel>
+            <Select
+              onValueChange={(value) => {
+                field.onChange(value as Visibility);
+              }}
+              value={field.value || 'global'}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select visibility" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="global">Global</SelectItem>
+                <SelectItem value="team">Team Only</SelectItem>
+              </SelectContent>
+            </Select>
             <FormDescription>
-              Select users who can edit this activity
+              Global: visible to all teams. Team Only: visible only to your team
+              and shared teams.
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -103,65 +94,45 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="sharedWithOrganizationIds"
+        name="sharedWithTeamIds"
         render={({ field }) => {
-          const currentValue = Array.isArray(field.value)
-            ? field.value[0] || ''
-            : field.value || '';
+          const currentValues = Array.isArray(field.value)
+            ? field.value
+                .filter((v): v is number => typeof v === 'number')
+                .map((v) => String(v))
+            : [];
           return (
             <FormItem>
-              <FormLabel>Shared With</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value ? [value] : []);
-                }}
-                value={currentValue}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {sharedWithOrgOptions.map((org) => (
-                    <SelectItem key={org.value} value={org.value}>
-                      {org.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>Shared With Teams</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={sharedWithTeamOptions}
+                  selectedValues={currentValues}
+                  onSelect={(value) => {
+                    const teamId = parseInt(value);
+                    const current = Array.isArray(field.value)
+                      ? field.value
+                      : [];
+                    if (current.includes(teamId)) {
+                      field.onChange(current.filter((id) => id !== teamId));
+                    } else {
+                      field.onChange([...current, teamId]);
+                    }
+                  }}
+                  placeholder="Select teams"
+                  searchPlaceholder="Search teams..."
+                  emptyMessage="No teams found."
+                />
+              </FormControl>
               <FormDescription>
-                These groups can view but not edit the entry
+                These teams can see this activity and it will be marked as
+                important for them. If visibility is Team Only, sharing grants
+                access.
               </FormDescription>
               <FormMessage />
             </FormItem>
           );
         }}
-      />
-
-      <FormField
-        control={form.control}
-        name="calendarVisibility"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Calendar Visibility</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ''}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select calendar visibility" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {calendarVisibilityOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
       />
     </ActivityFormSection>
   );

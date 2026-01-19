@@ -3,7 +3,6 @@ import * as React from 'react';
 
 import { useLocation } from 'react-router-dom';
 import {
-  AppItem,
   Hamburger,
   NavCategory,
   NavCategoryItem,
@@ -33,7 +32,6 @@ import {
   PersonSearch20Filled,
   PersonSearch20Regular,
   bundleIcon,
-  PersonCircle32Regular,
   Calendar20Regular,
   Calendar20Filled,
 } from '@fluentui/react-icons';

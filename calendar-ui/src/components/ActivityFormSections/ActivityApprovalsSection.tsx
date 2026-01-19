@@ -7,13 +7,7 @@ import {
   FormMessage,
 } from '../ui/form';
 import { Textarea } from '../ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Input } from '../ui/input';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -21,12 +15,11 @@ type FormData = CreateActivityRequest;
 
 type ActivityApprovalsSectionProps = {
   form: UseFormReturn<FormData>;
-  pitchStatusOptions: Array<{ id: number; name: string; displayName?: string }>;
 };
 
 export const ActivityApprovalsSection: React.FC<
   ActivityApprovalsSectionProps
-> = ({ form, pitchStatusOptions }) => {
+> = ({ form }) => {
   return (
     <ActivityFormSection title="Approvals">
       <FormField
@@ -50,45 +43,12 @@ export const ActivityApprovalsSection: React.FC<
 
       <FormField
         control={form.control}
-        name="pitchStatusId"
+        name="pitchDate"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Pitch Status</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={field.value?.toString()}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select pitch status" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {pitchStatusOptions.map((status) => (
-                  <SelectItem key={status.id} value={status.id.toString()}>
-                    {status.displayName || status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="pitchComments"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Pitch and Approval Notes</FormLabel>
+            <FormLabel>Pitch Date</FormLabel>
             <FormControl>
-              <Textarea
-                placeholder="Enter pitch and approval notes"
-                rows={4}
-                {...field}
-                value={field.value || ''}
-              />
+              <Input type="date" {...field} value={field.value || ''} />
             </FormControl>
             <FormMessage />
           </FormItem>
