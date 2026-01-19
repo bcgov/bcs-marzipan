@@ -53,7 +53,7 @@ const nestjsSharedRules = {
   '@typescript-eslint/explicit-module-boundary-types': 'off',
   '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
   '@typescript-eslint/no-misused-promises': 'off',
-  'prettier/prettier': ['error', { endOfLine: 'auto' }],
+  'prettier/prettier': 'error',
 };
 
 export default defineConfig(
@@ -73,6 +73,7 @@ export default defineConfig(
       '.local/**',
       '**/*.md',
       'scripts/**',
+      'packages/*/scripts/**',
       'package-lock.json',
       '**/migrations/meta/**',
     ],
@@ -184,7 +185,7 @@ export default defineConfig(
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
+      'prettier/prettier': 'error',
     },
   },
 
