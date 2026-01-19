@@ -5,7 +5,6 @@ import {
   varchar,
   jsonb,
   timestamp,
-  unique,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
@@ -25,7 +24,7 @@ export const formDrafts = pgTable(
     // User who created this draft (FK to system_users)
     userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id),
+      .references(() => systemUsers.id, { onDelete: 'cascade' }),
 
     // Type of form being saved (e.g., 'activity', 'event', 'category')
     formType: varchar('form_type', { length: 50 }).notNull(),

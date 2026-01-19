@@ -5,7 +5,8 @@ ALTER TABLE "form_drafts" DROP CONSTRAINT "unique_user_form_entity";
 ALTER TABLE "form_drafts" 
   ADD CONSTRAINT "form_drafts_user_id_fkey" 
   FOREIGN KEY ("user_id") 
-  REFERENCES "system_users"("id");
+  REFERENCES "system_users"("id")
+  ON DELETE CASCADE;
 
 -- Create partial unique index for NULL entity_id (new items)
 CREATE UNIQUE INDEX "unique_user_form_null_entity" 
