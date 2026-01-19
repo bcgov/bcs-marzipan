@@ -15,9 +15,12 @@ export interface LookupQueryParams {
   organizationId?: string;
 }
 
-export async function fetchCategories(): Promise<LookupItem[]> {
+export async function fetchCategories(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/categories'
+    '/lookups/categories',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
@@ -46,9 +49,12 @@ export async function fetchUsers(
   return res.data.data;
 }
 
-export async function fetchTags(): Promise<LookupItem[]> {
+export async function fetchTags(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/tags'
+    '/lookups/tags',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
@@ -67,9 +73,12 @@ export async function fetchSchedulingStatuses(): Promise<LookupItem[]> {
   return res.data.data;
 }
 
-export async function fetchCommsMaterials(): Promise<LookupItem[]> {
+export async function fetchCommsMaterials(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/comms-materials'
+    '/lookups/comms-materials',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
@@ -81,9 +90,12 @@ export async function fetchTranslationLanguages(): Promise<LookupItem[]> {
   return res.data.data;
 }
 
-export async function fetchGovernmentRepresentatives(): Promise<LookupItem[]> {
+export async function fetchGovernmentRepresentatives(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/government-representatives'
+    '/lookups/government-representatives',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
@@ -100,30 +112,42 @@ export async function fetchActivitiesForLookup(
   return res.data.data;
 }
 
-export async function fetchCities(): Promise<LookupItem[]> {
+export async function fetchCities(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/cities'
+    '/lookups/cities',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
 
-export async function fetchMinistries(): Promise<LookupItem[]> {
+export async function fetchMinistries(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/ministries'
+    '/lookups/ministries',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
 
-export async function fetchThemes(): Promise<LookupItem[]> {
+export async function fetchThemes(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/themes'
+    '/lookups/themes',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }
 
-export async function fetchActivityStatuses(): Promise<LookupItem[]> {
+export async function fetchActivityStatuses(includeInactive = false): Promise<LookupItem[]> {
   const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/activity-statuses'
+    '/lookups/activity-statuses',
+    {
+      params: includeInactive ? { includeInactive: 'true' } : {},
+    }
   );
   return res.data.data;
 }

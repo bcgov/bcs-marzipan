@@ -36,10 +36,10 @@ export class LookupsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
-   * Get all active categories
+   * Get all categories (active by default, or all if includeInactive is true)
    */
-  async getCategories(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getCategories(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: categories.id,
         name: categories.name,
@@ -47,8 +47,13 @@ export class LookupsService {
         sortOrder: categories.sortOrder,
         isActive: categories.isActive,
       })
-      .from(categories)
-      .orderBy(categories.sortOrder);
+      .from(categories);
+
+    if (!includeInactive) {
+      query = query.where(eq(categories.isActive, true));
+    }
+
+    const results = await query.orderBy(categories.sortOrder);
 
     return results.map((cat) => ({
       id: cat.id,
@@ -120,10 +125,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active tags
+   * Get all tags (active by default, or all if includeInactive is true)
    */
-  async getTags(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getTags(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: tags.id,
         key: tags.key,
@@ -131,8 +136,13 @@ export class LookupsService {
         sortOrder: tags.sortOrder,
         isActive: tags.isActive,
       })
-      .from(tags)
-      .orderBy(tags.sortOrder);
+      .from(tags);
+
+    if (!includeInactive) {
+      query = query.where(eq(tags.isActive, true));
+    }
+
+    const results = await query.orderBy(tags.sortOrder);
 
     return results.map((tag) => ({
       id: tag.id,
@@ -192,10 +202,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active comms materials
+   * Get all comms materials (active by default, or all if includeInactive is true)
    */
-  async getCommsMaterials(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getCommsMaterials(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: commsMaterials.id,
         name: commsMaterials.name,
@@ -203,8 +213,13 @@ export class LookupsService {
         sortOrder: commsMaterials.sortOrder,
         isActive: commsMaterials.isActive,
       })
-      .from(commsMaterials)
-      .orderBy(commsMaterials.sortOrder);
+      .from(commsMaterials);
+
+    if (!includeInactive) {
+      query = query.where(eq(commsMaterials.isActive, true));
+    }
+
+    const results = await query.orderBy(commsMaterials.sortOrder);
 
     return results.map((material) => ({
       id: material.id,
@@ -241,10 +256,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active government representatives
+   * Get all government representatives (active by default, or all if includeInactive is true)
    */
-  async getGovernmentRepresentatives(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getGovernmentRepresentatives(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: governmentRepresentatives.id,
         name: governmentRepresentatives.name,
@@ -254,8 +269,13 @@ export class LookupsService {
         sortOrder: governmentRepresentatives.sortOrder,
         isActive: governmentRepresentatives.isActive,
       })
-      .from(governmentRepresentatives)
-      .orderBy(governmentRepresentatives.sortOrder);
+      .from(governmentRepresentatives);
+
+    if (!includeInactive) {
+      query = query.where(eq(governmentRepresentatives.isActive, true));
+    }
+
+    const results = await query.orderBy(governmentRepresentatives.sortOrder);
 
     return results.map((rep) => ({
       id: rep.id,
@@ -296,10 +316,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active cities
+   * Get all cities (active by default, or all if includeInactive is true)
    */
-  async getCities(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getCities(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: cities.id,
         name: cities.name,
@@ -308,8 +328,13 @@ export class LookupsService {
         sortOrder: cities.sortOrder,
         isActive: cities.isActive,
       })
-      .from(cities)
-      .orderBy(cities.sortOrder);
+      .from(cities);
+
+    if (!includeInactive) {
+      query = query.where(eq(cities.isActive, true));
+    }
+
+    const results = await query.orderBy(cities.sortOrder);
 
     return results.map((city) => ({
       id: city.id,
@@ -324,10 +349,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active ministries
+   * Get all ministries (active by default, or all if includeInactive is true)
    */
-  async getMinistries(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getMinistries(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: ministries.id,
         displayName: ministries.displayName,
@@ -336,8 +361,13 @@ export class LookupsService {
         sortOrder: ministries.sortOrder,
         isActive: ministries.isActive,
       })
-      .from(ministries)
-      .orderBy(ministries.sortOrder);
+      .from(ministries);
+
+    if (!includeInactive) {
+      query = query.where(eq(ministries.isActive, true));
+    }
+
+    const results = await query.orderBy(ministries.sortOrder);
 
     return results.map((ministry) => ({
       id: ministry.id,
@@ -352,10 +382,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active themes
+   * Get all themes (active by default, or all if includeInactive is true)
    */
-  async getThemes(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getThemes(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: themes.id,
         key: themes.key,
@@ -363,8 +393,13 @@ export class LookupsService {
         sortOrder: themes.sortOrder,
         isActive: themes.isActive,
       })
-      .from(themes)
-      .orderBy(themes.sortOrder);
+      .from(themes);
+
+    if (!includeInactive) {
+      query = query.where(eq(themes.isActive, true));
+    }
+
+    const results = await query.orderBy(themes.sortOrder);
 
     return results.map((theme) => ({
       id: theme.id,
@@ -378,10 +413,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active activity statuses
+   * Get all activity statuses (active by default, or all if includeInactive is true)
    */
-  async getActivityStatuses(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
+  async getActivityStatuses(includeInactive = false): Promise<LookupItem[]> {
+    let query = this.databaseService.db
       .select({
         id: activityStatuses.id,
         name: activityStatuses.name,
@@ -389,8 +424,13 @@ export class LookupsService {
         sortOrder: activityStatuses.sortOrder,
         isActive: activityStatuses.isActive,
       })
-      .from(activityStatuses)
-      .orderBy(activityStatuses.sortOrder);
+      .from(activityStatuses);
+
+    if (!includeInactive) {
+      query = query.where(eq(activityStatuses.isActive, true));
+    }
+
+    const results = await query.orderBy(activityStatuses.sortOrder);
 
     return results.map((status) => ({
       id: status.id,

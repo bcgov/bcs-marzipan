@@ -26,10 +26,20 @@ export class LookupsController {
     status: 200,
     description: 'Categories retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('categories')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getCategories(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getCategories();
+  async getCategories(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getCategories(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -129,10 +139,18 @@ export class LookupsController {
 
   @ApiOperation({ summary: 'Get all tags' })
   @ApiResponse({ status: 200, description: 'Tags retrieved successfully' })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('tags')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getTags(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getTags();
+  async getTags(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getTags(includeInactive === 'true');
     return { success: true, data };
   }
 
@@ -225,10 +243,20 @@ export class LookupsController {
     status: 200,
     description: 'Comms materials retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('comms-materials')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getCommsMaterials(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getCommsMaterials();
+  async getCommsMaterials(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getCommsMaterials(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -309,13 +337,23 @@ export class LookupsController {
     status: 200,
     description: 'Government representatives retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('government-representatives')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getGovernmentRepresentatives(): Promise<{
+  async getGovernmentRepresentatives(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{
     success: boolean;
     data: LookupItem[];
   }> {
-    const data = await this.lookupsService.getGovernmentRepresentatives();
+    const data = await this.lookupsService.getGovernmentRepresentatives(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -405,10 +443,20 @@ export class LookupsController {
     status: 200,
     description: 'Cities retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('cities')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getCities(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getCities();
+  async getCities(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getCities(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -478,10 +526,20 @@ export class LookupsController {
     status: 200,
     description: 'Ministries retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('ministries')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getMinistries(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getMinistries();
+  async getMinistries(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getMinistries(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -552,10 +610,20 @@ export class LookupsController {
     status: 200,
     description: 'Themes retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('themes')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getThemes(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getThemes();
+  async getThemes(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getThemes(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 
@@ -621,13 +689,23 @@ export class LookupsController {
     status: 200,
     description: 'Activity statuses retrieved successfully',
   })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Include inactive items in the response',
+  })
   @Get('activity-statuses')
   @Header('Cache-Control', 'public, max-age=3600')
-  async getActivityStatuses(): Promise<{
+  async getActivityStatuses(
+    @Query('includeInactive') includeInactive?: string
+  ): Promise<{
     success: boolean;
     data: LookupItem[];
   }> {
-    const data = await this.lookupsService.getActivityStatuses();
+    const data = await this.lookupsService.getActivityStatuses(
+      includeInactive === 'true'
+    );
     return { success: true, data };
   }
 

@@ -135,7 +135,11 @@ const AddModal = ({
     // Convert numeric fields from strings to numbers
     const processedData = { ...formData };
     fields.forEach((field) => {
-      if (field.type === 'number' && processedData[field.name]) {
+      if (
+        field.type === 'number' &&
+        processedData[field.name] !== undefined &&
+        processedData[field.name] !== ''
+      ) {
         processedData[field.name] = Number(processedData[field.name]);
       }
     });
@@ -236,7 +240,7 @@ const LookupSection = ({
     if (activeFilter === 'inactive')
       return data.filter((item) => !item.isActive);
     return data;
-  }, [data, activeFilter, entityType]);
+  }, [data, activeFilter]);
 
   return (
     <div style={{ marginBottom: '48px' }}>
@@ -838,7 +842,7 @@ export const Settings = () => {
     error: categoriesError,
   } = useQuery({
     queryKey: ['categories'],
-    queryFn: fetchCategories,
+    queryFn: () => fetchCategories(true),
   });
 
   const {
@@ -847,7 +851,7 @@ export const Settings = () => {
     error: citiesError,
   } = useQuery({
     queryKey: ['cities'],
-    queryFn: fetchCities,
+    queryFn: () => fetchCities(true),
   });
 
   const {
@@ -856,7 +860,7 @@ export const Settings = () => {
     error: commsMaterialsError,
   } = useQuery({
     queryKey: ['commsMaterials'],
-    queryFn: fetchCommsMaterials,
+    queryFn: () => fetchCommsMaterials(true),
   });
 
   const {
@@ -865,7 +869,7 @@ export const Settings = () => {
     error: govRepsError,
   } = useQuery({
     queryKey: ['governmentRepresentatives'],
-    queryFn: fetchGovernmentRepresentatives,
+    queryFn: () => fetchGovernmentRepresentatives(true),
   });
 
   const {
@@ -874,7 +878,7 @@ export const Settings = () => {
     error: tagsError,
   } = useQuery({
     queryKey: ['tags'],
-    queryFn: fetchTags,
+    queryFn: () => fetchTags(true),
   });
 
   const {
@@ -883,7 +887,7 @@ export const Settings = () => {
     error: ministriesError,
   } = useQuery({
     queryKey: ['ministries'],
-    queryFn: fetchMinistries,
+    queryFn: () => fetchMinistries(true),
   });
 
   const {
@@ -892,7 +896,7 @@ export const Settings = () => {
     error: statusError,
   } = useQuery({
     queryKey: ['activityStatuses'],
-    queryFn: fetchActivityStatuses,
+    queryFn: () => fetchActivityStatuses(true),
   });
 
   const {
@@ -901,7 +905,7 @@ export const Settings = () => {
     error: themesError,
   } = useQuery({
     queryKey: ['themes'],
-    queryFn: fetchThemes,
+    queryFn: () => fetchThemes(true),
   });
 
   const categoriesColumns = useMemo<ColumnDef<Category>[]>(
