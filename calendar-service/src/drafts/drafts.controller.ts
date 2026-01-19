@@ -25,6 +25,7 @@ import {
 } from './dto/drafts.dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
+import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
 
 @ApiTags('drafts')
 @Controller('drafts')
@@ -55,7 +56,7 @@ export class DraftsController {
   })
   @Post('save')
   async saveDraft(
-    @Query('userId', ParseIntPipe) userId: number,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Body() saveDto: SaveDraftDto
   ): Promise<{ success: boolean; data: DraftResponseDto }> {
     this.logger.log(
@@ -102,7 +103,7 @@ export class DraftsController {
   })
   @Get()
   async getDraft(
-    @Query('userId', ParseIntPipe) userId: number,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Query('formType') formType: string,
     @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
   ): Promise<{ success: boolean; data: DraftResponseDto | null }> {
@@ -134,7 +135,7 @@ export class DraftsController {
   })
   @Get('list')
   async listDrafts(
-    @Query('userId', ParseIntPipe) userId: number
+    @Query('userId', ParsePositiveIntPipe) userId: number
   ): Promise<{ success: boolean; data: DraftsListResponseDto }> {
     this.logger.log(`Listing all drafts for user ${userId}`);
     const drafts = await this.draftsService.listUserDrafts(userId);
@@ -178,7 +179,7 @@ export class DraftsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraft(
     @Param('id', ParseIntPipe) id: number,
-    @Query('userId', ParseIntPipe) userId: number
+    @Query('userId', ParsePositiveIntPipe) userId: number
   ): Promise<void> {
     this.logger.log(`Deleting draft ${id} for user ${userId}`);
     await this.draftsService.deleteDraft(userId, id);
@@ -222,7 +223,7 @@ export class DraftsController {
   @Delete('by-form')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraftByForm(
-    @Query('userId', ParseIntPipe) userId: number,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Query('formType') formType: string,
     @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
   ): Promise<void> {
