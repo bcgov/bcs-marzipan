@@ -1,5 +1,20 @@
 # Form Drafts Implementation Summary
 
+## ⚠️ Security Warning
+
+**CRITICAL: The current implementation is NOT production-ready due to security issues.**
+
+The API endpoints accept client-supplied `userId` query parameters, allowing an attacker to access, modify, or delete other users' drafts. Before production deployment:
+
+1. Implement proper authentication to identify the authenticated user on the server
+2. Extract `userId` from authenticated session/token (not from query parameters)
+3. Add authorization checks to ensure users can only access their own drafts
+4. See `calendar-service/docs/FORM_DRAFTS.md` for detailed security requirements
+
+**This feature is currently for development/testing only.**
+
+---
+
 ## ✅ Implementation Complete
 
 The Draft Table Approach for autosaving in-progress forms has been successfully implemented across the full stack.

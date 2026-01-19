@@ -4,6 +4,28 @@
 
 The Form Drafts feature provides automatic saving of in-progress forms, allowing users to save incomplete work and resume later without losing data. Draft data is stored separately from validated entity tables, bypassing validation constraints.
 
+## ⚠️ Security Warning
+
+**CRITICAL: The current implementation uses client-supplied `userId` query parameters for authentication, which is NOT secure for production use.**
+
+### Current Security Issues:
+- Endpoints accept `userId` as a query parameter that can be modified by the client
+- An attacker can change the `userId` to access, modify, or delete other users' drafts
+- No server-side authentication or authorization is implemented
+
+### Required Before Production:
+1. Implement proper authentication middleware to identify the authenticated user
+2. Extract `userId` from the authenticated session/token on the server side
+3. Remove `userId` from query parameters in client requests
+4. Implement authorization checks to ensure users can only access their own drafts
+5. Add audit logging for draft operations
+
+### Temporary Mitigation:
+This feature is currently intended for development/testing only. The API should be protected behind:
+- Network-level restrictions (not exposed publicly)
+- API gateway authentication
+- Rate limiting
+
 ## Architecture
 
 ### Database Layer
