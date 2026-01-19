@@ -169,14 +169,15 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             Users
           </NavItem>
           <NavCategory value="11">
-            <NavItem icon={<Settings />} href="/settings" value="12">
-              Settings
-            </NavItem>
+            <NavCategoryItem icon={<Settings />}>Settings</NavCategoryItem>
             <NavSubItemGroup>
-              <NavSubItem href={linkDestination} value="13">
-                Form Templates
+              <NavSubItem href="/settings" value="13">
+                Lookup Data
               </NavSubItem>
               <NavSubItem href={linkDestination} value="14">
+                Form Templates
+              </NavSubItem>
+              <NavSubItem href={linkDestination} value="15">
                 Data Retention
               </NavSubItem>
             </NavSubItemGroup>

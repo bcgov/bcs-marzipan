@@ -38,6 +38,11 @@ import { GenericDataTable } from '../components/Table/GenericDataTable';
 import { useMemo, useState, useEffect } from 'react';
 import api from '../api/axios';
 
+type ApiResponse<T> = {
+  success: boolean;
+  data: T;
+};
+
 type Category = {
   id: number;
   name: string;
@@ -365,107 +370,107 @@ export const Settings = () => {
   // Mutation for creating categories
   const createCategoryMutation = useMutation({
     mutationFn: async (data: Partial<Category>) => {
-      const response = await api.post('/lookups/categories', data);
+      const response = await api.post<ApiResponse<Category>>('/lookups/categories', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['categories'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createCityMutation = useMutation({
     mutationFn: async (data: Partial<City>) => {
-      const response = await api.post('/lookups/cities', data);
+      const response = await api.post<ApiResponse<City>>('/lookups/cities', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['cities'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createCommsMaterialMutation = useMutation({
     mutationFn: async (data: Partial<CommsMaterial>) => {
-      const response = await api.post('/lookups/comms-materials', data);
+      const response = await api.post<ApiResponse<CommsMaterial>>('/lookups/comms-materials', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createGovRepMutation = useMutation({
     mutationFn: async (data: Partial<GovernmentRepresentative>) => {
-      const response = await api.post(
+      const response = await api.post<ApiResponse<GovernmentRepresentative>>(
         '/lookups/government-representatives',
         data
       );
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createTagMutation = useMutation({
     mutationFn: async (data: Partial<Tag>) => {
-      const response = await api.post('/lookups/tags', data);
+      const response = await api.post<ApiResponse<Tag>>('/lookups/tags', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['tags'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createMinistryMutation = useMutation({
     mutationFn: async (data: Partial<Ministry>) => {
-      const response = await api.post('/lookups/ministries', data);
+      const response = await api.post<ApiResponse<Ministry>>('/lookups/ministries', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createStatusMutation = useMutation({
     mutationFn: async (data: Partial<ActivityStatus>) => {
-      const response = await api.post('/lookups/activity-statuses', data);
+      const response = await api.post<ApiResponse<ActivityStatus>>('/lookups/activity-statuses', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
 
   const createThemeMutation = useMutation({
     mutationFn: async (data: Partial<Theme>) => {
-      const response = await api.post('/lookups/themes', data);
+      const response = await api.post<ApiResponse<Theme>>('/lookups/themes', data);
       return response.data;
     },
-    onSuccess: (newData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['themes'], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
+        if (!old) return [responseData.data];
+        return [...old, responseData.data];
       });
     },
   });
@@ -474,14 +479,14 @@ export const Settings = () => {
   const updateCategoryMutation = useMutation({
     mutationFn: async (data: Category) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(`/lookups/categories/${id}`, updateData);
+      const response = await api.patch<ApiResponse<Category>>(`/lookups/categories/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['categories'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingCategory(null);
@@ -491,14 +496,14 @@ export const Settings = () => {
   const updateCityMutation = useMutation({
     mutationFn: async (data: City) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(`/lookups/cities/${id}`, updateData);
+      const response = await api.patch<ApiResponse<City>>(`/lookups/cities/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['cities'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingCity(null);
@@ -508,17 +513,17 @@ export const Settings = () => {
   const updateCommsMaterialMutation = useMutation({
     mutationFn: async (data: CommsMaterial) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(
+      const response = await api.patch<ApiResponse<CommsMaterial>>(
         `/lookups/comms-materials/${id}`,
         updateData
       );
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingCommsMaterial(null);
@@ -528,17 +533,17 @@ export const Settings = () => {
   const updateGovRepMutation = useMutation({
     mutationFn: async (data: GovernmentRepresentative) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(
+      const response = await api.patch<ApiResponse<GovernmentRepresentative>>(
         `/lookups/government-representatives/${id}`,
         updateData
       );
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingGovRep(null);
@@ -548,14 +553,14 @@ export const Settings = () => {
   const updateTagMutation = useMutation({
     mutationFn: async (data: Tag) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(`/lookups/tags/${id}`, updateData);
+      const response = await api.patch<ApiResponse<Tag>>(`/lookups/tags/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['tags'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingTag(null);
@@ -565,14 +570,14 @@ export const Settings = () => {
   const updateMinistryMutation = useMutation({
     mutationFn: async (data: Ministry) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(`/lookups/ministries/${id}`, updateData);
+      const response = await api.patch<ApiResponse<Ministry>>(`/lookups/ministries/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingMinistry(null);
@@ -582,17 +587,17 @@ export const Settings = () => {
   const updateStatusMutation = useMutation({
     mutationFn: async (data: ActivityStatus) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(
+      const response = await api.patch<ApiResponse<ActivityStatus>>(
         `/lookups/activity-statuses/${id}`,
         updateData
       );
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingStatus(null);
@@ -602,14 +607,14 @@ export const Settings = () => {
   const updateThemeMutation = useMutation({
     mutationFn: async (data: Theme) => {
       const { id, ...updateData } = data;
-      const response = await api.patch(`/lookups/themes/${id}`, updateData);
+      const response = await api.patch<ApiResponse<Theme>>(`/lookups/themes/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
+    onSuccess: (responseData) => {
       queryClient.setQueryData(['themes'], (old: any) => {
-        if (!old) return [updatedData];
+        if (!old) return [responseData.data];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       setEditingTheme(null);
@@ -619,16 +624,16 @@ export const Settings = () => {
   // Delete mutations (soft delete by setting isActive to false)
   const deleteCategoryMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/categories/${id}`, {
+      const response = await api.patch<ApiResponse<Category>>(`/lookups/categories/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['categories'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -636,7 +641,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Category {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -646,16 +651,16 @@ export const Settings = () => {
 
   const deleteCityMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/cities/${id}`, {
+      const response = await api.patch<ApiResponse<City>>(`/lookups/cities/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['cities'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -663,7 +668,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>City {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -673,16 +678,16 @@ export const Settings = () => {
 
   const deleteCommsMaterialMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/comms-materials/${id}`, {
+      const response = await api.patch<ApiResponse<CommsMaterial>>(`/lookups/comms-materials/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['commsMaterials'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -690,7 +695,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Comms Material {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -700,17 +705,17 @@ export const Settings = () => {
 
   const deleteGovRepMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await api.patch(
+      const response = await api.patch<ApiResponse<GovernmentRepresentative>>(
         `/lookups/government-representatives/${id}`,
         { isActive: !isActive }
       );
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['governmentRepresentatives'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -718,7 +723,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Government Representative {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -728,16 +733,16 @@ export const Settings = () => {
 
   const deleteTagMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/tags/${id}`, {
+      const response = await api.patch<ApiResponse<Tag>>(`/lookups/tags/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['tags'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -745,7 +750,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Tag {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -755,16 +760,16 @@ export const Settings = () => {
 
   const deleteMinistryMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/ministries/${id}`, {
+      const response = await api.patch<ApiResponse<Ministry>>(`/lookups/ministries/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['ministries'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -772,7 +777,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Ministry {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.displayName || updatedData.data.abbreviation} has
+            {responseData.data.displayName || responseData.data.abbreviation} has
             been {action}.
           </ToastBody>
         </Toast>,
@@ -783,16 +788,16 @@ export const Settings = () => {
 
   const deleteStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/activity-statuses/${id}`, {
+      const response = await api.patch<ApiResponse<ActivityStatus>>(`/lookups/activity-statuses/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['activityStatuses'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -800,7 +805,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Activity Status {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.name} has been {action}.
+            {responseData.data.name} has been {action}.
           </ToastBody>
         </Toast>,
         { intent: 'success', timeout: 3000 }
@@ -810,16 +815,16 @@ export const Settings = () => {
 
   const deleteThemeMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const response = await api.patch(`/lookups/themes/${id}`, {
+      const response = await api.patch<ApiResponse<Theme>>(`/lookups/themes/${id}`, {
         isActive: !isActive,
       });
       return response.data;
     },
-    onSuccess: (updatedData, variables) => {
+    onSuccess: (responseData, variables) => {
       queryClient.setQueryData(['themes'], (old: any) => {
         if (!old) return [];
         return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
+          item.id === responseData.data.id ? responseData.data : item
         );
       });
       const action = variables.isActive ? 'deactivated' : 'reactivated';
@@ -827,7 +832,7 @@ export const Settings = () => {
         <Toast>
           <ToastTitle>Theme {action}</ToastTitle>
           <ToastBody>
-            {updatedData.data.displayName || updatedData.data.key} has been{' '}
+            {responseData.data.displayName || responseData.data.key} has been{' '}
             {action}.
           </ToastBody>
         </Toast>,
