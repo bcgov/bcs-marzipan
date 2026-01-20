@@ -79,6 +79,12 @@ const categoryFields: FormField[] = [
     placeholder: 'Optional display name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const cityFields: FormField[] = [
@@ -97,6 +103,12 @@ const cityFields: FormField[] = [
   },
   { name: 'province', label: 'Province', type: 'text', placeholder: 'BC' },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const commsMaterialFields: FormField[] = [
@@ -114,6 +126,12 @@ const commsMaterialFields: FormField[] = [
     placeholder: 'Optional display name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const govRepFields: FormField[] = [
@@ -137,6 +155,12 @@ const govRepFields: FormField[] = [
     placeholder: 'Minister, MLA, etc.',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const tagFields: FormField[] = [
@@ -154,6 +178,12 @@ const tagFields: FormField[] = [
     placeholder: 'Optional display name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const ministryFields: FormField[] = [
@@ -177,6 +207,12 @@ const ministryFields: FormField[] = [
     placeholder: 'Current minister',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const statusFields: FormField[] = [
@@ -194,6 +230,12 @@ const statusFields: FormField[] = [
     placeholder: 'Optional display name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 const themeFields: FormField[] = [
@@ -211,6 +253,12 @@ const themeFields: FormField[] = [
     placeholder: 'Optional display name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
 ];
 
 // Component exports

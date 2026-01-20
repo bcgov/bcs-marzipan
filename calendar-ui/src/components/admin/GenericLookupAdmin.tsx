@@ -156,7 +156,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         header: 'Status',
         cell: ({ row }) =>
           row.original.isActive ? (
-            <Badge className="bg-blue-600 text-white hover:bg-blue-700 border-transparent">
+            <Badge className="border-transparent bg-blue-600 text-white hover:bg-blue-700">
               Active
             </Badge>
           ) : (
@@ -193,7 +193,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
                   deleteMutation.mutate(row.original.id);
                 }
               }}
-              className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="h-4 w-4" />
               <span>Delete</span>
