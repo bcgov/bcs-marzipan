@@ -143,7 +143,6 @@ export const activities = pgTable(
       .notNull()
       .defaultNow(),
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
-    rowGuid: uuid('row_guid').notNull().defaultRandom(), // Row identifier - maps to legacy RowGuid, now required
   },
   (table) => [
     // CHECK constraint: exactly one of leadOrgId or leadOrgName must be provided (XOR)

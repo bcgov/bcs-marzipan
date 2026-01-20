@@ -37,7 +37,7 @@ Automatically generated from Drizzle schema using `drizzle-zod`:
 **Derived from Drizzle schema** using `createSelectSchema` and transformations:
 
 - Base schema generated from `createSelectSchema(activities)`
-- Fields omitted: internal fields (rowVersion, rowGuid, deprecated fields)
+- Fields omitted: internal fields (rowVersion, deprecated fields)
 - Fields transformed:
   - Date/time fields: `Date` → ISO string (`YYYY-MM-DD`), `time` → `HH:mm` string
   - Foreign key IDs: Serial IDs remain `number` (matches database type), UUID IDs remain `string`

@@ -26,7 +26,7 @@ When migrating legacy data:
 
 - Integer IDs map directly (no conversion needed)
 - GUID/UUID fields map to UUID columns
-- Legacy `RowGuid` maps to `rowGuid` (UUID, always string)
+- Legacy `RowGuid` field has been removed (unused in business logic)
 
 ## Table of Contents
 
@@ -113,7 +113,7 @@ When migrating legacy data:
 | `LastUpdatedDateTime`               | `datetime`          | `lastUpdatedDateTime`                         | `timestamp with time zone` | `notNull`, `defaultNow()`                               | Direct mapping, now required (not nullable) with defaultNow()                                                                                      |
 | `LastUpdatedBy`                     | `int`               | `lastUpdatedBy`                               | `integer`                  | `notNull`, FK                                           | Direct mapping, now required (not nullable)                                                                                                        |
 | `TimeStamp`                         | `timestamp`         | `rowVersion`                                  | `bigint`                   | `notNull`, `default(0)`                                 | Renamed from TimeStamp to rowVersion, type changed to bigint for optimistic concurrency control                                                    |
-| `RowGuid`                           | `unique identifier` | `rowGuid`                                     | `uuid`                     | `notNull`, `defaultRandom()`                            | Direct mapping, now required (not nullable)                                                                                                        |
+| `RowGuid`                           | `unique identifier` | _Removed_                                     | -                          | -                                                       | Field removed - unused in business logic                                                                                                           |
 
 ### New Fields (Not in Legacy Schema)
 
@@ -183,7 +183,7 @@ When migrating legacy data:
    - `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
    - `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
    - `CreatedBy` and `LastUpdatedBy` are now required
-   - `RowGuid` → `rowGuid` (now required, not nullable)
+   - `RowGuid` field has been removed (unused in business logic)
 
 7. **Removed Fields**: Several legacy fields have been removed:
    - `PotentialDates` (deprecated in legacy)
@@ -208,7 +208,6 @@ When migrating legacy data:
    - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
    - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
    - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
-   - `rowGuid`: Row identifier (mapped from legacy RowGuid, now required)
 
 ### Visibility and Sharing
 

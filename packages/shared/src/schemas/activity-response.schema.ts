@@ -98,7 +98,6 @@ export const activityDbFieldsSchema = z.object({
   lastUpdatedBy: z.number().int(),
   createdDateTime: z.string().datetime(),
   lastUpdatedDateTime: z.string().datetime(),
-  rowGuid: z.string().uuid(), // Row identifier
 });
 
 /**

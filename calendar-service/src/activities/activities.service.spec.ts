@@ -246,7 +246,6 @@ describe('ActivitiesService', () => {
         newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
         newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
         premierRequested: relatedData?.premierRequested ?? null,
-        rowGuid: activity.rowGuid ?? '',
         createdDateTime:
           activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
         createdBy: activity.createdBy ?? 0,
@@ -346,7 +345,6 @@ describe('ActivitiesService', () => {
         lookAheadSection: 'issues',
         commsContactLeadId: 6,
         contactMinistryId: '123e4567-e89b-12d3-a456-426614174003',
-        rowGuid: '123e4567-e89b-12d3-a456-426614174004',
         startDate: new Date('2024-02-20') as any,
         startTime: '14:30',
         endDate: new Date('2024-02-20') as any,
@@ -461,7 +459,6 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('commsContactLeadId');
-      expect(result).toHaveProperty('rowGuid');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
       expect(result).toHaveProperty('lastUpdatedDateTime');

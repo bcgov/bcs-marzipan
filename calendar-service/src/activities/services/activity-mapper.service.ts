@@ -183,7 +183,6 @@ export class ActivityMapperService {
         activity.createdDateTime?.toISOString() ??
         new Date().toISOString(),
       lastUpdatedBy: activity.lastUpdatedBy ?? 0,
-      rowGuid: activity.rowGuid ?? '',
     };
 
     // Runtime validation to ensure response matches schema contract

@@ -114,9 +114,6 @@ const activityCoreFieldsSchema = z.object({
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable().optional(),
-
-  // Auto-generated fields (optional in requests, required in responses)
-  rowGuid: z.string().uuid().optional(), // Auto-generated, optional in create/update requests
 });
 
 // ============================================================================

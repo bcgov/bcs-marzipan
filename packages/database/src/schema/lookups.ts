@@ -575,7 +575,6 @@ export const activityFilters = pgTable('activity_filters', {
   timestamp: timestamp('timestamp', { withTimezone: true })
     .notNull()
     .defaultNow(), // Row version timestamp
-  rowGuid: uuid('row_guid'), // Unique identifier for the row
 });
 
 /**
