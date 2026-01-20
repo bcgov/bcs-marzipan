@@ -156,7 +156,7 @@ export class ActivityMapperService {
 
       // Sharing
       commsContactLeadId: activity.commsContactLeadId ?? 0,
-      contactMinistryId: activity.contactMinistryId,
+      leadMinistryId: activity.leadMinistryId,
       commsContact:
         relatedData?.commsContactName ??
         (activity.commsContactLeadId

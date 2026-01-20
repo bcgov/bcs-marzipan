@@ -234,7 +234,7 @@ describe('ActivitiesService', () => {
         visibility: activity.visibility ?? ('global' satisfies Visibility),
         sharedWithAll: activity.sharedWithAll ?? false,
         commsContactLeadId: activity.commsContactLeadId ?? 0,
-        contactMinistryId: activity.contactMinistryId,
+        leadMinistryId: activity.leadMinistryId,
         commsContact:
           relatedData?.commsContactName ??
           (activity.commsContactLeadId
@@ -344,7 +344,7 @@ describe('ActivitiesService', () => {
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
         commsContactLeadId: 6,
-        contactMinistryId: '123e4567-e89b-12d3-a456-426614174003',
+        leadMinistryId: '123e4567-e89b-12d3-a456-426614174003',
         startDate: new Date('2024-02-20') as any,
         startTime: '14:30',
         endDate: new Date('2024-02-20') as any,

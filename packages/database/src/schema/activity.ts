@@ -120,7 +120,7 @@ export const activities = pgTable(
     commsContactLeadId: integer('comms_contact_lead_id')
       .notNull()
       .references(() => systemUsers.id), // FK to SystemUser
-    contactMinistryId: uuid('contact_ministry_id')
+    leadMinistryId: uuid('lead_ministry_id')
       .notNull()
       .references(() => ministries.id), // FK to Ministry (required for displayId generation)
     activityStatusId: integer('activity_status_id')
@@ -196,10 +196,10 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [systemUsers.id],
     relationName: 'createdBy',
   }),
-  contactMinistry: one(ministries, {
-    fields: [activities.contactMinistryId],
+  leadMinistry: one(ministries, {
+    fields: [activities.leadMinistryId],
     references: [ministries.id],
-    relationName: 'contactMinistry',
+    relationName: 'leadMinistry',
   }),
   newsReleaseDistribution: one(newsReleaseDistributions, {
     fields: [activities.newsReleaseDistributionId],

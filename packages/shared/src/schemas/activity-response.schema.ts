@@ -90,7 +90,7 @@ export const activityDbFieldsSchema = z.object({
 
   // Ownership
   commsContactLeadId: z.number().int(),
-  contactMinistryId: z.string().uuid(),
+  leadMinistryId: z.string().uuid(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)

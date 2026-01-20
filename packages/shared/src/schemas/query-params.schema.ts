@@ -55,7 +55,7 @@ export const filterActivitiesQuerySchema = z.object({
     .transform(Number)
     .pipe(z.number().int())
     .optional(),
-  contactMinistryId: z.string().uuid().optional(),
+  leadMinistryId: z.string().uuid().optional(),
   city: z.string().optional(),
   isActive: z
     .string()

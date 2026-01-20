@@ -113,21 +113,21 @@ export class ActivitiesService {
       const activityId = created.id;
 
       // Fetch ministry abbreviation to generate displayId
-      // contactMinistryId is required, so it should always be present
+      // leadMinistryId is required, so it should always be present
       // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
-      if (!activityData.contactMinistryId) {
-        throw new BadRequestException('contactMinistryId is required');
+      if (!activityData.leadMinistryId) {
+        throw new BadRequestException('leadMinistryId is required');
       }
 
       const [ministry] = await tx
         .select({ abbreviation: ministries.abbreviation })
         .from(ministries)
-        .where(eq(ministries.id, activityData.contactMinistryId))
+        .where(eq(ministries.id, activityData.leadMinistryId))
         .limit(1);
 
       if (!ministry || !ministry.abbreviation) {
         throw new BadRequestException(
-          `Ministry with ID ${activityData.contactMinistryId} not found or missing abbreviation`
+          `Ministry with ID ${activityData.leadMinistryId} not found or missing abbreviation`
         );
       }
 
@@ -286,10 +286,8 @@ export class ActivitiesService {
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
       }
-      if (filters.contactMinistryId !== undefined) {
-        conditions.push(
-          eq(activities.contactMinistryId, filters.contactMinistryId)
-        );
+      if (filters.leadMinistryId !== undefined) {
+        conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
       }
       // Note: City filter is handled after initial query with a separate join
       // TODO: Optimize with proper join in main query
@@ -555,22 +553,19 @@ export class ActivitiesService {
 
     // Use transaction to ensure atomicity of activity and junction table updates
     const updated = await this.databaseService.db.transaction(async (tx) => {
-      // If contactMinistryId is being updated, recalculate displayId
+      // If leadMinistryId is being updated, recalculate displayId
       // TODO: consider if users still need to reference previous displayId.
-      if (
-        dto.contactMinistryId !== undefined &&
-        dto.contactMinistryId !== null
-      ) {
+      if (dto.leadMinistryId !== undefined && dto.leadMinistryId !== null) {
         // Fetch the new ministry abbreviation
         const [ministry] = await tx
           .select({ abbreviation: ministries.abbreviation })
           .from(ministries)
-          .where(eq(ministries.id, dto.contactMinistryId))
+          .where(eq(ministries.id, dto.leadMinistryId))
           .limit(1);
 
         if (!ministry || !ministry.abbreviation) {
           throw new BadRequestException(
-            `Ministry with ID ${dto.contactMinistryId} not found or missing abbreviation`
+            `Ministry with ID ${dto.leadMinistryId} not found or missing abbreviation`
           );
         }
 

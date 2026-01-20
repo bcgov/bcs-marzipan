@@ -26,7 +26,7 @@ Creates a new calendar activity with related junction table records.
   "timeStatusId": 1,
   "activityStatusId": 1,
   "commsContactLeadId": 8,
-  "contactMinistryId": "00000000-0000-4000-8000-000000000004",
+  "leadMinistryId": "00000000-0000-4000-8000-000000000004",
   "isActive": true,
   "isIssue": false,
   "reportSettings": [
@@ -84,7 +84,7 @@ Retrieves all activities with optional filtering.
 | `endDateFrom` | ISO date | Activities ending on or after this date |
 | `endDateTo` | ISO date | Activities ending on or before this date |
 | `activityStatusId` | integer | Filter by activity status |
-| `contactMinistryId` | UUID | Filter by contact ministry |
+| `leadMinistryId` | UUID | Filter by lead ministry |
 | `city` | string | Filter by city (from venueAddress) |
 | `isActive` | boolean | Filter by active status |
 | `isIssue` | boolean | Filter by issue flag |

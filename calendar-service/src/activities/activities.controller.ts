@@ -120,7 +120,7 @@ export class ActivitiesController {
       query.endDateFrom !== undefined ||
       query.endDateTo !== undefined ||
       query.activityStatusId !== undefined ||
-      query.contactMinistryId !== undefined ||
+      query.leadMinistryId !== undefined ||
       query.city !== undefined ||
       query.isActive !== undefined ||
       query.isIssue !== undefined;

@@ -149,7 +149,7 @@ export const CreateActivityForm: React.FC = () => {
       commsContactLeadId: 'Comms Contact',
       eventPlannerLeadId: 'Event Planner',
       activityStatusId: 'Activity Status',
-      contactMinistryId: 'Contact Ministry',
+      leadMinistryId: 'Lead Ministry',
       venueAddress: 'Venue Address',
       street: 'Street Address',
       city: 'City',

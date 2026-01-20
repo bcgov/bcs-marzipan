@@ -105,7 +105,7 @@ const activityCoreFieldsSchema = z.object({
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
-  contactMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
+  leadMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
 
   // Optional user ID fields
   eventPlannerLeadId: z.number().int().nullable().optional(),
