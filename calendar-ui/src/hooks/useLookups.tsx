@@ -1,94 +1,139 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  REFERENCE_LOOKUP_CACHE_MS,
+  DYNAMIC_LOOKUP_CACHE_MS,
+} from '@corpcal/shared';
+import {
   fetchCategories,
   fetchOrganizations,
   fetchUsers,
   fetchTags,
   fetchPitchStatuses,
-  fetchSchedulingStatuses,
+  fetchActivityStatuses,
   fetchCommsMaterials,
   fetchTranslationLanguages,
   fetchGovernmentRepresentatives,
+  fetchEventPlanners,
+  fetchNewsReleaseDistributions,
+  fetchPremierRequested,
+  fetchNewsReleaseOrigins,
   fetchActivitiesForLookup,
+  fetchReports,
   type LookupItem,
   type LookupQueryParams,
+  type CategoryLookupItem,
+  type OrganizationLookupItem,
+  type UserLookupItem,
+  type TagLookupItem,
+  type PitchStatusLookupItem,
+  type ActivityStatusLookupItem,
+  type CommsMaterialsLookupItem,
+  type TranslationLanguageLookupItem,
+  type GovernmentRepresentativeLookupItem,
 } from '../api/lookupsApi';
-
-// Small lookups (<20 items) - cache for 1 hour
-const SMALL_LOOKUP_STALE_TIME = 3600000; // 1 hour
-
-// Large lookups (users/orgs/activities) - cache for 5 minutes
-const LARGE_LOOKUP_STALE_TIME = 300000; // 5 minutes
+import type { ReportResponse } from '@corpcal/shared/api/types';
 
 export function useCategories() {
-  return useQuery<LookupItem[]>({
+  return useQuery<CategoryLookupItem[]>({
     queryKey: ['lookups', 'categories'],
     queryFn: () => fetchCategories(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function useOrganizations(params?: LookupQueryParams) {
-  return useQuery<LookupItem[]>({
+  return useQuery<OrganizationLookupItem[]>({
     queryKey: ['lookups', 'organizations', params],
     queryFn: () => fetchOrganizations(params),
-    staleTime: LARGE_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function useUsers(params?: LookupQueryParams) {
-  return useQuery<LookupItem[]>({
+  return useQuery<UserLookupItem[]>({
     queryKey: ['lookups', 'users', params],
     queryFn: () => fetchUsers(params),
-    staleTime: LARGE_LOOKUP_STALE_TIME,
+    staleTime: DYNAMIC_LOOKUP_CACHE_MS,
   });
 }
 
 export function useTags() {
-  return useQuery<LookupItem[]>({
+  return useQuery<TagLookupItem[]>({
     queryKey: ['lookups', 'tags'],
     queryFn: () => fetchTags(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function usePitchStatuses() {
-  return useQuery<LookupItem[]>({
+  return useQuery<PitchStatusLookupItem[]>({
     queryKey: ['lookups', 'pitch-statuses'],
     queryFn: () => fetchPitchStatuses(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
-export function useSchedulingStatuses() {
-  return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'scheduling-statuses'],
-    queryFn: () => fetchSchedulingStatuses(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+export function useActivityStatuses() {
+  return useQuery<ActivityStatusLookupItem[]>({
+    queryKey: ['lookups', 'activity-statuses'],
+    queryFn: () => fetchActivityStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function useCommsMaterials() {
-  return useQuery<LookupItem[]>({
+  return useQuery<CommsMaterialsLookupItem[]>({
     queryKey: ['lookups', 'comms-materials'],
     queryFn: () => fetchCommsMaterials(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function useTranslationLanguages() {
-  return useQuery<LookupItem[]>({
+  return useQuery<TranslationLanguageLookupItem[]>({
     queryKey: ['lookups', 'translation-languages'],
     queryFn: () => fetchTranslationLanguages(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
 export function useGovernmentRepresentatives() {
-  return useQuery<LookupItem[]>({
+  return useQuery<GovernmentRepresentativeLookupItem[]>({
     queryKey: ['lookups', 'government-representatives'],
     queryFn: () => fetchGovernmentRepresentatives(),
-    staleTime: SMALL_LOOKUP_STALE_TIME,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useEventPlanners() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'event-planners'],
+    queryFn: () => fetchEventPlanners(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useNewsReleaseDistributions() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'news-release-distributions'],
+    queryFn: () => fetchNewsReleaseDistributions(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function usePremierRequested() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'premier-requested'],
+    queryFn: () => fetchPremierRequested(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useNewsReleaseOrigins() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'news-release-origins'],
+    queryFn: () => fetchNewsReleaseOrigins(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
@@ -98,6 +143,14 @@ export function useActivitiesForLookup(
   return useQuery<LookupItem[]>({
     queryKey: ['lookups', 'activities', params],
     queryFn: () => fetchActivitiesForLookup(params),
-    staleTime: LARGE_LOOKUP_STALE_TIME,
+    staleTime: DYNAMIC_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useReports() {
+  return useQuery<ReportResponse[]>({
+    queryKey: ['reports'],
+    queryFn: () => fetchReports(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

@@ -10,196 +10,224 @@ import {
   boolean,
   uuid,
   bigint,
-  jsonb,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
-// Import table objects for relations
 import {
   activityStatuses,
-  cities,
-  pitchStatuses,
-  schedulingStatuses,
+  dateStatuses,
+  timeStatuses,
+  eventPlanners,
+  newsReleaseDistributions,
+  premierRequested,
+  newsReleaseOrigins,
 } from './lookups';
-import { ministries } from './ministry';
+
 import { organizations } from './organizations';
 import { systemUsers } from './user';
 import {
   activityThemes,
   activityTags,
+  activitySubscriptions,
   activityCategories,
-  activityJointOrganizations,
-  activityRelatedEntries,
   activityCommsMaterials,
-  activityTranslationLanguages,
-  activityJointEventOrganizations,
+  activityTranslationsRequired,
   activityRepresentatives,
-  activitySharedWithOrganizations,
-  activityCanEditUsers,
-  activityCanViewUsers,
-  activityFieldReviewStatuses,
+  activitySharedWithTeams,
+  activityAdditionalCommsContacts,
+  activitySectors,
+  favoriteActivities,
+  activityReportSettings,
 } from './relations';
+import { ministries } from './ministry';
+import { venueAddresses } from './venue-address';
 
 /**
  * Activity table - Core entity for calendar events
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Activity.cs
  */
-export const activities = pgTable('activities', {
-  id: serial('id').primaryKey(),
+export const activities = pgTable(
+  'activities',
+  {
+    id: serial('id').primaryKey().notNull(),
 
-  // Display ID (computed: MIN-###### format)
-  displayId: varchar('display_id', { length: 50 }), // Computed field: {ministryAcronym}-{paddedId}
+    // Display ID (computed: {ministryAbbreviation}-{paddedLast6Digits} format)
+    // Format: <ACRONYM>-<000001> (e.g., AG-000123, HLTH-456789)
+    displayId: varchar('display_id', { length: 50 }).unique(), // Computed field: {ministryAbbreviation}-{paddedLast6Digits}
+    isActive: boolean('is_active').notNull().default(true),
 
-  // Scheduling
+    // Overview and approval
+    title: varchar('title', { length: 255 }).notNull(),
+    leadOrgId: uuid('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
+    leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
+    summary: text('summary').notNull(),
+    significance: text('significance').notNull(),
+    isIssue: boolean('is_issue').notNull().default(false),
 
-  startDate: date('start_date'),
-  startTime: time('start_time'),
-  endDate: date('end_date'),
-  endTime: time('end_time'),
+    // Scheduling
+    isAllDay: boolean('is_all_day').notNull().default(false),
+    startDate: date('start_date'),
+    endDate: date('end_date'),
+    dateStatusId: integer('date_status_id')
+      .notNull()
+      .references(() => dateStatuses.id), // FK to DateStatus - maps to legacy isConfirmed field
+    startTime: time('start_time'),
+    endTime: time('end_time'),
+    timeStatusId: integer('time_status_id')
+      .notNull()
+      .references(() => timeStatuses.id), // FK to TimeStatus
 
-  schedulingStatusId: integer('scheduling_status_id'), // FK to SchedulingStatusˆ
-  schedulingConsiderations: text('scheduling_considerations'), // Renamed from schedule (500 char limit)
+    schedulingNotes: text('scheduling_notes'), // (500 char limit) maps to legacy Schedule field
+    strategy: text('strategy'), // Strategic information (legacy field)
 
-  // Overview and approval
-  title: varchar('title', { length: 500 }),
-  summary: text('summary'), // Renamed from details (1000 char limit in new type)
-  comments: text('comments'), // Deprecated - kept for backward compatibility
-  leadOrganization: varchar('lead_organization', { length: 255 }), // Deprecated - replaced by leadOrgId
-  venue: varchar('venue', { length: 500 }), // Deprecated - replaced by venueAddress
-  venueAddress: jsonb('venue_address'), // New: {street, city, provinceOrState, country}
-  significance: text('significance'),
+    // News Release
+    newsReleaseOriginId: integer('news_release_origin_id').references(
+      () => newsReleaseOrigins.id
+    ), // FK to NewsReleaseOrigin lookup table
+    newsReleaseId: uuid('news_release_id'),
+    newsReleaseDateTime: timestamp('news_release_date_time', {
+      withTimezone: true,
+    }), // News release date/time (legacy field)
 
-  pitchComments: text('pitch_comments'), // New (500 char limit)
-  newsReleaseId: uuid('news_release_id'), // New
+    // Event
+    eventPlannerLeadId: integer('event_planner_lead_id').references(
+      () => eventPlanners.id
+    ), // FK to EventPlanner (mutually exclusive with eventPlannerLeadName)
+    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventPlannerLeadId)
 
-  // Foreign keys (new)
-  activityStatusId: integer('entry_status_id'), // FK to ActivityStatus
-  pitchStatusId: integer('pitch_status_id'), // FK to PitchStatus
-  leadOrgId: uuid('lead_org_id'), // FK to Organizations
-  eventLeadOrgId: uuid('event_lead_org_id'), // FK to Organizations
-  commsLeadId: integer('comms_lead_id'), // FK to SystemUser
-  eventLeadId: integer('event_lead_id'), // FK to SystemUser (mutually exclusive with eventLeadName)
-  eventLeadName: varchar('event_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventLeadId)
-  graphicsUserId: integer('graphics_user_id'), // FK to SystemUser (replaces graphicsId lookup)
-  ownerId: integer('owner_id'), // FK to SystemUser
+    // Look Ahead
+    executiveSummary: text('executive_summary'), // maps to legacy HqComments field
+    lookAheadStatus: varchar('look_ahead_status', { length: 50 }), // 'none', 'new', 'changed'  maps to legacy HqStatusId field
+    lookAheadSection: varchar('look_ahead_section', { length: 50 }), // 'events', 'issues', 'news', 'awareness' maps to legacy HqSection field
 
-  // Foreign keys
-  contactMinistryId: uuid('contact_ministry_id'), // FK to Ministry
-  cityId: integer('city_id'), // FK to City
+    // Confidential flag maps to "Not for Look Ahead" in UI
+    isConfidential: boolean('is_confidential').notNull().default(false),
 
-  // Boolean flags (new)
-  isAllDay: boolean('is_all_day').notNull().default(false),
-  isTimeConfirmed: boolean('is_time_confirmed').notNull().default(false),
-  isDateConfirmed: boolean('is_date_confirmed').notNull().default(false),
-  oicRelated: boolean('oic_related').notNull().default(false), // New
-  notForLookAhead: boolean('not_for_look_ahead').notNull().default(false), // New
-  planningReport: boolean('planning_report').notNull().default(false), // New
-  thirtySixtyNinetyReport: boolean('thirty_sixty_ninety_report')
-    .notNull()
-    .default(false), // New (fixed typo from "thrity")
+    // Notes and additional fields
+    notes: text('notes'), // Maps to legacy Comments field
+    pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
+    newsReleaseDistributionId: integer(
+      'news_release_distribution_id'
+    ).references(() => newsReleaseDistributions.id), // FK to NewsReleaseDistribution - maps to legacy NRDistributionId
+    premierRequestedId: integer('premier_requested_id').references(
+      () => premierRequested.id
+    ), // FK to PremierRequested - maps to legacy PremierRequestedId
+    visibility: varchar('visibility', { length: 50 })
+      .notNull()
+      .default('global'), // 'global' or 'team' - controls base access visibility
 
-  // Boolean flags
-  isActive: boolean('is_active').notNull().default(true), // Relates to activityStatusId
-  isConfidential: boolean('is_confidential').notNull().default(false),
-  isIssue: boolean('is_issue').notNull().default(false),
+    commsContactLeadId: integer('comms_contact_lead_id')
+      .notNull()
+      .references(() => systemUsers.id), // FK to SystemUser
+    contactMinistryId: uuid('contact_ministry_id')
+      .notNull()
+      .references(() => ministries.id), // FK to Ministry (required for displayId generation)
+    activityStatusId: integer('activity_status_id')
+      .notNull()
+      .references(() => activityStatuses.id), // FK to ActivityStatus
 
-  // Enums (stored as varchar)
-  lookAheadStatus: varchar('look_ahead_status', { length: 50 }), // 'none', 'new', 'changed'
-  lookAheadSection: varchar('look_ahead_section', { length: 50 }), // 'events', 'issues', 'news', 'awareness'
-  calendarVisibility: varchar('calendar_visibility', { length: 50 }), // 'visible', 'partial', 'hidden'
+    // Audit fields
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => systemUsers.id), // FK to SystemUser
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => systemUsers.id), // FK to SystemUser
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
+    rowGuid: uuid('row_guid').notNull().defaultRandom(), // Row identifier - maps to legacy RowGuid, now required
+  },
+  (table) => [
+    // CHECK constraint: exactly one of leadOrgId or leadOrgName must be provided (XOR)
+    check(
+      'lead_org_xor',
+      sql`(${table.leadOrgId} IS NULL) <> (${table.leadOrgName} IS NULL)`
+    ),
+    // CHECK constraint: exactly one of eventPlannerLeadId or eventPlannerLeadName must be provided (XOR)
+    check(
+      'event_planner_lead_xor',
+      sql`(${table.eventPlannerLeadId} IS NULL) <> (${table.eventPlannerLeadName} IS NULL)`
+    ),
+  ]
+);
 
-  // HQ Section (deprecated - kept for backward compatibility)
-  hqSection: integer('hq_section').notNull().default(0), // TODO: unsure what this is for?
-
-  // Audit fields
-  createdDateTime: timestamp('created_date_time', { withTimezone: true }),
-  createdBy: integer('created_by'), // FK to SystemUser
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  }),
-  lastUpdatedBy: integer('last_updated_by'), // FK to SystemUser
-  rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
-  rowGuid: uuid('row_guid'),
-});
-
-// Relations - using actual table objects for type safety
+// Relations
 export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityStatus: one(activityStatuses, {
     fields: [activities.activityStatusId],
     references: [activityStatuses.id],
   }),
-
-  pitchStatus: one(pitchStatuses, {
-    fields: [activities.pitchStatusId],
-    references: [pitchStatuses.id],
+  dateStatus: one(dateStatuses, {
+    fields: [activities.dateStatusId],
+    references: [dateStatuses.id],
   }),
-  schedulingStatus: one(schedulingStatuses, {
-    fields: [activities.schedulingStatusId],
-    references: [schedulingStatuses.id],
+  timeStatus: one(timeStatuses, {
+    fields: [activities.timeStatusId],
+    references: [timeStatuses.id],
   }),
   leadOrg: one(organizations, {
     fields: [activities.leadOrgId],
     references: [organizations.id],
   }),
-  eventLeadOrg: one(organizations, {
-    fields: [activities.eventLeadOrgId],
-    references: [organizations.id],
-    relationName: 'eventLeadOrg',
+  newsReleaseOrigin: one(newsReleaseOrigins, {
+    fields: [activities.newsReleaseOriginId],
+    references: [newsReleaseOrigins.id],
+    relationName: 'newsReleaseOrigin',
   }),
-  commsLead: one(systemUsers, {
-    fields: [activities.commsLeadId],
-    references: [systemUsers.id],
-    relationName: 'commsLead',
-  }),
-  eventLead: one(systemUsers, {
-    fields: [activities.eventLeadId],
-    references: [systemUsers.id],
+  eventLead: one(eventPlanners, {
+    fields: [activities.eventPlannerLeadId],
+    references: [eventPlanners.id],
     relationName: 'eventLead',
   }),
-  graphics: one(systemUsers, {
-    fields: [activities.graphicsUserId],
+  commsContact: one(systemUsers, {
+    fields: [activities.commsContactLeadId],
     references: [systemUsers.id],
-    relationName: 'graphics',
-  }),
-  owner: one(systemUsers, {
-    fields: [activities.ownerId],
-    references: [systemUsers.id],
-    relationName: 'owner',
-  }),
-
-  contactMinistry: one(ministries, {
-    fields: [activities.contactMinistryId],
-    references: [ministries.id],
-  }),
-  city: one(cities, {
-    fields: [activities.cityId],
-    references: [cities.id],
+    relationName: 'commsContact',
   }),
   createdByUser: one(systemUsers, {
     fields: [activities.createdBy],
     references: [systemUsers.id],
     relationName: 'createdBy',
   }),
-  updatedByUser: one(systemUsers, {
-    fields: [activities.lastUpdatedBy],
-    references: [systemUsers.id],
-    relationName: 'updatedBy',
+  contactMinistry: one(ministries, {
+    fields: [activities.contactMinistryId],
+    references: [ministries.id],
+    relationName: 'contactMinistry',
+  }),
+  newsReleaseDistribution: one(newsReleaseDistributions, {
+    fields: [activities.newsReleaseDistributionId],
+    references: [newsReleaseDistributions.id],
+    relationName: 'newsReleaseDistribution',
+  }),
+  premierRequestedLookup: one(premierRequested, {
+    fields: [activities.premierRequestedId],
+    references: [premierRequested.id],
+    relationName: 'premierRequestedLookup',
   }),
 
-  // Junction tables (new)
+  // Junction tables
   activityCategories: many(activityCategories),
-  activityJointOrganizations: many(activityJointOrganizations),
-  activityRelatedEntries: many(activityRelatedEntries),
   activityCommsMaterials: many(activityCommsMaterials),
-  activityTranslationLanguages: many(activityTranslationLanguages),
-  activityJointEventOrganizations: many(activityJointEventOrganizations),
+  activityTranslationsRequired: many(activityTranslationsRequired),
   activityRepresentatives: many(activityRepresentatives),
-  activitySharedWithOrganizations: many(activitySharedWithOrganizations),
-  activityCanEditUsers: many(activityCanEditUsers),
-  activityCanViewUsers: many(activityCanViewUsers),
-  activityFieldReviewStatuses: many(activityFieldReviewStatuses),
-
-  // Junction tables (existing)
+  activitySharedWithTeams: many(activitySharedWithTeams),
+  activityAdditionalCommsContacts: many(activityAdditionalCommsContacts),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
+  activitySubscriptions: many(activitySubscriptions),
+  activitySectors: many(activitySectors),
+  favoriteActivities: many(favoriteActivities),
+  reportSettings: many(activityReportSettings),
+  venueAddress: one(venueAddresses, {
+    fields: [activities.id],
+    references: [venueAddresses.activityId],
+  }),
 }));

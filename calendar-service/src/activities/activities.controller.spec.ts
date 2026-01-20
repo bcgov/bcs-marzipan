@@ -1,60 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
-import { ActivitiesService } from './activities.service';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-} from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/api';
-import { Category } from '@corpcal/shared';
+import { ActivitiesService } from './services/activities.service';
+import type { Category } from '@corpcal/database/types';
+import {
+  createMockActivityRequest,
+  createMockUpdateRequest,
+  createMockActivityResponse,
+} from '../common/test-utils';
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
 
-  const mockActivityResponse: ActivityResponse = {
-    id: 1,
-    displayId: 'ACT-1',
-    activityStatusId: '1',
-    title: 'Test Activity',
-    summary: 'Test summary',
-    isIssue: false,
-    oicRelated: false,
-    isActive: true,
-    leadOrg: null,
-    significance: null,
-    pitchStatus: 'Pending',
-    pitchComments: null,
-    confidential: false,
-    schedulingStatus: 'Confirmed',
-    isAllDay: false,
-    startDate: '2025-01-15',
-    startTime: '10:00',
-    endDate: '2025-01-15',
-    endTime: '12:00',
-    isTimeConfirmed: true,
-    isDateConfirmed: true,
-    schedulingConsiderations: null,
-    commsLead: null,
-    eventLeadOrg: null,
-    eventLead: null,
-    eventLeadName: null,
-    videographer: null,
-    graphics: null,
-    notForLookAhead: false,
-    lookAheadStatus: null,
-    lookAheadSection: null,
-    planningReport: false,
-    thirtySixtyNinetyReport: false,
-    calendarVisibility: null,
-    venueAddress: null,
-    newsReleaseId: null,
-    createdDateTime: new Date().toISOString(),
-    lastUpdatedDateTime: new Date().toISOString(),
-    createdBy: 'test-user',
-    lastUpdatedBy: 'test-user',
-    category: ['Education'],
-    owner: null,
-  };
+  const mockActivityResponse = createMockActivityResponse({
+    lookAheadStatus: 'none',
+    lookAheadSection: 'events',
+    tags: undefined,
+    commsMaterials: undefined,
+    translationsRequired: undefined,
+    representativesAttending: undefined,
+    sharedWith: undefined,
+  });
 
   const mockActivitiesService = {
     create: jest.fn(),
@@ -89,24 +54,10 @@ describe('ActivitiesController', () => {
 
   describe('create', () => {
     it('should create a new activity', async () => {
-      const createDto: CreateActivityRequest = {
+      const createDto = createMockActivityRequest({
         title: 'New Activity',
         summary: 'New summary',
-        isIssue: false,
-        oicRelated: false,
-        isActive: true,
-        isAllDay: false,
-        startDate: '2025-01-15',
-        startTime: '10:00',
-        endDate: '2025-01-15',
-        endTime: '12:00',
-        isTimeConfirmed: true,
-        isDateConfirmed: true,
-        isConfidential: false,
-        notForLookAhead: false,
-        planningReport: false,
-        thirtySixtyNinetyReport: false,
-      };
+      });
 
       mockActivitiesService.create.mockResolvedValue(mockActivityResponse);
 
@@ -159,9 +110,13 @@ describe('ActivitiesController', () => {
           displayName: 'Education',
           sortOrder: 1,
           isActive: true,
-          pitchNotRequired: false,
+          pitchRequired: true,
+          visibility: 'global',
           description: '',
-          timestamp: new Date(),
+          createdDateTime: new Date(),
+          lastUpdatedDateTime: new Date(),
+          createdBy: 1,
+          lastUpdatedBy: 1,
         },
         {
           id: 2,
@@ -169,9 +124,13 @@ describe('ActivitiesController', () => {
           displayName: 'Health',
           sortOrder: 2,
           isActive: true,
-          pitchNotRequired: false,
+          pitchRequired: true,
+          visibility: 'global',
           description: '',
-          timestamp: new Date(),
+          createdDateTime: new Date(),
+          lastUpdatedDateTime: new Date(),
+          createdBy: 1,
+          lastUpdatedBy: 1,
         },
       ];
       mockActivitiesService.fetchCategories.mockResolvedValue(categories);
@@ -212,10 +171,10 @@ describe('ActivitiesController', () => {
 
   describe('update', () => {
     it('should update an activity', async () => {
-      const updateDto = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Title',
         summary: 'Updated summary',
-      } as unknown as UpdateActivityRequest;
+      });
 
       const updatedActivity = {
         ...mockActivityResponse,
@@ -235,9 +194,9 @@ describe('ActivitiesController', () => {
     });
 
     it('should throw error when updating non-existent activity', async () => {
-      const updateDto = {
+      const updateDto = createMockUpdateRequest({
         title: 'Updated Title',
-      } as unknown as UpdateActivityRequest;
+      });
 
       mockActivitiesService.update.mockRejectedValue(
         new Error('Activity not found')

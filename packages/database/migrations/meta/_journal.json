@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1764715398074,
-      "tag": "0000_brown_the_executioner",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1764802750138,
-      "tag": "0001_spotty_pride",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1764981562240,
-      "tag": "0002_bitter_frightful_four",
+      "when": 1768850836898,
+      "tag": "0000_20250119_initial_activity_tables",
       "breakpoints": true
     }
   ]

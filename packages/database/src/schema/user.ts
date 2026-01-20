@@ -8,6 +8,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { pods } from './ministry';
 
 /**
  * SystemUser table - System users for authentication and authorization
@@ -16,25 +17,21 @@ import { relations } from 'drizzle-orm';
 
 export const systemUsers = pgTable('system_users', {
   id: serial('id').primaryKey(),
-  username: varchar('username', { length: 255 }).notNull().unique(),
-  firstName: varchar('first_name', { length: 255 }),
-  lastName: varchar('last_name', { length: 255 }),
-  email: varchar('email', { length: 255 }),
   role: varchar('role', { length: 50 }).notNull().default('ReadOnly'), // SecurityRole enum
+  groupId: integer('group_id'), // FK to Groups TODO
   isActive: boolean('is_active').notNull().default(true),
 
-  // Active Directory / Keycloak integration
-  externalId: varchar('external_id', { length: 255 }), // Keycloak user ID
-  adUsername: varchar('ad_username', { length: 255 }), // Legacy Active Directory username
-  adDisplayName: varchar('ad_display_name', { length: 255 }), // Legacy Active Directory display name
-  adEmail: varchar('ad_email', { length: 255 }), // Legacy Active Directory email
-  adPhone: varchar('ad_phone', { length: 50 }), // Legacy Active Directory phone
-  adDivision: varchar('ad_division', { length: 255 }), // Legacy Active Directory division
-  adDepartment: varchar('ad_department', { length: 255 }), // Legacy Active Directory department
-  adJobTitle: varchar('ad_job_title', { length: 255 }), // Legacy Active Directory job title
+  // Active Directory
+  externalId: varchar('external_id', { length: 255 }), // Active Directory user ID
+  adUsername: varchar('ad_username', { length: 255 }), // Active Directory username
+  adDisplayName: varchar('ad_display_name', { length: 255 }), // Active Directory display name
+  adEmail: varchar('ad_email', { length: 255 }), // Active Directory email
+  adPhone: varchar('ad_phone', { length: 50 }), // Active Directory phone
+  adDivision: varchar('ad_division', { length: 255 }), // Active Directory division
+  adDepartment: varchar('ad_department', { length: 255 }), // Active Directory department
+  adJobTitle: varchar('ad_job_title', { length: 255 }), // Active Directory job title
   // Additional user info
   phone: varchar('phone', { length: 50 }),
-  department: varchar('department', { length: 255 }),
   notes: text('notes'),
 
   // Audit fields
@@ -51,7 +48,7 @@ export const systemUsers = pgTable('system_users', {
 });
 
 // Relations for SystemUser
-export const systemUsersRelations = relations(systemUsers, ({ one }) => ({
+export const systemUsersRelations = relations(systemUsers, ({ one, many }) => ({
   // Self-referential relations for audit fields
   // Using the table directly since it's in the same file
   creator: one(systemUsers, {
@@ -67,4 +64,6 @@ export const systemUsersRelations = relations(systemUsers, ({ one }) => ({
 
   // Relations to other tables - using string references to avoid circular dependencies
   // Note: Reverse relations are defined in activity.ts and ministry.ts
+  createdPods: many(pods, { relationName: 'podCreator' }),
+  updatedPods: many(pods, { relationName: 'podUpdater' }),
 }));
