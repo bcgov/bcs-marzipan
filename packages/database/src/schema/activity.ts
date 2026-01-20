@@ -55,7 +55,6 @@ export const activities = pgTable(
     // Display ID (computed: {ministryAbbreviation}-{paddedLast6Digits} format)
     // Format: <ACRONYM>-<000001> (e.g., AG-000123, HLTH-456789)
     displayId: varchar('display_id', { length: 50 }).unique(), // Computed field: {ministryAbbreviation}-{paddedLast6Digits}
-    isActive: boolean('is_active').notNull().default(true),
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),

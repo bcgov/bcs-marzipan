@@ -57,11 +57,6 @@ export const filterActivitiesQuerySchema = z.object({
     .optional(),
   leadMinistryId: z.string().uuid().optional(),
   city: z.string().optional(),
-  isActive: z
-    .string()
-    .transform((val) => val === 'true')
-    .pipe(z.boolean())
-    .optional(),
   isIssue: z
     .string()
     .transform((val) => val === 'true')

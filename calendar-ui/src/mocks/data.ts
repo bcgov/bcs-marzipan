@@ -570,7 +570,6 @@ export function createValidActivityRequest(
     activityStatusId: 1,
     commsContactLeadId: 8,
     leadMinistryId: '550e8400-e29b-41d4-a716-446655440000',
-    isActive: true,
     isAllDay: false,
     isIssue: false,
     isConfidential: false,

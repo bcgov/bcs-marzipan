@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility } from '@corpcal/shared';
+import type { Visibility, ActivityStatusName } from '@corpcal/shared';
 import {
   categories,
   organizations,
@@ -434,18 +434,31 @@ export class LookupsService {
   /**
    * Get activities for "Related Activities" dropdown
    * Returns simplified list with id and title
+   * Excludes deleted activities by default
    * TODO: Implement scoping based on userId, role
    */
   async getActivitiesForLookup(
     _params?: LookupQueryParams
   ): Promise<LookupItem[]> {
+    // Get deleted status ID to exclude deleted activities
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const conditions: SQL[] = [];
+    if (deletedStatus?.id !== undefined) {
+      conditions.push(ne(activities.activityStatusId, deletedStatus.id));
+    }
+
     const results = await this.databaseService.db
       .select({
         id: activities.id,
         title: activities.title,
       })
       .from(activities)
-      .where(eq(activities.isActive, true))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(activities.title);
 
     return results.map((activity) => ({

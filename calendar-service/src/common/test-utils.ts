@@ -18,7 +18,6 @@ export const createMockActivityRequest = (
     significance: '',
     schedulingNotes: '',
     isIssue: false,
-    isActive: true,
     isConfidential: false,
     isAllDay: false,
     startDate: '2025-01-15',
@@ -52,7 +51,6 @@ export const createMockActivityResponse = (
   return {
     id: 1,
     displayId: 'ACT-1',
-    isActive: true,
     activityStatusId: 1,
     activityStatus: 'new',
     category: ['Event'],
@@ -118,7 +116,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     title: 'Test Activity',
     summary: 'Test summary',
     isIssue: false,
-    isActive: true,
     isConfidential: false,
     leadOrgId: null,
     leadOrgName: null,

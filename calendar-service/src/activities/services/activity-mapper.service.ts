@@ -92,7 +92,6 @@ export class ActivityMapperService {
       title: activity.title ?? '',
       summary: activity.summary ?? '',
       isIssue: activity.isIssue ?? false,
-      isActive: activity.isActive ?? true,
       isConfidential: activity.isConfidential ?? false,
 
       // Organizations

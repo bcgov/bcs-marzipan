@@ -71,7 +71,6 @@ const activityCoreFieldsSchema = z.object({
   commsContactLeadId: z.number().int(),
 
   // Boolean flags
-  isActive: z.boolean().default(true),
   isIssue: z.boolean().default(false),
   isAllDay: z.boolean().default(false),
   isConfidential: z.boolean().default(false),

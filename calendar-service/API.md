@@ -27,7 +27,6 @@ Creates a new calendar activity with related junction table records.
   "activityStatusId": 1,
   "commsContactLeadId": 8,
   "leadMinistryId": "00000000-0000-4000-8000-000000000004",
-  "isActive": true,
   "isIssue": false,
   "reportSettings": [
     { "reportId": 1, "omitted": false },
@@ -83,13 +82,12 @@ Retrieves all activities with optional filtering.
 | `startDateTo` | ISO date | Activities starting on or before this date |
 | `endDateFrom` | ISO date | Activities ending on or after this date |
 | `endDateTo` | ISO date | Activities ending on or before this date |
-| `activityStatusId` | integer | Filter by activity status |
+| `activityStatusId` | integer | Filter by activity status (default: excludes deleted activities) |
 | `leadMinistryId` | UUID | Filter by lead ministry |
 | `city` | string | Filter by city (from venueAddress) |
-| `isActive` | boolean | Filter by active status |
 | `isIssue` | boolean | Filter by issue flag |
 
-**Example:** `GET /activities?startDateFrom=2026-01-01&isActive=true`
+**Example:** `GET /activities?startDateFrom=2026-01-01&activityStatusId=1`
 
 **Response:** `200 OK`
 
@@ -193,7 +191,7 @@ Updates an existing activity. Only provided fields are updated (partial update).
 
 **DELETE** `/activities/:id/soft-delete`
 
-Soft deletes an activity by setting `isActive` to false. Requires a reason for audit purposes.
+Soft deletes an activity by setting `activityStatusId` to 'deleted'. Requires a reason for audit purposes. Deleted activities are excluded from default queries unless explicitly requested via `activityStatusId` filter.
 
 **Request Body:**
 
@@ -213,7 +211,8 @@ Soft deletes an activity by setting `isActive` to false. Requires a reason for a
   "data": {
     "id": 1,
     "title": "Example Activity",
-    "isActive": false
+    "activityStatusId": 6,
+    "activityStatus": "Deleted"
   }
 }
 ```

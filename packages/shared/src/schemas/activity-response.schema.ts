@@ -45,7 +45,6 @@ export const activityDbFieldsSchema = z.object({
   displayId: z.string().nullable(), // May be null during creation, then set after activity ID is generated
 
   // Status flags
-  isActive: z.boolean(),
   isIssue: z.boolean(),
   isConfidential: z.boolean(),
 

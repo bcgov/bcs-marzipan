@@ -122,7 +122,6 @@ export class ActivitiesController {
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
       query.city !== undefined ||
-      query.isActive !== undefined ||
       query.isIssue !== undefined;
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters);

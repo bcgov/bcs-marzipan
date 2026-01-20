@@ -183,7 +183,6 @@ describe('ActivitiesService', () => {
         title: activity.title ?? '',
         summary: activity.summary ?? '',
         isIssue: activity.isIssue ?? false,
-        isActive: activity.isActive ?? true,
         isConfidential: activity.isConfidential ?? false,
         leadOrgId: activity.leadOrgId ?? null,
         leadOrgName: activity.leadOrgName ?? null,
@@ -451,7 +450,6 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('category');
       expect(result).toHaveProperty('title');
       expect(result).toHaveProperty('isIssue');
-      expect(result).toHaveProperty('isActive');
       expect(result).toHaveProperty('isAllDay');
       expect(result).toHaveProperty('reportSettings');
       expect(Array.isArray(result.reportSettings)).toBe(true);
@@ -531,7 +529,6 @@ describe('ActivitiesService', () => {
     it('should create an activity and return a valid ActivityResponse', async () => {
       const createDto = createMockActivityRequest({
         title: 'New Activity',
-        isActive: true,
         isIssue: false,
         isAllDay: false,
         reportSettings: [],
@@ -540,7 +537,6 @@ describe('ActivitiesService', () => {
       const createdActivity = createMockActivity({
         id: 2,
         title: 'New Activity',
-        isActive: true,
         isIssue: false,
         isAllDay: false,
       });

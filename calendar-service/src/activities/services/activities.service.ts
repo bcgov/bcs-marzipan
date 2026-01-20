@@ -3,9 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility } from '@corpcal/shared';
+import type { Visibility, ActivityStatusName } from '@corpcal/shared';
 import {
   activities,
   activityCategories,
@@ -20,6 +20,7 @@ import {
   activityHistory,
   venueAddresses,
   teamCategories,
+  activityStatuses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import type {
@@ -270,6 +271,15 @@ export class ActivitiesService {
   ): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
+    // Get deleted status ID to exclude deleted activities by default
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const deletedStatusId = deletedStatus?.id;
+
     if (filters) {
       const conditions: SQL[] = [];
       if (filters.title) {
@@ -279,9 +289,9 @@ export class ActivitiesService {
         conditions.push(
           eq(activities.activityStatusId, filters.activityStatusId)
         );
-      }
-      if (filters.isActive !== undefined) {
-        conditions.push(eq(activities.isActive, filters.isActive));
+      } else if (deletedStatusId !== undefined) {
+        // Exclude deleted activities by default if activityStatusId is not specified
+        conditions.push(ne(activities.activityStatusId, deletedStatusId));
       }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
@@ -309,12 +319,30 @@ export class ActivitiesService {
           .from(activities)
           .where(and(...conditions));
       } else {
+        // If no conditions but deletedStatusId exists, still exclude deleted
+        if (deletedStatusId !== undefined) {
+          activityResults = await this.databaseService.db
+            .select()
+            .from(activities)
+            .where(ne(activities.activityStatusId, deletedStatusId));
+        } else {
+          activityResults = await this.databaseService.db
+            .select()
+            .from(activities);
+        }
+      }
+    } else {
+      // No filters: exclude deleted activities by default
+      if (deletedStatusId !== undefined) {
+        activityResults = await this.databaseService.db
+          .select()
+          .from(activities)
+          .where(ne(activities.activityStatusId, deletedStatusId));
+      } else {
         activityResults = await this.databaseService.db
           .select()
           .from(activities);
       }
-    } else {
-      activityResults = await this.databaseService.db.select().from(activities);
     }
 
     // Handle city filter with proper join if needed
@@ -865,7 +893,7 @@ export class ActivitiesService {
   }
 
   /**
-   * Soft delete (set isActive to false)
+   * Soft delete (set activityStatusId to 'deleted')
    */
   async softDelete(
     id: number,
@@ -889,11 +917,24 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    // Update activity to soft delete
+    // Get deleted status ID
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    if (!deletedStatus) {
+      throw new BadRequestException(
+        'Deleted activity status not found in database'
+      );
+    }
+
+    // Update activity to soft delete by setting activityStatusId to 'deleted'
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
-        isActive: false,
+        activityStatusId: deletedStatus.id,
         lastUpdatedDateTime: new Date(),
         lastUpdatedBy: userId,
       })
@@ -908,9 +949,9 @@ export class ActivitiesService {
       notes: reason.trim(),
       changes: [
         {
-          field: 'isActive',
-          oldValue: existing.isActive,
-          newValue: false,
+          field: 'activityStatusId',
+          oldValue: existing.activityStatusId,
+          newValue: deletedStatus.id,
         },
       ],
     });
