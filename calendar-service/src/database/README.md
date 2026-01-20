@@ -59,9 +59,22 @@ To seed the database with lookup table data, from the calendar-service run:
 npm run seed
 ```
 
-This will execute the seed SQL file located in `packages/database/migrations/`:
+This will automatically discover and execute all seed SQL files located in `packages/database/seeds/` in order.
+**Note** this should be tested thoroughly before using with production data.
 
-- `001_seed_lookup_tables.sql` - Seeds all lookup tables including activity_statuses, pitch_statuses, scheduling_statuses, categories, comms_materials, translated_languages, cities, government_representatives, tags, ministries, organizations, communication_contacts, event_planners, videographers, themes, and system_users
+### Seed File Naming Convention
+
+Seed files must follow this naming pattern: `####_YYYYMMDD_description_seed_*.sql`
+
+- `####` - 4-digit sequence number (0001, 0002, etc.) - determines execution order
+- `YYYYMMDD` - Date created (e.g., 20250119)
+- `description` - Brief description (e.g., `corpcal`)
+- `seed` - Required keyword to identify as seed file
+- `*` - Additional description (e.g., `data`, `lookups`, etc.)
+
+**Example:** `0001_20250119_corpcal_seed_data.sql`
+
+Files are automatically discovered and executed in alphabetical order (the numeric prefix ensures correct ordering).
 
 ### Seed Service
 
@@ -75,23 +88,47 @@ export class MyService {
   constructor(private readonly seedService: SeedService) {}
 
   async initializeData() {
+    // Basic seeding
     const success = await this.seedService.seed();
     if (success) {
       console.log('Database seeded successfully');
     }
+
+    // With options
+    const result = await this.seedService.seed({ force: true }); // Re-run already applied seeds
+    const detailed = await this.seedService.seedWithResults(); // Get detailed results
   }
 }
 ```
 
+### Seed Options
+
+The `seed()` method accepts optional options:
+
+- `force?: boolean` - If true, re-runs seeds that have already been applied (default: false)
+- `dryRun?: boolean` - If true, validates seed files without executing them (default: false)
+
+### Seed Tracking
+
+The seed system automatically tracks which seeds have been applied using a `_seed_history` table:
+
+- Seeds are tracked by filename
+- Already applied seeds are automatically skipped (unless `force: true` is used)
+- The tracking table is created automatically on first run
+
 ### Idempotency
 
-The seed operation is idempotent - it can be run multiple times safely. The SQL files use `ON CONFLICT DO NOTHING` to prevent duplicate inserts.
+The seed operation is idempotent - it can be run multiple times safely:
+
+1. **Seed tracking**: Already applied seeds are automatically skipped
+2. **SQL-level**: The SQL files use `ON CONFLICT DO NOTHING` to prevent duplicate inserts
+3. **Safe re-execution**: Running seeds multiple times will not cause errors or duplicate data
 
 ## Module Structure
 
 - `database.provider.ts`: NestJS provider that creates the Drizzle client with connection pooling
 - `database.service.ts`: Injectable service wrapper around the database client
-- `seed.service.ts`: Service for seeding the database with initial lookup table data
+- `seed.service.ts`: NestJS wrapper around the `SeedRunner` from `@corpcal/database` for seeding the database
 - `database.module.ts`: Global NestJS module that exports the database provider and service
 - `index.ts`: Barrel export for convenient imports
 
@@ -101,3 +138,5 @@ The seed operation is idempotent - it can be run multiple times safely. The SQL 
 - Always use `DatabaseService` injection rather than importing `db` directly from `@corpcal/database`
 - This ensures proper connection pooling, configuration, and testability
 - Seed files should be run after database migrations have been applied
+- Seed files are located in `packages/database/seeds/` (not in migrations directory)
+- The core seed runner logic lives in `@corpcal/database` package for better separation of concerns
