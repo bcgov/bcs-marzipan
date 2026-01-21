@@ -1,7 +1,7 @@
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { activities } from './schema/activity';
 import { activityHistory } from './schema/activityHistory';
-import { systemUsers } from './schema/user';
+import { users } from './schema/user';
 import { ministries } from './schema/ministry';
 import {
   activityStatuses,
@@ -41,8 +41,8 @@ export type Activity = InferSelectModel<typeof activities>;
 export type NewActivity = InferInsertModel<typeof activities>;
 
 // User types
-export type SystemUser = InferSelectModel<typeof systemUsers>;
-export type NewSystemUser = InferInsertModel<typeof systemUsers>;
+export type User = InferSelectModel<typeof users>;
+export type NewUser = InferInsertModel<typeof users>;
 
 // Ministry types
 export type Ministry = InferSelectModel<typeof ministries>;

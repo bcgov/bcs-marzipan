@@ -17,7 +17,7 @@ import { DatabaseService } from '../../database/database.service';
  */
 @Injectable()
 export class ActivityJunctionService {
-  constructor(private readonly databaseService: DatabaseService) { }
+  constructor(private readonly databaseService: DatabaseService) {}
 
   /**
    * Helper function to insert junction table records
@@ -159,9 +159,9 @@ export class ActivityJunctionService {
     activityId: number,
     representatives:
       | Array<{
-        representativeId?: number;
-        representativeName?: string;
-      }>
+          representativeId?: number;
+          representativeName?: string;
+        }>
       | undefined,
     now: Date
   ): Promise<void> {
@@ -242,9 +242,9 @@ export class ActivityJunctionService {
     activityId: number,
     representatives:
       | Array<{
-        representativeId?: number;
-        representativeName?: string;
-      }>
+          representativeId?: number;
+          representativeName?: string;
+        }>
       | undefined,
     now: Date
   ): Promise<void> {
@@ -493,9 +493,9 @@ export class ActivityJunctionService {
     activityId: number,
     commsContacts:
       | Array<{
-        userId: number;
-        isLead?: boolean;
-      }>
+          userId: number;
+          isLead?: boolean;
+        }>
       | undefined,
     now: Date
   ): Promise<void> {
@@ -545,9 +545,9 @@ export class ActivityJunctionService {
     activityId: number,
     commsContacts:
       | Array<{
-        userId: number;
-        isLead?: boolean;
-      }>
+          userId: number;
+          isLead?: boolean;
+        }>
       | undefined,
     now: Date
   ): Promise<void> {

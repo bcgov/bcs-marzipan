@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { activities } from './activity';
-import { systemUsers } from './user';
+import { users } from './user';
 
 /**
  * ActivityHistory table - Tracks all changes to activities
@@ -26,7 +26,7 @@ export const activityHistory = pgTable(
       .references(() => activities.id),
     userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id),
+      .references(() => users.id),
     actionType: varchar('action_type', { length: 50 }).notNull(), // 'created', 'updated', 'deleted', `activity_status_changed`, etc.
     changes: jsonb('changes'), // Array of change objects: [{field, oldValue, newValue}]
     notes: text('notes'), // Optional user notes
@@ -53,9 +53,9 @@ export const activityHistoryRelations = relations(
       fields: [activityHistory.activityId],
       references: [activities.id],
     }),
-    user: one(systemUsers, {
+    user: one(users, {
       fields: [activityHistory.userId],
-      references: [systemUsers.id],
+      references: [users.id],
     }),
   })
 );

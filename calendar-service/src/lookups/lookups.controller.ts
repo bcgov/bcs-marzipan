@@ -82,9 +82,9 @@ export class LookupsController {
   }
 
   @ApiOperation({
-    summary: 'Get all system users',
+    summary: 'Get all users',
     description:
-      'Retrieves system users filtered by various criteria. Results are cached for 5 minutes',
+      'Retrieves users filtered by various criteria. Results are cached for 5 minutes',
   })
   @ApiResponse({
     status: 200,

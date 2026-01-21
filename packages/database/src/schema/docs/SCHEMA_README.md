@@ -254,7 +254,7 @@ The application uses SQL seed files to populate lookup tables and initial data. 
   - Cities, government representatives
   - Comms materials, translated languages
   - Communication contacts, digital users
-  - Ministries, organizations, system users
+  - Ministries, organizations, users
 
 - **`002_seed_activities.sql`**: Seeds initial activity data (if needed)
 
@@ -312,8 +312,8 @@ Each log entry should include:
 **Changes:**
 
 - Created new `user_preferences` table
-- Added `preferences` JSONB column to `system_users` table
-- Added foreign key constraint: `user_preferences.user_id` → `system_users.id`
+- Added `preferences` JSONB column to `users` table
+- Added foreign key constraint: `user_preferences.user_id` → `users.id`
 
 **Breaking Changes:**
 

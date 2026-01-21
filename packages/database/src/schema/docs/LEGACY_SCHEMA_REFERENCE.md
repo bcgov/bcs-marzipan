@@ -382,7 +382,7 @@ This document provides a comprehensive reference of all legacy database schemas 
 
 **Table Name:** `[Gcpe.Hub].[calendar].[FavoriteActivity]`
 
-**Description:** Junction table establishing a many-to-many relationship between SystemUsers and Activities. Allows users to mark activities as favorites/watch lists for quick access.
+**Description:** Junction table establishing a many-to-many relationship between Users and Activities. Allows users to mark activities as favorites/watch lists for quick access.
 
 ### Columns
 
@@ -452,7 +452,7 @@ This document provides a comprehensive reference of all legacy database schemas 
 
 **Table Name:** `[Gcpe.Hub].[calendar].[SystemUserMinistry]`
 
-**Description:** Junction table establishing a many-to-many relationship between SystemUsers and Ministries. Links users to ministries they are associated with for access control and filtering.
+**Description:** Junction table establishing a many-to-many relationship between Users and Ministries. Links users to ministries they are associated with for access control and filtering.
 
 ### Columns
 

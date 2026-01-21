@@ -25,7 +25,7 @@ import {
 } from './lookups';
 
 import { organizations } from './organizations';
-import { systemUsers } from './user';
+import { users } from './user';
 import {
   activityThemes,
   activityTags,
@@ -93,7 +93,7 @@ export const activities = pgTable(
     eventPlannerLeadId: integer('event_planner_lead_id').references(
       () => eventPlanners.id
     ), // FK to EventPlanner (mutually exclusive with eventPlannerLeadName)
-    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventPlannerLeadId)
+    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-user event leads (mutually exclusive with eventPlannerLeadId)
 
     // Look Ahead
     executiveSummary: text('executive_summary'), // maps to legacy HqComments field
@@ -127,10 +127,10 @@ export const activities = pgTable(
     // Audit fields
     createdBy: integer('created_by')
       .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
+      .references(() => users.id), // FK to User
     lastUpdatedBy: integer('last_updated_by')
       .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
+      .references(() => users.id), // FK to User
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -183,9 +183,9 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [eventPlanners.id],
     relationName: 'eventLead',
   }),
-  createdByUser: one(systemUsers, {
+  createdByUser: one(users, {
     fields: [activities.createdBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'createdBy',
   }),
   leadMinistry: one(ministries, {

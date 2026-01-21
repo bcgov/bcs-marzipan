@@ -194,14 +194,14 @@ describe('ActivitiesService', () => {
         isAllDay: activity.isAllDay ?? false,
         startDate: activity.startDate
           ? new Date(activity.startDate as string | number | Date)
-            .toISOString()
-            .split('T')[0]
+              .toISOString()
+              .split('T')[0]
           : null,
         startTime: formatTime(activity.startTime as string | null),
         endDate: activity.endDate
           ? new Date(activity.endDate as string | number | Date)
-            .toISOString()
-            .split('T')[0]
+              .toISOString()
+              .split('T')[0]
           : null,
         endTime: formatTime(activity.endTime as string | null),
         schedulingNotes: activity.schedulingNotes ?? null,
@@ -225,8 +225,8 @@ describe('ActivitiesService', () => {
         notes: activity.notes ?? null,
         pitchDate: activity.pitchDate
           ? new Date(activity.pitchDate as string | number | Date)
-            .toISOString()
-            .split('T')[0]
+              .toISOString()
+              .split('T')[0]
           : null,
         premierRequestedId: activity.premierRequestedId ?? null,
         visibility: activity.visibility ?? ('global' satisfies Visibility),

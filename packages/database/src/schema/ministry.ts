@@ -9,9 +9,9 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { systemUsers } from './user';
+import { users } from './user';
 import { activities } from './activity';
-import { ministrySystemUsers } from './relations';
+import { ministryUsers } from './relations';
 import { governmentRepresentatives } from './lookups';
 import { teams } from './teams';
 
@@ -32,17 +32,17 @@ export const ministries = pgTable('ministries', {
   ministerName: varchar('minister_name', { length: 255 }),
 
   // Contacts
-  contactUserId: integer('contact_user_id').references(() => systemUsers.id), // FK to SystemUser
+  contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
   secondContactUserId: integer('second_contact_user_id').references(
-    () => systemUsers.id
-  ), // FK to SystemUser
+    () => users.id
+  ), // FK to User
 
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -50,23 +50,23 @@ export const ministries = pgTable('ministries', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 export const ministriesRelations = relations(ministries, ({ one, many }) => ({
-  contactUser: one(systemUsers, {
+  contactUser: one(users, {
     fields: [ministries.contactUserId],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'contactUser',
   }),
-  secondContactUser: one(systemUsers, {
+  secondContactUser: one(users, {
     fields: [ministries.secondContactUserId],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'secondContactUser',
   }),
   children: many(ministries, { relationName: 'parent' }),
   activities: many(activities),
-  ministrySystemUsers: many(ministrySystemUsers),
+  ministryUsers: many(ministryUsers),
   governmentRepresentatives: many(governmentRepresentatives),
   podMinistries: many(podMinistries, { relationName: 'ministryPodMinistries' }),
 }));
@@ -85,7 +85,7 @@ export const pods = pgTable('pods', {
     .default('private'), // 'global', 'team', 'private'
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   isActive: boolean('is_active').notNull().default(true),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
@@ -97,7 +97,7 @@ export const pods = pgTable('pods', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -146,14 +146,14 @@ export const podSharedWithTeams = pgTable(
 
 // Relations for Pods
 export const podsRelations = relations(pods, ({ one, many }) => ({
-  creator: one(systemUsers, {
+  creator: one(users, {
     fields: [pods.createdBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'podCreator',
   }),
-  updater: one(systemUsers, {
+  updater: one(users, {
     fields: [pods.lastUpdatedBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'podUpdater',
   }),
   ministries: many(podMinistries),

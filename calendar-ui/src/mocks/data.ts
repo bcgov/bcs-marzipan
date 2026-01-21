@@ -55,33 +55,6 @@ export const mockOrganizations: OrganizationLookupItem[] = [
   },
 ];
 
-export const mockUsers: UserLookupItem[] = [
-  {
-    id: 1,
-    value: 1,
-    label: 'John Doe',
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    username: 'jdoe',
-  },
-  {
-    id: 2,
-    value: 2,
-    label: 'Jane Smith',
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
-    username: 'jsmith',
-  },
-  {
-    id: 8,
-    value: 8,
-    label: 'Test User',
-    name: 'Test User',
-    email: 'test.user@example.com',
-    username: 'testuser',
-  },
-];
-
 export const mockTags: TagLookupItem[] = [
   {
     id: 1,
@@ -300,10 +273,10 @@ export const mockCities: CityLookupItem[] = [
 ];
 
 /**
- * Mock system users - sample users for comms lead, event lead, etc.
+ * Mock users - sample users for comms lead, event lead, etc.
  * These are placeholder values and should be replaced with real data from the API
  */
-export const mockSystemUsers: UserLookupItem[] = [
+export const mockUsers: UserLookupItem[] = [
   {
     id: 1,
     value: 1,

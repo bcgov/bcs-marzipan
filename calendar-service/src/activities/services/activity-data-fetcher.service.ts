@@ -18,7 +18,7 @@ import {
   organizations,
   commsMaterials,
   translatedLanguages,
-  systemUsers,
+  users,
   teams,
   newsReleaseDistributions,
   premierRequested,
@@ -36,7 +36,7 @@ import { DatabaseService } from '../../database/database.service';
  */
 @Injectable()
 export class ActivityDataFetcherService {
-  constructor(private readonly databaseService: DatabaseService) { }
+  constructor(private readonly databaseService: DatabaseService) {}
 
   /**
    * Fetch categories for multiple activities
@@ -712,18 +712,18 @@ export class ActivityDataFetcherService {
         activityId: activityCommsContacts.activityId,
         userId: activityCommsContacts.userId,
         userName:
-          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+          sql<string>`COALESCE(${users.adDisplayName}, ${users.adUsername}, 'User ' || ${users.id}::text)`.as(
             'userName'
           ),
         isLead: activityCommsContacts.isLead,
       })
       .from(activityCommsContacts)
-      .innerJoin(systemUsers, eq(activityCommsContacts.userId, systemUsers.id))
+      .innerJoin(users, eq(activityCommsContacts.userId, users.id))
       .where(
         and(
           inArray(activityCommsContacts.activityId, activityIds),
           eq(activityCommsContacts.isActive, true),
-          eq(systemUsers.isActive, true)
+          eq(users.isActive, true)
         )
       );
 
@@ -760,16 +760,14 @@ export class ActivityDataFetcherService {
 
     const results = await this.databaseService.db
       .select({
-        userId: systemUsers.id,
+        userId: users.id,
         userName:
-          sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
+          sql<string>`COALESCE(${users.adDisplayName}, ${users.adUsername}, 'User ' || ${users.id}::text)`.as(
             'userName'
           ),
       })
-      .from(systemUsers)
-      .where(
-        and(inArray(systemUsers.id, userIds), eq(systemUsers.isActive, true))
-      );
+      .from(users)
+      .where(and(inArray(users.id, userIds), eq(users.isActive, true)));
 
     return new Map(results.map((row) => [row.userId, row.userName]));
   }

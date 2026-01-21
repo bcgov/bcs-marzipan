@@ -5,7 +5,7 @@ import type { Visibility, ActivityStatusName } from '@corpcal/shared';
 import {
   categories,
   organizations,
-  systemUsers,
+  users,
   tags,
   pitchStatuses,
   activityStatuses,
@@ -154,32 +154,32 @@ export class LookupsService {
   }
 
   /**
-   * Get all active system users
+   * Get all active users
    * Computes display name from adDisplayName or falls back to adUsername
    * Supports filtering by userIds to fetch specific users
    * TODO: Implement scoping based on role, organizationId
    */
   async getUsers(params?: LookupQueryParams): Promise<UserLookupItem[]> {
     // Build where conditions
-    const conditions: SQL[] = [eq(systemUsers.isActive, true)];
+    const conditions: SQL[] = [eq(users.isActive, true)];
 
     // Filter by specific user IDs if provided
     if (params?.userIds && params.userIds.length > 0) {
       // Controller already parses userIds into number array, but TypeScript needs explicit type
       const userIdsArray = params.userIds;
-      conditions.push(inArray(systemUsers.id, userIdsArray));
+      conditions.push(inArray(users.id, userIdsArray));
     }
 
     const results = await this.databaseService.db
       .select({
-        id: systemUsers.id,
-        adUsername: systemUsers.adUsername,
-        adDisplayName: systemUsers.adDisplayName,
-        adEmail: systemUsers.adEmail,
+        id: users.id,
+        adUsername: users.adUsername,
+        adDisplayName: users.adDisplayName,
+        adEmail: users.adEmail,
       })
-      .from(systemUsers)
+      .from(users)
       .where(and(...conditions))
-      .orderBy(systemUsers.adDisplayName, systemUsers.adUsername);
+      .orderBy(users.adDisplayName, users.adUsername);
 
     return results.map((user) => {
       const name = user.adDisplayName || user.adUsername || `User ${user.id}`;

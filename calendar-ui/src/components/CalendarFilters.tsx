@@ -336,15 +336,17 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         console.error('Error fetching representatives:', error);
       });
 
-    // Extract unique owner IDs and event lead IDs from activities, then fetch only those users
+    // Extract unique comms contact IDs and event lead IDs from activities, then fetch only those users
     fetchActivities()
       .then((activities) => {
         // Get unique comms contact IDs and event lead IDs from activities
         const uniqueLeadIds = new Set<number>();
         activities.forEach((activity) => {
-          // commsContactLeadId is a number in the API response
-          if (activity.commsContactLeadId) {
-            uniqueLeadIds.add(activity.commsContactLeadId);
+          // commsContacts is an array with userId and isLead fields
+          if (activity.commsContacts && activity.commsContacts.length > 0) {
+            activity.commsContacts.forEach((contact) => {
+              uniqueLeadIds.add(contact.userId);
+            });
           }
           // eventPlannerLeadId is a number in the API response
           if (activity.eventPlannerLeadId) {

@@ -9,7 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { ministries } from './ministry';
-import { systemUsers } from './user';
+import { users } from './user';
 
 /**
  * Organizations table - Organizations (superset of ministries)
@@ -31,7 +31,7 @@ export const organizations = pgTable('organizations', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id), // FK to SystemUser
+    .references(() => users.id), // FK to User
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -39,7 +39,7 @@ export const organizations = pgTable('organizations', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id), // FK to SystemUser
+    .references(() => users.id), // FK to User
 });
 
 export const organizationsRelations = relations(organizations, ({ one }) => ({
@@ -47,14 +47,14 @@ export const organizationsRelations = relations(organizations, ({ one }) => ({
     fields: [organizations.ministryId],
     references: [ministries.id],
   }),
-  createdByUser: one(systemUsers, {
+  createdByUser: one(users, {
     fields: [organizations.createdBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'organizationCreatedBy',
   }),
-  updatedByUser: one(systemUsers, {
+  updatedByUser: one(users, {
     fields: [organizations.lastUpdatedBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'organizationUpdatedBy',
   }),
   // Reverse relations will be defined in junction tables

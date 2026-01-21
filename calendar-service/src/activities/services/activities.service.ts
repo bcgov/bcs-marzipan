@@ -14,7 +14,6 @@ import {
   activityCommsMaterials,
   activityTranslationsRequired,
   activitySharedWithTeams,
-  activityCommsContacts,
   categories,
   ministries,
   activityHistory,

@@ -317,7 +317,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 ---
 
-### Get System Users
+### Get Users
 
 **GET** `/lookups/users`
 
@@ -591,6 +591,6 @@ Server error occurred.
     - `omitted=false` and `isConfidential=true` → Activity included with placeholder (redacted) details
 - **isConfidential:** Activity-level boolean property. When true, activity shows as placeholder in reports (unless omitted).
 - **commsContacts:** Array of comms contacts for the activity. Each contact has:
-  - `userId`: The ID of the system user
+  - `userId`: The ID of the user
   - `isLead`: Boolean indicating if this is the lead contact (exactly one must be true)
   - In responses, also includes `name`: The display name of the user
