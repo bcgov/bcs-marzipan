@@ -22,12 +22,12 @@ import { ActivityFormSection } from './ActivityFormSection';
 type FormData = CreateActivityRequest;
 
 type ActivitySharingSectionProps = {
-  ownerOptions: Array<{ value: string; label: string }>;
+  commsLeadOptions: Array<{ value: string; label: string }>;
   sharedWithTeamOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
-  ownerOptions,
+  commsLeadOptions,
   sharedWithTeamOptions,
 }) => {
   const form = useFormContext<FormData>();
@@ -35,30 +35,52 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
     <ActivityFormSection title="Sharing">
       <FormField
         control={form.control}
-        name="commsContactLeadId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Owner</FormLabel>
-            <FormControl>
-              <Combobox
-                options={ownerOptions}
-                selectedValues={field.value ? [field.value.toString()] : []}
-                onSelect={(value) => {
-                  const userId = parseInt(value);
-                  if (field.value === userId) {
-                    field.onChange(undefined);
-                  } else {
-                    field.onChange(userId);
-                  }
-                }}
-                placeholder="Select owner"
-                searchPlaceholder="Search users..."
-                emptyMessage="No users found."
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        name="commsContacts"
+        render={({ field }) => {
+          // Find the lead contact from the array
+          const leadContact = Array.isArray(field.value)
+            ? field.value.find((c) => c.isLead)
+            : undefined;
+          const selectedValues = leadContact ? [`${leadContact.userId}`] : [];
+
+          return (
+            <FormItem>
+              <FormLabel>Comms Lead</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={commsLeadOptions}
+                  selectedValues={selectedValues}
+                  onSelect={(value) => {
+                    const userId = parseInt(value);
+                    const currentContacts = Array.isArray(field.value)
+                      ? field.value
+                      : [];
+
+                    // If clicking the same user, remove them as lead
+                    if (leadContact?.userId === userId) {
+                      field.onChange(
+                        currentContacts.filter((c) => c.userId !== userId)
+                      );
+                    } else {
+                      // Remove existing lead and add new one
+                      const nonLeadContacts = currentContacts.filter(
+                        (c) => !c.isLead
+                      );
+                      field.onChange([
+                        ...nonLeadContacts,
+                        { userId, isLead: true },
+                      ]);
+                    }
+                  }}
+                  placeholder="Select lead comms contact"
+                  searchPlaceholder="Search users..."
+                  emptyMessage="No users found."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
 
       <FormField

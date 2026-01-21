@@ -45,7 +45,6 @@ export const activityDbFieldsSchema = z.object({
   displayId: z.string().nullable(), // May be null during creation, then set after activity ID is generated
 
   // Status flags
-  isActive: z.boolean(),
   isIssue: z.boolean(),
   isConfidential: z.boolean(),
 
@@ -85,12 +84,12 @@ export const activityDbFieldsSchema = z.object({
   // Notes and additional fields
   notes: z.string().nullable(),
   pitchDate: z.string().nullable(), // Date when activity was or will be pitched
+  pitchRequired: z.boolean().nullable(), // Whether pitch is required (can override category default)
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
-  commsContactLeadId: z.number().int(),
-  contactMinistryId: z.string().uuid(),
+  leadMinistryId: z.string().uuid(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -98,7 +97,6 @@ export const activityDbFieldsSchema = z.object({
   lastUpdatedBy: z.number().int(),
   createdDateTime: z.string().datetime(),
   lastUpdatedDateTime: z.string().datetime(),
-  rowGuid: z.string().uuid(), // Row identifier
 });
 
 /**
@@ -148,7 +146,15 @@ export const activityComputedFieldsSchema = z.object({
   translationsRequired: z.array(z.string()).default([]),
   representativesAttending: z.array(representativeAttendingSchema).default([]),
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
-  additionalCommsContacts: z.array(z.string()).default([]),
+  commsContacts: z
+    .array(
+      z.object({
+        userId: z.number().int(),
+        name: z.string(),
+        isLead: z.boolean(),
+      })
+    )
+    .default([]), // All comms contacts with isLead flag
 
   // Computed organization names (from organization ID lookups or free text names)
   // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
@@ -156,7 +162,6 @@ export const activityComputedFieldsSchema = z.object({
 
   // Computed user names (from user ID lookups)
   eventLead: z.string().nullable(),
-  commsContact: z.string(),
 
   // Computed status names (from lookup table joins)
   dateStatus: z.string(),

@@ -1,18 +1,18 @@
 -- Seed Script for Database
 -- This script seeds all lookup tables and activities with sample data
 -- Based on the current schema definitions
--- Run this after applying the base migration (0000_20250119_corpcal_base_schema.sql)
+-- Run this after applying the base migration (0000_20250121_initial_tables.sql)
 --
--- IMPORTANT: System users must be seeded first as other tables reference them
+-- IMPORTANT: Users must be seeded first as other tables reference them
 -- via created_by and last_updated_by foreign keys
 
 -- ============================================================================
--- SYSTEM USERS
--- System users for authentication and authorization
+-- USERS
+-- Users for authentication and authorization
 -- MUST be seeded first as other tables reference them via created_by/last_updated_by
 -- ============================================================================
 
-INSERT INTO system_users (id, ad_username, ad_display_name, ad_email, ad_department, role, is_active) VALUES
+INSERT INTO users (id, ad_username, ad_display_name, ad_email, ad_department, role, is_active) VALUES
   (1, 'john.doe', 'John Doe', 'john.doe@gov.bc.ca', 'Office of the Premier', 'Admin', true),
   (2, 'jane.smith', 'Jane Smith', 'jane.smith@gov.bc.ca', 'Communications', 'Editor', true),
   (3, 'sam.wilson', 'Sam Wilson', 'sam.wilson@gov.bc.ca', 'Public Affairs', 'Editor', true),
@@ -101,7 +101,7 @@ WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.nam
 -- Values: 'event', 'release', 'awareness', 'conference', 'fyi', 'social media', 'speech', 'tv radio'
 -- ============================================================================
 
-INSERT INTO categories (id, name, display_name, sort_order, pitch_required, is_active, description, created_by, last_updated_by)
+INSERT INTO categories (id, name, display_name, sort_order, allows_pitch, is_active, description, created_by, last_updated_by)
 VALUES
   (1, 'event', 'Event', 1, true, true, 'Event category (may require pitch approval)', 1, 1),
   (2, 'release', 'Release', 2, true, true, 'Release category (may require pitch approval)', 1, 1),
@@ -325,11 +325,11 @@ INSERT INTO themes (id, key, name, display_name, sort_order, is_active, created_
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- COMMUNICATION CONTACTS
+-- COMMS CONTACTS
 -- Communication contacts for activities
 -- ============================================================================
 
-INSERT INTO communication_contacts (id, name, display_name, sort_order, is_active, email, phone, created_by, last_updated_by) VALUES
+INSERT INTO comms_contacts (id, name, display_name, sort_order, is_active, email, phone, created_by, last_updated_by) VALUES
   (1, 'Sarah Johnson', 'Sarah Johnson', 1, true, 'sarah.johnson@gov.bc.ca', '250-555-0101', 1, 1),
   (2, 'Michael Chen', 'Michael Chen', 2, true, 'michael.chen@gov.bc.ca', '250-555-0102', 1, 1),
   (3, 'Emily Rodriguez', 'Emily Rodriguez', 3, true, 'emily.rodriguez@gov.bc.ca', '250-555-0103', 1, 1),
@@ -449,7 +449,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- TEAMS
--- Groups of system users for access control
+-- Groups of users for access control
 -- ============================================================================
 
 INSERT INTO teams (id, name, display_name, description, is_active, created_by, last_updated_by) VALUES
@@ -461,12 +461,13 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- ACTIVITIES
 -- Sample calendar activities with various statuses and configurations
+-- Note: Removed is_active, comms_contact_lead_id, contact_ministry_id, row_guid columns
+-- Added lead_ministry_id (required), pitch_required fields
 -- ============================================================================
 
 INSERT INTO activities (
   id,
   display_id,
-  is_active,
   title,
   lead_org_id,
   lead_org_name,
@@ -493,23 +494,21 @@ INSERT INTO activities (
   is_confidential,
   notes,
   pitch_date,
+  pitch_required,
   news_release_distribution_id,
   premier_requested_id,
   visibility,
-  comms_contact_lead_id,
-  contact_ministry_id,
+  lead_ministry_id,
   activity_status_id,
   created_by,
   last_updated_by,
   created_date_time,
   last_updated_date_time,
-  row_version,
-  row_guid
+  row_version
 ) VALUES
   (
     1,
     'PREM-000001',
-    true,
     'Premier''s Address on Climate Action',
     '00000000-0000-4000-8000-000000000001',
     NULL,
@@ -538,21 +537,19 @@ INSERT INTO activities (
     NULL,
     NULL,
     NULL,
+    NULL,
     'global',
-    4,
     '00000000-0000-4000-8000-000000000001',
     3,
     1,
     2,
     '2025-01-15 09:00:00-08',
     '2025-01-20 14:30:00-08',
-    1,
-    gen_random_uuid()
+    1
   ),
   (
     2,
     'HLTH-000002',
-    true,
     'Health Care Facility Opening',
     '00000000-0000-4000-8000-000000000012',
     NULL,
@@ -581,21 +578,19 @@ INSERT INTO activities (
     NULL,
     NULL,
     NULL,
+    NULL,
     'global',
-    4,
     '00000000-0000-4000-8000-000000000012',
     2,
     2,
     3,
     '2025-01-18 10:00:00-08',
     '2025-01-22 11:15:00-08',
-    1,
-    gen_random_uuid()
+    1
   ),
   (
     3,
     'EDUC-000003',
-    true,
     'Education Summit 2025',
     '00000000-0000-4000-8000-000000000006',
     NULL,
@@ -624,21 +619,19 @@ INSERT INTO activities (
     NULL,
     NULL,
     NULL,
+    NULL,
     'global',
-    4,
     '00000000-0000-4000-8000-000000000006',
     1,
     3,
     4,
     '2025-01-10 08:00:00-08',
     '2025-01-25 16:45:00-08',
-    1,
-    gen_random_uuid()
+    1
   ),
   (
     4,
     'ENV-000004',
-    true,
     'Forest Conservation Initiative Announcement',
     '00000000-0000-4000-8000-000000000009',
     NULL,
@@ -667,21 +660,19 @@ INSERT INTO activities (
     NULL,
     NULL,
     NULL,
+    NULL,
     'global',
-    4,
     '00000000-0000-4000-8000-000000000009',
     3,
     1,
     2,
     '2025-01-12 13:00:00-08',
     '2025-01-24 10:20:00-08',
-    2,
-    gen_random_uuid()
+    2
   ),
   (
     5,
     'HOUS-000005',
-    true,
     'Affordable Housing Project Groundbreaking',
     '00000000-0000-4000-8000-000000000013',
     NULL,
@@ -710,20 +701,18 @@ INSERT INTO activities (
     NULL,
     NULL,
     NULL,
+    NULL,
     'global',
-    4,
     '00000000-0000-4000-8000-000000000013',
     3,
     2,
     3,
     '2025-01-20 09:30:00-08',
     '2025-01-26 15:00:00-08',
-    1,
-    gen_random_uuid()
+    1
   )
 ON CONFLICT (id) DO UPDATE
   SET display_id = EXCLUDED.display_id,
-      is_active = EXCLUDED.is_active,
       title = EXCLUDED.title,
       lead_org_id = EXCLUDED.lead_org_id,
       lead_org_name = EXCLUDED.lead_org_name,
@@ -750,18 +739,17 @@ ON CONFLICT (id) DO UPDATE
       is_confidential = EXCLUDED.is_confidential,
       notes = EXCLUDED.notes,
       pitch_date = EXCLUDED.pitch_date,
+      pitch_required = EXCLUDED.pitch_required,
       news_release_distribution_id = EXCLUDED.news_release_distribution_id,
       premier_requested_id = EXCLUDED.premier_requested_id,
       visibility = EXCLUDED.visibility,
-      comms_contact_lead_id = EXCLUDED.comms_contact_lead_id,
-      contact_ministry_id = EXCLUDED.contact_ministry_id,
+      lead_ministry_id = EXCLUDED.lead_ministry_id,
       activity_status_id = EXCLUDED.activity_status_id,
       created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by,
       created_date_time = EXCLUDED.created_date_time,
       last_updated_date_time = EXCLUDED.last_updated_date_time,
-      row_version = EXCLUDED.row_version,
-      row_guid = EXCLUDED.row_guid;
+      row_version = EXCLUDED.row_version;
 
 -- ============================================================================
 -- VENUE ADDRESSES
@@ -913,15 +901,19 @@ ON CONFLICT (activity_id, team_id) DO UPDATE
       timestamp = now();
 
 -- ============================================================================
--- ACTIVITY ADDITIONAL COMMS CONTACTS
--- Link activities to additional communication contacts
+-- ACTIVITY COMMS CONTACTS
+-- Link activities to communication contacts (with is_lead flag)
+-- Renamed from activity_additional_comms_contacts, now uses user_id and is_lead
 -- ============================================================================
 
-INSERT INTO activity_additional_comms_contacts (activity_id, user_id, is_active, timestamp) VALUES
-  (1, 2, true, now()),
-  (4, 3, true, now())
+INSERT INTO activity_comms_contacts (activity_id, user_id, is_lead, is_active, timestamp) VALUES
+  (1, 2, true, true, now()),
+  (1, 3, false, true, now()),
+  (4, 3, true, true, now()),
+  (4, 4, false, true, now())
 ON CONFLICT (activity_id, user_id) DO UPDATE
-  SET is_active = EXCLUDED.is_active,
+  SET is_lead = EXCLUDED.is_lead,
+      is_active = EXCLUDED.is_active,
       timestamp = now();
 
 -- ============================================================================
@@ -988,8 +980,8 @@ SELECT setval('time_statuses_id_seq', COALESCE((SELECT MAX(id) FROM time_statuse
 -- Venue statuses sequence
 SELECT setval('venue_statuses_id_seq', COALESCE((SELECT MAX(id) FROM venue_statuses), 1), true);
 
--- System users sequence
-SELECT setval('system_users_id_seq', COALESCE((SELECT MAX(id) FROM system_users), 1), true);
+-- Users sequence
+SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1), true);
 
 -- Categories sequence
 SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1), true);
@@ -1009,8 +1001,8 @@ SELECT setval('government_representatives_id_seq', COALESCE((SELECT MAX(id) FROM
 -- Tags sequence
 SELECT setval('tags_id_seq', COALESCE((SELECT MAX(id) FROM tags), 1), true);
 
--- Communication contacts sequence
-SELECT setval('communication_contacts_id_seq', COALESCE((SELECT MAX(id) FROM communication_contacts), 1), true);
+-- Comms contacts sequence
+SELECT setval('comms_contacts_id_seq', COALESCE((SELECT MAX(id) FROM comms_contacts), 1), true);
 
 -- Venues sequence
 SELECT setval('venues_id_seq', COALESCE((SELECT MAX(id) FROM venues), 1), true);
@@ -1035,3 +1027,9 @@ SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- Activities sequence
 SELECT setval('activities_id_seq', COALESCE((SELECT MAX(id) FROM activities), 1), true);
+
+-- Activity representatives sequence
+SELECT setval('activity_representatives_id_seq', COALESCE((SELECT MAX(id) FROM activity_representatives), 1), true);
+
+-- Venue addresses sequence
+SELECT setval('venue_addresses_id_seq', COALESCE((SELECT MAX(id) FROM venue_addresses), 1), true);

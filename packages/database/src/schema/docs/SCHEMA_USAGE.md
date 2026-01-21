@@ -20,7 +20,7 @@ Activities use a two-layer visibility and sharing model:
 
 1. **`visibility = 'global'`**: Activity is visible to all teams (default)
 2. **`visibility = 'team'`**: Activity is visible only to:
-   - The creator's team (via `contactMinistryId` → team mapping)
+   - The creator's team (via `leadMinistryId` → team mapping)
    - Special teams (Admin, Approver, Issues) - these teams always see all activities regardless of visibility
 
 ### Sharing: Overrides Visibility and Marks as Important

@@ -68,10 +68,8 @@ const activityCoreFieldsSchema = z.object({
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
   activityStatusId: z.number().int(),
-  commsContactLeadId: z.number().int(),
 
   // Boolean flags
-  isActive: z.boolean().default(true),
   isIssue: z.boolean().default(false),
   isAllDay: z.boolean().default(false),
   isConfidential: z.boolean().default(false),
@@ -89,6 +87,7 @@ const activityCoreFieldsSchema = z.object({
   // Optional text fields
   notes: z.string().nullable().optional(), // Maps to legacy Comments
   executiveSummary: z.string().nullable().optional(),
+  pitchRequired: z.boolean().nullable().optional(), // Whether pitch is required (can override category default)
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
@@ -105,7 +104,7 @@ const activityCoreFieldsSchema = z.object({
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
-  contactMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
+  leadMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
 
   // Optional user ID fields
   eventPlannerLeadId: z.number().int().nullable().optional(),
@@ -114,9 +113,6 @@ const activityCoreFieldsSchema = z.object({
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable().optional(),
-
-  // Auto-generated fields (optional in requests, required in responses)
-  rowGuid: z.string().uuid().optional(), // Auto-generated, optional in create/update requests
 });
 
 // ============================================================================
@@ -161,6 +157,15 @@ const reportSettingSchema = z.object({
 });
 
 /**
+ * Comms contact schema
+ * Supports identifying the lead contact via isLead flag
+ */
+const commsContactSchema = z.object({
+  userId: z.number().int(),
+  isLead: z.boolean().default(false),
+});
+
+/**
  * Junction table ID arrays for request payloads
  * These fields create many-to-many relationships
  */
@@ -171,7 +176,7 @@ const junctionTableIdsSchema = z.object({
   translationLanguageIds: z.array(z.number().int()).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
-  additionalCommsContactIds: z.array(z.number().int()).optional(),
+  commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 

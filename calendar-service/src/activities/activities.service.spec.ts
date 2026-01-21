@@ -121,6 +121,8 @@ describe('ActivitiesService', () => {
     upsertVenueAddress: jest.fn().mockResolvedValue(undefined),
     createDefaultReportSettings: jest.fn().mockResolvedValue(undefined),
     updateActivityReportSettings: jest.fn().mockResolvedValue(undefined),
+    insertCommsContacts: jest.fn().mockResolvedValue(undefined),
+    updateCommsContacts: jest.fn().mockResolvedValue(undefined),
   };
 
   // Mock data fetcher service
@@ -143,10 +145,7 @@ describe('ActivitiesService', () => {
       .fn()
       .mockResolvedValue(new Map()),
     fetchSharedWithTeamsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchAdditionalCommsContactsForActivities: jest
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchUserNamesForUserIds: jest.fn().mockResolvedValue(new Map()),
+    fetchCommsContactsForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchEventLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchEventPlannerNamesForActivities: jest.fn().mockResolvedValue(new Map()),
@@ -183,7 +182,6 @@ describe('ActivitiesService', () => {
         title: activity.title ?? '',
         summary: activity.summary ?? '',
         isIssue: activity.isIssue ?? false,
-        isActive: activity.isActive ?? true,
         isConfidential: activity.isConfidential ?? false,
         leadOrgId: activity.leadOrgId ?? null,
         leadOrgName: activity.leadOrgName ?? null,
@@ -230,23 +228,16 @@ describe('ActivitiesService', () => {
               .toISOString()
               .split('T')[0]
           : null,
+        pitchRequired: activity.pitchRequired ?? null,
         premierRequestedId: activity.premierRequestedId ?? null,
         visibility: activity.visibility ?? ('global' satisfies Visibility),
         sharedWithAll: activity.sharedWithAll ?? false,
-        commsContactLeadId: activity.commsContactLeadId ?? 0,
-        contactMinistryId: activity.contactMinistryId,
-        commsContact:
-          relatedData?.commsContactName ??
-          (activity.commsContactLeadId
-            ? String(activity.commsContactLeadId)
-            : null) ??
-          'unknown',
+        leadMinistryId: activity.leadMinistryId,
         sharedWith: relatedData?.sharedWith ?? [],
-        additionalCommsContacts: relatedData?.additionalCommsContacts ?? [],
+        commsContacts: relatedData?.commsContacts ?? [],
         newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
         newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
         premierRequested: relatedData?.premierRequested ?? null,
-        rowGuid: activity.rowGuid ?? '',
         createdDateTime:
           activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
         createdBy: activity.createdBy ?? 0,
@@ -344,9 +335,7 @@ describe('ActivitiesService', () => {
         sharedWithAll: true,
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
-        commsContactLeadId: 6,
-        contactMinistryId: '123e4567-e89b-12d3-a456-426614174003',
-        rowGuid: '123e4567-e89b-12d3-a456-426614174004',
+        leadMinistryId: '123e4567-e89b-12d3-a456-426614174003',
         startDate: new Date('2024-02-20') as any,
         startTime: '14:30',
         endDate: new Date('2024-02-20') as any,
@@ -453,15 +442,12 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('category');
       expect(result).toHaveProperty('title');
       expect(result).toHaveProperty('isIssue');
-      expect(result).toHaveProperty('isActive');
       expect(result).toHaveProperty('isAllDay');
       expect(result).toHaveProperty('reportSettings');
       expect(Array.isArray(result.reportSettings)).toBe(true);
       expect(result).toHaveProperty('sharedWithAll');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
-      expect(result).toHaveProperty('commsContactLeadId');
-      expect(result).toHaveProperty('rowGuid');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
       expect(result).toHaveProperty('lastUpdatedDateTime');
@@ -534,7 +520,6 @@ describe('ActivitiesService', () => {
     it('should create an activity and return a valid ActivityResponse', async () => {
       const createDto = createMockActivityRequest({
         title: 'New Activity',
-        isActive: true,
         isIssue: false,
         isAllDay: false,
         reportSettings: [],
@@ -543,7 +528,6 @@ describe('ActivitiesService', () => {
       const createdActivity = createMockActivity({
         id: 2,
         title: 'New Activity',
-        isActive: true,
         isIssue: false,
         isAllDay: false,
       });

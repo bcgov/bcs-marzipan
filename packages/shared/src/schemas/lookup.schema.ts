@@ -55,7 +55,7 @@ export const categoryResponseSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
-  pitchRequired: z.boolean(),
+  allowsPitch: z.boolean(),
   visibility: z.enum(VISIBILITY),
 });
 
@@ -142,14 +142,14 @@ export const ministryLookupItemSchema = z.object({
 });
 
 // ============================================
-// System User Schema
+// User Schema
 // ============================================
 
 /**
- * System User Response Schema
- * Fields from the system_users table exposed via API
+ * User Response Schema
+ * Fields from the users table exposed via API
  */
-export const systemUserResponseSchema = z.object({
+export const userResponseSchema = z.object({
   id: z.number().int(),
   adUsername: z.string().nullable(),
   adDisplayName: z.string().nullable(),
@@ -412,7 +412,7 @@ export type OrganizationLookupItem = z.infer<
 export type MinistryResponse = z.infer<typeof ministryResponseSchema>;
 export type MinistryLookupItem = z.infer<typeof ministryLookupItemSchema>;
 
-export type SystemUserResponse = z.infer<typeof systemUserResponseSchema>;
+export type UserResponse = z.infer<typeof userResponseSchema>;
 export type UserLookupItem = z.infer<typeof userLookupItemSchema>;
 
 export type PitchStatusResponse = z.infer<typeof pitchStatusResponseSchema>;

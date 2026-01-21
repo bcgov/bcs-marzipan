@@ -19,6 +19,7 @@ describe('ActivitiesController', () => {
     translationsRequired: undefined,
     representativesAttending: undefined,
     sharedWith: undefined,
+    commsContacts: undefined,
   });
 
   const mockActivitiesService = {
@@ -110,7 +111,7 @@ describe('ActivitiesController', () => {
           displayName: 'Education',
           sortOrder: 1,
           isActive: true,
-          pitchRequired: true,
+          allowsPitch: true,
           visibility: 'global',
           description: '',
           createdDateTime: new Date(),
@@ -124,7 +125,7 @@ describe('ActivitiesController', () => {
           displayName: 'Health',
           sortOrder: 2,
           isActive: true,
-          pitchRequired: true,
+          allowsPitch: true,
           visibility: 'global',
           description: '',
           createdDateTime: new Date(),

@@ -1,5 +1,5 @@
 {
-  "id": "17b83cd3-5a96-43f5-920a-5c145c3054bc",
+  "id": "5f49f931-ceaf-420c-a36a-e978a3683988",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -19,13 +19,6 @@
           "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "title": {
           "name": "title",
@@ -186,6 +179,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "pitch_required": {
+          "name": "pitch_required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
         "news_release_distribution_id": {
           "name": "news_release_distribution_id",
           "type": "integer",
@@ -205,14 +204,8 @@
           "notNull": true,
           "default": "'global'"
         },
-        "comms_contact_lead_id": {
-          "name": "comms_contact_lead_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "contact_ministry_id": {
-          "name": "contact_ministry_id",
+        "lead_ministry_id": {
+          "name": "lead_ministry_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -255,13 +248,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "row_guid": {
-          "name": "row_guid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
         }
       },
       "indexes": {},
@@ -329,20 +315,11 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activities_comms_contact_lead_id_system_users_id_fk": {
-          "name": "activities_comms_contact_lead_id_system_users_id_fk",
-          "tableFrom": "activities",
-          "tableTo": "system_users",
-          "columnsFrom": ["comms_contact_lead_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "activities_contact_ministry_id_ministries_id_fk": {
-          "name": "activities_contact_ministry_id_ministries_id_fk",
+        "activities_lead_ministry_id_ministries_id_fk": {
+          "name": "activities_lead_ministry_id_ministries_id_fk",
           "tableFrom": "activities",
           "tableTo": "ministries",
-          "columnsFrom": ["contact_ministry_id"],
+          "columnsFrom": ["lead_ministry_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -356,19 +333,19 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activities_created_by_system_users_id_fk": {
-          "name": "activities_created_by_system_users_id_fk",
+        "activities_created_by_users_id_fk": {
+          "name": "activities_created_by_users_id_fk",
           "tableFrom": "activities",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activities_last_updated_by_system_users_id_fk": {
-          "name": "activities_last_updated_by_system_users_id_fk",
+        "activities_last_updated_by_users_id_fk": {
+          "name": "activities_last_updated_by_users_id_fk",
           "tableFrom": "activities",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -522,10 +499,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_history_user_id_system_users_id_fk": {
-          "name": "activity_history_user_id_system_users_id_fk",
+        "activity_history_user_id_users_id_fk": {
+          "name": "activity_history_user_id_users_id_fk",
           "tableFrom": "activity_history",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -538,8 +515,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.system_users": {
-      "name": "system_users",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -757,37 +734,37 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "ministries_contact_user_id_system_users_id_fk": {
-          "name": "ministries_contact_user_id_system_users_id_fk",
+        "ministries_contact_user_id_users_id_fk": {
+          "name": "ministries_contact_user_id_users_id_fk",
           "tableFrom": "ministries",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["contact_user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "ministries_second_contact_user_id_system_users_id_fk": {
-          "name": "ministries_second_contact_user_id_system_users_id_fk",
+        "ministries_second_contact_user_id_users_id_fk": {
+          "name": "ministries_second_contact_user_id_users_id_fk",
           "tableFrom": "ministries",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["second_contact_user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "ministries_created_by_system_users_id_fk": {
-          "name": "ministries_created_by_system_users_id_fk",
+        "ministries_created_by_users_id_fk": {
+          "name": "ministries_created_by_users_id_fk",
           "tableFrom": "ministries",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "ministries_last_updated_by_system_users_id_fk": {
-          "name": "ministries_last_updated_by_system_users_id_fk",
+        "ministries_last_updated_by_users_id_fk": {
+          "name": "ministries_last_updated_by_users_id_fk",
           "tableFrom": "ministries",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1005,19 +982,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "pods_created_by_system_users_id_fk": {
-          "name": "pods_created_by_system_users_id_fk",
+        "pods_created_by_users_id_fk": {
+          "name": "pods_created_by_users_id_fk",
           "tableFrom": "pods",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pods_last_updated_by_system_users_id_fk": {
-          "name": "pods_last_updated_by_system_users_id_fk",
+        "pods_last_updated_by_users_id_fk": {
+          "name": "pods_last_updated_by_users_id_fk",
           "tableFrom": "pods",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1123,19 +1100,19 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "organizations_created_by_system_users_id_fk": {
-          "name": "organizations_created_by_system_users_id_fk",
+        "organizations_created_by_users_id_fk": {
+          "name": "organizations_created_by_users_id_fk",
           "tableFrom": "organizations",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "organizations_last_updated_by_system_users_id_fk": {
-          "name": "organizations_last_updated_by_system_users_id_fk",
+        "organizations_last_updated_by_users_id_fk": {
+          "name": "organizations_last_updated_by_users_id_fk",
           "tableFrom": "organizations",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1212,29 +1189,23 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "row_guid": {
-          "name": "row_guid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "activity_filters_created_by_system_users_id_fk": {
-          "name": "activity_filters_created_by_system_users_id_fk",
+        "activity_filters_created_by_users_id_fk": {
+          "name": "activity_filters_created_by_users_id_fk",
           "tableFrom": "activity_filters",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_filters_last_updated_by_system_users_id_fk": {
-          "name": "activity_filters_last_updated_by_system_users_id_fk",
+        "activity_filters_last_updated_by_users_id_fk": {
+          "name": "activity_filters_last_updated_by_users_id_fk",
           "tableFrom": "activity_filters",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1318,19 +1289,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "activity_statuses_created_by_system_users_id_fk": {
-          "name": "activity_statuses_created_by_system_users_id_fk",
+        "activity_statuses_created_by_users_id_fk": {
+          "name": "activity_statuses_created_by_users_id_fk",
           "tableFrom": "activity_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_statuses_last_updated_by_system_users_id_fk": {
-          "name": "activity_statuses_last_updated_by_system_users_id_fk",
+        "activity_statuses_last_updated_by_users_id_fk": {
+          "name": "activity_statuses_last_updated_by_users_id_fk",
           "tableFrom": "activity_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1372,12 +1343,12 @@
           "notNull": true,
           "default": 0
         },
-        "pitch_required": {
-          "name": "pitch_required",
+        "allows_pitch": {
+          "name": "allows_pitch",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": false
+          "default": true
         },
         "visibility": {
           "name": "visibility",
@@ -1428,19 +1399,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "categories_created_by_system_users_id_fk": {
-          "name": "categories_created_by_system_users_id_fk",
+        "categories_created_by_users_id_fk": {
+          "name": "categories_created_by_users_id_fk",
           "tableFrom": "categories",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "categories_last_updated_by_system_users_id_fk": {
-          "name": "categories_last_updated_by_system_users_id_fk",
+        "categories_last_updated_by_users_id_fk": {
+          "name": "categories_last_updated_by_users_id_fk",
           "tableFrom": "categories",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1524,19 +1495,121 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "cities_created_by_system_users_id_fk": {
-          "name": "cities_created_by_system_users_id_fk",
+        "cities_created_by_users_id_fk": {
+          "name": "cities_created_by_users_id_fk",
           "tableFrom": "cities",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "cities_last_updated_by_system_users_id_fk": {
-          "name": "cities_last_updated_by_system_users_id_fk",
+        "cities_last_updated_by_users_id_fk": {
+          "name": "cities_last_updated_by_users_id_fk",
           "tableFrom": "cities",
-          "tableTo": "system_users",
+          "tableTo": "users",
+          "columnsFrom": ["last_updated_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.comms_contacts": {
+      "name": "comms_contacts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_date_time": {
+          "name": "created_date_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_updated_date_time": {
+          "name": "last_updated_date_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_updated_by": {
+          "name": "last_updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "comms_contacts_created_by_users_id_fk": {
+          "name": "comms_contacts_created_by_users_id_fk",
+          "tableFrom": "comms_contacts",
+          "tableTo": "users",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "comms_contacts_last_updated_by_users_id_fk": {
+          "name": "comms_contacts_last_updated_by_users_id_fk",
+          "tableFrom": "comms_contacts",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1620,121 +1693,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "comms_materials_created_by_system_users_id_fk": {
-          "name": "comms_materials_created_by_system_users_id_fk",
+        "comms_materials_created_by_users_id_fk": {
+          "name": "comms_materials_created_by_users_id_fk",
           "tableFrom": "comms_materials",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "comms_materials_last_updated_by_system_users_id_fk": {
-          "name": "comms_materials_last_updated_by_system_users_id_fk",
+        "comms_materials_last_updated_by_users_id_fk": {
+          "name": "comms_materials_last_updated_by_users_id_fk",
           "tableFrom": "comms_materials",
-          "tableTo": "system_users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.communication_contacts": {
-      "name": "communication_contacts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "communication_contacts_created_by_system_users_id_fk": {
-          "name": "communication_contacts_created_by_system_users_id_fk",
-          "tableFrom": "communication_contacts",
-          "tableTo": "system_users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "communication_contacts_last_updated_by_system_users_id_fk": {
-          "name": "communication_contacts_last_updated_by_system_users_id_fk",
-          "tableFrom": "communication_contacts",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1818,19 +1789,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "date_statuses_created_by_system_users_id_fk": {
-          "name": "date_statuses_created_by_system_users_id_fk",
+        "date_statuses_created_by_users_id_fk": {
+          "name": "date_statuses_created_by_users_id_fk",
           "tableFrom": "date_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "date_statuses_last_updated_by_system_users_id_fk": {
-          "name": "date_statuses_last_updated_by_system_users_id_fk",
+        "date_statuses_last_updated_by_users_id_fk": {
+          "name": "date_statuses_last_updated_by_users_id_fk",
           "tableFrom": "date_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -1920,19 +1891,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "event_planners_created_by_system_users_id_fk": {
-          "name": "event_planners_created_by_system_users_id_fk",
+        "event_planners_created_by_users_id_fk": {
+          "name": "event_planners_created_by_users_id_fk",
           "tableFrom": "event_planners",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "event_planners_last_updated_by_system_users_id_fk": {
-          "name": "event_planners_last_updated_by_system_users_id_fk",
+        "event_planners_last_updated_by_users_id_fk": {
+          "name": "event_planners_last_updated_by_users_id_fk",
           "tableFrom": "event_planners",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2037,19 +2008,19 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "government_representatives_created_by_system_users_id_fk": {
-          "name": "government_representatives_created_by_system_users_id_fk",
+        "government_representatives_created_by_users_id_fk": {
+          "name": "government_representatives_created_by_users_id_fk",
           "tableFrom": "government_representatives",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "government_representatives_last_updated_by_system_users_id_fk": {
-          "name": "government_representatives_last_updated_by_system_users_id_fk",
+        "government_representatives_last_updated_by_users_id_fk": {
+          "name": "government_representatives_last_updated_by_users_id_fk",
           "tableFrom": "government_representatives",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2133,19 +2104,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "news_release_distributions_created_by_system_users_id_fk": {
-          "name": "news_release_distributions_created_by_system_users_id_fk",
+        "news_release_distributions_created_by_users_id_fk": {
+          "name": "news_release_distributions_created_by_users_id_fk",
           "tableFrom": "news_release_distributions",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "news_release_distributions_last_updated_by_system_users_id_fk": {
-          "name": "news_release_distributions_last_updated_by_system_users_id_fk",
+        "news_release_distributions_last_updated_by_users_id_fk": {
+          "name": "news_release_distributions_last_updated_by_users_id_fk",
           "tableFrom": "news_release_distributions",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2229,19 +2200,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "news_release_origins_created_by_system_users_id_fk": {
-          "name": "news_release_origins_created_by_system_users_id_fk",
+        "news_release_origins_created_by_users_id_fk": {
+          "name": "news_release_origins_created_by_users_id_fk",
           "tableFrom": "news_release_origins",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "news_release_origins_last_updated_by_system_users_id_fk": {
-          "name": "news_release_origins_last_updated_by_system_users_id_fk",
+        "news_release_origins_last_updated_by_users_id_fk": {
+          "name": "news_release_origins_last_updated_by_users_id_fk",
           "tableFrom": "news_release_origins",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2325,19 +2296,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "pitch_statuses_created_by_system_users_id_fk": {
-          "name": "pitch_statuses_created_by_system_users_id_fk",
+        "pitch_statuses_created_by_users_id_fk": {
+          "name": "pitch_statuses_created_by_users_id_fk",
           "tableFrom": "pitch_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "pitch_statuses_last_updated_by_system_users_id_fk": {
-          "name": "pitch_statuses_last_updated_by_system_users_id_fk",
+        "pitch_statuses_last_updated_by_users_id_fk": {
+          "name": "pitch_statuses_last_updated_by_users_id_fk",
           "tableFrom": "pitch_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2421,19 +2392,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "premier_requested_created_by_system_users_id_fk": {
-          "name": "premier_requested_created_by_system_users_id_fk",
+        "premier_requested_created_by_users_id_fk": {
+          "name": "premier_requested_created_by_users_id_fk",
           "tableFrom": "premier_requested",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "premier_requested_last_updated_by_system_users_id_fk": {
-          "name": "premier_requested_last_updated_by_system_users_id_fk",
+        "premier_requested_last_updated_by_users_id_fk": {
+          "name": "premier_requested_last_updated_by_users_id_fk",
           "tableFrom": "premier_requested",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2530,19 +2501,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "reports_created_by_system_users_id_fk": {
-          "name": "reports_created_by_system_users_id_fk",
+        "reports_created_by_users_id_fk": {
+          "name": "reports_created_by_users_id_fk",
           "tableFrom": "reports",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "reports_last_updated_by_system_users_id_fk": {
-          "name": "reports_last_updated_by_system_users_id_fk",
+        "reports_last_updated_by_users_id_fk": {
+          "name": "reports_last_updated_by_users_id_fk",
           "tableFrom": "reports",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2633,19 +2604,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "sectors_created_by_system_users_id_fk": {
-          "name": "sectors_created_by_system_users_id_fk",
+        "sectors_created_by_users_id_fk": {
+          "name": "sectors_created_by_users_id_fk",
           "tableFrom": "sectors",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "sectors_last_updated_by_system_users_id_fk": {
-          "name": "sectors_last_updated_by_system_users_id_fk",
+        "sectors_last_updated_by_users_id_fk": {
+          "name": "sectors_last_updated_by_users_id_fk",
           "tableFrom": "sectors",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2736,19 +2707,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "tags_created_by_system_users_id_fk": {
-          "name": "tags_created_by_system_users_id_fk",
+        "tags_created_by_users_id_fk": {
+          "name": "tags_created_by_users_id_fk",
           "tableFrom": "tags",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "tags_last_updated_by_system_users_id_fk": {
-          "name": "tags_last_updated_by_system_users_id_fk",
+        "tags_last_updated_by_users_id_fk": {
+          "name": "tags_last_updated_by_users_id_fk",
           "tableFrom": "tags",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2845,19 +2816,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "themes_created_by_system_users_id_fk": {
-          "name": "themes_created_by_system_users_id_fk",
+        "themes_created_by_users_id_fk": {
+          "name": "themes_created_by_users_id_fk",
           "tableFrom": "themes",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "themes_last_updated_by_system_users_id_fk": {
-          "name": "themes_last_updated_by_system_users_id_fk",
+        "themes_last_updated_by_users_id_fk": {
+          "name": "themes_last_updated_by_users_id_fk",
           "tableFrom": "themes",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -2941,19 +2912,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "time_statuses_created_by_system_users_id_fk": {
-          "name": "time_statuses_created_by_system_users_id_fk",
+        "time_statuses_created_by_users_id_fk": {
+          "name": "time_statuses_created_by_users_id_fk",
           "tableFrom": "time_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "time_statuses_last_updated_by_system_users_id_fk": {
-          "name": "time_statuses_last_updated_by_system_users_id_fk",
+        "time_statuses_last_updated_by_users_id_fk": {
+          "name": "time_statuses_last_updated_by_users_id_fk",
           "tableFrom": "time_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -3037,19 +3008,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "translated_languages_created_by_system_users_id_fk": {
-          "name": "translated_languages_created_by_system_users_id_fk",
+        "translated_languages_created_by_users_id_fk": {
+          "name": "translated_languages_created_by_users_id_fk",
           "tableFrom": "translated_languages",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "translated_languages_last_updated_by_system_users_id_fk": {
-          "name": "translated_languages_last_updated_by_system_users_id_fk",
+        "translated_languages_last_updated_by_users_id_fk": {
+          "name": "translated_languages_last_updated_by_users_id_fk",
           "tableFrom": "translated_languages",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -3133,19 +3104,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "venue_statuses_created_by_system_users_id_fk": {
-          "name": "venue_statuses_created_by_system_users_id_fk",
+        "venue_statuses_created_by_users_id_fk": {
+          "name": "venue_statuses_created_by_users_id_fk",
           "tableFrom": "venue_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "venue_statuses_last_updated_by_system_users_id_fk": {
-          "name": "venue_statuses_last_updated_by_system_users_id_fk",
+        "venue_statuses_last_updated_by_users_id_fk": {
+          "name": "venue_statuses_last_updated_by_users_id_fk",
           "tableFrom": "venue_statuses",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -3229,19 +3200,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "venues_created_by_system_users_id_fk": {
-          "name": "venues_created_by_system_users_id_fk",
+        "venues_created_by_users_id_fk": {
+          "name": "venues_created_by_users_id_fk",
           "tableFrom": "venues",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "venues_last_updated_by_system_users_id_fk": {
-          "name": "venues_last_updated_by_system_users_id_fk",
+        "venues_last_updated_by_users_id_fk": {
+          "name": "venues_last_updated_by_users_id_fk",
           "tableFrom": "venues",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -3249,69 +3220,6 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.activity_additional_comms_contacts": {
-      "name": "activity_additional_comms_contacts",
-      "schema": "",
-      "columns": {
-        "activity_id": {
-          "name": "activity_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "activity_additional_comms_contacts_activity_id_activities_id_fk": {
-          "name": "activity_additional_comms_contacts_activity_id_activities_id_fk",
-          "tableFrom": "activity_additional_comms_contacts",
-          "tableTo": "activities",
-          "columnsFrom": ["activity_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "activity_additional_comms_contacts_user_id_system_users_id_fk": {
-          "name": "activity_additional_comms_contacts_user_id_system_users_id_fk",
-          "tableFrom": "activity_additional_comms_contacts",
-          "tableTo": "system_users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "activity_additional_comms_contacts_activity_id_user_id_pk": {
-          "name": "activity_additional_comms_contacts_activity_id_user_id_pk",
-          "columns": ["activity_id", "user_id"]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -3373,6 +3281,76 @@
         "activity_categories_activity_id_category_id_pk": {
           "name": "activity_categories_activity_id_category_id_pk",
           "columns": ["activity_id", "category_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_comms_contacts": {
+      "name": "activity_comms_contacts",
+      "schema": "",
+      "columns": {
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_lead": {
+          "name": "is_lead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_comms_contacts_activity_id_activities_id_fk": {
+          "name": "activity_comms_contacts_activity_id_activities_id_fk",
+          "tableFrom": "activity_comms_contacts",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_comms_contacts_user_id_users_id_fk": {
+          "name": "activity_comms_contacts_user_id_users_id_fk",
+          "tableFrom": "activity_comms_contacts",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "activity_comms_contacts_activity_id_user_id_pk": {
+          "name": "activity_comms_contacts_activity_id_user_id_pk",
+          "columns": ["activity_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -4016,8 +3994,8 @@
       "name": "favorite_activities",
       "schema": "",
       "columns": {
-        "system_user_id": {
-          "name": "system_user_id",
+        "user_id": {
+          "name": "user_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -4031,11 +4009,11 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "favorite_activities_system_user_id_system_users_id_fk": {
-          "name": "favorite_activities_system_user_id_system_users_id_fk",
+        "favorite_activities_user_id_users_id_fk": {
+          "name": "favorite_activities_user_id_users_id_fk",
           "tableFrom": "favorite_activities",
-          "tableTo": "system_users",
-          "columnsFrom": ["system_user_id"],
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -4051,9 +4029,9 @@
         }
       },
       "compositePrimaryKeys": {
-        "favorite_activities_system_user_id_activity_id_pk": {
-          "name": "favorite_activities_system_user_id_activity_id_pk",
-          "columns": ["system_user_id", "activity_id"]
+        "favorite_activities_user_id_activity_id_pk": {
+          "name": "favorite_activities_user_id_activity_id_pk",
+          "columns": ["user_id", "activity_id"]
         }
       },
       "uniqueConstraints": {},
@@ -4061,8 +4039,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.ministry_system_users": {
-      "name": "ministry_system_users",
+    "public.ministry_users": {
+      "name": "ministry_users",
       "schema": "",
       "columns": {
         "ministry_id": {
@@ -4094,19 +4072,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "ministry_system_users_ministry_id_ministries_id_fk": {
-          "name": "ministry_system_users_ministry_id_ministries_id_fk",
-          "tableFrom": "ministry_system_users",
+        "ministry_users_ministry_id_ministries_id_fk": {
+          "name": "ministry_users_ministry_id_ministries_id_fk",
+          "tableFrom": "ministry_users",
           "tableTo": "ministries",
           "columnsFrom": ["ministry_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "ministry_system_users_user_id_system_users_id_fk": {
-          "name": "ministry_system_users_user_id_system_users_id_fk",
-          "tableFrom": "ministry_system_users",
-          "tableTo": "system_users",
+        "ministry_users_user_id_users_id_fk": {
+          "name": "ministry_users_user_id_users_id_fk",
+          "tableFrom": "ministry_users",
+          "tableTo": "users",
           "columnsFrom": ["user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -4114,8 +4092,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "ministry_system_users_ministry_id_user_id_pk": {
-          "name": "ministry_system_users_ministry_id_user_id_pk",
+        "ministry_users_ministry_id_user_id_pk": {
+          "name": "ministry_users_ministry_id_user_id_pk",
           "columns": ["ministry_id", "user_id"]
         }
       },
@@ -4251,19 +4229,19 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "teams_created_by_system_users_id_fk": {
-          "name": "teams_created_by_system_users_id_fk",
+        "teams_created_by_users_id_fk": {
+          "name": "teams_created_by_users_id_fk",
           "tableFrom": "teams",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "teams_last_updated_by_system_users_id_fk": {
-          "name": "teams_last_updated_by_system_users_id_fk",
+        "teams_last_updated_by_users_id_fk": {
+          "name": "teams_last_updated_by_users_id_fk",
           "tableFrom": "teams",
-          "tableTo": "system_users",
+          "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",

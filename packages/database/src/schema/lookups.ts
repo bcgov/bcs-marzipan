@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { ministries } from './ministry';
-import { systemUsers } from './user';
+import { users } from './user';
 import { teamCategories } from './relations';
 
 /**
@@ -32,7 +32,7 @@ export const activityStatuses = pgTable('activity_statuses', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -40,7 +40,7 @@ export const activityStatuses = pgTable('activity_statuses', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -58,7 +58,7 @@ export const categories = pgTable('categories', {
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
-  pitchRequired: boolean('pitch_required').notNull().default(false),
+  allowsPitch: boolean('allows_pitch').notNull().default(true),
   visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team'
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -67,7 +67,7 @@ export const categories = pgTable('categories', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -75,7 +75,7 @@ export const categories = pgTable('categories', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -94,7 +94,7 @@ export const dateStatuses = pgTable('date_statuses', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -102,7 +102,7 @@ export const dateStatuses = pgTable('date_statuses', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -121,7 +121,7 @@ export const timeStatuses = pgTable('time_statuses', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -129,7 +129,7 @@ export const timeStatuses = pgTable('time_statuses', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -148,7 +148,7 @@ export const venueStatuses = pgTable('venue_statuses', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -156,7 +156,7 @@ export const venueStatuses = pgTable('venue_statuses', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -176,7 +176,7 @@ export const cities = pgTable('cities', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -184,7 +184,7 @@ export const cities = pgTable('cities', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -203,7 +203,7 @@ export const venues = pgTable('venues', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -211,7 +211,7 @@ export const venues = pgTable('venues', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -233,7 +233,7 @@ export const governmentRepresentatives = pgTable('government_representatives', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -241,15 +241,15 @@ export const governmentRepresentatives = pgTable('government_representatives', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
- * Communication Contact lookup table - Communication contacts for activities
+ * CommsContact lookup table - Comms contacts for activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/CommunicationContact.cs
  * TODO: this might be related to user accounts in the future and replaced by AD integration
  */
-export const communicationContacts = pgTable('communication_contacts', {
+export const commsContacts = pgTable('comms_contacts', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
@@ -262,7 +262,7 @@ export const communicationContacts = pgTable('communication_contacts', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -270,7 +270,7 @@ export const communicationContacts = pgTable('communication_contacts', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -290,7 +290,7 @@ export const eventPlanners = pgTable('event_planners', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -298,7 +298,7 @@ export const eventPlanners = pgTable('event_planners', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -320,7 +320,7 @@ export const themes = pgTable('themes', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -328,7 +328,7 @@ export const themes = pgTable('themes', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -355,7 +355,7 @@ export const tags = pgTable('tags', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -363,7 +363,7 @@ export const tags = pgTable('tags', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -382,7 +382,7 @@ export const pitchStatuses = pgTable('pitch_statuses', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -390,11 +390,11 @@ export const pitchStatuses = pgTable('pitch_statuses', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
- * CommsMaterials lookup table - Communication materials types
+ * CommsMaterials lookup table - Comms materials types
  * Values: 'Backgrounder','Digital Content','Event or Media Plan','Factsheet','IGRS: Biography','IGRS: Briefing Note','IGRS: Gift','Information Bulletin','Issues Note','Itinerary','Key Messages','Media Advisory','Minister's Message','News Release','NYCU News You Can Use','Opinion Editorial','Press Conference','Q&As','Quote','Report','Speaking Notes','Statement','Tech Briefing' (user editable)
  */
 export const commsMaterials = pgTable('comms_materials', {
@@ -409,7 +409,7 @@ export const commsMaterials = pgTable('comms_materials', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -417,7 +417,7 @@ export const commsMaterials = pgTable('comms_materials', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -436,7 +436,7 @@ export const translatedLanguages = pgTable('translated_languages', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -444,7 +444,7 @@ export const translatedLanguages = pgTable('translated_languages', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -463,7 +463,7 @@ export const newsReleaseOrigins = pgTable('news_release_origins', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -471,7 +471,7 @@ export const newsReleaseOrigins = pgTable('news_release_origins', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -490,7 +490,7 @@ export const sectors = pgTable('sectors', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -498,7 +498,7 @@ export const sectors = pgTable('sectors', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -517,7 +517,7 @@ export const newsReleaseDistributions = pgTable('news_release_distributions', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -525,7 +525,7 @@ export const newsReleaseDistributions = pgTable('news_release_distributions', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -544,7 +544,7 @@ export const premierRequested = pgTable('premier_requested', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -552,7 +552,7 @@ export const premierRequested = pgTable('premier_requested', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 /**
@@ -567,15 +567,14 @@ export const activityFilters = pgTable('activity_filters', {
   sortOrder: integer('sort_order'), // Sort order for display purposes
   isActive: boolean('is_active'), // Whether the filter is active
   createdDateTime: timestamp('created_date_time', { withTimezone: true }), // Date and time the record was created
-  createdBy: integer('created_by').references(() => systemUsers.id), // User who created the record
+  createdBy: integer('created_by').references(() => users.id), // User who created the record
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   }), // Date and time the record was last updated
-  lastUpdatedBy: integer('last_updated_by').references(() => systemUsers.id), // User who last updated the record
+  lastUpdatedBy: integer('last_updated_by').references(() => users.id), // User who last updated the record
   timestamp: timestamp('timestamp', { withTimezone: true })
     .notNull()
     .defaultNow(), // Row version timestamp
-  rowGuid: uuid('row_guid'), // Unique identifier for the row
 });
 
 /**
@@ -609,7 +608,7 @@ export const reports = pgTable('reports', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -617,7 +616,7 @@ export const reports = pgTable('reports', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 // Relations for lookup tables

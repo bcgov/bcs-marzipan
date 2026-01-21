@@ -8,14 +8,14 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { systemUsers } from './user';
+import { users } from './user';
 import { teamCategories } from './relations';
 import { podSharedWithTeams } from './ministry';
 
 /**
  * Teams table - Groups of system users
  * TODO: placeholder - This is a placeholder table for team-based access control.
- * Represents a group of systemUsers that can be used for category access control.
+ * Represents a group of users that can be used for category access control.
  * Full implementation pending.
  */
 export const teams = pgTable('teams', {
@@ -29,7 +29,7 @@ export const teams = pgTable('teams', {
     .defaultNow(),
   createdBy: integer('created_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
   lastUpdatedDateTime: timestamp('last_updated_date_time', {
     withTimezone: true,
   })
@@ -37,20 +37,20 @@ export const teams = pgTable('teams', {
     .defaultNow(),
   lastUpdatedBy: integer('last_updated_by')
     .notNull()
-    .references(() => systemUsers.id),
+    .references(() => users.id),
 });
 
 // Relations for Teams
 // TODO: placeholder - Add teamSystemUsers junction table when teams are fully implemented
 export const teamsRelations = relations(teams, ({ one, many }) => ({
-  creator: one(systemUsers, {
+  creator: one(users, {
     fields: [teams.createdBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'teamCreator',
   }),
-  updater: one(systemUsers, {
+  updater: one(users, {
     fields: [teams.lastUpdatedBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'teamUpdater',
   }),
   teamCategories: many(teamCategories),

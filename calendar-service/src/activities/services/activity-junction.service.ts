@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { eq, and, inArray } from 'drizzle-orm';
 import {
   activityRepresentatives,
@@ -6,6 +6,7 @@ import {
   venueAddresses,
   activityReportSettings,
   reports,
+  activityCommsContacts,
 } from '@corpcal/database/schema';
 import type { VenueAddress } from '@corpcal/shared/schemas';
 import { DatabaseService } from '../../database/database.service';
@@ -472,6 +473,158 @@ export class ActivityJunctionService {
           reportId,
           omitted,
         });
+      }
+    }
+  }
+
+  /**
+   * Insert comms contacts for an activity
+   * Validates that exactly one contact has isLead=true
+   *
+   * @param tx - Database transaction
+   * @param activityId - ID of the activity
+   * @param commsContacts - Array of comms contacts with userId and isLead flag
+   * @param now - Current timestamp
+   */
+  async insertCommsContacts(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    commsContacts:
+      | Array<{
+          userId: number;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    if (!commsContacts || commsContacts.length === 0) {
+      return;
+    }
+
+    // Validate exactly one lead contact
+    const leadContacts = commsContacts.filter((c) => c.isLead === true);
+    if (leadContacts.length === 0) {
+      throw new BadRequestException(
+        'Exactly one comms contact must be marked as lead (isLead=true)'
+      );
+    }
+    if (leadContacts.length > 1) {
+      throw new BadRequestException(
+        'Only one comms contact can be marked as lead (isLead=true)'
+      );
+    }
+
+    // Insert comms contacts
+    await tx.insert(activityCommsContacts).values(
+      commsContacts.map((contact) => ({
+        activityId,
+        userId: contact.userId,
+        isLead: contact.isLead ?? false,
+        isActive: true,
+        timestamp: now,
+      }))
+    );
+  }
+
+  /**
+   * Update comms contacts for an activity
+   * Replaces all existing contacts with the new set
+   * Validates that exactly one contact has isLead=true
+   *
+   * @param tx - Database transaction
+   * @param activityId - ID of the activity
+   * @param commsContacts - Array of comms contacts with userId and isLead flag
+   * @param now - Current timestamp
+   */
+  async updateCommsContacts(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    commsContacts:
+      | Array<{
+          userId: number;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    // Soft delete all existing comms contacts for this activity
+    await tx
+      .update(activityCommsContacts)
+      .set({ isActive: false })
+      .where(eq(activityCommsContacts.activityId, activityId));
+
+    // If new contacts provided, validate and insert them
+    if (commsContacts && commsContacts.length > 0) {
+      // Validate exactly one lead contact
+      const leadContacts = commsContacts.filter((c) => c.isLead === true);
+      if (leadContacts.length === 0) {
+        throw new BadRequestException(
+          'Exactly one comms contact must be marked as lead (isLead=true)'
+        );
+      }
+      if (leadContacts.length > 1) {
+        throw new BadRequestException(
+          'Only one comms contact can be marked as lead (isLead=true)'
+        );
+      }
+
+      // Check which records already exist (even if inactive) to reactivate vs insert
+      const existingRecords = await tx
+        .select()
+        .from(activityCommsContacts)
+        .where(eq(activityCommsContacts.activityId, activityId));
+
+      const existingUserIds = new Set(existingRecords.map((r) => r.userId));
+
+      const toInsert: Array<{ userId: number; isLead: boolean }> = [];
+      const toReactivate: Array<{ userId: number; isLead: boolean }> = [];
+
+      for (const contact of commsContacts) {
+        if (existingUserIds.has(contact.userId)) {
+          toReactivate.push({
+            userId: contact.userId,
+            isLead: contact.isLead ?? false,
+          });
+        } else {
+          toInsert.push({
+            userId: contact.userId,
+            isLead: contact.isLead ?? false,
+          });
+        }
+      }
+
+      // Reactivate existing records with updated isLead flag
+      for (const contact of toReactivate) {
+        await tx
+          .update(activityCommsContacts)
+          .set({
+            isActive: true,
+            isLead: contact.isLead,
+            timestamp: now,
+          })
+          .where(
+            and(
+              eq(activityCommsContacts.activityId, activityId),
+              eq(activityCommsContacts.userId, contact.userId)
+            )
+          );
+      }
+
+      // Insert new records
+      if (toInsert.length > 0) {
+        await tx.insert(activityCommsContacts).values(
+          toInsert.map((contact) => ({
+            activityId,
+            userId: contact.userId,
+            isLead: contact.isLead,
+            isActive: true,
+            timestamp: now,
+          }))
+        );
       }
     }
   }

@@ -77,7 +77,7 @@ export class ActivityHistoryService {
       .where(eq(activityHistory.activityId, activityId))
       .orderBy(desc(activityHistory.timestamp));
 
-    // TODO: Join with systemUsers to get userName
+    // TODO: Join with users to get userName
     // For now, return with userId as userName placeholder
     return historyEntries.map((entry) => ({
       ...entry,

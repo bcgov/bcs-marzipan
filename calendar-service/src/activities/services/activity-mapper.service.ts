@@ -50,8 +50,11 @@ export class ActivityMapperService {
         representative: string;
       }>;
       sharedWith?: string[];
-      additionalCommsContacts?: string[];
-      commsContactName: string | null;
+      commsContacts?: Array<{
+        userId: number;
+        name: string;
+        isLead: boolean;
+      }>;
       eventLeadName?: string | null;
       leadOrgName?: string | null;
       reportSettings?: Array<{
@@ -92,7 +95,6 @@ export class ActivityMapperService {
       title: activity.title ?? '',
       summary: activity.summary ?? '',
       isIssue: activity.isIssue ?? false,
-      isActive: activity.isActive ?? true,
       isConfidential: activity.isConfidential ?? false,
 
       // Organizations
@@ -149,22 +151,16 @@ export class ActivityMapperService {
       // Notes and additional fields
       notes: activity.notes ?? null,
       pitchDate: formatDate(activity.pitchDate),
+      pitchRequired: activity.pitchRequired ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
       visibility:
         (activity.visibility as Visibility) ??
         (DEFAULT_VISIBILITY satisfies Visibility),
 
       // Sharing
-      commsContactLeadId: activity.commsContactLeadId ?? 0,
-      contactMinistryId: activity.contactMinistryId,
-      commsContact:
-        relatedData?.commsContactName ??
-        (activity.commsContactLeadId
-          ? String(activity.commsContactLeadId)
-          : null) ??
-        DEFAULT_STATUS,
+      leadMinistryId: activity.leadMinistryId,
       sharedWith: relatedData?.sharedWith ?? [],
-      additionalCommsContacts: relatedData?.additionalCommsContacts ?? [],
+      commsContacts: relatedData?.commsContacts ?? [],
 
       // Computed lookup names
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
@@ -183,7 +179,6 @@ export class ActivityMapperService {
         activity.createdDateTime?.toISOString() ??
         new Date().toISOString(),
       lastUpdatedBy: activity.lastUpdatedBy ?? 0,
-      rowGuid: activity.rowGuid ?? '',
     };
 
     // Runtime validation to ensure response matches schema contract

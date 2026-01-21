@@ -27,7 +27,7 @@ export type {
   OrganizationLookupItem,
   MinistryResponse,
   MinistryLookupItem,
-  SystemUserResponse,
+  UserResponse,
   UserLookupItem,
   PitchStatusResponse,
   PitchStatusLookupItem,

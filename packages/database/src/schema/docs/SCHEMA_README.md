@@ -37,7 +37,7 @@ Automatically generated from Drizzle schema using `drizzle-zod`:
 **Derived from Drizzle schema** using `createSelectSchema` and transformations:
 
 - Base schema generated from `createSelectSchema(activities)`
-- Fields omitted: internal fields (rowVersion, rowGuid, deprecated fields)
+- Fields omitted: internal fields (rowVersion, deprecated fields)
 - Fields transformed:
   - Date/time fields: `Date` → ISO string (`YYYY-MM-DD`), `time` → `HH:mm` string
   - Foreign key IDs: Serial IDs remain `number` (matches database type), UUID IDs remain `string`
@@ -253,8 +253,8 @@ The application uses SQL seed files to populate lookup tables and initial data. 
   - Categories, tags, themes
   - Cities, government representatives
   - Comms materials, translated languages
-  - Communication contacts, digital users
-  - Ministries, organizations, system users
+  - Comms contacts
+  - Ministries, organizations, users
 
 - **`002_seed_activities.sql`**: Seeds initial activity data (if needed)
 
@@ -312,8 +312,8 @@ Each log entry should include:
 **Changes:**
 
 - Created new `user_preferences` table
-- Added `preferences` JSONB column to `system_users` table
-- Added foreign key constraint: `user_preferences.user_id` → `system_users.id`
+- Added `preferences` JSONB column to `users` table
+- Added foreign key constraint: `user_preferences.user_id` → `users.id`
 
 **Breaking Changes:**
 

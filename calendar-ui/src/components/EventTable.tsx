@@ -181,16 +181,17 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     (r) => r.representative
   );
 
-  // Compile leads from commsContactLeadId and eventPlannerLeadId (store IDs, not names)
+  // Compile leads from commsContacts and eventPlannerLeadId (store IDs, not names)
   const leads: string[] = [];
-  // Add comms contact ID if present
-  if (activity.commsContactLeadId) {
-    leads.push(String(activity.commsContactLeadId));
+  // Add comms contact IDs if present (find the lead contact)
+  const leadCommsContact = activity.commsContacts?.find((c) => c.isLead);
+  if (leadCommsContact) {
+    leads.push(String(leadCommsContact.userId));
   }
-  // Add event planner ID if present (and different from comms contact)
+  // Add event planner ID if present (and different from comms contact lead)
   if (
     activity.eventPlannerLeadId &&
-    activity.eventPlannerLeadId !== activity.commsContactLeadId
+    activity.eventPlannerLeadId !== leadCommsContact?.userId
   ) {
     leads.push(String(activity.eventPlannerLeadId));
   }
@@ -240,7 +241,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     dateModified: activity.lastUpdatedDateTime
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
-    mine: false, // TODO: check if current user is owner
+    mine: false, // TODO: check if current user is comms lead
     sharedWithMe: false, // TODO: check if user in sharedWith
     ministry: activity.leadOrg || '',
     summary: activity.summary || undefined,

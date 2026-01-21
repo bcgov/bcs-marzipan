@@ -3,9 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { eq, and, gte, lte, inArray, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility } from '@corpcal/shared';
+import type { Visibility, ActivityStatusName } from '@corpcal/shared';
 import {
   activities,
   activityCategories,
@@ -14,12 +14,12 @@ import {
   activityCommsMaterials,
   activityTranslationsRequired,
   activitySharedWithTeams,
-  activityAdditionalCommsContacts,
   categories,
   ministries,
   activityHistory,
   venueAddresses,
   teamCategories,
+  activityStatuses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import type {
@@ -46,7 +46,7 @@ export class ActivitiesService {
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService
-  ) {}
+  ) { }
 
   /**
    * Create a new activity with related junction table records
@@ -60,7 +60,7 @@ export class ActivitiesService {
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
-      additionalCommsContactIds,
+      commsContacts: commsContactsArray,
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
@@ -113,21 +113,21 @@ export class ActivitiesService {
       const activityId = created.id;
 
       // Fetch ministry abbreviation to generate displayId
-      // contactMinistryId is required, so it should always be present
+      // leadMinistryId is required, so it should always be present
       // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
-      if (!activityData.contactMinistryId) {
-        throw new BadRequestException('contactMinistryId is required');
+      if (!activityData.leadMinistryId) {
+        throw new BadRequestException('leadMinistryId is required');
       }
 
       const [ministry] = await tx
         .select({ abbreviation: ministries.abbreviation })
         .from(ministries)
-        .where(eq(ministries.id, activityData.contactMinistryId))
+        .where(eq(ministries.id, activityData.leadMinistryId))
         .limit(1);
 
       if (!ministry || !ministry.abbreviation) {
         throw new BadRequestException(
-          `Ministry with ID ${activityData.contactMinistryId} not found or missing abbreviation`
+          `Ministry with ID ${activityData.leadMinistryId} not found or missing abbreviation`
         );
       }
 
@@ -204,14 +204,11 @@ export class ActivitiesService {
           currentUserId,
           now
         ),
-        // Additional Comms Contacts
-        this.junctionService.insertJunctionRecords(
+        // Comms Contacts (with isLead flag)
+        this.junctionService.insertCommsContacts(
           tx,
-          activityAdditionalCommsContacts,
           activityId,
-          additionalCommsContactIds,
-          (id: number) => ({ userId: id }),
-          currentUserId,
+          commsContactsArray,
           now
         ),
         // Representatives with attending status
@@ -270,6 +267,15 @@ export class ActivitiesService {
   ): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
+    // Get deleted status ID to exclude deleted activities by default
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const deletedStatusId = deletedStatus?.id;
+
     if (filters) {
       const conditions: SQL[] = [];
       if (filters.title) {
@@ -279,17 +285,15 @@ export class ActivitiesService {
         conditions.push(
           eq(activities.activityStatusId, filters.activityStatusId)
         );
-      }
-      if (filters.isActive !== undefined) {
-        conditions.push(eq(activities.isActive, filters.isActive));
+      } else if (deletedStatusId !== undefined) {
+        // Exclude deleted activities by default if activityStatusId is not specified
+        conditions.push(ne(activities.activityStatusId, deletedStatusId));
       }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
       }
-      if (filters.contactMinistryId !== undefined) {
-        conditions.push(
-          eq(activities.contactMinistryId, filters.contactMinistryId)
-        );
+      if (filters.leadMinistryId !== undefined) {
+        conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
       }
       // Note: City filter is handled after initial query with a separate join
       // TODO: Optimize with proper join in main query
@@ -311,12 +315,30 @@ export class ActivitiesService {
           .from(activities)
           .where(and(...conditions));
       } else {
+        // If no conditions but deletedStatusId exists, still exclude deleted
+        if (deletedStatusId !== undefined) {
+          activityResults = await this.databaseService.db
+            .select()
+            .from(activities)
+            .where(ne(activities.activityStatusId, deletedStatusId));
+        } else {
+          activityResults = await this.databaseService.db
+            .select()
+            .from(activities);
+        }
+      }
+    } else {
+      // No filters: exclude deleted activities by default
+      if (deletedStatusId !== undefined) {
+        activityResults = await this.databaseService.db
+          .select()
+          .from(activities)
+          .where(ne(activities.activityStatusId, deletedStatusId));
+      } else {
         activityResults = await this.databaseService.db
           .select()
           .from(activities);
       }
-    } else {
-      activityResults = await this.databaseService.db.select().from(activities);
     }
 
     // Handle city filter with proper join if needed
@@ -336,11 +358,6 @@ export class ActivitiesService {
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
-    // Collect all user IDs that need to be fetched (for commsContact)
-    const userIds = new Set<number>();
-    for (const activity of activityResults) {
-      if (activity.commsContactLeadId) userIds.add(activity.commsContactLeadId);
-    }
 
     const [
       categoriesResult,
@@ -353,8 +370,7 @@ export class ActivitiesService {
       translationsRequiredMap,
       representativesAttendingMap,
       sharedWithMap,
-      additionalCommsContactsMap,
-      userNamesMap,
+      commsContactsMap,
       leadOrgNamesMap,
       eventPlannerNamesMap,
       newsReleaseOriginsMap,
@@ -376,10 +392,7 @@ export class ActivitiesService {
         activityIds
       ),
       this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
-      this.dataFetcherService.fetchAdditionalCommsContactsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchUserNamesForUserIds(Array.from(userIds)),
+      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
       this.dataFetcherService.fetchLeadOrgNamesForActivities(activityResults),
       this.dataFetcherService.fetchEventPlannerNamesForActivities(
         activityResults
@@ -409,11 +422,7 @@ export class ActivitiesService {
         representativesAttending:
           representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: sharedWithMap.get(activity.id) ?? [],
-        additionalCommsContacts:
-          additionalCommsContactsMap.get(activity.id) ?? [],
-        commsContactName: activity.commsContactLeadId
-          ? (userNamesMap.get(activity.commsContactLeadId) ?? null)
-          : null,
+        commsContacts: commsContactsMap.get(activity.id) ?? [],
         eventLeadName: eventPlannerNamesMap.get(activity.id) ?? null,
         leadOrgName: leadOrgNamesMap.get(activity.id) ?? null,
         newsReleaseOrigin: newsReleaseOriginsMap.get(activity.id) ?? null,
@@ -439,10 +448,6 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity #${id} not found`);
     }
 
-    // Collect user IDs that need to be fetched (for commsContact)
-    const userIds: number[] = [];
-    if (activity.commsContactLeadId) userIds.push(activity.commsContactLeadId);
-
     // Fetch related data
     const [
       categoriesResult,
@@ -455,8 +460,7 @@ export class ActivitiesService {
       translationsRequired,
       representativesAttending,
       sharedWith,
-      additionalCommsContacts,
-      userNamesMap,
+      commsContacts,
       leadOrgNamesMap,
       eventPlannerNamesMap,
       newsReleaseOriginsMap,
@@ -474,8 +478,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
       this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchAdditionalCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchUserNamesForUserIds(userIds),
+      this.dataFetcherService.fetchCommsContactsForActivities([id]),
       this.dataFetcherService.fetchLeadOrgNamesForActivities([activity]),
       this.dataFetcherService.fetchEventPlannerNamesForActivities([activity]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
@@ -499,10 +502,7 @@ export class ActivitiesService {
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      additionalCommsContacts: additionalCommsContacts.get(id) ?? [],
-      commsContactName: activity.commsContactLeadId
-        ? (userNamesMap.get(activity.commsContactLeadId) ?? null)
-        : null,
+      commsContacts: commsContacts.get(id) ?? [],
       eventLeadName: eventPlannerNamesMap.get(id) ?? null,
       leadOrgName: leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
@@ -537,7 +537,7 @@ export class ActivitiesService {
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
-      additionalCommsContactIds,
+      commsContacts: commsContactsArray,
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
@@ -555,22 +555,19 @@ export class ActivitiesService {
 
     // Use transaction to ensure atomicity of activity and junction table updates
     const updated = await this.databaseService.db.transaction(async (tx) => {
-      // If contactMinistryId is being updated, recalculate displayId
+      // If leadMinistryId is being updated, recalculate displayId
       // TODO: consider if users still need to reference previous displayId.
-      if (
-        dto.contactMinistryId !== undefined &&
-        dto.contactMinistryId !== null
-      ) {
+      if (dto.leadMinistryId !== undefined && dto.leadMinistryId !== null) {
         // Fetch the new ministry abbreviation
         const [ministry] = await tx
           .select({ abbreviation: ministries.abbreviation })
           .from(ministries)
-          .where(eq(ministries.id, dto.contactMinistryId))
+          .where(eq(ministries.id, dto.leadMinistryId))
           .limit(1);
 
         if (!ministry || !ministry.abbreviation) {
           throw new BadRequestException(
-            `Ministry with ID ${dto.contactMinistryId} not found or missing abbreviation`
+            `Ministry with ID ${dto.leadMinistryId} not found or missing abbreviation`
           );
         }
 
@@ -664,16 +661,12 @@ export class ActivitiesService {
         );
       }
 
-      // Update additional comms contacts
-      if (additionalCommsContactIds !== undefined) {
-        await this.junctionService.updateJunctionRecords(
+      // Update comms contacts
+      if (commsContactsArray !== undefined) {
+        await this.junctionService.updateCommsContacts(
           tx,
-          activityAdditionalCommsContacts,
           id,
-          additionalCommsContactIds,
-          (id: number) => ({ userId: id }),
-          'userId',
-          currentUserId,
+          commsContactsArray,
           now
         );
       }
@@ -705,10 +698,6 @@ export class ActivitiesService {
       return updatedActivity;
     });
 
-    // Collect user IDs that need to be fetched (for commsContact)
-    const userIds: number[] = [];
-    if (updated.commsContactLeadId) userIds.push(updated.commsContactLeadId);
-
     // Fetch related data for the updated activity
     const [
       categoriesResult,
@@ -721,8 +710,7 @@ export class ActivitiesService {
       translationsRequired,
       representativesAttending,
       sharedWith,
-      additionalCommsContacts,
-      userNamesMap,
+      commsContacts,
       leadOrgNamesMap,
       eventPlannerNamesMap,
       newsReleaseOriginsMap,
@@ -740,8 +728,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
       this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchAdditionalCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchUserNamesForUserIds(userIds),
+      this.dataFetcherService.fetchCommsContactsForActivities([id]),
       this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
       this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
@@ -765,10 +752,7 @@ export class ActivitiesService {
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      additionalCommsContacts: additionalCommsContacts.get(id) ?? [],
-      commsContactName: updated.commsContactLeadId
-        ? (userNamesMap.get(updated.commsContactLeadId) ?? null)
-        : null,
+      commsContacts: commsContacts.get(id) ?? [],
       eventLeadName: eventPlannerNamesMap.get(id) ?? null,
       leadOrgName: leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
@@ -870,7 +854,7 @@ export class ActivitiesService {
   }
 
   /**
-   * Soft delete (set isActive to false)
+   * Soft delete (set activityStatusId to 'deleted')
    */
   async softDelete(
     id: number,
@@ -894,11 +878,24 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    // Update activity to soft delete
+    // Get deleted status ID
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    if (!deletedStatus) {
+      throw new BadRequestException(
+        'Deleted activity status not found in database'
+      );
+    }
+
+    // Update activity to soft delete by setting activityStatusId to 'deleted'
     const [updated] = await this.databaseService.db
       .update(activities)
       .set({
-        isActive: false,
+        activityStatusId: deletedStatus.id,
         lastUpdatedDateTime: new Date(),
         lastUpdatedBy: userId,
       })
@@ -913,16 +910,12 @@ export class ActivitiesService {
       notes: reason.trim(),
       changes: [
         {
-          field: 'isActive',
-          oldValue: existing.isActive,
-          newValue: false,
+          field: 'activityStatusId',
+          oldValue: existing.activityStatusId,
+          newValue: deletedStatus.id,
         },
       ],
     });
-
-    // Collect user IDs that need to be fetched (for commsContact)
-    const userIds: number[] = [];
-    if (updated.commsContactLeadId) userIds.push(updated.commsContactLeadId);
 
     // Fetch related data for the soft-deleted activity
     const [
@@ -936,8 +929,7 @@ export class ActivitiesService {
       translationsRequired,
       representativesAttending,
       sharedWith,
-      additionalCommsContacts,
-      userNamesMap,
+      commsContacts,
       leadOrgNamesMap,
       eventPlannerNamesMap,
       newsReleaseOriginsMap,
@@ -955,8 +947,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
       this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchAdditionalCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchUserNamesForUserIds(userIds),
+      this.dataFetcherService.fetchCommsContactsForActivities([id]),
       this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
       this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
@@ -980,10 +971,7 @@ export class ActivitiesService {
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
-      additionalCommsContacts: additionalCommsContacts.get(id) ?? [],
-      commsContactName: updated.commsContactLeadId
-        ? (userNamesMap.get(updated.commsContactLeadId) ?? null)
-        : null,
+      commsContacts: commsContacts.get(id) ?? [],
       eventLeadName: eventPlannerNamesMap.get(id) ?? null,
       leadOrgName: leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
@@ -1019,7 +1007,7 @@ export class ActivitiesService {
           name: categories.name,
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
-          pitchRequired: categories.pitchRequired,
+          allowsPitch: categories.allowsPitch,
           visibility: categories.visibility,
           isActive: categories.isActive,
           description: categories.description,

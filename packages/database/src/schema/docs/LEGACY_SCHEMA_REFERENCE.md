@@ -206,19 +206,19 @@ This document provides a comprehensive reference of all legacy database schemas 
 
 ### Columns
 
-| Column Name           | SQL Server Type    | PostgreSQL Type            | Nullable | Constraints              | Description                                                         |
-| --------------------- | ------------------ | -------------------------- | -------- | ------------------------ | ------------------------------------------------------------------- |
-| `Id`                  | `int`              | `serial`                   | No       | Primary Key              | Unique identifier for the filter                                    |
-| `QueryString`         | `nvarchar(300)`    | `varchar(300)`             | Yes      |                          | Query string representing the filter                                |
-| `Name`                | `nvarchar(200)`    | `varchar(200)`             | Yes      |                          | Name of the saved filter                                            |
-| `SortOrder`           | `int`              | `integer`                  | Yes      |                          | Sort order for display purposes                                     |
-| `IsActive`            | `bit`              | `boolean`                  | Yes      |                          | Whether the filter is active                                        |
-| `CreatedDateTime`     | `datetime`         | `timestamp with time zone` | Yes      |                          | Date and time the record was created                                |
-| `CreatedBy`           | `int`              | `integer`                  | Yes      | Foreign Key → SystemUser | User who created the record                                         |
-| `LastUpdatedDateTime` | `datetime`         | `timestamp with time zone` | Yes      |                          | Date and time the record was last updated                           |
-| `LastUpdatedBy`       | `int`              | `integer`                  | Yes      | Foreign Key → SystemUser | User who last updated the record                                    |
-| `TimeStamp`           | `timestamp`        | `timestamp with time zone` | No       |                          | Row version timestamp (byte[] NOT NULL in ActivityFilter.cs)        |
-| `RowGuid`             | `uniqueidentifier` | `uuid`                     | Yes      |                          | Unique identifier for the row (Nullable<Guid> in ActivityFilter.cs) |
+| Column Name           | SQL Server Type    | PostgreSQL Type            | Nullable | Constraints              | Description                                                  |
+| --------------------- | ------------------ | -------------------------- | -------- | ------------------------ | ------------------------------------------------------------ |
+| `Id`                  | `int`              | `serial`                   | No       | Primary Key              | Unique identifier for the filter                             |
+| `QueryString`         | `nvarchar(300)`    | `varchar(300)`             | Yes      |                          | Query string representing the filter                         |
+| `Name`                | `nvarchar(200)`    | `varchar(200)`             | Yes      |                          | Name of the saved filter                                     |
+| `SortOrder`           | `int`              | `integer`                  | Yes      |                          | Sort order for display purposes                              |
+| `IsActive`            | `bit`              | `boolean`                  | Yes      |                          | Whether the filter is active                                 |
+| `CreatedDateTime`     | `datetime`         | `timestamp with time zone` | Yes      |                          | Date and time the record was created                         |
+| `CreatedBy`           | `int`              | `integer`                  | Yes      | Foreign Key → SystemUser | User who created the record                                  |
+| `LastUpdatedDateTime` | `datetime`         | `timestamp with time zone` | Yes      |                          | Date and time the record was last updated                    |
+| `LastUpdatedBy`       | `int`              | `integer`                  | Yes      | Foreign Key → SystemUser | User who last updated the record                             |
+| `TimeStamp`           | `timestamp`        | `timestamp with time zone` | No       |                          | Row version timestamp (byte[] NOT NULL in ActivityFilter.cs) |
+| `RowGuid`             | `uniqueidentifier` | _Removed_                  | -        |                          | Field removed - unused in business logic                     |
 
 ---
 
@@ -382,7 +382,7 @@ This document provides a comprehensive reference of all legacy database schemas 
 
 **Table Name:** `[Gcpe.Hub].[calendar].[FavoriteActivity]`
 
-**Description:** Junction table establishing a many-to-many relationship between SystemUsers and Activities. Allows users to mark activities as favorites/watch lists for quick access.
+**Description:** Junction table establishing a many-to-many relationship between Users and Activities. Allows users to mark activities as favorites/watch lists for quick access.
 
 ### Columns
 
@@ -452,7 +452,7 @@ This document provides a comprehensive reference of all legacy database schemas 
 
 **Table Name:** `[Gcpe.Hub].[calendar].[SystemUserMinistry]`
 
-**Description:** Junction table establishing a many-to-many relationship between SystemUsers and Ministries. Links users to ministries they are associated with for access control and filtering.
+**Description:** Junction table establishing a many-to-many relationship between Users and Ministries. Links users to ministries they are associated with for access control and filtering.
 
 ### Columns
 

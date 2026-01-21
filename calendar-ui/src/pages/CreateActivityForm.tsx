@@ -149,7 +149,7 @@ export const CreateActivityForm: React.FC = () => {
       commsContactLeadId: 'Comms Contact',
       eventPlannerLeadId: 'Event Planner',
       activityStatusId: 'Activity Status',
-      contactMinistryId: 'Contact Ministry',
+      leadMinistryId: 'Lead Ministry',
       venueAddress: 'Venue Address',
       street: 'Street Address',
       city: 'City',
@@ -185,7 +185,7 @@ export const CreateActivityForm: React.FC = () => {
   }
 
   // Transform data for form sections
-  const ownerOptions = lookups.users;
+  const commsLeadOptions = lookups.users;
 
   const ErrorFallback = ({
     error,
@@ -266,7 +266,7 @@ export const CreateActivityForm: React.FC = () => {
             <ActivityReportsSection form={form} />
 
             <ActivitySharingSection
-              ownerOptions={ownerOptions}
+              commsLeadOptions={commsLeadOptions}
               sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
             />
 

@@ -1,13 +1,13 @@
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { activities } from './schema/activity';
 import { activityHistory } from './schema/activityHistory';
-import { systemUsers } from './schema/user';
+import { users } from './schema/user';
 import { ministries } from './schema/ministry';
 import {
   activityStatuses,
   cities,
   governmentRepresentatives,
-  communicationContacts,
+  commsContacts,
   categories,
   themes,
   tags,
@@ -41,8 +41,8 @@ export type Activity = InferSelectModel<typeof activities>;
 export type NewActivity = InferInsertModel<typeof activities>;
 
 // User types
-export type SystemUser = InferSelectModel<typeof systemUsers>;
-export type NewSystemUser = InferInsertModel<typeof systemUsers>;
+export type User = InferSelectModel<typeof users>;
+export type NewUser = InferInsertModel<typeof users>;
 
 // Ministry types
 export type Ministry = InferSelectModel<typeof ministries>;
@@ -68,12 +68,8 @@ export type NewGovernmentRepresentative = InferInsertModel<
   typeof governmentRepresentatives
 >;
 
-export type CommunicationContact = InferSelectModel<
-  typeof communicationContacts
->;
-export type NewCommunicationContact = InferInsertModel<
-  typeof communicationContacts
->;
+export type CommsContact = InferSelectModel<typeof commsContacts>;
+export type NewCommsContact = InferInsertModel<typeof commsContacts>;
 
 // Content Classification
 export type Category = InferSelectModel<typeof categories>;

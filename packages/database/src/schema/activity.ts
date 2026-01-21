@@ -25,7 +25,7 @@ import {
 } from './lookups';
 
 import { organizations } from './organizations';
-import { systemUsers } from './user';
+import { users } from './user';
 import {
   activityThemes,
   activityTags,
@@ -35,7 +35,7 @@ import {
   activityTranslationsRequired,
   activityRepresentatives,
   activitySharedWithTeams,
-  activityAdditionalCommsContacts,
+  activityCommsContacts,
   activitySectors,
   favoriteActivities,
   activityReportSettings,
@@ -55,7 +55,6 @@ export const activities = pgTable(
     // Display ID (computed: {ministryAbbreviation}-{paddedLast6Digits} format)
     // Format: <ACRONYM>-<000001> (e.g., AG-000123, HLTH-456789)
     displayId: varchar('display_id', { length: 50 }).unique(), // Computed field: {ministryAbbreviation}-{paddedLast6Digits}
-    isActive: boolean('is_active').notNull().default(true),
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),
@@ -94,7 +93,7 @@ export const activities = pgTable(
     eventPlannerLeadId: integer('event_planner_lead_id').references(
       () => eventPlanners.id
     ), // FK to EventPlanner (mutually exclusive with eventPlannerLeadName)
-    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-system user event leads (mutually exclusive with eventPlannerLeadId)
+    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-user event leads (mutually exclusive with eventPlannerLeadId)
 
     // Look Ahead
     executiveSummary: text('executive_summary'), // maps to legacy HqComments field
@@ -107,6 +106,7 @@ export const activities = pgTable(
     // Notes and additional fields
     notes: text('notes'), // Maps to legacy Comments field
     pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
+    pitchRequired: boolean('pitch_required'), // Whether pitch is required for this activity (nullable - can override category default)
     newsReleaseDistributionId: integer(
       'news_release_distribution_id'
     ).references(() => newsReleaseDistributions.id), // FK to NewsReleaseDistribution - maps to legacy NRDistributionId
@@ -117,10 +117,7 @@ export const activities = pgTable(
       .notNull()
       .default('global'), // 'global' or 'team' - controls base access visibility
 
-    commsContactLeadId: integer('comms_contact_lead_id')
-      .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
-    contactMinistryId: uuid('contact_ministry_id')
+    leadMinistryId: uuid('lead_ministry_id')
       .notNull()
       .references(() => ministries.id), // FK to Ministry (required for displayId generation)
     activityStatusId: integer('activity_status_id')
@@ -130,10 +127,10 @@ export const activities = pgTable(
     // Audit fields
     createdBy: integer('created_by')
       .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
+      .references(() => users.id), // FK to User
     lastUpdatedBy: integer('last_updated_by')
       .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
+      .references(() => users.id), // FK to User
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -143,7 +140,6 @@ export const activities = pgTable(
       .notNull()
       .defaultNow(),
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
-    rowGuid: uuid('row_guid').notNull().defaultRandom(), // Row identifier - maps to legacy RowGuid, now required
   },
   (table) => [
     // CHECK constraint: exactly one of leadOrgId or leadOrgName must be provided (XOR)
@@ -187,20 +183,15 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [eventPlanners.id],
     relationName: 'eventLead',
   }),
-  commsContact: one(systemUsers, {
-    fields: [activities.commsContactLeadId],
-    references: [systemUsers.id],
-    relationName: 'commsContact',
-  }),
-  createdByUser: one(systemUsers, {
+  createdByUser: one(users, {
     fields: [activities.createdBy],
-    references: [systemUsers.id],
+    references: [users.id],
     relationName: 'createdBy',
   }),
-  contactMinistry: one(ministries, {
-    fields: [activities.contactMinistryId],
+  leadMinistry: one(ministries, {
+    fields: [activities.leadMinistryId],
     references: [ministries.id],
-    relationName: 'contactMinistry',
+    relationName: 'leadMinistry',
   }),
   newsReleaseDistribution: one(newsReleaseDistributions, {
     fields: [activities.newsReleaseDistributionId],
@@ -219,7 +210,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityTranslationsRequired: many(activityTranslationsRequired),
   activityRepresentatives: many(activityRepresentatives),
   activitySharedWithTeams: many(activitySharedWithTeams),
-  activityAdditionalCommsContacts: many(activityAdditionalCommsContacts),
+  activityCommsContacts: many(activityCommsContacts),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
   activitySubscriptions: many(activitySubscriptions),

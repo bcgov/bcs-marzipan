@@ -25,13 +25,15 @@ Creates a new calendar activity with related junction table records.
   "dateStatusId": 1,
   "timeStatusId": 1,
   "activityStatusId": 1,
-  "commsContactLeadId": 8,
-  "contactMinistryId": "00000000-0000-4000-8000-000000000004",
-  "isActive": true,
+  "leadMinistryId": "00000000-0000-4000-8000-000000000004",
   "isIssue": false,
   "reportSettings": [
     { "reportId": 1, "omitted": false },
     { "reportId": 2, "omitted": true }
+  ],
+  "commsContacts": [
+    { "userId": 8, "isLead": true },
+    { "userId": 12, "isLead": false }
   ],
   "sharedWithAll": false,
   "schedulingNotes": "Room booking required",
@@ -83,13 +85,12 @@ Retrieves all activities with optional filtering.
 | `startDateTo` | ISO date | Activities starting on or before this date |
 | `endDateFrom` | ISO date | Activities ending on or after this date |
 | `endDateTo` | ISO date | Activities ending on or before this date |
-| `activityStatusId` | integer | Filter by activity status |
-| `contactMinistryId` | UUID | Filter by contact ministry |
+| `activityStatusId` | integer | Filter by activity status (default: excludes deleted activities) |
+| `leadMinistryId` | UUID | Filter by lead ministry |
 | `city` | string | Filter by city (from venueAddress) |
-| `isActive` | boolean | Filter by active status |
 | `isIssue` | boolean | Filter by issue flag |
 
-**Example:** `GET /activities?startDateFrom=2026-01-01&isActive=true`
+**Example:** `GET /activities?startDateFrom=2026-01-01&activityStatusId=1`
 
 **Response:** `200 OK`
 
@@ -193,7 +194,7 @@ Updates an existing activity. Only provided fields are updated (partial update).
 
 **DELETE** `/activities/:id/soft-delete`
 
-Soft deletes an activity by setting `isActive` to false. Requires a reason for audit purposes.
+Soft deletes an activity by setting `activityStatusId` to 'deleted'. Requires a reason for audit purposes. Deleted activities are excluded from default queries unless explicitly requested via `activityStatusId` filter.
 
 **Request Body:**
 
@@ -213,7 +214,8 @@ Soft deletes an activity by setting `isActive` to false. Requires a reason for a
   "data": {
     "id": 1,
     "title": "Example Activity",
-    "isActive": false
+    "activityStatusId": 6,
+    "activityStatus": "Deleted"
   }
 }
 ```
@@ -315,7 +317,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 ---
 
-### Get System Users
+### Get Users
 
 **GET** `/lookups/users`
 
@@ -588,3 +590,7 @@ Server error occurred.
     - `omitted=false` and `isConfidential=false` → Activity included with standard details
     - `omitted=false` and `isConfidential=true` → Activity included with placeholder (redacted) details
 - **isConfidential:** Activity-level boolean property. When true, activity shows as placeholder in reports (unless omitted).
+- **commsContacts:** Array of comms contacts for the activity. Each contact has:
+  - `userId`: The ID of the user
+  - `isLead`: Boolean indicating if this is the lead contact (exactly one must be true)
+  - In responses, also includes `name`: The display name of the user

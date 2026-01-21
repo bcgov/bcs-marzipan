@@ -21,7 +21,7 @@ import {
   reports,
 } from './lookups';
 import { ministries } from './ministry';
-import { systemUsers } from './user';
+import { users } from './user';
 import { teams } from './teams';
 
 /**
@@ -195,17 +195,20 @@ export const activitySharedWithTeams = pgTable(
 );
 
 /**
- * ActivityAdditionalCommsContacts junction table - Many-to-many relationship between Activities and SystemUsers (additional comms contacts)
+ * ActivityCommsUsers junction table - Many-to-many relationship between Activities and Users (comms contacts)
+ * Contains all comms contacts for an activity, with isLead flag to identify the lead contact.
+ * Exactly one contact per activity must have isLead=true (enforced by application logic).
  */
-export const activityAdditionalCommsContacts = pgTable(
-  'activity_additional_comms_contacts',
+export const activityCommsContacts = pgTable(
+  'activity_comms_contacts',
   {
     activityId: integer('activity_id')
       .notNull()
       .references(() => activities.id),
     userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id),
+      .references(() => users.id),
+    isLead: boolean('is_lead').notNull().default(false), // Exactly one per activity must be true
     isActive: boolean('is_active').notNull().default(true),
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
@@ -281,32 +284,32 @@ export const activitySharedWithTeamsRelations = relations(
   })
 );
 
-export const activityAdditionalCommsContactsRelations = relations(
-  activityAdditionalCommsContacts,
+export const activityCommsContactsRelations = relations(
+  activityCommsContacts,
   ({ one }) => ({
     activity: one(activities, {
-      fields: [activityAdditionalCommsContacts.activityId],
+      fields: [activityCommsContacts.activityId],
       references: [activities.id],
     }),
-    user: one(systemUsers, {
-      fields: [activityAdditionalCommsContacts.userId],
-      references: [systemUsers.id],
+    user: one(users, {
+      fields: [activityCommsContacts.userId],
+      references: [users.id],
     }),
   })
 );
 
 /**
- * MinistrySystemUsers junction table - Many-to-many relationship between Ministries and SystemUsers
+ * MinistryUsers junction table - Many-to-many relationship between Ministries and Users
  */
-export const ministrySystemUsers = pgTable(
-  'ministry_system_users',
+export const ministryUsers = pgTable(
+  'ministry_users',
   {
     ministryId: uuid('ministry_id')
       .notNull()
       .references(() => ministries.id),
     userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id),
+      .references(() => users.id),
     isActive: boolean('is_active').notNull().default(true),
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
@@ -315,19 +318,16 @@ export const ministrySystemUsers = pgTable(
   (table) => [primaryKey({ columns: [table.ministryId, table.userId] })]
 );
 
-export const ministrySystemUsersRelations = relations(
-  ministrySystemUsers,
-  ({ one }) => ({
-    ministry: one(ministries, {
-      fields: [ministrySystemUsers.ministryId],
-      references: [ministries.id],
-    }),
-    user: one(systemUsers, {
-      fields: [ministrySystemUsers.userId],
-      references: [systemUsers.id],
-    }),
-  })
-);
+export const ministryUsersRelations = relations(ministryUsers, ({ one }) => ({
+  ministry: one(ministries, {
+    fields: [ministryUsers.ministryId],
+    references: [ministries.id],
+  }),
+  user: one(users, {
+    fields: [ministryUsers.userId],
+    references: [users.id],
+  }),
+}));
 
 /**
  * TeamCategories junction table - Many-to-many relationship between Categories and Teams
@@ -408,20 +408,20 @@ export const activitySectors = pgTable(
 );
 
 /**
- * FavoriteActivity junction table - Many-to-many relationship between SystemUsers and Activities (Watch Lists/Favorites)
+ * FavoriteActivity junction table - Many-to-many relationship between Users and Activities (Watch Lists/Favorites)
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/FavoriteActivity.cs
  */
 export const favoriteActivities = pgTable(
   'favorite_activities',
   {
-    systemUserId: integer('system_user_id')
+    userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id),
+      .references(() => users.id),
     activityId: integer('activity_id')
       .notNull()
       .references(() => activities.id),
   },
-  (table) => [primaryKey({ columns: [table.systemUserId, table.activityId] })]
+  (table) => [primaryKey({ columns: [table.userId, table.activityId] })]
 );
 
 /**
@@ -499,9 +499,9 @@ export const activitySectorsRelations = relations(
 export const favoriteActivitiesRelations = relations(
   favoriteActivities,
   ({ one }) => ({
-    systemUser: one(systemUsers, {
-      fields: [favoriteActivities.systemUserId],
-      references: [systemUsers.id],
+    user: one(users, {
+      fields: [favoriteActivities.userId],
+      references: [users.id],
     }),
     activity: one(activities, {
       fields: [favoriteActivities.activityId],

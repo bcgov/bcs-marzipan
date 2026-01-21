@@ -26,7 +26,7 @@ When migrating legacy data:
 
 - Integer IDs map directly (no conversion needed)
 - GUID/UUID fields map to UUID columns
-- Legacy `RowGuid` maps to `rowGuid` (UUID, always string)
+- Legacy `RowGuid` field has been removed (unused in business logic)
 
 ## Table of Contents
 
@@ -70,15 +70,15 @@ When migrating legacy data:
 | `NRDateTime`                        | `datetime`          | `newsReleaseDateTime`                         | `timestamp with time zone` | nullable                                                | Renamed from NRDateTime to newsReleaseDateTime                                                                                                     |
 | `NRDistributionId`                  | `int`               | `newsReleaseDistributionId`                   | `integer`                  | nullable, FK                                            | Direct mapping, FK to NRDistribution (nullable)                                                                                                    |
 | `PremierRequestedId`                | `int`               | `premierRequestedId`                          | `integer`                  | nullable, FK                                            | Direct mapping, FK to PremierRequested (nullable)                                                                                                  |
-| `ContactMinistryId`                 | `unique identifier` | `contactMinistryId`                           | `uuid`                     | `notNull`, FK                                           | Direct mapping, now required (not nullable) - required for displayId generation                                                                    |
+| `ContactMinistryId`                 | `unique identifier` | `leadMinistryId`                              | `uuid`                     | `notNull`, FK                                           | Renamed from ContactMinistryId to leadMinistryId, now required (not nullable) - required for displayId generation                                  |
 | `GovernmentRepresentativeId`        | `int`               | _Moved to activityRepresentatives_            | -                          | -                                                       | Moved to junction table activityRepresentatives                                                                                                    |
-| `CommunicationContactId`            | `int`               | `commsContactLeadId`                          | `integer`                  | `notNull`, FK                                           | Direct mapping, FK changed from CommunicationContact lookup table to SystemUser, now required (not nullable)                                       |
+| `CommunicationContactId`            | `int`               | _Moved to activityCommsContacts_              | -                          | -                                                       | Moved to activityCommsContacts junction table with isLead flag. Lead contact has isLead=true.                                                      |
 | `EventPlannerId`                    | `int`               | `eventPlannerLeadId` + `eventPlannerLeadName` | `integer` + `varchar(255)` | nullable (XOR constraint: exactly one must be provided) | Split into FK to EventPlanner lookup table (eventPlannerLeadId) or free text (eventPlannerLeadName) - mutually exclusive (XOR)                     |
 | `VideographerId`                    | `int`               | _Removed_                                     | -                          | -                                                       | Field removed - no longer needed                                                                                                                   |
 | `Venue`                             | `nvarchar(150)`     | _Moved to venueAddresses table_               | -                          | -                                                       | Moved to separate venueAddresses table                                                                                                             |
 | `CityId`                            | `int`               | _Moved to venueAddresses table_               | -                          | -                                                       | Moved to separate venueAddresses table                                                                                                             |
 | `OtherCity`                         | `nvarchar(150)`     | _Moved to venueAddresses table_               | -                          | -                                                       | Moved to separate venueAddresses table                                                                                                             |
-| `IsActive`                          | `bit`               | `isActive`                                    | `boolean`                  | `notNull`, `default(true)`                              | Direct mapping, default changed from false to true                                                                                                 |
+| `IsActive`                          | `bit`               | _Removed_                                     | -                          | -                                                       | Removed - replaced with `activityStatusId` filtering. Use `activityStatusId` with 'deleted' status for soft delete functionality.                  |
 | `IsConfirmed`                       | `bit`               | `dateStatusId`                                | `integer`                  | `notNull`, FK                                           | Replaced with FK to DateStatus lookup table                                                                                                        |
 | `IsIssue`                           | `bit`               | `isIssue`                                     | `boolean`                  | `notNull`, `default(false)`                             | Direct mapping                                                                                                                                     |
 | `IsAllDay`                          | `bit`               | `isAllDay`                                    | `boolean`                  | `notNull`, `default(false)`                             | Direct mapping                                                                                                                                     |
@@ -113,7 +113,7 @@ When migrating legacy data:
 | `LastUpdatedDateTime`               | `datetime`          | `lastUpdatedDateTime`                         | `timestamp with time zone` | `notNull`, `defaultNow()`                               | Direct mapping, now required (not nullable) with defaultNow()                                                                                      |
 | `LastUpdatedBy`                     | `int`               | `lastUpdatedBy`                               | `integer`                  | `notNull`, FK                                           | Direct mapping, now required (not nullable)                                                                                                        |
 | `TimeStamp`                         | `timestamp`         | `rowVersion`                                  | `bigint`                   | `notNull`, `default(0)`                                 | Renamed from TimeStamp to rowVersion, type changed to bigint for optimistic concurrency control                                                    |
-| `RowGuid`                           | `unique identifier` | `rowGuid`                                     | `uuid`                     | `notNull`, `defaultRandom()`                            | Direct mapping, now required (not nullable)                                                                                                        |
+| `RowGuid`                           | `unique identifier` | _Removed_                                     | -                          | -                                                       | Field removed - unused in business logic                                                                                                           |
 
 ### New Fields (Not in Legacy Schema)
 
@@ -125,6 +125,7 @@ When migrating legacy data:
 | `newsReleaseOriginId` | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                             |
 | `newsReleaseId`       | `uuid`        | nullable                    | Reference to news release                                                                        |
 | `pitchDate`           | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                             |
+| `pitchRequired`       | `boolean`     | nullable                    | Whether pitch is required for this activity (nullable - can override category default)           |
 | `isConfidential`      | `boolean`     | `notNull`, `default(false)` | Activity-level property - if true, activity shows as placeholder in reports (default: false)     |
 
 ### Moved to Separate Tables
@@ -139,22 +140,22 @@ When migrating legacy data:
 
 ### Junction Table Mappings
 
-| Legacy Junction Table            | New Junction Table                | Notes                                                                                                                                                           |
-| -------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ActivityCategories`             | `activityCategories`              | Direct mapping                                                                                                                                                  |
-| `ActivityThemes`                 | `activityThemes`                  | Direct mapping                                                                                                                                                  |
-| `ActivityKeywords`               | `activityTags`                    | Renamed from activityKeywords (misaligned naming in legacy). Tags now use integer IDs (renamed from keywords table).                                            |
-| `ActivityTags`                   | `activitySubscriptions`           | Renamed from activityTags (misaligned naming in legacy). This table is for activity subscriptions to tags.                                                      |
-| `ActivitySharedWith`             | `activitySharedWithTeams`         | Renamed from ministries to teams - sharing grants access when visibility='team' and marks activities as important/highlighted                                   |
-| `ActivityCommunicationMaterials` | `activityCommsMaterials`          | Renamed                                                                                                                                                         |
-| `ActivityNROrigins`              | _Removed_                         | Replaced with direct FK `newsReleaseOriginId` on activities table (single optional reference)                                                                   |
-| `ActivitySectors`                | `activitySectors`                 | Direct mapping                                                                                                                                                  |
-| `FavoriteActivity`               | `favoriteActivities`              | Renamed (pluralized)                                                                                                                                            |
-| -                                | `activityTranslationsRequired`    | New - replaces legacy Translations field                                                                                                                        |
-| -                                | `activityRepresentatives`         | New - replaces legacy GovernmentRepresentativeId (allows multiple)                                                                                              |
-| -                                | `activityAdditionalCommsContacts` | New - for additional comms contacts                                                                                                                             |
-| -                                | `activityReportSettings`          | New - replaces legacy IsConfidential and notForThirtySixtyNinety boolean flags. Uses `omitted` boolean to control whether activities are excluded from reports. |
-| -                                | `teamCategories`                  | New - controls team access to categories (access control)                                                                                                       |
+| Legacy Junction Table            | New Junction Table             | Notes                                                                                                                                                           |
+| -------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ActivityCategories`             | `activityCategories`           | Direct mapping                                                                                                                                                  |
+| `ActivityThemes`                 | `activityThemes`               | Direct mapping                                                                                                                                                  |
+| `ActivityKeywords`               | `activityTags`                 | Renamed from activityKeywords (misaligned naming in legacy). Tags now use integer IDs (renamed from keywords table).                                            |
+| `ActivityTags`                   | `activitySubscriptions`        | Renamed from activityTags (misaligned naming in legacy). This table is for activity subscriptions to tags.                                                      |
+| `ActivitySharedWith`             | `activitySharedWithTeams`      | Renamed from ministries to teams - sharing grants access when visibility='team' and marks activities as important/highlighted                                   |
+| `ActivityCommunicationMaterials` | `activityCommsMaterials`       | Renamed                                                                                                                                                         |
+| `ActivityNROrigins`              | _Removed_                      | Replaced with direct FK `newsReleaseOriginId` on activities table (single optional reference)                                                                   |
+| `ActivitySectors`                | `activitySectors`              | Direct mapping                                                                                                                                                  |
+| `FavoriteActivity`               | `favoriteActivities`           | Renamed (pluralized)                                                                                                                                            |
+| -                                | `activityTranslationsRequired` | New - replaces legacy Translations field                                                                                                                        |
+| -                                | `activityRepresentatives`      | New - replaces legacy GovernmentRepresentativeId (allows multiple)                                                                                              |
+| -                                | `activityCommsContacts`        | New - all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.             |
+| -                                | `activityReportSettings`       | New - replaces legacy IsConfidential and notForThirtySixtyNinety boolean flags. Uses `omitted` boolean to control whether activities are excluded from reports. |
+| -                                | `teamCategories`               | New - controls team access to categories (access control)                                                                                                       |
 
 ### Key Transformations
 
@@ -183,7 +184,7 @@ When migrating legacy data:
    - `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
    - `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
    - `CreatedBy` and `LastUpdatedBy` are now required
-   - `RowGuid` → `rowGuid` (now required, not nullable)
+   - `RowGuid` field has been removed (unused in business logic)
 
 7. **Removed Fields**: Several legacy fields have been removed:
    - `PotentialDates` (deprecated in legacy)
@@ -202,13 +203,13 @@ When migrating legacy data:
    - `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
    - `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
    - `isConfidential`: Activity-level boolean property that determines placeholder inclusion when combined with `omitted` flag.
-   - `commsContactLeadId` and `contactMinistryId`: Enhanced comms contact model (FK changed from CommunicationContact to SystemUser for commsContactLeadId)
+   - `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
+   - `leadMinistryId`: Renamed from contactMinistryId
    - `pitchDate`: Date tracking for pitch workflow
    - `notes`: General notes field (mapped from legacy Comments)
    - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
    - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
    - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
-   - `rowGuid`: Row identifier (mapped from legacy RowGuid, now required)
 
 ### Visibility and Sharing
 
@@ -244,7 +245,7 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 **Legacy Table Name:** _N/A (New table) users were previously grouped by ministries_  
 **New Table Name:** `teams`
 
-**Description:** Groups of system users for team-based access control. This is a placeholder table that represents a group of systemUsers that can be used for category access control. Full implementation is pending.
+**Description:** Groups of system users for team-based access control. This is a placeholder table that represents a group of users that can be used for category access control. Full implementation is pending.
 
 ### Field Mappings
 
@@ -256,15 +257,15 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 | `description`         | `text`                     | nullable                   | Team description (nullable)                                        |
 | `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                         |
 | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)      |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to SystemUser - user who created the record (required)          |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                |
 | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now) |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to SystemUser - user who last updated the record (required)     |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)           |
 
 ### Notes
 
 - **Placeholder Table**: This table is marked as a placeholder with TODO comments. Full implementation is pending.
 - **Purpose**: Used for team-based access control, particularly for controlling which teams can view specific categories via the `teamCategories` junction table.
-- **Future Implementation**: A `teamSystemUsers` junction table will be added when teams are fully implemented to link teams to system users.
+- **Future Implementation**: A `teamUsers` junction table will be added when teams are fully implemented to link teams to users.
 
 ### Related Tables
 
@@ -282,20 +283,20 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ### Field Mappings
 
-| Legacy Field Name     | Legacy Type     | New Field Name        | New Type                   | New Constraints                | Mapping Notes                                                                                                                                    |
-| --------------------- | --------------- | --------------------- | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`                  | `int` (serial)  | `id`                  | `serial`                   | `notNull`, primary key         | Direct mapping - Primary key                                                                                                                     |
-| `name`                | `nvarchar(255)` | `name`                | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                   |
-| `displayName`         | `nvarchar(255)` | `displayName`         | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                   |
-| `sortOrder`           | `int`           | `sortOrder`           | `integer`                  | `notNull`, `default(0)`        | Direct mapping                                                                                                                                   |
-| `pitchRequired`       | `bit`           | `pitchRequired`       | `boolean`                  | `notNull`, `default(false)`    | Direct mapping                                                                                                                                   |
-| -                     | -               | `visibility`          | `varchar(50)`              | `notNull`, `default('global')` | **New field** - Controls category visibility: 'global' (visible to all teams) or 'team' (visible only to teams in teamCategories junction table) |
-| `isActive`            | `bit`           | `isActive`            | `boolean`                  | `notNull`, `default(true)`     | Direct mapping                                                                                                                                   |
-| `description`         | `nvarchar(max)` | `description`         | `text`                     | nullable                       | Direct mapping                                                                                                                                   |
-| `createdDateTime`     | `datetime`      | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                   |
-| `createdBy`           | `int`           | `createdBy`           | `integer`                  | `notNull`, FK                  | Direct mapping - FK to SystemUser                                                                                                                |
-| `lastUpdatedDateTime` | `datetime`      | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                   |
-| `lastUpdatedBy`       | `int`           | `lastUpdatedBy`       | `integer`                  | `notNull`, FK                  | Direct mapping - FK to SystemUser                                                                                                                |
+| Legacy Field Name     | Legacy Type     | New Field Name        | New Type                   | New Constraints                | Mapping Notes                                                                                                                                                                  |
+| --------------------- | --------------- | --------------------- | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                  | `int` (serial)  | `id`                  | `serial`                   | `notNull`, primary key         | Direct mapping - Primary key                                                                                                                                                   |
+| `name`                | `nvarchar(255)` | `name`                | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                                                 |
+| `displayName`         | `nvarchar(255)` | `displayName`         | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                                                 |
+| `sortOrder`           | `int`           | `sortOrder`           | `integer`                  | `notNull`, `default(0)`        | Direct mapping                                                                                                                                                                 |
+| `pitchRequired`       | `bit`           | `allowsPitch`         | `boolean`                  | `notNull`, `default(true)`     | **Direct mapping** - `pitchRequired=true` in legacy maps to `allowsPitch=true` in new schema. Categories where pitch is allowed/required have `allowsPitch=true`. |
+| -                     | -               | `visibility`          | `varchar(50)`              | `notNull`, `default('global')` | **New field** - Controls category visibility: 'global' (visible to all teams) or 'team' (visible only to teams in teamCategories junction table)                               |
+| `isActive`            | `bit`           | `isActive`            | `boolean`                  | `notNull`, `default(true)`     | Direct mapping                                                                                                                                                                 |
+| `description`         | `nvarchar(max)` | `description`         | `text`                     | nullable                       | Direct mapping                                                                                                                                                                 |
+| `createdDateTime`     | `datetime`      | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                                                 |
+| `createdBy`           | `int`           | `createdBy`           | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                                                    |
+| `lastUpdatedDateTime` | `datetime`      | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                                                 |
+| `lastUpdatedBy`       | `int`           | `lastUpdatedBy`       | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                                                    |
 
 ### Access Control
 
@@ -323,11 +324,11 @@ Categories use an explicit visibility model aligned with the pods visibility pat
 | `name`                | `varchar(200)`             | `notNull`                       | Pod name (required)                                                   |
 | `description`         | `varchar(500)`             | nullable                        | Pod description (nullable)                                            |
 | `visibility`          | `varchar(50)`              | `notNull`, `default('private')` | Visibility level: 'global', 'team', or 'private' (default: 'private') |
-| `createdBy`           | `integer`                  | `notNull`, FK                   | FK to SystemUser - user who created the pod (required)                |
+| `createdBy`           | `integer`                  | `notNull`, FK                   | FK to User - user who created the pod (required)                      |
 | `isActive`            | `boolean`                  | `notNull`, `default(true)`      | Whether the pod is active (default: true)                             |
 | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`       | Date and time the record was created (required, default: now)         |
 | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`       | Date and time the record was last updated (required, default: now)    |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK                   | FK to SystemUser - user who last updated the record (required)        |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK                   | FK to User - user who last updated the record (required)              |
 
 ### Access Control
 
@@ -361,9 +362,9 @@ Pods use an explicit visibility model with three levels: 'global', 'team', and '
 | `config`              | `jsonb`                    | nullable                     | Report configuration: fields to display, optional global filter, and sections with ordering and optional section filters (nullable) |
 | `description`         | `text`                     | nullable                     | Optional description of the report (nullable)                                                                                       |
 | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`    | Date and time the record was created (required, default: now)                                                                       |
-| `createdBy`           | `integer`                  | `notNull`, FK                | FK to SystemUser - user who created the record (required)                                                                           |
+| `createdBy`           | `integer`                  | `notNull`, FK                | FK to User - user who created the record (required)                                                                                 |
 | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`    | Date and time the record was last updated (required, default: now)                                                                  |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK                | FK to SystemUser - user who last updated the record (required)                                                                      |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK                | FK to User - user who last updated the record (required)                                                                            |
 
 ### Report Configuration
 

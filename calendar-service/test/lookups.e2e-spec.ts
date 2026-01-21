@@ -92,10 +92,10 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/system-users (GET)', () => {
-    it('should return all system users', () => {
+  describe('/lookups/users (GET)', () => {
+    it('should return all users', () => {
       return request(app.getHttpServer())
-        .get('/lookups/system-users')
+        .get('/lookups/users')
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);
@@ -136,7 +136,7 @@ describe('LookupsController (e2e)', () => {
       const endpoints = [
         '/lookups/categories',
         '/lookups/organizations',
-        '/lookups/system-users',
+        '/lookups/users',
         '/lookups/activity-statuses',
         '/lookups/pitch-statuses',
       ];
