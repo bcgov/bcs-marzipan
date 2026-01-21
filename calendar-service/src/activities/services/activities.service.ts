@@ -1055,7 +1055,7 @@ export class ActivitiesService {
           name: categories.name,
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
-          pitchRequired: categories.pitchRequired,
+          pitchNotRequired: categories.pitchNotRequired,
           visibility: categories.visibility,
           isActive: categories.isActive,
           description: categories.description,

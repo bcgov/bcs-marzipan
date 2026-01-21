@@ -106,6 +106,7 @@ export const activities = pgTable(
     // Notes and additional fields
     notes: text('notes'), // Maps to legacy Comments field
     pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
+    pitchRequired: boolean('pitch_required'), // Whether pitch is required for this activity (nullable - can override category default)
     newsReleaseDistributionId: integer(
       'news_release_distribution_id'
     ).references(() => newsReleaseDistributions.id), // FK to NewsReleaseDistribution - maps to legacy NRDistributionId

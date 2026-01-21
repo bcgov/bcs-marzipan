@@ -84,6 +84,7 @@ export const activityDbFieldsSchema = z.object({
   // Notes and additional fields
   notes: z.string().nullable(),
   pitchDate: z.string().nullable(), // Date when activity was or will be pitched
+  pitchRequired: z.boolean().nullable(), // Whether pitch is required (can override category default)
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 

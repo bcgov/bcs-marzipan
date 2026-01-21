@@ -55,7 +55,7 @@ export const categoryResponseSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
-  pitchRequired: z.boolean(),
+  pitchNotRequired: z.boolean(),
   visibility: z.enum(VISIBILITY),
 });
 

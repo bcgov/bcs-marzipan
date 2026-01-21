@@ -88,6 +88,7 @@ const activityCoreFieldsSchema = z.object({
   // Optional text fields
   notes: z.string().nullable().optional(), // Maps to legacy Comments
   executiveSummary: z.string().nullable().optional(),
+  pitchRequired: z.boolean().nullable().optional(), // Whether pitch is required (can override category default)
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),

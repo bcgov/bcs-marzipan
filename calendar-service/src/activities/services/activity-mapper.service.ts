@@ -148,6 +148,7 @@ export class ActivityMapperService {
       // Notes and additional fields
       notes: activity.notes ?? null,
       pitchDate: formatDate(activity.pitchDate),
+      pitchRequired: activity.pitchRequired ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
       visibility:
         (activity.visibility as Visibility) ??

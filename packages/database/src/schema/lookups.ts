@@ -58,7 +58,7 @@ export const categories = pgTable('categories', {
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
-  pitchRequired: boolean('pitch_required').notNull().default(false),
+  pitchNotRequired: boolean('pitch_not_required').notNull().default(false),
   visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team'
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
