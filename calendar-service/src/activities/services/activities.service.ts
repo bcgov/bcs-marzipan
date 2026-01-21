@@ -46,7 +46,7 @@ export class ActivitiesService {
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService
-  ) {}
+  ) { }
 
   /**
    * Create a new activity with related junction table records
@@ -1007,7 +1007,7 @@ export class ActivitiesService {
           name: categories.name,
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
-          pitchNotRequired: categories.pitchNotRequired,
+          allowsPitch: categories.allowsPitch,
           visibility: categories.visibility,
           isActive: categories.isActive,
           description: categories.description,
