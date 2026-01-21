@@ -253,7 +253,7 @@ The application uses SQL seed files to populate lookup tables and initial data. 
   - Categories, tags, themes
   - Cities, government representatives
   - Comms materials, translated languages
-  - Communication contacts, digital users
+  - Comms contacts
   - Ministries, organizations, users
 
 - **`002_seed_activities.sql`**: Seeds initial activity data (if needed)

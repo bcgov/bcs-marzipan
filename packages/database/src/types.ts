@@ -7,7 +7,7 @@ import {
   activityStatuses,
   cities,
   governmentRepresentatives,
-  communicationContacts,
+  commsContacts,
   categories,
   themes,
   tags,
@@ -68,12 +68,8 @@ export type NewGovernmentRepresentative = InferInsertModel<
   typeof governmentRepresentatives
 >;
 
-export type CommunicationContact = InferSelectModel<
-  typeof communicationContacts
->;
-export type NewCommunicationContact = InferInsertModel<
-  typeof communicationContacts
->;
+export type CommsContact = InferSelectModel<typeof commsContacts>;
+export type NewCommsContact = InferInsertModel<typeof commsContacts>;
 
 // Content Classification
 export type Category = InferSelectModel<typeof categories>;

@@ -245,11 +245,11 @@ export const governmentRepresentatives = pgTable('government_representatives', {
 });
 
 /**
- * Communication Contact lookup table - Communication contacts for activities
+ * CommsContact lookup table - Comms contacts for activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/CommunicationContact.cs
  * TODO: this might be related to user accounts in the future and replaced by AD integration
  */
-export const communicationContacts = pgTable('communication_contacts', {
+export const commsContacts = pgTable('comms_contacts', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
@@ -394,7 +394,7 @@ export const pitchStatuses = pgTable('pitch_statuses', {
 });
 
 /**
- * CommsMaterials lookup table - Communication materials types
+ * CommsMaterials lookup table - Comms materials types
  * Values: 'Backgrounder','Digital Content','Event or Media Plan','Factsheet','IGRS: Biography','IGRS: Briefing Note','IGRS: Gift','Information Bulletin','Issues Note','Itinerary','Key Messages','Media Advisory','Minister's Message','News Release','NYCU News You Can Use','Opinion Editorial','Press Conference','Q&As','Quote','Report','Speaking Notes','Statement','Tech Briefing' (user editable)
  */
 export const commsMaterials = pgTable('comms_materials', {
