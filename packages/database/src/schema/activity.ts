@@ -35,7 +35,7 @@ import {
   activityTranslationsRequired,
   activityRepresentatives,
   activitySharedWithTeams,
-  activityAdditionalCommsContacts,
+  activityCommsContacts,
   activitySectors,
   favoriteActivities,
   activityReportSettings,
@@ -117,9 +117,6 @@ export const activities = pgTable(
       .notNull()
       .default('global'), // 'global' or 'team' - controls base access visibility
 
-    commsContactLeadId: integer('comms_contact_lead_id')
-      .notNull()
-      .references(() => systemUsers.id), // FK to SystemUser
     leadMinistryId: uuid('lead_ministry_id')
       .notNull()
       .references(() => ministries.id), // FK to Ministry (required for displayId generation)
@@ -186,11 +183,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [eventPlanners.id],
     relationName: 'eventLead',
   }),
-  commsContact: one(systemUsers, {
-    fields: [activities.commsContactLeadId],
-    references: [systemUsers.id],
-    relationName: 'commsContact',
-  }),
   createdByUser: one(systemUsers, {
     fields: [activities.createdBy],
     references: [systemUsers.id],
@@ -218,7 +210,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityTranslationsRequired: many(activityTranslationsRequired),
   activityRepresentatives: many(activityRepresentatives),
   activitySharedWithTeams: many(activitySharedWithTeams),
-  activityAdditionalCommsContacts: many(activityAdditionalCommsContacts),
+  activityCommsContacts: many(activityCommsContacts),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
   activitySubscriptions: many(activitySubscriptions),

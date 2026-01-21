@@ -121,6 +121,8 @@ describe('ActivitiesService', () => {
     upsertVenueAddress: jest.fn().mockResolvedValue(undefined),
     createDefaultReportSettings: jest.fn().mockResolvedValue(undefined),
     updateActivityReportSettings: jest.fn().mockResolvedValue(undefined),
+    insertCommsContacts: jest.fn().mockResolvedValue(undefined),
+    updateCommsContacts: jest.fn().mockResolvedValue(undefined),
   };
 
   // Mock data fetcher service
@@ -143,10 +145,7 @@ describe('ActivitiesService', () => {
       .fn()
       .mockResolvedValue(new Map()),
     fetchSharedWithTeamsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchAdditionalCommsContactsForActivities: jest
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchUserNamesForUserIds: jest.fn().mockResolvedValue(new Map()),
+    fetchCommsContactsForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchEventLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
     fetchEventPlannerNamesForActivities: jest.fn().mockResolvedValue(new Map()),
@@ -195,14 +194,14 @@ describe('ActivitiesService', () => {
         isAllDay: activity.isAllDay ?? false,
         startDate: activity.startDate
           ? new Date(activity.startDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
+            .toISOString()
+            .split('T')[0]
           : null,
         startTime: formatTime(activity.startTime as string | null),
         endDate: activity.endDate
           ? new Date(activity.endDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
+            .toISOString()
+            .split('T')[0]
           : null,
         endTime: formatTime(activity.endTime as string | null),
         schedulingNotes: activity.schedulingNotes ?? null,
@@ -226,22 +225,15 @@ describe('ActivitiesService', () => {
         notes: activity.notes ?? null,
         pitchDate: activity.pitchDate
           ? new Date(activity.pitchDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
+            .toISOString()
+            .split('T')[0]
           : null,
         premierRequestedId: activity.premierRequestedId ?? null,
         visibility: activity.visibility ?? ('global' satisfies Visibility),
         sharedWithAll: activity.sharedWithAll ?? false,
-        commsContactLeadId: activity.commsContactLeadId ?? 0,
         leadMinistryId: activity.leadMinistryId,
-        commsContact:
-          relatedData?.commsContactName ??
-          (activity.commsContactLeadId
-            ? String(activity.commsContactLeadId)
-            : null) ??
-          'unknown',
         sharedWith: relatedData?.sharedWith ?? [],
-        additionalCommsContacts: relatedData?.additionalCommsContacts ?? [],
+        commsContacts: relatedData?.commsContacts ?? [],
         newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
         newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
         premierRequested: relatedData?.premierRequested ?? null,

@@ -50,8 +50,11 @@ export class ActivityMapperService {
         representative: string;
       }>;
       sharedWith?: string[];
-      additionalCommsContacts?: string[];
-      commsContactName: string | null;
+      commsContacts?: Array<{
+        userId: number;
+        name: string;
+        isLead: boolean;
+      }>;
       eventLeadName?: string | null;
       leadOrgName?: string | null;
       reportSettings?: Array<{
@@ -155,16 +158,9 @@ export class ActivityMapperService {
         (DEFAULT_VISIBILITY satisfies Visibility),
 
       // Sharing
-      commsContactLeadId: activity.commsContactLeadId ?? 0,
       leadMinistryId: activity.leadMinistryId,
-      commsContact:
-        relatedData?.commsContactName ??
-        (activity.commsContactLeadId
-          ? String(activity.commsContactLeadId)
-          : null) ??
-        DEFAULT_STATUS,
       sharedWith: relatedData?.sharedWith ?? [],
-      additionalCommsContacts: relatedData?.additionalCommsContacts ?? [],
+      commsContacts: relatedData?.commsContacts ?? [],
 
       // Computed lookup names
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,

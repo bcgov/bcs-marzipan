@@ -19,6 +19,7 @@ describe('ActivitiesController', () => {
     translationsRequired: undefined,
     representativesAttending: undefined,
     sharedWith: undefined,
+    commsContacts: undefined,
   });
 
   const mockActivitiesService = {

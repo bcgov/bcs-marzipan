@@ -195,10 +195,12 @@ export const activitySharedWithTeams = pgTable(
 );
 
 /**
- * ActivityAdditionalCommsContacts junction table - Many-to-many relationship between Activities and SystemUsers (additional comms contacts)
+ * ActivityCommsUsers junction table - Many-to-many relationship between Activities and SystemUsers (comms contacts)
+ * Contains all comms contacts for an activity, with isLead flag to identify the lead contact.
+ * Exactly one contact per activity must have isLead=true (enforced by application logic).
  */
-export const activityAdditionalCommsContacts = pgTable(
-  'activity_additional_comms_contacts',
+export const activityCommsContacts = pgTable(
+  'activity_comms_contacts',
   {
     activityId: integer('activity_id')
       .notNull()
@@ -206,6 +208,7 @@ export const activityAdditionalCommsContacts = pgTable(
     userId: integer('user_id')
       .notNull()
       .references(() => systemUsers.id),
+    isLead: boolean('is_lead').notNull().default(false), // Exactly one per activity must be true
     isActive: boolean('is_active').notNull().default(true),
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
@@ -281,15 +284,15 @@ export const activitySharedWithTeamsRelations = relations(
   })
 );
 
-export const activityAdditionalCommsContactsRelations = relations(
-  activityAdditionalCommsContacts,
+export const activityCommsContactsRelations = relations(
+  activityCommsContacts,
   ({ one }) => ({
     activity: one(activities, {
-      fields: [activityAdditionalCommsContacts.activityId],
+      fields: [activityCommsContacts.activityId],
       references: [activities.id],
     }),
     user: one(systemUsers, {
-      fields: [activityAdditionalCommsContacts.userId],
+      fields: [activityCommsContacts.userId],
       references: [systemUsers.id],
     }),
   })

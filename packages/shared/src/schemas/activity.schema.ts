@@ -68,7 +68,6 @@ const activityCoreFieldsSchema = z.object({
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
   activityStatusId: z.number().int(),
-  commsContactLeadId: z.number().int(),
 
   // Boolean flags
   isIssue: z.boolean().default(false),
@@ -158,6 +157,15 @@ const reportSettingSchema = z.object({
 });
 
 /**
+ * Comms contact schema
+ * Supports identifying the lead contact via isLead flag
+ */
+const commsContactSchema = z.object({
+  userId: z.number().int(),
+  isLead: z.boolean().default(false),
+});
+
+/**
  * Junction table ID arrays for request payloads
  * These fields create many-to-many relationships
  */
@@ -168,7 +176,7 @@ const junctionTableIdsSchema = z.object({
   translationLanguageIds: z.array(z.number().int()).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
-  additionalCommsContactIds: z.array(z.number().int()).optional(),
+  commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 

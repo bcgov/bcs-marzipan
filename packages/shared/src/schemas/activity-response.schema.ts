@@ -89,7 +89,6 @@ export const activityDbFieldsSchema = z.object({
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
-  commsContactLeadId: z.number().int(),
   leadMinistryId: z.string().uuid(),
   activityStatusId: z.number().int(),
 
@@ -147,7 +146,15 @@ export const activityComputedFieldsSchema = z.object({
   translationsRequired: z.array(z.string()).default([]),
   representativesAttending: z.array(representativeAttendingSchema).default([]),
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
-  additionalCommsContacts: z.array(z.string()).default([]),
+  commsContacts: z
+    .array(
+      z.object({
+        userId: z.number().int(),
+        name: z.string(),
+        isLead: z.boolean(),
+      })
+    )
+    .default([]), // All comms contacts with isLead flag
 
   // Computed organization names (from organization ID lookups or free text names)
   // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
@@ -155,7 +162,6 @@ export const activityComputedFieldsSchema = z.object({
 
   // Computed user names (from user ID lookups)
   eventLead: z.string().nullable(),
-  commsContact: z.string(),
 
   // Computed status names (from lookup table joins)
   dateStatus: z.string(),

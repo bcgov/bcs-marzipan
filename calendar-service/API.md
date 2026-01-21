@@ -25,12 +25,15 @@ Creates a new calendar activity with related junction table records.
   "dateStatusId": 1,
   "timeStatusId": 1,
   "activityStatusId": 1,
-  "commsContactLeadId": 8,
   "leadMinistryId": "00000000-0000-4000-8000-000000000004",
   "isIssue": false,
   "reportSettings": [
     { "reportId": 1, "omitted": false },
     { "reportId": 2, "omitted": true }
+  ],
+  "commsContacts": [
+    { "userId": 8, "isLead": true },
+    { "userId": 12, "isLead": false }
   ],
   "sharedWithAll": false,
   "schedulingNotes": "Room booking required",
@@ -587,3 +590,7 @@ Server error occurred.
     - `omitted=false` and `isConfidential=false` → Activity included with standard details
     - `omitted=false` and `isConfidential=true` → Activity included with placeholder (redacted) details
 - **isConfidential:** Activity-level boolean property. When true, activity shows as placeholder in reports (unless omitted).
+- **commsContacts:** Array of comms contacts for the activity. Each contact has:
+  - `userId`: The ID of the system user
+  - `isLead`: Boolean indicating if this is the lead contact (exactly one must be true)
+  - In responses, also includes `name`: The display name of the user

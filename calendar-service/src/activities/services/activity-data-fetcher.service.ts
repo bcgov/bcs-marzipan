@@ -14,7 +14,7 @@ import {
   activityTranslationsRequired,
   activityRepresentatives,
   activitySharedWithTeams,
-  activityAdditionalCommsContacts,
+  activityCommsContacts,
   organizations,
   commsMaterials,
   translatedLanguages,
@@ -36,7 +36,7 @@ import { DatabaseService } from '../../database/database.service';
  */
 @Injectable()
 export class ActivityDataFetcherService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(private readonly databaseService: DatabaseService) { }
 
   /**
    * Fetch categories for multiple activities
@@ -690,41 +690,58 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch additional comms contacts for multiple activities
-   * Returns user display names (adDisplayName or adUsername) for UI display
+   * Fetch comms contacts for multiple activities
+   * Returns user info including userId, display name, and isLead flag
    */
-  async fetchAdditionalCommsContactsForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
+  async fetchCommsContactsForActivities(activityIds: number[]): Promise<
+    Map<
+      number,
+      Array<{
+        userId: number;
+        name: string;
+        isLead: boolean;
+      }>
+    >
+  > {
     if (activityIds.length === 0) {
       return new Map();
     }
 
     const results = await this.databaseService.db
       .select({
-        activityId: activityAdditionalCommsContacts.activityId,
+        activityId: activityCommsContacts.activityId,
+        userId: activityCommsContacts.userId,
         userName:
           sql<string>`COALESCE(${systemUsers.adDisplayName}, ${systemUsers.adUsername}, 'User ' || ${systemUsers.id}::text)`.as(
             'userName'
           ),
+        isLead: activityCommsContacts.isLead,
       })
-      .from(activityAdditionalCommsContacts)
-      .innerJoin(
-        systemUsers,
-        eq(activityAdditionalCommsContacts.userId, systemUsers.id)
-      )
+      .from(activityCommsContacts)
+      .innerJoin(systemUsers, eq(activityCommsContacts.userId, systemUsers.id))
       .where(
         and(
-          inArray(activityAdditionalCommsContacts.activityId, activityIds),
-          eq(activityAdditionalCommsContacts.isActive, true),
+          inArray(activityCommsContacts.activityId, activityIds),
+          eq(activityCommsContacts.isActive, true),
           eq(systemUsers.isActive, true)
         )
       );
 
-    const map = new Map<number, string[]>();
+    const map = new Map<
+      number,
+      Array<{
+        userId: number;
+        name: string;
+        isLead: boolean;
+      }>
+    >();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.userName);
+      existing.push({
+        userId: row.userId,
+        name: row.userName,
+        isLead: row.isLead,
+      });
       map.set(row.activityId, existing);
     }
     return map;

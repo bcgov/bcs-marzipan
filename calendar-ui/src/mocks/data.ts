@@ -568,7 +568,7 @@ export function createValidActivityRequest(
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
-    commsContactLeadId: 8,
+    commsContacts: [{ userId: 8, isLead: true }],
     leadMinistryId: '550e8400-e29b-41d4-a716-446655440000',
     isAllDay: false,
     isIssue: false,
@@ -587,7 +587,7 @@ export function createInvalidActivityRequest(): Partial<CreateActivityRequest> {
     dateStatusId: 'invalid' as any, // Wrong type
     timeStatusId: -1, // Invalid ID
     activityStatusId: undefined as any, // Missing required
-    commsContactLeadId: 0, // Invalid ID
+    commsContacts: [{ userId: 0, isLead: true }], // Invalid ID
     leadOrgId: 'not-a-uuid', // Invalid UUID
     startDate: 'invalid-date', // Invalid date format
     startTime: '25:99', // Invalid time format
