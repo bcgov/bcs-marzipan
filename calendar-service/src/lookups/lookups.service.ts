@@ -56,6 +56,8 @@ export class LookupsService {
           id: categories.id,
           name: categories.name,
           displayName: categories.displayName,
+          sortOrder: categories.sortOrder,
+          isActive: categories.isActive,
         })
         .from(categories)
         .where(
@@ -71,6 +73,8 @@ export class LookupsService {
           id: categories.id,
           name: categories.name,
           displayName: categories.displayName,
+          sortOrder: categories.sortOrder,
+          isActive: categories.isActive,
         })
         .from(categories)
         .innerJoin(
@@ -104,6 +108,8 @@ export class LookupsService {
           value: cat.id,
           name: cat.name,
           displayName: cat.displayName,
+          sortOrder: cat.sortOrder,
+          isActive: cat.isActive,
         }));
     } else {
       // If no teams provided, return only global categories
@@ -112,6 +118,8 @@ export class LookupsService {
           id: categories.id,
           name: categories.name,
           displayName: categories.displayName,
+          sortOrder: categories.sortOrder,
+          isActive: categories.isActive,
         })
         .from(categories)
         .where(
@@ -128,6 +136,8 @@ export class LookupsService {
         value: cat.id,
         name: cat.name,
         displayName: cat.displayName,
+        sortOrder: cat.sortOrder,
+        isActive: cat.isActive,
       }));
     }
   }

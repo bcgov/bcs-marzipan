@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import type { CategoryLookupItem } from '@corpcal/shared/api/types';
 import { fetchCategories } from '@/api/lookupsApi';
 import api from '@/api/axios';
 import {
@@ -21,13 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-type Category = {
-  id: number;
-  name: string;
-  displayName: string | null;
-  sortOrder: number;
-  isActive: boolean;
-};
+type Category = CategoryLookupItem;
 
 const formFields: FormField[] = [
   {
@@ -106,8 +101,10 @@ export function CategoriesAdmin() {
 
   const filteredData = useMemo(() => {
     if (!data) return [];
-    if (filter === 'active') return data.filter((item) => item.isActive);
-    if (filter === 'inactive') return data.filter((item) => !item.isActive);
+    if (filter === 'active')
+      return data.filter((item) => item.isActive !== false);
+    if (filter === 'inactive')
+      return data.filter((item) => item.isActive === false);
     return data;
   }, [data, filter]);
 

@@ -62,6 +62,8 @@ export const categoryResponseSchema = z.object({
 export const categoryLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
 });
 
 // ============================================
@@ -551,7 +553,7 @@ export const updateCityRequestSchema = createCityRequestSchema.partial();
  */
 export const createMinistryRequestSchema = z.object({
   displayName: z.string().min(1).max(255),
-  abbreviation: z.string().max(255).nullable().optional(),
+  abbreviation: z.string().min(1).max(10),
   ministerName: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
@@ -560,7 +562,13 @@ export const createMinistryRequestSchema = z.object({
 /**
  * Update Ministry Request Schema
  */
-export const updateMinistryRequestSchema = createMinistryRequestSchema.partial();
+export const updateMinistryRequestSchema = z.object({
+  displayName: z.string().min(1).max(255).optional(),
+  abbreviation: z.string().min(1).max(10).optional(),
+  ministerName: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
 
 /**
  * Create Comms Material Request Schema

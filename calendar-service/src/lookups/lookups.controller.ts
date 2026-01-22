@@ -21,6 +21,8 @@ import type {
   LookupQueryParams,
   OrganizationLookupItem,
   CategoryLookupItem,
+  MinistryLookupItem,
+  ThemeLookupItem,
 } from '@corpcal/shared/api/types';
 import {
   REFERENCE_LOOKUP_CACHE_SECONDS,
@@ -136,7 +138,15 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateCategoryRequestSchema))
     body: UpdateCategoryDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateCategory(Number(id), body);
+    // Transform null to undefined for displayName to match service signature
+    const transformedBody = {
+      ...body,
+      displayName: body.displayName === null ? undefined : body.displayName,
+    };
+    const data = await this.lookupsService.updateCategory(
+      Number(id),
+      transformedBody
+    );
     return { success: true, data };
   }
 
@@ -337,9 +347,14 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateActivityStatusRequestSchema))
     body: UpdateActivityStatusDto
   ): Promise<{ success: boolean; data: any }> {
+    // Transform null to undefined for displayName to match service signature
+    const transformedBody = {
+      ...body,
+      displayName: body.displayName === null ? undefined : body.displayName,
+    };
     const data = await this.lookupsService.updateActivityStatus(
       Number(id),
-      body
+      transformedBody
     );
     return { success: true, data };
   }
@@ -617,7 +632,15 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateCityRequestSchema))
     body: UpdateCityDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateCity(Number(id), body);
+    // Transform null to undefined for displayName to match service signature
+    const transformedBody = {
+      ...body,
+      displayName: body.displayName === null ? undefined : body.displayName,
+    };
+    const data = await this.lookupsService.updateCity(
+      Number(id),
+      transformedBody
+    );
     return { success: true, data };
   }
 
@@ -629,7 +652,10 @@ export class LookupsController {
   })
   @Get('ministries')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getMinistries(): Promise<{ success: boolean; data: LookupItem[] }> {
+  async getMinistries(): Promise<{
+    success: boolean;
+    data: MinistryLookupItem[];
+  }> {
     const data = await this.lookupsService.getMinistries();
     return { success: true, data };
   }
@@ -676,7 +702,7 @@ export class LookupsController {
   })
   @Get('themes')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getThemes(): Promise<{ success: boolean; data: LookupItem[] }> {
+  async getThemes(): Promise<{ success: boolean; data: ThemeLookupItem[] }> {
     const data = await this.lookupsService.getThemes();
     return { success: true, data };
   }

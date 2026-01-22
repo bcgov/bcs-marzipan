@@ -12,6 +12,7 @@ import type {
   PitchStatusLookupItem,
   TranslationLanguageLookupItem,
   ThemeLookupItem,
+  ReportResponse,
 } from '@corpcal/shared/api/types';
 import type {
   CreateCategoryRequest,
@@ -381,3 +382,24 @@ export async function updateActivityStatus(
   );
   return res.data;
 }
+
+// Reports
+export async function fetchReports(): Promise<ReportResponse[]> {
+  const res = await api.get<{ success: boolean; data: ReportResponse[] }>(
+    '/lookups/reports'
+  );
+  return res.data.data;
+}
+
+// Export types for use in other files
+export type {
+  CategoryLookupItem,
+  OrganizationLookupItem,
+  UserLookupItem,
+  TagLookupItem,
+  PitchStatusLookupItem,
+  ActivityStatusLookupItem,
+  CommsMaterialsLookupItem,
+  TranslationLanguageLookupItem,
+  GovernmentRepresentativeLookupItem,
+};
