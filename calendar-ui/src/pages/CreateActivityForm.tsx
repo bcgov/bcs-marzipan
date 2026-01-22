@@ -221,12 +221,9 @@ export const CreateActivityForm: React.FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <div className="mx-auto max-w-200 px-4 py-8">
+      <div className="mx-auto max-w-full px-4 py-8">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">
-            Fill in the activity details below
-          </p>
+          <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
         </div>
 
         <Form {...form}>
@@ -236,42 +233,76 @@ export const CreateActivityForm: React.FC = () => {
               console.log('Form submit event triggered');
               void form.handleSubmit(onSubmit, onError)(e);
             }}
-            className="space-y-8"
           >
-            <ActivityOverviewSection
-              categories={lookups.categories}
-              organizations={lookups.organizations}
-              tags={lookups.tags}
-            />
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Overview Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityOverviewSection
+                    categories={lookups.categories}
+                    organizations={lookups.organizations}
+                    tags={lookups.tags}
+                  />
+                </div>
 
-            <ActivityApprovalsSection form={form} />
+                {/* Schedule Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityScheduleSection form={form} />
+                </div>
 
-            <ActivityScheduleSection form={form} />
+                {/* Comms Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityCommsSection
+                    commsMaterialOptions={lookups.commsMaterials}
+                    translationLanguageOptions={lookups.translationLanguages}
+                    newsReleaseDistributionOptions={
+                      lookups.newsReleaseDistributions
+                    }
+                    premierRequestedOptions={lookups.premierRequested}
+                    newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                  />
+                </div>
 
-            <ActivityCommsSection
-              commsMaterialOptions={lookups.commsMaterials}
-              translationLanguageOptions={lookups.translationLanguages}
-              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-              premierRequestedOptions={lookups.premierRequested}
-              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-            />
+                {/* Event Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityEventSection
+                    eventPlannerOptions={lookups.eventPlanners}
+                    representativeOptions={lookups.governmentRepresentatives}
+                  />
+                </div>
+              </div>
 
-            <ActivityEventSection
-              eventPlannerOptions={lookups.eventPlanners}
-              representativeOptions={lookups.governmentRepresentatives}
-            />
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Reports Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityReportsSection form={form} />
+                </div>
 
-            <ActivityVenueSection form={form} />
+                {/* Approvals Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityApprovalsSection form={form} />
+                </div>
 
-            <ActivityReportsSection form={form} />
+                {/* Venue Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityVenueSection form={form} />
+                </div>
 
-            <ActivitySharingSection
-              commsLeadOptions={commsLeadOptions}
-              sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-            />
+                {/* Sharing Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivitySharingSection
+                    commsLeadOptions={commsLeadOptions}
+                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Form Actions */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex justify-end gap-4 pt-6">
               <Button
                 type="button"
                 variant="outline"

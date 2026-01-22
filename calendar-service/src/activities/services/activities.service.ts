@@ -46,7 +46,7 @@ export class ActivitiesService {
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService
-  ) { }
+  ) {}
 
   /**
    * Create a new activity with related junction table records
