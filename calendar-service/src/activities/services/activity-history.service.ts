@@ -1,0 +1,156 @@
+import { Injectable } from '@nestjs/common';
+import { eq, desc, and } from 'drizzle-orm';
+import { activityHistory } from '@corpcal/database/schema';
+import type { ActivityHistory } from '@corpcal/database/types';
+import { DatabaseService } from '../../database/database.service';
+
+export interface ActivityChange {
+  field: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+export interface ActivityHistoryEntry {
+  id: number;
+  activityId: number;
+  userId: number;
+  actionType: string;
+  changes: ActivityChange[] | null;
+  notes: string | null;
+  timestamp: Date;
+  userName?: string;
+}
+
+/**
+ * Service for tracking and retrieving activity change history
+ */
+@Injectable()
+export class ActivityHistoryService {
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  /**
+   * Record a change to an activity
+   * @param activityId - ID of the activity being changed
+   * @param userId - ID of the user making the change
+   * @param actionType - Type of action: 'created', 'updated', 'deleted', 'published', 'draft_saved', etc.
+   * @param changes - Array of field-level changes (optional)
+   * @param notes - Optional notes about the change
+   */
+  async recordChange(
+    activityId: number,
+    userId: number,
+    actionType: string,
+    changes?: ActivityChange[],
+    notes?: string
+  ): Promise<ActivityHistory> {
+    const [historyEntry] = await this.databaseService.db
+      .insert(activityHistory)
+      .values({
+        activityId,
+        userId,
+        actionType,
+        changes: changes ? (changes as unknown) : null,
+        notes: notes || null,
+      })
+      .returning();
+
+    return historyEntry;
+  }
+
+  /**
+   * Get all history entries for an activity, ordered by most recent first
+   */
+  async getActivityHistory(
+    activityId: number
+  ): Promise<ActivityHistoryEntry[]> {
+    const historyEntries = await this.databaseService.db
+      .select({
+        id: activityHistory.id,
+        activityId: activityHistory.activityId,
+        userId: activityHistory.userId,
+        actionType: activityHistory.actionType,
+        changes: activityHistory.changes,
+        notes: activityHistory.notes,
+        timestamp: activityHistory.timestamp,
+      })
+      .from(activityHistory)
+      .where(eq(activityHistory.activityId, activityId))
+      .orderBy(desc(activityHistory.timestamp));
+
+    // TODO: Join with users to get userName
+    // For now, return with userId as userName placeholder
+    return historyEntries.map((entry) => ({
+      ...entry,
+      changes: (entry.changes as ActivityChange[] | null) ?? null,
+      userName: `User ${entry.userId}`, // Placeholder until user join is added
+    }));
+  }
+
+  /**
+   * Get the most recent published state of an activity
+   * Returns the activity state at the time of the last 'published' action
+   */
+  async getLastPublishedState(
+    activityId: number
+  ): Promise<ActivityHistory | null> {
+    const [publishedEntry] = await this.databaseService.db
+      .select()
+      .from(activityHistory)
+      .where(
+        and(
+          eq(activityHistory.activityId, activityId),
+          eq(activityHistory.actionType, 'published')
+        )
+      )
+      .orderBy(desc(activityHistory.timestamp))
+      .limit(1);
+
+    return publishedEntry || null;
+  }
+
+  /**
+   * Compare two activity objects and generate a list of changes
+   * Useful for tracking what fields changed during an update
+   *
+   * @param oldActivity - The activity state before the change
+   * @param newActivity - The activity state after the change
+   * @returns Array of changes detected between the two states
+   */
+  generateChangeList(
+    oldActivity: Record<string, unknown>,
+    newActivity: Record<string, unknown>
+  ): ActivityChange[] {
+    const changes: ActivityChange[] = [];
+    const allKeys = new Set([
+      ...Object.keys(oldActivity),
+      ...Object.keys(newActivity),
+    ]);
+
+    for (const key of allKeys) {
+      const oldValue = oldActivity[key];
+      const newValue = newActivity[key];
+
+      // Skip audit fields and internal fields
+      if (
+        key === 'id' ||
+        key === 'createdDateTime' ||
+        key === 'lastUpdatedDateTime' ||
+        key === 'rowVersion' ||
+        key === 'displayId'
+      ) {
+        continue;
+      }
+
+      // Compare values (handling null/undefined)
+      if (oldValue !== newValue) {
+        changes.push({
+          field: key,
+          oldValue: oldValue ?? null,
+          newValue: newValue ?? null,
+        });
+      }
+    }
+
+    return changes;
+  }
+}

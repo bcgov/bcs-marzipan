@@ -35,13 +35,14 @@
     "build:packages": "npm run build --workspace=packages/database && npm run build --workspace=packages/shared",
     "typecheck": "npm run typecheck --workspaces",
     "typecheck:packages": "npm run typecheck --workspace=packages/database && npm run typecheck --workspace=packages/shared",
+    "test": "concurrently -n \"service,ui\" -c \"blue,green\" \"npm run test --workspace=calendar-service\" \"npm run test --workspace=calendar-ui\"",
     "test:env": "ts-node -r tsconfig-paths/register scripts/test-env-vars.ts",
     "test:config": "ts-node -r tsconfig-paths/register scripts/test-nestjs-config.ts",
     "prepare": "husky",
     "format": "prettier --write \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"*.{json,md}\"",
     "format:check": "prettier --check \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"*.{json,md}\"",
-    "lint": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" --fix",
-    "lint:check": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\"",
+    "lint": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" --fix && npm run typecheck",
+    "lint:check": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" && npm run typecheck",
     "lint:service": "eslint \"calendar-service/**/*.ts\" --fix",
     "lint:ui": "eslint \"calendar-ui/**/*.{ts,tsx}\" --fix",
     "lint:staged": "lint-staged",
@@ -68,10 +69,10 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "typescript-eslint": "^8.20.0",
-    "lint-staged": "^15.2.11"
+    "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
     "calendar-service/**/*.ts": [

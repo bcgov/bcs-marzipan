@@ -7,7 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AppLogger } from '../common/logger/logger.service';
-import type { ActivityResponseDto } from '@corpcal/shared/dto';
+import type { ActivityResponseDto } from '../common/dto';
 
 @WebSocketGateway({
   cors: {
@@ -32,7 +32,7 @@ export class ActivitiesGateway
     this.logger.log(`Client disconnected: ${client.id}`);
     this.viewingActivities.delete(client.id);
     // Remove client from activities-table room
-    client.leave('activities-table');
+    void client.leave('activities-table');
   }
 
   @SubscribeMessage('viewActivity')

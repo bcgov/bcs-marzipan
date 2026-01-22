@@ -1,6 +1,7 @@
 export * from './schema';
 export * from './client';
 export * from './types';
+export * from './seed-runner';
 
 // Export schema object for Drizzle
 import * as schema from './schema';

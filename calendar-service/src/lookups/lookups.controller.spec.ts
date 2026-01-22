@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import type { LookupItem } from '@corpcal/shared/api/types';
 import { LookupsController } from './lookups.controller';
-import { LookupsService, type LookupItem } from './lookups.service';
+import { LookupsService } from './lookups.service';
 
 describe('LookupsController', () => {
   let controller: LookupsController;
 
   const mockLookupItems: LookupItem[] = [
-    { id: '1', label: 'Category 1', value: '1' },
-    { id: '2', label: 'Category 2', value: '2' },
+    { id: 1, label: 'Category 1', value: 1 },
+    { id: 2, label: 'Category 2', value: 2 },
   ];
 
   const mockLookupsService = {

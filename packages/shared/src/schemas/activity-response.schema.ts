@@ -1,183 +1,203 @@
 import { z } from 'zod';
-import { createSelectSchema } from 'drizzle-zod';
-import { activities } from '@corpcal/database/schema';
 import {
-  ATTENDING_STATUS,
   LOOK_AHEAD_STATUS,
   LOOK_AHEAD_SECTION,
-  CALENDAR_VISIBILITY,
-} from '../constants/activity-enums';
+  VISIBILITY,
+} from '../constants/constants';
+import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
 
 /**
  * Activity API Response Schema
  *
- * This schema is automatically generated from the Drizzle activities table schema
- * using createSelectSchema, then transformed to match the API contract.
- *
- * Transformations applied:
- * - Omit internal fields (rowVersion, rowGuid, deprecated fields)
- * - Transform date/time fields to ISO strings
- * - Transform foreign key IDs to strings where needed
- * - Rename fields to match API contract (e.g., leadOrgId → leadOrg)
- * - Add computed/joined fields (category, tags, jointOrg, etc.)
- *
- * This ensures the API response schema stays in sync with database schema changes.
- * The schema is the single source of truth for the ActivityResponse type.
+ * This schema uses 2 layers defined in Zod:
+ * - Layer 1: activityDbFieldsSchema - Fields from database with API transformations
+ * - Layer 2: activityComputedFieldsSchema - Fields computed from joins/lookups
+ * - Final: activityResponseSchema - Merged schema for API responses
  */
-
-// Base schema generated from Drizzle table
-const baseActivitySchema = createSelectSchema(activities);
-
-// Pick only the fields we want to keep from the base schema, then transform and extend
-export const activityResponseSchema = baseActivitySchema
-  .pick({
-    id: true,
-    displayId: true,
-    title: true,
-    summary: true,
-    isIssue: true,
-    oicRelated: true,
-    isActive: true,
-    significance: true,
-    pitchComments: true,
-    isAllDay: true,
-    schedulingConsiderations: true,
-    newsReleaseId: true,
-    eventLeadName: true,
-    notForLookAhead: true,
-    planningReport: true,
-    thirtySixtyNinetyReport: true,
-    // Keep these for transformation
-    activityStatusId: true,
-    startDate: true,
-    startTime: true,
-    endDate: true,
-    endTime: true,
-    isTimeConfirmed: true,
-    isDateConfirmed: true,
-    createdDateTime: true,
-    lastUpdatedDateTime: true,
-    createdBy: true,
-    lastUpdatedBy: true,
-    venueAddress: true,
-    lookAheadStatus: true,
-    lookAheadSection: true,
-    calendarVisibility: true,
-    // Note: isConfidential is not picked - we add confidential in extend() instead
-    // TODO: Review naming and duplication of fields
-  })
-  .extend({
-    // Fields from picked schema that need explicit type definitions
-    // due to drizzle-zod type inference limitations
-    id: z.number().int(),
-    displayId: z.string().nullable(),
-    title: z.string(),
-    summary: z.string().nullable(),
-    isIssue: z.boolean(),
-    oicRelated: z.boolean(),
-    isActive: z.boolean(),
-    significance: z.string().nullable(),
-    pitchComments: z.string().nullable(),
-    isAllDay: z.boolean(),
-    schedulingConsiderations: z.string().nullable(),
-    newsReleaseId: z.string().uuid().nullable(),
-    eventLeadName: z.string().nullable(),
-    notForLookAhead: z.boolean(),
-    planningReport: z.boolean(),
-    thirtySixtyNinetyReport: z.boolean(),
-    // Transform activityStatusId from number to string
-    activityStatusId: z.string(),
-    // Transform date fields to ISO date strings (YYYY-MM-DD)
-    startDate: z.string().nullable(),
-    endDate: z.string().nullable(),
-    // Transform time fields to HH:mm strings
-    startTime: z.string().nullable(),
-    endTime: z.string().nullable(),
-    isTimeConfirmed: z.boolean(),
-    isDateConfirmed: z.boolean(),
-    // Transform timestamp fields to ISO datetime strings
-    createdDateTime: z.string().datetime(),
-    lastUpdatedDateTime: z.string().datetime(),
-    // Transform user ID fields to strings
-    createdBy: z.string(),
-    lastUpdatedBy: z.string(),
-    // Transform venueAddress JSONB to typed object
-    venueAddress: z
-      .object({
-        street: z.string(),
-        city: z.string(),
-        provinceOrState: z.string(),
-        country: z.string(),
-      })
-      .nullable(),
-    // Transform enum-like varchar fields to proper enums using constants
-    lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable(),
-    lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable(),
-    calendarVisibility: z.enum(CALENDAR_VISIBILITY).nullable(),
-    // Rename isConfidential to confidential
-    confidential: z.boolean(),
-    // Add computed/joined fields
-    category: z.array(z.string()),
-    tags: z
-      .array(
-        z.object({
-          id: z.string().uuid(),
-          text: z.string(),
-        })
-      )
-      .optional(),
-    jointOrg: z.array(z.string().uuid()).optional(),
-    relatedActivities: z.array(z.string()).optional(),
-    commsMaterials: z.array(z.string()).optional(),
-    translationsRequired: z.array(z.string()).optional(),
-    jointEventOrg: z.array(z.string().uuid()).optional(),
-    representativesAttending: z
-      .array(
-        z.object({
-          representative: z.string(),
-          attendingStatus: z.enum(ATTENDING_STATUS),
-        })
-      )
-      .optional(),
-    sharedWith: z.array(z.string().uuid()).optional(),
-    canEdit: z.array(z.string()).optional(),
-    canView: z.array(z.string()).optional(),
-    // Add renamed organization fields
-    leadOrg: z.string().uuid().nullable(),
-    eventLeadOrg: z.string().uuid().nullable(),
-    // Add transformed user fields
-    commsLead: z.string().nullable(),
-    eventLead: z.string().nullable(),
-    videographer: z.string().nullable(),
-    graphics: z.string().nullable(),
-    owner: z.string().nullable(),
-    // Add computed status fields (from lookups)
-    pitchStatus: z.string(),
-    schedulingStatus: z.string(),
-  });
 
 /**
- * Paginated Response Schema
- * Generic schema for paginated API responses.
+ * Venue Address Schema for responses
+ * Uses base schema from activity.schema.ts with nullable modifier
  */
-export const paginatedResponseSchema = <T extends z.ZodTypeAny>(
-  itemSchema: T
-) =>
-  z.object({
-    data: z.array(itemSchema),
-    pagination: z.object({
-      page: z.number().int().positive(),
-      limit: z.number().int().positive(),
-      total: z.number().int().nonnegative(),
-      totalPages: z.number().int().nonnegative(),
-    }),
-  });
+const venueAddressSchema = baseVenueAddressSchema.nullable();
+
+/**
+ * Layer 1: Database Fields Schema
+ *
+ * These fields come directly from the database activities table.
+ * Types are transformed for API consumption:
+ * - Date/time fields -> ISO strings
+ * - rowVersion is omitted (internal field)
+ *
+ * ID Type Strategy:
+ * - Serial IDs (auto-increment): Use z.number().int() - matches database type
+ * - UUID IDs: Use z.string().uuid() - matches database type
+ *
+ * This provides true end-to-end type safety with no conversion required.
+ * Serial IDs remain numbers throughout the stack (database -> API -> frontend -> API -> database).
+ *
+ * Fields here must exist in the database Activity type.
+ * See validate-types.ts for compile-time verification.
+ */
+export const activityDbFieldsSchema = z.object({
+  // Primary key
+  id: z.number().int(),
+  displayId: z.string().nullable(), // May be null during creation, then set after activity ID is generated
+
+  // Status flags
+  isIssue: z.boolean(),
+  isConfidential: z.boolean(),
+
+  // Overview
+  title: z.string(),
+  summary: z.string(),
+  significance: z.string(),
+
+  // Lead organization (mutually exclusive: either ID or Name)
+  leadOrgId: z.string().uuid().nullable(),
+  leadOrgName: z.string().nullable(),
+
+  // Scheduling
+  isAllDay: z.boolean(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  dateStatusId: z.number().int(),
+  startTime: z.string().nullable(),
+  endTime: z.string().nullable(),
+  timeStatusId: z.number().int(),
+  schedulingNotes: z.string().nullable(),
+
+  // News Release
+  newsReleaseOriginId: z.number().int().nullable(),
+  newsReleaseId: z.string().uuid().nullable(),
+  newsReleaseDistributionId: z.number().int().nullable(),
+
+  // Event lead/planner (mutually exclusive: either ID or Name)
+  eventPlannerLeadId: z.number().int().nullable(),
+  eventPlannerLeadName: z.string().nullable(),
+
+  // Look Ahead
+  executiveSummary: z.string().nullable(),
+  lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable(),
+  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable(),
+
+  // Notes and additional fields
+  notes: z.string().nullable(),
+  pitchDate: z.string().nullable(), // Date when activity was or will be pitched
+  pitchRequired: z.boolean().nullable(), // Whether pitch is required (can override category default)
+  premierRequestedId: z.number().int().nullable(),
+  visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
+
+  // Ownership
+  leadMinistryId: z.string().uuid(),
+  activityStatusId: z.number().int(),
+
+  // Audit fields (transformed to ISO strings for API)
+  createdBy: z.number().int(),
+  lastUpdatedBy: z.number().int(),
+  createdDateTime: z.string().datetime(),
+  lastUpdatedDateTime: z.string().datetime(),
+});
+
+/**
+ * Tag Schema for computed fields
+ */
+const tagSchema = z.object({
+  id: z.number().int(),
+  text: z.string(),
+});
+
+/**
+ * Representative Attending Schema
+ */
+const representativeAttendingSchema = z.object({
+  representative: z.string(),
+});
+
+/**
+ * Report Setting Schema
+ * Includes whether the activity is omitted from this report
+ */
+const reportSettingSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  omitted: z.boolean(),
+});
+
+/**
+ * Layer 2: Computed Fields Schema
+ *
+ * These fields are computed from joins and lookups - they don't exist
+ * directly in the database activities table.
+ * They are populated by the service layer during response mapping.
+ *
+ * IMPORTANT: Display names/values from lookups.
+ * Forms submit IDs for database storage.
+ * UI components should display these name fields.
+ */
+export const activityComputedFieldsSchema = z.object({
+  // Junction table data (from many-to-many relationships)
+  // These arrays contain names or display names from lookups.
+  // Using .default([]) ensures clients always receive arrays instead of undefined.
+  category: z.array(z.string()).default([]),
+  tags: z.array(tagSchema).default([]),
+  commsMaterials: z.array(z.string()).default([]),
+  translationsRequired: z.array(z.string()).default([]),
+  representativesAttending: z.array(representativeAttendingSchema).default([]),
+  sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
+  commsContacts: z
+    .array(
+      z.object({
+        userId: z.number().int(),
+        name: z.string(),
+        isLead: z.boolean(),
+      })
+    )
+    .default([]), // All comms contacts with isLead flag
+
+  // Computed organization names (from organization ID lookups or free text names)
+  // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
+  leadOrg: z.string().nullable(),
+
+  // Computed user names (from user ID lookups)
+  eventLead: z.string().nullable(),
+
+  // Computed status names (from lookup table joins)
+  dateStatus: z.string(),
+  timeStatus: z.string(),
+  activityStatus: z.string(),
+
+  // Computed lookup names
+  newsReleaseOrigin: z.string().nullable(),
+  newsReleaseDistribution: z.string().nullable(),
+  premierRequested: z.string().nullable(),
+
+  // Venue address (from venue_addresses table join)
+  venueAddress: venueAddressSchema,
+
+  // Report settings (from activityReportSettings junction table)
+  // Includes omitted flag for each report
+  reportSettings: z.array(reportSettingSchema).default([]),
+});
+
+/**
+ * Activity Response Schema
+ *
+ * The complete API response schema, merging database fields with computed fields.
+ * This is the single source of truth for the ActivityResponse type.
+ */
+// merge is deprecated in favor of extend, but extend causes type inference issues.
+export const activityResponseSchema = activityDbFieldsSchema.merge(
+  activityComputedFieldsSchema
+);
 
 /**
  * TypeScript types inferred from Zod schemas
  * These are the single source of truth for API response types
  */
 export type ActivityResponse = z.infer<typeof activityResponseSchema>;
-export type PaginatedActivityResponse = z.infer<
-  ReturnType<typeof paginatedResponseSchema<typeof activityResponseSchema>>
+export type ActivityDbFields = z.infer<typeof activityDbFieldsSchema>;
+export type ActivityComputedFields = z.infer<
+  typeof activityComputedFieldsSchema
 >;

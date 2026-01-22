@@ -3,7 +3,6 @@ import * as React from 'react';
 
 import { useLocation } from 'react-router-dom';
 import {
-  AppItem,
   Hamburger,
   NavCategory,
   NavCategoryItem,
@@ -33,9 +32,10 @@ import {
   PersonSearch20Filled,
   PersonSearch20Regular,
   bundleIcon,
-  PersonCircle32Regular,
   Calendar20Regular,
   Calendar20Filled,
+  Settings20Regular,
+  Settings20Filled,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -68,6 +68,7 @@ const useStyles = makeStyles({
 });
 
 const Person = bundleIcon(Person20Filled, Person20Regular);
+const Settings = bundleIcon(Settings20Filled, Settings20Regular);
 const Dashboard = bundleIcon(Board20Filled, Board20Regular);
 const Calendar = bundleIcon(Calendar20Filled, Calendar20Regular);
 // const Announcements = bundleIcon(MegaphoneLoud20Filled, MegaphoneLoud20Regular);
@@ -129,13 +130,13 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
         </NavDrawerHeader>
 
         <NavDrawerBody>
-          <AppItem
+          {/* <AppItem
             icon={<PersonCircle32Regular />}
             as="a"
             href={linkDestination}
-          >
+          > I kept this in case we want something here with the cool Person Icon -Alex C
             Marzipan HR
-          </AppItem>
+          </AppItem> */}
           <NavItem icon={<Dashboard />} as="a" href="/dashboard" value="1">
             Dashboard
           </NavItem>
@@ -166,9 +167,9 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             Users
           </NavItem>
           <NavCategory value="11">
-            <NavCategoryItem icon={<Person />} value="12">
+            <NavItem icon={<Settings />} href="/settings" value="12">
               Settings
-            </NavCategoryItem>
+            </NavItem>
             <NavSubItemGroup>
               <NavSubItem href={linkDestination} value="13">
                 Form Templates
