@@ -14,13 +14,23 @@ import type {
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 
 export const mockCategories: CategoryLookupItem[] = [
-  { id: 1, value: 1, label: 'Event', name: 'Event', displayName: 'Event' },
+  {
+    id: 1,
+    value: 1,
+    label: 'Event',
+    name: 'Event',
+    displayName: 'Event',
+    sortOrder: 1,
+    isActive: true,
+  },
   {
     id: 2,
     value: 2,
     label: 'News Release',
     name: 'News Release',
     displayName: 'News Release',
+    sortOrder: 2,
+    isActive: true,
   },
   {
     id: 3,
@@ -28,6 +38,8 @@ export const mockCategories: CategoryLookupItem[] = [
     label: 'Awareness',
     name: 'Awareness',
     displayName: 'Awareness',
+    sortOrder: 3,
+    isActive: true,
   },
 ];
 
