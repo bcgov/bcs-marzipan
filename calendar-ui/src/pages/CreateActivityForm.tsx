@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
@@ -10,12 +10,24 @@ import { DEFAULT_ACTIVITY_STATUS } from '@corpcal/shared/constants/constants';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
-import { getMissingRequiredFields } from '../lib/form-utils';
+import { useAutoSave } from '../hooks/useAutoSave';
+import {
+  normalizeVenueAddress,
+  getMissingRequiredFields,
+} from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import {
+  ResumeDialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/resumeDraftDialog';
 import { useFormLookups } from '../hooks/useFormLookups';
 import {
   ActivityOverviewSection,
@@ -41,6 +53,8 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
@@ -61,6 +75,106 @@ export const CreateActivityForm: React.FC = () => {
       reportSettings: [],
     } as Partial<FormData>,
   });
+
+  // Get form values for autosave
+  const formValues = form.watch();
+
+  // Autosave integration
+  // TODO: Replace hardcoded userId with actual user from auth context
+  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
+    useAutoSave(
+      8, // userId (temporary hardcoded)
+      'activity',
+      formValues as Record<string, any>,
+      undefined,
+      {
+        debounceMs: 3000, // Save 3 seconds after user stops typing
+        enabled: !isSubmitting, // Disable during submission
+      }
+    );
+
+  // Check for existing draft on mount and show dialog
+  useEffect(() => {
+    console.log('Draft check effect running', {
+      draftChecked,
+      isDraftLoading,
+      hasDraft: !!existingDraft,
+      draftId: existingDraft?.id,
+      hasDraftData: !!existingDraft?.draftData,
+    });
+
+    if (
+      !draftChecked &&
+      !isDraftLoading &&
+      existingDraft?.draftData &&
+      Object.keys(existingDraft.draftData).length > 0
+    ) {
+      console.log('Showing draft dialog for draft:', existingDraft.id);
+      setShowDraftDialog(true);
+      setDraftChecked(true);
+    } else if (!draftChecked && !isDraftLoading) {
+      // No draft found, mark as checked so we don't show dialog
+      console.log('No draft found, marking as checked');
+      setDraftChecked(true);
+    }
+  }, [existingDraft, isDraftLoading, draftChecked]);
+
+  const handleContinueDraft = () => {
+    if (existingDraft?.draftData) {
+      console.log('Loading existing draft');
+      form.reset(existingDraft.draftData as FormData);
+    }
+    setShowDraftDialog(false);
+  };
+
+  const handleStartFresh = () => {
+    console.log('Starting fresh - deleting draft ID:', existingDraft?.id);
+
+    if (existingDraft?.id) {
+      // Delete by ID directly - this is more reliable
+      fetch(
+        `${import.meta.env.VITE_API_BASE_URL || '/api'}/drafts/${existingDraft.id}?userId=8`,
+        {
+          method: 'DELETE',
+        }
+      )
+        .then(() => {
+          console.log('Draft deleted successfully');
+        })
+        .catch((error) => {
+          console.error('Failed to delete draft:', error);
+        });
+    }
+
+    // Also call the hook's delete function to clean up cache
+    deleteDraft();
+
+    setShowDraftDialog(false);
+    setDraftChecked(false);
+
+    // Reset the form
+    form.reset({
+      isAllDay: false,
+      oicRelated: false,
+      isIssue: false,
+      notForLookAhead: false,
+      planningReport: false,
+      thirtySixtyNinetyReport: false,
+      ownerId: 8,
+      commsLeadId: 8,
+      categoryIds: [],
+      relatedActivityIds: [],
+      tagIds: [],
+      jointOrganizationIds: [],
+      commsMaterialIds: [],
+      translationLanguageIds: [],
+      jointEventOrganizationIds: [],
+      representativeIds: [],
+      sharedWithOrganizationIds: [],
+      canEditUserIds: [],
+      canViewUserIds: [],
+    });
+  };
 
   const handleCancel = () => {
     form.reset();
@@ -120,6 +234,10 @@ export const CreateActivityForm: React.FC = () => {
 
       console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
+
+      // Delete draft after successful creation
+      deleteDraft();
+
       alert('Activity created successfully!');
       // TODO: Navigate to activity detail page or list
       form.reset();
@@ -221,12 +339,50 @@ export const CreateActivityForm: React.FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {/* Draft Recovery Dialog */}
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
+
       <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">
-            Fill in the activity details below
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+            <p className="text-muted-foreground">
+              Fill in the activity details below
+            </p>
+          </div>
+
+          {/* Autosave indicator */}
+          <div className="text-sm">
+            {isSaving && (
+              <span className="text-amber-600">💾 Saving draft...</span>
+            )}
+            {lastSaved && !isSaving && (
+              <span className="text-green-600">
+                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+            {isDraftLoading && (
+              <span className="text-gray-500">Loading draft...</span>
+            )}
+          </div>
         </div>
 
         <Form {...form}>
