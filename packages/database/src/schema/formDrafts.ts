@@ -9,7 +9,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { systemUsers } from './user';
+import { users } from './user';
 
 /**
  * FormDrafts table - Stores in-progress form data for autosave functionality
@@ -61,9 +61,9 @@ export const formDrafts = pgTable(
  * Relations: FormDraft -> SystemUser
  */
 export const formDraftsRelations = relations(formDrafts, ({ one }) => ({
-  user: one(systemUsers, {
+  user: one(users, {
     fields: [formDrafts.userId],
-    references: [systemUsers.id],
+    references: [users.id],
   }),
 }));
 

@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { formDrafts } from '@corpcal/database/schema';
-import { eq, and, lt, isNull } from '@corpcal/database';
+import { schema } from '@corpcal/database';
+import { eq, and } from '@corpcal/database';
+import { lt, isNull, isNotNull, desc, SQL } from 'drizzle-orm';
 import { SaveDraftDto, DraftResponseDto } from './dto/drafts.dto';
 import { AppLogger } from '../common/logger/logger.service';
+
+const { formDrafts } = schema;
 
 @Injectable()
 export class DraftsService {
@@ -26,18 +29,20 @@ export class DraftsService {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Check if draft already exists
+    const conditions: SQL[] = [
+      eq(formDrafts.userId, userId),
+      eq(formDrafts.formType, formType),
+    ];
+    if (entityId !== undefined) {
+      conditions.push(eq(formDrafts.entityId, entityId));
+    } else {
+      conditions.push(isNull(formDrafts.entityId));
+    }
+
     const existing = await this.db.db
       .select()
       .from(formDrafts)
-      .where(
-        and(
-          eq(formDrafts.userId, userId),
-          eq(formDrafts.formType, formType),
-          entityId !== undefined
-            ? eq(formDrafts.entityId, entityId)
-            : isNull(formDrafts.entityId)
-        )
-      )
+      .where(and(...conditions))
       .limit(1);
 
     let result;
@@ -94,18 +99,20 @@ export class DraftsService {
       `Retrieving draft for user ${userId}, form ${formType}, entity ${entityId}`
     );
 
+    const conditions: SQL[] = [
+      eq(formDrafts.userId, userId),
+      eq(formDrafts.formType, formType),
+    ];
+    if (entityId !== undefined) {
+      conditions.push(eq(formDrafts.entityId, entityId));
+    } else {
+      conditions.push(isNull(formDrafts.entityId));
+    }
+
     const results = await this.db.db
       .select()
       .from(formDrafts)
-      .where(
-        and(
-          eq(formDrafts.userId, userId),
-          eq(formDrafts.formType, formType),
-          entityId !== undefined
-            ? eq(formDrafts.entityId, entityId)
-            : isNull(formDrafts.entityId)
-        )
-      )
+      .where(and(...conditions))
       .limit(1);
 
     return results.length > 0 ? this.mapToDto(results[0]) : null;
@@ -121,7 +128,7 @@ export class DraftsService {
       .select()
       .from(formDrafts)
       .where(eq(formDrafts.userId, userId))
-      .orderBy(formDrafts.updatedAt);
+      .orderBy(desc(formDrafts.updatedAt));
 
     return results.map((draft) => this.mapToDto(draft));
   }
@@ -163,17 +170,19 @@ export class DraftsService {
       `Deleting draft for user ${userId}, form ${formType}, entity ${entityId}`
     );
 
+    const conditions: SQL[] = [
+      eq(formDrafts.userId, userId),
+      eq(formDrafts.formType, formType),
+    ];
+    if (entityId !== undefined) {
+      conditions.push(eq(formDrafts.entityId, entityId));
+    } else {
+      conditions.push(isNull(formDrafts.entityId));
+    }
+
     const result = await this.db.db
       .delete(formDrafts)
-      .where(
-        and(
-          eq(formDrafts.userId, userId),
-          eq(formDrafts.formType, formType),
-          entityId !== undefined
-            ? eq(formDrafts.entityId, entityId)
-            : isNull(formDrafts.entityId)
-        )
-      )
+      .where(and(...conditions))
       .returning();
 
     if (result.length === 0) {
@@ -192,7 +201,9 @@ export class DraftsService {
     const now = new Date();
     const result = await this.db.db
       .delete(formDrafts)
-      .where(lt(formDrafts.expiresAt, now))
+      .where(
+        and(isNotNull(formDrafts.expiresAt), lt(formDrafts.expiresAt, now))
+      )
       .returning();
 
     const count = result.length;

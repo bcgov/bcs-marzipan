@@ -4,7 +4,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { createActivity } from '../../api/activitiesApi';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
-import type { DraftResponse } from '../../api/draftsApi';
 
 /* We'll probably delete this file when it's implemented in a few actual forms */
 /**

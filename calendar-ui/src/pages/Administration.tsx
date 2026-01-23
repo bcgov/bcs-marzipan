@@ -16,7 +16,6 @@ import {
   Link,
   Button,
   Dialog,
-  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,

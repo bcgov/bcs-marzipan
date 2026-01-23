@@ -25,10 +25,8 @@ import {
   HeartPulse20Regular,
   NotePin20Filled,
   NotePin20Regular,
-  Person20Filled,
   PersonLightbulb20Filled,
   PersonLightbulb20Regular,
-  Person20Regular,
   PersonSearch20Filled,
   PersonSearch20Regular,
   bundleIcon,
@@ -67,7 +65,6 @@ const useStyles = makeStyles({
   },
 });
 
-const Person = bundleIcon(Person20Filled, Person20Regular);
 const Settings = bundleIcon(Settings20Filled, Settings20Regular);
 const Dashboard = bundleIcon(Board20Filled, Board20Regular);
 const Calendar = bundleIcon(Calendar20Filled, Calendar20Regular);
