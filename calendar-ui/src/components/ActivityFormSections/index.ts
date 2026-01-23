@@ -2,6 +2,7 @@ export { ActivityOverviewSection } from './ActivityOverviewSection';
 export { ActivityApprovalsSection } from './ActivityApprovalsSection';
 export { ActivityScheduleSection } from './ActivityScheduleSection';
 export { ActivityCommsSection } from './ActivityCommsSection';
+export { ActivityNewsReleaseSection } from './ActivityNewsReleaseSection';
 export { ActivityEventSection } from './ActivityEventSection';
 export { ActivityVenueSection } from './ActivityVenueSection';
 export { ActivityReportsSection } from './ActivityReportsSection';

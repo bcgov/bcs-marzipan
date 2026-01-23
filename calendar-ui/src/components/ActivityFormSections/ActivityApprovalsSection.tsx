@@ -1,13 +1,4 @@
 import { UseFormReturn } from 'react-hook-form';
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from '../ui/form';
-import { Textarea } from '../ui/textarea';
-import { Input } from '../ui/input';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -22,38 +13,10 @@ export const ActivityApprovalsSection: React.FC<
 > = ({ form }) => {
   return (
     <ActivityFormSection title="Approvals">
-      <FormField
-        control={form.control}
-        name="significance"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Significance</FormLabel>
-            <FormControl>
-              <Textarea
-                placeholder="Enter significance"
-                rows={4}
-                {...field}
-                value={field.value || ''}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="pitchDate"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Pitch Date</FormLabel>
-            <FormControl>
-              <Input type="date" {...field} value={field.value || ''} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* Approvals content can be added here in the future */}
+      <div className="text-muted-foreground text-sm">
+        No approval fields yet.
+      </div>
     </ActivityFormSection>
   );
 };

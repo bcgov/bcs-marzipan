@@ -16,7 +16,7 @@ import {
 
 export interface FormLookupData {
   // Categories - for Badge components
-  categories: Array<{ id: number; name: string; displayName?: string }>;
+  categories: Array<{ id: number; name: string; displayName?: string; allowsPitch: boolean }>;
 
   // Organizations - for Select/Combobox
   organizations: Array<{ value: string; label: string }>;
@@ -121,6 +121,7 @@ export function useFormLookups(): FormLookupData {
       id: item.id,
       name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
+      allowsPitch: item.allowsPitch ?? false,
     })) || [];
 
   // Transform organizations for Select/Combobox (UUIDs are strings)

@@ -11,6 +11,13 @@ import {
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '../ui/freeform-combobox';
@@ -34,11 +41,13 @@ type ActivityEventSectionProps = {
     displayName?: string;
     title?: string;
   }>;
+  premierRequestedOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   eventPlannerOptions,
   representativeOptions,
+  premierRequestedOptions,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -118,6 +127,36 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   };
   return (
     <ActivityFormSection title="Event">
+      <FormField
+        control={form.control}
+        name="premierRequestedId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Premier Requested</FormLabel>
+            <Select
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select premier requested option" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {premierRequestedOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       <FormField
         control={form.control}
         name="eventPlannerLeadId"

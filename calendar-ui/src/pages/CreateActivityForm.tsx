@@ -19,9 +19,9 @@ import {
 import { useFormLookups } from '../hooks/useFormLookups';
 import {
   ActivityOverviewSection,
-  ActivityApprovalsSection,
   ActivityScheduleSection,
   ActivityCommsSection,
+  ActivityNewsReleaseSection,
   ActivityEventSection,
   ActivityVenueSection,
   ActivityReportsSection,
@@ -247,29 +247,22 @@ export const CreateActivityForm: React.FC = () => {
                   />
                 </div>
 
-                {/* Schedule Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityScheduleSection form={form} />
-                </div>
-
                 {/* Comms Section */}
                 <div className="rounded-md border border-gray-300 p-6">
                   <ActivityCommsSection
                     commsMaterialOptions={lookups.commsMaterials}
+                    commsLeadOptions={commsLeadOptions}
+                  />
+                </div>
+
+                {/* News Release Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityNewsReleaseSection
                     translationLanguageOptions={lookups.translationLanguages}
                     newsReleaseDistributionOptions={
                       lookups.newsReleaseDistributions
                     }
-                    premierRequestedOptions={lookups.premierRequested}
                     newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                  />
-                </div>
-
-                {/* Event Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityEventSection
-                    eventPlannerOptions={lookups.eventPlanners}
-                    representativeOptions={lookups.governmentRepresentatives}
                   />
                 </div>
               </div>
@@ -281,9 +274,18 @@ export const CreateActivityForm: React.FC = () => {
                   <ActivityReportsSection form={form} />
                 </div>
 
-                {/* Approvals Section */}
+                {/* Schedule Section */}
                 <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityApprovalsSection form={form} />
+                  <ActivityScheduleSection form={form} />
+                </div>
+
+                {/* Event Section */}
+                <div className="rounded-md border border-gray-300 p-6">
+                  <ActivityEventSection
+                    eventPlannerOptions={lookups.eventPlanners}
+                    representativeOptions={lookups.governmentRepresentatives}
+                    premierRequestedOptions={lookups.premierRequested}
+                  />
                 </div>
 
                 {/* Venue Section */}
