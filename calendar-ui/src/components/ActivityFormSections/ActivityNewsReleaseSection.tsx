@@ -17,11 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ChevronDown } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
@@ -30,7 +26,7 @@ import { useState } from 'react';
 
 type FormData = CreateActivityRequest & {
   translationLanguageIds?: number[];
-  newsReleaseOriginId?: number | null;
+  newsReleaseOriginId?: number | null;git 
   newsReleaseDistributionId?: number | null;
 };
 
