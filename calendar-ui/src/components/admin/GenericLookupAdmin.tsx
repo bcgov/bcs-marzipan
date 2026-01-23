@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Edit, Trash2, XCircle } from 'lucide-react';
 import api from '@/api/axios';
 import {
   AdminSection,
