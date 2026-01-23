@@ -58,6 +58,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .where(
@@ -75,6 +76,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .innerJoin(
@@ -110,6 +112,7 @@ export class LookupsService {
           displayName: cat.displayName,
           sortOrder: cat.sortOrder,
           isActive: cat.isActive,
+          allowsPitch: cat.allowsPitch,
         }));
     } else {
       // If no teams provided, return only global categories
@@ -120,6 +123,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .where(
@@ -138,6 +142,7 @@ export class LookupsService {
         displayName: cat.displayName,
         sortOrder: cat.sortOrder,
         isActive: cat.isActive,
+        allowsPitch: cat.allowsPitch,
       }));
     }
   }
