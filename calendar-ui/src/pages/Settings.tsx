@@ -1,14 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchCategories,
-  fetchCities,
-  fetchCommsMaterials,
-  fetchGovernmentRepresentatives,
-  fetchTags,
-  fetchMinistries,
-  fetchActivityStatuses,
-  fetchThemes,
-} from '../api/lookupsApi';
+  CategoriesAdmin,
+  CitiesAdmin,
+  CommsMaterialsAdmin,
+  GovernmentRepresentativesAdmin,
+  TagsAdmin,
+  MinistriesAdmin,
+  ActivityStatusesAdmin,
+  ThemesAdmin,
+} from '@/components/admin/LookupAdmins';
 import {
   Spinner,
   Dropdown,
@@ -267,58 +266,98 @@ const LookupSection = ({
         >
           {title}
         </h2>
+  FolderTree,
+  MapPin,
+  FileText,
+  Users,
+  Tag,
+  Building2,
+  Activity,
+  Palette,
+} from 'lucide-react';
+
+type Section =
+  | 'categories'
+  | 'cities'
+  | 'comms'
+  | 'representatives'
+  | 'tags'
+  | 'ministries'
+  | 'statuses'
+  | 'themes';
+
+const sections = [
+  { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
+  { id: 'cities' as Section, label: 'Cities', icon: MapPin },
+  { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
+  {
+    id: 'representatives' as Section,
+    label: 'Government Representatives',
+    icon: Users,
+  },
+  { id: 'tags' as Section, label: 'Tags', icon: Tag },
+  { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
+  { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
+  { id: 'themes' as Section, label: 'Themes', icon: Palette },
+];
+
+/**
+ * Modern Settings Page
+ * Manages all lookup data with a clean, organized interface.
+ * Features quick navigation and modular admin sections.
+ */
+export function Settings() {
+  const scrollToSection = (sectionId: Section) => {
+    const element = document.getElementById(`section-${sectionId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="mx-auto max-w-7xl px-6 py-6">
+        <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+          Settings & Configuration
+        </h1>
+        <p className="text-sm text-slate-600 sm:text-base">
+          Manage lookup data and system configuration
+        </p>
       </div>
 
-      <div
-        style={{
-          backgroundColor: '#fff',
-          padding: '16px',
-          borderRadius: '4px',
-          border: '1px solid #e0e0e0',
-        }}
-      >
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        {/* Quick Navigation */}
         <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-          }}
+          id="quick-navigation"
+          className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
         >
-          <div style={{ maxWidth: '200px' }}>
-            <Dropdown
-              placeholder="Filter by status"
-              value={
-                activeFilter === 'all'
-                  ? 'All'
-                  : activeFilter === 'active'
-                    ? 'Active'
-                    : 'Inactive'
-              }
-              onOptionSelect={(_, data) =>
-                setActiveFilter(data.optionValue as string)
-              }
-            >
-              <Option value="all">All</Option>
-              <Option value="active">Active</Option>
-              <Option value="inactive">Inactive</Option>
-            </Dropdown>
+          <div className="border-b border-slate-200 p-4 sm:p-6">
+            <h2 className="mb-2 text-lg font-semibold text-slate-900">
+              Quick Navigation
+            </h2>
+            <p className="text-sm text-slate-600">Jump to any admin section</p>
           </div>
-
-          <Button
-            appearance="primary"
-            icon={<Add20Regular />}
-            onClick={onAdd}
-            style={{ backgroundColor: '#5b69c3' }}
-          >
-            Add {entityType}
-          </Button>
-        </div>
-
-        {isLoading && <Spinner label={`Loading ${title.toLowerCase()}...`} />}
-        {error && (
-          <div style={{ color: 'red' }}>
-            Error loading {title.toLowerCase()}
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {sections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <a
+                    key={section.id}
+                    href={`#section-${section.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      scrollToSection(section.id);
+                    }}
+                    className="flex items-center gap-2 rounded-lg p-2 text-sm text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-800"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{section.label}</span>
+                  </a>
+                );
+              })}
+            </div>
           </div>
         )}
         {filteredData && filteredData.length > 0 && (
@@ -912,832 +951,43 @@ export const Settings = () => {
     queryKey: ['themes'],
     queryFn: () => fetchThemes(true),
   });
+        </div>
 
-  const categoriesColumns = useMemo<ColumnDef<Category>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      { accessorKey: 'name', header: 'Name', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingCategory(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteCategoryMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+        {/* Admin Sections */}
+        <div className="space-y-8">
+          <div id="section-categories">
+            <CategoriesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteCategoryMutation]
-  );
 
-  const citiesColumns = useMemo<ColumnDef<City>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      { accessorKey: 'name', header: 'Name', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'province',
-        header: 'Province',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingCity(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteCityMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-cities">
+            <CitiesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteCityMutation]
-  );
 
-  const commsMaterialsColumns = useMemo<ColumnDef<CommsMaterial>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      { accessorKey: 'name', header: 'Name', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingCommsMaterial(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteCommsMaterialMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-comms">
+            <CommsMaterialsAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteCommsMaterialMutation]
-  );
 
-  const govRepsColumns = useMemo<ColumnDef<GovernmentRepresentative>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      { accessorKey: 'name', header: 'Name', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'title',
-        header: 'Title',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingGovRep(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteGovRepMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-representatives">
+            <GovernmentRepresentativesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteGovRepMutation]
-  );
 
-  const tagsColumns = useMemo<ColumnDef<Tag>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      {
-        accessorKey: 'key',
-        header: 'Key',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingTag(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteTagMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-tags">
+            <TagsAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteTagMutation]
-  );
 
-  const ministriesColumns = useMemo<ColumnDef<Ministry>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'abbreviation',
-        header: 'Abbreviation',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'ministerName',
-        header: 'Minister Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingMinistry(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteMinistryMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-ministries">
+            <MinistriesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteMinistryMutation]
-  );
 
-  const statusColumns = useMemo<ColumnDef<ActivityStatus>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      { accessorKey: 'name', header: 'Name', enableSorting: true },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingStatus(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteStatusMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-statuses">
+            <ActivityStatusesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteStatusMutation]
-  );
 
-  const themesColumns = useMemo<ColumnDef<Theme>[]>(
-    () => [
-      { accessorKey: 'id', header: 'ID', enableSorting: true },
-      {
-        accessorKey: 'key',
-        header: 'Key',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      {
-        accessorKey: 'displayName',
-        header: 'Display Name',
-        cell: (info) => info.getValue() || '-',
-        enableSorting: true,
-      },
-      { accessorKey: 'sortOrder', header: 'Sort Order', enableSorting: true },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: (info) => (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <Button
-              appearance="subtle"
-              icon={<Edit20Regular />}
-              onClick={() => setEditingTheme(info.row.original)}
-            >
-              Edit
-            </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={() =>
-                deleteThemeMutation.mutate({
-                  id: info.row.original.id,
-                  isActive: info.row.original.isActive,
-                })
-              }
-            >
-              {info.row.original.isActive ? 'Deactivate' : 'Reactivate'}
-            </Button>
+          <div id="section-themes">
+            <ThemesAdmin />
           </div>
-        ),
-      },
-    ],
-    [deleteThemeMutation]
-  );
-
-  return (
-    <div
-      style={{
-        padding: '24px',
-        backgroundColor: '#f5f5f5',
-        minHeight: '100vh',
-      }}
-    >
-      <h1
-        style={{
-          margin: '0 0 8px 0',
-          fontSize: '20px',
-          fontWeight: 400,
-          color: '#666',
-          letterSpacing: '0.5px',
-        }}
-      >
-        Corporate Calendar Data Administration
-      </h1>
-
-      <div style={{ marginBottom: '32px' }}>
-        <Link
-          href="/manage-users"
-          style={{
-            display: 'inline-block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            marginRight: '16px',
-            fontSize: '14px',
-          }}
-        >
-          Manage Users
-        </Link>
-        <Link
-          href="/transfer-activities"
-          style={{
-            display: 'inline-block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            fontSize: '14px',
-          }}
-        >
-          Transfer Activities
-        </Link>
+        </div>
       </div>
-
-      <AddModal
-        open={showCategoryModal}
-        onClose={() => setShowCategoryModal(false)}
-        onSubmit={(data) => createCategoryMutation.mutate(data)}
-        title="Add Category"
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingCategory}
-        onClose={() => setEditingCategory(null)}
-        onSubmit={(data) =>
-          updateCategoryMutation.mutate({ ...data, id: editingCategory?.id })
-        }
-        title="Edit Category"
-        initialData={editingCategory || undefined}
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Categories"
-        entityType="Category"
-        data={categories || []}
-        columns={categoriesColumns}
-        isLoading={categoriesLoading}
-        error={categoriesError}
-        activeFilter={categoriesFilter}
-        setActiveFilter={setCategoriesFilter}
-        onAdd={() => setShowCategoryModal(true)}
-      />
-
-      <AddModal
-        open={showCityModal}
-        onClose={() => setShowCityModal(false)}
-        onSubmit={(data) => createCityMutation.mutate(data)}
-        title="Add City"
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          { name: 'province', label: 'Province', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingCity}
-        onClose={() => setEditingCity(null)}
-        onSubmit={(data) =>
-          updateCityMutation.mutate({ ...data, id: editingCity?.id })
-        }
-        title="Edit City"
-        initialData={editingCity || undefined}
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          { name: 'province', label: 'Province', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Cities"
-        entityType="City"
-        data={cities || []}
-        columns={citiesColumns}
-        isLoading={citiesLoading}
-        error={citiesError}
-        activeFilter={citiesFilter}
-        setActiveFilter={setCitiesFilter}
-        onAdd={() => setShowCityModal(true)}
-      />
-
-      <AddModal
-        open={showCommsMaterialModal}
-        onClose={() => setShowCommsMaterialModal(false)}
-        onSubmit={(data) => createCommsMaterialMutation.mutate(data)}
-        title="Add Communication Material"
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingCommsMaterial}
-        onClose={() => setEditingCommsMaterial(null)}
-        onSubmit={(data) =>
-          updateCommsMaterialMutation.mutate({
-            ...data,
-            id: editingCommsMaterial?.id,
-          })
-        }
-        title="Edit Communication Material"
-        initialData={editingCommsMaterial || undefined}
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Communication Materials"
-        entityType="Communication Material"
-        data={commsMaterials || []}
-        columns={commsMaterialsColumns}
-        isLoading={commsMaterialsLoading}
-        error={commsMaterialsError}
-        activeFilter={commsMaterialsFilter}
-        setActiveFilter={setCommsMaterialsFilter}
-        onAdd={() => setShowCommsMaterialModal(true)}
-      />
-
-      <AddModal
-        open={showGovRepModal}
-        onClose={() => setShowGovRepModal(false)}
-        onSubmit={(data) => createGovRepMutation.mutate(data)}
-        title="Add Government Representative"
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          { name: 'title', label: 'Title', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingGovRep}
-        onClose={() => setEditingGovRep(null)}
-        onSubmit={(data) =>
-          updateGovRepMutation.mutate({ ...data, id: editingGovRep?.id })
-        }
-        title="Edit Government Representative"
-        initialData={editingGovRep || undefined}
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          { name: 'title', label: 'Title', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Government Representatives"
-        entityType="Government Representative"
-        data={governmentRepresentatives || []}
-        columns={govRepsColumns}
-        isLoading={govRepsLoading}
-        error={govRepsError}
-        activeFilter={govRepsFilter}
-        setActiveFilter={setGovRepsFilter}
-        onAdd={() => setShowGovRepModal(true)}
-      />
-
-      <AddModal
-        open={showTagModal}
-        onClose={() => setShowTagModal(false)}
-        onSubmit={(data) => createTagMutation.mutate(data)}
-        title="Add HQ Tag"
-        fields={[
-          { name: 'key', label: 'Key', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingTag}
-        onClose={() => setEditingTag(null)}
-        onSubmit={(data) =>
-          updateTagMutation.mutate({ ...data, id: editingTag?.id })
-        }
-        title="Edit HQ Tag"
-        initialData={editingTag || undefined}
-        fields={[
-          { name: 'key', label: 'Key', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="HQ Tags"
-        entityType="HQ Tag"
-        data={tags || []}
-        columns={tagsColumns}
-        isLoading={tagsLoading}
-        error={tagsError}
-        activeFilter={tagsFilter}
-        setActiveFilter={setTagsFilter}
-        onAdd={() => setShowTagModal(true)}
-      />
-
-      <AddModal
-        open={showMinistryModal}
-        onClose={() => setShowMinistryModal(false)}
-        onSubmit={(data) => createMinistryMutation.mutate(data)}
-        title="Add Ministry"
-        fields={[
-          {
-            name: 'displayName',
-            label: 'Display Name',
-            type: 'text',
-            required: true,
-          },
-          { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
-          { name: 'ministerName', label: 'Minister Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingMinistry}
-        onClose={() => setEditingMinistry(null)}
-        onSubmit={(data) =>
-          updateMinistryMutation.mutate({ ...data, id: editingMinistry?.id })
-        }
-        title="Edit Ministry"
-        initialData={editingMinistry || undefined}
-        fields={[
-          {
-            name: 'displayName',
-            label: 'Display Name',
-            type: 'text',
-            required: true,
-          },
-          { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
-          { name: 'ministerName', label: 'Minister Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Ministries"
-        entityType="Ministry"
-        data={ministries || []}
-        columns={ministriesColumns}
-        isLoading={ministriesLoading}
-        error={ministriesError}
-        activeFilter={ministriesFilter}
-        setActiveFilter={setMinistriesFilter}
-        onAdd={() => setShowMinistryModal(true)}
-      />
-
-      <AddModal
-        open={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        onSubmit={(data) => createStatusMutation.mutate(data)}
-        title="Add Status"
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingStatus}
-        onClose={() => setEditingStatus(null)}
-        onSubmit={(data) =>
-          updateStatusMutation.mutate({ ...data, id: editingStatus?.id })
-        }
-        title="Edit Status"
-        initialData={editingStatus || undefined}
-        fields={[
-          { name: 'name', label: 'Name', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Status"
-        entityType="Status"
-        data={statuses || []}
-        columns={statusColumns}
-        isLoading={statusLoading}
-        error={statusError}
-        activeFilter={statusFilter}
-        setActiveFilter={setStatusFilter}
-        onAdd={() => setShowStatusModal(true)}
-      />
-
-      <AddModal
-        open={showThemeModal}
-        onClose={() => setShowThemeModal(false)}
-        onSubmit={(data) => createThemeMutation.mutate(data)}
-        title="Add Theme"
-        fields={[
-          { name: 'key', label: 'Key', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <AddModal
-        open={!!editingTheme}
-        onClose={() => setEditingTheme(null)}
-        onSubmit={(data) =>
-          updateThemeMutation.mutate({ ...data, id: editingTheme?.id })
-        }
-        title="Edit Theme"
-        initialData={editingTheme || undefined}
-        fields={[
-          { name: 'key', label: 'Key', type: 'text', required: true },
-          { name: 'displayName', label: 'Display Name', type: 'text' },
-          {
-            name: 'sortOrder',
-            label: 'Sort Order',
-            type: 'number',
-            required: true,
-          },
-        ]}
-      />
-
-      <LookupSection
-        title="Themes"
-        entityType="Theme"
-        data={themes || []}
-        columns={themesColumns}
-        isLoading={themesLoading}
-        error={themesError}
-        activeFilter={themesFilter}
-        setActiveFilter={setThemesFilter}
-        onAdd={() => setShowThemeModal(true)}
-      />
     </div>
   );
-};
+}
