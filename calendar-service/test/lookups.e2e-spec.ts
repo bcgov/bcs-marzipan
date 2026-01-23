@@ -92,10 +92,10 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/system-users (GET)', () => {
-    it('should return all system users', () => {
+  describe('/lookups/users (GET)', () => {
+    it('should return all users', () => {
       return request(app.getHttpServer())
-        .get('/lookups/system-users')
+        .get('/lookups/users')
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);
@@ -131,28 +131,14 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/scheduling-statuses (GET)', () => {
-    it('should return all scheduling statuses', () => {
-      return request(app.getHttpServer())
-        .get('/lookups/scheduling-statuses')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(Array.isArray(res.body.data)).toBe(true);
-        });
-    });
-  });
-
   describe('Lookup Response Structure', () => {
     it('should return consistent structure across all lookup endpoints', async () => {
       const endpoints = [
         '/lookups/categories',
         '/lookups/organizations',
-        '/lookups/system-users',
+        '/lookups/users',
         '/lookups/activity-statuses',
         '/lookups/pitch-statuses',
-        '/lookups/scheduling-statuses',
       ];
 
       for (const endpoint of endpoints) {

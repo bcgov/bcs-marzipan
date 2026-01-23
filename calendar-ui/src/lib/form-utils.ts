@@ -1,53 +1,5 @@
 import type { FormState, FieldValues, FieldErrors } from 'react-hook-form';
 
-type VenueAddress = {
-  street?: string;
-  city?: string;
-  provinceOrState?: string;
-  country?: string;
-};
-
-/**
- * Normalizes venueAddress from form data to ensure it's a proper object or null.
- * Returns null if the address is invalid or has no meaningful fields.
- */
-export function normalizeVenueAddress(venueAddress: unknown): {
-  street: string;
-  city: string;
-  provinceOrState: string;
-  country: string;
-} | null {
-  if (!venueAddress) {
-    return null;
-  }
-
-  if (
-    typeof venueAddress !== 'object' ||
-    Array.isArray(venueAddress) ||
-    venueAddress === null
-  ) {
-    return null;
-  }
-
-  const venue = venueAddress as VenueAddress;
-
-  // Check if at least one field has a value
-  const hasValidFields =
-    venue.street || venue.city || venue.provinceOrState || venue.country;
-
-  if (!hasValidFields) {
-    return null;
-  }
-
-  // Normalize to ensure all fields are strings
-  return {
-    street: venue.street || '',
-    city: venue.city || '',
-    provinceOrState: venue.provinceOrState || '',
-    country: venue.country || '',
-  };
-}
-
 /**
  * Extracts missing required field labels from react-hook-form FormState errors.
  *

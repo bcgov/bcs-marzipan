@@ -6,3 +6,5 @@ export * from './organizations';
 export * from './lookups';
 export * from './relations';
 export * from './formDrafts';
+export * from './teams';
+export * from './venue-address';
