@@ -11,10 +11,7 @@ import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useAutoSave } from '../hooks/useAutoSave';
-import {
-  normalizeVenueAddress,
-  getMissingRequiredFields,
-} from '../lib/form-utils';
+import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
@@ -49,6 +46,23 @@ type FormData = CreateActivityRequest & {
   sharedWithMinistryIds?: string[];
 };
 
+/**
+ * Default form values that match the FormData type.
+ * Used for both form initialization and reset operations.
+ */
+const getDefaultFormValues = (): Partial<FormData> => ({
+  isAllDay: false,
+  isIssue: false,
+  isConfidential: false,
+  categoryIds: [],
+  tagIds: [],
+  commsMaterialIds: [],
+  translationLanguageIds: [],
+  representatives: [],
+  sharedWithMinistryIds: [],
+  reportSettings: [],
+});
+
 // TODO: Replace with actual user from auth context once authentication is implemented
 const TEMPORARY_USER_ID = 8;
 
@@ -62,26 +76,7 @@ export const CreateActivityForm: React.FC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
-    defaultValues: {
-      isAllDay: false,
-      isIssue: false,
-      notForLookAhead: false,
-      planningReport: false,
-      thirtySixtyNinetyReport: false,
-      ownerId: TEMPORARY_USER_ID,
-      commsLeadId: TEMPORARY_USER_ID,
-      isConfidential: false,
-      omittedReportIds: [],
-      // TODO: Remove hardcoded user id 8 - this is temporary for development
-      commsContactLeadId: 8,
-      categoryIds: [],
-      tagIds: [],
-      commsMaterialIds: [],
-      translationLanguageIds: [],
-      representatives: [],
-      sharedWithMinistryIds: [],
-      reportSettings: [],
-    } as Partial<FormData>,
+    defaultValues: getDefaultFormValues(),
   });
 
   // Get form values for autosave
@@ -130,28 +125,8 @@ export const CreateActivityForm: React.FC = () => {
     setShowDraftDialog(false);
     setDraftChecked(false);
 
-    // Reset the form
-    form.reset({
-      isAllDay: false,
-      oicRelated: false,
-      isIssue: false,
-      notForLookAhead: false,
-      planningReport: false,
-      thirtySixtyNinetyReport: false,
-      ownerId: 8,
-      commsLeadId: 8,
-      categoryIds: [],
-      relatedActivityIds: [],
-      tagIds: [],
-      jointOrganizationIds: [],
-      commsMaterialIds: [],
-      translationLanguageIds: [],
-      jointEventOrganizationIds: [],
-      representativeIds: [],
-      sharedWithOrganizationIds: [],
-      canEditUserIds: [],
-      canViewUserIds: [],
-    });
+    // Reset the form to default values
+    form.reset(getDefaultFormValues());
   };
 
   const handleCancel = () => {
