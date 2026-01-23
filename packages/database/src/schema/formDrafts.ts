@@ -10,7 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
-import { systemUsers } from './user';
+import { users } from './user';
 
 /**
  * FormDrafts table - Stores in-progress form data for autosave functionality
@@ -24,7 +24,7 @@ export const formDrafts = pgTable(
     // User who created this draft (FK to system_users)
     userId: integer('user_id')
       .notNull()
-      .references(() => systemUsers.id, { onDelete: 'cascade' }),
+      .references(() => users.id, { onDelete: 'cascade' }),
 
     // Type of form being saved (e.g., 'activity', 'event', 'category')
     formType: varchar('form_type', { length: 50 }).notNull(),
@@ -67,9 +67,9 @@ export const formDrafts = pgTable(
  * Relations: FormDraft -> SystemUser
  */
 export const formDraftsRelations = relations(formDrafts, ({ one }) => ({
-  user: one(systemUsers, {
+  user: one(users, {
     fields: [formDrafts.userId],
-    references: [systemUsers.id],
+    references: [users.id],
   }),
 }));
 
