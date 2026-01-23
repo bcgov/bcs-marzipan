@@ -5,9 +5,10 @@ import {
   varchar,
   jsonb,
   timestamp,
-  unique,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 import { systemUsers } from './user';
 
@@ -21,7 +22,9 @@ export const formDrafts = pgTable(
     id: serial('id').primaryKey(),
 
     // User who created this draft (FK to system_users)
-    userId: integer('user_id').notNull(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => systemUsers.id, { onDelete: 'cascade' }),
 
     // Type of form being saved (e.g., 'activity', 'event', 'category')
     formType: varchar('form_type', { length: 50 }).notNull(),
@@ -44,12 +47,15 @@ export const formDrafts = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
   },
   (table) => ({
-    // Ensure one draft per user per form type per entity
-    uniqueDraft: unique('unique_user_form_entity').on(
-      table.userId,
-      table.formType,
-      table.entityId
-    ),
+    // Partial unique indexes to handle NULL entity_id properly
+    // One draft per user per form type when entity_id IS NULL (new items)
+    uniqueDraftNew: uniqueIndex('unique_user_form_null_entity')
+      .on(table.userId, table.formType)
+      .where(sql`entity_id IS NULL`),
+    // One draft per user per form type per entity when entity_id IS NOT NULL (edits)
+    uniqueDraftEdit: uniqueIndex('unique_user_form_entity')
+      .on(table.userId, table.formType, table.entityId)
+      .where(sql`entity_id IS NOT NULL`),
     // Indexes for common queries
     userIdIdx: index('form_drafts_user_id_idx').on(table.userId),
     formTypeIdx: index('form_drafts_form_type_idx').on(table.formType),
