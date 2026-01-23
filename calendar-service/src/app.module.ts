@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { LookupsModule } from './lookups/lookups.module';
+import { DraftsModule } from './drafts/drafts.module';
+import { ReportsModule } from './reports/reports.module';
 import { LoggerModule } from './common/logger/logger.module';
 
 /**
@@ -31,6 +33,8 @@ function resolveRootEnvPath(): string {
     DatabaseModule,
     ActivitiesModule,
     LookupsModule,
+    DraftsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

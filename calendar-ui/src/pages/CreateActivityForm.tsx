@@ -1,14 +1,16 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { DEFAULT_ACTIVITY_STATUS } from '@corpcal/shared/constants/constants';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
+import { useAutoSave } from '../hooks/useAutoSave';
 import {
   normalizeVenueAddress,
   getMissingRequiredFields,
@@ -18,6 +20,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import {
+  ResumeDialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/resumeDraftDialog';
 import { useFormLookups } from '../hooks/useFormLookups';
 import {
   ActivityOverviewSection,
@@ -33,34 +43,101 @@ import React from 'react';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
-  relatedActivityIds?: number[];
-  tagIds?: string[];
-  jointOrganizationIds?: string[];
+  tagIds?: number[];
   commsMaterialIds?: number[];
   translationLanguageIds?: number[];
-  jointEventOrganizationIds?: string[];
-  representativeIds?: number[];
-  sharedWithOrganizationIds?: string[];
-  canEditUserIds?: number[];
-  canViewUserIds?: number[];
+  sharedWithMinistryIds?: string[];
 };
+
+// TODO: Replace with actual user from auth context once authentication is implemented
+const TEMPORARY_USER_ID = 8;
 
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftChecked, setDraftChecked] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
     defaultValues: {
       isAllDay: false,
+      isIssue: false,
+      notForLookAhead: false,
+      planningReport: false,
+      thirtySixtyNinetyReport: false,
+      ownerId: TEMPORARY_USER_ID,
+      commsLeadId: TEMPORARY_USER_ID,
+      isConfidential: false,
+      omittedReportIds: [],
+      // TODO: Remove hardcoded user id 8 - this is temporary for development
+      commsContactLeadId: 8,
+      categoryIds: [],
+      tagIds: [],
+      commsMaterialIds: [],
+      translationLanguageIds: [],
+      representatives: [],
+      sharedWithMinistryIds: [],
+      reportSettings: [],
+    } as Partial<FormData>,
+  });
+
+  // Get form values for autosave
+  const formValues = form.watch();
+
+  // Autosave integration
+  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
+    useAutoSave(
+      TEMPORARY_USER_ID,
+      'activity',
+      formValues as Record<string, any>,
+      undefined,
+      {
+        debounceMs: 3000, // Save 3 seconds after user stops typing
+        enabled: !isSubmitting, // Disable during submission
+      }
+    );
+
+  // Check for existing draft on mount and show dialog
+  useEffect(() => {
+    if (
+      !draftChecked &&
+      !isDraftLoading &&
+      existingDraft?.draftData &&
+      Object.keys(existingDraft.draftData).length > 0
+    ) {
+      setShowDraftDialog(true);
+      setDraftChecked(true);
+    } else if (!draftChecked && !isDraftLoading) {
+      // No draft found, mark as checked so we don't show dialog
+      setDraftChecked(true);
+    }
+  }, [existingDraft, isDraftLoading, draftChecked]);
+
+  const handleContinueDraft = () => {
+    if (existingDraft?.draftData) {
+      form.reset(existingDraft.draftData as FormData);
+    }
+    setShowDraftDialog(false);
+  };
+
+  const handleStartFresh = () => {
+    // Use the hook's delete function to handle draft deletion and cache cleanup
+    deleteDraft();
+
+    setShowDraftDialog(false);
+    setDraftChecked(false);
+
+    // Reset the form
+    form.reset({
+      isAllDay: false,
       oicRelated: false,
       isIssue: false,
       notForLookAhead: false,
       planningReport: false,
       thirtySixtyNinetyReport: false,
-      // TODO: Remove hardcoded user id 8 - this is temporary for development
       ownerId: 8,
       commsLeadId: 8,
       categoryIds: [],
@@ -74,8 +151,8 @@ export const CreateActivityForm: React.FC = () => {
       sharedWithOrganizationIds: [],
       canEditUserIds: [],
       canViewUserIds: [],
-    } as FormData,
-  });
+    });
+  };
 
   const handleCancel = () => {
     form.reset();
@@ -85,18 +162,26 @@ export const CreateActivityForm: React.FC = () => {
     console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
-      // Transform venueAddress to ensure it's a proper object or null
-      const venueAddress = normalizeVenueAddress(data.venueAddress);
+      // Find the "New" activity status by name
+      const newStatus = lookups.activityStatuses.find(
+        (status) => status.name === DEFAULT_ACTIVITY_STATUS
+      );
+
+      if (!newStatus) {
+        throw new Error(
+          `Activity status "${DEFAULT_ACTIVITY_STATUS}" not found in lookups`
+        );
+      }
 
       // Prepare submit data with junction table arrays
       const formValues = form.getValues();
       const submitData = {
         ...data,
+        activityStatusId: newStatus.id,
         startDate: data.startDate || null,
         endDate: data.endDate || null,
         startTime: data.startTime || null,
         endTime: data.endTime || null,
-        venueAddress: venueAddress,
         categoryIds:
           formValues.categoryIds && formValues.categoryIds.length > 0
             ? formValues.categoryIds
@@ -104,16 +189,6 @@ export const CreateActivityForm: React.FC = () => {
         tagIds:
           formValues.tagIds && formValues.tagIds.length > 0
             ? formValues.tagIds
-            : undefined,
-        relatedActivityIds:
-          formValues.relatedActivityIds &&
-          formValues.relatedActivityIds.length > 0
-            ? formValues.relatedActivityIds
-            : undefined,
-        jointOrganizationIds:
-          formValues.jointOrganizationIds &&
-          formValues.jointOrganizationIds.length > 0
-            ? formValues.jointOrganizationIds
             : undefined,
         commsMaterialIds:
           formValues.commsMaterialIds && formValues.commsMaterialIds.length > 0
@@ -124,29 +199,23 @@ export const CreateActivityForm: React.FC = () => {
           formValues.translationLanguageIds.length > 0
             ? formValues.translationLanguageIds
             : undefined,
-        jointEventOrganizationIds:
-          formValues.jointEventOrganizationIds &&
-          formValues.jointEventOrganizationIds.length > 0
-            ? formValues.jointEventOrganizationIds
+        representatives:
+          formValues.representatives && formValues.representatives.length > 0
+            ? formValues.representatives
             : undefined,
-        representativeIds:
-          formValues.representativeIds &&
-          formValues.representativeIds.length > 0
-            ? formValues.representativeIds
-            : undefined,
-        sharedWithOrganizationIds:
-          formValues.sharedWithOrganizationIds &&
-          formValues.sharedWithOrganizationIds.length > 0
-            ? formValues.sharedWithOrganizationIds
-            : undefined,
-        canEditUserIds:
-          formValues.canEditUserIds && formValues.canEditUserIds.length > 0
-            ? formValues.canEditUserIds
+        sharedWithMinistryIds:
+          formValues.sharedWithMinistryIds &&
+          formValues.sharedWithMinistryIds.length > 0
+            ? formValues.sharedWithMinistryIds
             : undefined,
       };
 
       console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
+
+      // Delete draft after successful creation
+      deleteDraft();
+
       alert('Activity created successfully!');
       // TODO: Navigate to activity detail page or list
       form.reset();
@@ -173,15 +242,10 @@ export const CreateActivityForm: React.FC = () => {
       startTime: 'Start Time',
       endTime: 'End Time',
       leadOrgId: 'Lead Organization',
-      eventLeadOrgId: 'Event Lead Organization',
-      ownerId: 'Owner',
-      commsLeadId: 'Comms Lead',
-      eventLeadId: 'Event Planner',
-      schedulingStatusId: 'Scheduling Status',
-      pitchStatusId: 'Pitch Status',
+      commsContactLeadId: 'Comms Contact',
+      eventPlannerLeadId: 'Event Planner',
       activityStatusId: 'Activity Status',
-      contactMinistryId: 'Contact Ministry',
-      cityId: 'City',
+      leadMinistryId: 'Lead Ministry',
       venueAddress: 'Venue Address',
       street: 'Street Address',
       city: 'City',
@@ -217,10 +281,7 @@ export const CreateActivityForm: React.FC = () => {
   }
 
   // Transform data for form sections
-  const jointOrganizationOptions = lookups.organizations;
-  const ownerOptions = lookups.users;
-  const canEditUserOptions = lookups.users;
-  const relatedActivityOptions = lookups.relatedActivities;
+  const commsLeadOptions = lookups.users;
 
   const ErrorFallback = ({
     error,
@@ -256,12 +317,50 @@ export const CreateActivityForm: React.FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {/* Draft Recovery Dialog */}
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
+
       <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">
-            Fill in the activity details below
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+            <p className="text-muted-foreground">
+              Fill in the activity details below
+            </p>
+          </div>
+
+          {/* Autosave indicator */}
+          <div className="text-sm">
+            {isSaving && (
+              <span className="text-amber-600">💾 Saving draft...</span>
+            )}
+            {lastSaved && !isSaving && (
+              <span className="text-green-600">
+                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+            {isDraftLoading && (
+              <span className="text-gray-500">Loading draft...</span>
+            )}
+          </div>
         </div>
 
         <Form {...form}>
@@ -274,33 +373,25 @@ export const CreateActivityForm: React.FC = () => {
             className="space-y-8"
           >
             <ActivityOverviewSection
-              relatedActivityOptions={relatedActivityOptions}
-              jointOrganizationOptions={jointOrganizationOptions}
               categories={lookups.categories}
               organizations={lookups.organizations}
               tags={lookups.tags}
             />
 
-            <ActivityApprovalsSection
-              form={form}
-              pitchStatusOptions={lookups.pitchStatuses}
-            />
+            <ActivityApprovalsSection form={form} />
 
-            <ActivityScheduleSection
-              form={form}
-              schedulingStatusOptions={lookups.schedulingStatuses}
-            />
+            <ActivityScheduleSection form={form} />
 
             <ActivityCommsSection
-              commsLeadOptions={lookups.users}
               commsMaterialOptions={lookups.commsMaterials}
               translationLanguageOptions={lookups.translationLanguages}
+              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
+              premierRequestedOptions={lookups.premierRequested}
+              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
             />
 
             <ActivityEventSection
-              jointOrganizationOptions={jointOrganizationOptions}
-              eventLeadOrgOptions={lookups.organizations}
-              eventPlannerOptions={lookups.users}
+              eventPlannerOptions={lookups.eventPlanners}
               representativeOptions={lookups.governmentRepresentatives}
             />
 
@@ -309,9 +400,8 @@ export const CreateActivityForm: React.FC = () => {
             <ActivityReportsSection form={form} />
 
             <ActivitySharingSection
-              ownerOptions={ownerOptions}
-              canEditUserOptions={canEditUserOptions}
-              sharedWithOrgOptions={lookups.organizations}
+              commsLeadOptions={commsLeadOptions}
+              sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
             />
 
             {/* Form Actions */}

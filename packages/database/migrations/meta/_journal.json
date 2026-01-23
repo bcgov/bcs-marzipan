@@ -5,22 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1764715398074,
-      "tag": "0000_brown_the_executioner",
+      "when": 1769018188181,
+      "tag": "0000_20250121_initial_tables",
       "breakpoints": true
     },
     {
-      "idx": 1,
+      "idx": 3,
       "version": "7",
-      "when": 1764802750138,
-      "tag": "0001_spotty_pride",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1764981562240,
-      "tag": "0002_bitter_frightful_four",
+      "when": 1767821901519,
+      "tag": "0003_quiet_black_cat",
       "breakpoints": true
     }
   ]

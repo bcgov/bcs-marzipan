@@ -25,54 +25,46 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
         control={form.control}
         name="venueAddress"
         render={({ field }) => {
-          const getVenueValue = (): {
-            street: string;
-            city: string;
-            provinceOrState: string;
-            country: string;
-          } => {
-            if (
-              typeof field.value === 'object' &&
-              !Array.isArray(field.value) &&
-              field.value !== null
-            ) {
-              const venue = field.value as {
-                street?: string;
-                city?: string;
-                provinceOrState?: string;
-                country?: string;
-              };
-              return {
-                street: venue.street || '',
-                city: venue.city || '',
-                provinceOrState: venue.provinceOrState || '',
-                country: venue.country || '',
-              };
-            }
-            return {
-              street: '',
-              city: '',
-              provinceOrState: '',
-              country: '',
-            };
+          // Work directly with venueAddress object, using empty strings for form inputs
+          const currentVenue = field.value || {
+            venueName: null,
+            street: null,
+            city: null,
+            provinceOrState: null,
+            country: null,
           };
 
-          const currentVenue = getVenueValue();
+          const updateField = (
+            fieldName: keyof typeof currentVenue,
+            value: string
+          ) => {
+            const updated = {
+              ...currentVenue,
+              [fieldName]: value.trim() || null,
+            };
+            field.onChange(updated);
+          };
 
           return (
             <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Venue Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter venue name"
+                    value={currentVenue.venueName || ''}
+                    onChange={(e) => updateField('venueName', e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
               <FormItem>
                 <FormLabel>Street Address</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter street address"
-                    value={currentVenue.street}
-                    onChange={(e) => {
-                      field.onChange({
-                        ...currentVenue,
-                        street: e.target.value,
-                      });
-                    }}
+                    value={currentVenue.street || ''}
+                    onChange={(e) => updateField('street', e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -82,13 +74,8 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 <FormControl>
                   <Input
                     placeholder="Enter city"
-                    value={currentVenue.city}
-                    onChange={(e) => {
-                      field.onChange({
-                        ...currentVenue,
-                        city: e.target.value,
-                      });
-                    }}
+                    value={currentVenue.city || ''}
+                    onChange={(e) => updateField('city', e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -98,13 +85,10 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 <FormControl>
                   <Input
                     placeholder="Enter province or state"
-                    value={currentVenue.provinceOrState}
-                    onChange={(e) => {
-                      field.onChange({
-                        ...currentVenue,
-                        provinceOrState: e.target.value,
-                      });
-                    }}
+                    value={currentVenue.provinceOrState || ''}
+                    onChange={(e) =>
+                      updateField('provinceOrState', e.target.value)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -114,13 +98,8 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 <FormControl>
                   <Input
                     placeholder="Enter country"
-                    value={currentVenue.country}
-                    onChange={(e) => {
-                      field.onChange({
-                        ...currentVenue,
-                        country: e.target.value,
-                      });
-                    }}
+                    value={currentVenue.country || ''}
+                    onChange={(e) => updateField('country', e.target.value)}
                   />
                 </FormControl>
                 <FormMessage />
