@@ -9,13 +9,9 @@ import {
 } from '../ui/form';
 import { Badge } from '../ui/badge';
 import { Switch } from '../ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Checkbox } from '../ui/checkbox';
+import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
 import {
   lookAheadStatusOptions,
   lookAheadSectionOptions,
@@ -24,6 +20,7 @@ import { useReports } from '../../hooks/useLookups';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 import { useMemo } from 'react';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 type FormData = CreateActivityRequest;
 
@@ -48,45 +45,11 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
 
   return (
     <ActivityFormSection title="Reports">
-      {/* Confidential Toggle */}
-      <FormField
-        control={form.control}
-        name="isConfidential"
-        render={({ field }) => (
-          <FormItem>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <FormLabel>Confidential</FormLabel>
-                <FormDescription className="text-sm">
-                  Confidential activities will show as placeholders in reports
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value ?? false}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <FormField
         control={form.control}
         name="reportSettings"
         render={({ field }) => {
           const reportSettings = field.value ?? [];
-
-          // Get current omitted status for Look Ahead report
-          const getLookAheadOmitted = () => {
-            if (!lookAheadReport) return false;
-            const setting = reportSettings.find(
-              (s) => s.reportId === lookAheadReport.id
-            );
-            return setting?.omitted ?? false;
-          };
 
           // Get current omitted status for 30/60/90 report
           const getThirtySixtyNinetyOmitted = () => {
@@ -97,10 +60,9 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
             return setting?.omitted ?? false;
           };
 
-          const lookAheadOmitted = getLookAheadOmitted();
           const thirtySixtyNinetyOmitted = getThirtySixtyNinetyOmitted();
 
-          // Update report settings when switches change
+          // Update report settings when checkbox changes
           const updateReportSetting = (reportId: number, omitted: boolean) => {
             const updatedSettings = reportSettings.filter(
               (s) => s.reportId !== reportId
@@ -120,46 +82,14 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
           }
 
           return (
-            <div className="space-y-6">
-              {/* Look Ahead Switch */}
-              {lookAheadReport && (
-                <FormItem>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <FormLabel>Include in Look Ahead</FormLabel>
-                      {lookAheadOmitted && (
-                        <FormDescription className="text-sm">
-                          This activity will be omitted from the Look Ahead
-                          report
-                        </FormDescription>
-                      )}
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={!lookAheadOmitted}
-                        onCheckedChange={(checked) => {
-                          updateReportSetting(lookAheadReport.id, !checked);
-                        }}
-                      />
-                    </FormControl>
-                  </div>
-                </FormItem>
-              )}
-
-              {/* 30/60/90 Switch */}
+            <>
+              {/* 30-60-90 Checkbox */}
               {thirtySixtyNinetyReport && (
                 <FormItem>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <FormLabel>Include in 30/60/90</FormLabel>
-                      {thirtySixtyNinetyOmitted && (
-                        <FormDescription className="text-sm">
-                          This activity will be omitted from the 30/60/90 report
-                        </FormDescription>
-                      )}
-                    </div>
+                  <div className="flex items-center space-x-2">
                     <FormControl>
-                      <Switch
+                      <Checkbox
+                        id="thirty-sixty-ninety"
                         checked={!thirtySixtyNinetyOmitted}
                         onCheckedChange={(checked) => {
                           updateReportSetting(
@@ -169,38 +99,82 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                         }}
                       />
                     </FormControl>
+                    <label
+                      htmlFor="thirty-sixty-ninety"
+                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      30-60-90
+                    </label>
                   </div>
+                  <FormMessage />
                 </FormItem>
               )}
-            </div>
+            </>
           );
         }}
       />
 
-      <FormField
-        control={form.control}
-        name="lookAheadStatus"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Report Status</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value || ''}>
+      {/* Look Ahead Section Title */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Look ahead</h2>
+
+        {/* Executive Summary */}
+        <FormField
+          control={form.control}
+          name="executiveSummary"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Executive summary</FormLabel>
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select report status" />
-                </SelectTrigger>
+                <Textarea
+                  {...field}
+                  value={field.value || ''}
+                  placeholder="Enter executive summary"
+                  rows={4}
+                />
               </FormControl>
-              <SelectContent>
-                {lookAheadStatusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Report Status Radio Buttons */}
+        <FormField
+          control={form.control}
+          name="lookAheadStatus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Report Status</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  value={field.value || ''}
+                  className="flex flex-row space-x-4"
+                >
+                  {lookAheadStatusOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className="flex items-center space-x-2"
+                    >
+                      <RadioGroupItem
+                        value={option.value}
+                        id={`status-${option.value}`}
+                      />
+                      <Label
+                        htmlFor={`status-${option.value}`}
+                        className="cursor-pointer font-normal"
+                      >
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
       <FormField
         control={form.control}

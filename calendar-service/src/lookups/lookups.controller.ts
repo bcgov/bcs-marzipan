@@ -694,6 +694,19 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all reports' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reports retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('reports')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getReports(): Promise<{ success: boolean; data: any[] }> {
+    const data = await this.lookupsService.getReports();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all themes' })
   @ApiResponse({
     status: 200,

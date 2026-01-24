@@ -23,7 +23,7 @@ export const ActivityScheduleSection: React.FC<
   ActivityScheduleSectionProps
 > = ({ form }) => {
   return (
-    <ActivityFormSection title="Schedule">
+    <ActivityFormSection title="Date">
       <FormField
         control={form.control}
         name="isAllDay"

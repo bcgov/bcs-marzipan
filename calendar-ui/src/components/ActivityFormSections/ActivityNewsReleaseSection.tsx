@@ -26,7 +26,7 @@ import { useState } from 'react';
 
 type FormData = CreateActivityRequest & {
   translationLanguageIds?: number[];
-  newsReleaseOriginId?: number | null;git 
+  newsReleaseOriginId?: number | null;
   newsReleaseDistributionId?: number | null;
 };
 

@@ -89,5 +89,8 @@
     "**/*.{json,md,css,scss,less,html,yaml,yml}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "@radix-ui/react-radio-group": "^1.3.8"
   }
 }

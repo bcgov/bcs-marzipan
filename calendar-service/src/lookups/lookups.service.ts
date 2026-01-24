@@ -21,6 +21,7 @@ import {
   cities,
   ministries,
   themes,
+  reports,
 } from '@corpcal/database/schema';
 import type {
   LookupItem,
@@ -35,6 +36,7 @@ import type {
   GovernmentRepresentativeLookupItem,
   MinistryLookupItem,
   ThemeLookupItem,
+  ReportResponse,
 } from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
 
@@ -262,6 +264,28 @@ export class LookupsService {
       name: status.name,
       displayName: status.displayName,
     }));
+  }
+
+  /**
+   * Get all active reports
+   */
+  async getReports(): Promise<ReportResponse[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: reports.id,
+        name: reports.name,
+        displayName: reports.displayName,
+        sortOrder: reports.sortOrder,
+        isActive: reports.isActive,
+        visibility: reports.visibility,
+        config: reports.config,
+        description: reports.description,
+      })
+      .from(reports)
+      .where(eq(reports.isActive, true))
+      .orderBy(reports.sortOrder);
+
+    return results as ReportResponse[];
   }
 
   /**
