@@ -14,12 +14,6 @@ describe('ActivitiesController', () => {
   const mockActivityResponse = createMockActivityResponse({
     lookAheadStatus: 'none',
     lookAheadSection: 'events',
-    tags: undefined,
-    commsMaterials: undefined,
-    translationsRequired: undefined,
-    representativesAttending: undefined,
-    sharedWith: undefined,
-    commsContacts: undefined,
   });
 
   const mockActivitiesService = {
