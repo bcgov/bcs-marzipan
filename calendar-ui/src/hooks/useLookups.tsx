@@ -19,6 +19,8 @@ import {
   fetchNewsReleaseOrigins,
   fetchActivitiesForLookup,
   fetchReports,
+  fetchDateStatuses,
+  fetchTimeStatuses,
   type LookupItem,
   type LookupQueryParams,
   type CategoryLookupItem,
@@ -151,6 +153,22 @@ export function useReports() {
   return useQuery<ReportResponse[]>({
     queryKey: ['reports'],
     queryFn: () => fetchReports(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useDateStatuses() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'date-statuses'],
+    queryFn: () => fetchDateStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useTimeStatuses() {
+  return useQuery<LookupItem[]>({
+    queryKey: ['lookups', 'time-statuses'],
+    queryFn: () => fetchTimeStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

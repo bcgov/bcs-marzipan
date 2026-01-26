@@ -1,12 +1,20 @@
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, useFormContext } from 'react-hook-form';
+import { useState } from 'react';
 import {
   FormField,
   FormItem,
   FormLabel,
   FormControl,
   FormMessage,
+  FormDescription,
 } from '../ui/form';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Switch } from '../ui/switch';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -14,18 +22,37 @@ type FormData = CreateActivityRequest;
 
 type ActivityVenueSectionProps = {
   form: UseFormReturn<FormData>;
+  eventPlannerOptions: Array<{ value: string; label: string }>;
 };
 
 export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
   form,
+  eventPlannerOptions,
 }) => {
+  const [isVenueTbd, setIsVenueTbd] = useState(false);
+
   return (
     <ActivityFormSection title="Venue">
+      {/* Venue TBD Toggle */}
+      <div className="mb-4 flex items-center space-x-3">
+        <Switch
+          id="venue-tbd"
+          checked={isVenueTbd}
+          onCheckedChange={setIsVenueTbd}
+        />
+        <label
+          htmlFor="venue-tbd"
+          className="cursor-pointer text-sm leading-none font-medium"
+        >
+          Venue TBD
+        </label>
+      </div>
+
       <FormField
         control={form.control}
         name="venueAddress"
         render={({ field }) => {
-          // Work directly with venueAddress object, using empty strings for form inputs
+          // Combine all address fields into a single text value for display
           const currentVenue = field.value || {
             venueName: null,
             street: null,
@@ -34,77 +61,96 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
             country: null,
           };
 
-          const updateField = (
-            fieldName: keyof typeof currentVenue,
-            value: string
-          ) => {
+          // Create a combined address string for the textarea
+          const addressParts = [
+            currentVenue.street,
+            currentVenue.city,
+            currentVenue.provinceOrState,
+            currentVenue.country,
+          ].filter(Boolean);
+          const combinedAddress = addressParts.join('\n');
+
+          const handleAddressChange = (value: string) => {
+            // Store the raw text in street field for now
+            // This is a simplification - ideally we'd parse it or store separately
             const updated = {
               ...currentVenue,
-              [fieldName]: value.trim() || null,
+              street: value.trim() || null,
+              city: null,
+              provinceOrState: null,
+              country: null,
             };
             field.onChange(updated);
           };
 
           return (
-            <div className="space-y-4">
-              <FormItem>
-                <FormLabel>Venue Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter venue name"
-                    value={currentVenue.venueName || ''}
-                    onChange={(e) => updateField('venueName', e.target.value)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <FormItem>
-                <FormLabel>Street Address</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter street address"
-                    value={currentVenue.street || ''}
-                    onChange={(e) => updateField('street', e.target.value)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <FormItem>
-                <FormLabel>City</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter city"
-                    value={currentVenue.city || ''}
-                    onChange={(e) => updateField('city', e.target.value)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <FormItem>
-                <FormLabel>Province/State</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter province or state"
-                    value={currentVenue.provinceOrState || ''}
-                    onChange={(e) =>
-                      updateField('provinceOrState', e.target.value)
-                    }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              <FormItem>
-                <FormLabel>Country</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter country"
-                    value={currentVenue.country || ''}
-                    onChange={(e) => updateField('country', e.target.value)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            </div>
+            <FormItem>
+              <FormLabel className="flex items-center gap-1">
+                Venue <span className="text-destructive">*</span>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter venue address"
+                  value={combinedAddress || currentVenue.street || ''}
+                  onChange={(e) => handleAddressChange(e.target.value)}
+                  rows={6}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
+
+      <FormField
+        control={form.control}
+        name="eventPlannerLeadId"
+        render={({ field }) => {
+          // Derive the combobox value from form state
+          const eventPlannerLeadId = field.value;
+          const eventPlannerLeadName = form.watch('eventPlannerLeadName');
+
+          const comboboxValue: FreeformComboboxValue = eventPlannerLeadId
+            ? { type: 'option', value: eventPlannerLeadId.toString() }
+            : eventPlannerLeadName
+              ? { type: 'freeform', value: eventPlannerLeadName }
+              : null;
+
+          const handleChange = (value: FreeformComboboxValue) => {
+            if (!value) {
+              field.onChange(null);
+              form.setValue('eventPlannerLeadName', null);
+            } else if (value.type === 'option') {
+              // Convert string value to integer for eventPlannerLeadId
+              field.onChange(parseInt(value.value, 10));
+              form.setValue('eventPlannerLeadName', null);
+            } else {
+              field.onChange(null);
+              form.setValue('eventPlannerLeadName', value.value);
+            }
+          };
+
+          return (
+            <FormItem>
+              <FormLabel>Event Planner</FormLabel>
+              <FormControl>
+                <FreeformCombobox
+                  options={eventPlannerOptions}
+                  value={comboboxValue}
+                  onChange={handleChange}
+                  placeholder="Select event planner"
+                  searchPlaceholder="Search event planners..."
+                  emptyMessage="No event planners found."
+                  freeformLabel="Other"
+                  freeformDescription="Can't find the event planner?"
+                />
+              </FormControl>
+              <FormDescription>
+                Select an event planner from the list, or type to enter a custom
+                name
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
           );
         }}
       />

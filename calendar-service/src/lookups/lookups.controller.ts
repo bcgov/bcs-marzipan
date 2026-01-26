@@ -694,6 +694,32 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all date statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Date statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('date-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getDateStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getDateStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all time statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Time statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('time-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getTimeStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getTimeStatuses();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all reports' })
   @ApiResponse({
     status: 200,

@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
 } from '../components/ui/popover';
 import { useFormLookups } from '../hooks/useFormLookups';
+import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
   ActivityOverviewSection,
   ActivityScheduleSection,
@@ -42,6 +43,10 @@ export const CreateActivityForm: React.FC = () => {
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
 
+  // Fetch date and time statuses
+  const { data: dateStatuses } = useDateStatuses();
+  const { data: timeStatuses } = useTimeStatuses();
+
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
@@ -61,6 +66,25 @@ export const CreateActivityForm: React.FC = () => {
       reportSettings: [],
     } as Partial<FormData>,
   });
+
+  // Set default date and time statuses to "unknown" when they're loaded
+  useEffect(() => {
+    if (dateStatuses && !form.getValues('dateStatusId')) {
+      const unknownStatus = dateStatuses.find((s) => s.name === 'unknown');
+      if (unknownStatus) {
+        form.setValue('dateStatusId', unknownStatus.id as number);
+      }
+    }
+  }, [dateStatuses, form]);
+
+  useEffect(() => {
+    if (timeStatuses && !form.getValues('timeStatusId')) {
+      const unknownStatus = timeStatuses.find((s) => s.name === 'unknown');
+      if (unknownStatus) {
+        form.setValue('timeStatusId', unknownStatus.id as number);
+      }
+    }
+  }, [timeStatuses, form]);
 
   const handleCancel = () => {
     form.reset();
@@ -282,7 +306,6 @@ export const CreateActivityForm: React.FC = () => {
                 {/* Event Section */}
                 <div className="rounded-md border border-gray-300 p-6">
                   <ActivityEventSection
-                    eventPlannerOptions={lookups.eventPlanners}
                     representativeOptions={lookups.governmentRepresentatives}
                     premierRequestedOptions={lookups.premierRequested}
                   />
@@ -290,13 +313,15 @@ export const CreateActivityForm: React.FC = () => {
 
                 {/* Venue Section */}
                 <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityVenueSection form={form} />
+                  <ActivityVenueSection
+                    form={form}
+                    eventPlannerOptions={lookups.eventPlanners}
+                  />
                 </div>
 
                 {/* Sharing Section */}
                 <div className="rounded-md border border-gray-300 p-6">
                   <ActivitySharingSection
-                    commsLeadOptions={commsLeadOptions}
                     sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
                   />
                 </div>

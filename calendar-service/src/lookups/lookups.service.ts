@@ -22,6 +22,8 @@ import {
   ministries,
   themes,
   reports,
+  dateStatuses,
+  timeStatuses,
 } from '@corpcal/database/schema';
 import type {
   LookupItem,
@@ -256,6 +258,52 @@ export class LookupsService {
       .from(pitchStatuses)
       .where(eq(pitchStatuses.isActive, true))
       .orderBy(pitchStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active date statuses
+   */
+  async getDateStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: dateStatuses.id,
+        name: dateStatuses.name,
+        displayName: dateStatuses.displayName,
+      })
+      .from(dateStatuses)
+      .where(eq(dateStatuses.isActive, true))
+      .orderBy(dateStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active time statuses
+   */
+  async getTimeStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: timeStatuses.id,
+        name: timeStatuses.name,
+        displayName: timeStatuses.displayName,
+      })
+      .from(timeStatuses)
+      .where(eq(timeStatuses.isActive, true))
+      .orderBy(timeStatuses.sortOrder);
 
     return results.map((status) => ({
       id: status.id,

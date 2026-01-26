@@ -181,6 +181,20 @@ export async function fetchActivitiesForLookup(
   return res.data.data;
 }
 
+export async function fetchDateStatuses(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/date-statuses'
+  );
+  return res.data.data;
+}
+
+export async function fetchTimeStatuses(): Promise<LookupItem[]> {
+  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+    '/lookups/time-statuses'
+  );
+  return res.data.data;
+}
+
 export async function fetchCities(): Promise<CityLookupItem[]> {
   const res = await api.get<{ success: boolean; data: CityLookupItem[] }>(
     '/lookups/cities'
