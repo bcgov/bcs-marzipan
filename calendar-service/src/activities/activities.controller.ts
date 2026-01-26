@@ -38,6 +38,7 @@ import type {
 } from '@corpcal/shared/schemas';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
+import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { Category } from '@corpcal/database/types';
 import {
   CreateActivityDto,
@@ -73,6 +74,7 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @RequirePermission('activities.create')
   @Post()
   @UsePipes(new ZodValidationPipe(createActivityRequestSchema))
   async create(
@@ -104,6 +106,7 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @RequirePermission('activities.view')
   @Get()
   async findAll(
     @Query(new ZodValidationPipe(filterActivitiesQuerySchema))
@@ -141,6 +144,7 @@ export class ActivitiesController {
     description: 'Categories retrieved successfully',
     type: ActivityArrayResponseWrapperDto,
   })
+  @RequirePermission('activities.view')
   @Get('categories')
   async fetchCategories(): Promise<{
     success: boolean;
@@ -175,6 +179,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.view')
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number
@@ -211,6 +216,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -250,6 +256,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id')
   async put(
     @Param('id', ParseIntPipe) id: number,
@@ -290,6 +297,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.delete')
   @Delete(':id/soft-delete')
   async softDelete(
     @Param('id', ParseIntPipe) id: number,
@@ -333,6 +341,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.view')
   @Get(':id/history')
   async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
     success: boolean;
@@ -365,6 +374,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Post(':id/cancel-changes')
   async cancelChanges(
     @Param('id', ParseIntPipe) id: number
@@ -400,6 +410,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.delete')
   @Delete(':id')
   async remove(
     @Param('id', ParseIntPipe) id: number
@@ -432,6 +443,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/categories')
   async updateCategories(
     @Param('id', ParseIntPipe) id: number,
@@ -473,6 +485,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/themes')
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
@@ -511,6 +524,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/tags')
   async updateTags(
     @Param('id', ParseIntPipe) id: number,
@@ -549,6 +563,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/shared-with')
   async updateSharedWith(
     @Param('id', ParseIntPipe) id: number,
