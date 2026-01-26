@@ -82,7 +82,8 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                   placeholder="Start typing an address..."
                   defaultValue={currentVenue.street || ''}
                   onAddressSelect={handleAddressSelect}
-                  required
+                  required={!isVenueTbd}
+                  disabled={isVenueTbd}
                 />
                 <FormMessage />
               </FormItem>
@@ -94,6 +95,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                     value={currentVenue.city || ''}
                     disabled
                     placeholder="City will be populated from address"
+                    className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
               </FormItem>
@@ -105,6 +107,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                     value={currentVenue.provinceOrState || ''}
                     disabled
                     placeholder="Province will be populated from address"
+                    className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
               </FormItem>
@@ -116,6 +119,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                     value={currentVenue.country || ''}
                     disabled
                     placeholder="Country will be populated from address"
+                    className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
               </FormItem>
