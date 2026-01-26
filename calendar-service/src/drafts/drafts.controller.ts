@@ -26,6 +26,10 @@ import {
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
+import {
+  RequirePermission,
+  RequireAnyPermission,
+} from '../policy/decorators/require-permission.decorator';
 
 @ApiTags('drafts')
 @Controller('drafts')
@@ -54,6 +58,7 @@ export class DraftsController {
     type: Number,
     description: 'User ID (temporary until authentication is implemented)',
   })
+  @RequireAnyPermission('drafts.create', 'drafts.edit')
   @Post('save')
   async saveDraft(
     @Query('userId', ParsePositiveIntPipe) userId: number,
@@ -111,6 +116,7 @@ export class DraftsController {
     type: Number,
     description: 'Entity ID being edited (omit for new items)',
   })
+  @RequirePermission('drafts.view')
   @Get()
   async getDraft(
     @Query('userId', ParsePositiveIntPipe) userId: number,
@@ -143,6 +149,7 @@ export class DraftsController {
     type: Number,
     description: 'User ID',
   })
+  @RequirePermission('drafts.view')
   @Get('list')
   async listDrafts(
     @Query('userId', ParsePositiveIntPipe) userId: number
@@ -185,6 +192,7 @@ export class DraftsController {
     status: 404,
     description: 'Draft not found or does not belong to user',
   })
+  @RequirePermission('drafts.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraft(
@@ -230,6 +238,7 @@ export class DraftsController {
     status: 404,
     description: 'Draft not found',
   })
+  @RequirePermission('drafts.delete')
   @Delete('by-form')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraftByForm(
@@ -256,6 +265,7 @@ export class DraftsController {
     status: 200,
     description: 'Cleanup completed',
   })
+  @RequirePermission('drafts.delete')
   @Post('cleanup')
   async cleanupExpiredDrafts(): Promise<{
     success: boolean;

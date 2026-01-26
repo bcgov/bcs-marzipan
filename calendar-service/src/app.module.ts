@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
+import { PolicyModule } from './policy/policy.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from './policy/guards/permissions.guard';
 import { ActivitiesModule } from './activities/activities.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { DraftsModule } from './drafts/drafts.module';
@@ -31,12 +36,18 @@ function resolveRootEnvPath(): string {
     }),
     LoggerModule,
     DatabaseModule,
+    PolicyModule,
+    AuthModule,
     ActivitiesModule,
     LookupsModule,
     DraftsModule,
     ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+  ],
 })
 export class AppModule {}
