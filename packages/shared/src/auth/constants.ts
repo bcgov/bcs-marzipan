@@ -1,17 +1,48 @@
 /**
  * Auth and RBAC constants
- * System role names and permission keys for type-safe usage
+ * System role names, IDs, and permission keys for type-safe usage
  */
 
+/**
+ * Single source of truth for system role configuration.
+ * Role IDs must match the database seed data.
+ * @see packages/database/seeds/0001_20250121_corpcal_seed_data.sql
+ */
+export const SYSTEM_ROLES_CONFIG = {
+  VIEW_ONLY: { id: 1, name: 'View Only' },
+  EDITOR: { id: 2, name: 'Editor' },
+  ADVANCED: { id: 3, name: 'Advanced' },
+  ADMIN: { id: 4, name: 'Admin' },
+  SYSTEM_ADMIN: { id: 5, name: 'System Admin' },
+} as const;
+
+export type SystemRoleKey = keyof typeof SYSTEM_ROLES_CONFIG;
+
+/**
+ * System role names mapped by key (derived from SYSTEM_ROLES_CONFIG)
+ */
 export const SYSTEM_ROLES = {
-  VIEW_ONLY: 'View Only',
-  EDITOR: 'Editor',
-  ADVANCED: 'Advanced',
-  ADMIN: 'Admin',
-  SYSTEM_ADMIN: 'System Admin',
+  VIEW_ONLY: SYSTEM_ROLES_CONFIG.VIEW_ONLY.name,
+  EDITOR: SYSTEM_ROLES_CONFIG.EDITOR.name,
+  ADVANCED: SYSTEM_ROLES_CONFIG.ADVANCED.name,
+  ADMIN: SYSTEM_ROLES_CONFIG.ADMIN.name,
+  SYSTEM_ADMIN: SYSTEM_ROLES_CONFIG.SYSTEM_ADMIN.name,
+} as const;
+
+/**
+ * System role IDs mapped by key (derived from SYSTEM_ROLES_CONFIG)
+ */
+export const SYSTEM_ROLE_IDS = {
+  VIEW_ONLY: SYSTEM_ROLES_CONFIG.VIEW_ONLY.id,
+  EDITOR: SYSTEM_ROLES_CONFIG.EDITOR.id,
+  ADVANCED: SYSTEM_ROLES_CONFIG.ADVANCED.id,
+  ADMIN: SYSTEM_ROLES_CONFIG.ADMIN.id,
+  SYSTEM_ADMIN: SYSTEM_ROLES_CONFIG.SYSTEM_ADMIN.id,
 } as const;
 
 export type SystemRoleName = (typeof SYSTEM_ROLES)[keyof typeof SYSTEM_ROLES];
+export type SystemRoleId =
+  (typeof SYSTEM_ROLE_IDS)[keyof typeof SYSTEM_ROLE_IDS];
 
 /**
  * Permissions catalog for type-safe usage
