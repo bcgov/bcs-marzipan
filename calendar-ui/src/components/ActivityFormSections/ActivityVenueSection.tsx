@@ -1,4 +1,4 @@
-import { UseFormReturn, useFormContext } from 'react-hook-form';
+import { UseFormReturn } from 'react-hook-form';
 import { useState } from 'react';
 import {
   FormField,
@@ -9,12 +9,15 @@ import {
   FormDescription,
 } from '../ui/form';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '../ui/freeform-combobox';
+import {
+  AddressAutocomplete,
+  type AddressData,
+} from '../ui/address-autocomplete';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -52,7 +55,6 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
         control={form.control}
         name="venueAddress"
         render={({ field }) => {
-          // Combine all address fields into a single text value for display
           const currentVenue = field.value || {
             venueName: null,
             street: null,
@@ -61,43 +63,63 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
             country: null,
           };
 
-          // Create a combined address string for the textarea
-          const addressParts = [
-            currentVenue.street,
-            currentVenue.city,
-            currentVenue.provinceOrState,
-            currentVenue.country,
-          ].filter(Boolean);
-          const combinedAddress = addressParts.join('\n');
-
-          const handleAddressChange = (value: string) => {
-            // Store the raw text in street field for now
-            // This is a simplification - ideally we'd parse it or store separately
+          const handleAddressSelect = (addressData: AddressData) => {
             const updated = {
               ...currentVenue,
-              street: value.trim() || null,
-              city: null,
-              provinceOrState: null,
-              country: null,
+              street: addressData.street,
+              city: addressData.city,
+              provinceOrState: addressData.province,
+              country: addressData.country,
             };
             field.onChange(updated);
           };
 
           return (
-            <FormItem>
-              <FormLabel className="flex items-center gap-1">
-                Venue <span className="text-destructive">*</span>
-              </FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter venue address"
-                  value={combinedAddress || currentVenue.street || ''}
-                  onChange={(e) => handleAddressChange(e.target.value)}
-                  rows={6}
+            <div className="space-y-4">
+              <FormItem>
+                <AddressAutocomplete
+                  label="Street Address"
+                  placeholder="Start typing an address..."
+                  defaultValue={currentVenue.street || ''}
+                  onAddressSelect={handleAddressSelect}
+                  required
                 />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+                <FormMessage />
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>City</FormLabel>
+                <FormControl>
+                  <Input
+                    value={currentVenue.city || ''}
+                    disabled
+                    placeholder="City will be populated from address"
+                  />
+                </FormControl>
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>Province/State</FormLabel>
+                <FormControl>
+                  <Input
+                    value={currentVenue.provinceOrState || ''}
+                    disabled
+                    placeholder="Province will be populated from address"
+                  />
+                </FormControl>
+              </FormItem>
+
+              <FormItem>
+                <FormLabel>Country</FormLabel>
+                <FormControl>
+                  <Input
+                    value={currentVenue.country || ''}
+                    disabled
+                    placeholder="Country will be populated from address"
+                  />
+                </FormControl>
+              </FormItem>
+            </div>
           );
         }}
       />

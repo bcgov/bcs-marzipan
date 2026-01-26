@@ -779,4 +779,52 @@ export class LookupsController {
     const data = await this.lookupsService.updateTheme(id, body);
     return { success: true, data };
   }
+
+  @ApiOperation({ summary: 'Search for Canadian addresses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Address suggestions retrieved successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        searchTerm: { type: 'string' },
+        country: { type: 'string', default: 'CAN' },
+        lastId: { type: 'string' },
+      },
+    },
+  })
+  @Post('address/find')
+  async findAddresses(
+    @Body() body: { searchTerm: string; country?: string; lastId?: string }
+  ): Promise<{ success: boolean; data: any[] }> {
+    const data = await this.lookupsService.findAddresses(
+      body.searchTerm,
+      body.country,
+      body.lastId
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Retrieve full address details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Address details retrieved successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+      },
+    },
+  })
+  @Post('address/retrieve')
+  async retrieveAddress(
+    @Body() body: { id: string }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.retrieveAddress(body.id);
+    return { success: true, data };
+  }
 }

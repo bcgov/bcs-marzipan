@@ -315,6 +315,77 @@ export class LookupsService {
   }
 
   /**
+   * Search for Canadian addresses using Canada Post API
+   */
+  async findAddresses(
+    searchTerm: string,
+    country: string = 'CAN',
+    lastId?: string
+  ): Promise<any[]> {
+    const apiKey = process.env.CANADA_POST_API_KEY;
+    if (!apiKey) {
+      throw new Error('CANADA_POST_API_KEY environment variable not set');
+    }
+
+    const params = new URLSearchParams({
+      Key: apiKey,
+      SearchTerm: searchTerm,
+      Country: country,
+      ...(lastId && { LastId: lastId }),
+    });
+
+    const url = `https://ws1.postescanada-canadapost.ca/AddressComplete/Interactive/Find/v2.10/json3ex.ws?${params.toString()}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Canada Post API error: ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+    return data.Items || [];
+  }
+
+  /**
+   * Retrieve full address details using Canada Post API
+   */
+  async retrieveAddress(id: string): Promise<any> {
+    const apiKey = process.env.CANADA_POST_API_KEY;
+    if (!apiKey) {
+      throw new Error('CANADA_POST_API_KEY environment variable not set');
+    }
+
+    const params = new URLSearchParams({
+      Key: apiKey,
+      Id: id,
+    });
+
+    const url = `https://ws1.postescanada-canadapost.ca/AddressComplete/Interactive/Retrieve/v2.11/json3ex.ws?${params.toString()}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Canada Post API error: ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+    const items = data.Items || [];
+
+    if (items.length === 0) {
+      throw new Error('No address found');
+    }
+
+    const item = items[0];
+    return {
+      street: `${item.Line1}${item.Line2 ? ' ' + item.Line2 : ''}`.trim(),
+      city: item.City,
+      province: item.ProvinceName,
+      provinceCode: item.ProvinceCode,
+      country: item.CountryName,
+      countryCode: item.CountryIso2,
+      postalCode: item.PostalCode,
+    };
+  }
+
+  /**
    * Get all active reports
    */
   async getReports(): Promise<ReportResponse[]> {
