@@ -4,9 +4,13 @@ import { RateLimitInterceptor } from './common/interceptors/rate-limit.intercept
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { setupSwagger } from './common/swagger/swagger.config';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Enable cookie parsing for httpOnly auth cookies
+  app.use(cookieParser());
 
   // Apply rate limiting globally
   const configService = app.get(ConfigService);
@@ -22,10 +26,10 @@ async function bootstrap() {
         'http://localhost:8080',
       ];
 
-  // Enable CORS for development
+  // Enable CORS with credentials for httpOnly cookie authentication
   app.enableCors({
     origin: allowedOrigins,
-    credentials: true,
+    credentials: true, // Required for httpOnly cookie auth
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   });

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
+import { createLogger } from '../lib/logger';
+import { useAuth } from './useAuth';
 
 // Add an optional callback to notify when a draft is created for the first time
 export interface UseAutoSaveOptions {
@@ -15,13 +17,15 @@ export interface UseAutoSaveOptions {
 }
 
 export function useAutoSave(
-  userId: number,
   formType: string,
   formData: Record<string, any>,
   entityId?: number,
   options: UseAutoSaveOptions = {},
   defaultFormData?: Record<string, any>
 ) {
+  // Get userId from auth context
+  const { user, isAuthenticated } = useAuth();
+  const userId = user?.id;
   const {
     debounceMs = 2000,
     enabled = true,
@@ -42,18 +46,28 @@ export function useAutoSave(
   // Track if a draft was created after mount
   const draftCreatedRef = useRef(false);
 
-  // Query key for caching
-  const draftQueryKey = ['draft', userId, formType, entityId];
+  // Query key for caching - use null-safe userId
+  const draftQueryKey = [
+    'draft',
+    userId ?? 'unauthenticated',
+    formType,
+    entityId,
+  ];
 
-  // Load existing draft on mount
+  // Load existing draft on mount (only when authenticated)
   const {
     data: existingDraft,
     isLoading: isDraftLoading,
     error: draftLoadError,
   } = useQuery<DraftResponse | null>({
     queryKey: draftQueryKey,
-    queryFn: () => draftsApi.getDraft(userId, formType, entityId),
-    enabled: enabled && !!userId,
+    queryFn: () => {
+      if (!userId) {
+        return Promise.resolve(null);
+      }
+      return draftsApi.getDraft(userId, formType, entityId);
+    },
+    enabled: enabled && isAuthenticated && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -93,12 +107,16 @@ export function useAutoSave(
 
   // Save draft mutation
   const { mutate: saveDraftMutation } = useMutation({
-    mutationFn: () =>
-      draftsApi.saveDraft(userId, {
+    mutationFn: () => {
+      if (!userId) {
+        return Promise.reject(new Error('User not authenticated'));
+      }
+      return draftsApi.saveDraft(userId, {
         formType,
         entityId,
         draftData: formData,
-      }),
+      });
+    },
     onMutate: () => {
       setIsSaving(true);
     },
@@ -126,6 +144,9 @@ export function useAutoSave(
   // Delete draft mutation
   const { mutate: deleteDraftMutation } = useMutation({
     mutationFn: () => {
+      if (!userId) {
+        return Promise.reject(new Error('User not authenticated'));
+      }
       return draftsApi.deleteDraftByForm(userId, formType, entityId);
     },
     onMutate: () => {
@@ -139,7 +160,7 @@ export function useAutoSave(
       // Invalidate to ensure fresh data on next mount
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
-    onError: (_error: any) => {
+    onError: (error: any) => {
       // Even on error, log it but keep the cache cleared
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
@@ -288,12 +309,12 @@ export function useAutoSave(
       clearTimeout(timeoutRef.current);
     }
     saveDraftMutation();
-  }, [saveDraftMutation]);
+  }, [saveDraftMutation, formType, entityId]);
 
   // Delete draft function
   const deleteDraft = useCallback(() => {
     deleteDraftMutation();
-  }, [deleteDraftMutation]);
+  }, [deleteDraftMutation, formType, entityId]);
 
   // Clear draft and reset state
   const clearDraft = useCallback(() => {

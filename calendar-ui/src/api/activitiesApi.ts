@@ -1,4 +1,4 @@
-import api from './axios.js';
+import api from './axios';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,

@@ -9,6 +9,7 @@ import {
   Delete,
   ParseIntPipe,
   Query,
+  UseGuards,
   UsePipes,
 } from '@nestjs/common';
 import {
@@ -36,8 +37,14 @@ import type {
   FilterActivitiesQueryParams,
   SoftDeleteRequest,
 } from '@corpcal/shared/schemas';
+import type { AuthUser } from '@corpcal/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { RequestContext } from '../policy/decorators/request-context.decorator';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import type { Category } from '@corpcal/database/types';
 import {
   CreateActivityDto,
@@ -73,17 +80,18 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @RequirePermission('activities.create')
   @Post()
   @UsePipes(new ZodValidationPipe(createActivityRequestSchema))
   async create(
-    @Body() body: CreateActivityRequest
+    @Body() body: CreateActivityRequest,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     this.logger.debug(
       `Create activity request received: ${JSON.stringify(body)}`
     );
 
-    // body is now validated and typed by ZodValidationPipe
-    const result = await this.activitiesService.create(body);
+    const result = await this.activitiesService.create(body, user.id);
     return {
       success: true,
       data: result,
@@ -104,10 +112,12 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @RequirePermission('activities.view')
   @Get()
   async findAll(
     @Query(new ZodValidationPipe(filterActivitiesQuerySchema))
-    query: FilterActivitiesQueryParams
+    query: FilterActivitiesQueryParams,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse[] }> {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
@@ -124,7 +134,10 @@ export class ActivitiesController {
       query.city !== undefined ||
       query.isIssue !== undefined;
     const filters = hasFilters ? query : undefined;
-    const results = await this.activitiesService.findAll(filters);
+    const results = await this.activitiesService.findAll(
+      filters,
+      ctx.dataScope
+    );
     return {
       success: true,
       data: results,
@@ -141,6 +154,7 @@ export class ActivitiesController {
     description: 'Categories retrieved successfully',
     type: ActivityArrayResponseWrapperDto,
   })
+  @RequirePermission('activities.view')
   @Get('categories')
   async fetchCategories(): Promise<{
     success: boolean;
@@ -175,6 +189,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.view')
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number
@@ -211,14 +226,15 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateActivityRequestSchema))
-    body: UpdateActivityRequest
+    body: UpdateActivityRequest,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    // body is now validated and typed by ZodValidationPipe
-    const result = await this.activitiesService.update(id, body);
+    const result = await this.activitiesService.update(id, body, user.id);
     return {
       success: true,
       data: result,
@@ -250,15 +266,16 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id')
   async put(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(createActivityRequestSchema))
-    body: CreateActivityRequest
+    body: CreateActivityRequest,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     // PUT uses createActivityRequestSchema (all fields) but calls update
-    // This ensures all fields are provided for a full update
-    const result = await this.activitiesService.update(id, body);
+    const result = await this.activitiesService.update(id, body, user.id);
     return {
       success: true,
       data: result,
@@ -290,22 +307,18 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @UseGuards(CanDeleteActivityGuard)
   @Delete(':id/soft-delete')
   async softDelete(
     @Param('id', ParseIntPipe) id: number,
-    // Note: False positives - ESLint has type resolution limitations with Zod v4's type inference.
-    // The schema is properly typed and validated at runtime by ZodValidationPipe.
-
     @Body(new ZodValidationPipe(softDeleteRequestSchema))
-    body: SoftDeleteRequest
+    body: SoftDeleteRequest,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const result = await this.activitiesService.softDelete(
       id,
-
       body.reason,
-      currentUserId
+      user.id
     );
     return {
       success: true,
@@ -333,6 +346,7 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.view')
   @Get(':id/history')
   async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
     success: boolean;
@@ -365,16 +379,13 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Post(':id/cancel-changes')
   async cancelChanges(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
-    const result = await this.activitiesService.cancelChanges(
-      id,
-      currentUserId
-    );
+    const result = await this.activitiesService.cancelChanges(id, user.id);
     return {
       success: true,
       data: result,
@@ -400,11 +411,13 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @UseGuards(CanDeleteActivityGuard)
   @Delete(':id')
   async remove(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser
   ): Promise<{ message: string }> {
-    return this.activitiesService.remove(id);
+    return this.activitiesService.remove(id, user.id);
   }
 
   @ApiOperation({
@@ -432,15 +445,18 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/categories')
   async updateCategories(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateCategoriesSchema))
-    body: { categoryIds: number[] }
+    body: { categoryIds: number[] },
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateCategories(
       id,
-      body.categoryIds
+      body.categoryIds,
+      user.id
     );
     return {
       success: true,
@@ -473,13 +489,19 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/themes')
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateThemesSchema))
-    body: { themeIds: string[] }
+    body: { themeIds: string[] },
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateThemes(id, body.themeIds);
+    const result = await this.activitiesService.updateThemes(
+      id,
+      body.themeIds,
+      user.id
+    );
     return {
       success: true,
       data: result,
@@ -511,13 +533,19 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/tags')
   async updateTags(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateTagsSchema))
-    body: { tagIds: number[] }
+    body: { tagIds: number[] },
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateTags(id, body.tagIds);
+    const result = await this.activitiesService.updateTags(
+      id,
+      body.tagIds,
+      user.id
+    );
     return {
       success: true,
       data: result,
@@ -549,15 +577,18 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @RequirePermission('activities.edit')
   @Put(':id/shared-with')
   async updateSharedWith(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateSharedWithSchema))
-    body: { teamIds: number[] }
+    body: { teamIds: number[] },
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateSharedWith(
       id,
-      body.teamIds
+      body.teamIds,
+      user.id
     );
     return {
       success: true,

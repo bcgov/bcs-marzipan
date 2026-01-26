@@ -12,7 +12,7 @@ The pre-commit hook ensures that:
 
 - Code follows linting rules (ESLint)
 - Code is properly formatted (Prettier)
-- Tests related to changed files pass (Jest/Vitest)
+- Tests related to changed files pass (Vitest)
 
 If any of these checks fail, the commit is blocked until the issues are resolved.
 
@@ -50,13 +50,13 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
    eslint --fix
    ```
 
-2. **Jest Tests** - Runs tests related to changed files:
+2. **Vitest** - Runs tests related to changed files:
 
    ```bash
-   node scripts/test/jest-related.js
+   node scripts/test/vitest-related.js calendar-service
    ```
 
-   The script uses Jest's `--findRelatedTests` flag to automatically find and run test files related to the changed source files. E2E tests are excluded.
+   The script runs Vitest for the calendar-service workspace; Vitest finds and runs test files related to the changed source files. E2E tests are excluded via config.
 
 #### TypeScript/TSX Files (`calendar-ui/**/*.{ts,tsx}`)
 
@@ -66,10 +66,10 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
    eslint --fix
    ```
 
-2. **Vitest Tests** - Runs tests related to changed files:
+2. **Vitest** - Runs tests related to changed files:
 
    ```bash
-   node scripts/test/vitest-related.js
+   node scripts/test/vitest-related.js calendar-ui
    ```
 
    Vitest automatically finds related test files when given source files.
@@ -90,7 +90,7 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
 
 ### 3. Test Scripts
 
-The test scripts (`scripts/test/jest-related.js` and `scripts/test/vitest-related.js`) are smart about what they run:
+The test script (`scripts/test/vitest-related.js`) is smart about what it runs:
 
 - **Filter source files**: Only process actual source files, not test files themselves
 - **Find related tests**: Automatically discover which tests are related to changed files
@@ -106,7 +106,7 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 3. You commit: `git commit -m "Update lookups controller"`
 4. Pre-commit hook runs:
    - ESLint checks and fixes `lookups.controller.ts`
-   - Jest finds and runs `lookups.controller.spec.ts`
+   - Vitest finds and runs `lookups.controller.spec.ts`
    - If tests pass, commit succeeds
    - If tests fail, commit is blocked
 
@@ -125,8 +125,7 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 - **`.husky/pre-push`** - Husky hook that validates branch names
 - **`commitlint.config.js`** - Commitlint configuration for Conventional Commits
 - **`package.json`** - Contains `lint-staged` configuration and Commitizen setup
-- **`scripts/test/jest-related.js`** - Jest test runner for calendar-service
-- **`scripts/test/vitest-related.js`** - Vitest test runner for calendar-ui
+- **`scripts/test/vitest-related.js`** - Vitest test runner for all workspaces (calendar-service, calendar-ui, packages)
 
 ## Troubleshooting
 
@@ -144,7 +143,7 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 
 ### Tests are running for unrelated files
 
-- The test scripts use Jest/Vitest's related test detection
+- The test script uses Vitest's related test detection
 - If tests are running unexpectedly, check the test file imports and dependencies
 - Review the test script logic in `scripts/test/`
 

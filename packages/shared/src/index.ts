@@ -4,6 +4,9 @@ export * from './utils';
 // Constants - Centralized enum values and types
 export * from './constants/constants';
 
+// Auth - Types, constants, and schemas for authentication and RBAC
+export * from './auth';
+
 // API Types - Use these for frontend and API contract
 // These types represent the API contract, decoupled from the database schema
 export * from './api';

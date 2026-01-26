@@ -2,6 +2,8 @@ import { DrawerProps } from '@fluentui/react-components';
 import * as React from 'react';
 
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { PERMISSIONS } from '@corpcal/shared';
 import {
   Hamburger,
   NavCategory,
@@ -94,6 +96,10 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   const [type] = React.useState<DrawerType>('inline');
   const [isMultiple] = React.useState(true);
   const location = useLocation();
+  const { hasPermission } = useAuth();
+
+  // Check if user has permission to view settings (admin-level access)
+  const canManageSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
 
   // Tabster prop used to restore focus to the navigation trigger for overlay nav drawers
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
@@ -159,23 +165,27 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             </NavSubItemGroup>
           </NavCategory>
 
-          <NavSectionHeader>Manage</NavSectionHeader>
-          <NavItem icon={<HealthPlans />} value="10">
-            Users
-          </NavItem>
-          <NavCategory value="11">
-            <NavItem icon={<Settings />} href="/settings" value="12">
-              Settings
-            </NavItem>
-            <NavSubItemGroup>
-              <NavSubItem href={linkDestination} value="13">
-                Form Templates
-              </NavSubItem>
-              <NavSubItem href={linkDestination} value="14">
-                Data Retention
-              </NavSubItem>
-            </NavSubItemGroup>
-          </NavCategory>
+          {canManageSettings && (
+            <>
+              <NavSectionHeader>Manage</NavSectionHeader>
+              <NavItem icon={<HealthPlans />} value="10">
+                Users
+              </NavItem>
+              <NavCategory value="11">
+                <NavItem icon={<Settings />} href="/settings" value="12">
+                  Settings
+                </NavItem>
+                <NavSubItemGroup>
+                  <NavSubItem href={linkDestination} value="13">
+                    Form Templates
+                  </NavSubItem>
+                  <NavSubItem href={linkDestination} value="14">
+                    Data Retention
+                  </NavSubItem>
+                </NavSubItemGroup>
+              </NavCategory>
+            </>
+          )}
         </NavDrawerBody>
       </NavDrawer>
       <div className={styles.content}>

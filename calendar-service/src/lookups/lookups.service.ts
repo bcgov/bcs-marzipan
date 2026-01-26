@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and, inArray, sql, ne } from 'drizzle-orm';
+import { eq, and, inArray, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility, ActivityStatusName } from '@corpcal/shared';
+import type { ActivityStatusName } from '@corpcal/shared';
 import {
   categories,
   organizations,
@@ -17,7 +17,6 @@ import {
   newsReleaseDistributions,
   premierRequested,
   newsReleaseOrigins,
-  teamCategories,
   cities,
   ministries,
   themes,
@@ -41,6 +40,7 @@ import type {
   ReportResponse,
 } from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
+import { getVisibleCategoryIds } from '../policy/category-scoping.helper';
 
 @Injectable()
 export class LookupsService {
@@ -52,103 +52,33 @@ export class LookupsService {
    * @returns Categories that are either global or team-scoped for the user's teams
    */
   async getCategories(userTeams?: number[]): Promise<CategoryLookupItem[]> {
-    if (userTeams && userTeams.length > 0) {
-      // Return global categories OR team-scoped categories for user's teams
-      // Query global categories
-      const globalCategories = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        );
-
-      // Query team-scoped categories accessible to user's teams
-      const teamScopedCategories = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .innerJoin(
-          teamCategories,
-          and(
-            eq(categories.id, teamCategories.categoryId),
-            eq(teamCategories.isActive, true),
-            inArray(teamCategories.teamId, userTeams)
-          )
-        )
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'team' satisfies Visibility}`
-          )
-        );
-
-      // Combine and deduplicate by ID
-      const allCategories = [...globalCategories, ...teamScopedCategories];
-      const uniqueCategories = Array.from(
-        new Map(allCategories.map((cat) => [cat.id, cat])).values()
-      );
-
-      return uniqueCategories
-        .sort((a, b) =>
-          (a.displayName || a.name).localeCompare(b.displayName || b.name)
-        )
-        .map((cat) => ({
-          id: cat.id,
-          label: cat.displayName || cat.name,
-          value: cat.id,
-          name: cat.name,
-          displayName: cat.displayName,
-          sortOrder: cat.sortOrder,
-          isActive: cat.isActive,
-          allowsPitch: cat.allowsPitch,
-        }));
-    } else {
-      // If no teams provided, return only global categories
-      const results = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        )
-        .orderBy(categories.sortOrder);
-
-      return results.map((cat) => ({
-        id: cat.id,
-        label: cat.displayName || cat.name,
-        value: cat.id,
-        name: cat.name,
-        displayName: cat.displayName,
-        sortOrder: cat.sortOrder,
-        isActive: cat.isActive,
-        allowsPitch: cat.allowsPitch,
-      }));
+    const ids = await getVisibleCategoryIds(this.databaseService.db, userTeams);
+    if (ids.length === 0) {
+      return [];
     }
+    const results = await this.databaseService.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        displayName: categories.displayName,
+        sortOrder: categories.sortOrder,
+        isActive: categories.isActive,
+        allowsPitch: categories.allowsPitch,
+      })
+      .from(categories)
+      .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
+      .orderBy(categories.sortOrder);
+
+    return results.map((cat) => ({
+      id: cat.id,
+      label: cat.displayName || cat.name,
+      value: cat.id,
+      name: cat.name,
+      displayName: cat.displayName,
+      sortOrder: cat.sortOrder,
+      isActive: cat.isActive,
+      allowsPitch: cat.allowsPitch,
+    }));
   }
 
   /**
@@ -739,7 +669,7 @@ export class LookupsService {
       allowsPitch?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof categories.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -772,7 +702,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof cities.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -803,7 +733,7 @@ export class LookupsService {
       isActive?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -836,7 +766,7 @@ export class LookupsService {
       ministryId?: string | null;
       representativeType?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -870,7 +800,7 @@ export class LookupsService {
       visibility?: 'global' | 'team';
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof tags.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -902,7 +832,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -933,7 +863,7 @@ export class LookupsService {
       isActive?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof activityStatuses.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -964,7 +894,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<any> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -999,7 +929,7 @@ export class LookupsService {
       allowsPitch: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof categories.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof categories.$inferInsert> = {
@@ -1035,7 +965,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof cities.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof cities.$inferInsert> = {
@@ -1068,7 +998,7 @@ export class LookupsService {
       isActive: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof commsMaterials.$inferInsert> = {
@@ -1103,7 +1033,7 @@ export class LookupsService {
       ministryId: string | null;
       representativeType: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof governmentRepresentatives.$inferInsert> = {
@@ -1140,7 +1070,7 @@ export class LookupsService {
       visibility: 'global' | 'team';
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof tags.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof tags.$inferInsert> = {
@@ -1174,7 +1104,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof ministries.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof ministries.$inferInsert> = {
@@ -1208,7 +1138,7 @@ export class LookupsService {
       isActive: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof activityStatuses.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof activityStatuses.$inferInsert> = {
@@ -1241,7 +1171,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof themes.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof themes.$inferInsert> = {

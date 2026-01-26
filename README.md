@@ -90,17 +90,20 @@ npm run dev --workspace=calendar-ui              # Frontend only
 
 ## Environment Variables
 
-| Variable             | Description                              | Required | Default               |
-| -------------------- | ---------------------------------------- | -------- | --------------------- |
-| `DATABASE_URL`       | PostgreSQL connection string             | Yes      | -                     |
-| `API_KEY`            | API authentication key (optional in dev) | No       | -                     |
-| `PORT`               | Backend service port                     | No       | 3001                  |
-| `VITE_API_BASE_URL`  | Frontend API base URL                    | No       | http://localhost:3001 |
-| `DB_MAX_CONNECTIONS` | Database connection pool size            | No       | 10                    |
-| `DB_IDLE_TIMEOUT`    | Database idle timeout (seconds)          | No       | 20                    |
-| `DB_CONNECT_TIMEOUT` | Database connection timeout (seconds)    | No       | 10                    |
+| Variable             | Description                                         | Required | Default               |
+| -------------------- | --------------------------------------------------- | -------- | --------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                        | Yes      | -                     |
+| `API_KEY`            | API authentication key (optional in dev)            | No       | -                     |
+| `PORT`               | Backend service port                                | No       | 3001                  |
+| `VITE_API_BASE_URL`  | Frontend API base URL                               | No       | http://localhost:3001 |
+| `DB_MAX_CONNECTIONS` | Database connection pool size                       | No       | 10                    |
+| `DB_IDLE_TIMEOUT`    | Database idle timeout (seconds)                     | No       | 20                    |
+| `DB_CONNECT_TIMEOUT` | Database connection timeout (seconds)               | No       | 10                    |
+| `AUTH_STRATEGY`      | Authentication strategy: `mock` or `ad`             | No       | mock                  |
+| `JWT_SECRET`         | Secret key for JWT signing (required in production) | No       | dev-secret            |
+| `JWT_EXPIRES_IN`     | JWT token expiration in seconds                     | No       | 3600                  |
 
-**API Authentication**: The API uses API key authentication via the `X-API-Key` header. In development, if `API_KEY` is not set, all requests are allowed. `/health` and `/ready` endpoints are always public.
+**Authentication**: The API uses JWT-based authentication. In development, use `AUTH_STRATEGY=mock` to authenticate with any seeded username. The `/health`, `/ready`, and `/auth/login` endpoints are public. See [AUTH_AND_RBAC.md](docs/AUTH_AND_RBAC.md) for details.
 
 ## Project Structure
 
@@ -109,6 +112,17 @@ bcs-marzipan/
 ├── calendar-service/          # NestJS backend API
 │   ├── src/
 │   │   ├── activities/        # Activities module (CRUD operations)
+│   │   ├── auth/              # Authentication module (JWT, login/logout)
+│   │   │   ├── decorators/    # @CurrentUser, @Public decorators
+│   │   │   ├── guards/        # JwtAuthGuard
+│   │   │   ├── strategies/    # Mock and AD auth strategies
+│   │   │   └── dto/           # Login and auth response DTOs
+│   │   ├── policy/            # Authorization/RBAC module
+│   │   │   ├── decorators/    # @RequirePermission, @RequireRole
+│   │   │   ├── guards/        # PermissionsGuard, RolesGuard
+│   │   │   └── interceptors/  # DataScopeInterceptor
+│   │   ├── drafts/            # Form drafts module
+│   │   ├── reports/           # Reports module
 │   │   ├── lookups/           # Lookup data endpoints
 │   │   ├── database/          # Database module (Drizzle integration)
 │   │   ├── commands/          # CLI commands (seed, etc.)
@@ -126,15 +140,21 @@ bcs-marzipan/
 │   ├── database/              # Database package
 │   │   ├── src/
 │   │   │   ├── schema/        # Drizzle ORM schema definitions
+│   │   │   │   ├── rbac.ts    # Roles, permissions, role_permissions
+│   │   │   │   ├── sessions.ts # Session management
+│   │   │   │   └── user.ts    # Users with roleId FK
 │   │   │   └── client.ts      # Database client setup
-│   │   └── migrations/        # Database migration files
+│   │   ├── migrations/        # Database migration files
+│   │   └── seeds/             # Seed data (users, roles, permissions)
 │   └── shared/                # Shared package
 │       ├── src/
+│       │   ├── auth/          # Auth types, constants, schemas
 │       │   ├── schemas/       # Zod validation schemas
 │       │   ├── api/           # API type definitions
 │       │   └── utils/         # Utility functions
 │       └── package.json
 ├── docs/                      # Additional documentation
+│   ├── AUTH_AND_RBAC.md       # Authentication and RBAC documentation
 │   ├── TESTING.md             # Testing strategy and standards
 │   ├── SCHEMA_README.md       # Schema and type safety documentation
 │   ├── DOCKER_DEPLOYMENT.md   # Docker deployment guide
@@ -187,7 +207,10 @@ http://localhost:3001/api
 
 The API provides endpoints for:
 
+- **Auth**: Login, logout, current user (`/auth/login`, `/auth/me`, `/auth/logout`)
 - **Activities**: CRUD operations for calendar activities
+- **Drafts**: Form draft save/restore functionality
+- **Reports**: Report configuration and listing
 - **Lookups**: Reference data (categories, organizations, users, tags, etc.)
 - **Health**: Health check and readiness probes
 
@@ -215,8 +238,10 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 
 ## Additional Documentation
 
+- **[Authentication and RBAC](docs/AUTH_AND_RBAC.md)**: JWT authentication, roles, permissions, and authorization
 - **[Testing](docs/TESTING.md)**: Testing strategy, standards, naming conventions (`*.spec.ts` / `*.spec.tsx`), and what to test
-- **[Schema Documentation](docs/SCHEMA_README.md)**: Detailed information about schema flow, type safety, and how to update schemas
+- **[Schema Documentation](packages/database/src/schema/docs/SCHEMA_README.md)**: Detailed information about schema flow, type safety, and how to update schemas
+- **[Schema Mapping](packages/database/src/schema/docs/SCHEMA_MAPPING.md)**: Legacy to new schema field mappings
 - **[Docker Deployment](docs/DOCKER_DEPLOYMENT.md)**: Guide for Docker and docker-compose usage
 - **[Database Module](calendar-service/src/database/README.md)**: Database module usage in NestJS services
 - **[Database Package](packages/database/README.md)**: Database package setup and usage

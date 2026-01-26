@@ -330,6 +330,39 @@ export const ministryUsersRelations = relations(ministryUsers, ({ one }) => ({
 }));
 
 /**
+ * UserTeams junction table - Many-to-many relationship between Users and Teams
+ * Defines which teams a user belongs to for data scoping (what data the user can see).
+ * Advanced, Admin, and System Admin roles bypass team scoping and see all data.
+ */
+export const userTeams = pgTable(
+  'user_teams',
+  {
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.teamId] })]
+);
+
+export const userTeamsRelations = relations(userTeams, ({ one }) => ({
+  user: one(users, {
+    fields: [userTeams.userId],
+    references: [users.id],
+  }),
+  team: one(teams, {
+    fields: [userTeams.teamId],
+    references: [teams.id],
+  }),
+}));
+
+/**
  * TeamCategories junction table - Many-to-many relationship between Categories and Teams
  * Controls which teams can view specific categories.
  * If a category has no entries in this table, it is viewable by all teams.
