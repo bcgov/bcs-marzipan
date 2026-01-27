@@ -26,11 +26,12 @@ import {
   DialogTitle,
 } from '../components/ui/resumeDraftDialog';
 import { useFormLookups } from '../hooks/useFormLookups';
+import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
   ActivityOverviewSection,
-  ActivityApprovalsSection,
   ActivityScheduleSection,
   ActivityCommsSection,
+  ActivityNewsReleaseSection,
   ActivityEventSection,
   ActivityVenueSection,
   ActivityReportsSection,
@@ -73,12 +74,52 @@ export const CreateActivityForm: React.FC = () => {
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [draftChecked, setDraftChecked] = useState(false);
 
+  // Fetch date and time statuses
+  const { data: dateStatuses } = useDateStatuses();
+  const { data: timeStatuses } = useTimeStatuses();
+
+  // Fetch all lookup data
+  const lookups = useFormLookups();
+
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
     defaultValues: getDefaultFormValues(),
   });
 
+  // Set default date and time statuses to "unknown" when they're loaded
+  useEffect(() => {
+    if (dateStatuses && !form.getValues('dateStatusId')) {
+      const unknownStatus = dateStatuses.find((s) => s.name === 'unknown');
+      if (unknownStatus) {
+        form.setValue('dateStatusId', unknownStatus.id as number);
+      }
+    }
+  }, [dateStatuses, form]);
+
+  useEffect(() => {
+    if (timeStatuses && !form.getValues('timeStatusId')) {
+      const unknownStatus = timeStatuses.find((s) => s.name === 'unknown');
+      if (unknownStatus) {
+        form.setValue('timeStatusId', unknownStatus.id as number);
+      }
+    }
+  }, [timeStatuses, form]);
+
+  // Set default activityStatusId to "new" when lookups are loaded
+  useEffect(() => {
+    if (
+      lookups.activityStatuses.length > 0 &&
+      !form.getValues('activityStatusId')
+    ) {
+      const newStatus = lookups.activityStatuses.find(
+        (status) => status.name === DEFAULT_ACTIVITY_STATUS
+      );
+      if (newStatus) {
+        form.setValue('activityStatusId', newStatus.id);
+      }
+    }
+  }, [lookups.activityStatuses, form]);
   // Get form values for autosave
   const formValues = form.watch();
 
@@ -137,22 +178,11 @@ export const CreateActivityForm: React.FC = () => {
     console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
-      // Find the "New" activity status by name
-      const newStatus = lookups.activityStatuses.find(
-        (status) => status.name === DEFAULT_ACTIVITY_STATUS
-      );
-
-      if (!newStatus) {
-        throw new Error(
-          `Activity status "${DEFAULT_ACTIVITY_STATUS}" not found in lookups`
-        );
-      }
-
       // Prepare submit data with junction table arrays
       const formValues = form.getValues();
       const submitData = {
         ...data,
-        activityStatusId: newStatus.id,
+        activityStatusId: data.activityStatusId,
         startDate: data.startDate || null,
         endDate: data.endDate || null,
         startTime: data.startTime || null,
@@ -233,9 +263,6 @@ export const CreateActivityForm: React.FC = () => {
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
 
-  // Fetch all lookup data
-  const lookups = useFormLookups();
-
   // Show loading state if lookups are still loading
   if (lookups.isLoading) {
     return (
@@ -292,144 +319,201 @@ export const CreateActivityForm: React.FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      {/* Draft Recovery Dialog */}
-      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Continue where you left off?</DialogTitle>
-            <DialogDescription>
-              You have a saved draft for this activity form. Would you like to
-              continue editing it, or start with a fresh form?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleStartFresh} type="button">
-              Start Fresh
-            </Button>
-            <Button onClick={handleContinueDraft} type="button">
-              Continue Draft
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </ResumeDialog>
+      <div className="mx-auto max-w-full px-4 py-8">
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
+          {/* Draft Recovery Dialog */}
+          <ResumeDialog
+            open={showDraftDialog}
+            onOpenChange={setShowDraftDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Continue where you left off?</DialogTitle>
+                <DialogDescription>
+                  You have a saved draft for this activity form. Would you like
+                  to continue editing it, or start with a fresh form?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={handleStartFresh}
+                  type="button"
+                >
+                  Start Fresh
+                </Button>
+                <Button onClick={handleContinueDraft} type="button">
+                  Continue Draft
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </ResumeDialog>
 
-      <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-            <p className="text-muted-foreground">
-              Fill in the activity details below
-            </p>
-          </div>
+          <div className="mx-auto max-w-200 px-4 py-8">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+                <p className="text-muted-foreground">
+                  Fill in the activity details below
+                </p>
+              </div>
 
-          {/* Autosave indicator */}
-          <div className="text-sm">
-            {isSaving && (
-              <span className="text-amber-600">💾 Saving draft...</span>
-            )}
-            {lastSaved && !isSaving && (
-              <span className="text-green-600">
-                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
-              </span>
-            )}
-            {isDraftLoading && (
-              <span className="text-gray-500">Loading draft...</span>
-            )}
+              {/* Autosave indicator */}
+              <div className="text-sm">
+                {isSaving && (
+                  <span className="text-amber-600">💾 Saving draft...</span>
+                )}
+                {lastSaved && !isSaving && (
+                  <span className="text-green-600">
+                    ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+                  </span>
+                )}
+                {isDraftLoading && (
+                  <span className="text-gray-500">Loading draft...</span>
+                )}
+              </div>
+            </div>
+
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  console.log('Form submit event triggered');
+                  void form.handleSubmit(onSubmit, onError)(e);
+                }}
+              >
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Overview Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityOverviewSection
+                        categories={lookups.categories}
+                        ministries={lookups.ministries}
+                        organizations={lookups.organizations}
+                        tags={lookups.tags}
+                      />
+                    </div>
+
+                    {/* Comms Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityCommsSection
+                        activityStatusOptions={lookups.activityStatuses}
+                        commsMaterialOptions={lookups.commsMaterials}
+                        commsLeadOptions={commsLeadOptions}
+                      />
+                    </div>
+
+                    {/* News Release Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityNewsReleaseSection
+                        translationLanguageOptions={
+                          lookups.translationLanguages
+                        }
+                        newsReleaseDistributionOptions={
+                          lookups.newsReleaseDistributions
+                        }
+                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Reports Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityReportsSection form={form} />
+                    </div>
+
+                    {/* Schedule Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityScheduleSection form={form} />
+                    </div>
+
+                    {/* Event Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityEventSection
+                        representativeOptions={
+                          lookups.governmentRepresentatives
+                        }
+                        premierRequestedOptions={lookups.premierRequested}
+                      />
+                    </div>
+
+                    {/* Venue Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityVenueSection
+                        form={form}
+                        eventPlannerOptions={lookups.eventPlanners}
+                      />
+                    </div>
+
+                    {/* Sharing Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivitySharingSection
+                        sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end gap-4 pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  {!isFormValid && missingFields.length > 0 ? (
+                    <Popover open={showMissingFieldsPopover}>
+                      <PopoverTrigger asChild>
+                        <div
+                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                          onMouseLeave={() =>
+                            setShowMissingFieldsPopover(false)
+                          }
+                        >
+                          <Button
+                            type="submit"
+                            disabled={true}
+                            className="cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
+                          </Button>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80"
+                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                      >
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">
+                            Required fields missing:
+                          </h4>
+                          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                            {missingFields.map((field) => (
+                              <li key={field}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
-
-        <Form {...form}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log('Form submit event triggered');
-              void form.handleSubmit(onSubmit, onError)(e);
-            }}
-            className="space-y-8"
-          >
-            <ActivityOverviewSection
-              categories={lookups.categories}
-              organizations={lookups.organizations}
-              tags={lookups.tags}
-            />
-
-            <ActivityApprovalsSection form={form} />
-
-            <ActivityScheduleSection form={form} />
-
-            <ActivityCommsSection
-              commsMaterialOptions={lookups.commsMaterials}
-              translationLanguageOptions={lookups.translationLanguages}
-              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-              premierRequestedOptions={lookups.premierRequested}
-              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-            />
-
-            <ActivityEventSection
-              eventPlannerOptions={lookups.eventPlanners}
-              representativeOptions={lookups.governmentRepresentatives}
-            />
-
-            <ActivityVenueSection form={form} />
-
-            <ActivityReportsSection form={form} />
-
-            <ActivitySharingSection
-              commsLeadOptions={commsLeadOptions}
-              sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-            />
-
-            {/* Form Actions */}
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              {!isFormValid && missingFields.length > 0 ? (
-                <Popover open={showMissingFieldsPopover}>
-                  <PopoverTrigger asChild>
-                    <div
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                    >
-                      <Button
-                        type="submit"
-                        disabled={true}
-                        className="cursor-not-allowed"
-                      >
-                        {isSubmitting ? 'Submitting...' : 'Submit'}
-                      </Button>
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80"
-                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                  >
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">
-                        Required fields missing:
-                      </h4>
-                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                        {missingFields.map((field) => (
-                          <li key={field}>{field}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
       </div>
     </ErrorBoundary>
   );

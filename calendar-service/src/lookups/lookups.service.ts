@@ -21,6 +21,9 @@ import {
   cities,
   ministries,
   themes,
+  reports,
+  dateStatuses,
+  timeStatuses,
 } from '@corpcal/database/schema';
 import type {
   LookupItem,
@@ -35,6 +38,7 @@ import type {
   GovernmentRepresentativeLookupItem,
   MinistryLookupItem,
   ThemeLookupItem,
+  ReportResponse,
 } from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
 
@@ -58,6 +62,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .where(
@@ -75,6 +80,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .innerJoin(
@@ -110,6 +116,7 @@ export class LookupsService {
           displayName: cat.displayName,
           sortOrder: cat.sortOrder,
           isActive: cat.isActive,
+          allowsPitch: cat.allowsPitch,
         }));
     } else {
       // If no teams provided, return only global categories
@@ -120,6 +127,7 @@ export class LookupsService {
           displayName: categories.displayName,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
+          allowsPitch: categories.allowsPitch,
         })
         .from(categories)
         .where(
@@ -138,6 +146,7 @@ export class LookupsService {
         displayName: cat.displayName,
         sortOrder: cat.sortOrder,
         isActive: cat.isActive,
+        allowsPitch: cat.allowsPitch,
       }));
     }
   }
@@ -257,6 +266,145 @@ export class LookupsService {
       name: status.name,
       displayName: status.displayName,
     }));
+  }
+
+  /**
+   * Get all active date statuses
+   */
+  async getDateStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: dateStatuses.id,
+        name: dateStatuses.name,
+        displayName: dateStatuses.displayName,
+      })
+      .from(dateStatuses)
+      .where(eq(dateStatuses.isActive, true))
+      .orderBy(dateStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active time statuses
+   */
+  async getTimeStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: timeStatuses.id,
+        name: timeStatuses.name,
+        displayName: timeStatuses.displayName,
+      })
+      .from(timeStatuses)
+      .where(eq(timeStatuses.isActive, true))
+      .orderBy(timeStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Search for Canadian addresses using Canada Post API
+   */
+  async findAddresses(
+    searchTerm: string,
+    country: string = 'CAN',
+    lastId?: string
+  ): Promise<any[]> {
+    const apiKey = process.env.CANADA_POST_API_KEY;
+    if (!apiKey) {
+      throw new Error('CANADA_POST_API_KEY environment variable not set');
+    }
+
+    const params = new URLSearchParams({
+      Key: apiKey,
+      SearchTerm: searchTerm,
+      Country: country,
+      ...(lastId && { LastId: lastId }),
+    });
+
+    const url = `https://ws1.postescanada-canadapost.ca/AddressComplete/Interactive/Find/v2.10/json3ex.ws?${params.toString()}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Canada Post API error: ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+    return data.Items || [];
+  }
+
+  /**
+   * Retrieve full address details using Canada Post API
+   */
+  async retrieveAddress(id: string): Promise<any> {
+    const apiKey = process.env.CANADA_POST_API_KEY;
+    if (!apiKey) {
+      throw new Error('CANADA_POST_API_KEY environment variable not set');
+    }
+
+    const params = new URLSearchParams({
+      Key: apiKey,
+      Id: id,
+    });
+
+    const url = `https://ws1.postescanada-canadapost.ca/AddressComplete/Interactive/Retrieve/v2.11/json3ex.ws?${params.toString()}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Canada Post API error: ${response.statusText}`);
+    }
+
+    const data: any = await response.json();
+    const items = data.Items || [];
+
+    if (items.length === 0) {
+      throw new Error('No address found');
+    }
+
+    const item = items[0];
+    return {
+      street: `${item.Line1}${item.Line2 ? ' ' + item.Line2 : ''}`.trim(),
+      city: item.City,
+      province: item.ProvinceName,
+      provinceCode: item.ProvinceCode,
+      country: item.CountryName,
+      countryCode: item.CountryIso2,
+      postalCode: item.PostalCode,
+    };
+  }
+
+  /**
+   * Get all active reports
+   */
+  async getReports(): Promise<ReportResponse[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: reports.id,
+        name: reports.name,
+        displayName: reports.displayName,
+        sortOrder: reports.sortOrder,
+        isActive: reports.isActive,
+        visibility: reports.visibility,
+        config: reports.config,
+        description: reports.description,
+      })
+      .from(reports)
+      .where(eq(reports.isActive, true))
+      .orderBy(reports.sortOrder);
+
+    return results as ReportResponse[];
   }
 
   /**

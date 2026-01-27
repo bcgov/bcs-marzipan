@@ -694,6 +694,45 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all date statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Date statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('date-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getDateStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getDateStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all time statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Time statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('time-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getTimeStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getTimeStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all reports' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reports retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('reports')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getReports(): Promise<{ success: boolean; data: any[] }> {
+    const data = await this.lookupsService.getReports();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all themes' })
   @ApiResponse({
     status: 200,
@@ -738,6 +777,54 @@ export class LookupsController {
     body: UpdateThemeDto
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateTheme(id, body);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Search for Canadian addresses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Address suggestions retrieved successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        searchTerm: { type: 'string' },
+        country: { type: 'string', default: 'CAN' },
+        lastId: { type: 'string' },
+      },
+    },
+  })
+  @Post('address/find')
+  async findAddresses(
+    @Body() body: { searchTerm: string; country?: string; lastId?: string }
+  ): Promise<{ success: boolean; data: any[] }> {
+    const data = await this.lookupsService.findAddresses(
+      body.searchTerm,
+      body.country,
+      body.lastId
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Retrieve full address details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Address details retrieved successfully',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+      },
+    },
+  })
+  @Post('address/retrieve')
+  async retrieveAddress(
+    @Body() body: { id: string }
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.retrieveAddress(body.id);
     return { success: true, data };
   }
 }

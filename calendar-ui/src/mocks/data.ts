@@ -22,6 +22,7 @@ export const mockCategories: CategoryLookupItem[] = [
     displayName: 'Event',
     sortOrder: 1,
     isActive: true,
+    allowsPitch: false,
   },
   {
     id: 2,
@@ -31,6 +32,7 @@ export const mockCategories: CategoryLookupItem[] = [
     displayName: 'News Release',
     sortOrder: 2,
     isActive: true,
+    allowsPitch: false,
   },
   {
     id: 3,
@@ -40,6 +42,7 @@ export const mockCategories: CategoryLookupItem[] = [
     displayName: 'Awareness',
     sortOrder: 3,
     isActive: true,
+    allowsPitch: false,
   },
 ];
 

@@ -1,4 +1,4 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import {
   FormField,
   FormItem,
@@ -11,7 +11,15 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
+import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
@@ -20,6 +28,7 @@ import { X } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
+import { useEffect } from 'react';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -27,14 +36,20 @@ type FormData = CreateActivityRequest & {
 };
 
 type ActivityOverviewSectionProps = {
-  categories: Array<{ id: number; name: string; displayName?: string }>;
+  categories: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+    allowsPitch: boolean;
+  }>;
+  ministries: Array<{ id: string; name: string; displayName?: string }>;
   organizations: Array<{ value: string; label: string }>;
   tags: Array<{ id: number; text: string }>;
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ categories, organizations, tags }) => {
+> = ({ categories, ministries, organizations, tags }) => {
   const form = useFormContext<FormData>();
 
   // const [categories, setCategories] = useState<any[]>([]);
@@ -65,6 +80,23 @@ export const ActivityOverviewSection: React.FC<
     form,
     'tagIds'
   );
+
+  // Watch categoryIds to determine if pitch is required
+  const categoryIds = useWatch({
+    control: form.control,
+    name: 'categoryIds',
+  });
+
+  // Calculate if pitch is required based on selected categories
+  const isPitchRequired = (categoryIds || []).some((categoryId) => {
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.allowsPitch === true;
+  });
+
+  // Update pitchRequired field when categories change
+  useEffect(() => {
+    form.setValue('pitchRequired', isPitchRequired);
+  }, [isPitchRequired, form]);
 
   return (
     <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
@@ -104,6 +136,36 @@ export const ActivityOverviewSection: React.FC<
                 value={field.value ?? ''}
               />
             </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="leadMinistryId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Lead Ministry <span className="text-destructive">*</span>
+            </FormLabel>
+            <Select
+              onValueChange={(value) => field.onChange(value)}
+              value={field.value || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select lead ministry" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {ministries.map((ministry) => (
+                  <SelectItem key={ministry.id} value={ministry.id}>
+                    {ministry.displayName || ministry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}
@@ -181,22 +243,18 @@ export const ActivityOverviewSection: React.FC<
 
       <FormField
         control={form.control}
-        name="notes"
+        name="isConfidential"
         render={({ field }) => (
-          <FormItem>
-            <FormLabel>Notes</FormLabel>
+          <FormItem className="flex flex-row items-start space-y-0 space-x-3">
             <FormControl>
-              <Textarea
-                placeholder="Enter notes"
-                rows={4}
-                {...field}
-                value={field.value || ''}
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
               />
             </FormControl>
-            <FormDescription>
-              General notes for admin change log and tracking
-            </FormDescription>
-            <FormMessage />
+            <div className="space-y-1 leading-none">
+              <FormLabel>Confidential</FormLabel>
+            </div>
           </FormItem>
         )}
       />
@@ -215,6 +273,83 @@ export const ActivityOverviewSection: React.FC<
             <div className="space-y-1 leading-none">
               <FormLabel>Issue</FormLabel>
             </div>
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="significance"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Significance</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Enter significance"
+                rows={4}
+                {...field}
+                value={field.value || ''}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Pitch</h3>
+
+        <FormField
+          control={form.control}
+          name="pitchRequired"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+              <FormControl>
+                <Switch checked={field.value ?? false} disabled />
+              </FormControl>
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Pitch Required</FormLabel>
+                <FormDescription>
+                  Determined by selected category types
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="pitchDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pitch Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} value={field.value || ''} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <FormField
+        control={form.control}
+        name="notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Notes</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Enter notes"
+                rows={4}
+                {...field}
+                value={field.value || ''}
+              />
+            </FormControl>
+            <FormDescription>
+              General notes for admin change log and tracking
+            </FormDescription>
+            <FormMessage />
           </FormItem>
         )}
       />
