@@ -322,183 +322,198 @@ export const CreateActivityForm: React.FC = () => {
       <div className="mx-auto max-w-full px-4 py-8">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
-      {/* Draft Recovery Dialog */}
-      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Continue where you left off?</DialogTitle>
-            <DialogDescription>
-              You have a saved draft for this activity form. Would you like to
-              continue editing it, or start with a fresh form?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleStartFresh} type="button">
-              Start Fresh
-            </Button>
-            <Button onClick={handleContinueDraft} type="button">
-              Continue Draft
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </ResumeDialog>
+          {/* Draft Recovery Dialog */}
+          <ResumeDialog
+            open={showDraftDialog}
+            onOpenChange={setShowDraftDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Continue where you left off?</DialogTitle>
+                <DialogDescription>
+                  You have a saved draft for this activity form. Would you like
+                  to continue editing it, or start with a fresh form?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={handleStartFresh}
+                  type="button"
+                >
+                  Start Fresh
+                </Button>
+                <Button onClick={handleContinueDraft} type="button">
+                  Continue Draft
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </ResumeDialog>
 
-      <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-            <p className="text-muted-foreground">
-              Fill in the activity details below
-            </p>
-          </div>
+          <div className="mx-auto max-w-200 px-4 py-8">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+                <p className="text-muted-foreground">
+                  Fill in the activity details below
+                </p>
+              </div>
 
-          {/* Autosave indicator */}
-          <div className="text-sm">
-            {isSaving && (
-              <span className="text-amber-600">💾 Saving draft...</span>
-            )}
-            {lastSaved && !isSaving && (
-              <span className="text-green-600">
-                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
-              </span>
-            )}
-            {isDraftLoading && (
-              <span className="text-gray-500">Loading draft...</span>
-            )}
+              {/* Autosave indicator */}
+              <div className="text-sm">
+                {isSaving && (
+                  <span className="text-amber-600">💾 Saving draft...</span>
+                )}
+                {lastSaved && !isSaving && (
+                  <span className="text-green-600">
+                    ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+                  </span>
+                )}
+                {isDraftLoading && (
+                  <span className="text-gray-500">Loading draft...</span>
+                )}
+              </div>
+            </div>
+
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  console.log('Form submit event triggered');
+                  void form.handleSubmit(onSubmit, onError)(e);
+                }}
+              >
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Overview Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityOverviewSection
+                        categories={lookups.categories}
+                        ministries={lookups.ministries}
+                        organizations={lookups.organizations}
+                        tags={lookups.tags}
+                      />
+                    </div>
+
+                    {/* Comms Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityCommsSection
+                        activityStatusOptions={lookups.activityStatuses}
+                        commsMaterialOptions={lookups.commsMaterials}
+                        commsLeadOptions={commsLeadOptions}
+                      />
+                    </div>
+
+                    {/* News Release Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityNewsReleaseSection
+                        translationLanguageOptions={
+                          lookups.translationLanguages
+                        }
+                        newsReleaseDistributionOptions={
+                          lookups.newsReleaseDistributions
+                        }
+                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Reports Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityReportsSection form={form} />
+                    </div>
+
+                    {/* Schedule Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityScheduleSection form={form} />
+                    </div>
+
+                    {/* Event Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityEventSection
+                        representativeOptions={
+                          lookups.governmentRepresentatives
+                        }
+                        premierRequestedOptions={lookups.premierRequested}
+                      />
+                    </div>
+
+                    {/* Venue Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivityVenueSection
+                        form={form}
+                        eventPlannerOptions={lookups.eventPlanners}
+                      />
+                    </div>
+
+                    {/* Sharing Section */}
+                    <div className="rounded-md border border-gray-300 p-6">
+                      <ActivitySharingSection
+                        sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end gap-4 pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  {!isFormValid && missingFields.length > 0 ? (
+                    <Popover open={showMissingFieldsPopover}>
+                      <PopoverTrigger asChild>
+                        <div
+                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                          onMouseLeave={() =>
+                            setShowMissingFieldsPopover(false)
+                          }
+                        >
+                          <Button
+                            type="submit"
+                            disabled={true}
+                            className="cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
+                          </Button>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80"
+                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                      >
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">
+                            Required fields missing:
+                          </h4>
+                          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                            {missingFields.map((field) => (
+                              <li key={field}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
-
-        <Form {...form}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log('Form submit event triggered');
-              void form.handleSubmit(onSubmit, onError)(e);
-            }}
-          >
-            {/* Two Column Layout */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Overview Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityOverviewSection
-                    categories={lookups.categories}
-                    ministries={lookups.ministries}
-                    organizations={lookups.organizations}
-                    tags={lookups.tags}
-                  />
-                </div>
-
-                {/* Comms Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityCommsSection
-                    activityStatusOptions={lookups.activityStatuses}
-                    commsMaterialOptions={lookups.commsMaterials}
-                    commsLeadOptions={commsLeadOptions}
-                  />
-                </div>
-
-                {/* News Release Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityNewsReleaseSection
-                    translationLanguageOptions={lookups.translationLanguages}
-                    newsReleaseDistributionOptions={
-                      lookups.newsReleaseDistributions
-                    }
-                    newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                  />
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Reports Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityReportsSection form={form} />
-                </div>
-
-                {/* Schedule Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityScheduleSection form={form} />
-                </div>
-
-                {/* Event Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityEventSection
-                    representativeOptions={lookups.governmentRepresentatives}
-                    premierRequestedOptions={lookups.premierRequested}
-                  />
-                </div>
-
-                {/* Venue Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivityVenueSection
-                    form={form}
-                    eventPlannerOptions={lookups.eventPlanners}
-                  />
-                </div>
-
-                {/* Sharing Section */}
-                <div className="rounded-md border border-gray-300 p-6">
-                  <ActivitySharingSection
-                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex justify-end gap-4 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              {!isFormValid && missingFields.length > 0 ? (
-                <Popover open={showMissingFieldsPopover}>
-                  <PopoverTrigger asChild>
-                    <div
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                    >
-                      <Button
-                        type="submit"
-                        disabled={true}
-                        className="cursor-not-allowed"
-                      >
-                        {isSubmitting ? 'Submitting...' : 'Submit'}
-                      </Button>
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80"
-                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                  >
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">
-                        Required fields missing:
-                      </h4>
-                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                        {missingFields.map((field) => (
-                          <li key={field}>{field}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </Button>
-              )}
-            </div>
-          </form>
-        </Form>
       </div>
     </ErrorBoundary>
   );
