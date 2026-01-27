@@ -4,6 +4,11 @@ metadata:
   name: calendar-service
   labels:
     app: calendar-service
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
   annotations:
     image.openshift.io/triggers: |
       [
@@ -39,6 +44,16 @@ spec:
                 secretKeyRef:
                   name: calendar-service-secrets
                   key: DATABASE_URL
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NODE_ENV
           readinessProbe:
             httpGet:
               path: /ready

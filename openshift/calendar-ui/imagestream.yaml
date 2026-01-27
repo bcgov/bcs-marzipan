@@ -2,3 +2,9 @@ apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: calendar-ui
+  labels:
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
