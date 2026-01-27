@@ -35,7 +35,7 @@
     "build:packages": "npm run build --workspace=packages/database && npm run build --workspace=packages/shared",
     "typecheck": "npm run typecheck --workspaces",
     "typecheck:packages": "npm run typecheck --workspace=packages/database && npm run typecheck --workspace=packages/shared",
-    "test": "concurrently -n \"service,ui,shared\" -c \"blue,green,yellow\" \"npm run test --workspace=calendar-service\" \"npm run test --workspace=calendar-ui\" \"npm run test --workspace=packages/shared\"",
+    "test": "concurrently -n \"service,ui,shared,database\" -c \"blue,green,yellow,magenta\" \"npm run test --workspace=calendar-service\" \"npm run test --workspace=calendar-ui\" \"npm run test --workspace=packages/shared\" \"npm run test --workspace=packages/database\"",
     "test:env": "ts-node -r tsconfig-paths/register scripts/test-env-vars.ts",
     "test:config": "ts-node -r tsconfig-paths/register scripts/test-nestjs-config.ts",
     "prepare": "husky",
@@ -81,10 +81,15 @@
     ],
     "calendar-ui/**/*.{ts,tsx}": [
       "eslint --fix",
-      "node scripts/test/vitest-related.js"
+      "node scripts/test/vitest-related.js calendar-ui"
     ],
-    "packages/**/*.ts": [
-      "eslint --fix"
+    "packages/database/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js database"
+    ],
+    "packages/shared/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js shared"
     ],
     "**/*.{json,md,css,scss,less,html,yaml,yml}": [
       "prettier --write"
