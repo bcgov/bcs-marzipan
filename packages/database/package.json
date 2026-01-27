@@ -36,7 +36,8 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.7",
@@ -49,7 +50,6 @@
     "dotenv": "^17.2.3",
     "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.7",
-    "typescript": "^5.3.3",
-    "vitest": "^2.1.8"
+    "typescript": "^5.3.3"
   }
 }

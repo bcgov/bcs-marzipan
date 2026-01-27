@@ -10,6 +10,14 @@ This document describes the testing strategy, folder structure, naming conventio
   - `npm run test -w calendar-ui`
   - `npm run test -w packages/shared` (run after `npm run build:packages` when running in isolation, since schemas depend on `@corpcal/database`)
 - **Watch:** `npm run test:watch -w <workspace>` where supported.
+- **Coverage:** `npm run test:cov` runs coverage tests for all workspaces concurrently. Reports are generated in `coverage/<workspace>/` subdirectories:
+  - `coverage/service/` - calendar-service unit tests
+  - `coverage/service-e2e/` - calendar-service e2e tests
+  - `coverage/ui/` - calendar-ui tests
+  - `coverage/shared/` - packages/shared tests
+  - `coverage/database/` - packages/database tests
+    Each report includes HTML output in `lcov-report/` and `lcov.info` for CI integration.
+- **Vitest UI:** Run `vitest --ui` or `npm run test:watch -w <workspace>` then open the UI URL shown in the terminal. The UI provides an interactive test runner with filtering, file watching, and coverage visualization.
 
 ## Strategy
 

@@ -27,19 +27,19 @@ describe('ActivitiesService', () => {
   // Helper to create a mock query chain that supports all methods
   const createMockQueryChain = (finalValue: any) => {
     const chain = {
-      from: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      leftJoin: jest.fn().mockReturnThis(),
-      innerJoin: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockResolvedValue(finalValue),
-      offset: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue(finalValue),
+      offset: vi.fn().mockReturnThis(),
+      groupBy: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
     };
     // innerJoin and leftJoin return a chain where where() resolves to finalValue
     const joinChain = {
       ...chain,
-      where: jest.fn().mockResolvedValue(finalValue),
+      where: vi.fn().mockResolvedValue(finalValue),
     };
     chain.innerJoin.mockReturnValue(joinChain);
     chain.leftJoin.mockReturnValue(joinChain);
@@ -48,22 +48,22 @@ describe('ActivitiesService', () => {
 
   // Helper to create a mock select function that handles both main queries and fetch methods
   const createMockSelect = (mainQueryResult: any) => {
-    return jest.fn((...args) => {
+    return vi.fn((...args) => {
       if (args.length === 0) {
         // Main query: select().from().where().limit()
         return createMockQueryChain(mainQueryResult);
       }
       // For fetch methods (select with object), where() should return a promise
       const fetchChain = {
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([]),
-        leftJoin: jest.fn().mockReturnThis(),
-        innerJoin: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue([]),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+        leftJoin: vi.fn().mockReturnThis(),
+        innerJoin: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([]),
       };
       const joinChain = {
         ...fetchChain,
-        where: jest.fn().mockResolvedValue([]),
+        where: vi.fn().mockResolvedValue([]),
       };
       fetchChain.innerJoin.mockReturnValue(joinChain);
       fetchChain.leftJoin.mockReturnValue(joinChain);
@@ -74,94 +74,92 @@ describe('ActivitiesService', () => {
   // Mock database service
   const mockDatabaseService = {
     db: {
-      select: jest.fn().mockReturnThis(),
-      from: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      leftJoin: jest.fn().mockReturnThis(),
-      innerJoin: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      values: jest.fn().mockReturnThis(),
-      returning: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      set: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      offset: jest.fn().mockReturnThis(),
-      transaction: jest.fn(),
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      groupBy: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      transaction: vi.fn(),
     },
   };
 
   // Mock activities gateway
   const mockActivitiesGateway = {
-    notifyActivityUpdate: jest.fn(),
-    broadcastActivityCreated: jest.fn(),
+    notifyActivityUpdate: vi.fn(),
+    broadcastActivityCreated: vi.fn(),
     server: {
-      to: jest.fn().mockReturnThis(),
-      emit: jest.fn(),
+      to: vi.fn().mockReturnThis(),
+      emit: vi.fn(),
     },
   };
 
   // Mock activity history service
   const mockActivityHistoryService = {
-    recordChange: jest.fn().mockResolvedValue(undefined),
-    getActivityHistory: jest.fn().mockResolvedValue([]),
-    getLastPublishedState: jest.fn().mockResolvedValue(null),
-    generateChangeList: jest.fn().mockReturnValue([]),
+    recordChange: vi.fn().mockResolvedValue(undefined),
+    getActivityHistory: vi.fn().mockResolvedValue([]),
+    getLastPublishedState: vi.fn().mockResolvedValue(null),
+    generateChangeList: vi.fn().mockReturnValue([]),
   };
 
   // Mock junction service
   const mockJunctionService = {
-    insertJunctionRecords: jest.fn().mockResolvedValue(undefined),
-    updateJunctionRecords: jest.fn().mockResolvedValue(undefined),
-    insertRepresentatives: jest.fn().mockResolvedValue(undefined),
-    updateRepresentatives: jest.fn().mockResolvedValue(undefined),
-    insertVenueAddress: jest.fn().mockResolvedValue(undefined),
-    upsertVenueAddress: jest.fn().mockResolvedValue(undefined),
-    createDefaultReportSettings: jest.fn().mockResolvedValue(undefined),
-    updateActivityReportSettings: jest.fn().mockResolvedValue(undefined),
-    insertCommsContacts: jest.fn().mockResolvedValue(undefined),
-    updateCommsContacts: jest.fn().mockResolvedValue(undefined),
+    insertJunctionRecords: vi.fn().mockResolvedValue(undefined),
+    updateJunctionRecords: vi.fn().mockResolvedValue(undefined),
+    insertRepresentatives: vi.fn().mockResolvedValue(undefined),
+    updateRepresentatives: vi.fn().mockResolvedValue(undefined),
+    insertVenueAddress: vi.fn().mockResolvedValue(undefined),
+    upsertVenueAddress: vi.fn().mockResolvedValue(undefined),
+    createDefaultReportSettings: vi.fn().mockResolvedValue(undefined),
+    updateActivityReportSettings: vi.fn().mockResolvedValue(undefined),
+    insertCommsContacts: vi.fn().mockResolvedValue(undefined),
+    updateCommsContacts: vi.fn().mockResolvedValue(undefined),
   };
 
   // Mock data fetcher service
   const mockDataFetcherService = {
-    fetchCategoriesForActivities: jest
+    fetchCategoriesForActivities: vi
       .fn()
       .mockResolvedValue({ namesMap: new Map(), idsMap: new Map() }),
-    fetchTagsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchActivityStatusesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchPitchStatusesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchDateStatusesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchTimeStatusesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchVenueStatusesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchVenueAddressesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchCommsMaterialsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchTranslationsRequiredForActivities: jest
+    fetchTagsForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchActivityStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchPitchStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchDateStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchTimeStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchVenueStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchVenueAddressesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchCommsMaterialsForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchTranslationsRequiredForActivities: vi
       .fn()
       .mockResolvedValue(new Map()),
-    fetchRepresentativesAttendingForActivities: jest
+    fetchRepresentativesAttendingForActivities: vi
       .fn()
       .mockResolvedValue(new Map()),
-    fetchSharedWithTeamsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchCommsContactsForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchEventLeadOrgNamesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchEventPlannerNamesForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchNewsReleaseOriginsForActivities: jest
+    fetchSharedWithTeamsForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchCommsContactsForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchLeadOrgNamesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchEventLeadOrgNamesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchEventPlannerNamesForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchNewsReleaseOriginsForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchNewsReleaseDistributionsForActivities: vi
       .fn()
       .mockResolvedValue(new Map()),
-    fetchNewsReleaseDistributionsForActivities: jest
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchPremierRequestedForActivities: jest.fn().mockResolvedValue(new Map()),
-    fetchReportSettingsForActivities: jest.fn().mockResolvedValue(new Map()),
+    fetchPremierRequestedForActivities: vi.fn().mockResolvedValue(new Map()),
+    fetchReportSettingsForActivities: vi.fn().mockResolvedValue(new Map()),
   };
 
   // Mock mapper service
   const mockMapperService = {
-    mapToResponseDto: jest.fn((activity, relatedData) => {
+    mapToResponseDto: vi.fn((activity, relatedData) => {
       // Format time to HH:mm (matches real mapper behavior)
       const formatTime = (time: string | null): string | null => {
         if (!time) return null;
@@ -252,11 +250,11 @@ describe('ActivitiesService', () => {
 
   // Mock utils service
   const mockUtilsService = {
-    generateDisplayId: jest.fn(
+    generateDisplayId: vi.fn(
       (abbrev, id) =>
         `${abbrev.toUpperCase()}-${id.toString().slice(-6).padStart(6, '0')}`
     ),
-    validateCategoryIds: jest.fn().mockResolvedValue(undefined),
+    validateCategoryIds: vi.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -297,7 +295,7 @@ describe('ActivitiesService', () => {
     service = module.get<ActivitiesService>(ActivitiesService);
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('mapToResponseDto validation', () => {
@@ -533,36 +531,36 @@ describe('ActivitiesService', () => {
       });
 
       const mockInsert = {
-        values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([createdActivity]),
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([createdActivity]),
       };
 
       // Mock transaction to execute the callback and return the result
-      mockDatabaseService.db.transaction = jest.fn(async (callback) => {
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         const ministryQuery = {
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          limit: jest.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
         };
         const tx = {
-          insert: jest.fn().mockReturnValue(mockInsert),
-          select: jest.fn((...args) => {
+          insert: vi.fn().mockReturnValue(mockInsert),
+          select: vi.fn((...args) => {
             // Ministry lookup uses select({ abbreviation: ... })
             if (args.length > 0 && typeof args[0] === 'object') {
               return ministryQuery;
             }
             return createMockQueryChain([createdActivity]);
           }),
-          update: jest.fn().mockReturnValue({
-            set: jest.fn().mockReturnThis(),
-            where: jest.fn().mockReturnThis(),
-            returning: jest.fn().mockResolvedValue([createdActivity]),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([createdActivity]),
           }),
         };
         return await callback(tx);
       });
 
-      mockDatabaseService.db.insert = jest.fn().mockReturnValue(mockInsert);
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
 
       // Mock select for findOne call after create
       mockDatabaseService.db.select = createMockSelect([createdActivity]);
@@ -584,36 +582,36 @@ describe('ActivitiesService', () => {
       });
 
       // Mock transaction for update
-      mockDatabaseService.db.transaction = jest.fn(async (callback) => {
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         const tx = {
-          update: jest.fn().mockReturnValue({
-            set: jest.fn().mockReturnThis(),
-            where: jest.fn().mockReturnThis(),
-            returning: jest.fn().mockResolvedValue([updatedActivity]),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
           }),
-          select: jest.fn((...args) => {
+          select: vi.fn((...args) => {
             // For venue address check in transaction
             if (args.length === 0) {
               return createMockQueryChain([]);
             }
             // For fetch methods
             const fetchChain = {
-              from: jest.fn().mockReturnThis(),
-              where: jest.fn().mockResolvedValue([]),
-              leftJoin: jest.fn().mockReturnThis(),
-              innerJoin: jest.fn().mockReturnThis(),
-              limit: jest.fn().mockResolvedValue([]),
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
             };
             const joinChain = {
               ...fetchChain,
-              where: jest.fn().mockResolvedValue([]),
+              where: vi.fn().mockResolvedValue([]),
             };
             fetchChain.innerJoin.mockReturnValue(joinChain);
             fetchChain.leftJoin.mockReturnValue(joinChain);
             return fetchChain;
           }),
-          delete: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue(undefined),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
           }),
         };
         return await callback(tx);
@@ -622,7 +620,7 @@ describe('ActivitiesService', () => {
       // Mock select: first call returns existing activity (for existence check),
       // subsequent calls return updated activity (for findOne after update)
       let selectCallCount = 0;
-      mockDatabaseService.db.select = jest.fn((...args) => {
+      mockDatabaseService.db.select = vi.fn((...args) => {
         if (args.length === 0) {
           selectCallCount++;
           if (selectCallCount === 1) {
@@ -635,15 +633,15 @@ describe('ActivitiesService', () => {
         }
         // For fetch methods (select with object), use the helper pattern
         const fetchChain = {
-          from: jest.fn().mockReturnThis(),
-          where: jest.fn().mockResolvedValue([]),
-          leftJoin: jest.fn().mockReturnThis(),
-          innerJoin: jest.fn().mockReturnThis(),
-          limit: jest.fn().mockResolvedValue([]),
+          from: vi.fn()().mockReturnThis(),
+          where: vi.fn()().mockResolvedValue([]),
+          leftJoin: vi.fn()().mockReturnThis(),
+          innerJoin: vi.fn()().mockReturnThis(),
+          limit: vi.fn()().mockResolvedValue([]),
         };
         const joinChain = {
           ...fetchChain,
-          where: jest.fn().mockResolvedValue([]),
+          where: vi.fn()().mockResolvedValue([]),
         };
         fetchChain.innerJoin.mockReturnValue(joinChain);
         fetchChain.leftJoin.mockReturnValue(joinChain);

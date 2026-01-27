@@ -13,6 +13,7 @@ const path = require('path');
 
 // Map workspace names to their directory paths
 const workspacePaths = {
+  'calendar-service': 'calendar-service',
   'calendar-ui': 'calendar-ui',
   database: 'packages/database',
   shared: 'packages/shared',

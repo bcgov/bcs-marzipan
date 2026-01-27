@@ -5,12 +5,12 @@ import { DatabaseService } from '../../database/database.service';
 
 describe('ActivityUtilsService', () => {
   let service: ActivityUtilsService;
-  let mockWhere: jest.Mock;
+  let mockWhere: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
-    mockWhere = jest.fn().mockResolvedValue([{ id: 1 }]);
-    const mockFrom = jest.fn().mockReturnValue({ where: mockWhere });
-    const mockSelect = jest.fn().mockReturnValue({ from: mockFrom });
+    mockWhere = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
     const mockDb = { select: mockSelect };
     const mockDatabaseService = { db: mockDb };
 

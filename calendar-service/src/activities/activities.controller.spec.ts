@@ -17,12 +17,12 @@ describe('ActivitiesController', () => {
   });
 
   const mockActivitiesService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-    fetchCategories: jest.fn(),
+    create: vi.fn(),
+    findAll: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    fetchCategories: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -40,7 +40,7 @@ describe('ActivitiesController', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {
