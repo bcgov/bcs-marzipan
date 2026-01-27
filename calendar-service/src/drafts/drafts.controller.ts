@@ -59,11 +59,21 @@ export class DraftsController {
     @Query('userId', ParsePositiveIntPipe) userId: number,
     @Body() saveDto: SaveDraftDto
   ): Promise<{ success: boolean; data: DraftResponseDto }> {
-    this.logger.log(
-      `Saving draft for user ${userId}, form ${saveDto.formType}`
-    );
-    const data = await this.draftsService.saveDraft(userId, saveDto);
-    return { success: true, data };
+    try {
+      this.logger.log(
+        `Saving draft for user ${userId}, form ${saveDto.formType}`
+      );
+      const data = await this.draftsService.saveDraft(userId, saveDto);
+      return { success: true, data };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.stack || error.message : String(error);
+      this.logger.error(
+        `Failed to save draft for user ${userId}, form ${saveDto.formType}`,
+        errorMessage
+      );
+      throw error;
+    }
   }
 
   /**

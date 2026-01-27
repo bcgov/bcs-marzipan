@@ -8,7 +8,6 @@ import {
   FormDescription,
 } from '../ui/form';
 import { Badge } from '../ui/badge';
-import { Switch } from '../ui/switch';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
@@ -34,10 +33,11 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
   const { data: reports, isLoading: reportsLoading } = useReports();
 
   // Find report IDs for Look Ahead and 30/60/90 reports
-  const lookAheadReport = useMemo(
-    () => reports?.find((r) => r.name === 'look-ahead'),
-    [reports]
-  );
+  // TODO: Add system reports constants to @corpcal/shared/constants/constants
+  // const lookAheadReport = useMemo(
+  //   () => reports?.find((r) => r.name === 'look-ahead'),
+  //   [reports]
+  // );
   const thirtySixtyNinetyReport = useMemo(
     () => reports?.find((r) => r.name === 'thirty-sixty-ninety'),
     [reports]
