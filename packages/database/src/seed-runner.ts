@@ -196,25 +196,93 @@ export class SeedRunner {
   }
 
   /**
-   * Reads and parses SQL file, splitting into individual statements
+   * Reads and parses SQL file, splitting into individual statements.
+   * Properly handles:
+   * - Semicolons inside single-quoted string literals
+   * - Escaped single quotes ('') in SQL strings
+   * - Line comments (--)
+   * - Block comments
    */
   private parseSqlFile(filePath: string): string[] {
     const sqlContent = fs.readFileSync(filePath, 'utf-8');
 
-    // Split SQL content by semicolons to handle multiple statements
-    // Remove all comments and filter out empty statements
-    const statements = sqlContent
-      .split(';')
-      .map((stmt) =>
-        // Remove both line comments (--) and block comments (/* ... */)
-        stmt
-          // Remove block comments
-          .replace(/\/\*[\s\S]*?\*\//g, '')
-          // Remove line comments
-          .replace(/--.*$/gm, '')
-          .trim()
-      )
-      .filter((stmt) => stmt.length > 0);
+    // First pass: remove block comments (they can contain semicolons)
+    const withoutBlockComments = sqlContent.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // Second pass: parse character by character to properly handle
+    // string literals, line comments, and statement boundaries
+    const statements: string[] = [];
+    let currentStatement = '';
+    let inString = false;
+    let inLineComment = false;
+    let i = 0;
+
+    while (i < withoutBlockComments.length) {
+      const char = withoutBlockComments[i];
+      const nextChar = withoutBlockComments[i + 1];
+
+      // Handle line comments
+      if (!inString && char === '-' && nextChar === '-') {
+        inLineComment = true;
+        i += 2;
+        continue;
+      }
+
+      // End of line comment
+      if (inLineComment) {
+        if (char === '\n') {
+          inLineComment = false;
+          // Add newline to preserve formatting
+          currentStatement += '\n';
+        }
+        i++;
+        continue;
+      }
+
+      // Handle string literals (single quotes in SQL)
+      if (char === "'") {
+        if (inString) {
+          // Check for escaped quote ('')
+          if (nextChar === "'") {
+            // Escaped quote - add both and skip next
+            currentStatement += "''";
+            i += 2;
+            continue;
+          } else {
+            // End of string
+            inString = false;
+          }
+        } else {
+          // Start of string
+          inString = true;
+        }
+        currentStatement += char;
+        i++;
+        continue;
+      }
+
+      // Handle statement terminator (semicolon)
+      if (char === ';' && !inString) {
+        // End of statement
+        const trimmed = currentStatement.trim();
+        if (trimmed.length > 0) {
+          statements.push(trimmed);
+        }
+        currentStatement = '';
+        i++;
+        continue;
+      }
+
+      // Regular character
+      currentStatement += char;
+      i++;
+    }
+
+    // Don't forget any remaining statement (without trailing semicolon)
+    const trimmed = currentStatement.trim();
+    if (trimmed.length > 0) {
+      statements.push(trimmed);
+    }
 
     return statements;
   }
