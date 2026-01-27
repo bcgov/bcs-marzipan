@@ -25,6 +25,114 @@ export interface SeedableDatabase {
 }
 
 /**
+ * Parses SQL content into individual statements.
+ * Properly handles:
+ * - Semicolons inside single-quoted string literals
+ * - Escaped single quotes ('') in SQL strings
+ * - Line comments (--)
+ * - Block comments (including PostgreSQL-style nested comments)
+ *
+ * @param sqlContent - The SQL content to parse
+ * @returns Array of SQL statements (trimmed, non-empty)
+ */
+export function parseSqlStatements(sqlContent: string): string[] {
+  const statements: string[] = [];
+  let currentStatement = '';
+  let inString = false;
+  let inLineComment = false;
+  let blockCommentDepth = 0;
+  let i = 0;
+
+  while (i < sqlContent.length) {
+    const char = sqlContent[i];
+    const nextChar = sqlContent[i + 1];
+
+    // Handle block comments (can nest, but not inside strings or line comments)
+    if (!inString && !inLineComment) {
+      if (char === '/' && nextChar === '*') {
+        blockCommentDepth++;
+        i += 2;
+        continue;
+      }
+      if (blockCommentDepth > 0 && char === '*' && nextChar === '/') {
+        blockCommentDepth--;
+        i += 2;
+        continue;
+      }
+    }
+
+    // Skip content inside block comments
+    if (blockCommentDepth > 0) {
+      i++;
+      continue;
+    }
+
+    // Handle line comments (not inside strings)
+    if (!inString && char === '-' && nextChar === '-') {
+      inLineComment = true;
+      i += 2;
+      continue;
+    }
+
+    // End of line comment
+    if (inLineComment) {
+      if (char === '\n') {
+        inLineComment = false;
+        // Don't add newline - the comment line is removed entirely
+      }
+      i++;
+      continue;
+    }
+
+    // Handle string literals (single quotes in SQL)
+    if (char === "'") {
+      if (inString) {
+        // Check for escaped quote ('')
+        if (nextChar === "'") {
+          // Escaped quote - add both and skip next
+          currentStatement += "''";
+          i += 2;
+          continue;
+        } else {
+          // End of string
+          inString = false;
+        }
+      } else {
+        // Start of string
+        inString = true;
+      }
+      currentStatement += char;
+      i++;
+      continue;
+    }
+
+    // Handle statement terminator (semicolon)
+    if (char === ';' && !inString) {
+      // End of statement
+      const trimmed = currentStatement.trim();
+      if (trimmed.length > 0) {
+        statements.push(trimmed);
+      }
+      currentStatement = '';
+      i++;
+      continue;
+    }
+
+    // Regular character
+    currentStatement += char;
+    i++;
+  }
+
+  // Don't forget any remaining statement (without trailing semicolon)
+  const trimmed = currentStatement.trim();
+  if (trimmed.length > 0) {
+    statements.push(trimmed);
+  }
+
+  return statements;
+}
+
+/**
  * Seed Runner
  *
  * Automatically discovers and executes seed SQL files from the seeds directory.
@@ -205,86 +313,7 @@ export class SeedRunner {
    */
   private parseSqlFile(filePath: string): string[] {
     const sqlContent = fs.readFileSync(filePath, 'utf-8');
-
-    // First pass: remove block comments (they can contain semicolons)
-    const withoutBlockComments = sqlContent.replace(/\/\*[\s\S]*?\*\//g, '');
-
-    // Second pass: parse character by character to properly handle
-    // string literals, line comments, and statement boundaries
-    const statements: string[] = [];
-    let currentStatement = '';
-    let inString = false;
-    let inLineComment = false;
-    let i = 0;
-
-    while (i < withoutBlockComments.length) {
-      const char = withoutBlockComments[i];
-      const nextChar = withoutBlockComments[i + 1];
-
-      // Handle line comments
-      if (!inString && char === '-' && nextChar === '-') {
-        inLineComment = true;
-        i += 2;
-        continue;
-      }
-
-      // End of line comment
-      if (inLineComment) {
-        if (char === '\n') {
-          inLineComment = false;
-          // Add newline to preserve formatting
-          currentStatement += '\n';
-        }
-        i++;
-        continue;
-      }
-
-      // Handle string literals (single quotes in SQL)
-      if (char === "'") {
-        if (inString) {
-          // Check for escaped quote ('')
-          if (nextChar === "'") {
-            // Escaped quote - add both and skip next
-            currentStatement += "''";
-            i += 2;
-            continue;
-          } else {
-            // End of string
-            inString = false;
-          }
-        } else {
-          // Start of string
-          inString = true;
-        }
-        currentStatement += char;
-        i++;
-        continue;
-      }
-
-      // Handle statement terminator (semicolon)
-      if (char === ';' && !inString) {
-        // End of statement
-        const trimmed = currentStatement.trim();
-        if (trimmed.length > 0) {
-          statements.push(trimmed);
-        }
-        currentStatement = '';
-        i++;
-        continue;
-      }
-
-      // Regular character
-      currentStatement += char;
-      i++;
-    }
-
-    // Don't forget any remaining statement (without trailing semicolon)
-    const trimmed = currentStatement.trim();
-    if (trimmed.length > 0) {
-      statements.push(trimmed);
-    }
-
-    return statements;
+    return parseSqlStatements(sqlContent);
   }
 
   /**
