@@ -24,67 +24,76 @@ export class DraftsService {
   ): Promise<DraftResponseDto> {
     const { formType, entityId, draftData } = saveDto;
 
-    // Set expiration to 30 days from now
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    try {
+      // Set expiration to 30 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Check if draft already exists
-    const conditions: SQL[] = [
-      eq(formDrafts.userId, userId),
-      eq(formDrafts.formType, formType),
-    ];
-    if (entityId !== undefined) {
-      conditions.push(eq(formDrafts.entityId, entityId));
-    } else {
-      conditions.push(isNull(formDrafts.entityId));
-    }
+      // Check if draft already exists
+      const conditions: SQL[] = [
+        eq(formDrafts.userId, userId),
+        eq(formDrafts.formType, formType),
+      ];
+      if (entityId !== undefined) {
+        conditions.push(eq(formDrafts.entityId, entityId));
+      } else {
+        conditions.push(isNull(formDrafts.entityId));
+      }
 
-    const existing = await this.db.db
-      .select()
-      .from(formDrafts)
-      .where(and(...conditions))
-      .limit(1);
+      const existing = await this.db.db
+        .select()
+        .from(formDrafts)
+        .where(and(...conditions))
+        .limit(1);
 
-    let result;
+      let result;
 
-    if (existing.length > 0) {
-      // Update existing draft
-      this.logger.log(
-        `Updating draft ${existing[0].id} for user ${userId}, form ${formType}`
+      if (existing.length > 0) {
+        // Update existing draft
+        this.logger.log(
+          `Updating draft ${existing[0].id} for user ${userId}, form ${formType}`
+        );
+
+        const updated = await this.db.db
+          .update(formDrafts)
+          .set({
+            draftData,
+            updatedAt: new Date(),
+            expiresAt,
+          })
+          .where(eq(formDrafts.id, existing[0].id))
+          .returning();
+
+        result = updated[0];
+      } else {
+        // Insert new draft
+        this.logger.log(
+          `Creating new draft for user ${userId}, form ${formType}`
+        );
+
+        const inserted = await this.db.db
+          .insert(formDrafts)
+          .values({
+            userId,
+            formType,
+            entityId: entityId ?? null,
+            draftData,
+            expiresAt,
+          })
+          .returning();
+
+        result = inserted[0];
+      }
+
+      return this.mapToDto(result);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Error saving draft for user ${userId}, form ${formType}: ${errorMessage}`
       );
-
-      const updated = await this.db.db
-        .update(formDrafts)
-        .set({
-          draftData,
-          updatedAt: new Date(),
-          expiresAt,
-        })
-        .where(eq(formDrafts.id, existing[0].id))
-        .returning();
-
-      result = updated[0];
-    } else {
-      // Insert new draft
-      this.logger.log(
-        `Creating new draft for user ${userId}, form ${formType}`
-      );
-
-      const inserted = await this.db.db
-        .insert(formDrafts)
-        .values({
-          userId,
-          formType,
-          entityId: entityId ?? null,
-          draftData,
-          expiresAt,
-        })
-        .returning();
-
-      result = inserted[0];
+      throw error;
     }
-
-    return this.mapToDto(result);
   }
 
   /**

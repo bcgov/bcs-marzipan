@@ -15,7 +15,12 @@ export const ActivityFormSection: React.FC<ActivityFormSectionProps> = ({
   fieldsClassName = 'space-y-4',
 }) => {
   return (
-    <div className={cn('space-y-6', className)}>
+    <div
+      className={cn(
+        'space-y-6 rounded-md border border-gray-300 p-6',
+        className
+      )}
+    >
       <h2 className="pb-2 text-xl font-semibold">{title}</h2>
       <div className={fieldsClassName}>{children}</div>
     </div>

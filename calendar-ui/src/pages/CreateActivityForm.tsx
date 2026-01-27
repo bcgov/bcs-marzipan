@@ -1,12 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { DEFAULT_ACTIVITY_STATUS } from '@corpcal/shared/constants/constants';
+import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
@@ -33,7 +33,6 @@ import {
   ActivityCommsSection,
   ActivityNewsReleaseSection,
   ActivityEventSection,
-  ActivityVenueSection,
   ActivityReportsSection,
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
@@ -65,14 +64,14 @@ const getDefaultFormValues = (): Partial<FormData> => ({
 });
 
 // TODO: Replace with actual user from auth context once authentication is implemented
-const TEMPORARY_USER_ID = 8;
+const TEMPORARY_USER_ID = 1;
 
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
-  const [draftChecked, setDraftChecked] = useState(false);
+  const draftCheckedRef = useRef(false);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -108,49 +107,71 @@ export const CreateActivityForm: React.FC = () => {
 
   // Set default activityStatusId to "new" when lookups are loaded
   useEffect(() => {
-    if (
-      lookups.activityStatuses.length > 0 &&
-      !form.getValues('activityStatusId')
-    ) {
-      const newStatus = lookups.activityStatuses.find(
-        (status) => status.name === DEFAULT_ACTIVITY_STATUS
-      );
-      if (newStatus) {
-        form.setValue('activityStatusId', newStatus.id);
+    if (lookups.activityStatuses.length > 0) {
+      const currentValue = form.getValues('activityStatusId');
+      // Only set if not already set (undefined, null, or 0 are considered unset)
+      if (currentValue === undefined || currentValue === null) {
+        const newStatus = lookups.activityStatuses.find(
+          (status) => status.name === ('new' satisfies ActivityStatusName)
+        );
+        if (newStatus) {
+          form.setValue('activityStatusId', newStatus.id, {
+            shouldValidate: true,
+          });
+        }
       }
     }
   }, [lookups.activityStatuses, form]);
-  // Get form values for autosave
-  const formValues = form.watch();
+
+  // Get form values for autosave - use subscription pattern to avoid infinite loops
+  const [formValues, setFormValues] = useState<Partial<FormData>>(() =>
+    form.getValues()
+  );
+  const previousValuesRef = useRef<string>('');
+
+  useEffect(() => {
+    // Subscribe to form changes and only update state when values actually change
+    const subscription = form.watch((values) => {
+      const newValues = values as Partial<FormData>;
+      const newValuesStr = JSON.stringify(newValues);
+
+      // Only update if values actually changed
+      if (newValuesStr !== previousValuesRef.current) {
+        previousValuesRef.current = newValuesStr;
+        setFormValues(newValues);
+      }
+    });
+
+    // Initialize previous values ref
+    previousValuesRef.current = JSON.stringify(form.getValues());
+
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   // Autosave integration
   const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
-    useAutoSave(
-      TEMPORARY_USER_ID,
-      'activity',
-      formValues as Record<string, any>,
-      undefined,
-      {
-        debounceMs: 3000, // Save 3 seconds after user stops typing
-        enabled: !isSubmitting, // Disable during submission
-      }
-    );
+    useAutoSave(TEMPORARY_USER_ID, 'activity', formValues, undefined, {
+      debounceMs: 3000, // Save 3 seconds after user stops typing
+      enabled: !isSubmitting, // Disable during submission
+    });
 
   // Check for existing draft on mount and show dialog
   useEffect(() => {
+    if (draftCheckedRef.current || isDraftLoading) {
+      return;
+    }
+
     if (
-      !draftChecked &&
-      !isDraftLoading &&
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
       setShowDraftDialog(true);
-      setDraftChecked(true);
-    } else if (!draftChecked && !isDraftLoading) {
+      draftCheckedRef.current = true;
+    } else {
       // No draft found, mark as checked so we don't show dialog
-      setDraftChecked(true);
+      draftCheckedRef.current = true;
     }
-  }, [existingDraft, isDraftLoading, draftChecked]);
+  }, [existingDraft, isDraftLoading]);
 
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
@@ -164,7 +185,7 @@ export const CreateActivityForm: React.FC = () => {
     deleteDraft();
 
     setShowDraftDialog(false);
-    setDraftChecked(false);
+    draftCheckedRef.current = false;
 
     // Reset the form to default values
     form.reset(getDefaultFormValues());
@@ -388,74 +409,48 @@ export const CreateActivityForm: React.FC = () => {
                   {/* Left Column */}
                   <div className="space-y-6">
                     {/* Overview Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityOverviewSection
-                        categories={lookups.categories}
-                        ministries={lookups.ministries}
-                        organizations={lookups.organizations}
-                        tags={lookups.tags}
-                      />
-                    </div>
+                    <ActivityOverviewSection
+                      categories={lookups.categories}
+                      ministries={lookups.ministries}
+                      organizations={lookups.organizations}
+                      tags={lookups.tags}
+                    />
 
                     {/* Comms Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityCommsSection
-                        activityStatusOptions={lookups.activityStatuses}
-                        commsMaterialOptions={lookups.commsMaterials}
-                        commsLeadOptions={commsLeadOptions}
-                      />
-                    </div>
+                    <ActivityCommsSection
+                      commsMaterialOptions={lookups.commsMaterials}
+                      commsLeadOptions={commsLeadOptions}
+                    />
 
                     {/* News Release Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityNewsReleaseSection
-                        translationLanguageOptions={
-                          lookups.translationLanguages
-                        }
-                        newsReleaseDistributionOptions={
-                          lookups.newsReleaseDistributions
-                        }
-                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                      />
-                    </div>
+                    <ActivityNewsReleaseSection
+                      translationLanguageOptions={lookups.translationLanguages}
+                      newsReleaseDistributionOptions={
+                        lookups.newsReleaseDistributions
+                      }
+                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                    />
                   </div>
 
                   {/* Right Column */}
                   <div className="space-y-6">
                     {/* Reports Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityReportsSection form={form} />
-                    </div>
+                    <ActivityReportsSection form={form} />
 
                     {/* Schedule Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityScheduleSection form={form} />
-                    </div>
+                    <ActivityScheduleSection form={form} />
 
                     {/* Event Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityEventSection
-                        representativeOptions={
-                          lookups.governmentRepresentatives
-                        }
-                        premierRequestedOptions={lookups.premierRequested}
-                      />
-                    </div>
-
-                    {/* Venue Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivityVenueSection
-                        form={form}
-                        eventPlannerOptions={lookups.eventPlanners}
-                      />
-                    </div>
+                    <ActivityEventSection
+                      representativeOptions={lookups.governmentRepresentatives}
+                      premierRequestedOptions={lookups.premierRequested}
+                      eventPlannerOptions={lookups.eventPlanners}
+                    />
 
                     {/* Sharing Section */}
-                    <div className="rounded-md border border-gray-300 p-6">
-                      <ActivitySharingSection
-                        sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                      />
-                    </div>
+                    <ActivitySharingSection
+                      sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                    />
                   </div>
                 </div>
 

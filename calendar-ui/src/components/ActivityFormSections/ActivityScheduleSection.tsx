@@ -5,7 +5,6 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -26,10 +25,8 @@ type ActivityScheduleSectionProps = {
 export const ActivityScheduleSection: React.FC<
   ActivityScheduleSectionProps
 > = ({ form }) => {
-  const { data: dateStatuses, isLoading: dateStatusesLoading } =
-    useDateStatuses();
-  const { data: timeStatuses, isLoading: timeStatusesLoading } =
-    useTimeStatuses();
+  const { data: dateStatuses } = useDateStatuses();
+  const { data: timeStatuses } = useTimeStatuses();
 
   // Get current status IDs
   const currentDateStatusId = form.watch('dateStatusId');
