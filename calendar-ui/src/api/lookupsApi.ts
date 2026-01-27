@@ -406,6 +406,7 @@ export async function fetchReports(): Promise<ReportResponse[]> {
 }
 
 // Export types for use in other files
+// Export types for use in other files
 export type {
   CategoryLookupItem,
   OrganizationLookupItem,
@@ -416,4 +417,5 @@ export type {
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
+  MinistryLookupItem,
 };

@@ -9,7 +9,6 @@ import {
 } from '../ui/form';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
-import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import { Button } from '../ui/button';
 import {
@@ -20,7 +19,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { X, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -33,6 +32,11 @@ type FormData = CreateActivityRequest & {
 };
 
 type ActivityCommsSectionProps = {
+  activityStatusOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
   commsMaterialOptions: Array<{
     id: number;
     name: string;
@@ -42,6 +46,7 @@ type ActivityCommsSectionProps = {
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
+  activityStatusOptions,
   commsMaterialOptions,
   commsLeadOptions,
 }) => {
@@ -58,6 +63,36 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   return (
     <ActivityFormSection title="Comms">
+      <FormField
+        control={form.control}
+        name="activityStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Activity Status <span className="text-destructive">*</span>
+            </FormLabel>
+            <Select
+              onValueChange={(value) => field.onChange(parseInt(value, 10))}
+              value={field.value ? String(field.value) : ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select activity status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {activityStatusOptions.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.displayName || status.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       <FormField
         control={form.control}
         name="commsContactLeadId"

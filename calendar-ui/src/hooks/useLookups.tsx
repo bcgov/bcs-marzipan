@@ -21,6 +21,7 @@ import {
   fetchReports,
   fetchDateStatuses,
   fetchTimeStatuses,
+  fetchMinistries,
   type LookupItem,
   type LookupQueryParams,
   type CategoryLookupItem,
@@ -32,6 +33,7 @@ import {
   type CommsMaterialsLookupItem,
   type TranslationLanguageLookupItem,
   type GovernmentRepresentativeLookupItem,
+  type MinistryLookupItem,
 } from '../api/lookupsApi';
 import type { ReportResponse } from '@corpcal/shared/api/types';
 
@@ -169,6 +171,14 @@ export function useTimeStatuses() {
   return useQuery<LookupItem[]>({
     queryKey: ['lookups', 'time-statuses'],
     queryFn: () => fetchTimeStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useMinistries() {
+  return useQuery<MinistryLookupItem[]>({
+    queryKey: ['lookups', 'ministries'],
+    queryFn: () => fetchMinistries(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

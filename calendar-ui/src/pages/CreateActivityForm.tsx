@@ -47,6 +47,9 @@ export const CreateActivityForm: React.FC = () => {
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
+  // Fetch all lookup data
+  const lookups = useFormLookups();
+
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
@@ -86,6 +89,21 @@ export const CreateActivityForm: React.FC = () => {
     }
   }, [timeStatuses, form]);
 
+  // Set default activityStatusId to "new" when lookups are loaded
+  useEffect(() => {
+    if (
+      lookups.activityStatuses.length > 0 &&
+      !form.getValues('activityStatusId')
+    ) {
+      const newStatus = lookups.activityStatuses.find(
+        (status) => status.name === DEFAULT_ACTIVITY_STATUS
+      );
+      if (newStatus) {
+        form.setValue('activityStatusId', newStatus.id);
+      }
+    }
+  }, [lookups.activityStatuses, form]);
+
   const handleCancel = () => {
     form.reset();
   };
@@ -94,22 +112,11 @@ export const CreateActivityForm: React.FC = () => {
     console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
-      // Find the "New" activity status by name
-      const newStatus = lookups.activityStatuses.find(
-        (status) => status.name === DEFAULT_ACTIVITY_STATUS
-      );
-
-      if (!newStatus) {
-        throw new Error(
-          `Activity status "${DEFAULT_ACTIVITY_STATUS}" not found in lookups`
-        );
-      }
-
       // Prepare submit data with junction table arrays
       const formValues = form.getValues();
       const submitData = {
         ...data,
-        activityStatusId: newStatus.id,
+        activityStatusId: data.activityStatusId,
         startDate: data.startDate || null,
         endDate: data.endDate || null,
         startTime: data.startTime || null,
@@ -185,9 +192,6 @@ export const CreateActivityForm: React.FC = () => {
   // Check if form is valid - trigger validation if needed
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
-
-  // Fetch all lookup data
-  const lookups = useFormLookups();
 
   // Show loading state if lookups are still loading
   if (lookups.isLoading) {
@@ -266,6 +270,7 @@ export const CreateActivityForm: React.FC = () => {
                 <div className="rounded-md border border-gray-300 p-6">
                   <ActivityOverviewSection
                     categories={lookups.categories}
+                    ministries={lookups.ministries}
                     organizations={lookups.organizations}
                     tags={lookups.tags}
                   />
@@ -274,6 +279,7 @@ export const CreateActivityForm: React.FC = () => {
                 {/* Comms Section */}
                 <div className="rounded-md border border-gray-300 p-6">
                   <ActivityCommsSection
+                    activityStatusOptions={lookups.activityStatuses}
                     commsMaterialOptions={lookups.commsMaterials}
                     commsLeadOptions={commsLeadOptions}
                   />

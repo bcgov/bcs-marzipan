@@ -14,6 +14,13 @@ import { Checkbox } from '../ui/checkbox';
 import { Switch } from '../ui/switch';
 import { Badge } from '../ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '../ui/freeform-combobox';
@@ -35,13 +42,14 @@ type ActivityOverviewSectionProps = {
     displayName?: string;
     allowsPitch: boolean;
   }>;
+  ministries: Array<{ id: string; name: string; displayName?: string }>;
   organizations: Array<{ value: string; label: string }>;
   tags: Array<{ id: number; text: string }>;
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ categories, organizations, tags }) => {
+> = ({ categories, ministries, organizations, tags }) => {
   const form = useFormContext<FormData>();
 
   // const [categories, setCategories] = useState<any[]>([]);
@@ -128,6 +136,36 @@ export const ActivityOverviewSection: React.FC<
                 value={field.value ?? ''}
               />
             </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="leadMinistryId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Lead Ministry <span className="text-destructive">*</span>
+            </FormLabel>
+            <Select
+              onValueChange={(value) => field.onChange(value)}
+              value={field.value || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select lead ministry" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {ministries.map((ministry) => (
+                  <SelectItem key={ministry.id} value={ministry.id}>
+                    {ministry.displayName || ministry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FormMessage />
           </FormItem>
         )}

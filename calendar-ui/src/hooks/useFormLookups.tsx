@@ -12,6 +12,7 @@ import {
   useNewsReleaseDistributions,
   usePremierRequested,
   useNewsReleaseOrigins,
+  useMinistries,
 } from './useLookups';
 
 export interface FormLookupData {
@@ -25,6 +26,9 @@ export interface FormLookupData {
 
   // Organizations - for Select/Combobox
   organizations: Array<{ value: string; label: string }>;
+
+  // Ministries - for Select
+  ministries: Array<{ id: string; name: string; displayName?: string }>;
 
   // Users - for Select/Combobox
   users: Array<{ value: string; label: string }>;
@@ -78,6 +82,7 @@ export interface FormLookupData {
 export function useFormLookups(): FormLookupData {
   const categoriesQuery = useCategories();
   const organizationsQuery = useOrganizations();
+  const ministriesQuery = useMinistries();
   const usersQuery = useUsers();
   const eventPlannersQuery = useEventPlanners();
   const tagsQuery = useTags();
@@ -93,6 +98,7 @@ export function useFormLookups(): FormLookupData {
   const isLoading =
     categoriesQuery.isLoading ||
     organizationsQuery.isLoading ||
+    ministriesQuery.isLoading ||
     usersQuery.isLoading ||
     eventPlannersQuery.isLoading ||
     tagsQuery.isLoading ||
@@ -108,6 +114,7 @@ export function useFormLookups(): FormLookupData {
   const hasError =
     categoriesQuery.isError ||
     organizationsQuery.isError ||
+    ministriesQuery.isError ||
     usersQuery.isError ||
     eventPlannersQuery.isError ||
     tagsQuery.isError ||
@@ -134,6 +141,14 @@ export function useFormLookups(): FormLookupData {
     organizationsQuery.data?.map((item) => ({
       value: item.value,
       label: item.label,
+    })) || [];
+
+  // Transform ministries for Select
+  const ministries =
+    ministriesQuery.data?.map((item) => ({
+      id: item.id,
+      name: item.label,
+      displayName: item.displayName ?? undefined,
     })) || [];
 
   // Transform users for Select/Combobox (serial IDs need to be strings for Select components)
@@ -227,6 +242,7 @@ export function useFormLookups(): FormLookupData {
       allowsPitch: boolean;
     }>,
     organizations,
+    ministries,
     users,
     eventPlanners,
     tags: tags as Array<{ id: number; text: string }>,
