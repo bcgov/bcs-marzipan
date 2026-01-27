@@ -11,6 +11,6 @@
       "@corpcal/database/*": ["./packages/database/dist/cjs/*"]
     }
   },
-  "include": [".local/scripts/**/*"],
+  "include": ["packages/**/*", ".local/scripts/**/*"],
   "exclude": ["node_modules", "**/dist", "**/node_modules"]
 }
