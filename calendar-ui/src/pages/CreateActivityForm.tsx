@@ -10,12 +10,21 @@ import { DEFAULT_ACTIVITY_STATUS } from '@corpcal/shared/constants/constants';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import {
+  ResumeDialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/resumeDraftDialog';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
@@ -38,10 +47,32 @@ type FormData = CreateActivityRequest & {
   sharedWithMinistryIds?: string[];
 };
 
+/**
+ * Default form values that match the FormData type.
+ * Used for both form initialization and reset operations.
+ */
+const getDefaultFormValues = (): Partial<FormData> => ({
+  isAllDay: false,
+  isIssue: false,
+  isConfidential: false,
+  categoryIds: [],
+  tagIds: [],
+  commsMaterialIds: [],
+  translationLanguageIds: [],
+  representatives: [],
+  sharedWithMinistryIds: [],
+  reportSettings: [],
+});
+
+// TODO: Replace with actual user from auth context once authentication is implemented
+const TEMPORARY_USER_ID = 8;
+
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftChecked, setDraftChecked] = useState(false);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -53,21 +84,7 @@ export const CreateActivityForm: React.FC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
-    defaultValues: {
-      isAllDay: false,
-      isIssue: false,
-      isConfidential: false,
-      omittedReportIds: [],
-      // TODO: Remove hardcoded user id 8 - this is temporary for development
-      commsContactLeadId: 8,
-      categoryIds: [],
-      tagIds: [],
-      commsMaterialIds: [],
-      translationLanguageIds: [],
-      representatives: [],
-      sharedWithMinistryIds: [],
-      reportSettings: [],
-    } as Partial<FormData>,
+    defaultValues: getDefaultFormValues(),
   });
 
   // Set default date and time statuses to "unknown" when they're loaded
@@ -103,6 +120,55 @@ export const CreateActivityForm: React.FC = () => {
       }
     }
   }, [lookups.activityStatuses, form]);
+  // Get form values for autosave
+  const formValues = form.watch();
+
+  // Autosave integration
+  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
+    useAutoSave(
+      TEMPORARY_USER_ID,
+      'activity',
+      formValues as Record<string, any>,
+      undefined,
+      {
+        debounceMs: 3000, // Save 3 seconds after user stops typing
+        enabled: !isSubmitting, // Disable during submission
+      }
+    );
+
+  // Check for existing draft on mount and show dialog
+  useEffect(() => {
+    if (
+      !draftChecked &&
+      !isDraftLoading &&
+      existingDraft?.draftData &&
+      Object.keys(existingDraft.draftData).length > 0
+    ) {
+      setShowDraftDialog(true);
+      setDraftChecked(true);
+    } else if (!draftChecked && !isDraftLoading) {
+      // No draft found, mark as checked so we don't show dialog
+      setDraftChecked(true);
+    }
+  }, [existingDraft, isDraftLoading, draftChecked]);
+
+  const handleContinueDraft = () => {
+    if (existingDraft?.draftData) {
+      form.reset(existingDraft.draftData as FormData);
+    }
+    setShowDraftDialog(false);
+  };
+
+  const handleStartFresh = () => {
+    // Use the hook's delete function to handle draft deletion and cache cleanup
+    deleteDraft();
+
+    setShowDraftDialog(false);
+    setDraftChecked(false);
+
+    // Reset the form to default values
+    form.reset(getDefaultFormValues());
+  };
 
   const handleCancel = () => {
     form.reset();
@@ -151,6 +217,10 @@ export const CreateActivityForm: React.FC = () => {
 
       console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
+
+      // Delete draft after successful creation
+      deleteDraft();
+
       alert('Activity created successfully!');
       // TODO: Navigate to activity detail page or list
       form.reset();
@@ -252,6 +322,50 @@ export const CreateActivityForm: React.FC = () => {
       <div className="mx-auto max-w-full px-4 py-8">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
+      {/* Draft Recovery Dialog */}
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
+
+      <div className="mx-auto max-w-200 px-4 py-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+            <p className="text-muted-foreground">
+              Fill in the activity details below
+            </p>
+          </div>
+
+          {/* Autosave indicator */}
+          <div className="text-sm">
+            {isSaving && (
+              <span className="text-amber-600">💾 Saving draft...</span>
+            )}
+            {lastSaved && !isSaving && (
+              <span className="text-green-600">
+                ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+            {isDraftLoading && (
+              <span className="text-gray-500">Loading draft...</span>
+            )}
+          </div>
         </div>
 
         <Form {...form}>
