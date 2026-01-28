@@ -16,6 +16,7 @@ import { ActivitiesModule } from './activities/activities.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { DraftsModule } from './drafts/drafts.module';
 import { ReportsModule } from './reports/reports.module';
+import { LookAheadModule } from './look-ahead/look-ahead.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
@@ -46,6 +47,7 @@ function resolveRootEnvPath(): string {
     LookupsModule,
     DraftsModule,
     ReportsModule,
+    LookAheadModule,
   ],
   controllers: [AppController],
   providers: [

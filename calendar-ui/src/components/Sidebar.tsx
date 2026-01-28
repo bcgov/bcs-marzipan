@@ -112,6 +112,7 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     '/': '2',
     '/drafts': '3',
     '/pitch': '4',
+    '/reports/look-ahead': '7',
     // Add more mappings as needed
   };
 
@@ -156,10 +157,13 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
           <NavCategory value="6">
             <NavCategoryItem icon={<JobPostings />}>Reports</NavCategoryItem>
             <NavSubItemGroup>
-              <NavSubItem href={linkDestination} value="7">
-                Analytics
+              <NavSubItem href="/reports/look-ahead" value="7">
+                Look Ahead
               </NavSubItem>
               <NavSubItem href={linkDestination} value="8">
+                Analytics
+              </NavSubItem>
+              <NavSubItem href={linkDestination} value="9">
                 Submissions
               </NavSubItem>
             </NavSubItemGroup>

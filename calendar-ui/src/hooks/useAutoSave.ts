@@ -33,37 +33,6 @@ export interface UseAutoSaveOptions {
  * @param formData - Current form data to autosave
  * @param entityId - Optional entity ID if editing existing item
  * @param options - Configuration options
- *
- * @example
- * ```tsx
- * function CreateActivityForm() {
- *   const [formData, setFormData] = useState({});
- *   const { existingDraft, isSaving, lastSaved, isUserAuthenticated } = useAutoSave(
- *     'activity',
- *     formData,
- *     undefined, // entityId (null for new)
- *     {
- *       debounceMs: 3000,
- *       onSaveSuccess: () => toast.success('Draft saved'),
- *     }
- *   );
- *
- *   // Load draft on mount
- *   useEffect(() => {
- *     if (existingDraft?.draftData) {
- *       setFormData(existingDraft.draftData);
- *     }
- *   }, [existingDraft]);
- *
- *   return (
- *     <form>
- *       {!isUserAuthenticated && <span>Sign in to enable draft saving</span>}
- *       {isSaving && <span>Saving...</span>}
- *       {lastSaved && <span>Last saved: {lastSaved.toLocaleTimeString()}</span>}
- *     </form>
- *   );
- * }
- * ```
  */
 export function useAutoSave(
   formType: string,
@@ -197,14 +166,6 @@ export function useAutoSave(
       if (!userId) {
         return Promise.reject(new Error('User not authenticated'));
       }
-<<<<<<< HEAD
-=======
-      logger.debug('Calling deleteDraftByForm API', {
-        userId,
-        formType,
-        entityId,
-      });
->>>>>>> 019754b (feat(auth): wire up frontend views)
       return draftsApi.deleteDraftByForm(userId, formType, entityId);
     },
     onMutate: () => {
@@ -227,11 +188,7 @@ export function useAutoSave(
 
   // Auto-save effect with debouncing
   useEffect(() => {
-<<<<<<< HEAD
     if (!enabled || !userId || !isDirty) {
-=======
-    if (!enabled || !isAuthenticated || !userId) {
->>>>>>> 019754b (feat(auth): wire up frontend views)
       return;
     }
 
@@ -323,20 +280,7 @@ export function useAutoSave(
         clearTimeout(timeoutRef.current);
       }
     };
-<<<<<<< HEAD
   }, [formData, enabled, userId, debounceMs, saveDraftMutation, isDirty]);
-=======
-  }, [
-    formData,
-    enabled,
-    isAuthenticated,
-    userId,
-    formType,
-    entityId,
-    debounceMs,
-    saveDraftMutation,
-  ]);
->>>>>>> 019754b (feat(auth): wire up frontend views)
 
   // Manual save function (bypasses debounce)
   const saveNow = useCallback(() => {
@@ -374,14 +318,7 @@ export function useAutoSave(
     deleteDraft,
     /** Clear draft and reset state */
     clearDraft,
-<<<<<<< HEAD
     /** Reset the initial form data reference (call after 'start fresh') */
     resetInitialFormData,
-=======
-    /** Whether user is authenticated (drafts require authentication) */
-    isUserAuthenticated: isAuthenticated && !!userId,
-    /** Current user ID (for reference) */
-    userId,
->>>>>>> 019754b (feat(auth): wire up frontend views)
   };
 }

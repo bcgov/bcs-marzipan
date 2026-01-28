@@ -1,5 +1,5 @@
 import { HttpExceptionFilter } from './http-exception.filter';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common/interfaces';
 import type { Request, Response } from 'express';
 
@@ -24,6 +24,8 @@ describe('HttpExceptionFilter', () => {
   let jsonSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     filter = new HttpExceptionFilter();
     setHeaderSpy = vi.fn();
     statusSpy = vi.fn().mockReturnThis();
@@ -34,6 +36,10 @@ describe('HttpExceptionFilter', () => {
       status: statusSpy,
       json: jsonSpy,
     } as Partial<Response>;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('validation (400 with errors)', () => {
