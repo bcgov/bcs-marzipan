@@ -5,12 +5,14 @@ import { SYSTEM_ROLES } from '@corpcal/shared';
 
 describe('PolicyService', () => {
   let service: PolicyService;
-  let mockDatabaseService: jest.Mocked<DatabaseService>;
+  let mockDatabaseService: {
+    db: unknown;
+  };
 
   beforeEach(async () => {
     mockDatabaseService = {
       db: {} as any,
-    } as jest.Mocked<DatabaseService>;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

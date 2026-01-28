@@ -5,16 +5,19 @@ import { PermissionsGuard } from './permissions.guard';
 import { type PermissionsMetadata } from '../decorators/require-permission.decorator';
 import type { AuthUser } from '@corpcal/shared';
 import { SYSTEM_ROLES, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import type { Mock } from 'vitest';
 
 describe('PermissionsGuard', () => {
   let guard: PermissionsGuard;
-  let mockReflector: jest.Mocked<Reflector>;
+  let mockReflector: {
+    getAllAndOverride: Mock;
+  };
   let mockExecutionContext: ExecutionContext;
 
   beforeEach(async () => {
     mockReflector = {
-      getAllAndOverride: jest.fn(),
-    } as unknown as jest.Mocked<Reflector>;
+      getAllAndOverride: vi.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -31,10 +34,10 @@ describe('PermissionsGuard', () => {
 
   const createMockExecutionContext = (user?: AuthUser): ExecutionContext => {
     return {
-      getHandler: jest.fn(),
-      getClass: jest.fn(),
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue({
+      getHandler: vi.fn(),
+      getClass: vi.fn(),
+      switchToHttp: vi.fn().mockReturnValue({
+        getRequest: vi.fn().mockReturnValue({
           user,
         }),
       }),
