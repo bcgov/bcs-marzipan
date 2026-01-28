@@ -5,19 +5,22 @@ import { DataScopeInterceptor } from './data-scope.interceptor';
 import { PolicyService } from '../policy.service';
 import type { AuthUser } from '@corpcal/shared';
 import { SYSTEM_ROLES, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import type { Mock } from 'vitest';
 
 describe('DataScopeInterceptor', () => {
   let interceptor: DataScopeInterceptor;
-  let mockPolicyService: jest.Mocked<PolicyService>;
+  let mockPolicyService: {
+    bypassesDataScoping: Mock;
+  };
   let mockExecutionContext: ExecutionContext;
   let mockCallHandler: CallHandler;
-  let bypassesDataScopingMock: jest.Mock;
+  let bypassesDataScopingMock: Mock;
 
   beforeEach(async () => {
-    bypassesDataScopingMock = jest.fn();
+    bypassesDataScopingMock = vi.fn();
     mockPolicyService = {
       bypassesDataScoping: bypassesDataScopingMock,
-    } as unknown as jest.Mocked<PolicyService>;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,35 +38,37 @@ describe('DataScopeInterceptor', () => {
   const createMockExecutionContext = (user?: AuthUser): ExecutionContext => {
     const request: Record<string, unknown> = { user };
     return {
-      switchToHttp: jest.fn().mockReturnValue({
-        getRequest: jest.fn().mockReturnValue(request),
+      switchToHttp: vi.fn().mockReturnValue({
+        getRequest: vi.fn().mockReturnValue(request),
       }),
     } as unknown as ExecutionContext;
   };
 
   const createMockCallHandler = (): CallHandler => {
     return {
-      handle: jest.fn().mockReturnValue(of({})),
+      handle: vi.fn().mockReturnValue(of({})),
     } as unknown as CallHandler;
   };
 
-  it('should set dataScope to default when no user is present', (done) => {
+  it('should set dataScope to default when no user is present', async () => {
     mockExecutionContext = createMockExecutionContext(undefined);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: false,
-        });
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: false,
+          });
+          resolve();
+        },
+      });
     });
   });
 
-  it('should set bypass to true and empty teamIds for Admin role', (done) => {
+  it('should set bypass to true and empty teamIds for Admin role', async () => {
     bypassesDataScopingMock.mockReturnValue(true);
     const user: AuthUser = {
       id: 1,
@@ -78,22 +83,24 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: true,
-        });
-        expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-          SYSTEM_ROLES.ADMIN
-        );
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: true,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.ADMIN
+          );
+          resolve();
+        },
+      });
     });
   });
 
-  it('should set bypass to true and empty teamIds for System Admin role', (done) => {
+  it('should set bypass to true and empty teamIds for System Admin role', async () => {
     bypassesDataScopingMock.mockReturnValue(true);
     const user: AuthUser = {
       id: 1,
@@ -108,22 +115,24 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: true,
-        });
-        expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-          SYSTEM_ROLES.SYSTEM_ADMIN
-        );
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: true,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.SYSTEM_ADMIN
+          );
+          resolve();
+        },
+      });
     });
   });
 
-  it('should set bypass to true and empty teamIds for Advanced role', (done) => {
+  it('should set bypass to true and empty teamIds for Advanced role', async () => {
     bypassesDataScopingMock.mockReturnValue(true);
     const user: AuthUser = {
       id: 1,
@@ -138,22 +147,24 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: true,
-        });
-        expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-          SYSTEM_ROLES.ADVANCED
-        );
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: true,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.ADVANCED
+          );
+          resolve();
+        },
+      });
     });
   });
 
-  it('should set bypass to false and use user teamIds for Editor role', (done) => {
+  it('should set bypass to false and use user teamIds for Editor role', async () => {
     bypassesDataScopingMock.mockReturnValue(false);
     const user: AuthUser = {
       id: 1,
@@ -168,22 +179,24 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [1, 2],
-          bypass: false,
-        });
-        expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-          SYSTEM_ROLES.EDITOR
-        );
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [1, 2],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.EDITOR
+          );
+          resolve();
+        },
+      });
     });
   });
 
-  it('should set bypass to false and empty teamIds for View Only role with no teams', (done) => {
+  it('should set bypass to false and empty teamIds for View Only role with no teams', async () => {
     bypassesDataScopingMock.mockReturnValue(false);
     const user: AuthUser = {
       id: 1,
@@ -198,22 +211,24 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: false,
-        });
-        expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-          SYSTEM_ROLES.VIEW_ONLY
-        );
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.VIEW_ONLY
+          );
+          resolve();
+        },
+      });
     });
   });
 
-  it('should handle user with undefined teamIds', (done) => {
+  it('should handle user with undefined teamIds', async () => {
     bypassesDataScopingMock.mockReturnValue(false);
     const user: AuthUser = {
       id: 1,
@@ -228,15 +243,17 @@ describe('DataScopeInterceptor', () => {
     mockExecutionContext = createMockExecutionContext(user);
     mockCallHandler = createMockCallHandler();
 
-    interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-      next: () => {
-        const request = mockExecutionContext.switchToHttp().getRequest();
-        expect(request.dataScope).toEqual({
-          teamIds: [],
-          bypass: false,
-        });
-        done();
-      },
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: false,
+          });
+          resolve();
+        },
+      });
     });
   });
 });
