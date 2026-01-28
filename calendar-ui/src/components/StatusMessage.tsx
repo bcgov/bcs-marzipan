@@ -52,7 +52,7 @@ interface ErrorDetailsProps {
 }
 
 /**
- * Error details component for displaying error information with retry option.
+ * Error details component for displaying error information with optional retry.
  */
 export function ErrorDetails({ error, onRetry }: ErrorDetailsProps) {
   return (
