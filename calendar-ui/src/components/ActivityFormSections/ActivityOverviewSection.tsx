@@ -52,24 +52,6 @@ export const ActivityOverviewSection: React.FC<
 > = ({ categories, ministries, organizations, tags }) => {
   const form = useFormContext<FormData>();
 
-  // const [categories, setCategories] = useState<any[]>([]);
-  // Move useMultiSelect hooks into the component
-
-  // useEffect(() => {
-  //   const loadCategories = async () => {
-  //     try {
-  //       const response = await fetchCategories();
-  //       if (response) {
-  //         setCategories(response);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching categories:', error);
-  //     }
-  //   };
-
-  //   void loadCategories();
-  // }, []);
-
   const [selectedCategories, toggleCategory] = useMultiSelect<
     FormData,
     'categoryIds',
