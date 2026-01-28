@@ -30,6 +30,12 @@ jobs:
 
       - name: Start binary build
         run: |
-          oc start-build my-app \
+          oc start-build calendar-service-build \
+            --from-dir=. \
+            --follow
+
+      - name: Start binary build
+        run: |
+          oc start-build calendar-ui-build \
             --from-dir=. \
             --follow
