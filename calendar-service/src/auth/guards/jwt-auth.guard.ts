@@ -29,6 +29,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<{
       headers?: { authorization?: string };
+      cookies?: Record<string, string>;
       user?: unknown;
     }>();
     const token = this.extractToken(request);
@@ -46,13 +47,20 @@ export class JwtAuthGuard implements CanActivate {
     }
   }
 
+  /**
+   * Extract JWT from request.
+   * Priority: Authorization header first (API clients), then httpOnly cookie (browser).
+   */
   private extractToken(request: {
     headers?: { authorization?: string };
+    cookies?: Record<string, string>;
   }): string | null {
+    // 1. Try Authorization header first (API clients, Postman, etc.)
     const auth = request.headers?.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) {
-      return null;
+    if (auth?.startsWith('Bearer ')) {
+      return auth.slice(7);
     }
-    return auth.slice(7);
+    // 2. Fall back to httpOnly cookie (browser)
+    return request.cookies?.access_token ?? null;
   }
 }
