@@ -47,6 +47,12 @@
       "import": "./dist/esm/constants/constants.js",
       "require": "./dist/cjs/constants/constants.js",
       "default": "./dist/esm/constants/constants.js"
+    },
+    "./test-utils": {
+      "types": "./dist/esm/test-utils/index.d.ts",
+      "import": "./dist/esm/test-utils/index.js",
+      "require": "./dist/cjs/test-utils/index.js",
+      "default": "./dist/esm/test-utils/index.js"
     }
   },
   "scripts": {
@@ -56,7 +62,10 @@
     "clean": "rm -rf dist",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "validate-types": "tsc --noEmit --project tsconfig.json"
+    "validate-types": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "@corpcal/database": "*",
