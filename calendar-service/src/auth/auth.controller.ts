@@ -21,6 +21,9 @@ import { Public } from './decorators/public.decorator';
 import { loginBodySchema } from './dto/login.dto';
 import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 
+/** Cookie name for JWT access token */
+const ACCESS_TOKEN_COOKIE = 'access_token';
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
