@@ -7,6 +7,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PERMISSIONS } from '@corpcal/shared';
 
 import { CalendarEntriesList } from './pages/CalendarEntriesList';
 import { EntryDetails } from './pages/EntryDetails';
@@ -44,7 +45,14 @@ function App() {
 
             <Route path="/details" element={<EntryDetails />} />
             {/* Add more routes here */}
-            <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute requiredPermission={PERMISSIONS.SETTINGS.VIEW}>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </FluentProvider>

@@ -2,9 +2,10 @@
  * Protected Route Component
  * Guards routes that require authentication and optionally specific permissions/roles
  */
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,6 +34,11 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user, hasPermission } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavigateHome = (): void => {
+    void navigate('/');
+  };
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -58,12 +64,19 @@ export function ProtectedRoute({
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="p-8 text-center">
-          <h1 className="mb-2 text-2xl font-bold text-slate-800">
-            Access Denied
+          <h1 className="mb-4 text-2xl font-bold text-slate-800">
+            You are not authorized to view the page
           </h1>
-          <p className="text-slate-600">
+          <p className="mb-6 text-slate-600">
             You don&apos;t have permission to access this page.
           </p>
+          <Button
+            onClick={handleNavigateHome}
+            variant="default"
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Return to home page
+          </Button>
         </div>
       </div>
     );
@@ -74,12 +87,19 @@ export function ProtectedRoute({
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="p-8 text-center">
-          <h1 className="mb-2 text-2xl font-bold text-slate-800">
-            Access Denied
+          <h1 className="mb-4 text-2xl font-bold text-slate-800">
+            You are not authorized to view the page
           </h1>
-          <p className="text-slate-600">
+          <p className="mb-6 text-slate-600">
             This page requires the &quot;{requiredRole}&quot; role.
           </p>
+          <Button
+            onClick={handleNavigateHome}
+            variant="default"
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Return to home page
+          </Button>
         </div>
       </div>
     );
