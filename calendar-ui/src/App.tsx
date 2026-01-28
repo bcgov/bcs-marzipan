@@ -1,12 +1,10 @@
-import {
-  FluentProvider,
-  webLightTheme,
-  Toaster,
-} from '@fluentui/react-components';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { Toaster } from './components/ui/sonner';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { PERMISSIONS } from '@corpcal/shared';
 
 import { CalendarEntriesList } from './pages/CalendarEntriesList';
@@ -18,7 +16,7 @@ import EditActivityForm from './pages/EditActivityForm';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { NotFound } from './pages/NotFound';
-import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { LookAheadReport } from './pages/LookAheadReport';
 
 function App() {
   return (
@@ -69,6 +67,16 @@ function App() {
                     requiredPermission={PERMISSIONS.SETTINGS.VIEW}
                   >
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="reports/look-ahead"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.REPORTS.VIEW}
+                  >
+                    <LookAheadReport />
                   </ProtectedRoute>
                 }
               />

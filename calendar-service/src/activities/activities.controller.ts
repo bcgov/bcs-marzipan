@@ -131,6 +131,7 @@ export class ActivitiesController {
       query.endDateTo !== undefined ||
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
+      query.lookAheadSection !== undefined ||
       query.city !== undefined ||
       query.isIssue !== undefined;
     const filters = hasFilters ? query : undefined;

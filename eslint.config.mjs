@@ -169,10 +169,8 @@ export default defineConfig(
       ...reactHooks.configs.recommended.rules,
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      // Disabled: triggers on idiomatic patterns (context+provider, shadcn variants)
+      'react-refresh/only-export-components': 'off',
       // TypeScript rules
       '@typescript-eslint/no-unused-vars': [
         'warn',

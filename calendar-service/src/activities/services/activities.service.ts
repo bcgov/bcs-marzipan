@@ -316,6 +316,11 @@ export class ActivitiesService {
       if (filters.leadMinistryId !== undefined) {
         conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
       }
+      if (filters.lookAheadSection) {
+        conditions.push(
+          eq(activities.lookAheadSection, filters.lookAheadSection)
+        );
+      }
       // Note: City filter is handled after initial query with a separate join
       // TODO: Optimize with proper join in main query
       if (filters.startDateFrom) {

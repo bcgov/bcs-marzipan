@@ -22,5 +22,6 @@ import { PolicyModule } from '../policy/policy.module';
     ActivityUtilsService,
   ],
   controllers: [ActivitiesController],
+  exports: [ActivitiesService],
 })
 export class ActivitiesModule {}
