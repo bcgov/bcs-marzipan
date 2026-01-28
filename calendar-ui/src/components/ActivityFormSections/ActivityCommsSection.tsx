@@ -32,11 +32,6 @@ type FormData = CreateActivityRequest & {
 };
 
 type ActivityCommsSectionProps = {
-  activityStatusOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
   commsMaterialOptions: Array<{
     id: number;
     name: string;
@@ -46,7 +41,6 @@ type ActivityCommsSectionProps = {
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
-  activityStatusOptions,
   commsMaterialOptions,
   commsLeadOptions,
 }) => {
@@ -63,36 +57,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   return (
     <ActivityFormSection title="Comms">
-      <FormField
-        control={form.control}
-        name="activityStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Activity Status <span className="text-destructive">*</span>
-            </FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(parseInt(value, 10))}
-              value={field.value ? String(field.value) : ''}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select activity status" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {activityStatusOptions.map((status) => (
-                  <SelectItem key={status.id} value={String(status.id)}>
-                    {status.displayName || status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <FormField
         control={form.control}
         name="commsContactLeadId"
