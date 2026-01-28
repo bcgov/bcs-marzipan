@@ -17,7 +17,6 @@ async function bootstrap() {
   const allowedOrigins = corsOriginsEnv
     ? corsOriginsEnv.split(',').map((origin) => origin.trim())
     : [
-        'https://calendar-ui-b3237c-dev.apps.gold.devops.gov.bc.ca',
         'http://localhost:3000',
         'http://localhost:4173',
         'http://localhost:8080',
