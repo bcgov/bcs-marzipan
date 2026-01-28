@@ -1,5 +1,5 @@
 /**
- * Authentication Provider
+ * Authentication Context
  * Manages auth state with httpOnly cookie-based JWT authentication.
  * Token is stored in httpOnly cookie by backend, not accessible to JavaScript.
  */
@@ -34,7 +34,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthContextType['user']>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   /**
