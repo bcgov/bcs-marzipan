@@ -1,4 +1,4 @@
-import api from './axios.js';
+import api from './axios';
 import type {
   CategoryLookupItem,
   TagLookupItem,
