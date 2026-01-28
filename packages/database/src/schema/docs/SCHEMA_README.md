@@ -126,6 +126,10 @@ This ensures the API response schema automatically stays in sync with database s
 - `packages/shared/src/utils/schema-helpers.ts` - Schema helper functions
 - `packages/shared/scripts/validate-types.ts` - Type validation script (validates schemas match database types)
 
+### Test Fixture Files
+
+- `packages/shared/src/test-utils/activity-response.fixture.ts` - **ActivityResponse mock factory** (`createMockActivityResponse`). Single source of truth for `ActivityResponse` test fixtures. Use this when tests need a schema-valid `ActivityResponse`; all fields can be overridden via the `overrides` parameter. Exported as `@corpcal/shared/test-utils`. `calendar-service` re-exports it from `src/common/test-utils.ts` for convenience.
+
 ### Service Files
 
 - `calendar-service/src/activities/activities.service.ts` - Service with mapping logic
@@ -191,7 +195,7 @@ When making schema changes, use this checklist to ensure all affected files are 
    - Service tests (`*.service.spec.ts`)
    - Controller tests (`*.controller.spec.ts`)
    - Integration tests (`*.integration.spec.ts`)
-   - Update test data/mocks to include new fields
+   - **ActivityResponse mock**: When adding or removing `ActivityResponse` fields, update `packages/shared/src/test-utils/activity-response.fixture.ts` (`createMockActivityResponse`). This is the single source of truth; `calendar-service` re-exports from `@corpcal/shared/test-utils` via `src/common/test-utils.ts`. Update other test data/mocks as needed for new fields.
 
 8. **Documentation**
    - `docs/SCHEMA_README.md` - This file (update if process changes)

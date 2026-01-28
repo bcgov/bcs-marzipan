@@ -41,7 +41,7 @@ Thumbs.db
 *.patch
 
 # testing
-/coverage
+**/coverage
 
 # build caches
 .vite/

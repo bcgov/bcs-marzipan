@@ -8,12 +8,6 @@ import * as schema from './schema';
 
 const connectionString = process.env.DATABASE_URL || '';
 
-if (!connectionString) {
-  console.warn(
-    'DATABASE_URL not set. Database client will not be initialized.'
-  );
-}
-
 // Access the default export - when externalized, require() returns the default directly
 // Type assertion needed because postgres module's default export typing varies by build target
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

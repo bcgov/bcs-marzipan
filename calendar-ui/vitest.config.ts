@@ -9,6 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    coverage: {
+      reportsDirectory: path.resolve(__dirname, '../coverage/ui'),
+    },
   },
   resolve: {
     alias: {

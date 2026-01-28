@@ -12,8 +12,8 @@ describe('LookupsController', () => {
   ];
 
   const mockLookupsService = {
-    getCategories: jest.fn(),
-    getOrganizations: jest.fn(),
+    getCategories: vi.fn(),
+    getOrganizations: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -31,7 +31,7 @@ describe('LookupsController', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {

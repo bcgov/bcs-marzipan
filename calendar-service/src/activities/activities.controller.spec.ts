@@ -14,21 +14,15 @@ describe('ActivitiesController', () => {
   const mockActivityResponse = createMockActivityResponse({
     lookAheadStatus: 'none',
     lookAheadSection: 'events',
-    tags: undefined,
-    commsMaterials: undefined,
-    translationsRequired: undefined,
-    representativesAttending: undefined,
-    sharedWith: undefined,
-    commsContacts: undefined,
   });
 
   const mockActivitiesService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-    fetchCategories: jest.fn(),
+    create: vi.fn(),
+    findAll: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    fetchCategories: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -46,7 +40,7 @@ describe('ActivitiesController', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should be defined', () => {
