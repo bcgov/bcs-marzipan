@@ -39,6 +39,9 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import { AutosaveIndicator } from '../components/AutosaveIndicator';
+import { PageHeader } from '../components/PageHeader';
+import { StatusMessage, ErrorDetails } from '../components/StatusMessage';
+import React from 'react';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -341,41 +344,33 @@ export const CreateActivityForm: FC = () => {
   // Show loading state while checking auth
   if (isAuthLoading) {
     return (
-      <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <StatusMessage
+        title="Create New Activity"
+        message="Loading..."
+        variant="loading"
+      />
     );
   }
 
   // Show access denied if user doesn't have permission to create activities
   if (!canCreateActivity) {
     return (
-      <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-destructive mb-2 text-3xl font-bold">
-            Access Denied
-          </h1>
-          <p className="text-muted-foreground">
-            You do not have permission to create activities. Please contact your
-            administrator if you believe this is an error.
-          </p>
-        </div>
-      </div>
+      <StatusMessage
+        title="Access Denied"
+        message="You do not have permission to create activities. Please contact your administrator if you believe this is an error."
+        variant="error"
+      />
     );
   }
 
   // Show loading state if lookups are still loading
   if (lookups.isLoading) {
     return (
-      <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-          <p className="text-muted-foreground">Loading form data...</p>
-        </div>
-      </div>
+      <StatusMessage
+        title="Create New Activity"
+        message="Loading form data..."
+        variant="loading"
+      />
     );
   }
 
@@ -426,72 +421,64 @@ export const CreateActivityForm: FC = () => {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="mx-auto max-w-full px-4 py-8">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
-          {/* Draft Recovery Dialog */}
-          <ResumeDialog
-            open={showDraftDialog}
-            onOpenChange={setShowDraftDialog}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Continue where you left off?</DialogTitle>
-                <DialogDescription>
-                  You have a saved draft for this activity form. Would you like
-                  to continue editing it, or start with a fresh form?
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={handleStartFresh}
-                  type="button"
-                >
-                  Start Fresh
-                </Button>
-                <Button onClick={handleContinueDraft} type="button">
-                  Continue Draft
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </ResumeDialog>
+        {/* Draft Recovery Dialog */}
+        <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Continue where you left off?</DialogTitle>
+              <DialogDescription>
+                You have a saved draft for this activity form. Would you like to
+                continue editing it, or start with a fresh form?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleStartFresh}
+                type="button"
+              >
+                Start Fresh
+              </Button>
+              <Button onClick={handleContinueDraft} type="button">
+                Continue Draft
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </ResumeDialog>
 
-          <div className="mx-auto max-w-200 px-4 py-8">
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
-                <p className="text-muted-foreground">
-                  Fill in the activity details below
-                </p>
-              </div>
-
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <PageHeader
+            title="Create New Activity"
+            description="Fill in the activity details below"
+            action={
               <AutosaveIndicator
                 isAuthenticated={isAuthenticated}
                 isSaving={isSaving}
                 lastSaved={lastSaved}
                 isLoading={isDraftLoading}
               />
-            </div>
+            }
+          />
 
-            <Form {...form}>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  console.log('Form submit event triggered');
-                  void form.handleSubmit(onSubmit, onError)(e);
-                }}
-              >
-                {/* Two Column Layout */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    {/* Overview Section */}
-                    <ActivityOverviewSection
-                      categories={lookups.categories}
-                      ministries={lookups.ministries}
-                      organizations={lookups.organizations}
-                      tags={lookups.tags}
-                    />
+          <Form {...form}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                console.log('Form submit event triggered');
+                void form.handleSubmit(onSubmit, onError)(e);
+              }}
+            >
+              {/* Two Column Layout */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* Overview Section */}
+                  <ActivityOverviewSection
+                    categories={lookups.categories}
+                    ministries={lookups.ministries}
+                    organizations={lookups.organizations}
+                    tags={lookups.tags}
+                  />
 
                     {/* Comms Section */}
                     <ActivityCommsSection
@@ -500,37 +487,37 @@ export const CreateActivityForm: FC = () => {
                       activityStatusOptions={lookups.activityStatuses}
                     />
 
-                    {/* News Release Section */}
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Reports Section */}
-                    <ActivityReportsSection form={form} />
-
-                    {/* Schedule Section */}
-                    <ActivityScheduleSection form={form} />
-
-                    {/* Event Section */}
-                    <ActivityEventSection
-                      representativeOptions={lookups.governmentRepresentatives}
-                      premierRequestedOptions={lookups.premierRequested}
-                      eventPlannerOptions={lookups.eventPlanners}
-                    />
-
-                    {/* Sharing Section */}
-                    <ActivitySharingSection
-                      sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                    />
-                  </div>
+                  {/* News Release Section */}
+                  <ActivityNewsReleaseSection
+                    translationLanguageOptions={lookups.translationLanguages}
+                    newsReleaseDistributionOptions={
+                      lookups.newsReleaseDistributions
+                    }
+                    newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                  />
                 </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Reports Section */}
+                  <ActivityReportsSection form={form} />
+
+                  {/* Schedule Section */}
+                  <ActivityScheduleSection form={form} />
+
+                  {/* Event Section */}
+                  <ActivityEventSection
+                    representativeOptions={lookups.governmentRepresentatives}
+                    premierRequestedOptions={lookups.premierRequested}
+                    eventPlannerOptions={lookups.eventPlanners}
+                  />
+
+                  {/* Sharing Section */}
+                  <ActivitySharingSection
+                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                  />
+                </div>
+              </div>
 
                 {/* Form Actions */}
                 <div className="flex justify-end gap-4 pt-6">

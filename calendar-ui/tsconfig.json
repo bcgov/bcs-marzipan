@@ -22,7 +22,8 @@
     "../.local/draft_components/tagpicker.tsx",
     "../.local/draft_components/DynamicWizard",
     "../.local/draft_components/DynamicCalendarEntryForm.tsx",
-    "../.local/draft_components/data"
+    "../.local/draft_components/data",
+    "../.local/draft_components/CreateActivityFormExample.tsx"
   ],
   "exclude": ["node_modules"]
 }
