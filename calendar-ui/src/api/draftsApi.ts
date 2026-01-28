@@ -1,4 +1,4 @@
-import api from './axios.js';
+import api from './axios';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('DraftsAPI');

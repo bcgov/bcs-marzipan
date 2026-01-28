@@ -1,16 +1,18 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type FC } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useAuth } from '../hooks/useAuth';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
@@ -36,8 +38,7 @@ import {
   ActivityReportsSection,
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
-import React from 'react';
-import { deleteDraft } from '../api/draftsApi';
+import { AutosaveIndicator } from '../components/AutosaveIndicator';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -68,17 +69,21 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   pitchRequired: false,
 });
 
-// TODO: Replace with actual user from auth context once authentication is implemented
-const TEMPORARY_USER_ID = 1;
+/** Stable default values for autosave comparison and reset (e.g. start fresh). */
+const DEFAULT_FORM_VALUES = getDefaultFormValues();
 
 // Key used to store draft dialog session state in sessionStorage
 const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
 
-export const CreateActivityForm: React.FC = () => {
+export const CreateActivityForm: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
   const draftCheckedRef = useRef(false);
+
+  // Check permissions and auth state (userId is used internally by useAutoSave)
+  const { hasPermission, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -157,36 +162,26 @@ export const CreateActivityForm: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Autosave integration: do not use entityId from existingDraft to avoid circular reference
-  // Track if a draft existed at mount
+  // Autosave integration: userId comes from auth context inside useAutoSave
   const initialDraftExistsRef = useRef(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
+
   const {
     existingDraft,
     isDraftLoading,
     isSaving,
     lastSaved,
+    deleteDraft,
     resetInitialFormData,
   } = useAutoSave(
-    TEMPORARY_USER_ID,
     'activity',
     formValues,
     undefined,
     {
-      debounceMs: 3000,
-      // Always enable initial draft fetch so we can prompt the user to
-      // continue an existing draft on mount. Autosave itself is still
-      // gated by the `isDirty` option below.
-      enabled: true,
-      isDirty:
-        form.formState.isDirty &&
-        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
-      onFirstDraftCreate: () => {
-        // If a draft is created after mount, do NOT show the dialog
-        // (no-op here, dialog is only shown if draft existed at mount)
-      },
+      debounceMs: 3000, // Save 3 seconds after user stops typing
+      enabled: !isSubmitting, // Disable during submission
     },
-    getDefaultFormValues()
+    DEFAULT_FORM_VALUES
   );
 
   // On first load, record if a draft existed at mount, and only ever show dialog if it did
@@ -223,10 +218,8 @@ export const CreateActivityForm: React.FC = () => {
   };
 
   const handleStartFresh = () => {
-    if (existingDraft && existingDraft.id) {
-      void import('../api/draftsApi').then((draftsApi) => {
-        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
-      });
+    if (existingDraft) {
+      deleteDraft();
     }
     setShowDraftDialog(false);
     draftCheckedRef.current = false;
@@ -241,24 +234,17 @@ export const CreateActivityForm: React.FC = () => {
   // ...existing code...
 
   const handleCancel = async () => {
-    // Delete the draft if it exists and wait for completion so request isn't aborted
-    if (existingDraft && existingDraft.id) {
+    // Delete the draft if it exists (hook uses delete-by-form; no need to await for close)
+    if (existingDraft) {
       try {
-        const draftsApi = await import('../api/draftsApi');
-        await draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+        deleteDraft();
       } catch (e) {
-        // Ignore errors during cancellation delete - user intent is to close
         console.warn('Error deleting draft on cancel:', e);
       }
     }
 
-    // Ensure dialog session flag is cleared
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
-
-    // Optionally reset the form (not strictly needed if closing)
     form.reset();
-
-    // Close the page
     window.close();
   };
 
@@ -307,8 +293,8 @@ export const CreateActivityForm: React.FC = () => {
       await createActivity(submitData);
 
       // Delete draft after successful creation
-      if (existingDraft && existingDraft.id) {
-        await deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      if (existingDraft) {
+        deleteDraft();
       }
 
       // Close the window after successful creation
@@ -324,14 +310,6 @@ export const CreateActivityForm: React.FC = () => {
   const onError = (errors: any) => {
     console.error('Form validation errors:', errors);
     console.error('Form values:', form.getValues());
-    const keys = Object.keys(errors || {});
-    if (keys.length > 0) {
-      const friendly = keys.map(
-        (k) =>
-          `${getFieldLabel(k)}: ${errors[k]?.message || JSON.stringify(errors[k])}`
-      );
-      console.error('Validation summary:', friendly);
-    }
   };
 
   // Map field names to user-friendly labels
@@ -359,6 +337,35 @@ export const CreateActivityForm: React.FC = () => {
   // Check if form is valid - trigger validation if needed
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
+
+  // Show loading state while checking auth
+  if (isAuthLoading) {
+    return (
+      <div className="mx-auto max-w-200 px-4 py-8">
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if user doesn't have permission to create activities
+  if (!canCreateActivity) {
+    return (
+      <div className="mx-auto max-w-200 px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-destructive mb-2 text-3xl font-bold">
+            Access Denied
+          </h1>
+          <p className="text-muted-foreground">
+            You do not have permission to create activities. Please contact your
+            administrator if you believe this is an error.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state if lookups are still loading
   if (lookups.isLoading) {
@@ -458,20 +465,12 @@ export const CreateActivityForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* Autosave indicator */}
-              <div className="text-sm">
-                {isSaving && (
-                  <span className="text-amber-600">💾 Saving draft...</span>
-                )}
-                {lastSaved && !isSaving && (
-                  <span className="text-green-600">
-                    ✓ Draft saved at {lastSaved.toLocaleTimeString()}
-                  </span>
-                )}
-                {isDraftLoading && (
-                  <span className="text-gray-500">Loading draft...</span>
-                )}
-              </div>
+              <AutosaveIndicator
+                isAuthenticated={isAuthenticated}
+                isSaving={isSaving}
+                lastSaved={lastSaved}
+                isLoading={isDraftLoading}
+              />
             </div>
 
             <Form {...form}>
@@ -554,24 +553,6 @@ export const CreateActivityForm: React.FC = () => {
                           onMouseLeave={() =>
                             setShowMissingFieldsPopover(false)
                           }
-                          onClick={() => {
-                            // Trigger validation and print errors to console when user attempts to submit
-                            void (async () => {
-                              try {
-                                await form.trigger();
-                              } catch {
-                                // ignore
-                              }
-                              console.error(
-                                'Submission blocked by validation. Errors:',
-                                JSON.stringify(form.formState.errors, null, 2)
-                              );
-                              console.error(
-                                'Form values at failed submit:',
-                                JSON.stringify(form.getValues(), null, 2)
-                              );
-                            })();
-                          }}
                         >
                           <Button
                             type="submit"

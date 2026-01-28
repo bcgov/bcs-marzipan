@@ -29,6 +29,9 @@ import { ColumnDef } from '@tanstack/react-table';
 import { GenericDataTable } from '../components/Table/GenericDataTable';
 import { useMemo, useState } from 'react';
 import api from '../api/axios';
+import { PERMISSIONS } from '@corpcal/shared/auth';
+import { useAuth } from '../hooks/useAuth';
+import { PermissionGate } from '../components/PermissionGate';
 
 type Category = {
   id: number;
@@ -183,6 +186,7 @@ const LookupSection = ({
   activeFilter,
   setActiveFilter,
   onAdd,
+  canAdd = true,
 }: {
   title: string;
   entityType: string;
@@ -193,6 +197,7 @@ const LookupSection = ({
   activeFilter: string;
   setActiveFilter: (value: string) => void;
   onAdd: () => void;
+  canAdd?: boolean;
 }) => {
   const filteredData = useMemo(() => {
     if (!data) return [];
@@ -260,14 +265,16 @@ const LookupSection = ({
             </Dropdown>
           </div>
 
-          <Button
-            appearance="primary"
-            icon={<Add20Regular />}
-            onClick={onAdd}
-            style={{ backgroundColor: '#5b69c3' }}
-          >
-            Add {entityType}
-          </Button>
+          {canAdd && (
+            <Button
+              appearance="primary"
+              icon={<Add20Regular />}
+              onClick={onAdd}
+              style={{ backgroundColor: '#5b69c3' }}
+            >
+              Add {entityType}
+            </Button>
+          )}
         </div>
 
         {isLoading && <Spinner label={`Loading ${title.toLowerCase()}...`} />}
@@ -289,6 +296,23 @@ const LookupSection = ({
 
 export const Administration = () => {
   const queryClient = useQueryClient();
+  const {
+    hasPermission,
+    hasAnyPermission,
+    isLoading: isAuthLoading,
+  } = useAuth();
+
+  // Permission checks
+  const canManageLookups = hasPermission(PERMISSIONS.LOOKUPS.MANAGE);
+  const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW);
+
+  // Check if user has any admin-level permission to access this page
+  const hasAdminAccess = hasAnyPermission(
+    PERMISSIONS.LOOKUPS.VIEW,
+    PERMISSIONS.LOOKUPS.MANAGE,
+    PERMISSIONS.USERS.VIEW,
+    PERMISSIONS.SYSTEM.VIEW_LOGS
+  );
 
   const [categoriesFilter, setCategoriesFilter] = useState('all');
   const [citiesFilter, setCitiesFilter] = useState('all');
@@ -619,6 +643,52 @@ export const Administration = () => {
     []
   );
 
+  // Show loading state while checking auth
+  if (isAuthLoading) {
+    return (
+      <div
+        style={{
+          padding: '24px',
+          backgroundColor: '#f5f5f5',
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Spinner label="Loading..." />
+      </div>
+    );
+  }
+
+  // Show access denied if user doesn't have admin permissions
+  if (!hasAdminAccess) {
+    return (
+      <div
+        style={{
+          padding: '24px',
+          backgroundColor: '#f5f5f5',
+          minHeight: '100vh',
+        }}
+      >
+        <h1
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: '20px',
+            fontWeight: 600,
+            color: '#d32f2f',
+          }}
+        >
+          Access Denied
+        </h1>
+        <p style={{ color: '#666' }}>
+          You do not have permission to access the administration page. Please
+          contact your administrator if you believe this is an error.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -640,29 +710,33 @@ export const Administration = () => {
       </h1>
 
       <div style={{ marginBottom: '32px' }}>
-        <Link
-          href="/manage-users"
-          style={{
-            display: 'inline-block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            marginRight: '16px',
-            fontSize: '14px',
-          }}
-        >
-          Manage Users
-        </Link>
-        <Link
-          href="/transfer-activities"
-          style={{
-            display: 'inline-block',
-            color: '#0078d4',
-            textDecoration: 'underline',
-            fontSize: '14px',
-          }}
-        >
-          Transfer Activities
-        </Link>
+        {canViewUsers && (
+          <Link
+            href="/manage-users"
+            style={{
+              display: 'inline-block',
+              color: '#0078d4',
+              textDecoration: 'underline',
+              marginRight: '16px',
+              fontSize: '14px',
+            }}
+          >
+            Manage Users
+          </Link>
+        )}
+        <PermissionGate permission={PERMISSIONS.ACTIVITIES.EDIT}>
+          <Link
+            href="/transfer-activities"
+            style={{
+              display: 'inline-block',
+              color: '#0078d4',
+              textDecoration: 'underline',
+              fontSize: '14px',
+            }}
+          >
+            Transfer Activities
+          </Link>
+        </PermissionGate>
       </div>
 
       <AddModal
@@ -692,6 +766,7 @@ export const Administration = () => {
         activeFilter={categoriesFilter}
         setActiveFilter={setCategoriesFilter}
         onAdd={() => setShowCategoryModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -722,6 +797,7 @@ export const Administration = () => {
         activeFilter={citiesFilter}
         setActiveFilter={setCitiesFilter}
         onAdd={() => setShowCityModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -751,6 +827,7 @@ export const Administration = () => {
         activeFilter={commsMaterialsFilter}
         setActiveFilter={setCommsMaterialsFilter}
         onAdd={() => setShowCommsMaterialModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -781,6 +858,7 @@ export const Administration = () => {
         activeFilter={govRepsFilter}
         setActiveFilter={setGovRepsFilter}
         onAdd={() => setShowGovRepModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -810,6 +888,7 @@ export const Administration = () => {
         activeFilter={tagsFilter}
         setActiveFilter={setTagsFilter}
         onAdd={() => setShowTagModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -845,6 +924,7 @@ export const Administration = () => {
         activeFilter={ministriesFilter}
         setActiveFilter={setMinistriesFilter}
         onAdd={() => setShowMinistryModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -874,6 +954,7 @@ export const Administration = () => {
         activeFilter={statusFilter}
         setActiveFilter={setStatusFilter}
         onAdd={() => setShowStatusModal(true)}
+        canAdd={canManageLookups}
       />
 
       <AddModal
@@ -903,6 +984,7 @@ export const Administration = () => {
         activeFilter={themesFilter}
         setActiveFilter={setThemesFilter}
         onAdd={() => setShowThemeModal(true)}
+        canAdd={canManageLookups}
       />
     </div>
   );
