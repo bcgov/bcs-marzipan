@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { createApiError } from './errors';
 
 const api = axios.create({
   // Use /api prefix to go through Vite's proxy in development
@@ -11,10 +12,32 @@ const api = axios.create({
   },
 });
 
-// Response interceptor for 401 handling
+// Request interceptor: Add correlation ID to outgoing requests
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // Generate correlation ID if not present (for client-side tracking)
+    // Server will generate its own if not provided
+    if (!config.headers['X-Correlation-ID']) {
+      config.headers['X-Correlation-ID'] = crypto.randomUUID();
+    }
+    return config;
+  },
+  (error: unknown) =>
+    Promise.reject(error instanceof Error ? error : new Error(String(error)))
+);
+
+// Response interceptor: Handle errors and parse Problem Details
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    // Store correlation ID from response header for debugging
+    const correlationId = response.headers['x-correlation-id'];
+    if (correlationId && import.meta.env.DEV) {
+      // Store in response data for potential use in components
+      response.data._correlationId = correlationId;
+    }
+    return response;
+  },
+  (error: AxiosError) => {
     // On 401 Unauthorized, redirect to login (session expired/invalid)
     if (error.response?.status === 401) {
       // Don't redirect if already on login page
@@ -27,10 +50,12 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    return Promise.reject(
-      error instanceof Error ? error : new Error(String(error))
-    );
+
+    // Convert to typed ApiError or NetworkError
+    const apiError = createApiError(error);
+    return Promise.reject(apiError);
   }
 );
 
 export default api;
+export { ApiError, NetworkError } from './errors';
