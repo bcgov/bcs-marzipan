@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1769537838297,
-      "tag": "0000_20260127_consolidate-drafts-table",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1737700000000,
-      "tag": "005_rbac_and_user_role_migration",
+      "when": 1769562976367,
+      "tag": "0000_20260127_rbac_tables",
       "breakpoints": true
     }
   ]
