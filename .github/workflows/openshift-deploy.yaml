@@ -1,0 +1,35 @@
+name: Deploy to OpenShift
+
+on:
+  push:
+    branches:
+      - corpcal-openshift-changes
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | tar xz
+          sudo mv oc /usr/local/bin/
+
+      - name: Login to OpenShift
+        run: |
+          oc login \
+            --token=${{ secrets.OPENSHIFT_TOKEN }} \
+            --server=${{ secrets.OPENSHIFT_SERVER }} \
+            --insecure-skip-tls-verify=true
+
+      - name: Set project
+        run: oc project ${{ secrets.OPENSHIFT_NAMESPACE }}
+
+      - name: Start binary build
+        run: |
+          oc start-build my-app \
+            --from-dir=. \
+            --follow
