@@ -310,9 +310,11 @@ export const CreateActivityForm: React.FC = () => {
     error,
     resetErrorBoundary,
   }: {
-    error: Error;
+    error: unknown;
     resetErrorBoundary: () => void;
   }) => {
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
     return (
       <div className="mx-auto max-w-200 px-4 py-8" role="alert">
         <div className="mb-8">
@@ -327,7 +329,7 @@ export const CreateActivityForm: React.FC = () => {
               Error details
             </summary>
             <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {error.message}
+              {errorMessage}
             </pre>
           </details>
           <Button onClick={resetErrorBoundary} variant="default">
