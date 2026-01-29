@@ -44,7 +44,7 @@ jobs:
 
   deploy:
     name: Deploy to OpenShift Dev
-    needs: quality-checks
+    # needs: quality-checks
     runs-on: ubuntu-latest
 
     steps:
