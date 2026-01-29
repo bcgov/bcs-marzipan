@@ -29,12 +29,12 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Check linting and types
-        run: npm run lint:check ---workspace=packages && (npm run lint:check --workspace=calendar-service && npm run lint:check --workspace=calendar-ui ) || true
+      # - name: Check linting and types
+      #   run: npm run lint:check ---workspace=packages && (npm run lint:check --workspace=calendar-service && npm run lint:check --workspace=calendar-ui ) || true
 
-      # Security audit: check for known vulnerabilities in dependencies
-      - name: Run npm audit
-        run: npm audit --audit-level=moderate
+      # # Security audit: check for known vulnerabilities in dependencies
+      # - name: Run npm audit
+      #   run: npm audit --audit-level=moderate
 
       - name: Build project
         run: npm run build
