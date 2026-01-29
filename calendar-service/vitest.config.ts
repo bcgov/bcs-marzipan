@@ -25,7 +25,10 @@ export default defineConfig({
       '@corpcal/shared': resolve(__dirname, '../packages/shared/dist/cjs'),
       '@corpcal/shared/*': resolve(__dirname, '../packages/shared/dist/cjs/*'),
       '@corpcal/database': resolve(__dirname, '../packages/database/dist/cjs'),
-      '@corpcal/database/*': resolve(__dirname, '../packages/database/dist/cjs/*'),
+      '@corpcal/database/*': resolve(
+        __dirname,
+        '../packages/database/dist/cjs/*'
+      ),
     },
   },
 });
