@@ -4,6 +4,7 @@ import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
 import { createLogger } from '../lib/logger';
 
+// Add an optional callback to notify when a draft is created for the first time
 export interface UseAutoSaveOptions {
   debounceMs?: number;
   enabled?: boolean;
@@ -11,6 +12,7 @@ export interface UseAutoSaveOptions {
   onSaveSuccess?: (draft: DraftResponse) => void;
   onSaveError?: (error: Error) => void;
   onDraftLoaded?: (draft: DraftResponse) => void;
+  onFirstDraftCreate?: () => void;
 }
 
 export function useAutoSave(
@@ -38,6 +40,8 @@ export function useAutoSave(
   // Always use the provided defaultFormData for initialFormDataRef
   const initialFormDataRef = useRef<string | null>(null);
   const lastProcessedDataRef = useRef<string | null>(null);
+  // Track if a draft was created after mount
+  const draftCreatedRef = useRef(false);
 
   // Query key for caching
   const draftQueryKey = ['draft', userId, formType, entityId];
@@ -53,6 +57,14 @@ export function useAutoSave(
     enabled: enabled && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Call onFirstDraftCreate only once after mount if needed
+  useEffect(() => {
+    if (!draftCreatedRef.current && options?.onFirstDraftCreate) {
+      draftCreatedRef.current = true;
+      options.onFirstDraftCreate();
+    }
+  }, [options]);
 
   // Handle draft loaded callback
   useEffect(() => {

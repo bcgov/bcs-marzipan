@@ -78,7 +78,6 @@ export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
-  const [showDraftDialog, setShowDraftDialog] = useState(false);
   const draftCheckedRef = useRef(false);
 
   // Fetch date and time statuses
@@ -159,6 +158,10 @@ export const CreateActivityForm: React.FC = () => {
   }, [form]);
 
   // Autosave integration: do not use entityId from existingDraft to avoid circular reference
+  // Track if a draft existed at mount
+  const initialDraftExistsRef = useRef(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [autoSaveReady, setAutoSaveReady] = useState(false);
   const {
     existingDraft,
     isDraftLoading,
@@ -172,7 +175,7 @@ export const CreateActivityForm: React.FC = () => {
     formValues,
     undefined,
     {
-      debounceMs: 3000, // Save 3 seconds after user stops typing
+      debounceMs: 3000,
       enabled:
         !isSubmitting &&
         form.formState.isDirty &&
@@ -180,23 +183,38 @@ export const CreateActivityForm: React.FC = () => {
       isDirty:
         form.formState.isDirty &&
         JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+      onFirstDraftCreate: () => {
+        // If a draft is created after mount, do NOT show the dialog
+        // (no-op here, dialog is only shown if draft existed at mount)
+      },
     },
     getDefaultFormValues()
   );
 
-  // Show resume draft dialog ONLY if a draft existed on the very first load (not if created after user input)
-  // Use a ref to ensure dialog is only shown once per mount, but always on fresh navigation if a draft exists
-  const initialDraftDialogShownRef = useRef(false);
+  // On first load, record if a draft existed at mount, and only ever show dialog if it did
+  const didCheckInitialDraft = useRef(false);
   useEffect(() => {
-    if (isDraftLoading || initialDraftDialogShownRef.current) return;
+    if (isDraftLoading || didCheckInitialDraft.current) return;
+    didCheckInitialDraft.current = true;
     if (
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
+      initialDraftExistsRef.current = true;
       setShowDraftDialog(true);
-      initialDraftDialogShownRef.current = true;
+    } else {
+      initialDraftExistsRef.current = false;
     }
   }, [existingDraft, isDraftLoading]);
+
+  // Prevent dialog from ever being shown if a draft did not exist at mount
+  useEffect(() => {
+    if (!isDraftLoading && !initialDraftExistsRef.current && showDraftDialog) {
+      setShowDraftDialog(false);
+    }
+  }, [isDraftLoading, showDraftDialog]);
+
+  // ...existing code...
   // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
@@ -225,7 +243,16 @@ export const CreateActivityForm: React.FC = () => {
   // ...existing code...
 
   const handleCancel = () => {
+    // Delete the draft if it exists
+    if (existingDraft && existingDraft.id) {
+      void import('../api/draftsApi').then((draftsApi) => {
+        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      });
+    }
+    // Optionally reset the form (not strictly needed if closing)
     form.reset();
+    // Close the page
+    window.close();
   };
 
   const onSubmit = async (data: FormData) => {
@@ -496,6 +523,7 @@ export const CreateActivityForm: React.FC = () => {
                     variant="outline"
                     onClick={handleCancel}
                     disabled={isSubmitting}
+                    title="This will discard any draft data and close the page"
                   >
                     Cancel
                   </Button>
