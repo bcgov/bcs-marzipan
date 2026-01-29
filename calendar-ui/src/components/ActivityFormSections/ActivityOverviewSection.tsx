@@ -101,7 +101,9 @@ export const ActivityOverviewSection: React.FC<
   return (
     <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
       <div>
-        <Label className="block">Category *</Label>
+        <Label className="block">
+          Category <span className="text-destructive">*</span>
+        </Label>
         <p className="text-muted-foreground mb-3 text-sm">
           Select all that apply
         </p>
@@ -128,7 +130,9 @@ export const ActivityOverviewSection: React.FC<
         name="title"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Title *</FormLabel>
+            <FormLabel>
+              Title <span className="text-destructive">*</span>
+            </FormLabel>
             <FormControl>
               <Input
                 placeholder="Enter activity title"

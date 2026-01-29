@@ -4,93 +4,27 @@ import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
 import { createLogger } from '../lib/logger';
 
-const logger = createLogger('useAutoSave');
-
 export interface UseAutoSaveOptions {
-  /**
-   * Debounce delay in milliseconds before saving
-   * @default 2000
-   */
   debounceMs?: number;
-
-  /**
-   * Whether autosave is enabled
-   * @default true
-   */
   enabled?: boolean;
-
-  /**
-   * Callback when draft is successfully saved
-   */
+  isDirty?: boolean;
   onSaveSuccess?: (draft: DraftResponse) => void;
-
-  /**
-   * Callback when draft save fails
-   */
   onSaveError?: (error: Error) => void;
-
-  /**
-   * Callback when draft is loaded
-   */
   onDraftLoaded?: (draft: DraftResponse) => void;
 }
 
-/**
- * Hook for autosaving form data as drafts
- *
- * Features:
- * - Automatically saves form data after user stops typing (debounced)
- * - Loads existing draft on mount
- * - Provides methods to manually save, delete, and clear drafts
- * - Integrates with React Query for caching and optimistic updates
- *
- * @param userId - User ID (temporary until authentication is implemented)
- * @param formType - Type of form (e.g., 'activity', 'event')
- * @param formData - Current form data to autosave
- * @param entityId - Optional entity ID if editing existing item
- * @param options - Configuration options
- *
- * @example
- * ```tsx
- * function CreateActivityForm() {
- *   const [formData, setFormData] = useState({});
- *   const { existingDraft, isSaving, lastSaved } = useAutoSave(
- *     1, // userId
- *     'activity',
- *     formData,
- *     undefined, // entityId (null for new)
- *     {
- *       debounceMs: 3000,
- *       onSaveSuccess: () => toast.success('Draft saved'),
- *     }
- *   );
- *
- *   // Load draft on mount
- *   useEffect(() => {
- *     if (existingDraft?.draftData) {
- *       setFormData(existingDraft.draftData);
- *     }
- *   }, [existingDraft]);
- *
- *   return (
- *     <form>
- *       {isSaving && <span>Saving...</span>}
- *       {lastSaved && <span>Last saved: {lastSaved.toLocaleTimeString()}</span>}
- *     </form>
- *   );
- * }
- * ```
- */
 export function useAutoSave(
   userId: number,
   formType: string,
   formData: Record<string, any>,
   entityId?: number,
-  options: UseAutoSaveOptions = {}
+  options: UseAutoSaveOptions = {},
+  defaultFormData?: Record<string, any>
 ) {
   const {
     debounceMs = 2000,
     enabled = true,
+    isDirty = true,
     onSaveSuccess,
     onSaveError,
     onDraftLoaded,
@@ -101,6 +35,7 @@ export function useAutoSave(
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedDataRef = useRef<string | null>(null);
+  // Always use the provided defaultFormData for initialFormDataRef
   const initialFormDataRef = useRef<string | null>(null);
   const lastProcessedDataRef = useRef<string | null>(null);
 
@@ -122,7 +57,6 @@ export function useAutoSave(
   // Handle draft loaded callback
   useEffect(() => {
     if (existingDraft && onDraftLoaded) {
-      logger.debug('Draft loaded', { formType, entityId });
       onDraftLoaded(existingDraft);
     }
     // Initialize lastSavedDataRef when a draft is loaded
@@ -131,13 +65,20 @@ export function useAutoSave(
     }
   }, [existingDraft, onDraftLoaded, formType, entityId]);
 
-  // Capture initial form data on first render
+  // Capture initial form data on first render only (after mount)
   useEffect(() => {
-    if (initialFormDataRef.current === null && formData) {
-      initialFormDataRef.current = JSON.stringify(formData);
-      logger.debug('Captured initial form data');
+    if (initialFormDataRef.current === null && defaultFormData) {
+      initialFormDataRef.current = JSON.stringify(defaultFormData);
     }
-  }, [formData]);
+  }, [defaultFormData]);
+
+  // Expose a function to reset the initial form data reference (for 'start fresh')
+  const resetInitialFormData = useCallback(() => {
+    if (defaultFormData) {
+      initialFormDataRef.current = JSON.stringify(defaultFormData);
+      lastProcessedDataRef.current = JSON.stringify(defaultFormData);
+    }
+  }, [defaultFormData]);
 
   // Save draft mutation
   const { mutate: saveDraftMutation } = useMutation({
@@ -155,7 +96,6 @@ export function useAutoSave(
       setIsSaving(false);
       // Store the saved data for comparison
       lastSavedDataRef.current = JSON.stringify(formData);
-      logger.debug('Draft saved successfully', { draftId: draft.id });
 
       // Update cache
       queryClient.setQueryData(draftQueryKey, draft);
@@ -166,8 +106,6 @@ export function useAutoSave(
     },
     onError: (error: Error) => {
       setIsSaving(false);
-      logger.error('Failed to save draft', error);
-
       if (onSaveError) {
         onSaveError(error);
       }
@@ -177,111 +115,172 @@ export function useAutoSave(
   // Delete draft mutation
   const { mutate: deleteDraftMutation } = useMutation({
     mutationFn: () => {
-      logger.debug('Calling deleteDraftByForm API', {
-        userId,
-        formType,
-        entityId,
-      });
       return draftsApi.deleteDraftByForm(userId, formType, entityId);
     },
     onMutate: () => {
       // Optimistically clear cache immediately when mutation starts
-      logger.debug('Optimistically clearing cache');
       queryClient.setQueryData(draftQueryKey, null);
       setLastSaved(null);
       lastSavedDataRef.current = null;
     },
     onSuccess: () => {
-      logger.debug('Draft deleted successfully from DB', {
-        formType,
-        entityId,
-      });
       // Cache already cleared in onMutate
       // Invalidate to ensure fresh data on next mount
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
-      logger.debug('Query invalidated', { draftQueryKey });
     },
     onError: (error: any) => {
       // Even on error, log it but keep the cache cleared
-      logger.error('Error deleting draft', error);
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
   });
 
   // Auto-save effect with debouncing
   useEffect(() => {
-    if (!enabled || !userId) {
+    if (!enabled || !userId || !isDirty) {
+      if (!enabled) console.log('[AutoSave] Not enabled, skipping autosave.');
+      if (!userId) console.log('[AutoSave] No userId, skipping autosave.');
+      if (!isDirty)
+        console.log('[AutoSave] Form not dirty, skipping autosave.');
       return;
     }
 
-    // Don't save if form data is empty
     if (!formData || Object.keys(formData).length === 0) {
+      console.log('[AutoSave] Form data empty, skipping autosave.');
+      return;
+    }
+
+    if (initialFormDataRef.current === null) {
+      console.log('[AutoSave] initialFormDataRef not set, skipping autosave.');
       return;
     }
 
     const currentDataString = JSON.stringify(formData);
 
-    // Check if data actually changed since last time we processed it
+    if (initialFormDataRef.current === currentDataString) {
+      console.log(
+        '[AutoSave] Form data matches initial form data, skipping autosave.'
+      );
+      return;
+    }
+
+    if (
+      lastSavedDataRef.current &&
+      lastSavedDataRef.current === currentDataString
+    ) {
+      console.log(
+        '[AutoSave] Form data matches last saved draft, skipping autosave.'
+      );
+      return;
+    }
+
     if (lastProcessedDataRef.current === currentDataString) {
-      // Data hasn't changed, don't reset the timer or do anything
+      console.log(
+        '[AutoSave] Form data unchanged since last process, skipping autosave.'
+      );
       return;
     }
 
     // Data has changed, update our tracking
     lastProcessedDataRef.current = currentDataString;
 
-    // Clear existing timeout when form data changes (reset debounce)
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    // Set new timeout for debounced save
-    // The actual checks happen inside the timeout to ensure we only save once
     timeoutRef.current = setTimeout(() => {
-      // Check if form data matches initial state (no user input yet)
-      if (initialFormDataRef.current === currentDataString) {
-        logger.debug('Skipping autosave: form still in initial state');
+      if (!formData || Object.keys(formData).length === 0) {
+        console.log(
+          '[AutoSave] (debounce) Form data empty, skipping autosave.'
+        );
         return;
       }
-
-      // Check if data has changed since last save
+      if (initialFormDataRef.current === null) {
+        console.log(
+          '[AutoSave] (debounce) initialFormDataRef not set, skipping autosave.'
+        );
+        return;
+      }
+      if (initialFormDataRef.current === JSON.stringify(formData)) {
+        console.log(
+          '[AutoSave] (debounce) Form data matches initial form data, skipping autosave.'
+        );
+        return;
+      }
+      if (
+        lastSavedDataRef.current &&
+        lastSavedDataRef.current === JSON.stringify(formData)
+      ) {
+        console.log(
+          '[AutoSave] (debounce) Form data matches last saved draft, skipping autosave.'
+        );
+        return;
+      }
+      const currentDataString = JSON.stringify(formData);
       if (lastSavedDataRef.current === currentDataString) {
-        logger.debug('Skipping autosave: no changes since last save');
+        console.log(
+          '[AutoSave] (debounce) Form data unchanged since last save, skipping autosave.'
+        );
         return;
       }
-
-      logger.debug('Auto-saving draft', { formType, entityId });
-      saveDraftMutation();
+      // Compute and log the diff between initial and current form data
+      let initial: Record<string, any> = {};
+      let current: Record<string, any> = {};
+      try {
+        initial = JSON.parse(initialFormDataRef.current || '{}');
+        current = JSON.parse(currentDataString);
+      } catch (e) {
+        console.log('[AutoSave] Error parsing form data for diff:', e);
+      }
+      const diff: Record<string, { from: any; to: any }> = {};
+      let hasRealChange = false;
+      for (const key of new Set([
+        ...Object.keys(initial),
+        ...Object.keys(current),
+      ])) {
+        const fromVal = initial[key];
+        const toVal = current[key];
+        // Ignore null <-> undefined changes
+        if (
+          (fromVal === null && toVal === undefined) ||
+          (fromVal === undefined && toVal === null)
+        ) {
+          continue;
+        }
+        if (JSON.stringify(fromVal) !== JSON.stringify(toVal)) {
+          diff[key] = { from: fromVal, to: toVal };
+          hasRealChange = true;
+        }
+      }
+      if (hasRealChange) {
+        console.log(
+          '[AutoSave] Autosave triggered: user input detected and data changed. Diff:',
+          diff
+        );
+        saveDraftMutation();
+      } else {
+        console.log(
+          '[AutoSave] Only null/undefined changes detected, skipping autosave.'
+        );
+      }
     }, debounceMs);
 
-    // Cleanup on unmount or before next save
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [
-    formData,
-    enabled,
-    userId,
-    formType,
-    entityId,
-    debounceMs,
-    saveDraftMutation,
-  ]);
+  }, [formData, enabled, userId, debounceMs, saveDraftMutation, isDirty]);
 
   // Manual save function (bypasses debounce)
   const saveNow = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-    logger.debug('Manual save triggered', { formType, entityId });
     saveDraftMutation();
   }, [saveDraftMutation, formType, entityId]);
 
   // Delete draft function
   const deleteDraft = useCallback(() => {
-    logger.debug('Deleting draft', { formType, entityId });
     deleteDraftMutation();
   }, [deleteDraftMutation, formType, entityId]);
 
@@ -308,5 +307,7 @@ export function useAutoSave(
     deleteDraft,
     /** Clear draft and reset state */
     clearDraft,
+    /** Reset the initial form data reference (call after 'start fresh') */
+    resetInitialFormData,
   };
 }

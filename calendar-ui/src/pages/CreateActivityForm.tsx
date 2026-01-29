@@ -37,6 +37,7 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import React from 'react';
+import { deleteDraft } from '../api/draftsApi';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -61,10 +62,17 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   representatives: [],
   sharedWithMinistryIds: [],
   reportSettings: [],
+  // Set these to match what the effects set on mount
+  dateStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
+  timeStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
+  pitchRequired: false,
 });
 
 // TODO: Replace with actual user from auth context once authentication is implemented
 const TEMPORARY_USER_ID = 1;
+
+// Key used to store draft dialog session state in sessionStorage
+const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
 
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +91,9 @@ export const CreateActivityForm: React.FC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
-    defaultValues: getDefaultFormValues(),
+    defaultValues: {
+      ...getDefaultFormValues(),
+    },
   });
 
   // Set default date and time statuses to "unknown" when they're loaded
@@ -148,48 +158,71 @@ export const CreateActivityForm: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Autosave integration
-  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
-    useAutoSave(TEMPORARY_USER_ID, 'activity', formValues, undefined, {
+  // Autosave integration: do not use entityId from existingDraft to avoid circular reference
+  const {
+    existingDraft,
+    isDraftLoading,
+    isSaving,
+    lastSaved,
+    deleteDraft: baseDeleteDraft,
+    resetInitialFormData,
+  } = useAutoSave(
+    TEMPORARY_USER_ID,
+    'activity',
+    formValues,
+    undefined,
+    {
       debounceMs: 3000, // Save 3 seconds after user stops typing
-      enabled: !isSubmitting, // Disable during submission
-    });
+      enabled:
+        !isSubmitting &&
+        form.formState.isDirty &&
+        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+      isDirty:
+        form.formState.isDirty &&
+        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+    },
+    getDefaultFormValues()
+  );
 
-  // Check for existing draft on mount and show dialog
+  // Show resume draft dialog ONLY if a draft existed on the very first load (not if created after user input)
+  // Use a ref to ensure dialog is only shown once per mount, but always on fresh navigation if a draft exists
+  const initialDraftDialogShownRef = useRef(false);
   useEffect(() => {
-    if (draftCheckedRef.current || isDraftLoading) {
-      return;
-    }
-
+    if (isDraftLoading || initialDraftDialogShownRef.current) return;
     if (
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
       setShowDraftDialog(true);
-      draftCheckedRef.current = true;
-    } else {
-      // No draft found, mark as checked so we don't show dialog
-      draftCheckedRef.current = true;
+      initialDraftDialogShownRef.current = true;
     }
   }, [existingDraft, isDraftLoading]);
-
+  // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
       form.reset(existingDraft.draftData as FormData);
     }
     setShowDraftDialog(false);
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
   };
 
   const handleStartFresh = () => {
-    // Use the hook's delete function to handle draft deletion and cache cleanup
-    deleteDraft();
-
+    if (existingDraft && existingDraft.id) {
+      void import('../api/draftsApi').then((draftsApi) => {
+        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      });
+    }
     setShowDraftDialog(false);
     draftCheckedRef.current = false;
-
-    // Reset the form to default values
-    form.reset(getDefaultFormValues());
+    form.reset(getDefaultFormValues(), {
+      keepDirty: false,
+      keepTouched: false,
+    });
+    resetInitialFormData();
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
   };
+
+  // ...existing code...
 
   const handleCancel = () => {
     form.reset();
@@ -240,11 +273,12 @@ export const CreateActivityForm: React.FC = () => {
       await createActivity(submitData);
 
       // Delete draft after successful creation
-      deleteDraft();
+      if (existingDraft && existingDraft.id) {
+        await deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      }
 
-      alert('Activity created successfully!');
-      // TODO: Navigate to activity detail page or list
-      form.reset();
+      // Close the window after successful creation
+      window.close();
     } catch (error) {
       console.error('Failed to create activity:', error);
       alert('Failed to create activity. Please try again.');
@@ -420,6 +454,7 @@ export const CreateActivityForm: React.FC = () => {
                     <ActivityCommsSection
                       commsMaterialOptions={lookups.commsMaterials}
                       commsLeadOptions={commsLeadOptions}
+                      activityStatusOptions={lookups.activityStatuses}
                     />
 
                     {/* News Release Section */}
