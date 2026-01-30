@@ -176,10 +176,10 @@ export const CreateActivityForm: React.FC = () => {
     undefined,
     {
       debounceMs: 3000,
-      enabled:
-        !isSubmitting &&
-        form.formState.isDirty &&
-        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+      // Always enable initial draft fetch so we can prompt the user to
+      // continue an existing draft on mount. Autosave itself is still
+      // gated by the `isDirty` option below.
+      enabled: true,
       isDirty:
         form.formState.isDirty &&
         JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
@@ -242,15 +242,24 @@ export const CreateActivityForm: React.FC = () => {
 
   // ...existing code...
 
-  const handleCancel = () => {
-    // Delete the draft if it exists
+  const handleCancel = async () => {
+    // Delete the draft if it exists and wait for completion so request isn't aborted
     if (existingDraft && existingDraft.id) {
-      void import('../api/draftsApi').then((draftsApi) => {
-        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
-      });
+      try {
+        const draftsApi = await import('../api/draftsApi');
+        await draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      } catch (e) {
+        // Ignore errors during cancellation delete - user intent is to close
+        console.warn('Error deleting draft on cancel:', e);
+      }
     }
+
+    // Ensure dialog session flag is cleared
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
+
     // Optionally reset the form (not strictly needed if closing)
     form.reset();
+
     // Close the page
     window.close();
   };
@@ -521,7 +530,9 @@ export const CreateActivityForm: React.FC = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCancel}
+                    onClick={() => {
+                      void handleCancel();
+                    }}
                     disabled={isSubmitting}
                     title="This will discard any draft data and close the page"
                   >
