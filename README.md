@@ -120,6 +120,7 @@ bcs-marzipan/
 │       │   └── utils/         # Utility functions
 │       └── package.json
 ├── docs/                      # Additional documentation
+│   ├── TESTING.md             # Testing strategy and standards
 │   ├── SCHEMA_README.md       # Schema and type safety documentation
 │   ├── DOCKER_DEPLOYMENT.md   # Docker deployment guide
 │   └── PRE_COMMIT_HOOKS.md    # Git hooks documentation
@@ -151,6 +152,14 @@ npm run db:push --workspace=packages/database       # Push schema (dev only)
 npm run db:studio --workspace=packages/database      # Open Drizzle Studio
 npm run seed --workspace=calendar-service           # Seed lookup tables
 ```
+
+### Testing
+
+```bash
+npm run test   # Run all unit tests (calendar-service, calendar-ui, packages/shared)
+```
+
+See [Testing Documentation](docs/TESTING.md) for strategy, naming conventions (`*.spec.ts` / `*.spec.tsx`), what to test, and when tests run (pre-commit, pre-push).
 
 ## API Documentation
 
@@ -190,6 +199,7 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 
 ## Additional Documentation
 
+- **[Testing](docs/TESTING.md)**: Testing strategy, standards, naming conventions (`*.spec.ts` / `*.spec.tsx`), and what to test
 - **[Schema Documentation](docs/SCHEMA_README.md)**: Detailed information about schema flow, type safety, and how to update schemas
 - **[Docker Deployment](docs/DOCKER_DEPLOYMENT.md)**: Guide for Docker and docker-compose usage
 - **[Database Module](calendar-service/src/database/README.md)**: Database module usage in NestJS services
