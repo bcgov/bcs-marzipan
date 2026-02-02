@@ -1,52 +1,45 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Copy root package files for workspace configuration
+# Copy workspace configuration
 COPY package*.json ./
-
-# Copy TypeScript base config (packages extend this)
 COPY tsconfig.base.json ./
 
-# Copy packages directory (workspace dependencies)
+# Copy all packages and service source
 COPY packages/ ./packages/
-
-# Copy service package files
-COPY calendar-service/package*.json ./calendar-service/
-
-# Install all dependencies (workspace-aware)
-RUN npm install
-
-# Copy service source code
 COPY calendar-service/ ./calendar-service/
 
-# Build packages first, then the service
+# Ensure npm skips optional dependencies (platform-specific binaries)
+ENV NPM_CONFIG_OPTIONAL=false
+RUN npm ci --ignore-scripts
+
+# Build packages first, then service
 RUN npm run build --workspace=packages/database && \
     npm run build --workspace=packages/shared && \
     npm run build --workspace=calendar-service
 
+
 FROM node:24-alpine
 WORKDIR /app
-#ENV NODE_ENV=production
+ENV NODE_ENV=production
 
-# Copy root package files (needed for workspace resolution)
+# Copy workspace package files for dependency resolution
 COPY package*.json ./
+COPY tsconfig.base.json ./
 
-# Copy built packages with their package.json files
+# Copy package.json files for all packages (for workspace resolution)
 COPY --from=build /app/packages/database/package*.json ./packages/database/
-COPY --from=build /app/packages/database/dist ./packages/database/dist/
 COPY --from=build /app/packages/shared/package*.json ./packages/shared/
-COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
-
-# Copy built service
-COPY --from=build /app/calendar-service/dist ./calendar-service/dist
 COPY --from=build /app/calendar-service/package*.json ./calendar-service/
 
-# Install production dependencies (workspace-aware from root)
-# Skip scripts to avoid husky prepare hook in production
-RUN npm install --production --workspaces=false --ignore-scripts && \
-    npm install --production --workspace=packages/database --ignore-scripts && \
-    npm install --production --workspace=packages/shared --ignore-scripts && \
-    npm install --production --workspace=calendar-service --ignore-scripts
+# Copy only the built dist folders
+COPY --from=build /app/packages/database/dist ./packages/database/dist/
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
+COPY --from=build /app/calendar-service/dist ./calendar-service/dist/
+
+# Install production dependencies only for the workspace
+# Skip optional packages (e.g. platform-specific rollup binaries)
+RUN npm ci --production --ignore-scripts --no-optional --workspaces --workspace-root
 
 EXPOSE 3001
 WORKDIR /app/calendar-service

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-ui
+  labels:
+    app: calendar-ui
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    image.openshift.io/triggers: |
+      [
+        {
+          "from": {
+            "kind": "ImageStreamTag",
+            "name": "calendar-ui:latest"
+          },
+          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-ui')].image"
+        }
+      ]
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-ui
+  template:
+    metadata:
+      labels:
+        app: calendar-ui
+    spec:
+      containers:
+        - name: calendar-ui
+          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-ui-secrets
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20

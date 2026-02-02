@@ -20,39 +20,46 @@ src/
 ## Running Tests
 
 ### All Tests
+
 ```bash
 npm test
 ```
 
 ### Unit Tests Only
+
 ```bash
 npm run test -- --testPathIgnorePatterns=e2e
 ```
 
 ### E2E Tests Only
+
 ```bash
 npm run test:e2e
 ```
 
 ### Watch Mode (for development)
+
 ```bash
 npm run test:watch
 ```
 
 ### Coverage Report
+
 ```bash
 npm run test:cov
 ```
 
 ## Test Types
 
-### 1. Unit Tests (*.spec.ts)
+### 1. Unit Tests (\*.spec.ts)
+
 Located in `src/` alongside the source files.
 
 - **Controller Tests** (`activities.controller.spec.ts`): Test HTTP endpoints with mocked services
 - **Service Tests** (`activities.service.spec.ts`): Test business logic with mocked database
 
-### 2. E2E Tests (*.e2e-spec.ts)
+### 2. E2E Tests (\*.e2e-spec.ts)
+
 Located in `test/` directory.
 
 - **Integration Tests** (`activities.e2e-spec.ts`): Test complete request/response cycle
@@ -64,33 +71,39 @@ Located in `test/` directory.
 ### Activities API Endpoints
 
 #### POST /activities
+
 - ✅ Create new activity with valid data
 - ✅ Reject invalid activity data (400)
 - ✅ Validate required fields
 - ✅ Return created activity with ID
 
 #### GET /activities
+
 - ✅ Return all activities
 - ✅ Filter by title
 - ✅ Filter by date range
 - ✅ Return empty array when no matches
 
 #### GET /activities/categories
+
 - ✅ Return all activity categories
 - ✅ Return array of category objects
 
 #### GET /activities/:id
+
 - ✅ Return specific activity by ID
 - ✅ Return 404 for non-existent activity
 - ✅ Return 400 for invalid ID format
 
 #### PATCH /activities/:id
+
 - ✅ Update activity with valid data
 - ✅ Return 404 for non-existent activity
 - ✅ Reject invalid update data (400)
 - ✅ Return updated activity
 
 #### DELETE /activities/:id
+
 - ✅ Delete activity by ID
 - ✅ Return 404 for non-existent activity
 - ✅ Confirm deletion with success message
@@ -100,6 +113,7 @@ Located in `test/` directory.
 The `test-helpers.ts` file provides utility functions:
 
 ### Mock Data Factories
+
 ```typescript
 // Create mock request data
 const createRequest = createMockActivityRequest({ title: 'Custom Title' });
@@ -112,6 +126,7 @@ const updateRequest = createMockUpdateRequest({ summary: 'Updated' });
 ```
 
 ### Mock Database Service
+
 ```typescript
 const mockDb = createMockDatabaseService();
 ```
@@ -119,6 +134,7 @@ const mockDb = createMockDatabaseService();
 ## Writing New Tests
 
 ### Unit Test Example
+
 ```typescript
 describe('NewController', () => {
   let controller: NewController;
@@ -154,6 +170,7 @@ describe('NewController', () => {
 ```
 
 ### E2E Test Example
+
 ```typescript
 describe('/new-endpoint (GET)', () => {
   it('should return data', () => {
@@ -207,16 +224,19 @@ API_KEY=test-api-key
 ## Debugging Tests
 
 ### Run specific test file
+
 ```bash
 npm test -- activities.controller.spec.ts
 ```
 
 ### Run specific test case
+
 ```bash
 npm test -- -t "should create a new activity"
 ```
 
 ### Debug mode
+
 ```bash
 npm run test:debug
 ```
@@ -226,23 +246,29 @@ Then attach your debugger to the Node process.
 ## Troubleshooting
 
 ### Tests failing with timeout errors
+
 Increase Jest timeout in the test file:
+
 ```typescript
 jest.setTimeout(10000); // 10 seconds
 ```
 
 ### Database connection issues
+
 Ensure database is running and accessible:
+
 ```bash
 npm run test:db
 ```
 
 ### Module not found errors
+
 Check `moduleNameMapper` in `jest-e2e.json` for correct path mappings.
 
 ## Contributing
 
 When adding new endpoints:
+
 1. Add controller unit tests in `src/`
 2. Add E2E tests in `test/`
 3. Update this README with coverage information

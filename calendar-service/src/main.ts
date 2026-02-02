@@ -12,11 +12,15 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   app.useGlobalInterceptors(new RateLimitInterceptor(configService));
 
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:4173',
-    'http://localhost:8080',
-  ];
+  // Get CORS allowed origins from environment variable or use defaults
+  const corsOriginsEnv = configService.get<string>('CORS_ALLOWED_ORIGINS');
+  const allowedOrigins = corsOriginsEnv
+    ? corsOriginsEnv.split(',').map((origin) => origin.trim())
+    : [
+        'http://localhost:3000',
+        'http://localhost:4173',
+        'http://localhost:8080',
+      ];
 
   // Enable CORS for development
   app.enableCors({

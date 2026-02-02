@@ -25,7 +25,8 @@
       "react": "^19.2.3",
       "react-dom": "^19.2.3"
     },
-    "drizzle-orm": "^0.44.7"
+    "drizzle-orm": "^0.44.7",
+    "picomatch": "4.0.2"
   },
   "scripts": {
     "start": "concurrently \"npm --prefix calendar-ui run dev\" \"npm --prefix calendar-service run start:dev\"",
@@ -75,7 +76,10 @@
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript-eslint": "^8.20.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "typescript": "^5.3.3",
+    "unplugin-swc": "^1.5.9",
+    "@swc/core": "^1.15.11"
   },
   "lint-staged": {
     "calendar-service/**/*.ts": [
