@@ -9,6 +9,18 @@ import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivitiesAPI');
 
+// Ensure reportSettings items include `reportId` (backend returns `id`)
+function normalizeReportSettingsInActivity(activity: any) {
+  if (!activity) return activity;
+  if (!Array.isArray(activity.reportSettings)) return activity;
+  activity.reportSettings = activity.reportSettings.map((s: any) => ({
+    // prefer existing reportId, otherwise fall back to id
+    ...s,
+    reportId: typeof s.reportId === 'number' ? s.reportId : s.id,
+  }));
+  return activity;
+}
+
 export async function fetchActivities(
   filters?: FilterActivitiesQueryParams
 ): Promise<ActivityResponse[]> {
@@ -20,12 +32,14 @@ export async function fetchActivities(
   );
   // Handle different response structures
   if (res.data && res.data.data) {
-    return res.data.data;
+    return (res.data.data || []).map((a: any) =>
+      normalizeReportSettingsInActivity(a)
+    );
   }
 
   // If the response is directly an array
   if (Array.isArray(res.data)) {
-    return res.data;
+    return res.data.map((a: any) => normalizeReportSettingsInActivity(a));
   }
 
   console.error('Unexpected API response structure:', res.data);
@@ -36,7 +50,7 @@ export async function fetchActivity(id: number): Promise<ActivityResponse> {
   const res = await api.get<{ success: boolean; data: ActivityResponse }>(
     `/activities/${id}`
   );
-  return res.data.data;
+  return normalizeReportSettingsInActivity(res.data.data);
 }
 
 export async function createActivity(

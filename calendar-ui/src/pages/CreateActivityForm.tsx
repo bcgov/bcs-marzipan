@@ -256,6 +256,14 @@ export const CreateActivityForm: React.FC = () => {
   const onError = (errors: any) => {
     console.error('Form validation errors:', errors);
     console.error('Form values:', form.getValues());
+    const keys = Object.keys(errors || {});
+    if (keys.length > 0) {
+      const friendly = keys.map(
+        (k) =>
+          `${getFieldLabel(k)}: ${errors[k]?.message || JSON.stringify(errors[k])}`
+      );
+      console.error('Validation summary:', friendly);
+    }
   };
 
   // Map field names to user-friendly labels
@@ -474,6 +482,24 @@ export const CreateActivityForm: React.FC = () => {
                           onMouseLeave={() =>
                             setShowMissingFieldsPopover(false)
                           }
+                          onClick={() => {
+                            // Trigger validation and print errors to console when user attempts to submit
+                            void (async () => {
+                              try {
+                                await form.trigger();
+                              } catch {
+                                // ignore
+                              }
+                              console.error(
+                                'Submission blocked by validation. Errors:',
+                                JSON.stringify(form.formState.errors, null, 2)
+                              );
+                              console.error(
+                                'Form values at failed submit:',
+                                JSON.stringify(form.getValues(), null, 2)
+                              );
+                            })();
+                          }}
                         >
                           <Button
                             type="submit"

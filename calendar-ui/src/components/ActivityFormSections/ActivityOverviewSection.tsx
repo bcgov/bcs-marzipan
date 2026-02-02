@@ -1,4 +1,4 @@
-import { useFormContext, useWatch } from 'react-hook-form';
+import { useFormContext, useWatch, useFormState } from 'react-hook-form';
 import {
   FormField,
   FormItem,
@@ -87,6 +87,10 @@ export const ActivityOverviewSection: React.FC<
     name: 'categoryIds',
   });
 
+  // Track dirty fields to show change indicators
+  const { dirtyFields } = useFormState({ control: form.control });
+  const titleChanged = !!(dirtyFields as any)?.title;
+
   // Calculate if pitch is required based on selected categories
   const isPitchRequired = (categoryIds || []).some((categoryId) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -123,12 +127,20 @@ export const ActivityOverviewSection: React.FC<
         </div>
       </div>
 
+      {/* Title field with change indicator */}
       <FormField
         control={form.control}
         name="title"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Title *</FormLabel>
+            <FormLabel>
+              Title *
+              {titleChanged && (
+                <Badge variant="warning" className="ml-2">
+                  Changed
+                </Badge>
+              )}
+            </FormLabel>
             <FormControl>
               <Input
                 placeholder="Enter activity title"

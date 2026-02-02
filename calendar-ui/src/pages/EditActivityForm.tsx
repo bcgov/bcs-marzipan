@@ -118,6 +118,37 @@ export default function EditActivityForm(): JSX.Element {
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
+      // Normalize reportSettings so each entry has a numeric reportId as expected by the API/schema
+      const normalizeReportSettings = (items: any[] | undefined) => {
+        if (!items || !Array.isArray(items)) return undefined;
+        const normalized: { reportId: number; omitted?: boolean }[] = [];
+        for (const it of items) {
+          const reportId =
+            (it && typeof it.reportId === 'number' && it.reportId) ||
+            (it && typeof it.id === 'number' && it.id) ||
+            (it &&
+              it.report &&
+              typeof it.report.id === 'number' &&
+              it.report.id);
+          const omitted = !!(it && typeof it.omitted === 'boolean'
+            ? it.omitted
+            : it?.omitted);
+          if (typeof reportId === 'number') {
+            normalized.push({ reportId, omitted });
+          } else {
+            console.warn(
+              'Skipping invalid reportSettings entry (missing numeric reportId):',
+              it
+            );
+          }
+        }
+        return normalized.length > 0 ? normalized : undefined;
+      };
+
+      const normalizedReportSettings = normalizeReportSettings(
+        formValues.reportSettings as any
+      );
+
       const submitData = {
         ...data,
         activityStatusId: data.activityStatusId,
@@ -151,11 +182,13 @@ export default function EditActivityForm(): JSX.Element {
           formValues.sharedWithMinistryIds.length > 0
             ? formValues.sharedWithMinistryIds
             : undefined,
+        // attach normalized report settings if present
+        reportSettings: normalizedReportSettings,
       } as any;
 
       await updateActivity(Number(id), submitData);
-      // Navigate back to previous page (list or details)
-      void navigate(-1);
+      // Navigate back to the entries list view
+      void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
       alert('Failed to save activity. Please try again.');
@@ -166,6 +199,14 @@ export default function EditActivityForm(): JSX.Element {
 
   const onError = (errors: any) => {
     console.error('Form validation errors:', errors);
+    console.error('Form values:', form.getValues());
+    const keys = Object.keys(errors || {});
+    if (keys.length > 0) {
+      const friendly = keys.map(
+        (k) => `${k}: ${errors[k]?.message || JSON.stringify(errors[k])}`
+      );
+      console.error('Validation summary:', friendly);
+    }
   };
 
   const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
@@ -298,7 +339,7 @@ export default function EditActivityForm(): JSX.Element {
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Save'}
+                    {isSubmitting ? 'Updating...' : 'Update'}
                   </Button>
                 </div>
               </form>
