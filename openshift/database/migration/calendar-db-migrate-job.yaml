@@ -1,4 +1,3 @@
-# Not used as of now, but kept for future reference
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -10,10 +9,43 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-db-migrate:latest
+          image: postgres:16-alpine
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: calendar-db-secret
                   key: DATABASE_URL
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+
+              echo "Waiting for database..."
+              until pg_isready -d "$DATABASE_URL"; do
+                sleep 2
+              done
+
+              shopt -s nullglob
+              files=(/migrations/*.sql)
+
+              if [ ${#files[@]} -eq 0 ]; then
+                echo "No migration files found. Nothing to apply."
+                exit 0
+              fi
+
+              echo "Running DB migrations..."
+              for f in "${files[@]}"; do
+                echo "Applying $f"
+                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+              done
+
+              echo "DB migrations completed successfully."
+      volumes:
+        - name: migrations
+          configMap:
+            name: calendar-db-migrations

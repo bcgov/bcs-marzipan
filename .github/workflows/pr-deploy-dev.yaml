@@ -66,16 +66,48 @@ jobs:
       - name: Set project
         run: oc project ${{ secrets.OPENSHIFT_NAMESPACE }}
 
-      - name: Start binary build
+      - name: Start binary build (calendar-service)
         run: |
           oc start-build calendar-service-build \
             --from-dir=. \
             --follow \
             --commit=$(git rev-parse HEAD)
 
-      - name: Start binary build
+      - name: Start binary build (calendar-ui)
         run: |
           oc start-build calendar-ui-build \
             --from-dir=. \
             --follow \
             --commit=$(git rev-parse HEAD)
+
+      - name: Apply DB migration ConfigMap
+        run: |
+          ls packages/database/migrations/*.sql
+          oc create configmap calendar-db-migrations \
+            --from-file=packages/database/migrations \
+            --dry-run=client -o yaml | oc apply -f -
+
+      # - name: Apply DB seed migration ConfigMap
+      #   run: |
+      #     oc create configmap calendar-db-seed-migrations \
+      #       --from-file=packages/database/seeds/*.sql \
+      #       -n ${{ secrets.OPENSHIFT_NAMESPACE }} \
+      #       --dry-run=client -o yaml | oc apply -f -
+
+      - name: Run DB migrations
+        run: |
+          oc delete job calendar-db-migrate \
+            -n ${{ secrets.OPENSHIFT_NAMESPACE }} \
+            --ignore-not-found
+
+          oc apply -f openshift/database/migration/calendar-db-migrate-job.yaml \
+            -n ${{ secrets.OPENSHIFT_NAMESPACE }}
+
+          oc wait --for=condition=complete job/calendar-db-migrate \
+            -n ${{ secrets.OPENSHIFT_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Deploy to Dev environment
+        run: |
+          oc rollout restart deployment/calendar-service
+          oc rollout restart deployment/calendar-ui
