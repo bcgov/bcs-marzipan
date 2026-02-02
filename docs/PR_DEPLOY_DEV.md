@@ -132,7 +132,3 @@ Be sure to adjust the manifest image reference for your namespace or use an imag
 - [ ] Ensure `calendar-service-secrets` contains `DATABASE_URL`.
 - [ ] Start `calendar-db-migrate` build and run Job to execute migrations.
 - [ ] Confirm Job logs and database state.
-
----
-
-If you want, I can add the migration steps into the workflow for you (and test a dry-run). Would you like me to open a PR with the automation change?

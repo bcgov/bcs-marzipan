@@ -5,7 +5,7 @@ permissions:
 on:
   push:
     branches:
-      - develop
+      - feat/CORPCAL-95-openshift-db-migration-scripts
 
 jobs:
   # quality-checks:
