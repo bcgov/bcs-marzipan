@@ -226,7 +226,18 @@ export class ActivitiesService {
         // Convert array format to Map for service layer
         const reportSettingsMap = new Map<number, boolean>();
         for (const setting of reportSettingsArray) {
-          reportSettingsMap.set(setting.reportId, setting.omitted);
+          const reportId =
+            typeof setting.reportId === 'number' ? setting.reportId : undefined;
+          if (typeof reportId === 'number') {
+            reportSettingsMap.set(reportId, setting.omitted);
+          } else {
+            // Log and skip malformed entries
+
+            console.warn(
+              'create: skipping malformed reportSettings entry',
+              setting
+            );
+          }
         }
         await this.junctionService.updateActivityReportSettings(
           tx,
@@ -686,7 +697,18 @@ export class ActivitiesService {
         // Convert array format to Map for service layer
         const reportSettingsMap = new Map<number, boolean>();
         for (const setting of reportSettingsArray) {
-          reportSettingsMap.set(setting.reportId, setting.omitted);
+          const reportId =
+            typeof setting.reportId === 'number' ? setting.reportId : undefined;
+          if (typeof reportId === 'number') {
+            reportSettingsMap.set(reportId, setting.omitted);
+          } else {
+            // Log and skip malformed entries
+
+            console.warn(
+              'update: skipping malformed reportSettings entry',
+              setting
+            );
+          }
         }
         await this.junctionService.updateActivityReportSettings(
           tx,
