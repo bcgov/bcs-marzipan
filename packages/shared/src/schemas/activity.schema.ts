@@ -151,10 +151,23 @@ const representativeSchema = z
  * Report setting schema
  * Defines whether an activity is omitted from a specific report
  */
-const reportSettingSchema = z.object({
-  reportId: z.number().int(),
-  omitted: z.boolean().default(false),
-});
+const reportSettingSchema = z.preprocess(
+  (val) => {
+    // Normalize incoming shape: accept `{ id: number }` (older clients)
+    // and map it to `{ reportId: number }` so validation passes.
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      const v = val as Record<string, unknown>;
+      if (v.reportId === undefined && v.id !== undefined) {
+        return { ...v, reportId: v.id };
+      }
+    }
+    return val;
+  },
+  z.object({
+    reportId: z.number().int(),
+    omitted: z.boolean().default(false),
+  })
+);
 
 /**
  * Comms contact schema

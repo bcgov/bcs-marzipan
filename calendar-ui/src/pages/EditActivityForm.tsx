@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect, JSX } from 'react';
+import { Text, Badge } from '@fluentui/react-components';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -32,6 +33,18 @@ type FormData = CreateActivityRequest & {
   sharedWithMinistryIds?: string[];
 };
 
+type LoadedActivity = {
+  id?: number;
+  displayId?: string;
+  title?: string;
+  category?: string[];
+  leadOrg?: string;
+  activityStatus?: string | number | Record<string, unknown>;
+  lastUpdatedDateTime?: string;
+  createdDateTime?: string;
+  [key: string]: unknown;
+};
+
 const logger = createLogger('EditActivityForm');
 
 const getDefaultFormValues = (): Partial<FormData> => ({
@@ -50,12 +63,39 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   pitchRequired: false,
 });
 
+function timeAgo(date: Date) {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  const intervals: [number, string][] = [
+    [60, 'second'],
+    [60, 'minute'],
+    [24, 'hour'],
+    [7, 'day'],
+    [4.34524, 'week'],
+    [12, 'month'],
+    [Number.POSITIVE_INFINITY, 'year'],
+  ];
+
+  let counter: number = seconds;
+  for (let i = 0; i < intervals.length; i++) {
+    const [limit, name] = intervals[i];
+    if (counter < limit) {
+      const value = Math.floor(counter) || 0;
+      return `${value} ${name}${value !== 1 ? 's' : ''}`;
+    }
+    counter = Math.floor(counter / limit);
+  }
+  return '0 seconds';
+}
+
 export default function EditActivityForm(): JSX.Element {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedActivity, setLoadedActivity] = useState<LoadedActivity | null>(
+    null
+  );
 
   const lookups = useFormLookups();
   const { data: dateStatuses } = useDateStatuses();
@@ -100,6 +140,7 @@ export default function EditActivityForm(): JSX.Element {
         // Reset the form with the activity data. Cast to any since the shape
         // should be compatible but may include extra fields from the API.
         form.reset(activity as any);
+        setLoadedActivity(activity as LoadedActivity);
       } catch (err: any) {
         logger.error('Failed to load activity', err);
         setLoadError(err?.message || String(err));
@@ -209,6 +250,22 @@ export default function EditActivityForm(): JSX.Element {
     }
   };
 
+  const formatActivityStatus = (s: unknown) => {
+    if (s == null) return '';
+    if (typeof s === 'string' || typeof s === 'number') return String(s);
+    if (typeof s === 'object') {
+      const obj = s as any;
+      if (typeof obj.name === 'string') return obj.name;
+      if (typeof obj.label === 'string') return obj.label;
+      try {
+        return JSON.stringify(obj);
+      } catch {
+        return String(obj);
+      }
+    }
+    return String(JSON.stringify(s));
+  };
+
   const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -241,7 +298,6 @@ export default function EditActivityForm(): JSX.Element {
     return (
       <div className="mx-auto max-w-200 px-4 py-8">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Edit Activity</h1>
           <p className="text-muted-foreground">Loading activity...</p>
         </div>
       </div>
@@ -252,7 +308,6 @@ export default function EditActivityForm(): JSX.Element {
     return (
       <div className="mx-auto max-w-200 px-4 py-8">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Edit Activity</h1>
           <p className="text-destructive">
             Failed to load activity: {loadError}
           </p>
@@ -272,18 +327,83 @@ export default function EditActivityForm(): JSX.Element {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="mx-auto max-w-full px-4 py-8">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold">Edit Activity</h1>
-
           <div className="mx-auto max-w-200 px-4 py-8">
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <h1 className="mb-2 text-3xl font-bold">Edit Activity</h1>
-                <p className="text-muted-foreground">
-                  Update the activity details below
-                </p>
-              </div>
-            </div>
+            {/* Header: displayId, title, categories on left; status and timestamps on right */}
+            {loadedActivity ? (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 24,
+                  marginTop: 8,
+                }}
+              >
+                <div style={{ flex: '1 1 auto' }}>
+                  <div style={{ color: '#6b6b6b', marginBottom: 6 }}>
+                    {loadedActivity.displayId || `ACT-${loadedActivity.id}`}
+                  </div>
+                  <Text as="h1" weight="bold" style={{ fontSize: 18 }}>
+                    {loadedActivity.title}
+                  </Text>
+                  <div style={{ marginTop: 8 }}>
+                    {loadedActivity.category &&
+                    loadedActivity.category.length > 0
+                      ? loadedActivity.category.map(
+                          (cat: string, idx: number) => (
+                            <Badge
+                              key={idx}
+                              appearance="filled"
+                              style={{ marginRight: 8 }}
+                            >
+                              {cat}
+                            </Badge>
+                          )
+                        )
+                      : null}
+                  </div>
+                  {loadedActivity.leadOrg ? (
+                    <div style={{ marginTop: 12, color: '#6b6b6b' }}>
+                      {loadedActivity.leadOrg}
+                    </div>
+                  ) : null}
+                </div>
 
+                <div style={{ textAlign: 'right', minWidth: 180 }}>
+                  {loadedActivity.activityStatus ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <Badge appearance="filled">
+                        {formatActivityStatus(loadedActivity.activityStatus)}
+                      </Badge>
+                    </div>
+                  ) : null}
+                  <div style={{ color: '#6b6b6b', fontSize: 13 }}>
+                    {loadedActivity.lastUpdatedDateTime &&
+                    loadedActivity.createdDateTime &&
+                    loadedActivity.lastUpdatedDateTime !==
+                      loadedActivity.createdDateTime ? (
+                      <div>
+                        Updated{' '}
+                        {timeAgo(new Date(loadedActivity.lastUpdatedDateTime))}{' '}
+                        ago
+                      </div>
+                    ) : null}
+                    <div>
+                      Created{' '}
+                      {loadedActivity.createdDateTime
+                        ? new Date(
+                            loadedActivity.createdDateTime
+                          ).toLocaleDateString()
+                        : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                Update the activity details below
+              </p>
+            )}
             <Form {...form}>
               <form
                 onSubmit={(e) => {
