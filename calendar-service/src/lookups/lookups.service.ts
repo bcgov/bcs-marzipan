@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and, inArray, sql, ne } from 'drizzle-orm';
+import { eq, and, inArray, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility, ActivityStatusName } from '@corpcal/shared';
+import type { ActivityStatusName } from '@corpcal/shared';
 import {
   categories,
   organizations,
@@ -17,7 +17,6 @@ import {
   newsReleaseDistributions,
   premierRequested,
   newsReleaseOrigins,
-  teamCategories,
   cities,
   ministries,
   themes,

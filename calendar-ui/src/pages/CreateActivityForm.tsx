@@ -40,7 +40,7 @@ import {
 } from '../components/ActivityFormSections';
 import { AutosaveIndicator } from '../components/AutosaveIndicator';
 import { PageHeader } from '../components/PageHeader';
-import { StatusMessage, ErrorDetails } from '../components/StatusMessage';
+import { StatusMessage } from '../components/StatusMessage';
 import React from 'react';
 
 type FormData = CreateActivityRequest & {
