@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect, JSX } from 'react';
+import { useState, useEffect } from 'react';
 import { Text, Badge } from '@fluentui/react-components';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -24,6 +24,8 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import React from 'react';
+import { HistoryRegular } from '@fluentui/react-icons';
+import ActivityHistory from '../components/activities/ActivityHistory';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -87,7 +89,7 @@ function timeAgo(date: Date) {
   return '0 seconds';
 }
 
-export default function EditActivityForm(): JSX.Element {
+export default function EditActivityForm(): React.ReactElement {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,6 +98,7 @@ export default function EditActivityForm(): JSX.Element {
   const [loadedActivity, setLoadedActivity] = useState<LoadedActivity | null>(
     null
   );
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const lookups = useFormLookups();
   const { data: dateStatuses } = useDateStatuses();
@@ -397,6 +400,24 @@ export default function EditActivityForm(): JSX.Element {
                         : ''}
                     </div>
                   </div>
+
+                  <div style={{ textAlign: 'right', marginTop: 8 }}>
+                    <button
+                      title="this is not yet functional"
+                      className="mr-2 rounded border px-2 py-1"
+                      type="button"
+                    >
+                      ☆
+                    </button>
+                    <button
+                      title="View history"
+                      className="rounded border px-2 py-1"
+                      type="button"
+                      onClick={() => setHistoryOpen(true)}
+                    >
+                      <HistoryRegular />
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -467,6 +488,11 @@ export default function EditActivityForm(): JSX.Element {
           </div>
         </div>
       </div>
+      <ActivityHistory
+        activityId={Number(id)}
+        open={historyOpen}
+        onOpenChange={(v) => setHistoryOpen(!!v)}
+      />
     </ErrorBoundary>
   );
 }

@@ -74,3 +74,26 @@ export async function updateActivity(
 export async function deleteActivity(id: number): Promise<void> {
   await api.delete(`/activities/${id}`);
 }
+
+export async function fetchActivityHistory(id: number): Promise<
+  {
+    id: number;
+    activityId: number;
+    userId: number;
+    actionType: string;
+    changes: Array<{
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+    }> | null;
+    notes: string | null;
+    timestamp: string;
+    userName?: string;
+  }[]
+> {
+  const res = await api.get<{ success: boolean; data: any }>(
+    `/activities/${id}/history`
+  );
+  if (res.data && res.data.data) return res.data.data;
+  return Array.isArray(res.data) ? res.data : [];
+}
