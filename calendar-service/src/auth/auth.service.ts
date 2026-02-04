@@ -75,7 +75,8 @@ export class AuthService {
       teamIds,
     };
 
-    const expiresIn = this.configService.get<number>('JWT_EXPIRES_IN', 3600);
+    const raw = this.configService.get<string | number>('JWT_EXPIRES_IN', 3600);
+    const expiresIn = Number(raw ?? 3600);
     const accessToken = this.jwtService.sign(
       {
         sub: user.id,

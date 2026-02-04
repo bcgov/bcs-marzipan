@@ -20,9 +20,11 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
           'dev-secret-change-in-production'
         ),
         signOptions: {
-          expiresIn: config.get<number>(
-            'JWT_EXPIRES_IN',
-            DEFAULT_JWT_EXPIRES_IN
+          expiresIn: Number(
+            config.get<string | number>(
+              'JWT_EXPIRES_IN',
+              DEFAULT_JWT_EXPIRES_IN
+            ) ?? DEFAULT_JWT_EXPIRES_IN
           ),
         },
       }),

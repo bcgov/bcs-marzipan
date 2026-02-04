@@ -41,6 +41,7 @@ import type {
   ReportResponse,
 } from '@corpcal/shared/api/types';
 import { DatabaseService } from '../database/database.service';
+import { getVisibleCategoryIds } from '../policy/category-scoping.helper';
 
 @Injectable()
 export class LookupsService {
@@ -52,103 +53,33 @@ export class LookupsService {
    * @returns Categories that are either global or team-scoped for the user's teams
    */
   async getCategories(userTeams?: number[]): Promise<CategoryLookupItem[]> {
-    if (userTeams && userTeams.length > 0) {
-      // Return global categories OR team-scoped categories for user's teams
-      // Query global categories
-      const globalCategories = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        );
-
-      // Query team-scoped categories accessible to user's teams
-      const teamScopedCategories = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .innerJoin(
-          teamCategories,
-          and(
-            eq(categories.id, teamCategories.categoryId),
-            eq(teamCategories.isActive, true),
-            inArray(teamCategories.teamId, userTeams)
-          )
-        )
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'team' satisfies Visibility}`
-          )
-        );
-
-      // Combine and deduplicate by ID
-      const allCategories = [...globalCategories, ...teamScopedCategories];
-      const uniqueCategories = Array.from(
-        new Map(allCategories.map((cat) => [cat.id, cat])).values()
-      );
-
-      return uniqueCategories
-        .sort((a, b) =>
-          (a.displayName || a.name).localeCompare(b.displayName || b.name)
-        )
-        .map((cat) => ({
-          id: cat.id,
-          label: cat.displayName || cat.name,
-          value: cat.id,
-          name: cat.name,
-          displayName: cat.displayName,
-          sortOrder: cat.sortOrder,
-          isActive: cat.isActive,
-          allowsPitch: cat.allowsPitch,
-        }));
-    } else {
-      // If no teams provided, return only global categories
-      const results = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          isActive: categories.isActive,
-          allowsPitch: categories.allowsPitch,
-        })
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        )
-        .orderBy(categories.sortOrder);
-
-      return results.map((cat) => ({
-        id: cat.id,
-        label: cat.displayName || cat.name,
-        value: cat.id,
-        name: cat.name,
-        displayName: cat.displayName,
-        sortOrder: cat.sortOrder,
-        isActive: cat.isActive,
-        allowsPitch: cat.allowsPitch,
-      }));
+    const ids = await getVisibleCategoryIds(this.databaseService.db, userTeams);
+    if (ids.length === 0) {
+      return [];
     }
+    const results = await this.databaseService.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        displayName: categories.displayName,
+        sortOrder: categories.sortOrder,
+        isActive: categories.isActive,
+        allowsPitch: categories.allowsPitch,
+      })
+      .from(categories)
+      .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
+      .orderBy(categories.sortOrder);
+
+    return results.map((cat) => ({
+      id: cat.id,
+      label: cat.displayName || cat.name,
+      value: cat.id,
+      name: cat.name,
+      displayName: cat.displayName,
+      sortOrder: cat.sortOrder,
+      isActive: cat.isActive,
+      allowsPitch: cat.allowsPitch,
+    }));
   }
 
   /**

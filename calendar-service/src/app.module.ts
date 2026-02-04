@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
 import { AppController } from './app.controller';
@@ -9,6 +9,8 @@ import { PolicyModule } from './policy/policy.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
+import { RolesGuard } from './policy/guards/roles.guard';
+import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
 import { ActivitiesModule } from './activities/activities.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { DraftsModule } from './drafts/drafts.module';
@@ -48,6 +50,8 @@ function resolveRootEnvPath(): string {
     AppService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: DataScopeInterceptor },
   ],
 })
 export class AppModule {}

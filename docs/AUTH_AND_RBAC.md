@@ -70,6 +70,20 @@ JWT_SECRET=your-jwt-secret-change-in-production
 JWT_EXPIRES_IN=3600
 ```
 
+### Token content and policy changes
+
+The JWT embeds the user's **permissions** and **teamIds** at login time. As a result:
+
+- **Role or permission changes** (e.g. editing a user's role in the database) do not take effect until the user logs in again or the token expires.
+- **Team membership changes** (e.g. adding or removing the user from teams) also do not take effect until the next login or token expiry.
+
+A default TTL of one hour (3600 seconds) is a reasonable balance between security and usability. For environments where near-real-time enforcement of role or team changes is required, consider:
+
+- Using a **shorter TTL** so that tokens expire sooner and users must re-authenticate.
+- Implementing **refresh tokens** plus **revocation** (e.g. using the existing `sessions` table to invalidate tokens or track active sessions), so that permission or team changes can be enforced on the next refresh or request.
+
+This document does not describe refresh or revocation implementation; the above is guidance for future work.
+
 ## System Roles
 
 The system includes 5 predefined roles with hierarchical capabilities:
