@@ -7,8 +7,17 @@ import { ApiError } from '../api/errors';
 const logger = createLogger('GlobalErrorBoundary');
 
 interface ErrorFallbackProps {
-  error: Error;
-  resetErrorBoundary: () => void;
+  error: unknown;
+  resetErrorBoundary: (...args: unknown[]) => void;
+}
+
+/**
+ * Normalize thrown value to an Error for display and type narrowing.
+ * React error boundaries receive unknown since any value can be thrown.
+ */
+function normalizeError(thrown: unknown): Error {
+  if (thrown instanceof Error) return thrown;
+  return new Error(typeof thrown === 'string' ? thrown : String(thrown));
 }
 
 /**
@@ -18,9 +27,11 @@ interface ErrorFallbackProps {
  * Provides options to retry or reload the application.
  */
 function GlobalErrorFallback({
-  error,
+  error: rawError,
   resetErrorBoundary,
 }: ErrorFallbackProps) {
+  const error = normalizeError(rawError);
+
   // Log error for debugging
   logger.error('Global error boundary caught error', error);
 
