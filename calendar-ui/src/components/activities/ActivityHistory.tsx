@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '../ui/dialog';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { X } from 'lucide-react';
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import { Badge } from '@fluentui/react-components';
-import { HistoryRegular } from '@fluentui/react-icons';
 
 type HistoryEntry = {
   id: number;
@@ -24,6 +18,34 @@ type HistoryEntry = {
   timestamp: string;
   userName?: string;
 };
+
+// convert actionType values to readable labels
+function getActionText(actionType: string): string {
+  if (!actionType) return '';
+  const raw = String(actionType);
+  const lower = raw.toLowerCase();
+
+  const map: Record<string, string> = {
+    created: 'Created',
+    updated: 'Updated',
+    deleted: 'Deleted',
+    note_added: 'Note added',
+    'note added': 'Note added',
+    comment_added: 'Comment added',
+    assigned: 'Assigned',
+    unassigned: 'Unassigned',
+    status_changed: 'Status changed',
+  };
+
+  if (map[lower]) return map[lower];
+
+  // fallback: convert camelCase or snake_case to spaced Title Case
+  const spaced = raw
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
 
 export default function ActivityHistory({
   activityId,
@@ -59,11 +81,32 @@ export default function ActivityHistory({
   }, [activityId, open]);
 
   // group by local date string
-  const groups: Record<string, HistoryEntry[]> = {};
+  // Categorize into Today / This week / Earlier
+  const groupsOrder = ['Today', 'This week', 'Earlier'];
+  const groups: Record<string, HistoryEntry[]> = {
+    Today: [],
+    'This week': [],
+    Earlier: [],
+  };
+
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfToday.getDate() - 7);
+
   for (const e of entries) {
-    const d = new Date(e.timestamp).toLocaleDateString();
-    groups[d] = groups[d] || [];
-    groups[d].push(e);
+    const dt = new Date(e.timestamp);
+    if (dt >= startOfToday) {
+      groups['Today'].push(e);
+    } else if (dt >= startOfWeek) {
+      groups['This week'].push(e);
+    } else {
+      groups['Earlier'].push(e);
+    }
   }
 
   const formatValue = (v: unknown) =>
@@ -73,107 +116,142 @@ export default function ActivityHistory({
         ? JSON.stringify(v)
         : String(JSON.stringify(v));
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed top-0 right-0 h-full w-full max-w-md p-6">
-        <DialogHeader>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <HistoryRegular />
-            <DialogTitle>Activity history</DialogTitle>
-          </div>
-          <DialogDescription>
-            Recent changes for this activity
-          </DialogDescription>
-        </DialogHeader>
+  function timeAgoShort(dateStr: string) {
+    const d = new Date(dateStr);
+    const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return d.toLocaleDateString();
+  }
 
-        <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
-          {loading ? (
-            <div>Loading history...</div>
-          ) : entries.length === 0 ? (
-            <div>No history found.</div>
-          ) : (
-            Object.keys(groups).map((date) => (
-              <div key={date} className="mb-6">
-                <div className="mb-2 text-sm font-semibold">{date}</div>
-                <div className="space-y-3">
-                  {groups[date].map((entry) => (
-                    <div key={entry.id} className="rounded border p-3">
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: 8,
-                            alignItems: 'center',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 16,
-                              background: '#ddd',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {entry.userName
-                              ? entry.userName
-                                  .split(' ')
-                                  .map((s) => s[0])
-                                  .slice(0, 2)
-                                  .join('')
-                              : 'U'}
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
+        <DialogPrimitive.Content
+          className={
+            'bg-background fixed top-0 right-0 z-50 h-full w-full max-w-md translate-x-full transform p-6 transition duration-200 ease-in-out data-[state=open]:translate-x-0'
+          }
+        >
+          <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 hover:opacity-100">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+
+          <div>
+            <h2 className="text-2xl font-semibold">History</h2>
+            <div className="mt-3 flex items-center justify-between">
+              <input
+                placeholder="Search"
+                aria-label="Search history"
+                className="w-72 rounded-md border border-gray-200 px-3 py-2 text-sm"
+                style={{ background: 'white' }}
+              />
+              <button className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium">
+                + Add note
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
+            {loading ? (
+              <div>Loading history...</div>
+            ) : entries.length === 0 ? (
+              <div>No history found.</div>
+            ) : (
+              groupsOrder.map((groupKey) =>
+                groups[groupKey].length > 0 ? (
+                  <div key={groupKey} className="mb-6">
+                    <div className="mb-2 text-sm font-semibold">{groupKey}</div>
+                    <div className="space-y-4">
+                      {groups[groupKey].map((entry) => (
+                        <div key={entry.id} className="rounded py-3">
+                          <div className="flex justify-between">
+                            <div className="flex items-start gap-3">
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  background: '#e6e7f2',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 600,
+                                  color: '#1f2937',
+                                  fontSize: 14,
+                                }}
+                              >
+                                {entry.userName
+                                  ? entry.userName
+                                      .split(' ')
+                                      .map((s) => s[0])
+                                      .slice(0, 2)
+                                      .join('')
+                                  : 'U'}
+                              </div>
+                              <div>
+                                <div className="text-foreground text-base font-normal">
+                                  {entry.userName || `User ${entry.userId}`}{' '}
+                                  <span className="text-muted-foreground ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs">
+                                    Corp Cal Admin
+                                  </span>
+                                </div>
+                                <div className="text-muted-foreground mt-1 text-sm">
+                                  {getActionText(entry.actionType)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-muted-foreground text-sm">
+                              {groupKey === 'Today'
+                                ? timeAgoShort(entry.timestamp)
+                                : new Date(
+                                    entry.timestamp
+                                  ).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {entry.userName || `User ${entry.userId}`}
-                            </div>
-                            <div style={{ color: '#6b6b6b', fontSize: 12 }}>
-                              {entry.actionType}{' '}
-                              <span style={{ marginLeft: 8 }}>
-                                {new Date(entry.timestamp).toLocaleTimeString()}
-                              </span>
-                            </div>
+
+                          <div className="text-foreground mt-2 text-sm">
+                            {entry.changes && entry.changes.length > 0 ? (
+                              <div>
+                                {entry.changes.slice(0, 3).map((c, idx) => (
+                                  <div key={idx} className="mb-1 text-sm">
+                                    <strong className="font-medium">
+                                      {c.field}:
+                                    </strong>{' '}
+                                    <span className="text-muted-foreground">
+                                      {formatValue(c.oldValue)}
+                                    </span>{' '}
+                                    → <span>{formatValue(c.newValue)}</span>
+                                  </div>
+                                ))}
+                                {entry.changes.length > 3 ? (
+                                  <div className="mt-1 cursor-pointer text-sm text-blue-600">
+                                    Show more
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : entry.notes ? (
+                              <div className="text-sm">{entry.notes}</div>
+                            ) : (
+                              <div className="text-muted-foreground text-sm">
+                                No field-level changes recorded
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div>
-                          <Badge appearance="outline">{entry.actionType}</Badge>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        {entry.changes && entry.changes.length > 0 ? (
-                          <ul className="ml-5 list-disc text-sm">
-                            {entry.changes.map((c, idx) => (
-                              <li key={idx}>
-                                <strong>{c.field}:</strong>{' '}
-                                <span style={{ color: '#6b6b6b' }}>
-                                  {formatValue(c.oldValue)}
-                                </span>{' '}
-                                → {formatValue(c.newValue)}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="text-muted-foreground text-sm">
-                            No field-level changes recorded
-                          </div>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+                  </div>
+                ) : null
+              )
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
