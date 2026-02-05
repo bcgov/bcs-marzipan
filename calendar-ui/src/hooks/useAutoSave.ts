@@ -144,6 +144,9 @@ export function useAutoSave(
   // Delete draft mutation
   const { mutate: deleteDraftMutation } = useMutation({
     mutationFn: () => {
+      if (!userId) {
+        return Promise.reject(new Error('User not authenticated'));
+      }
       return draftsApi.deleteDraftByForm(userId, formType, entityId);
     },
     onMutate: () => {
