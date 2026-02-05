@@ -633,15 +633,15 @@ describe('ActivitiesService', () => {
         }
         // For fetch methods (select with object), use the helper pattern
         const fetchChain = {
-          from: vi.fn()().mockReturnThis(),
-          where: vi.fn()().mockResolvedValue([]),
-          leftJoin: vi.fn()().mockReturnThis(),
-          innerJoin: vi.fn()().mockReturnThis(),
-          limit: vi.fn()().mockResolvedValue([]),
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
         };
         const joinChain = {
           ...fetchChain,
-          where: vi.fn()().mockResolvedValue([]),
+          where: vi.fn().mockResolvedValue([]),
         };
         fetchChain.innerJoin.mockReturnValue(joinChain);
         fetchChain.leftJoin.mockReturnValue(joinChain);
