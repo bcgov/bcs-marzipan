@@ -26,15 +26,15 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Build project
+        run: npm run build
+
       - name: Check linting and types
         run: npm run lint:check
 
       # Security audit: check for known vulnerabilities in dependencies
       - name: Run npm audit
         run: npm audit --audit-level=moderate
-
-      - name: Build project
-        run: npm run build
 
       - name: Run tests
         run: npm run test

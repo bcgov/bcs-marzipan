@@ -37,6 +37,7 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import React from 'react';
+import { deleteDraft } from '../api/draftsApi';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -61,16 +62,22 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   representatives: [],
   sharedWithMinistryIds: [],
   reportSettings: [],
+  // Set these to match what the effects set on mount
+  dateStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
+  timeStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
+  pitchRequired: false,
 });
 
 // TODO: Replace with actual user from auth context once authentication is implemented
 const TEMPORARY_USER_ID = 1;
 
+// Key used to store draft dialog session state in sessionStorage
+const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
+
 export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
-  const [showDraftDialog, setShowDraftDialog] = useState(false);
   const draftCheckedRef = useRef(false);
 
   // Fetch date and time statuses
@@ -83,7 +90,9 @@ export const CreateActivityForm: React.FC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(createActivityRequestSchema) as any,
     mode: 'onChange', // Validate on change to enable real-time validation
-    defaultValues: getDefaultFormValues(),
+    defaultValues: {
+      ...getDefaultFormValues(),
+    },
   });
 
   // Set default date and time statuses to "unknown" when they're loaded
@@ -148,51 +157,111 @@ export const CreateActivityForm: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Autosave integration
-  const { existingDraft, isDraftLoading, isSaving, lastSaved, deleteDraft } =
-    useAutoSave(TEMPORARY_USER_ID, 'activity', formValues, undefined, {
-      debounceMs: 3000, // Save 3 seconds after user stops typing
-      enabled: !isSubmitting, // Disable during submission
-    });
+  // Autosave integration: do not use entityId from existingDraft to avoid circular reference
+  // Track if a draft existed at mount
+  const initialDraftExistsRef = useRef(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [autoSaveReady, setAutoSaveReady] = useState(false);
+  const {
+    existingDraft,
+    isDraftLoading,
+    isSaving,
+    lastSaved,
+    deleteDraft: baseDeleteDraft,
+    resetInitialFormData,
+  } = useAutoSave(
+    TEMPORARY_USER_ID,
+    'activity',
+    formValues,
+    undefined,
+    {
+      debounceMs: 3000,
+      // Always enable initial draft fetch so we can prompt the user to
+      // continue an existing draft on mount. Autosave itself is still
+      // gated by the `isDirty` option below.
+      enabled: true,
+      isDirty:
+        form.formState.isDirty &&
+        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+      onFirstDraftCreate: () => {
+        // If a draft is created after mount, do NOT show the dialog
+        // (no-op here, dialog is only shown if draft existed at mount)
+      },
+    },
+    getDefaultFormValues()
+  );
 
-  // Check for existing draft on mount and show dialog
+  // On first load, record if a draft existed at mount, and only ever show dialog if it did
+  const didCheckInitialDraft = useRef(false);
   useEffect(() => {
-    if (draftCheckedRef.current || isDraftLoading) {
-      return;
-    }
-
+    if (isDraftLoading || didCheckInitialDraft.current) return;
+    didCheckInitialDraft.current = true;
     if (
       existingDraft?.draftData &&
       Object.keys(existingDraft.draftData).length > 0
     ) {
+      initialDraftExistsRef.current = true;
       setShowDraftDialog(true);
-      draftCheckedRef.current = true;
     } else {
-      // No draft found, mark as checked so we don't show dialog
-      draftCheckedRef.current = true;
+      initialDraftExistsRef.current = false;
     }
   }, [existingDraft, isDraftLoading]);
 
+  // Prevent dialog from ever being shown if a draft did not exist at mount
+  useEffect(() => {
+    if (!isDraftLoading && !initialDraftExistsRef.current && showDraftDialog) {
+      setShowDraftDialog(false);
+    }
+  }, [isDraftLoading, showDraftDialog]);
+
+  // ...existing code...
+  // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
       form.reset(existingDraft.draftData as FormData);
     }
     setShowDraftDialog(false);
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
   };
 
   const handleStartFresh = () => {
-    // Use the hook's delete function to handle draft deletion and cache cleanup
-    deleteDraft();
-
+    if (existingDraft && existingDraft.id) {
+      void import('../api/draftsApi').then((draftsApi) => {
+        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      });
+    }
     setShowDraftDialog(false);
     draftCheckedRef.current = false;
-
-    // Reset the form to default values
-    form.reset(getDefaultFormValues());
+    form.reset(getDefaultFormValues(), {
+      keepDirty: false,
+      keepTouched: false,
+    });
+    resetInitialFormData();
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
   };
 
-  const handleCancel = () => {
+  // ...existing code...
+
+  const handleCancel = async () => {
+    // Delete the draft if it exists and wait for completion so request isn't aborted
+    if (existingDraft && existingDraft.id) {
+      try {
+        const draftsApi = await import('../api/draftsApi');
+        await draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      } catch (e) {
+        // Ignore errors during cancellation delete - user intent is to close
+        console.warn('Error deleting draft on cancel:', e);
+      }
+    }
+
+    // Ensure dialog session flag is cleared
+    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
+
+    // Optionally reset the form (not strictly needed if closing)
     form.reset();
+
+    // Close the page
+    window.close();
   };
 
   const onSubmit = async (data: FormData) => {
@@ -240,11 +309,12 @@ export const CreateActivityForm: React.FC = () => {
       await createActivity(submitData);
 
       // Delete draft after successful creation
-      deleteDraft();
+      if (existingDraft && existingDraft.id) {
+        await deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      }
 
-      alert('Activity created successfully!');
-      // TODO: Navigate to activity detail page or list
-      form.reset();
+      // Close the window after successful creation
+      window.close();
     } catch (error) {
       console.error('Failed to create activity:', error);
       alert('Failed to create activity. Please try again.');
@@ -430,6 +500,7 @@ export const CreateActivityForm: React.FC = () => {
                     <ActivityCommsSection
                       commsMaterialOptions={lookups.commsMaterials}
                       commsLeadOptions={commsLeadOptions}
+                      activityStatusOptions={lookups.activityStatuses}
                     />
 
                     {/* News Release Section */}
@@ -469,8 +540,11 @@ export const CreateActivityForm: React.FC = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCancel}
+                    onClick={() => {
+                      void handleCancel();
+                    }}
                     disabled={isSubmitting}
+                    title="This will discard any draft data and close the page"
                   >
                     Cancel
                   </Button>

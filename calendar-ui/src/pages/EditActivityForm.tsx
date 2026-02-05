@@ -444,6 +444,7 @@ export default function EditActivityForm(): React.ReactElement {
                     <ActivityCommsSection
                       commsMaterialOptions={lookups.commsMaterials}
                       commsLeadOptions={lookups.users}
+                      activityStatusOptions={lookups.activityStatuses}
                     />
 
                     <ActivityNewsReleaseSection
