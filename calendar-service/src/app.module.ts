@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import * as path from 'path';
@@ -16,6 +16,7 @@ import { LookupsModule } from './lookups/lookups.module';
 import { DraftsModule } from './drafts/drafts.module';
 import { ReportsModule } from './reports/reports.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 
 /**
  * Resolves the root .env file path.
@@ -48,10 +49,15 @@ function resolveRootEnvPath(): string {
   controllers: [AppController],
   providers: [
     AppService,
+    CorrelationIdMiddleware,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: DataScopeInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

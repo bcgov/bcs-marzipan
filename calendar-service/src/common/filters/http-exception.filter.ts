@@ -21,6 +21,8 @@ interface ProblemDetails {
   correlationId: string;
   errors?: Array<{ path: string; message: string; code?: string }>;
   timestamp?: string;
+  /** Only included in non-production responses */
+  stack?: string;
 }
 
 /**
@@ -57,6 +59,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Set correlation ID header
     response.setHeader('X-Correlation-ID', correlationId);
+    response.setHeader('Content-Type', 'application/problem+json');
 
     // Send Problem Details response
     response.status(problemDetails.status).json(problemDetails);
