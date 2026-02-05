@@ -14,7 +14,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-db-secret
+                  name: calendar-service-secrets
                   key: DATABASE_URL
           volumeMounts:
             - name: migrations
@@ -30,16 +30,28 @@ spec:
                 sleep 2
               done
 
-              shopt -s nullglob
-              files=(/migrations/*.sql)
+              echo "Checking for migration files..."
 
-              if [ ${#files[@]} -eq 0 ]; then
+              found=false
+              for f in /migrations/*.sql; do
+                if [ ! -e "$f" ]; then
+                  continue
+                fi
+                found=true
+                break
+              done
+              if [ "$found" = false ]; then
                 echo "No migration files found. Nothing to apply."
                 exit 0
               fi
 
+              pg_dump -d "$DATABASE_URL" -Fc -f /tmp/pre_migration_backup.dump
+              echo "Database backup created at /tmp/pre_migration_backup.dump"
+
+              psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+
               echo "Running DB migrations..."
-              for f in "${files[@]}"; do
+              for f in /migrations/*.sql; do
                 echo "Applying $f"
                 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
               done

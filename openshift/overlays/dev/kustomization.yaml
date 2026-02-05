@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+
+# Namespace is injected at deploy time by GitHub Actions.
+namespace: ${DEV_NAMESPACE}
+
+# Replace images built into the OpenShift internal registry.
+images:
+  - name: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-service
+    newName: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-service
+    newTag: latest
+  - name: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-ui
+    newName: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-ui
+    newTag: latest
