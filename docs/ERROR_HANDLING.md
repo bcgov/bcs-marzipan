@@ -92,6 +92,15 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 - Bypass the global filter (e.g. sending custom JSON error responses from controllers); use exceptions so the filter can normalize them.
 - Ignore correlation ID in logs when debugging; it links frontend, backend, and (if used) infrastructure logs.
 
+### Optional / future improvements
+
+- **Configurable or `about:blank` type URIs**: Replace `https://api.example.com/errors/...` with a config-driven base or `about:blank` until real docs exist (see TODO in filter).
+- **Log level by status**: Filter already uses `error` for 5xx and `warn` for 4xx; could use `info` for 401/404 to reduce noise if desired.
+- **Retry-After**: For 429 or 503, sending a `Retry-After` header helps clients and React Query; optional.
+- **Database error mapper**: `ECONNREFUSED` / `ETIMEDOUT` are Node network codes, not PostgreSQL SQLSTATE; the comment could clarify that both driver and Node codes are handled. Behavior is correct if the driver sets `error.code`.
+- **Graceful shutdown**: Code calls both `server.close()` and `app.close()`. `app.close()` also closes the HTTP server; using only `app.close()` is sufficient. Current behavior is safe; simplifying is optional.
+- **Client `response.data._correlationId`**: Storing the correlation ID on `response.data` is convenient but mutates the response shape; consider keeping it only on headers or a small helper if this becomes an issue.
+
 ## Key files
 
 | Area       | File(s)                                                                                                                                      |

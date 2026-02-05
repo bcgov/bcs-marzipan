@@ -88,7 +88,7 @@ function GlobalErrorFallback({
             <div className="mt-2 space-y-2">
               <pre className="bg-muted overflow-auto rounded p-4 text-sm">
                 {error.message}
-                {error.stack && (
+                {import.meta.env.DEV && error.stack && (
                   <>
                     {'\n\n'}
                     {error.stack}

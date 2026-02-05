@@ -43,6 +43,7 @@ async function bootstrap() {
       'X-API-Key',
       'X-Correlation-ID',
     ],
+    exposedHeaders: ['X-Correlation-ID'],
   });
 
   // Initialize Swagger/OpenAPI documentation
