@@ -90,8 +90,8 @@ describe('ActivitiesController (API integration)', () => {
   describe('/activities (POST)', () => {
     it('should create a new activity', async () => {
       const createActivityDto = createMockActivityRequest({
-        title: 'E2E Test Activity',
-        summary: 'This is a test activity created via E2E tests',
+        title: 'Integration Test Activity',
+        summary: 'This is a test activity created via API integration tests',
       });
 
       const res = await createAuthRequest(app, accessToken)
@@ -147,7 +147,7 @@ describe('ActivitiesController (API integration)', () => {
     it('should filter activities by title', () => {
       return createAuthRequest(app, accessToken)
         .get('/activities')
-        .query({ title: 'E2E Test' })
+        .query({ title: 'Integration Test' })
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);
@@ -155,7 +155,7 @@ describe('ActivitiesController (API integration)', () => {
           expect(Array.isArray(res.body.data)).toBe(true);
           // All returned activities should have the search term in their title
           res.body.data.forEach((activity: any) => {
-            expect(activity.title.toLowerCase()).toContain('e2e test');
+            expect(activity.title.toLowerCase()).toContain('integration test');
           });
         });
     });
@@ -247,8 +247,8 @@ describe('ActivitiesController (API integration)', () => {
   describe('/activities/:id (PATCH)', () => {
     it('should update an activity', () => {
       const updateDto = createMockUpdateRequest({
-        title: 'Updated E2E Test Activity',
-        summary: 'This activity has been updated via E2E tests',
+        title: 'Updated Integration Test Activity',
+        summary: 'This activity has been updated via API integration tests',
       });
 
       return createAuthRequest(app, accessToken)
