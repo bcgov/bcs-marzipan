@@ -44,16 +44,31 @@ Create a `.env` file in the project root (copy from `.env.example` if available)
 
 ### 3. Database Setup
 
+Ensure PostgreSQL is running and `DATABASE_URL` is configured in your `.env` file:
+
 ```bash
-# Generate migrations from schema changes
-npm run db:generate --workspace=packages/database
+# Format: postgresql://user:password@host:port/database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/corpcal"
+```
 
-# Run migrations
-npm run db:migrate --workspace=packages/database
+**Initial Setup (fresh database):**
 
-# Seed lookup tables
+```bash
+# Apply the schema to your database
+npm run db:push --workspace=packages/database
+
+# Seed lookup tables and sample data
 npm run seed --workspace=calendar-service
 ```
+
+**Alternative (manual SQL execution):**
+
+If you prefer to run SQL manually, the migration and seed files are located at:
+
+- **Schema**: `packages/database/migrations/*.sql`
+- **Seed data**: `packages/database/seeds/*.sql`
+
+See [Database Package Documentation](packages/database/README.md) for detailed setup and schema change workflows.
 
 ### 4. Run the Application
 
@@ -146,12 +161,13 @@ npm run typecheck:packages # Check packages only
 ### Database Operations
 
 ```bash
-npm run db:generate --workspace=packages/database  # Generate migrations
-npm run db:migrate --workspace=packages/database    # Run migrations
-npm run db:push --workspace=packages/database       # Push schema (dev only)
-npm run db:studio --workspace=packages/database      # Open Drizzle Studio
-npm run seed --workspace=calendar-service           # Seed lookup tables
+npm run db:generate --workspace=packages/database -- <name>  # Generate migration (requires name)
+npm run db:push --workspace=packages/database                 # Apply schema directly (dev)
+npm run db:studio --workspace=packages/database               # Open Drizzle Studio
+npm run seed --workspace=calendar-service                     # Seed lookup tables
 ```
+
+See [Database Package Documentation](packages/database/README.md) for the complete schema change workflow.
 
 ### Testing
 
