@@ -38,11 +38,17 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: Array<{ value: string; label: string }>;
+  activityStatusOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
+  activityStatusOptions,
 }) => {
   const form = useFormContext<FormData>();
 
@@ -55,14 +61,49 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   const [commsMaterialsOpen, setCommsMaterialsOpen] = useState(false);
 
+  // activityStatusOptions is now received as a prop
   return (
     <ActivityFormSection title="Comms">
+      {/* Activity Status Input */}
+      <FormField
+        control={form.control}
+        name="activityStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              Activity Status <span className="text-destructive">*</span>
+            </FormLabel>
+            <Select
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value != null ? String(field.value) : ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {activityStatusOptions.map((option: any) => (
+                  <SelectItem key={option.id} value={String(option.id)}>
+                    {option.displayName || option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
       <FormField
         control={form.control}
         name="commsContactLeadId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Comms Lead</FormLabel>
+            <FormLabel>
+              Comms Lead <span className="text-destructive">*</span>
+            </FormLabel>
             <Select
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
