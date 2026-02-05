@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
@@ -41,6 +42,7 @@ import { ActivityUtilsService } from './activity-utils.service';
 
 @Injectable()
 export class ActivitiesService {
+  private readonly logger = new Logger(ActivitiesService.name);
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly activitiesGateway: ActivitiesGateway,
@@ -642,6 +644,15 @@ export class ActivitiesService {
         .where(eq(activities.id, id))
         .returning();
 
+      // Debug: log the DB row returned from update
+      try {
+        this.logger.debug(
+          `update() id=${id} updatedActivity=${JSON.stringify(updatedActivity)}`
+        );
+      } catch (err) {
+        // ignore
+      }
+
       // Handle venue address update
       if (venueAddress !== undefined) {
         await this.junctionService.upsertVenueAddress(tx, id, venueAddress);
@@ -901,6 +912,13 @@ export class ActivitiesService {
       oldActivity as Record<string, unknown>,
       updated as Record<string, unknown>
     );
+
+    // Debug: log detected changes
+    try {
+      this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
+    } catch (err) {
+      // ignore
+    }
 
     // Record activity update in history
     await this.activityHistoryService.recordChange(
