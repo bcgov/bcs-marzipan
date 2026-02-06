@@ -70,6 +70,7 @@ type Report = {
 type EventRow = {
   date: string;
   id: string;
+  activityId: number;
   title: string;
   category: string[] | undefined;
   // type: string;
@@ -221,6 +222,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
   }
 
   return {
+    activityId: activity.id,
     id: activity.displayId || `ACT-${activity.id}`,
     title: activity.title || '',
     category:
@@ -1016,7 +1018,10 @@ export const EventTable: React.FC<EventTableProps> = ({
                       key={row.id}
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
-                        void navigate('/details', { state: row.original });
+                        // Navigate to the edit view for the selected activity
+                        void navigate(
+                          `/activities/${row.original.activityId}/edit`
+                        );
                       }}
                     >
                       {row.getVisibleCells().map((cell) => (

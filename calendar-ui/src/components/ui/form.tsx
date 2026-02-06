@@ -12,6 +12,7 @@ import {
 
 import { cn } from '../../lib/utils';
 import { Label } from './label';
+import { Badge } from './badge';
 
 const Form = FormProvider;
 
@@ -90,16 +91,27 @@ FormItem.displayName = 'FormItem';
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
-  const { error, formItemId } = useFormField();
+>(({ className, children, ...props }, ref) => {
+  const { error, formItemId, isDirty } = useFormField();
 
   return (
     <Label
       ref={ref}
-      className={cn(error && 'text-destructive', className)}
+      className={cn(
+        error && 'text-destructive',
+        className,
+        'flex items-center gap-2'
+      )}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      <span className="inline-flex items-center">{children}</span>
+      {isDirty && (
+        <Badge variant="warning" className="ml-2">
+          Changed
+        </Badge>
+      )}
+    </Label>
   );
 });
 FormLabel.displayName = 'FormLabel';

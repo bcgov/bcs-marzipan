@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
@@ -14,6 +15,9 @@ import {
   activityCommsMaterials,
   activityTranslationsRequired,
   activitySharedWithTeams,
+  activityCommsContacts,
+  activityRepresentatives,
+  activityReportSettings,
   categories,
   ministries,
   activityHistory,
@@ -38,6 +42,7 @@ import { ActivityUtilsService } from './activity-utils.service';
 
 @Injectable()
 export class ActivitiesService {
+  private readonly logger = new Logger(ActivitiesService.name);
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly activitiesGateway: ActivitiesGateway,
@@ -226,7 +231,18 @@ export class ActivitiesService {
         // Convert array format to Map for service layer
         const reportSettingsMap = new Map<number, boolean>();
         for (const setting of reportSettingsArray) {
-          reportSettingsMap.set(setting.reportId, setting.omitted);
+          const reportId =
+            typeof setting.reportId === 'number' ? setting.reportId : undefined;
+          if (typeof reportId === 'number') {
+            reportSettingsMap.set(reportId, setting.omitted);
+          } else {
+            // Log and skip malformed entries
+
+            console.warn(
+              'create: skipping malformed reportSettings entry',
+              setting
+            );
+          }
         }
         await this.junctionService.updateActivityReportSettings(
           tx,
@@ -552,6 +568,49 @@ export class ActivitiesService {
     // TODO: Get current user ID from auth context
     const currentUserId = 1;
     const now = new Date();
+    // Ensure lastUpdatedBy is set for audit/history
+    updateData.lastUpdatedBy = currentUserId;
+
+    // Capture existing related data for history (before transaction)
+    const existingVenue = (
+      await this.databaseService.db
+        .select()
+        .from(venueAddresses)
+        .where(eq(venueAddresses.activityId, id))
+        .limit(1)
+    )[0]
+      ? (
+          await this.databaseService.db
+            .select()
+            .from(venueAddresses)
+            .where(eq(venueAddresses.activityId, id))
+            .limit(1)
+        )[0]
+      : null;
+
+    const existingComms = await this.databaseService.db
+      .select({
+        userId: activityCommsContacts.userId,
+        isLead: activityCommsContacts.isLead,
+      })
+      .from(activityCommsContacts)
+      .where(eq(activityCommsContacts.activityId, id));
+
+    const existingRepresentatives = await this.databaseService.db
+      .select({
+        representativeId: activityRepresentatives.representativeId,
+        representativeName: activityRepresentatives.representativeName,
+      })
+      .from(activityRepresentatives)
+      .where(eq(activityRepresentatives.activityId, id));
+
+    const existingReportSettings = await this.databaseService.db
+      .select({
+        reportId: activityReportSettings.reportId,
+        omitted: activityReportSettings.omitted,
+      })
+      .from(activityReportSettings)
+      .where(eq(activityReportSettings.activityId, id));
 
     // Use transaction to ensure atomicity of activity and junction table updates
     const updated = await this.databaseService.db.transaction(async (tx) => {
@@ -584,6 +643,15 @@ export class ActivitiesService {
         .set(updateData)
         .where(eq(activities.id, id))
         .returning();
+
+      // Debug: log the DB row returned from update
+      try {
+        this.logger.debug(
+          `update() id=${id} updatedActivity=${JSON.stringify(updatedActivity)}`
+        );
+      } catch (err) {
+        // ignore
+      }
 
       // Handle venue address update
       if (venueAddress !== undefined) {
@@ -686,7 +754,18 @@ export class ActivitiesService {
         // Convert array format to Map for service layer
         const reportSettingsMap = new Map<number, boolean>();
         for (const setting of reportSettingsArray) {
-          reportSettingsMap.set(setting.reportId, setting.omitted);
+          const reportId =
+            typeof setting.reportId === 'number' ? setting.reportId : undefined;
+          if (typeof reportId === 'number') {
+            reportSettingsMap.set(reportId, setting.omitted);
+          } else {
+            // Log and skip malformed entries
+
+            console.warn(
+              'update: skipping malformed reportSettings entry',
+              setting
+            );
+          }
         }
         await this.junctionService.updateActivityReportSettings(
           tx,
@@ -761,6 +840,71 @@ export class ActivitiesService {
       reportSettings: reportSettingsMap.get(id) ?? [],
     });
 
+    // Record junction/related changes in history (separate entries)
+    if (venueAddress !== undefined) {
+      await this.activityHistoryService.recordChange(
+        id,
+        currentUserId,
+        'updated',
+        [
+          {
+            field: 'venueAddress',
+            oldValue: existingVenue ?? null,
+            newValue: venueAddress,
+          },
+        ],
+        'Activity venue address updated'
+      );
+    }
+
+    if (commsContactsArray !== undefined) {
+      await this.activityHistoryService.recordChange(
+        id,
+        currentUserId,
+        'updated',
+        [
+          {
+            field: 'commsContacts',
+            oldValue: existingComms,
+            newValue: commsContactsArray,
+          },
+        ],
+        'Activity comms contacts updated'
+      );
+    }
+
+    if (representatives !== undefined) {
+      await this.activityHistoryService.recordChange(
+        id,
+        currentUserId,
+        'updated',
+        [
+          {
+            field: 'representatives',
+            oldValue: existingRepresentatives,
+            newValue: representatives,
+          },
+        ],
+        'Activity representatives updated'
+      );
+    }
+
+    if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
+      await this.activityHistoryService.recordChange(
+        id,
+        currentUserId,
+        'updated',
+        [
+          {
+            field: 'reportSettings',
+            oldValue: existingReportSettings,
+            newValue: reportSettingsArray,
+          },
+        ],
+        'Activity report settings updated'
+      );
+    }
+
     // Generate change list for history tracking
     // Convert Activity objects to generic records for comparison
     // Activity is a plain object that can be treated as Record<string, unknown>
@@ -768,6 +912,13 @@ export class ActivitiesService {
       oldActivity as Record<string, unknown>,
       updated as Record<string, unknown>
     );
+
+    // Debug: log detected changes
+    try {
+      this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
+    } catch (err) {
+      // ignore
+    }
 
     // Record activity update in history
     await this.activityHistoryService.recordChange(
@@ -1073,6 +1224,13 @@ export class ActivitiesService {
       await this.utilsService.validateCategoryIds(categoryIds);
     }
 
+    // Get existing category IDs for history
+    const existingCategories = await this.databaseService.db
+      .select({ categoryId: activityCategories.categoryId })
+      .from(activityCategories)
+      .where(eq(activityCategories.activityId, id));
+    const existingCategoryIds = existingCategories.map((c) => c.categoryId);
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -1091,7 +1249,13 @@ export class ActivitiesService {
       id,
       currentUserId,
       'updated',
-      [{ field: 'categories', oldValue: null, newValue: categoryIds }],
+      [
+        {
+          field: 'categories',
+          oldValue: existingCategoryIds,
+          newValue: categoryIds,
+        },
+      ],
       'Activity categories updated'
     );
 
@@ -1113,6 +1277,13 @@ export class ActivitiesService {
     const currentUserId = 1;
     const now = new Date();
 
+    // Capture existing themes for history
+    const existingThemes = await this.databaseService.db
+      .select({ themeId: activityThemes.themeId })
+      .from(activityThemes)
+      .where(eq(activityThemes.activityId, id));
+    const existingThemeIds = existingThemes.map((t) => t.themeId);
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -1131,7 +1302,7 @@ export class ActivitiesService {
       id,
       currentUserId,
       'updated',
-      [{ field: 'themes', oldValue: null, newValue: themeIds }],
+      [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
       'Activity themes updated'
     );
 
@@ -1151,6 +1322,13 @@ export class ActivitiesService {
     const currentUserId = 1;
     const now = new Date();
 
+    // Capture existing tags for history
+    const existingTags = await this.databaseService.db
+      .select({ tagId: activityTags.tagId })
+      .from(activityTags)
+      .where(eq(activityTags.activityId, id));
+    const existingTagIds = existingTags.map((t) => t.tagId);
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -1169,7 +1347,7 @@ export class ActivitiesService {
       id,
       currentUserId,
       'updated',
-      [{ field: 'tags', oldValue: null, newValue: tagIds.map(String) }],
+      [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
       'Activity tags updated'
     );
 
@@ -1191,6 +1369,13 @@ export class ActivitiesService {
     const currentUserId = 1;
     const now = new Date();
 
+    // Capture existing shared-with teams for history
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(eq(activitySharedWithTeams.activityId, id));
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -1204,12 +1389,11 @@ export class ActivitiesService {
       );
     });
 
-    // Record change in history
     await this.activityHistoryService.recordChange(
       id,
       currentUserId,
       'updated',
-      [{ field: 'sharedWith', oldValue: null, newValue: teamIds }],
+      [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
       'Activity shared with teams updated'
     );
 

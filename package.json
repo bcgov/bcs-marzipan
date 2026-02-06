@@ -26,7 +26,13 @@
       "react-dom": "^19.2.3"
     },
     "drizzle-orm": "^0.44.7",
-    "picomatch": "4.0.2"
+    "picomatch": "4.0.2",
+    "esbuild": ">=0.25.0",
+    "@esbuild-kit/core-utils": {
+      "esbuild": ">=0.25.0"
+    },
+    "lodash": ">=4.17.22",
+    "tmp": ">=0.2.4"
   },
   "scripts": {
     "start": "concurrently \"npm --prefix calendar-ui run dev\" \"npm --prefix calendar-service run start:dev\"",
