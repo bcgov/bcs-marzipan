@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import { Badge } from '@fluentui/react-components';
+import { timeAgoShort } from '../../lib/utils/timeAgo';
 
 type HistoryEntry = {
   id: number;
@@ -115,17 +116,6 @@ export default function ActivityHistory({
       : typeof v === 'object'
         ? JSON.stringify(v)
         : String(JSON.stringify(v));
-
-  function timeAgoShort(dateStr: string) {
-    const d = new Date(dateStr);
-    const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const mins = Math.floor(seconds / 60);
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h`;
-    return d.toLocaleDateString();
-  }
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

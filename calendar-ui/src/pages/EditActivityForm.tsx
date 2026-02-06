@@ -26,6 +26,7 @@ import {
 import React from 'react';
 import { HistoryRegular } from '@fluentui/react-icons';
 import ActivityHistory from '../components/activities/ActivityHistory';
+import { timeAgo } from '../lib/utils/timeAgo';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -64,30 +65,6 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   timeStatusId: 1,
   pitchRequired: false,
 });
-
-function timeAgo(date: Date) {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  const intervals: [number, string][] = [
-    [60, 'second'],
-    [60, 'minute'],
-    [24, 'hour'],
-    [7, 'day'],
-    [4.34524, 'week'],
-    [12, 'month'],
-    [Number.POSITIVE_INFINITY, 'year'],
-  ];
-
-  let counter: number = seconds;
-  for (let i = 0; i < intervals.length; i++) {
-    const [limit, name] = intervals[i];
-    if (counter < limit) {
-      const value = Math.floor(counter) || 0;
-      return `${value} ${name}${value !== 1 ? 's' : ''}`;
-    }
-    counter = Math.floor(counter / limit);
-  }
-  return '0 seconds';
-}
 
 export default function EditActivityForm(): React.ReactElement {
   const { id } = useParams();
