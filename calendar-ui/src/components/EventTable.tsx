@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -15,13 +15,10 @@ import {
   ToastBody,
   useToastController,
 } from '@fluentui/react-components';
-import io from 'socket.io-client';
-
 import {
   Calendar24Regular,
+  ChevronDown24Regular,
   CheckmarkCircle24Regular,
-  Clock20Regular,
-  Location20Regular,
 } from '@fluentui/react-icons';
 import {
   flexRender,
@@ -36,8 +33,6 @@ import {
   SortingFn,
   FilterFn,
 } from '@tanstack/react-table';
-
-import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
@@ -45,124 +40,93 @@ import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UserLookupItem } from '@corpcal/shared/api/types';
 
 const useStyles = makeStyles({
-  statusBadge: {
-    paddingTop: '8px',
+  container: {
+    width: '100%',
   },
-  overviewInline: {
-    display: 'inline',
+  table: {
+    borderCollapse: 'collapse',
+    width: '100%',
   },
-  overviewTitle: {
-    fontWeight: 700,
+  headerCell: {
+    padding: '12px',
+    fontWeight: '600',
+    fontSize: '14px',
+    borderBottom: '1px solid #e0e0e0',
+    backgroundColor: '#f5f5f5',
+    textAlign: 'left',
   },
-  overviewConfidential: {
-    color: 'red',
+  bodyRow: {
+    borderBottom: '1px solid #e0e0e0',
+    '&:hover': {
+      backgroundColor: '#fafafa',
+    },
+  },
+  bodyCell: {
+    padding: '12px',
+    fontSize: '14px',
+  },
+  overviewCell: {
+    minWidth: '200px',
+  },
+  summaryCell: {
+    minWidth: '300px',
+    maxWidth: '350px',
+  },
+  scheduleCell: {
+    minWidth: '250px',
+  },
+  staticCell: {
+    minWidth: '150px',
+  },
+  expandableCell: {
+    minWidth: '200px',
+  },
+  statusCell: {
+    minWidth: '120px',
   },
 });
 
-// Report entity type
 type Report = {
   id: string;
   name: string;
   type?: 'planning' | 'look-ahead' | '30-60-90' | 'exec-look-ahead';
 };
 
-// Dummy data interface
 type EventRow = {
-  date: string;
   id: string;
+  displayId: string;
   title: string;
   category: string[] | undefined;
-  // type: string;
+  categories: Array<{ name: string; isApproved?: boolean }>;
   status: 'New' | 'Reviewed' | 'Changed' | 'Deleted';
-  confirmed: boolean;
   dateCreated: string;
   dateModified: Date | undefined;
-  mine: boolean;
-  sharedWithMe: boolean;
-  ministry: string;
   summary: string | undefined;
   representatives: string[] | undefined;
   leads: string[] | undefined;
   commsMaterials: string[] | undefined;
   reports: Report[] | undefined;
-  tags: string[] | undefined;
   startDate: Date;
   endDate: Date | undefined;
   location: string | undefined;
-};
-
-const getLastModifiedString = (modified: Date | undefined) => {
-  if (!modified) {
-    return undefined;
-  }
-  const rightNow = new Date();
-  const difference = rightNow.getTime() - modified.getTime();
-  const diffDays = getDaysDifference(modified, rightNow);
-  if (diffDays < 1) {
-    const hoursAgo = difference / (1000 * 3600);
-    if (hoursAgo < 1) {
-      if (Math.floor(difference / (1000 * 60)) < 2) {
-        return 'Modified just now';
-      } else {
-        return `Modified ${Math.floor(difference / (1000 * 60))} minutes ago`;
-      }
-    } else {
-      return `Modified ${Math.floor(difference / (1000 * 3600))} hours ago`;
-    }
-  } else if (diffDays < 30) {
-    //we might want to be more precise about calculating months, etc. but not now
-    return `Modified ${diffDays} days ago`;
-  } else if (diffDays > 30 && diffDays < 365) {
-    return `Modified ${rightNow.getMonth() - modified.getMonth()} months ago`;
-  } else {
-    return `Modified ${Math.floor(diffDays / 365)} years ago`;
-  }
-};
-
-const sortStatusFn: SortingFn<EventRow> = (rowA, rowB) => {
-  const a = rowA.original.dateModified;
-  const b = rowB.original.dateModified;
-  if (a && !b) return 1;
-  else if (!a && b) return -1;
-  else if (a && b) return b.getTime() - a.getTime();
-  return 0;
-};
-
-const getDaysDifference = (date1: Date, date2: Date): number => {
-  // Calculate the difference in milliseconds
-  const diffInMs = Math.abs(date1.getTime() - date2.getTime());
-
-  // Convert milliseconds to days
-  const oneDayInMs = 1000 * 60 * 60 * 24;
-  const diffInDays = diffInMs / oneDayInMs;
-
-  // Round the result to the nearest whole day
-  return Math.floor(diffInDays); // "round" and "ciel" are also options. I think floor makes most sense.
+  startTime: string | undefined;
+  endTime: string | undefined;
+  dateConfirmed: boolean;
+  timeConfirmed: boolean;
+  premierInvited: boolean;
+  premierConfirmed: boolean;
+  ministers: Array<{ name: string; confirmed?: boolean }>;
 };
 
 const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
-  // Map ActivityResponse to EventRow format
-  // Format date range
   const startDate = activity.startDate
     ? new Date(activity.startDate)
     : new Date();
   const endDate = activity.endDate ? new Date(activity.endDate) : undefined;
-  const formatDateRange = () => {
-    const start = startDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-    if (endDate) {
-      const end = endDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
-      return `${start} – ${end}`;
-    }
-    return start;
-  };
 
-  // Map lookAheadStatus to status
+  const startTime = activity.startTime ? activity.startTime : undefined;
+  const endTime = activity.endTime ? activity.endTime : undefined;
+
   const statusMap: Record<string, 'New' | 'Reviewed' | 'Changed' | 'Deleted'> =
     {
       new: 'New',
@@ -173,22 +137,15 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     ? statusMap[activity.lookAheadStatus] || 'Reviewed'
     : 'Reviewed';
 
-  // Check if confirmed - using dateStatus or timeStatus if available
-  const confirmed = false; // TODO: Determine confirmation status from available fields
-
-  // Compile representatives
   const representatives = activity.representativesAttending?.map(
     (r) => r.representative
   );
 
-  // Compile leads from commsContacts and eventPlannerLeadId (store IDs, not names)
   const leads: string[] = [];
-  // Add comms contact IDs if present (find the lead contact)
   const leadCommsContact = activity.commsContacts?.find((c) => c.isLead);
   if (leadCommsContact) {
     leads.push(String(leadCommsContact.userId));
   }
-  // Add event planner ID if present (and different from comms contact lead)
   if (
     activity.eventPlannerLeadId &&
     activity.eventPlannerLeadId !== leadCommsContact?.userId
@@ -196,22 +153,17 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     leads.push(String(activity.eventPlannerLeadId));
   }
 
-  // Compile reports based on reportSettings
-  // An activity appears in a report if it's NOT omitted (omitted !== true)
   const reports: Report[] = [];
-  // Get report names that are omitted (omitted === true)
   const omittedReportNames = new Set(
     activity.reportSettings
       ?.filter((setting) => setting.omitted === true)
       .map((setting) => setting.name) ?? []
   );
 
-  // Check if activity should appear in 'look-ahead' report
   if (!omittedReportNames.has('look-ahead')) {
     reports.push({ id: 'look-ahead', name: 'Look Ahead', type: 'look-ahead' });
   }
 
-  // Check if activity should appear in 'thirty-sixty-ninety' report
   if (!omittedReportNames.has('30-60-90')) {
     reports.push({
       id: '30-60-90',
@@ -220,887 +172,523 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     });
   }
 
+  const location = activity.venueAddress
+    ? [
+        activity.venueAddress.street,
+        activity.venueAddress.city,
+        activity.venueAddress.provinceOrState,
+      ]
+        .filter((part) => part)
+        .join(', ') || undefined
+    : undefined;
+
+  // Extract ministers (excluding premier)
+  const ministers =
+    activity.representativesAttending
+      ?.slice(0, 3)
+      .map((r) => ({ name: r.representative })) || [];
+
   return {
     id: activity.displayId || `ACT-${activity.id}`,
+    displayId: activity.displayId || `ACT-${activity.id}`,
     title: activity.title || '',
     category:
       activity.category && activity.category.length > 0
         ? activity.category
         : undefined,
-    // type: activity.type || 'General',
+    categories:
+      activity.category?.map((cat) => ({ name: cat, isApproved: true })) || [],
     status,
-    confirmed,
-    dateCreated: new Date(activity.createdDateTime).toLocaleDateString(
-      'en-US',
-      {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }
-    ),
+    dateCreated: new Date(activity.createdDateTime).toLocaleDateString(),
     dateModified: activity.lastUpdatedDateTime
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
-    mine: false, // TODO: check if current user is comms lead
-    sharedWithMe: false, // TODO: check if user in sharedWith
-    ministry: activity.leadOrg || '',
     summary: activity.summary || undefined,
-    representatives:
-      representatives && representatives.length > 0
-        ? representatives
-        : undefined,
+    representatives: representatives || undefined,
     leads: leads.length > 0 ? leads : undefined,
     commsMaterials:
       activity.commsMaterials && activity.commsMaterials.length > 0
         ? activity.commsMaterials
         : undefined,
     reports: reports.length > 0 ? reports : undefined,
-    tags:
-      activity.tags && activity.tags.length > 0
-        ? activity.tags.map((tag) => tag.text)
-        : undefined,
     startDate,
     endDate,
-    location: activity.venueAddress
-      ? [
-          activity.venueAddress.street,
-          activity.venueAddress.city,
-          activity.venueAddress.provinceOrState,
-        ]
-          .filter((part) => part)
-          .join(', ') || undefined
-      : undefined,
-    date: formatDateRange(),
+    location,
+    startTime,
+    endTime,
+    dateConfirmed: activity.dateStatus === 'Confirmed' || false,
+    timeConfirmed: activity.timeStatus === 'Confirmed' || false,
+    premierInvited: activity.premierRequestedId !== null,
+    premierConfirmed: activity.premierRequestedId !== null,
+    ministers,
   };
 };
 
-const multiColumnTabFilterFn: FilterFn<EventRow> = (
-  row,
-  columnId,
-  filterValue
-) => {
-  // Check if the filterValue exists in firstName, lastName, or email
-  const lowerCaseFilter = String(filterValue).toLowerCase();
-  if (lowerCaseFilter === 'recent' && row.original.dateModified) {
-    const rightNow = new Date();
-    return getDaysDifference(rightNow, row.original.dateModified) < 2;
-  }
+// Summary text truncation component
+const SummaryCell = ({ summary }: { summary: string | undefined }) => {
+  const [expanded, setExpanded] = useState(false);
+  const MAX_LINES = 5;
+  const lineHeight = 20;
+  const maxHeight = MAX_LINES * lineHeight;
+
+  if (!summary) return <div style={{ color: '#999' }}>—</div>;
+
+  const needsTruncation = summary.split('\n').length > MAX_LINES;
+
   return (
-    filterValue === 'all' ||
-    (lowerCaseFilter === 'mine' && row.original.mine) ||
-    (lowerCaseFilter === 'shared' && row.original.sharedWithMe) ||
-    String(row.original.ministry).toLowerCase().includes(lowerCaseFilter)
+    <div>
+      <div
+        style={{
+          overflow: 'hidden',
+          maxHeight: expanded ? 'none' : `${maxHeight}px`,
+          transition: 'max-height 0.2s ease',
+          lineHeight: '1.4',
+        }}
+      >
+        {summary}
+      </div>
+      {needsTruncation && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#0078d4',
+            cursor: 'pointer',
+            padding: '4px 0',
+            marginTop: '4px',
+            fontSize: '13px',
+          }}
+        >
+          {expanded ? 'show less' : 'show more'}
+        </button>
+      )}
+    </div>
   );
 };
 
-// I'd love to consolidate this with the function above, but not bothering right now
-const arrayIncludesStatusFilterFn: FilterFn<EventRow> = (
-  row,
-  columnId: string,
-  filterValue: string[] | string | undefined
-) => {
-  if (filterValue && filterValue.length) {
-    // don't filter anything if no filter selected
-    return filterValue.includes(row.original.status.toLocaleLowerCase());
+// Ministers expandable cell component
+const MinistersCell = ({
+  ministers,
+}: {
+  ministers: Array<{ name: string; confirmed?: boolean }>;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!ministers || ministers.length === 0) {
+    return <div style={{ color: '#999' }}>—</div>;
   }
-  return true;
+
+  const displayedMinisters = expanded ? ministers : ministers.slice(0, 2);
+  const hasMore = ministers.length > 2;
+
+  return (
+    <div>
+      {displayedMinisters.map((minister, idx) => (
+        <div key={idx} style={{ marginBottom: '4px' }}>
+          <Badge
+            appearance="outline"
+            style={{
+              whiteSpace: 'normal',
+              height: 'auto',
+              minHeight: '20px',
+            }}
+          >
+            {minister.name}
+            {minister.confirmed && ' ✓'}
+          </Badge>
+        </div>
+      ))}
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#0078d4',
+            cursor: 'pointer',
+            padding: '0',
+            fontSize: '12px',
+            marginTop: '4px',
+          }}
+        >
+          + {ministers.length - 2} more
+        </button>
+      )}
+      {expanded && hasMore && (
+        <button
+          onClick={() => setExpanded(false)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#0078d4',
+            cursor: 'pointer',
+            padding: '0',
+            fontSize: '12px',
+            marginTop: '4px',
+          }}
+        >
+          show less
+        </button>
+      )}
+    </div>
+  );
 };
-// Status colors map
-const statusColor: Record<string, 'brand' | 'danger' | 'warning' | 'success'> =
-  {
-    New: 'success',
-    Reviewed: 'brand',
-    Changed: 'warning',
-    Deleted: 'danger',
-  };
+
+// Schedule cell component
+const ScheduleCell = ({
+  startDate,
+  endDate,
+  startTime,
+  endTime,
+  location,
+  dateConfirmed,
+  timeConfirmed,
+  premierInvited,
+  premierConfirmed,
+}: {
+  startDate: Date;
+  endDate?: Date;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  dateConfirmed: boolean;
+  timeConfirmed: boolean;
+  premierInvited: boolean;
+  premierConfirmed: boolean;
+}) => {
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return (
+    <div style={{ fontSize: '13px' }}>
+      <div
+        style={{
+          marginBottom: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+      >
+        <Calendar24Regular style={{ fontSize: '16px' }} />
+        <span>
+          {formatDate(startDate)}
+          {endDate ? ` – ${formatDate(endDate)}` : ''}
+        </span>
+        {dateConfirmed && (
+          <CheckmarkCircle24Regular
+            style={{ fontSize: '14px', color: '#107c10' }}
+          />
+        )}
+      </div>
+      {(startTime || timeConfirmed) && (
+        <div style={{ marginBottom: '6px' }}>
+          {startTime && (
+            <span>
+              {startTime}
+              {endTime ? ` – ${endTime}` : ''}
+            </span>
+          )}
+          {timeConfirmed && (
+            <CheckmarkCircle24Regular
+              style={{ fontSize: '14px', color: '#107c10' }}
+            />
+          )}
+        </div>
+      )}
+      {location && (
+        <div style={{ marginBottom: '6px', fontSize: '12px', color: '#666' }}>
+          {location}
+        </div>
+      )}
+      {premierInvited && (
+        <div style={{ marginTop: '6px' }}>
+          <Badge
+            appearance="filled"
+            style={{
+              whiteSpace: 'normal',
+              height: 'auto',
+              minHeight: '20px',
+              backgroundColor: premierConfirmed ? '#107c10' : '#ffc107',
+              color: '#fff',
+            }}
+          >
+            Premier Eby: {premierConfirmed ? 'Confirmed' : 'TBC'}
+          </Badge>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface EventTableProps {
   filters: ColumnFiltersState;
   globalFilterString: string;
 }
 
+const statusColor = {
+  New: 'informative',
+  Reviewed: 'success',
+  Changed: 'warning',
+  Deleted: 'danger',
+} as const;
+
 export const EventTable: React.FC<EventTableProps> = ({
   filters,
   globalFilterString,
 }) => {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const styles = useStyles();
   const navigate = useNavigate();
 
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [eventData, setEventData] = useState<EventRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [activities, setActivities] = useState<ActivityResponse[]>([]);
   const [users, setUsers] = useState<UserLookupItem[]>([]);
-  const { dispatchToast } = useToastController();
+  const [loading, setLoading] = useState(true);
 
-  // Create a map from user ID to user name for display
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [activitiesData, usersData] = await Promise.all([
+          fetchActivities(),
+          fetchUsers(),
+        ]);
+        setActivities(activitiesData);
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadData();
+  }, []);
+
   const userMap = useMemo(() => {
     const map = new Map<string, string>();
     users.forEach((user) => {
-      map.set(user.id.toString(), user.name || user.label);
+      const displayName = user.name || user.email || String(user.id);
+      map.set(String(user.id), displayName);
     });
     return map;
   }, [users]);
 
-  // Fetch activities and users from API
-  const loadActivities = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [activities, usersData] = await Promise.all([
-        fetchActivities(),
-        fetchUsers(),
-      ]);
-      setUsers(usersData);
+  const data = useMemo(
+    () => activities.map(mapActivityToEventRow),
+    [activities]
+  );
 
-      // Check if activities is an array
-      if (!Array.isArray(activities)) {
-        console.error('Activities response is not an array:', activities);
-        setError('Invalid response format from server');
-        setEventData([]);
-        return;
-      }
-
-      const mappedData = activities.map(mapActivityToEventRow);
-      setEventData(mappedData);
-    } catch (err) {
-      console.error('Error fetching activities:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch activities'
-      );
-      setEventData([]); // Set to empty array on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadActivities();
-  }, []);
-
-  // WebSocket connection for real-time updates
-  useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const socket = io(apiUrl);
-
-    socket.on('connect', () => {
-      console.log('EventTable WebSocket connected:', socket.id);
-      // Subscribe to activity table updates
-      socket.emit('subscribeToActivities');
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('EventTable WebSocket connection error:', error);
-    });
-
-    // Listen for new activity created
-    socket.on('activityCreated', async (data) => {
-      console.log('Activity created:', data);
-
-      // Refresh the table data
-      await loadActivities();
-
-      // Show toast notification
-      dispatchToast(
-        <Toast>
-          <ToastTitle>New Activity Created</ToastTitle>
-          <ToastBody>
-            {data.displayId || `ACT-${data.id}`}: {data.title}
-          </ToastBody>
-        </Toast>,
-        { intent: 'success', timeout: 5000 }
-      );
-    });
-
-    // Listen for activity updated
-    socket.on('activityUpdated', async (data) => {
-      console.log('Activity updated:', data);
-
-      // Refresh the table data
-      await loadActivities();
-
-      // Show toast notification
-      dispatchToast(
-        <Toast>
-          <ToastTitle>Activity Updated</ToastTitle>
-          <ToastBody>
-            {data.displayId || `ACT-${data.id}`}: {data.title}
-          </ToastBody>
-        </Toast>,
-        { intent: 'info', timeout: 5000 }
-      );
-    });
-
-    // Cleanup on unmount
-    return () => {
-      socket.emit('unsubscribeFromActivities');
-      socket.off('activityCreated');
-      socket.off('activityUpdated');
-      socket.disconnect();
-    };
-  }, [dispatchToast]);
-
-  useEffect(() => {
-    setColumnFilters(filters);
-  }, [filters]);
-
-  // this might be redundant. Alex should give this some more thought.
-  useEffect(() => {
-    setGlobalFilter(globalFilterString);
-  }, [globalFilterString, globalFilter]);
-
-  const styles = useStyles();
   const columnHelper = createColumnHelper<EventRow>();
 
   const columns = useMemo(
     () => [
-      columnHelper.display({
-        id: 'select', // Unique ID for your checkbox column
-        size: 20, // Narrow for checkboxes
-        enableResizing: false, // Disable resizing for this column
-        enablePinning: true,
-        header: ({ table }) => (
-          <input
-            type="checkbox"
-            checked={table.getIsAllRowsSelected()}
-            //  indeterminate={table.getIsSomeRowsSelected()}
-            onChange={table.getToggleAllRowsSelectedHandler()}
-          />
-        ),
-        cell: ({ row }) => (
-          <input
-            type="checkbox"
-            checked={row.getIsSelected()}
-            disabled={!row.getCanSelect()}
-            onChange={row.getToggleSelectedHandler()}
-            title="these checkboxes don't do anything yet"
-          />
-        ),
-      }),
       columnHelper.accessor('id', {
         header: 'Overview',
-        enableResizing: false,
-        enablePinning: true,
-        size: 180,
+        size: 220,
         cell: ({ row }) => (
-          <div>
-            {/* todo: Let's make these complicated columns separate components, and pass everything in as props*/}
-            <div className={styles.overviewInline}>
-              <div>{row.original.id}</div>
+          <div
+            onClick={() => void navigate(`/edit-activity/${row.original.id}`)}
+            style={{ cursor: 'pointer' }}
+          >
+            <div
+              style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}
+            >
+              {row.original.displayId}
             </div>
-            <div className={styles.overviewTitle}>{row.original.title}</div>
-            <div>
+            <div
+              style={{
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: '#000',
+              }}
+            >
+              {row.original.title}
+            </div>
+            {row.original.categories.map((cat, idx) => (
               <Badge
-                className={row.original.category?.[0]}
-                appearance={
-                  row.original.category?.[0] === 'Release'
-                    ? 'filled'
-                    : 'outline'
-                }
+                key={idx}
+                appearance="filled"
                 style={{
                   whiteSpace: 'normal',
                   height: 'auto',
                   minHeight: '20px',
+                  marginRight: '4px',
+                  marginBottom: '4px',
                 }}
               >
-                {row.original.category?.[0]}
+                {cat.name}
+                {cat.isApproved && ' ✓'}
               </Badge>
-            </div>
+            ))}
           </div>
         ),
       }),
+
       columnHelper.accessor('summary', {
         header: 'Summary',
-        size: 250,
-        enableResizing: false,
+        size: 300,
+        cell: ({ row }) => <SummaryCell summary={row.original.summary} />,
+      }),
+
+      columnHelper.accessor('startDate', {
+        header: 'Scheduling',
+        size: 280,
         cell: ({ row }) => (
-          <div>
-            {row.original.summary}
-            <div
-              style={{
-                marginTop: 8,
-                display: 'flex',
-                gap: 8,
-                flexWrap: 'wrap',
-              }}
-            >
-              {row.original.tags && row.original.tags.length
-                ? row.original.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      appearance="filled"
-                      style={{
-                        whiteSpace: 'normal',
-                        height: 'auto',
-                        minHeight: '20px',
-                      }}
-                    >
-                      {tag}
-                    </Badge>
-                  ))
-                : null}
-            </div>
-          </div>
+          <ScheduleCell
+            startDate={row.original.startDate}
+            endDate={row.original.endDate}
+            startTime={row.original.startTime}
+            endTime={row.original.endTime}
+            location={row.original.location}
+            dateConfirmed={row.original.dateConfirmed}
+            timeConfirmed={row.original.timeConfirmed}
+            premierInvited={row.original.premierInvited}
+            premierConfirmed={row.original.premierConfirmed}
+          />
         ),
       }),
-      columnHelper.accessor('date', {
-        header: 'Schedule',
-        cell: ({ row }) => {
-          const start: Date = row.original.startDate;
-          const end: Date | undefined = row.original.endDate;
 
-          const dateLine = (
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Calendar24Regular />
-              <span>
-                {start.toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                })}
-                {end
-                  ? ` – ${end.toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                    })}`
-                  : ''}
-              </span>
-            </div>
-          );
-
-          const timeLine = (
-            <div
-              style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}
-            >
-              <Clock20Regular />
-              <span>
-                {start.toLocaleTimeString(undefined, {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
-                {end
-                  ? ` – ${end.toLocaleTimeString(undefined, {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}`
-                  : ''}
-              </span>
-            </div>
-          );
-
-          const locationLine = row.original.location ? (
-            <div
-              style={{ marginTop: 6, display: 'flex', alignItems: 'center' }}
-            >
-              <Location20Regular />
-              <span>{row.original.location}</span>
-            </div>
-          ) : null;
-
-          return (
-            <div>
-              {dateLine}
-              {timeLine}
-              {locationLine}
-            </div>
-          );
-        },
-      }),
-      columnHelper.accessor('representatives', {
-        header: 'Representatives',
-        filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          // filterValue is an array of selected representative names
-          if (!filterValue || !filterValue.length) return true;
-          const representatives = row.original.representatives || [];
-          // Only show rows that have at least one selected representative
-          return filterValue.some((val: string) =>
-            representatives.includes(val)
-          );
-        },
-        cell: ({ row }) => (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {row.original.representatives && row.original.representatives.length
-              ? row.original.representatives.map((rep) => (
-                  <Badge
-                    key={rep}
-                    appearance="outline"
-                    style={{
-                      whiteSpace: 'normal',
-                      height: 'auto',
-                      minHeight: '20px',
-                    }}
-                  >
-                    {rep}
-                  </Badge>
-                ))
-              : null}
-          </div>
-        ),
-      }),
       columnHelper.accessor('leads', {
         header: 'Leads',
-        size: 80,
-        cell: ({ row, table }) => {
-          const userMap = (
-            table.options.meta as { userMap?: Map<string, string> }
-          )?.userMap;
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {row.original.leads && row.original.leads.length
-                ? row.original.leads.map((lead) => {
-                    const displayName = userMap?.get(lead) || lead;
-                    return (
-                      <div key={lead} style={{ fontWeight: 'bold' }}>
-                        {displayName}
-                      </div>
-                    );
-                  })
-                : null}
-            </div>
-          );
-        },
-        filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          // filterValue is an array of selected event lead IDs
-          if (!filterValue || !filterValue.length) return true;
-          const leads = row.original.leads || [];
-          // Only show rows that have at least one selected event lead
-          return filterValue.some((val: string) => leads.includes(val));
-        },
-      }),
-      columnHelper.accessor('commsMaterials', {
-        header: 'Comms Materials',
-        cell: (info) => info.getValue(),
-      }),
-      columnHelper.accessor('reports', {
-        header: 'Reports',
-        size: 100,
-        filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          // filterValue is an array of selected report IDs or names
-          if (!filterValue || !filterValue.length) return true;
-          const reports = row.original.reports || [];
-          // Only show rows that have at least one selected report
-          return filterValue.some((val: string) =>
-            reports.some((r) => r.id === val || r.name === val)
-          );
-        },
+        size: 180,
         cell: ({ row }) => (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {row.original.reports && row.original.reports.length
-              ? row.original.reports.map((report) => (
-                  <Badge
-                    key={report.id}
-                    appearance="filled"
-                    style={{
-                      whiteSpace: 'normal',
-                      height: 'auto',
-                      minHeight: '20px',
-                    }}
-                  >
-                    {report.name}
-                  </Badge>
-                ))
-              : null}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {row.original.leads?.map((lead) => {
+              const displayName = userMap.get(lead) || lead;
+              return (
+                <div
+                  key={lead}
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Ministry: {displayName}
+                </div>
+              );
+            }) || <span style={{ color: '#999' }}>—</span>}
           </div>
         ),
       }),
-      columnHelper.accessor('status', {
-        //id: 'status', // Unique ID for this display column
-        header: 'Status',
-        size: 100,
-        filterFn: arrayIncludesStatusFilterFn,
-        sortingFn: sortStatusFn,
-        sortUndefined: -1,
 
+      columnHelper.accessor('commsMaterials', {
+        header: 'Materials',
+        size: 200,
         cell: ({ row }) => (
-          <div className={styles.statusBadge}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {row.original.commsMaterials?.map((material, idx) => (
+              <Badge key={idx} appearance="filled">
+                {material}
+              </Badge>
+            )) || <span style={{ color: '#999' }}>—</span>}
+          </div>
+        ),
+      }),
+
+      columnHelper.accessor('status', {
+        header: 'Status',
+        size: 150,
+        cell: ({ row }) => (
+          <div>
             <Badge
               appearance="filled"
-              color={
-                statusColor[row.original.status as keyof typeof statusColor]
-              }
+              color={statusColor[row.original.status]}
               shape="circular"
-              size="large"
             >
               {row.original.status}
             </Badge>
-            {row.original.dateModified && (
-              <div>{getLastModifiedString(row.original.dateModified)}</div>
-            )}
-            <div>Created {row.original.dateCreated}</div>
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#666',
+                marginTop: '4px',
+              }}
+            >
+              Updated{' '}
+              {row.original.dateModified
+                ? new Date(row.original.dateModified).toLocaleDateString()
+                : 'N/A'}
+            </div>
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#666',
+              }}
+            >
+              Created {row.original.dateCreated}
+            </div>
           </div>
         ),
       }),
-      columnHelper.accessor('confirmed', {
-        size: 20,
-        cell: (info) => (info.getValue() ? <CheckmarkCircle24Regular /> : null),
-      }),
-
-      // TODO: make all these a 'tabListFilter' column with all the values, and custom filter to victory.
-      columnHelper.accessor('category', {
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: (row, columnId, filterValue) => {
-          // Expecting filterValue to be an array of selected category strings
-          if (!filterValue) return true;
-          const selected = Array.isArray(filterValue)
-            ? filterValue
-            : [filterValue];
-          if (selected.length === 0) return true;
-          const lowerSelected = selected.map((s: string) =>
-            String(s).toLowerCase()
-          );
-          const rowCategories = row.original.category || [];
-          const lowerRowCategories = rowCategories.map((cat) =>
-            cat.toLowerCase()
-          );
-          // Return true if any selected category is in the row's categories
-          return lowerSelected.some((selected) =>
-            lowerRowCategories.includes(selected)
-          );
-        },
-      }),
-      columnHelper.accessor('title', {
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: multiColumnTabFilterFn,
-      }),
-      columnHelper.accessor('mine', {
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: multiColumnTabFilterFn,
-      }),
-      columnHelper.accessor('sharedWithMe', {
-        enableHiding: true,
-        cell: (info) => (info.getValue() ? <CheckmarkCircle24Regular /> : null),
-        filterFn: multiColumnTabFilterFn,
-      }),
-      columnHelper.accessor('ministry', {
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: multiColumnTabFilterFn,
-      }),
-      columnHelper.accessor('tags', {
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: (row, columnId, filterValue: string[] | undefined) => {
-          if (filterValue && filterValue.length) {
-            // don't filter anything if no filter selected
-            const rowTags = row.original.tags || [];
-            return filterValue.some((val: string) => rowTags.includes(val));
-          } else return true;
-        },
-      }),
-      // Hidden column for updatedDateRange filtering
-      columnHelper.accessor('dateModified', {
-        id: 'updatedDateRange',
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: (
-          row,
-          columnId,
-          filterValue: { start: string; end: string } | undefined
-        ) => {
-          if (!filterValue || !filterValue.start || !filterValue.end)
-            return true;
-
-          const dateModified = row.original.dateModified;
-          if (!dateModified) return false;
-
-          const startDate = new Date(filterValue.start);
-          startDate.setHours(0, 0, 0, 0);
-
-          const endDate = new Date(filterValue.end);
-          endDate.setHours(23, 59, 59, 999);
-
-          const modifiedDate = new Date(dateModified);
-
-          return modifiedDate >= startDate && modifiedDate <= endDate;
-        },
-      }),
-      // Hidden column for createdDateRange filtering
-      columnHelper.accessor('dateCreated', {
-        id: 'createdDateRange',
-        enableHiding: true,
-        cell: (info) => info.getValue(),
-        filterFn: (
-          row,
-          columnId,
-          filterValue: { start: string; end: string } | undefined
-        ) => {
-          if (!filterValue || !filterValue.start || !filterValue.end)
-            return true;
-
-          const dateCreated = row.original.dateCreated;
-          if (!dateCreated) return false;
-
-          const startDate = new Date(filterValue.start);
-          startDate.setHours(0, 0, 0, 0);
-
-          const endDate = new Date(filterValue.end);
-          endDate.setHours(23, 59, 59, 999);
-
-          const createdDate = new Date(dateCreated);
-
-          return createdDate >= startDate && createdDate <= endDate;
-        },
-      }),
     ],
-    [
-      columnHelper,
-      styles.overviewInline,
-      styles.overviewTitle,
-      styles.statusBadge,
-    ]
+    [columnHelper, userMap, navigate]
   );
 
   const table = useReactTable({
-    meta: {
-      userMap,
-    },
-    data: eventData,
+    data,
     columns,
-    enableRowSelection: true,
     state: {
       sorting,
-      pagination: { pageIndex, pageSize: 5 },
-      globalFilter,
-      columnFilters,
-      columnVisibility: {
-        sharedWithMe: false,
-        mine: false,
-        ministry: false,
-        title: false,
-        category: false,
-        tags: false,
-        updatedDateRange: false,
-        createdDateRange: false,
-      },
-      columnPinning: { left: ['select', 'id'] },
-    },
-    filterFns: {
-      multiColumn: multiColumnTabFilterFn,
-      // dateRange: dateRangeFilterFn,
+      // Remove columnFilters from state since we're not using filter columns anymore
+      // columnFilters: filters,
     },
     onSortingChange: setSorting,
-    onPaginationChange: (updater) => {
-      if (typeof updater === 'function') {
-        const newState = updater({ pageIndex, pageSize: 2 });
-        setPageIndex(newState.pageIndex);
-      } else {
-        setPageIndex(updater.pageIndex);
-      }
-    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(), // needed for client-side filtering
-    onColumnFiltersChange: setColumnFilters,
-
-    onGlobalFilterChange: setGlobalFilter,
-    manualPagination: false,
-    manualSorting: false,
-    enableColumnFilters: true,
-    autoResetPageIndex: false, // Preserve current page when data updates
+    getFilteredRowModel: getFilteredRowModel(),
+    meta: {
+      userMap,
+    },
   });
 
-  const filteredRows = table.getFilteredRowModel().rows;
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <Spinner label="Loading activities..." />
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{
-        // padding: '0px, 100px, 0px, 24px',
-        background: '#fff',
-        borderRadius: 8,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        minHeight: 0,
-      }}
-    >
-      {isLoading && (
-        <div
-          style={{
-            padding: 32,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Spinner label="Loading activities..." />
-        </div>
-      )}
-      {error && (
-        <div
-          style={{
-            padding: 32,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'red',
-          }}
-        >
-          Error: {error}
-        </div>
-      )}
-      {!isLoading && !error && (
-        <>
-          <div
-            onScroll={(e) => {
-              const scrollLeft = (e.target as HTMLDivElement).scrollLeft;
-              setIsScrolled(scrollLeft > 0);
-            }}
-            style={{
-              overflowX: 'auto',
-              overflowY: 'auto',
-              flex: 1,
-              minHeight: 0,
-              minWidth: 0,
-              WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            {filteredRows.length > 0 && (
-              <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHeaderCell
-                          key={header.id}
-                          onClick={
-                            header.column.getCanSort()
-                              ? header.column.getToggleSortingHandler()
-                              : undefined
-                          }
-                          style={{
-                            cursor: header.column.getCanSort()
-                              ? 'pointer'
-                              : undefined,
-                            width: header.getSize(),
-                            position: header.column.getIsPinned()
-                              ? 'sticky'
-                              : 'relative', // Make pinned columns sticky
-                            left: header.column.getIsPinned()
-                              ? header.column.id === 'id' // Only offset the 'id' column. This was a freaking ordeal
-                                ? `${header.column.getStart('left') + 16}px`
-                                : `${header.column.getStart('left')}px`
-                              : 'auto',
-                            zIndex:
-                              header.column.getIsPinned() && isScrolled
-                                ? 1
-                                : 'auto', // Only apply z-index when scrolled
-                            background: header.column.getIsPinned()
-                              ? '#fff'
-                              : 'transparent', // Optional: Match table background
-                            boxShadow:
-                              header.column.getIsPinned() && isScrolled
-                                ? '2px 0 4px rgba(0, 0, 0, 0.1)'
-                                : 'none', // Add shadow when scrolled
-                          }}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {header.column.getIsSorted() === 'asc' && ' ▲'}
-                          {header.column.getIsSorted() === 'desc' && ' ▼'}
-                        </TableHeaderCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        void navigate('/details', { state: row.original });
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          style={{
-                            position: cell.column.getIsPinned()
-                              ? 'sticky'
-                              : 'relative', // Make pinned cells sticky
-                            left: cell.column.getIsPinned()
-                              ? cell.column.id === 'id'
-                                ? `${cell.column.getStart('left') + 16}px`
-                                : `${cell.column.getStart('left')}px`
-                              : 'auto',
-                            zIndex:
-                              cell.column.getIsPinned() && isScrolled
-                                ? 1
-                                : 'auto', // Only apply z-index when scrolled
-                            background: cell.column.getIsPinned()
-                              ? '#fff'
-                              : 'transparent', // Optional: Match row background
-                            boxSizing: 'border-box', // Include padding in width calculation
-                            width: cell.column.columnDef.size,
-                            minWidth: cell.column.columnDef.size,
-                            boxShadow:
-                              cell.column.getIsPinned() && isScrolled
-                                ? '2px 0 4px rgba(0, 0, 0, 0.1)'
-                                : 'none', // Add shadow when scrolled
-                          }}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-            {filteredRows.length === 0 && (
-              <div
-                style={{
-                  padding: 32,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                No events found matching the selected filters.
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              marginTop: 16,
-              display: 'flex',
-              gap: 8,
-              alignItems: 'center',
-            }}
-          >
-            <Button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <span>
-              Page {table.getState().pagination.pageIndex + 1} of{' '}
-              {table.getPageCount()}
-            </span>
-            <Button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </div>
-        </>
-      )}
+    <div className={styles.container}>
+      <table className={styles.table}>
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  className={styles.headerCell}
+                  style={{ width: header.getSize() }}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className={styles.bodyRow}>
+              {row.getVisibleCells().map((cell) => (
+                <td
+                  key={cell.id}
+                  className={styles.bodyCell}
+                  style={{ width: cell.column.columnDef.size }}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
-
-// This component renders a table of events with columns for date, ID, title, category, type, status, and confirmation status.
-// It uses Fluent UI components for styling and TanStack Table for data management.
