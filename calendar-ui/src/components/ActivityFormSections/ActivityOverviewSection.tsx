@@ -136,13 +136,12 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Title *
+              Title <span className="text-destructive">*</span>
               {titleChanged && (
                 <Badge variant="warning" className="ml-2">
                   Changed
                 </Badge>
               )}
-              Title <span className="text-destructive">*</span>
             </FormLabel>
             <FormControl>
               <Input

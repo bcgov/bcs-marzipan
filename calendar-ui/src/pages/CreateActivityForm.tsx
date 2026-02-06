@@ -161,13 +161,11 @@ export const CreateActivityForm: React.FC = () => {
   // Track if a draft existed at mount
   const initialDraftExistsRef = useRef(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
-  const [autoSaveReady, setAutoSaveReady] = useState(false);
   const {
     existingDraft,
     isDraftLoading,
     isSaving,
     lastSaved,
-    deleteDraft: baseDeleteDraft,
     resetInitialFormData,
   } = useAutoSave(
     TEMPORARY_USER_ID,

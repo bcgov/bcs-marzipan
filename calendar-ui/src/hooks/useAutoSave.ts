@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
-import { createLogger } from '../lib/logger';
 
 // Add an optional callback to notify when a draft is created for the first time
 export interface UseAutoSaveOptions {
@@ -140,7 +139,7 @@ export function useAutoSave(
       // Invalidate to ensure fresh data on next mount
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
-    onError: (error: any) => {
+    onError: (_error: any) => {
       // Even on error, log it but keep the cache cleared
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
@@ -289,12 +288,12 @@ export function useAutoSave(
       clearTimeout(timeoutRef.current);
     }
     saveDraftMutation();
-  }, [saveDraftMutation, formType, entityId]);
+  }, [saveDraftMutation]);
 
   // Delete draft function
   const deleteDraft = useCallback(() => {
     deleteDraftMutation();
-  }, [deleteDraftMutation, formType, entityId]);
+  }, [deleteDraftMutation]);
 
   // Clear draft and reset state
   const clearDraft = useCallback(() => {
