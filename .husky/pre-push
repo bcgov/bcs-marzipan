@@ -93,11 +93,11 @@ echo ""
 # ============================================
 # Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
 # Blocks push if branch name is invalid
-# TEMPORARILY DISABLED FOR COPILOT SUB-PR BRANCHES
 
 # Get the current branch name
 branch_name=$(git rev-parse --abbrev-ref HEAD)
 
+# Skip branch naming validation for main/master branches
 if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ]; then
   exit 0
 fi
