@@ -178,8 +178,6 @@ export default defineConfig(
         'warn',
         { argsIgnorePattern: '^_' },
       ],
-      // Disable redundant type constituents rule due to issues with shared package types
-      '@typescript-eslint/no-redundant-type-constituents': 'off',
       // TODO: Re-enable these rules after fixing `any` type issues in calendar-ui
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
