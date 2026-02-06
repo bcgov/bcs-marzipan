@@ -83,7 +83,7 @@ export function CreateActivityFormWithAutosave() {
     }
 
     // Submit the activity
-    submitActivity(formData);
+    submitActivity(formData as CreateActivityRequest);
   };
 
   const handleDiscard = () => {

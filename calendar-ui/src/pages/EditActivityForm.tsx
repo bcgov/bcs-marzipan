@@ -142,7 +142,7 @@ export default function EditActivityForm(): React.ReactElement {
       // Normalize reportSettings so each entry has a numeric reportId as expected by the API/schema
       const normalizeReportSettings = (items: any[] | undefined) => {
         if (!items || !Array.isArray(items)) return undefined;
-        const normalized: { reportId: number; omitted?: boolean }[] = [];
+        const normalized: { reportId: number; omitted: boolean }[] = [];
         for (const it of items) {
           const reportId =
             (it && typeof it.reportId === 'number' && it.reportId) ||
