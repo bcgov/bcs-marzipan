@@ -98,8 +98,7 @@ echo ""
 # Get the current branch name
 branch_name=$(git rev-parse --abbrev-ref HEAD)
 
-# Skip branch naming validation for main/master branches and copilot branches
-if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ] || echo "$branch_name" | grep -qE "^copilot/"; then
+if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ]; then
   exit 0
 fi
 
