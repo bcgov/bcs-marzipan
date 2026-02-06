@@ -97,6 +97,7 @@ type Report = {
 type EventRow = {
   id: string;
   displayId: string;
+  activityId: number;
   title: string;
   category: string[] | undefined;
   categories: Array<{ name: string; isApproved?: boolean }>;
@@ -193,6 +194,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
   return {
     id: String(activity.id),
     displayId: activity.displayId || `ACT-${activity.id}`,
+    activityId: activity.id, // <- ADD THIS LINE
     title: activity.title || '',
     category:
       activity.category && activity.category.length > 0

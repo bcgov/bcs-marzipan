@@ -12,6 +12,7 @@ import { Dashboard } from './pages/Dashboard';
 import './styles/App.css';
 import DraftsPage from './pages/Drafts';
 import { CreateActivityForm } from './pages/CreateActivityForm';
+import EditActivityForm from './pages/EditActivityForm';
 import { Settings } from './pages/Settings';
 
 function App() {
@@ -27,8 +28,8 @@ function App() {
           {/* <Route path="/pitch" element={<PitchSubmissionsPage />} /> */}
           <Route path="/create-activity" element={<CreateActivityForm />} />
           {/* merge with Wizard */}
-
           <Route path="/details" element={<EntryDetails />} />
+          <Route path="/activities/:id/edit" element={<EditActivityForm />} />
           {/* Add more routes here */}
           <Route path="/settings" element={<Settings />} />
         </Route>

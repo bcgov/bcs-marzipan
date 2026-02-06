@@ -16,6 +16,7 @@ import {
 import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { fetchActivity } from '../api/activitiesApi';
+import { timeAgo } from '../lib/utils/timeAgo';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
   DocumentText16Regular,
@@ -205,15 +206,64 @@ export const EntryDetails = () => {
 
       {!isLoading && activityData && (
         <>
-          <Text as="h1" className={styles.title}>
-            {activityData.title}
-          </Text>
-          <div>
-            <Text>
-              Created {new Date(activityData.createdDateTime).toLocaleString()}{' '}
-              &#183; Updated{' '}
-              {new Date(activityData.lastUpdatedDateTime).toLocaleString()}
-            </Text>
+          {/* Header: displayId, title, categories on left; status and timestamps on right */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 24,
+            }}
+          >
+            <div style={{ flex: '1 1 auto' }}>
+              <div style={{ color: '#6b6b6b', marginBottom: 6 }}>
+                {activityData.displayId || `ACT-${activityData.id}`}
+              </div>
+              <Text as="h1" className={styles.title}>
+                {activityData.title}
+              </Text>
+              <div style={{ marginTop: 8 }}>
+                {activityData.category && activityData.category.length > 0
+                  ? activityData.category.map((cat, idx) => (
+                      <Badge
+                        key={idx}
+                        appearance="filled"
+                        className={styles.tagBadge}
+                      >
+                        {cat}
+                      </Badge>
+                    ))
+                  : null}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', minWidth: 180 }}>
+              {/* Status badge */}
+              {activityData.activityStatus ? (
+                <div style={{ marginBottom: 8 }}>
+                  <Badge appearance="filled">
+                    {String(activityData.activityStatus)}
+                  </Badge>
+                </div>
+              ) : null}
+
+              {/* Modified ago (if different from created) */}
+              <div style={{ color: '#6b6b6b', fontSize: 13 }}>
+                {activityData.lastUpdatedDateTime &&
+                activityData.createdDateTime &&
+                activityData.lastUpdatedDateTime !==
+                  activityData.createdDateTime ? (
+                  <div>
+                    Updated{' '}
+                    {timeAgo(new Date(activityData.lastUpdatedDateTime))} ago
+                  </div>
+                ) : null}
+                <div>
+                  Created{' '}
+                  {new Date(activityData.createdDateTime).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
           </div>
           <Divider style={{ margin: '24px 0' }} />
 
