@@ -42,7 +42,7 @@ jobs:
       - name: Apply build resources in tools namespace
         run: |
           oc project ${TOOLS_NAMESPACE}
-          oc kustomize openshift/overlays/tools | envsubst | oc apply -f -
+          oc kustomize --load-restrictor=LoadRestrictionsNone openshift/overlays/tools | envsubst | oc apply -f -
 
       - name: Start binary build (calendar-service)
         run: |
@@ -63,6 +63,6 @@ jobs:
       - name: Deploy to Dev environment
         run: |
           oc project ${DEV_NAMESPACE}
-          oc kustomize openshift/overlays/dev | envsubst | oc apply -f -
+          oc kustomize --load-restrictor=LoadRestrictionsNone openshift/overlays/dev | envsubst | oc apply -f -
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui
