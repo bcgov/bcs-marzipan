@@ -19,6 +19,8 @@ import {
   Calendar24Regular,
   ChevronDown24Regular,
   CheckmarkCircle24Regular,
+  Clock24Regular,
+  LocationRegular,
 } from '@fluentui/react-icons';
 import {
   flexRender,
@@ -189,7 +191,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       .map((r) => ({ name: r.representative })) || [];
 
   return {
-    id: activity.displayId || `ACT-${activity.id}`,
+    id: String(activity.id),
     displayId: activity.displayId || `ACT-${activity.id}`,
     title: activity.title || '',
     category:
@@ -227,22 +229,33 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
 // Summary text truncation component
 const SummaryCell = ({ summary }: { summary: string | undefined }) => {
   const [expanded, setExpanded] = useState(false);
-  const MAX_LINES = 5;
-  const lineHeight = 20;
-  const maxHeight = MAX_LINES * lineHeight;
+  const [needsTruncation, setNeedsTruncation] = useState(false);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (contentRef.current) {
+      // Check if content height exceeds 5 lines (approximately 100px with line-height 1.4)
+      const lineHeight = 20;
+      const maxLines = 5;
+      const scrollHeight = contentRef.current.scrollHeight;
+      const maxHeight = lineHeight * maxLines;
+      setNeedsTruncation(scrollHeight > maxHeight);
+    }
+  }, [summary]);
 
   if (!summary) return <div style={{ color: '#999' }}>—</div>;
-
-  const needsTruncation = summary.split('\n').length > MAX_LINES;
 
   return (
     <div>
       <div
+        ref={contentRef}
         style={{
+          display: '-webkit-box',
+          WebkitLineClamp: expanded ? 'unset' : 5,
+          WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          maxHeight: expanded ? 'none' : `${maxHeight}px`,
-          transition: 'max-height 0.2s ease',
           lineHeight: '1.4',
+          fontSize: '13px',
         }}
       >
         {summary}
@@ -258,6 +271,7 @@ const SummaryCell = ({ summary }: { summary: string | undefined }) => {
             padding: '4px 0',
             marginTop: '4px',
             fontSize: '13px',
+            fontWeight: '400',
           }}
         >
           {expanded ? 'show less' : 'show more'}
@@ -346,6 +360,7 @@ const ScheduleCell = ({
   timeConfirmed,
   premierInvited,
   premierConfirmed,
+  representatives,
 }: {
   startDate: Date;
   endDate?: Date;
@@ -356,6 +371,7 @@ const ScheduleCell = ({
   timeConfirmed: boolean;
   premierInvited: boolean;
   premierConfirmed: boolean;
+  representatives?: string[];
 }) => {
   const formatDate = (date: Date) =>
     date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -382,13 +398,23 @@ const ScheduleCell = ({
         )}
       </div>
       {(startTime || timeConfirmed) && (
-        <div style={{ marginBottom: '6px' }}>
-          {startTime && (
-            <span>
-              {startTime}
-              {endTime ? ` – ${endTime}` : ''}
-            </span>
-          )}
+        <div
+          style={{
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          <Clock24Regular style={{ fontSize: '16px' }} />
+          <span>
+            {startTime && (
+              <>
+                {startTime}
+                {endTime ? ` – ${endTime}` : ''}
+              </>
+            )}
+          </span>
           {timeConfirmed && (
             <CheckmarkCircle24Regular
               style={{ fontSize: '14px', color: '#107c10' }}
@@ -397,12 +423,31 @@ const ScheduleCell = ({
         </div>
       )}
       {location && (
-        <div style={{ marginBottom: '6px', fontSize: '12px', color: '#666' }}>
-          {location}
+        <div
+          style={{
+            marginBottom: '6px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '4px',
+            fontSize: '12px',
+            color: '#666',
+          }}
+        >
+          <LocationRegular
+            style={{ fontSize: '16px', marginTop: '2px', flexShrink: 0 }}
+          />
+          <span>{location}</span>
         </div>
       )}
-      {premierInvited && (
-        <div style={{ marginTop: '6px' }}>
+      <div
+        style={{
+          marginTop: '8px',
+          display: 'flex',
+          gap: '6px',
+          flexWrap: 'wrap',
+        }}
+      >
+        {premierInvited && (
           <Badge
             appearance="filled"
             style={{
@@ -411,12 +456,46 @@ const ScheduleCell = ({
               minHeight: '20px',
               backgroundColor: premierConfirmed ? '#107c10' : '#ffc107',
               color: '#fff',
+              fontSize: '12px',
             }}
           >
             Premier Eby: {premierConfirmed ? 'Confirmed' : 'TBC'}
           </Badge>
-        </div>
-      )}
+        )}
+        {representatives && representatives.length > 0 && (
+          <>
+            <Badge
+              appearance="filled"
+              style={{
+                whiteSpace: 'normal',
+                height: 'auto',
+                minHeight: '20px',
+                backgroundColor: '#e6e7f2',
+                color: '#1f2937',
+                fontSize: '12px',
+              }}
+            >
+              {representatives[0]}
+            </Badge>
+            {representatives.length > 1 && (
+              <Badge
+                appearance="filled"
+                style={{
+                  whiteSpace: 'normal',
+                  height: 'auto',
+                  minHeight: '20px',
+                  backgroundColor: '#e6e7f2',
+                  color: '#1f2937',
+                  fontSize: '12px',
+                }}
+              >
+                +{representatives.length - 1} other
+                {representatives.length - 1 !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -544,6 +623,7 @@ export const EventTable: React.FC<EventTableProps> = ({
             timeConfirmed={row.original.timeConfirmed}
             premierInvited={row.original.premierInvited}
             premierConfirmed={row.original.premierConfirmed}
+            representatives={row.original.representatives}
           />
         ),
       }),
