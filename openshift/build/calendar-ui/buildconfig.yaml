@@ -1,0 +1,36 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: calendar-ui-build
+  labels:
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/bcgov/bcs-marzipan.git
+      ref: corpcal-openshift-changes
+    # Use repository root as build context so Dockerfile can access root files
+    # (tsconfig.base.json, package*.json, packages/)
+    contextDir: .
+  strategy:
+    type: Docker
+    dockerStrategy:
+      env:
+        - name: VITE_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: calendar-ui-config
+              key: VITE_API_BASE_URL
+      # Dockerfile path is relative to the contextDir above
+      dockerfilePath: calendar-ui/Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: calendar-ui:latest
+  triggers:
+    - type: ConfigChange
