@@ -11,7 +11,7 @@ jobs:
   deploy:
     name: Deploy to OpenShift Dev
     runs-on: ubuntu-latest
-    environment: dev-gold
+    environment: dev-silver
     env:
       OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
       OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
