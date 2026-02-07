@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
 import { createLogger } from '../lib/logger';
+import { showErrorToast } from '../lib/error-toast';
 import { useAuth } from './useAuth';
 
 const logger = createLogger('useAutoSave');
@@ -165,6 +166,7 @@ export function useAutoSave(
     },
     onError: (error: unknown) => {
       logger.error('Draft delete failed', error);
+      showErrorToast(error, 'Draft could not be discarded.');
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
   });

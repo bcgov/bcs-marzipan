@@ -9,7 +9,14 @@ import {
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createLogger } from '../lib/logger';
-import { showErrorToast } from '../lib/error-toast';
+import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
+import {
+  RENDER_FORM_ERROR_TITLE,
+  ERROR_DETAILS_LABEL,
+  TRY_AGAIN_LABEL,
+  ACCESS_DENIED_TITLE,
+  ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
+} from '../lib/error-messages';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
@@ -363,8 +370,8 @@ export const CreateActivityForm: FC = () => {
   if (!canCreateActivity) {
     return (
       <StatusMessage
-        title="Access Denied"
-        message="You do not have permission to create activities. Please contact your administrator if you believe this is an error."
+        title={ACCESS_DENIED_TITLE}
+        message={ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE}
         variant="error"
       />
     );
@@ -398,27 +405,25 @@ export const CreateActivityForm: FC = () => {
     error: unknown;
     resetErrorBoundary: () => void;
   }) => {
-    const errorMessage =
-      error instanceof Error ? error.message : 'An unknown error occurred';
+    const friendlyMessage = getFriendlyErrorMessage(error);
+    const rawMessage = error instanceof Error ? error.message : String(error);
     return (
       <div className="mx-auto max-w-200 px-4 py-8" role="alert">
         <div className="mb-8">
           <h1 className="text-destructive mb-2 text-3xl font-bold">
-            Something went wrong
+            {RENDER_FORM_ERROR_TITLE}
           </h1>
-          <p className="text-muted-foreground mb-4">
-            An error occurred while rendering the form. Please try again.
-          </p>
+          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
           <details className="mb-4">
             <summary className="cursor-pointer text-sm font-medium">
-              Error details
+              {ERROR_DETAILS_LABEL}
             </summary>
             <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {errorMessage}
+              {rawMessage}
             </pre>
           </details>
           <Button onClick={resetErrorBoundary} variant="default">
-            Try again
+            {TRY_AGAIN_LABEL}
           </Button>
         </div>
       </div>

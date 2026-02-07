@@ -2,6 +2,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { StatusMessage } from './StatusMessage';
 import { Button } from './ui/button';
 import { createLogger } from '../lib/logger';
+import {
+  PAGE_NOT_FOUND_TITLE,
+  PAGE_NOT_FOUND_MESSAGE,
+} from '../lib/error-messages';
 
 const logger = createLogger('RouterErrorBoundary');
 
@@ -28,8 +32,8 @@ export function RouterErrorBoundary() {
   return (
     <div className="bg-background flex min-h-screen items-center justify-center">
       <StatusMessage
-        title="Page Not Found"
-        message={`The page you're looking for doesn't exist or has been moved. Please check the URL or return to the application.`}
+        title={PAGE_NOT_FOUND_TITLE}
+        message={PAGE_NOT_FOUND_MESSAGE}
         variant="error"
         action={
           <div className="flex gap-2">

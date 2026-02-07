@@ -3,6 +3,18 @@ import { StatusMessage } from './StatusMessage';
 import { Button } from './ui/button';
 import { createLogger } from '../lib/logger';
 import { ApiError } from '../api/errors';
+import { getFriendlyErrorMessage } from '../lib/error-toast';
+import {
+  DEFAULT_ERROR_TITLE,
+  ACCESS_DENIED_TITLE,
+  ACCESS_DENIED_MESSAGE,
+  NOT_FOUND_TITLE,
+  NOT_FOUND_MESSAGE,
+  SERVER_ERROR_TITLE,
+  SERVER_ERROR_MESSAGE,
+  ERROR_DETAILS_LABEL,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
 
 const logger = createLogger('GlobalErrorBoundary');
 
@@ -39,29 +51,24 @@ function GlobalErrorFallback({
   const correlationId =
     error instanceof ApiError ? error.correlationId : undefined;
 
-  // Determine error message based on error type
-  let title = 'Something went wrong';
-  let message = 'An unexpected error occurred. Please try again.';
+  // Determine title and message from error type; use centralized constants
+  let title = DEFAULT_ERROR_TITLE;
+  let message = getFriendlyErrorMessage(error);
   let showDetails = true;
 
   if (error instanceof ApiError) {
     if (error.status === 403) {
-      title = 'Access Denied';
-      message = 'You do not have permission to access this resource.';
+      title = ACCESS_DENIED_TITLE;
+      message = ACCESS_DENIED_MESSAGE;
       showDetails = false;
     } else if (error.status === 404) {
-      title = 'Not Found';
-      message = 'The requested resource could not be found.';
+      title = NOT_FOUND_TITLE;
+      message = NOT_FOUND_MESSAGE;
       showDetails = false;
     } else if (error.isServerError()) {
-      title = 'Server Error';
-      message =
-        'A server error occurred. Please try again later or contact support if the problem persists.';
-    } else {
-      message = error.detail || error.message;
+      title = SERVER_ERROR_TITLE;
+      message = SERVER_ERROR_MESSAGE;
     }
-  } else if (error instanceof Error) {
-    message = error.message || 'An unexpected error occurred.';
   }
 
   return (
@@ -72,7 +79,7 @@ function GlobalErrorFallback({
       action={
         <div className="flex gap-2">
           <Button onClick={resetErrorBoundary} variant="default">
-            Try again
+            {TRY_AGAIN_LABEL}
           </Button>
           <Button onClick={() => window.location.reload()} variant="outline">
             Reload page
@@ -83,7 +90,7 @@ function GlobalErrorFallback({
         showDetails ? (
           <details className="mt-4">
             <summary className="cursor-pointer text-sm font-medium">
-              Error details
+              {ERROR_DETAILS_LABEL}
             </summary>
             <div className="mt-2 space-y-2">
               <pre className="bg-muted overflow-auto rounded p-4 text-sm">

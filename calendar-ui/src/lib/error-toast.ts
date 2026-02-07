@@ -31,6 +31,42 @@ function getErrorTitle(status: number): string {
 }
 
 /**
+ * Get a user-friendly error message for inline display (e.g. in error states).
+ * Uses the same logic as showErrorToast so messaging is consistent.
+ * Does not include correlation ID; use for UI text only.
+ */
+export function getFriendlyErrorMessage(
+  error: unknown,
+  customMessage?: string
+): string {
+  if (error instanceof ApiError) {
+    if (customMessage) return customMessage;
+    if (error.status === 429) {
+      return 'Too many requests. Please wait a moment and try again.';
+    }
+    if (error.status >= 500) {
+      return 'Server error. Please try again later.';
+    }
+    return error.detail;
+  }
+  if (error instanceof NetworkError) {
+    return (
+      customMessage ||
+      'Unable to connect. Please check your connection and try again.'
+    );
+  }
+  if (error instanceof Error) {
+    return (
+      customMessage ||
+      error.message ||
+      'Something went wrong. Please try again.'
+    );
+  }
+  if (typeof error === 'string') return customMessage || error;
+  return 'Something went wrong. Please try again.';
+}
+
+/**
  * Show an error toast notification
  *
  * @param error - ApiError or NetworkError instance

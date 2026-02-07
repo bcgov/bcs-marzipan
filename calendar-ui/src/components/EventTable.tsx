@@ -18,7 +18,12 @@ import {
 import io from 'socket.io-client';
 
 import { createLogger } from '../lib/logger';
-import { showErrorToast } from '../lib/error-toast';
+import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
+import {
+  LOAD_ACTIVITIES_TITLE,
+  LOAD_ACTIVITIES_INVALID_RESPONSE,
+} from '../lib/error-messages';
+import { ErrorState } from './ErrorState';
 import {
   Calendar24Regular,
   CheckmarkCircle24Regular,
@@ -369,7 +374,7 @@ export const EventTable: React.FC<EventTableProps> = ({
       // Check if activities is an array
       if (!Array.isArray(activities)) {
         logger.error('Activities response is not an array');
-        setError('Invalid response format from server');
+        setError(LOAD_ACTIVITIES_INVALID_RESPONSE);
         setEventData([]);
         return;
       }
@@ -378,9 +383,7 @@ export const EventTable: React.FC<EventTableProps> = ({
       setEventData(mappedData);
     } catch (err) {
       logger.error('Error fetching activities', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch activities'
-      );
+      setError(getFriendlyErrorMessage(err));
       setEventData([]); // Set to empty array on error
       showErrorToast(err);
     } finally {
@@ -937,17 +940,14 @@ export const EventTable: React.FC<EventTableProps> = ({
         </div>
       )}
       {error && (
-        <div
-          style={{
-            padding: 32,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'red',
+        <ErrorState
+          title={LOAD_ACTIVITIES_TITLE}
+          message={error}
+          onRetry={() => {
+            setError(null);
+            void loadActivities();
           }}
-        >
-          Error: {error}
-        </div>
+        />
       )}
       {!isLoading && !error && (
         <>
