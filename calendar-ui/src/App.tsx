@@ -23,7 +23,7 @@ function App() {
     <AuthProvider>
       <FluentProvider theme={webLightTheme}>
         <GlobalErrorBoundary>
-          <Toaster position="top-end" />
+          <Toaster position="top-right" />
           <Routes>
             {/* Public route - Login */}
             <Route path="/login" element={<Login />} />
@@ -73,9 +73,7 @@ function App() {
               <Route
                 path="reports/look-ahead"
                 element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.REPORTS.VIEW}
-                  >
+                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
                     <LookAheadReport />
                   </ProtectedRoute>
                 }
