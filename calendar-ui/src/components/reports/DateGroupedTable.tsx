@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import { sortLookAheadActivities } from '@/lib/look-ahead-sort';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -41,11 +42,7 @@ export function DateGroupedTable({
   activities,
   className,
 }: DateGroupedTableProps) {
-  const sorted = [...activities].sort((a, b) => {
-    const da = a.startDate ? new Date(a.startDate).getTime() : 0;
-    const db = b.startDate ? new Date(b.startDate).getTime() : 0;
-    return db - da;
-  });
+  const sorted = sortLookAheadActivities(activities);
 
   let lastDateKey: string | null = null;
 

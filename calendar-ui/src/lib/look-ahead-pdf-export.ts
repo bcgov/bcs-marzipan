@@ -7,6 +7,7 @@
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import type { LookAheadResponse } from '../api/reportsApi';
+import { sortLookAheadActivities } from './look-ahead-sort';
 
 const MARGIN = 20;
 const ROW_HEIGHT = 5;
@@ -150,11 +151,7 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
 
     doc.setFont('helvetica', 'normal');
 
-    const sorted = [...section.activities].sort((a, b) => {
-      const da = a.startDate ? new Date(a.startDate).getTime() : 0;
-      const db = b.startDate ? new Date(b.startDate).getTime() : 0;
-      return db - da;
-    });
+    const sorted = sortLookAheadActivities(section.activities);
 
     let lastDateKey: string | null = null;
 
