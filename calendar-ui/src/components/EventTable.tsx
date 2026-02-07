@@ -39,10 +39,12 @@ import {
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PERMISSIONS } from '@corpcal/shared';
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UserLookupItem } from '@corpcal/shared/api/types';
+import { useAuth } from '../hooks/useAuth';
 
 const useStyles = makeStyles({
   statusBadge: {
@@ -328,6 +330,8 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pageIndex, setPageIndex] = useState(0);
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -1018,10 +1022,21 @@ export const EventTable: React.FC<EventTableProps> = ({
                       key={row.id}
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
-                        // Navigate to the edit view for the selected activity
-                        void navigate(
-                          `/activities/${row.original.activityId}/edit`
-                        );
+                        if (canEditActivity) {
+                          void navigate(
+                            `/activities/${row.original.activityId}/edit`
+                          );
+                        } else {
+                          dispatchToast(
+                            <Toast>
+                              <ToastTitle>View only</ToastTitle>
+                              <ToastBody>
+                                You have view-only access to activities.
+                              </ToastBody>
+                            </Toast>,
+                            { intent: 'info', timeout: 3000 }
+                          );
+                        }
                       }}
                     >
                       {row.getVisibleCells().map((cell) => (
