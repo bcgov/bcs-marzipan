@@ -23,7 +23,6 @@ interface AllTheProvidersProps {
 }
 
 // This is a test utility file, so mixed exports are acceptable
-// eslint-disable-next-line react-refresh/only-export-components
 function AllTheProviders({ children, form }: AllTheProvidersProps) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -76,7 +75,6 @@ export function renderWithProviders(
   return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export * from '@testing-library/react';
 export { renderWithProviders as render };
 

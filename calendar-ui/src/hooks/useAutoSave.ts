@@ -33,37 +33,6 @@ export interface UseAutoSaveOptions {
  * @param formData - Current form data to autosave
  * @param entityId - Optional entity ID if editing existing item
  * @param options - Configuration options
- *
- * @example
- * ```tsx
- * function CreateActivityForm() {
- *   const [formData, setFormData] = useState({});
- *   const { existingDraft, isSaving, lastSaved, isUserAuthenticated } = useAutoSave(
- *     'activity',
- *     formData,
- *     undefined, // entityId (null for new)
- *     {
- *       debounceMs: 3000,
- *       onSaveSuccess: () => toast.success('Draft saved'),
- *     }
- *   );
- *
- *   // Load draft on mount
- *   useEffect(() => {
- *     if (existingDraft?.draftData) {
- *       setFormData(existingDraft.draftData);
- *     }
- *   }, [existingDraft]);
- *
- *   return (
- *     <form>
- *       {!isUserAuthenticated && <span>Sign in to enable draft saving</span>}
- *       {isSaving && <span>Saving...</span>}
- *       {lastSaved && <span>Last saved: {lastSaved.toLocaleTimeString()}</span>}
- *     </form>
- *   );
- * }
- * ```
  */
 export function useAutoSave(
   formType: string,
