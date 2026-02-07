@@ -10,11 +10,11 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PERMISSIONS } from '@corpcal/shared';
 
 import { CalendarEntriesList } from './pages/CalendarEntriesList';
-import { EntryDetails } from './pages/EntryDetails';
 import { Dashboard } from './pages/Dashboard';
 import './styles/App.css';
 import DraftsPage from './pages/Drafts';
 import { CreateActivityForm } from './pages/CreateActivityForm';
+import EditActivityForm from './pages/EditActivityForm';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 
@@ -40,11 +40,27 @@ function App() {
             <Route path="/drafts" element={<DraftsPage />} />
             {/* <Route path="/calendar" element={<CalendarCardView />} /> Card view, need to be removed. Maybe kept for mobile view */}
             {/* <Route path="/pitch" element={<PitchSubmissionsPage />} /> */}
-            <Route path="/create-activity" element={<CreateActivityForm />} />
+            <Route
+              path="/create-activity"
+              element={
+                <ProtectedRoute
+                  requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
+                >
+                  <CreateActivityForm />
+                </ProtectedRoute>
+              }
+            />
             {/* merge with Wizard */}
-
-            <Route path="/details" element={<EntryDetails />} />
-            {/* Add more routes here */}
+            <Route
+              path="/activities/:id/edit"
+              element={
+                <ProtectedRoute
+                  requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                >
+                  <EditActivityForm />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/settings"
               element={
