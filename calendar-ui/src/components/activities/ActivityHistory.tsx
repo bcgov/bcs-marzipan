@@ -3,6 +3,8 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import { timeAgoShort } from '@/lib/utils';
+import { createLogger } from '../../lib/logger';
+import { showErrorToast } from '../../lib/error-toast';
 
 type HistoryEntry = {
   id: number;
@@ -47,6 +49,8 @@ function getActionText(actionType: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+const logger = createLogger('ActivityHistory');
+
 export default function ActivityHistory({
   activityId,
   open,
@@ -58,18 +62,22 @@ export default function ActivityHistory({
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       if (!open) return;
       setLoading(true);
+      setLoadError(false);
       try {
         const data = await fetchActivityHistory(activityId);
         if (!mounted) return;
         setEntries(data || []);
       } catch (err) {
-        console.error('Failed to load activity history', err);
+        logger.error('Failed to load activity history', err);
+        if (mounted) setLoadError(true);
+        showErrorToast(err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -148,6 +156,8 @@ export default function ActivityHistory({
           <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
             {loading ? (
               <div>Loading history...</div>
+            ) : loadError ? (
+              <div className="text-destructive">Could not load history.</div>
             ) : entries.length === 0 ? (
               <div>No history found.</div>
             ) : (

@@ -239,8 +239,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'create: skipping malformed reportSettings entry',
               setting
             );
@@ -756,8 +755,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'update: skipping malformed reportSettings entry',
               setting
             );

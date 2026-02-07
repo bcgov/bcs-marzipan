@@ -17,6 +17,8 @@ import {
 } from '@fluentui/react-components';
 import io from 'socket.io-client';
 
+import { createLogger } from '../lib/logger';
+import { showErrorToast } from '../lib/error-toast';
 import {
   Calendar24Regular,
   CheckmarkCircle24Regular,
@@ -323,6 +325,8 @@ interface EventTableProps {
   globalFilterString: string;
 }
 
+const logger = createLogger('EventTable');
+
 export const EventTable: React.FC<EventTableProps> = ({
   filters,
   globalFilterString,
@@ -364,7 +368,7 @@ export const EventTable: React.FC<EventTableProps> = ({
 
       // Check if activities is an array
       if (!Array.isArray(activities)) {
-        console.error('Activities response is not an array:', activities);
+        logger.error('Activities response is not an array');
         setError('Invalid response format from server');
         setEventData([]);
         return;
@@ -373,11 +377,12 @@ export const EventTable: React.FC<EventTableProps> = ({
       const mappedData = activities.map(mapActivityToEventRow);
       setEventData(mappedData);
     } catch (err) {
-      console.error('Error fetching activities:', err);
+      logger.error('Error fetching activities', err);
       setError(
         err instanceof Error ? err.message : 'Failed to fetch activities'
       );
       setEventData([]); // Set to empty array on error
+      showErrorToast(err);
     } finally {
       setIsLoading(false);
     }
@@ -393,19 +398,15 @@ export const EventTable: React.FC<EventTableProps> = ({
     const socket = io(apiUrl);
 
     socket.on('connect', () => {
-      console.log('EventTable WebSocket connected:', socket.id);
-      // Subscribe to activity table updates
       socket.emit('subscribeToActivities');
     });
 
     socket.on('connect_error', (error) => {
-      console.error('EventTable WebSocket connection error:', error);
+      logger.error('WebSocket connection error', error);
     });
 
     // Listen for new activity created
     socket.on('activityCreated', async (data) => {
-      console.log('Activity created:', data);
-
       // Refresh the table data
       await loadActivities();
 
@@ -423,8 +424,6 @@ export const EventTable: React.FC<EventTableProps> = ({
 
     // Listen for activity updated
     socket.on('activityUpdated', async (data) => {
-      console.log('Activity updated:', data);
-
       // Refresh the table data
       await loadActivities();
 

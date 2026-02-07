@@ -8,6 +8,7 @@ import {
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 import { createLogger } from '../lib/logger';
+import { showErrorToast } from '../lib/error-toast';
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -157,9 +158,8 @@ export default function EditActivityForm(): React.ReactElement {
           if (typeof reportId === 'number') {
             normalized.push({ reportId, omitted });
           } else {
-            console.warn(
-              'Skipping invalid reportSettings entry (missing numeric reportId):',
-              it
+            logger.warn(
+              'Skipping invalid reportSettings entry (missing numeric reportId)'
             );
           }
         }
@@ -212,22 +212,14 @@ export default function EditActivityForm(): React.ReactElement {
       void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
-      alert('Failed to save activity. Please try again.');
+      showErrorToast(err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onError = (errors: any) => {
-    console.error('Form validation errors:', errors);
-    console.error('Form values:', form.getValues());
-    const keys = Object.keys(errors || {});
-    if (keys.length > 0) {
-      const friendly = keys.map(
-        (k) => `${k}: ${errors[k]?.message || JSON.stringify(errors[k])}`
-      );
-      console.error('Validation summary:', friendly);
-    }
+  const onError = () => {
+    logger.error('Form validation failed');
   };
 
   const formatActivityStatus = (s: unknown) => {

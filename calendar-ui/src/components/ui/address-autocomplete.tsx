@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('AddressAutocomplete');
 
 export interface AddressData {
   street: string;
@@ -98,7 +101,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(true);
       setSelectedIndex(-1);
     } catch (err) {
-      console.error('Address search error:', err);
+      logger.error('Address search error', err);
       setError('Failed to search addresses');
       setSuggestions([]);
     } finally {
@@ -146,7 +149,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(false);
       setSuggestions([]);
     } catch (err) {
-      console.error('Address retrieve error:', err);
+      logger.error('Address retrieve error', err);
       setError('Failed to retrieve address details');
     } finally {
       setIsLoading(false);

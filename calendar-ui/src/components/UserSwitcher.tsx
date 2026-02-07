@@ -18,6 +18,9 @@ import {
 } from './ui/select';
 import { Badge } from './ui/badge';
 import { Users, Loader2 } from 'lucide-react';
+import { createLogger } from '../lib/logger';
+
+const logger = createLogger('UserSwitcher');
 
 /**
  * Mock users from seed data, one representative per role
@@ -79,7 +82,7 @@ export function UserSwitcher() {
     try {
       await login(username, 'dev'); // Password doesn't matter in mock mode
     } catch (error) {
-      console.error('Failed to switch user:', error);
+      logger.error('Failed to switch user', error);
     } finally {
       setIsSwitching(false);
     }
