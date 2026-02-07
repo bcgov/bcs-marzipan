@@ -8,6 +8,8 @@ import {
 } from '@corpcal/shared/schemas';
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import { PERMISSIONS } from '@corpcal/shared/auth';
+import { createLogger } from '../lib/logger';
+import { showErrorToast } from '../lib/error-toast';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
@@ -77,6 +79,8 @@ const DEFAULT_FORM_VALUES = getDefaultFormValues();
 
 // Key used to store draft dialog session state in sessionStorage
 const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
+
+const logger = createLogger('CreateActivityForm');
 
 export const CreateActivityForm: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -187,6 +191,10 @@ export const CreateActivityForm: FC = () => {
     {
       debounceMs: 3000, // Save 3 seconds after user stops typing
       enabled: !isSubmitting, // Disable during submission
+      onSaveError: (err) => {
+        logger.error('Draft save failed', err);
+        showErrorToast(err, 'Draft could not be saved.');
+      },
     },
     DEFAULT_FORM_VALUES
   );
@@ -244,7 +252,7 @@ export const CreateActivityForm: FC = () => {
       try {
         deleteDraft();
       } catch (e) {
-        console.warn('Error deleting draft on cancel:', e);
+        logger.warn('Error deleting draft on cancel', e);
       }
     }
 
@@ -254,7 +262,6 @@ export const CreateActivityForm: FC = () => {
   };
 
   const onSubmit = async (data: FormData) => {
-    console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
       // Prepare submit data with junction table arrays
@@ -294,7 +301,6 @@ export const CreateActivityForm: FC = () => {
             : undefined,
       };
 
-      console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
 
       // Delete draft after successful creation
@@ -305,16 +311,15 @@ export const CreateActivityForm: FC = () => {
       // Close the window after successful creation
       window.close();
     } catch (error) {
-      console.error('Failed to create activity:', error);
-      alert('Failed to create activity. Please try again.');
+      logger.error('Failed to create activity', error);
+      showErrorToast(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onError = (errors: any) => {
-    console.error('Form validation errors:', errors);
-    console.error('Form values:', form.getValues());
+  const onError = () => {
+    logger.error('Form validation failed');
   };
 
   // Map field names to user-friendly labels
@@ -378,7 +383,7 @@ export const CreateActivityForm: FC = () => {
 
   // Show error state if lookups failed (but still allow form to be used with empty dropdowns)
   if (lookups.hasError) {
-    console.warn(
+    logger.warn(
       'Failed to load some lookup data. Form may have empty dropdowns.'
     );
   }
@@ -466,7 +471,6 @@ export const CreateActivityForm: FC = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                console.log('Form submit event triggered');
                 void form.handleSubmit(onSubmit, onError)(e);
               }}
             >

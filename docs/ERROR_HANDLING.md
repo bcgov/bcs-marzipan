@@ -8,6 +8,114 @@ This document describes how errors are handled across the application: where the
 - **Frontend**: API errors are parsed into typed `ApiError` instances. React error boundaries catch render errors; toasts and inline messages handle user-facing errors.
 - **Database**: PostgreSQL errors are mapped to HTTP status codes and safe messages; raw SQL/stack details are not exposed in production.
 
+### Error format and schema
+
+**Backend response (RFC 7807 Problem Details)**
+
+All error responses from the API use the same JSON shape (see `calendar-service/src/common/filters/http-exception.filter.ts`):
+
+- **Required fields**: `type` (URI), `title`, `status` (HTTP status code), `detail`, `instance` (request path), `correlationId`
+- **Optional**: `errors` (array of `{ path, message, code? }` for validation failures), `timestamp` (ISO string), `stack` (included in non-production only)
+
+Content-Type is `application/problem+json`.
+
+Example -- standard error (e.g. 404 Not Found):
+
+```json
+{
+  "type": "https://api.example.com/errors/not-found",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "Activity with id 'abc-123' not found",
+  "instance": "/api/activities/abc-123",
+  "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479", // example v4 uuid
+  "timestamp": "2025-06-15T14:30:00.000Z"
+}
+```
+
+Example -- validation error (400 with field errors):
+
+```json
+{
+  "type": "https://api.example.com/errors/validation",
+  "title": "Validation Failed",
+  "status": 400,
+  "detail": "One or more validation errors occurred",
+  "instance": "/api/activities",
+  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", // example v4 uuid
+  "errors": [
+    { "path": "title", "message": "Title is required", "code": "too_small" },
+    {
+      "path": "startDate",
+      "message": "Start date must be in the future",
+      "code": "invalid_date"
+    }
+  ],
+  "timestamp": "2025-06-15T14:30:00.000Z"
+}
+```
+
+**Frontend types** (`calendar-ui/src/api/errors.ts`)
+
+- **ProblemDetails**: Interface matching the backend response.
+- **ApiError**: Extends `Error`; exposes `status`, `type`, `detail`, `correlationId`, `instance`, `errors?`, `timestamp?`. Use helper methods:
+  - `isValidationError()` – 400/422 with field `errors`; use for form inline errors.
+  - `isClientError()` – status 4xx.
+  - `isServerError()` – status 5xx.
+  - `isRetryable()` – 5xx, 408, or 429; use to decide retry or messaging.
+- **NetworkError**: No response from server (e.g. connection failed); has optional `correlationId`.
+- **createApiError(error)**: Normalizes axios or unknown errors into `ApiError` or `NetworkError`.
+
+Example -- handling a mutation error with toast and inline validation:
+
+```typescript
+import { createApiError, ApiError, NetworkError } from '@/api/errors';
+import { showErrorToast } from '@/lib/error-toast';
+
+// In a React Query mutation's onError callback:
+onError: (error) => {
+  const apiError = createApiError(error);
+
+  if (apiError instanceof NetworkError) {
+    showErrorToast(apiError);
+    return;
+  }
+
+  // Map validation field errors to the form
+  if (apiError instanceof ApiError && apiError.isValidationError()) {
+    apiError.errors?.forEach(({ path, message }) => {
+      form.setError(path, { message });
+    });
+    return;
+  }
+
+  // Everything else (409 conflict, 5xx, etc.) -- show a toast
+  showErrorToast(apiError);
+};
+```
+
+Example -- deciding whether to retry based on error type:
+
+```typescript
+import { createApiError, ApiError } from '@/api/errors';
+
+try {
+  await saveActivity(payload);
+} catch (error) {
+  const apiError = createApiError(error);
+
+  if (apiError instanceof ApiError) {
+    if (apiError.isRetryable()) {
+      // 5xx, 408, or 429 -- safe to retry
+      enqueueRetry(payload);
+    } else if (apiError.isClientError()) {
+      // 4xx -- do not retry; fix the request
+      showErrorToast(apiError);
+    }
+  }
+}
+```
+
 ## Backend (calendar-service)
 
 ### Global handling
@@ -86,6 +194,31 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 3. **New page or flow**: Wrap the route or section in `ErrorBoundary` if you want a dedicated fallback instead of the global one.
 4. **Toast on error**: Call `showErrorToast(error)` from `lib/error-toast.ts` (e.g. in mutation `onError`). Optionally pass a custom message as the second argument.
 
+## Logging
+
+### Frontend (calendar-ui)
+
+- **Logger**: Use `createLogger(context?)` from `calendar-ui/src/lib/logger.ts`. Creates a logger with optional context (e.g. component or module name) for log output.
+- **Methods**: `debug(message, ...args)`, `info(message, ...args)`, `warn(message, ...args)`, `error(message, error?, ...args)`. Use these for all application logging; avoid raw `console.*` in app code.
+- **Configuration**: See [LOG_LEVEL and environment variables](#log_level-and-environment-variables) below.
+
+### Backend (calendar-service)
+
+- **Logger**: Use NestJS `Logger(ClassName.name)` or inject **AppLogger** from `calendar-service/src/common/logger/logger.service.ts`. Controllers and services should use a logger instance for consistent formatting.
+- **AppLogger**: Wraps NestJS Logger; supports optional `correlationId` on log methods so request-scoped logs can be traced. Use in controllers/filters when the request correlation ID is available.
+
+### LOG_LEVEL and environment variables
+
+**Frontend**
+
+- **VITE_LOG_LEVEL**: One of `DEBUG` | `INFO` | `WARN` | `ERROR` | `NONE`. Used in `calendar-ui/src/lib/logger.ts` in `loadConfig()`. Default: **production** `WARN`, **development** `DEBUG`. Set in `.env` or `.env.local` (e.g. `VITE_LOG_LEVEL=DEBUG`).
+- **VITE_LOG_TIMESTAMP**: Set to `'false'` to disable timestamps in log output. Default: on.
+- **VITE_LOG_CONTEXT**: Set to `'false'` to disable context (e.g. component name) in log output. Default: on.
+
+**Backend**
+
+- There is no `LOG_LEVEL` environment variable today. `AppLogger.debug` and `verbose` are only output when `NODE_ENV !== 'production'`. A configurable log level via env is an optional future improvement.
+
 ### Do not
 
 - Expose stack traces or raw SQL messages to the client in production.
@@ -103,8 +236,8 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 
 ## Key files
 
-| Area       | File(s)                                                                                                                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend    | `calendar-service/src/common/filters/http-exception.filter.ts`, `database-error.mapper.ts`, `common/middleware/correlation-id.middleware.ts` |
-| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `components/GlobalErrorBoundary.tsx`                                  |
-| Validation | `calendar-service/src/common/pipes/zod-validation.pipe.ts` (backend); form schemas and `FormMessage` (UI)                                    |
+| Area       | File(s)                                                                                                                                                                                                                                |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend    | `calendar-service/src/common/filters/http-exception.filter.ts`, `database-error.mapper.ts`, `common/middleware/correlation-id.middleware.ts`, `calendar-service/src/common/logger/logger.service.ts`, `common/logger/logger.module.ts` |
+| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `lib/logger.ts`, `components/GlobalErrorBoundary.tsx`                                                                                                           |
+| Validation | `calendar-service/src/common/pipes/zod-validation.pipe.ts` (backend); form schemas and `FormMessage` (UI)                                                                                                                              |
