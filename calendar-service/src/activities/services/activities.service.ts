@@ -644,8 +644,8 @@ export class ActivitiesService {
         this.logger.debug(
           `update() id=${id} updatedActivity=${JSON.stringify(updatedActivity)}`
         );
-      } catch (err) {
-        // ignore
+      } catch {
+        // ignore debug log failure
       }
 
       // Handle venue address update
@@ -910,8 +910,8 @@ export class ActivitiesService {
     // Debug: log detected changes
     try {
       this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
-    } catch (err) {
-      // ignore
+    } catch {
+      // ignore debug log failure
     }
 
     // Record activity update in history

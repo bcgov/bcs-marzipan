@@ -67,21 +67,21 @@ export const wait = (ms: number): Promise<void> => {
  */
 export const createMockDatabaseService = () => ({
   db: {
-    select: vi.fn()().mockReturnThis(),
-    from: vi.fn()().mockReturnThis(),
-    where: vi.fn()().mockReturnThis(),
-    leftJoin: vi.fn()().mockReturnThis(),
-    innerJoin: vi.fn()().mockReturnThis(),
-    insert: vi.fn()().mockReturnThis(),
-    values: vi.fn()().mockReturnThis(),
-    returning: vi.fn()().mockReturnThis(),
-    update: vi.fn()().mockReturnThis(),
-    set: vi.fn()().mockReturnThis(),
-    delete: vi.fn()().mockReturnThis(),
-    groupBy: vi.fn()().mockReturnThis(),
-    orderBy: vi.fn()().mockReturnThis(),
-    limit: vi.fn()().mockReturnThis(),
-    offset: vi.fn()().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    values: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    groupBy: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    offset: vi.fn().mockReturnThis(),
   },
 });
 
@@ -90,9 +90,9 @@ export const createMockDatabaseService = () => ({
  * Provides mocks for WebSocket notification methods
  */
 export const createMockActivitiesGateway = () => ({
-  notifyActivityUpdate: vi.fn()(),
+  notifyActivityUpdate: vi.fn(),
   server: {
-    to: vi.fn()().mockReturnThis(),
-    emit: vi.fn()(),
+    to: vi.fn().mockReturnThis(),
+    emit: vi.fn(),
   },
 });
