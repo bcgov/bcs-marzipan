@@ -17,60 +17,67 @@ import { CreateActivityForm } from './pages/CreateActivityForm';
 import EditActivityForm from './pages/EditActivityForm';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
+import { NotFound } from './pages/NotFound';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 
 function App() {
   return (
     <AuthProvider>
       <FluentProvider theme={webLightTheme}>
-        <Toaster position="top-end" />
-        <Routes>
-          {/* Public route - Login */}
-          <Route path="/login" element={<Login />} />
+        <GlobalErrorBoundary>
+          <Toaster position="top-end" />
+          <Routes>
+            {/* Public route - Login */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Protected routes - require authentication */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/" element={<CalendarEntriesList />} />
-            <Route path="/drafts" element={<DraftsPage />} />
-            {/* <Route path="/calendar" element={<CalendarCardView />} /> Card view, need to be removed. Maybe kept for mobile view */}
-            {/* <Route path="/pitch" element={<PitchSubmissionsPage />} /> */}
+            {/* Protected routes - require authentication */}
             <Route
-              path="/create-activity"
+              path="/"
               element={
-                <ProtectedRoute
-                  requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
-                >
-                  <CreateActivityForm />
+                <ProtectedRoute>
+                  <Layout />
                 </ProtectedRoute>
               }
-            />
-            {/* merge with Wizard */}
-            <Route
-              path="/activities/:id/edit"
-              element={
-                <ProtectedRoute
-                  requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
-                >
-                  <EditActivityForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute requiredPermission={PERMISSIONS.SETTINGS.VIEW}>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
-        </Routes>
+            >
+              <Route index element={<CalendarEntriesList />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="drafts" element={<DraftsPage />} />
+              <Route
+                path="create-activity"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
+                  >
+                    <CreateActivityForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="activities/:id/edit"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                  >
+                    <EditActivityForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.SETTINGS.VIEW}
+                  >
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+
+            {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </GlobalErrorBoundary>
       </FluentProvider>
     </AuthProvider>
   );
