@@ -273,12 +273,12 @@ export function useAutoSave(
       clearTimeout(timeoutRef.current);
     }
     saveDraftMutation();
-  }, [saveDraftMutation, formType, entityId]);
+  }, [saveDraftMutation]);
 
   // Delete draft function
   const deleteDraft = useCallback(() => {
     deleteDraftMutation();
-  }, [deleteDraftMutation, formType, entityId]);
+  }, [deleteDraftMutation]);
 
   // Clear draft and reset state
   const clearDraft = useCallback(() => {

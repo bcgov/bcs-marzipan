@@ -1,40 +1,19 @@
 /**
- * Authentication Context
+ * Authentication Provider
  * Manages auth state with httpOnly cookie-based JWT authentication.
  * Token is stored in httpOnly cookie by backend, not accessible to JavaScript.
  */
-import {
-  createContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from 'react';
-import type { AuthUser } from '@corpcal/shared';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import * as authApi from '../api/authApi';
-
-export interface AuthContextType {
-  user: AuthUser | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (username: string, password?: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-  hasPermission: (permissionKey: string) => boolean;
-  hasAnyPermission: (...permissionKeys: string[]) => boolean;
-  hasAllPermissions: (...permissionKeys: string[]) => boolean;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+import { AuthContext } from './AuthContext.context';
+import type { AuthContextType } from './AuthContext.context';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthContextType['user']>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   /**
