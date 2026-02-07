@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { Button } from './ui/button';
+import { ERROR_DETAILS_LABEL, TRY_AGAIN_LABEL } from '../lib/error-messages';
 
 interface StatusMessageProps {
   title: string;
@@ -52,14 +53,16 @@ interface ErrorDetailsProps {
 }
 
 /**
- * Error details component for displaying error information with optional retry.
+ * Error details component for displaying technical error information with optional retry.
+ * The primary user-visible message should come from the parent (e.g. getFriendlyErrorMessage(error));
+ * this component is for the expandable technical details (error.message) and optional retry action.
  */
 export function ErrorDetails({ error, onRetry }: ErrorDetailsProps) {
   return (
     <>
       <details className="mb-4">
         <summary className="cursor-pointer text-sm font-medium">
-          Error details
+          {ERROR_DETAILS_LABEL}
         </summary>
         <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
           {error.message}
@@ -67,7 +70,7 @@ export function ErrorDetails({ error, onRetry }: ErrorDetailsProps) {
       </details>
       {onRetry && (
         <Button onClick={onRetry} variant="default">
-          Try again
+          {TRY_AGAIN_LABEL}
         </Button>
       )}
     </>

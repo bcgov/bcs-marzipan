@@ -166,6 +166,84 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 - **Toasts**: For transient issues (e.g. network, 409, 429), use **showErrorToast** from `lib/error-toast.ts` with the toast controller. Use for mutations or actions where a full-page error is not needed.
 - **Full page**: For 403, 404, or 5xx, use the existing **StatusMessage**-based UI or let the error boundary handle it.
 
+For a consistent, user-friendly experience across the app, follow the **UI error presentation strategy** below (centralized messages, friendly text only, reusable components).
+
+### UI error presentation strategy
+
+We avoid showing raw `error.message` or API response text to users. Instead we use a single source of truth for copy, a shared helper for friendly messages, and a reusable inline error component.
+
+**Summary**
+
+1. **Centralized copy**: All user-facing error titles, messages, and button labels live in `calendar-ui/src/lib/error-messages.ts`. Use these constants everywhere so wording stays consistent and can be updated (or localized) in one place.
+2. **Friendly message helper**: For any caught error (API, network, or generic), call **getFriendlyErrorMessage(error)** from `lib/error-toast.ts` to get a safe, user-oriented string. Use this for the primary message shown in the UI; do not show `error.message` or `response.data.message` directly unless inside an expandable "Error details" section for support.
+3. **Reusable inline error UI**: For section- or full-page error states (e.g. "Unable to load activities"), use the **ErrorState** component with a title from `error-messages`, the message from `getFriendlyErrorMessage(error)` (or a context constant), and an optional retry action.
+4. **Error boundaries**: Global and form-level error fallbacks use the same constants and `getFriendlyErrorMessage(normalizeError(rawError))` for the main message; they keep an expandable "Error details" block with raw `error.message` (and stack in dev) for support and debugging.
+
+**Components and modules**
+
+| Item                           | Purpose                                                                                                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lib/error-messages.ts`        | Constants for all user-facing error copy (titles, messages, CTA labels). Add new constants here when you introduce a new error context.                                              |
+| `lib/error-toast.ts`           | **getFriendlyErrorMessage(error, customMessage?)** – returns a safe string for display. **showErrorToast(error, customMessage?)** – shows a toast (use for transient errors).        |
+| `components/ErrorState.tsx`    | Presentational component: title, message, optional retry button and extra action. Use for inline/section error blocks (e.g. load failure with "Try again").                          |
+| `components/StatusMessage.tsx` | Full-page status layout (title, message, action, details). Used by GlobalErrorBoundary and RouterErrorBoundary; **ErrorDetails** is for the expandable technical-details block only. |
+
+**Implementation example**
+
+Example: a component that loads data and shows an error state with retry.
+
+```typescript
+import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../lib/error-toast';
+import { LOAD_ACTIVITY_TITLE } from '../lib/error-messages';
+import { ErrorState } from '../components/ErrorState';
+
+function MyActivityLoader() {
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setError(null);
+    try {
+      await fetchActivity(id);
+      // ...
+    } catch (err) {
+      logger.error('Failed to load activity', err);
+      setError(getFriendlyErrorMessage(err));  // friendly text only
+      showErrorToast(err);                     // optional: toast as well
+    }
+  };
+
+  if (error) {
+    return (
+      <ErrorState
+        title={LOAD_ACTIVITY_TITLE}
+        message={error}
+        onRetry={() => load()}
+      />
+    );
+  }
+  // ...
+}
+```
+
+- **Title**: Use a constant from `error-messages.ts` (e.g. `LOAD_ACTIVITY_TITLE`, `LOAD_ACTIVITIES_TITLE`).
+- **Message**: Use the string you stored from `getFriendlyErrorMessage(err)` in your catch block (or a context-specific constant when there is no thrown error, e.g. invalid response shape).
+- **Retry**: Pass `onRetry` and optionally `retryLabel`; use the `action` prop for extra buttons (e.g. "Back").
+
+For error boundaries (e.g. form render failure), use `getFriendlyErrorMessage(error)` for the main paragraph and constants for the title and "Error details" label; keep the expandable `<details>` content as raw `error.message` (and stack in dev) for support.
+
+**When to add new constants**
+
+- Add a new constant in `error-messages.ts` when you have a new user-facing error context (e.g. a new screen or flow with its own load/error state). Use a descriptive name (e.g. `LOAD_REPORTS_TITLE`, `SAVE_DRAFT_FAILED`).
+- Reuse generic constants (`DEFAULT_ERROR_TITLE`, `TRY_AGAIN_LABEL`, `ERROR_DETAILS_LABEL`) where they fit.
+
+**Extensibility (i18n)**
+
+- All user-facing strings are centralized in `error-messages.ts`. To add i18n later, you can:
+  - Replace constant exports with functions that take a locale or use a translation hook, e.g. `export const LOAD_ACTIVITY_TITLE = () => t('errors.loadActivity.title');`, or
+  - Keep the constants as default/fallback and resolve translations in a thin layer (e.g. `getErrorMessages(locale)` that returns the same keys with translated values).
+- **getFriendlyErrorMessage** can stay as-is; only the fallback strings inside it (and in toasts) would need to go through the same i18n layer. New error types can be handled in this helper without changing every component.
+
 ### React Query
 
 - **Queries**: Default retry logic does not retry on 4xx; it retries on 5xx/network with backoff. Errors are logged with correlation ID where available.
@@ -189,10 +267,11 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 
 ### Frontend
 
-1. **New API call**: Use the shared axios instance; errors will be turned into `ApiError` / `NetworkError`. In catch blocks, use `createApiError(error)` if you need a normalized type.
+1. **New API call**: Use the shared axios instance; errors will be turned into `ApiError` / `NetworkError`. In catch blocks, use `createApiError(error)` if you need a normalized type. For user-facing messages, set state (or display) using **getFriendlyErrorMessage(error)** and use constants from **error-messages.ts** for titles/labels.
 2. **New form**: Use react-hook-form + Zod; on submit error, if the server returns 400 with `errors[]`, map them to form fields and use `FormMessage` for inline errors.
-3. **New page or flow**: Wrap the route or section in `ErrorBoundary` if you want a dedicated fallback instead of the global one.
+3. **New page or flow**: Wrap the route or section in `ErrorBoundary` if you want a dedicated fallback instead of the global one. In fallbacks, use **getFriendlyErrorMessage(normalizeError(rawError))** for the main message and constants for title / "Error details" / "Try again".
 4. **Toast on error**: Call `showErrorToast(error)` from `lib/error-toast.ts` (e.g. in mutation `onError`). Optionally pass a custom message as the second argument.
+5. **New inline error state**: Use the **ErrorState** component with a title from `error-messages.ts`, message from `getFriendlyErrorMessage(err)` (or a new constant), and `onRetry` / `action` as needed. Add a new constant in `error-messages.ts` for the new context (e.g. `LOAD_REPORTS_TITLE`).
 
 ## Logging
 
@@ -239,5 +318,5 @@ PostgreSQL errors are mapped in **database-error.mapper.ts**. Known SQLSTATE cod
 | Area       | File(s)                                                                                                                                                                                                                                |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend    | `calendar-service/src/common/filters/http-exception.filter.ts`, `database-error.mapper.ts`, `common/middleware/correlation-id.middleware.ts`, `calendar-service/src/common/logger/logger.service.ts`, `common/logger/logger.module.ts` |
-| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `lib/logger.ts`, `components/GlobalErrorBoundary.tsx`                                                                                                           |
+| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `lib/error-messages.ts`, `lib/logger.ts`, `components/GlobalErrorBoundary.tsx`, `components/ErrorState.tsx`, `components/StatusMessage.tsx`                     |
 | Validation | `calendar-service/src/common/pipes/zod-validation.pipe.ts` (backend); form schemas and `FormMessage` (UI)                                                                                                                              |
