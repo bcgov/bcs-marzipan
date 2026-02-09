@@ -105,7 +105,9 @@ type EventRow = {
   dateCreated: string;
   dateModified: Date | undefined;
   summary: string | undefined;
-  representatives: string[] | undefined;
+  representatives:
+    | Array<{ representative: string; invitationStatus: string }>
+    | undefined;
   leads: string[] | undefined;
   commsMaterials: string[] | undefined;
   reports: Report[] | undefined;
@@ -117,7 +119,7 @@ type EventRow = {
   dateConfirmed: boolean;
   timeConfirmed: boolean;
   premierInvited: boolean;
-  premierConfirmed: boolean;
+  premierStatus: string;
   ministers: Array<{ name: string; confirmed?: boolean }>;
 };
 
@@ -140,9 +142,10 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     ? statusMap[activity.lookAheadStatus] || 'Reviewed'
     : 'Reviewed';
 
-  const representatives = activity.representativesAttending?.map(
-    (r) => r.representative
-  );
+  const representatives = activity.representativesAttending?.map((r) => ({
+    representative: r.representative,
+    invitationStatus: r.invitationStatus || 'No',
+  }));
 
   const leads: string[] = [];
   const leadCommsContact = activity.commsContacts?.find((c) => c.isLead);
@@ -223,7 +226,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     dateConfirmed: activity.dateStatus === 'Confirmed' || false,
     timeConfirmed: activity.timeStatus === 'Confirmed' || false,
     premierInvited: activity.premierRequestedId !== null,
-    premierConfirmed: activity.premierRequestedId !== null,
+    premierStatus: activity.premierRequested || 'No',
     ministers,
   };
 };
@@ -361,7 +364,7 @@ const ScheduleCell = ({
   dateConfirmed,
   timeConfirmed,
   premierInvited,
-  premierConfirmed,
+  premierStatus,
   representatives,
 }: {
   startDate: Date;
@@ -372,8 +375,8 @@ const ScheduleCell = ({
   dateConfirmed: boolean;
   timeConfirmed: boolean;
   premierInvited: boolean;
-  premierConfirmed: boolean;
-  representatives?: string[];
+  premierStatus: string;
+  representatives?: Array<{ representative: string; invitationStatus: string }>;
 }) => {
   const formatDate = (date: Date) =>
     date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -449,19 +452,20 @@ const ScheduleCell = ({
           flexWrap: 'wrap',
         }}
       >
-        {premierInvited && (
+        {premierStatus && premierStatus !== 'No' && (
           <Badge
             appearance="filled"
             style={{
               whiteSpace: 'normal',
               height: 'auto',
               minHeight: '20px',
-              backgroundColor: premierConfirmed ? '#107c10' : '#ffc107',
+              backgroundColor:
+                premierStatus === 'Confirmed' ? '#107c10' : '#ffc107',
               color: '#fff',
               fontSize: '12px',
             }}
           >
-            Premier Eby: {premierConfirmed ? 'Confirmed' : 'TBC'}
+            Premier Eby: {premierStatus}
           </Badge>
         )}
         {representatives && representatives.length > 0 && (
@@ -477,7 +481,7 @@ const ScheduleCell = ({
                 fontSize: '12px',
               }}
             >
-              {representatives[0]}
+              {representatives[0].representative}
             </Badge>
             {representatives.length > 1 && (
               <Badge
@@ -568,7 +572,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         size: 220,
         cell: ({ row }) => (
           <div
-            onClick={() => void navigate(`/edit-activity/${row.original.id}`)}
+            onClick={() => void navigate(`/activities/${row.original.id}/edit`)}
             style={{ cursor: 'pointer' }}
           >
             <div
@@ -624,7 +628,7 @@ export const EventTable: React.FC<EventTableProps> = ({
             dateConfirmed={row.original.dateConfirmed}
             timeConfirmed={row.original.timeConfirmed}
             premierInvited={row.original.premierInvited}
-            premierConfirmed={row.original.premierConfirmed}
+            premierStatus={row.original.premierStatus}
             representatives={row.original.representatives}
           />
         ),

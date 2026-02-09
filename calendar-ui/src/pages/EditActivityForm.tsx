@@ -117,9 +117,45 @@ export default function EditActivityForm(): React.ReactElement {
       try {
         const activity = await fetchActivity(Number(id));
         if (!mounted) return;
-        // Reset the form with the activity data. Cast to any since the shape
-        // should be compatible but may include extra fields from the API.
-        form.reset(activity as any);
+
+        // Wait for lookups to be available before transforming data
+        // This is needed to map representative names back to IDs
+        if (!lookups.governmentRepresentatives) {
+          // Retry after a short delay if lookups aren't ready yet
+          setTimeout(() => {
+            void load();
+          }, 100);
+          return;
+        }
+
+        // Create a map of representative names to IDs for lookup
+        const repNameToIdMap = new Map<string, number>();
+        lookups.governmentRepresentatives.forEach((rep) => {
+          const name = rep.displayName || rep.name;
+          repNameToIdMap.set(name.toLowerCase(), rep.id);
+        });
+
+        // Transform API response to form data structure
+        const formData: any = {
+          ...activity,
+          // Convert representativesAttending (API response) to representatives (form format)
+          // Try to match names to IDs from the lookup table
+          representatives:
+            activity.representativesAttending?.map((rep: any) => {
+              const repId = repNameToIdMap.get(
+                rep.representative.toLowerCase()
+              );
+              if (repId) {
+                return { representativeId: repId };
+              } else {
+                // Keep as free-text if not found in lookup
+                return { representativeName: rep.representative };
+              }
+            }) || [],
+        };
+
+        // Reset the form with the transformed activity data
+        form.reset(formData);
         setLoadedActivity(activity as LoadedActivity);
       } catch (err: any) {
         logger.error('Failed to load activity', err);
@@ -132,7 +168,7 @@ export default function EditActivityForm(): React.ReactElement {
     return () => {
       mounted = false;
     };
-  }, [id, form]);
+  }, [id, form, lookups.governmentRepresentatives]);
 
   const onSubmit = async (data: FormData) => {
     if (!id) return;

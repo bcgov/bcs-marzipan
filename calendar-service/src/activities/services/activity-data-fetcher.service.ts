@@ -613,6 +613,7 @@ export class ActivityDataFetcherService {
       number,
       Array<{
         representative: string;
+        invitationStatus: string;
       }>
     >
   > {
@@ -637,6 +638,7 @@ export class ActivityDataFetcherService {
       number,
       Array<{
         representative: string;
+        invitationStatus: string;
       }>
     >();
     for (const row of results) {
@@ -645,6 +647,7 @@ export class ActivityDataFetcherService {
       if (row.representativeName) {
         existing.push({
           representative: row.representativeName,
+          invitationStatus: 'No', // Default to 'No' until database column is added
         });
         map.set(row.activityId, existing);
       }
