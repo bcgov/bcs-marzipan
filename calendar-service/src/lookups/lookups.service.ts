@@ -669,7 +669,7 @@ export class LookupsService {
       allowsPitch?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof categories.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -702,7 +702,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof cities.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -733,7 +733,7 @@ export class LookupsService {
       isActive?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -766,7 +766,7 @@ export class LookupsService {
       ministryId?: string | null;
       representativeType?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -800,7 +800,7 @@ export class LookupsService {
       visibility?: 'global' | 'team';
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof tags.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -832,7 +832,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -863,7 +863,7 @@ export class LookupsService {
       isActive?: boolean;
       description?: string | null;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof activityStatuses.$inferSelect> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -894,7 +894,7 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
     },
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<any> {
     const now = new Date();
     const [result] = await this.databaseService.db
@@ -929,7 +929,7 @@ export class LookupsService {
       allowsPitch: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof categories.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof categories.$inferInsert> = {
@@ -965,7 +965,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof cities.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof cities.$inferInsert> = {
@@ -998,7 +998,7 @@ export class LookupsService {
       isActive: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof commsMaterials.$inferInsert> = {
@@ -1033,7 +1033,7 @@ export class LookupsService {
       ministryId: string | null;
       representativeType: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof governmentRepresentatives.$inferInsert> = {
@@ -1070,7 +1070,7 @@ export class LookupsService {
       visibility: 'global' | 'team';
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof tags.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof tags.$inferInsert> = {
@@ -1104,7 +1104,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof ministries.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof ministries.$inferInsert> = {
@@ -1138,7 +1138,7 @@ export class LookupsService {
       isActive: boolean;
       description: string | null;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof activityStatuses.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof activityStatuses.$inferInsert> = {
@@ -1171,7 +1171,7 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
     }>,
-    currentUserId: number = 1
+    currentUserId: number
   ): Promise<typeof themes.$inferSelect | undefined> {
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof themes.$inferInsert> = {

@@ -5,6 +5,7 @@ import {
   permissions,
   roles,
   userTeams,
+  activityCommsContacts,
 } from '@corpcal/database/schema';
 import { DatabaseService } from '../database/database.service';
 import { SYSTEM_ROLES } from '@corpcal/shared';
@@ -93,5 +94,29 @@ export class PolicyService {
     permissionKeys: string[]
   ): boolean {
     return permissionKeys.every((key) => userPermissions.includes(key));
+  }
+
+  /**
+   * Check if the user is the comms lead for the given activity.
+   * Used for delete authorization: comms lead may delete their activity.
+   */
+  async isCommsLeadForActivity(
+    activityId: number,
+    userId: number
+  ): Promise<boolean> {
+    const [row] = await this.databaseService.db
+      .select({ userId: activityCommsContacts.userId })
+      .from(activityCommsContacts)
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, activityId),
+          eq(activityCommsContacts.userId, userId),
+          eq(activityCommsContacts.isLead, true),
+          eq(activityCommsContacts.isActive, true)
+        )
+      )
+      .limit(1);
+
+    return !!row;
   }
 }
