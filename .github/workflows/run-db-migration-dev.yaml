@@ -46,6 +46,7 @@ jobs:
       - name: Apply build resources in tools namespace
         run: |
           oc project ${TOOLS_NAMESPACE}
+          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/build | envsubst | oc apply -f -
 
       - name: Apply DB migration ConfigMap
