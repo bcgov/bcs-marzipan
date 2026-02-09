@@ -72,13 +72,19 @@ describe('ActivitiesController', () => {
       const activities = [mockActivityResponse];
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        {} as Parameters<ActivitiesController['findAll']>[1]
+      );
 
       expect(result).toEqual({
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined);
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
+        undefined,
+        undefined
+      );
     });
 
     it('should return filtered activities', async () => {
@@ -86,13 +92,19 @@ describe('ActivitiesController', () => {
       const filters = { page: 1, limit: 10, title: 'Test' };
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
-      const result = await controller.findAll(filters);
+      const result = await controller.findAll(
+        filters,
+        {} as Parameters<ActivitiesController['findAll']>[1]
+      );
 
       expect(result).toEqual({
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters);
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
+        filters,
+        undefined
+      );
     });
   });
 

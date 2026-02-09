@@ -34,6 +34,7 @@ import type {
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 import { DatabaseService } from '../../database/database.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
+import type { DataScope } from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
@@ -278,10 +279,14 @@ export class ActivitiesService {
 
   /**
    * Find all activities with optional filtering
+   * @param filters - Optional query filters (title, dates, status, etc.)
+   * @param dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
    */
   async findAll(
-    filters?: FilterActivitiesQueryParams
+    filters?: FilterActivitiesQueryParams,
+    dataScope?: DataScope
   ): Promise<ActivityResponse[]> {
+    // TODO: When dataScope is provided and dataScope.bypass is false, filter results to only activities visible to dataScope.teamIds
     let activityResults: Activity[];
 
     // Get deleted status ID to exclude deleted activities by default

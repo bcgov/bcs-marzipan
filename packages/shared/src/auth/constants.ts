@@ -6,7 +6,7 @@
 /**
  * Single source of truth for system role configuration.
  * Role IDs must match the database seed data.
- * @see packages/database/seeds/0001_20250121_corpcal_seed_data.sql
+ * @see packages/database/seeds/0000_20260127_roles_seed.sql
  */
 export const SYSTEM_ROLES_CONFIG = {
   VIEW_ONLY: { id: 1, name: 'View Only' },
