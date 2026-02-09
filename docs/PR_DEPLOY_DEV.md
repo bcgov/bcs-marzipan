@@ -1,6 +1,6 @@
-# PR Deploy (Dev) — GitHub Actions & OpenShift DB Migrations 🔧
+# PR Deploy (Dev) - GitHub Actions and OpenShift DB Migrations
 
-## Overview ✅
+## Overview
 
 This document explains how the GitHub Actions workflow `Deploy to OpenShift` (file: `.github/workflows/pr-deploy-dev.yaml`) works and how to run database migrations on OpenShift for the `corporate-calendar` project.
 
@@ -8,33 +8,32 @@ This document explains how the GitHub Actions workflow `Deploy to OpenShift` (fi
 
 ## What the `pr-deploy-dev` workflow does
 
-- Trigger: runs on push to the `develop` branch.
+- Trigger: runs on push to the `feat/CORPCAL-95-openshift-db-migration-scripts` branch.
 - High level steps (see `.github/workflows/pr-deploy-dev.yaml`):
   1. Checkout the repository.
-  2. Install the `oc` (OpenShift) CLI.
+  2. Install the `oc` (OpenShift) CLI and `envsubst`.
   3. Login to OpenShift using secrets: `OPENSHIFT_TOKEN` and `OPENSHIFT_SERVER`.
-  4. Switch to the target project/namespace defined by the `OPENSHIFT_NAMESPACE` secret.
+  4. Apply build resources in the tools namespace from `openshift/build`.
   5. Start binary builds for:
-     - `calendar-service-build` (BuildConfig) — runs `oc start-build calendar-service-build --from-dir=. --follow --commit=$(git rev-parse HEAD)`
-     - `calendar-ui-build` — runs `oc start-build calendar-ui-build --from-dir=. --follow --commit=$(git rev-parse HEAD)`
+     - `calendar-service-build` (BuildConfig)
+     - `calendar-ui-build`
+  6. Promote images from tools to dev using `oc tag`.
+  7. Render and apply the dev deployment overlay from `openshift/deploy/overlays/dev`.
+  8. Restart deployments.
 
 Notes:
 
-- The workflow uses the provided OpenShift credentials and namespace from GitHub Secrets: `OPENSHIFT_TOKEN`, `OPENSHIFT_SERVER`, and `OPENSHIFT_NAMESPACE`.
-- The workflow currently only starts the two workspace builds (service and UI). It does not automatically run DB migration jobs as part of the deploy job by default.
+- The workflow uses GitHub secrets for OpenShift access and namespaces: `OPENSHIFT_TOKEN`, `OPENSHIFT_SERVER`, `OPENSHIFT_TOOLS_NAMESPACE`, and `OPENSHIFT_DEV_NAMESPACE`.
+- The workflow is scoped to the GitHub Environment `dev-silver` (so it pulls environment-scoped secrets/vars).
+- DB migrations are not run automatically in this workflow.
 
 ---
 
-## How to run DB migrations on OpenShift (manual step) 🛠️
+## How to run DB migrations on OpenShift (manual step)
 
-There are two primary artifacts already in the repo related to migrations:
+There is one migration artifact already in the repo:
 
-- `Dockerfile.migrate` — builds an image that will run migrations and then seed the app. Default command runs:
-  ```sh
-  npm run db:migrate --workspace=packages/database && npm run seed --workspace=calendar-service
-  ```
-- `openshift/database/migration/calendar-db-migrate.yaml` — (BuildConfig, currently kept for reference)
-- `openshift/database/migration/calendar-db-migrate-job.yaml` — (Job manifest, currently kept for reference)
+- `openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml` - Job manifest used by the workflow.
 
 ### Recommended manual process (one-off migration run)
 
@@ -42,80 +41,48 @@ There are two primary artifacts already in the repo related to migrations:
 
    ```sh
    oc login --token=$OPENSHIFT_TOKEN --server=$OPENSHIFT_SERVER --insecure-skip-tls-verify=true
-   oc project $OPENSHIFT_NAMESPACE
+   oc project $OPENSHIFT_DEV_NAMESPACE
    ```
 
-2. Start a binary build that uses `Dockerfile.migrate`:
+2. Run the migration Job using the manifest:
 
    ```sh
-   oc start-build calendar-db-migrate --from-dir=. --follow --commit=$(git rev-parse HEAD)
+   oc apply -f openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml -n $OPENSHIFT_DEV_NAMESPACE
+   oc wait --for=condition=complete job/calendar-db-migrate -n $OPENSHIFT_DEV_NAMESPACE --timeout=600s
+   oc logs -l job-name=calendar-db-migrate -n $OPENSHIFT_DEV_NAMESPACE --follow
    ```
 
-   - This will create/push the `calendar-db-migrate:latest` image into the internal image registry for your project.
-
-3. Run the migration Job using the job manifest or an ad-hoc job:
-   - Using the existing job manifest (replace namespace in image if required):
-
-     ```sh
-     # Update the image reference if you do not use the hard-coded namespace in the manifest
-     sed -e "s|image-registry.openshift-image-registry.svc:5000/b3237c-dev|image-registry.openshift-image-registry.svc:5000/${OPENSHIFT_NAMESPACE}|" \
-       openshift/database/migration/calendar-db-migrate-job.yaml | oc apply -f -
-
-     # Wait for completion, tail logs
-     oc wait --for=condition=complete job/calendar-db-migrate --timeout=600s
-     oc logs -l job-name=calendar-db-migrate --follow
-
-     # Clean up job
-     oc delete job calendar-db-migrate
-     ```
-
-   - Or create/run an ad-hoc pod/job directly pointing to the image:
-     ```sh
-     oc run calendar-db-migrate --restart=Never --image=image-registry.openshift-image-registry.svc:5000/${OPENSHIFT_NAMESPACE}/calendar-db-migrate:latest -- env=DATABASE_URL=$(oc get secret calendar-service-secrets -o jsonpath='{.data.DATABASE_URL}' | base64 -d) -- /bin/sh -c "npm run db:migrate --workspace=packages/database && npm run seed --workspace=calendar-service"
-     ```
-
-4. Verify that migrations and seed completed successfully by checking job logs and your database.
+3. Verify that migrations completed successfully by checking job logs and your database.
 
 ---
 
-## How to wire migrations into the GitHub Actions workflow (optional) 🔁
+## Manual workflow for DB migrations and seeds
 
-If you want migrations to run automatically as part of `pr-deploy-dev`, add steps after the `Start binary build` steps to:
+There is a manual workflow you can run from GitHub Actions:
 
-1. Start the `calendar-db-migrate` build (same as above).
-2. Apply or create a `Job` that points to the built image.
-3. Wait for job completion and stream logs.
+- Workflow file: `.github/workflows/run-db-migration-dev.yaml`
+- Trigger: `workflow_dispatch` (manual run only)
+- Optional input: `run_seeds` to also apply seed SQL files after migrations.
 
-Example additional steps to append in `.github/workflows/pr-deploy-dev.yaml`:
+The workflow:
 
-```yaml
-- name: Start DB migrate build
-  run: |
-    oc start-build calendar-db-migrate --from-dir=. --follow --commit=$(git rev-parse HEAD)
-
-- name: Run DB migration job
-  run: |
-    sed -e "s|image-registry.openshift-image-registry.svc:5000/b3237c-dev|image-registry.openshift-image-registry.svc:5000/${{ secrets.OPENSHIFT_NAMESPACE }}|" \
-      openshift/database/migration/calendar-db-migrate-job.yaml | oc apply -f -
-    oc wait --for=condition=complete job/calendar-db-migrate --timeout=600s
-    oc logs -l job-name=calendar-db-migrate --follow
-    oc delete job calendar-db-migrate
-```
-
-Be sure to adjust the manifest image reference for your namespace or use an imageStream reference if preferred.
+1. Applies migration ConfigMap from `packages/database/migrations`.
+2. Runs the `calendar-db-migrate` Job.
+3. If `run_seeds` is true, applies seed ConfigMap from `packages/database/seeds` and runs a seed Job.
 
 ---
 
-## Required secrets & configuration 🔐
+## Required secrets and configuration
 
-- `OPENSHIFT_TOKEN` — service account token or personal token with appropriate permissions
-- `OPENSHIFT_SERVER` — API server URL
-- `OPENSHIFT_NAMESPACE` — target project/namespace
-- `calendar-service-secrets` (OpenShift Secret) — must contain `DATABASE_URL` for the Job to connect to the DB
+- `OPENSHIFT_TOKEN` - service account token or personal token with appropriate permissions
+- `OPENSHIFT_SERVER` - API server URL
+- `OPENSHIFT_TOOLS_NAMESPACE` - tools project for builds and image tags
+- `OPENSHIFT_DEV_NAMESPACE` - dev project for deployment
+- `calendar-service-secrets` (OpenShift Secret) - must contain `DATABASE_URL` for the Job to connect to the DB
 
 ---
 
-## Troubleshooting & common issues ⚠️
+## Troubleshooting and common issues
 
 - Builds may fail during `npm ci` due to optional native `@swc/core` binaries. Workarounds:
   - Install without optional native deps: `npm ci --no-optional`
@@ -126,9 +93,9 @@ Be sure to adjust the manifest image reference for your namespace or use an imag
 
 ---
 
-## Quick checklist ✅
+## Quick checklist
 
 - [ ] Ensure GitHub Secrets (`OPENSHIFT_*`) are configured in the repo.
 - [ ] Ensure `calendar-service-secrets` contains `DATABASE_URL`.
-- [ ] Start `calendar-db-migrate` build and run Job to execute migrations.
+- [ ] Run the manual workflow when migrations (and optional seeds) are needed.
 - [ ] Confirm Job logs and database state.

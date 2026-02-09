@@ -39,6 +39,16 @@ spec:
               protocol: TCP
               containerPort: 8080
           env:
+            - name: VITE_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: VITE_API_BASE_URL
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: NODE_ENV
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
