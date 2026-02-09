@@ -4,6 +4,7 @@
  * This allows both src/ and test/ directories to use the same factory functions
  */
 import supertest from 'supertest';
+import { vi } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 
 const request =

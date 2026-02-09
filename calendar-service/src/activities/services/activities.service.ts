@@ -935,6 +935,9 @@ export class ActivitiesService {
    * Remove an activity (hard delete)
    */
   async remove(id: number): Promise<{ message: string }> {
+    // Verify activity exists so we return 404 for non-existent IDs
+    await this.findOne(id);
+
     // TODO: Get current user ID from auth context
     const currentUserId = 1;
 

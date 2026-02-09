@@ -1,9 +1,8 @@
 /**
  * Login Page
  * Simple username login for Corporate Calendar (mock auth mode).
- * Styled following MediaPulse/BC Government patterns.
  */
-import { useState } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
@@ -28,7 +27,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);

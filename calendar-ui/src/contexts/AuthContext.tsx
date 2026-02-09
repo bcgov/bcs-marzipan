@@ -10,7 +10,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { AuthUser } from '@corpcal/shared';
+import type { AuthUser, PermissionKey } from '@corpcal/shared';
 import * as authApi from '../api/authApi';
 
 export interface AuthContextType {
@@ -20,9 +20,9 @@ export interface AuthContextType {
   login: (username: string, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  hasPermission: (permissionKey: string) => boolean;
-  hasAnyPermission: (...permissionKeys: string[]) => boolean;
-  hasAllPermissions: (...permissionKeys: string[]) => boolean;
+  hasPermission: (permissionKey: PermissionKey) => boolean;
+  hasAnyPermission: (...permissionKeys: PermissionKey[]) => boolean;
+  hasAllPermissions: (...permissionKeys: PermissionKey[]) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Check if user has a specific permission
    */
   const hasPermission = useCallback(
-    (permissionKey: string): boolean => {
+    (permissionKey: PermissionKey): boolean => {
       return user?.permissions?.includes(permissionKey) ?? false;
     },
     [user]
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Check if user has any of the specified permissions
    */
   const hasAnyPermission = useCallback(
-    (...permissionKeys: string[]): boolean => {
+    (...permissionKeys: PermissionKey[]): boolean => {
       if (!user?.permissions) return false;
       return permissionKeys.some((key) => user.permissions.includes(key));
     },
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Check if user has all of the specified permissions
    */
   const hasAllPermissions = useCallback(
-    (...permissionKeys: string[]): boolean => {
+    (...permissionKeys: PermissionKey[]): boolean => {
       if (!user?.permissions) return false;
       return permissionKeys.every((key) => user.permissions.includes(key));
     },

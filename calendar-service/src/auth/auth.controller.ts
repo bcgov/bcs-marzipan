@@ -19,10 +19,7 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { loginBodySchema } from './dto/login.dto';
-import type { AuthUser } from '@corpcal/shared';
-
-/** Cookie name for JWT access token */
-const ACCESS_TOKEN_COOKIE = 'access_token';
+import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 
 @ApiTags('auth')
 @Controller('auth')

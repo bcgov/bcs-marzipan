@@ -209,11 +209,10 @@ describe('ActivitiesController (e2e)', () => {
         });
     });
 
-    it('should return 404 when deleting non-existent activity', async () => {
-      const res = await createAuthRequest(app, accessToken).delete(
-        '/activities/999999'
-      );
-      expect([404, 500]).toContain(res.status);
+    it('should return 404 when deleting non-existent activity', () => {
+      return createAuthRequest(app, accessToken)
+        .delete('/activities/999999')
+        .expect(404);
     });
 
     it.skip('should return 404 when fetching deleted activity', () => {

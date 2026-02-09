@@ -1,3 +1,5 @@
+import type { FC } from 'react';
+
 interface AutosaveIndicatorProps {
   /** Whether the user is authenticated */
   isAuthenticated: boolean;
@@ -13,7 +15,7 @@ interface AutosaveIndicatorProps {
  * Displays the current autosave status to the user.
  * Shows different states: unauthenticated, saving, saved, or loading.
  */
-export const AutosaveIndicator: React.FC<AutosaveIndicatorProps> = ({
+export const AutosaveIndicator: FC<AutosaveIndicatorProps> = ({
   isAuthenticated,
   isSaving,
   lastSaved,

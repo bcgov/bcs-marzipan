@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { ACCESS_TOKEN_COOKIE } from '@corpcal/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService, type JwtPayload } from '../auth.service';
 
@@ -54,6 +55,6 @@ export class JwtAuthGuard implements CanActivate {
       return auth.slice(7);
     }
     // 2. Fall back to httpOnly cookie (browser)
-    return request.cookies?.access_token ?? null;
+    return request.cookies?.[ACCESS_TOKEN_COOKIE] ?? null;
   }
 }

@@ -3,11 +3,12 @@
  * Use to show/hide UI elements based on user permissions
  */
 import type { ReactNode } from 'react';
+import type { PermissionKey } from '@corpcal/shared';
 import { usePermission, useAnyPermission } from '../hooks/usePermissions';
 
 interface PermissionGateProps {
   /** Permission key to check (e.g., 'activities.create') */
-  permission: string;
+  permission: PermissionKey;
   /** Content to render if user has permission */
   children: ReactNode;
   /** Optional content to render if user lacks permission */
@@ -32,7 +33,7 @@ export function PermissionGate({
 
 interface AnyPermissionGateProps {
   /** Permission keys to check - user needs at least one */
-  permissions: string[];
+  permissions: PermissionKey[];
   /** Content to render if user has any permission */
   children: ReactNode;
   /** Optional content to render if user lacks all permissions */

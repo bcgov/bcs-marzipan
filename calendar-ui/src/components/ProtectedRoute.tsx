@@ -3,6 +3,7 @@
  * Guards routes that require authentication and optionally specific permissions/roles
  */
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import type { PermissionKey } from '@corpcal/shared';
 import { useAuth } from '../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -10,7 +11,7 @@ import { Button } from './ui/button';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   /** Optional permission required to access this route */
-  requiredPermission?: string;
+  requiredPermission?: PermissionKey;
   /** Optional role name required to access this route */
   requiredRole?: string;
 }
