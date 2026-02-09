@@ -16,7 +16,7 @@ import {
 import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { fetchActivity } from '../api/activitiesApi';
-import { timeAgo } from '../lib/utils/timeAgo';
+import { timeAgo } from '../lib/utils';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
   DocumentText16Regular,

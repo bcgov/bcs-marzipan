@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect } from 'react';
-import { Text, Badge } from '@fluentui/react-components';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -11,6 +10,7 @@ import {
 import { createLogger } from '../lib/logger';
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { Form } from '../components/ui/form';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
@@ -24,9 +24,9 @@ import {
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
 import React from 'react';
-import { HistoryRegular } from '@fluentui/react-icons';
+import { History } from 'lucide-react';
 import ActivityHistory from '../components/activities/ActivityHistory';
-import { timeAgo } from '../lib/utils/timeAgo';
+import { timeAgo } from '../lib/utils';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -132,7 +132,7 @@ export default function EditActivityForm(): React.ReactElement {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, form]);
 
   const onSubmit = async (data: FormData) => {
     if (!id) return;
@@ -142,7 +142,7 @@ export default function EditActivityForm(): React.ReactElement {
       // Normalize reportSettings so each entry has a numeric reportId as expected by the API/schema
       const normalizeReportSettings = (items: any[] | undefined) => {
         if (!items || !Array.isArray(items)) return undefined;
-        const normalized: { reportId: number; omitted?: boolean }[] = [];
+        const normalized: { reportId: number; omitted: boolean }[] = [];
         for (const it of items) {
           const reportId =
             (it && typeof it.reportId === 'number' && it.reportId) ||
@@ -205,7 +205,7 @@ export default function EditActivityForm(): React.ReactElement {
             : undefined,
         // attach normalized report settings if present
         reportSettings: normalizedReportSettings,
-      } as any;
+      };
 
       await updateActivity(Number(id), submitData);
       // Navigate back to the entries list view
@@ -323,19 +323,13 @@ export default function EditActivityForm(): React.ReactElement {
                   <div style={{ color: '#6b6b6b', marginBottom: 6 }}>
                     {loadedActivity.displayId || `ACT-${loadedActivity.id}`}
                   </div>
-                  <Text as="h1" weight="bold" style={{ fontSize: 18 }}>
-                    {loadedActivity.title}
-                  </Text>
+                  <h1 className="text-lg font-bold">{loadedActivity.title}</h1>
                   <div style={{ marginTop: 8 }}>
                     {loadedActivity.category &&
                     loadedActivity.category.length > 0
                       ? loadedActivity.category.map(
                           (cat: string, idx: number) => (
-                            <Badge
-                              key={idx}
-                              appearance="filled"
-                              style={{ marginRight: 8 }}
-                            >
+                            <Badge key={idx} variant="default" className="mr-2">
                               {cat}
                             </Badge>
                           )
@@ -352,7 +346,7 @@ export default function EditActivityForm(): React.ReactElement {
                 <div style={{ textAlign: 'right', minWidth: 180 }}>
                   {loadedActivity.activityStatus ? (
                     <div style={{ marginBottom: 8 }}>
-                      <Badge appearance="filled">
+                      <Badge variant="default">
                         {formatActivityStatus(loadedActivity.activityStatus)}
                       </Badge>
                     </div>
@@ -392,7 +386,7 @@ export default function EditActivityForm(): React.ReactElement {
                       type="button"
                       onClick={() => setHistoryOpen(true)}
                     >
-                      <HistoryRegular />
+                      <History className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

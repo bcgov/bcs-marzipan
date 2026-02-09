@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { fetchActivityHistory } from '../../api/activitiesApi';
-import { Badge } from '@fluentui/react-components';
-import { timeAgoShort } from '../../lib/utils/timeAgo';
+import { timeAgoShort } from '@/lib/utils';
 
 type HistoryEntry = {
   id: number;

@@ -572,21 +572,12 @@ export class ActivitiesService {
     updateData.lastUpdatedBy = currentUserId;
 
     // Capture existing related data for history (before transaction)
-    const existingVenue = (
-      await this.databaseService.db
-        .select()
-        .from(venueAddresses)
-        .where(eq(venueAddresses.activityId, id))
-        .limit(1)
-    )[0]
-      ? (
-          await this.databaseService.db
-            .select()
-            .from(venueAddresses)
-            .where(eq(venueAddresses.activityId, id))
-            .limit(1)
-        )[0]
-      : null;
+    const venueRows = await this.databaseService.db
+      .select()
+      .from(venueAddresses)
+      .where(eq(venueAddresses.activityId, id))
+      .limit(1);
+    const existingVenue = venueRows[0] ?? null;
 
     const existingComms = await this.databaseService.db
       .select({
