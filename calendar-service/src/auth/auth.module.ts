@@ -14,20 +14,32 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     PolicyModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>(
-          'JWT_SECRET',
-          'dev-secret-change-in-production'
-        ),
-        signOptions: {
-          expiresIn: Number(
-            config.get<string | number>(
-              'JWT_EXPIRES_IN',
-              DEFAULT_JWT_EXPIRES_IN
-            ) ?? DEFAULT_JWT_EXPIRES_IN
-          ),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const devDefault = 'dev-secret-change-in-production';
+        const secret = config.get<string>('JWT_SECRET', devDefault);
+        const nodeEnv = config.get<string>('NODE_ENV', 'development');
+
+        if (nodeEnv === 'production') {
+          if (!secret || secret === devDefault) {
+            throw new Error(
+              'JWT_SECRET must be set to a strong, random value in production. ' +
+                'DO NOT use the default dev secret. Set the JWT_SECRET environment variable.'
+            );
+          }
+        }
+
+        return {
+          secret,
+          signOptions: {
+            expiresIn: Number(
+              config.get<string | number>(
+                'JWT_EXPIRES_IN',
+                DEFAULT_JWT_EXPIRES_IN
+              ) ?? DEFAULT_JWT_EXPIRES_IN
+            ),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotImplementedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { AuthUser } from '@corpcal/shared';
@@ -120,6 +124,8 @@ export class AuthService {
   }
 
   refresh(): never {
-    throw new Error('Refresh not implemented. Re-login to obtain a new token.');
+    throw new NotImplementedException(
+      'Refresh not implemented. Re-login to obtain a new token.'
+    );
   }
 }
