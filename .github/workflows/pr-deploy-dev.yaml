@@ -64,6 +64,7 @@ jobs:
       - name: Deploy to Dev environment
         run: |
           oc project ${DEV_NAMESPACE}
+          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui
