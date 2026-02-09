@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   Table,
   TableHeader,
@@ -6,7 +6,7 @@ import {
   TableHeaderCell,
   TableBody,
   TableCell,
-} from "@fluentui/react-components";
+} from '@fluentui/react-components';
 import {
   useReactTable,
   ColumnDef,
@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   flexRender,
   SortingState,
-} from "@tanstack/react-table";
+} from '@tanstack/react-table';
 
 interface GenericDataTableProps<T extends object> {
   data: T[];
@@ -47,12 +47,17 @@ export function GenericDataTable<T extends object>({
             {hg.headers.map((header) => (
               <TableHeaderCell
                 key={header.id}
-                style={{ cursor: header.column.getCanSort() ? "pointer" : "default" }}
+                style={{
+                  cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                }}
                 onClick={header.column.getToggleSortingHandler()}
               >
-                {flexRender(header.column.columnDef.header, header.getContext())}
-                {header.column.getIsSorted() === "asc" ? " 🔼" : ""}
-                {header.column.getIsSorted() === "desc" ? " 🔽" : ""}
+                {flexRender(
+                  header.column.columnDef.header,
+                  header.getContext()
+                )}
+                {header.column.getIsSorted() === 'asc' ? ' 🔼' : ''}
+                {header.column.getIsSorted() === 'desc' ? ' 🔽' : ''}
               </TableHeaderCell>
             ))}
           </TableRow>

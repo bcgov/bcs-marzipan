@@ -1,0 +1,10 @@
+# Pre-commit hook: Run lint-staged on staged files only
+# - ESLint --fix on staged JS/TS files
+# - Prettier --write on staged non-code files (JSON, MD, etc.)
+# - Tests for affected files (unit tests only, skips e2e)
+# This is blocking - commit will fail if linting/formatting errors or tests fail
+
+echo "Running lint-staged on staged files..."
+
+# Run lint-staged: ESLint --fix on staged JS/TS, Prettier on staged assets
+npx lint-staged

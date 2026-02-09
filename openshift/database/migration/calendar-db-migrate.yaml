@@ -1,0 +1,16 @@
+# Not used as of now, but kept for future reference
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: calendar-db-migrate
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile.migrate
+  output:
+    to:
+      kind: ImageStreamTag
+      name: calendar-db-migrate:latest

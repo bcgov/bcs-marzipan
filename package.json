@@ -1,18 +1,114 @@
 {
   "name": "corporate-calendar",
-  "scripts": {
-    "dev": "concurrently \"npm --prefix calendar-ui start\" \"npm --prefix calendar-service start\""
+  "workspaces": [
+    "calendar-ui",
+    "calendar-service",
+    "packages/database",
+    "packages/shared"
+  ],
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
   },
-  "dependencies": {
-    "@fluentui/react-experiments": "^8.14.207",
-    "@nestjs/typeorm": "^11.0.0",
-    "@tanstack/react-query": "^5.85.5",
-    "chart.js": "^4.5.0",
-    "react-chartjs-2": "^5.3.0",
-    "typeorm": "^0.3.26",
-    "zod": "^4.1.3"
+  "overrides": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "@fluentui/react": {
+      "react": "^19.2.3",
+      "react-dom": "^19.2.3"
+    },
+    "@fluentui/react-components": {
+      "react": "^19.2.3",
+      "react-dom": "^19.2.3"
+    },
+    "@fluentui/foundation-legacy": {
+      "react": "^19.2.3",
+      "react-dom": "^19.2.3"
+    },
+    "drizzle-orm": "^0.44.7",
+    "picomatch": "4.0.2",
+    "esbuild": ">=0.25.0",
+    "@esbuild-kit/core-utils": {
+      "esbuild": ">=0.25.0"
+    },
+    "lodash": ">=4.17.22",
+    "tmp": ">=0.2.4"
+  },
+  "scripts": {
+    "start": "concurrently \"npm --prefix calendar-ui run dev\" \"npm --prefix calendar-service run start:dev\"",
+    "start:prod": "concurrently \"npm --prefix calendar-ui run preview\" \"npm --prefix calendar-service run start:prod\"",
+    "install-all": "npm install --workspaces",
+    "build": "npm run build:packages && npm run build --workspace=calendar-service && npm run build --workspace=calendar-ui",
+    "build:packages": "npm run build --workspace=packages/database && npm run build --workspace=packages/shared",
+    "typecheck": "npm run typecheck --workspaces",
+    "typecheck:packages": "npm run typecheck --workspace=packages/database && npm run typecheck --workspace=packages/shared",
+    "test": "concurrently -n \"service,ui,shared,database\" -c \"blue,green,yellow,magenta\" \"npm run test --workspace=calendar-service\" \"npm run test --workspace=calendar-ui\" \"npm run test --workspace=packages/shared\" \"npm run test --workspace=packages/database\"",
+    "test:cov": "concurrently -n \"service,ui,shared,database\" -c \"blue,green,yellow,magenta\" \"npm run test:cov --workspace=calendar-service\" \"npm run test:cov --workspace=calendar-ui\" \"npm run test:cov --workspace=packages/shared\" \"npm run test:cov --workspace=packages/database\"",
+    "test:env": "ts-node -r tsconfig-paths/register scripts/test-env-vars.ts",
+    "test:config": "ts-node -r tsconfig-paths/register scripts/test-nestjs-config.ts",
+    "prepare": "husky",
+    "format": "prettier --write \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"*.{json,md}\"",
+    "lint": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" --fix && npm run typecheck",
+    "lint:check": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" && npm run typecheck",
+    "lint:service": "eslint \"calendar-service/**/*.ts\" --fix",
+    "lint:ui": "eslint \"calendar-ui/**/*.{ts,tsx}\" --fix",
+    "lint:staged": "lint-staged",
+    "commit": "cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "@eslint/js": "^9.18.0",
+    "@eslint/json": "^0.14.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "commitizen": "^4.3.1",
+    "concurrently": "^9.2.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^4.0.18",
+    "typescript": "^5.3.3",
+    "unplugin-swc": "^1.5.9",
+    "@swc/core": "^1.15.11"
+  },
+  "lint-staged": {
+    "calendar-service/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js calendar-service"
+    ],
+    "calendar-ui/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js calendar-ui"
+    ],
+    "packages/database/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js database"
+    ],
+    "packages/shared/**/*.ts": [
+      "eslint --fix",
+      "node scripts/test/vitest-related.js shared"
+    ],
+    "**/*.{json,md,css,scss,less,html,yaml,yml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@radix-ui/react-radio-group": "^1.3.8"
   }
 }

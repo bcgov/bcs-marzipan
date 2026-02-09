@@ -1,5 +1,5 @@
-import { ColumnDef } from "@tanstack/react-table";
-import { GenericDataTable } from "./GenericDataTable";
+import { ColumnDef } from '@tanstack/react-table';
+import { GenericDataTable } from './GenericDataTable';
 
 export interface DraftEntry {
   id: string;
@@ -9,9 +9,9 @@ export interface DraftEntry {
 }
 
 const draftColumns: ColumnDef<DraftEntry>[] = [
-  { accessorKey: "title", header: "Title" },
-  { accessorKey: "author", header: "Author" },
-  { accessorKey: "updatedOn", header: "Last Updated" },
+  { accessorKey: 'title', header: 'Title' },
+  { accessorKey: 'author', header: 'Author' },
+  { accessorKey: 'updatedOn', header: 'Last Updated' },
 ];
 
 export const DraftTable = ({ entries }: { entries: DraftEntry[] }) => (

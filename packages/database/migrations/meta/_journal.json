@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1769537838297,
+      "tag": "0000_20260127_consolidate-drafts-table",
+      "breakpoints": true
+    }
+  ]
+}

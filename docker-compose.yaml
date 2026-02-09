@@ -1,15 +1,35 @@
 services:
-  api-gateway:
-    build: ./api-gateway
-    ports:
-      - "3000:3000"
-    depends_on:
-      - calendar-service
+  # api-gateway:
+  #   build: ./api-gateway
+  #   ports:
+  #     - '3000:3000'
+  #   depends_on:
+  #     - calendar-service
 
   calendar-service:
-    build: ./calendar-service
+    build:
+      context: .
+      dockerfile: calendar-service/Dockerfile
     ports:
-      - "3001:3001"
+      - '3001:3001'
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-3001}
+      - DB_MAX_CONNECTIONS=${DB_MAX_CONNECTIONS:-10}
+      - DB_IDLE_TIMEOUT=${DB_IDLE_TIMEOUT:-20}
+      - DB_CONNECT_TIMEOUT=${DB_CONNECT_TIMEOUT:-10}
+
+  calendar-ui:
+    build:
+      context: .
+      dockerfile: calendar-ui/Dockerfile
+    ports:
+      - '8080:80'
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
+    depends_on:
+      - calendar-service
 
   # approval-service:
   #   build: ./approval-service

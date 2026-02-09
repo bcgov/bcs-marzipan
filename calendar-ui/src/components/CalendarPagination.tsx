@@ -17,4 +17,4 @@
 //     lastPageIconProps={{ iconName: "DoubleChevronRight" }}
 //   />
 // );
-export {}
+export {};

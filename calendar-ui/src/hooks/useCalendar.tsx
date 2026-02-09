@@ -1,32 +1,32 @@
 // /hooks/useCalendar.ts (TanStack Query v5)
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
-  fetchCalendarEntries,
-  fetchCalendarEntry,
-  createCalendarEntry,
-  updateCalendarEntry,
-  deleteCalendarEntry,
-} from "../api/calendarApi";
-import { CalendarEntry } from "../models/CalendarEntry";
+  fetchActivities,
+  fetchActivity,
+  createActivity,
+  updateActivity,
+  deleteActivity,
+} from '../api/activitiesApi';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
 
 // List
-export function useCalendarEntries() {
-  return useQuery<CalendarEntry[]>({
-    queryKey: ["calendarEntries"],
-    queryFn: fetchCalendarEntries,
+export function useActivityList() {
+  return useQuery<ActivityResponse[]>({
+    queryKey: ['activities'],
+    queryFn: () => fetchActivities(),
     staleTime: 30_000, // optional: 30s freshness
   });
 }
 
 // Single by id
-export function useCalendarEntry(id: string | undefined) {
-  return useQuery<CalendarEntry>({
-    queryKey: ["calendarEntry", id],
-    queryFn: () => fetchCalendarEntry(id as string),
+export function useActivity(id: number | undefined) {
+  if (!id) {
+    throw new Error('Activity ID is required');
+  }
+  return useQuery<ActivityResponse>({
+    queryKey: ['activity', id],
+    queryFn: () => fetchActivity(id),
     enabled: !!id, // don't run until id exists
   });
 }
@@ -35,10 +35,10 @@ export function useCalendarEntry(id: string | undefined) {
 export function useCreateEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: createCalendarEntry,
+    mutationFn: createActivity,
     onSuccess: () => {
       // v5: invalidate with an options object
-      qc.invalidateQueries({ queryKey: ["calendarEntries"] });
+      void qc.invalidateQueries({ queryKey: ['activities'] });
     },
   });
 }
@@ -47,12 +47,12 @@ export function useCreateEntry() {
 export function useUpdateEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CalendarEntry> }) =>
-      updateCalendarEntry(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateActivityRequest }) =>
+      updateActivity(id, data),
     onSuccess: (_, vars) => {
       // refresh list and the specific item cache (if used)
-      qc.invalidateQueries({ queryKey: ["calendarEntries"] });
-      qc.invalidateQueries({ queryKey: ["calendarEntry", vars.id] });
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
     },
   });
 }
@@ -61,10 +61,10 @@ export function useUpdateEntry() {
 export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteCalendarEntry(id),
+    mutationFn: (id: number) => deleteActivity(id),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ["calendarEntries"] });
-      qc.invalidateQueries({ queryKey: ["calendarEntry", id] });
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', id] });
     },
   });
 }

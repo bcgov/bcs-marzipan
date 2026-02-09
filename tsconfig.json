@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@corpcal/shared": ["./packages/shared/dist/cjs"],
+      "@corpcal/shared/*": ["./packages/shared/dist/cjs/*"],
+      "@corpcal/database": ["./packages/database/dist/cjs"],
+      "@corpcal/database/*": ["./packages/database/dist/cjs/*"]
+    }
+  },
+  "include": ["packages/**/*", ".local/scripts/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules"]
+}

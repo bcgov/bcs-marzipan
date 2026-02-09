@@ -1,15 +1,19 @@
-import { Dropdown, Option, Button } from "@fluentui/react-components";
+import { Dropdown, Option, Button } from '@fluentui/react-components';
 
 export const PaginationFooter = () => (
-  <div style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: "1rem"
-  }}>
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: '1rem',
+    }}
+  >
     <div>
       <Button size="small">‹ Prev</Button>
-      <Button size="small" appearance="primary">1</Button>
+      <Button size="small" appearance="primary">
+        1
+      </Button>
       <Button size="small">2</Button>
       <Button size="small">3</Button>
       <span>...</span>
@@ -17,7 +21,7 @@ export const PaginationFooter = () => (
       <Button size="small">Next ›</Button>
     </div>
 
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       <span>Show</span>
       <Dropdown defaultValue="50">
         <Option>25</Option>

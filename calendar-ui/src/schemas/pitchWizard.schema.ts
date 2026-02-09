@@ -1,4 +1,4 @@
-import { WizardSchema } from "./types";
+import { WizardSchema } from './types';
 
 export const pitchWizardSchema: WizardSchema = [
   // {

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-service
+  labels:
+    app: calendar-service
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: service
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    image.openshift.io/triggers: |
+      [
+        {
+          "from": {
+            "kind": "ImageStreamTag",
+            "name": "calendar-service:latest"
+          },
+          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-service')].image"
+        }
+      ]
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-service
+  template:
+    metadata:
+      labels:
+        app: calendar-service
+    spec:
+      containers:
+        - name: calendar-service
+          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 3001
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: DATABASE_URL
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NODE_ENV
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 20

@@ -1,0 +1,61 @@
+import {
+  pgTable,
+  serial,
+  integer,
+  varchar,
+  text,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { activities } from './activity';
+import { users } from './user';
+
+/**
+ * ActivityHistory table - Tracks all changes to activities
+ * Each entry represents a user action (created, updated, deleted, etc.)
+ * with field-level change tracking
+ */
+export const activityHistory = pgTable(
+  'activity_history',
+  {
+    id: serial('id').primaryKey(),
+    activityId: integer('activity_id')
+      .notNull()
+      .references(() => activities.id),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    actionType: varchar('action_type', { length: 50 }).notNull(), // 'created', 'updated', 'deleted', `activity_status_changed`, etc.
+    changes: jsonb('changes'), // Array of change objects: [{field, oldValue, newValue}]
+    notes: text('notes'), // Optional user notes
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('activity_history_activity_id_idx').on(table.activityId),
+    index('activity_history_user_id_idx').on(table.userId),
+    index('activity_history_timestamp_idx').on(table.timestamp),
+    // Composite index for efficient chronological queries per activity
+    index('activity_history_activity_id_timestamp_idx').on(
+      table.activityId,
+      table.timestamp
+    ),
+  ]
+);
+
+export const activityHistoryRelations = relations(
+  activityHistory,
+  ({ one }) => ({
+    activity: one(activities, {
+      fields: [activityHistory.activityId],
+      references: [activities.id],
+    }),
+    user: one(users, {
+      fields: [activityHistory.userId],
+      references: [users.id],
+    }),
+  })
+);

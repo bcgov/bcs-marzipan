@@ -1,7 +1,7 @@
 export interface CalendarEntry {
-  id?: string;
+  id?: number;
   title?: string;
-  category?: string; // extend as needed
+  category?: string[]; // extend as needed
   summary?: string;
   executiveSummary?: string;
   startDate?: string; // ISO format "2025-08-18"
@@ -12,8 +12,8 @@ export interface CalendarEntry {
   issue?: string;
   ministry?: string;
 
-  created_on?: string;  // ISO timestamp
-  updated_on?: string;  // ISO timestamp
+  created_on?: string; // ISO timestamp
+  updated_on?: string; // ISO timestamp
   created_by?: string;
   updated_by?: string;
 

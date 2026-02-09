@@ -1,21 +1,25 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
+    "types": ["vitest/globals"],
+    "module": "commonjs",
     "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "rootDir": "./",
+    "incremental": true,
+    "sourceMap": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true 
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@corpcal/shared": ["../packages/shared/dist/cjs"],
+      "@corpcal/shared/*": ["../packages/shared/dist/cjs/*"],
+      "@corpcal/database": ["../packages/database/dist/cjs"],
+      "@corpcal/database/*": ["../packages/database/dist/cjs/*"]
+    }
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "include": ["src", "test"],
+  "exclude": ["node_modules", "dist", "scripts"]
 }

@@ -1,21 +1,40 @@
-import { WizardSchema } from "./types";
+import { WizardSchema } from './types';
 
 export const calendarWizardSchema: WizardSchema = [
   {
-    key: "details",
-    title: "Details",
-    label: "Details",
+    key: 'details',
+    title: 'Details',
+    label: 'Details',
     fields: [
-      { name: "title", label: "Title", type: "text", validation: { required: true, minLength: 3 }, colSpan: 6 },
-      { name: "summary", label: "Summary", type: "textarea", colSpan: 6 },
-      { name: "category", label: "Category", type: "select", options: [
-        { value: "event", label: "Event" },
-        { value: "news", label: "News Release" },
-      ], validation: { required: true }, colSpan: 6 },
-      { name: "ministry", label: "Ministry", type: "select", options: [
-        { value: "hlth", label: "Ministry of Health" },
-        { value: "fin", label: "Ministry of Finance" },
-      ], colSpan: 6 },
+      {
+        name: 'title',
+        label: 'Title',
+        type: 'text',
+        validation: { required: true, minLength: 3 },
+        colSpan: 6,
+      },
+      { name: 'summary', label: 'Summary', type: 'textarea', colSpan: 6 },
+      {
+        name: 'category',
+        label: 'Category',
+        type: 'select',
+        options: [
+          { value: 'event', label: 'Event' },
+          { value: 'news', label: 'News Release' },
+        ],
+        validation: { required: true },
+        colSpan: 6,
+      },
+      {
+        name: 'ministry',
+        label: 'Ministry',
+        type: 'select',
+        options: [
+          { value: 'hlth', label: 'Ministry of Health' },
+          { value: 'fin', label: 'Ministry of Finance' },
+        ],
+        colSpan: 6,
+      },
     ],
   },
   // {

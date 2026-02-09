@@ -1,44 +1,40 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from "@nestjs/common";
-import { AppService } from "./app.service";
-import { CalendarEntry } from "./models/CalendarEntry";
+import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { AppService } from './app.service';
+import { HealthResponseDto, ReadinessResponseDto } from './common/dto';
 
+@ApiTags('health')
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get("calendar")
-  getAll() {
-    return this.appService.getAll();
+  @ApiOperation({
+    summary: 'Health check',
+    description:
+      'Returns the health status of the service. Used by OpenShift liveness probes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Service is healthy',
+    type: HealthResponseDto,
+  })
+  @Get('health')
+  health() {
+    return this.appService.getHealth();
   }
 
-  @Get("calendar/:id")
-  getOne(@Param("id") id: string) {
-    return this.appService.getOne(id);
-  }
-
-  @Post("calendar")
-  create(@Body() body: Partial<CalendarEntry>) {
-    return this.appService.create(body);
-  }
-
-  @Put("calendar/:id")
-  update(@Param("id") id: string, @Body() body: Partial<CalendarEntry>) {
-    return this.appService.update(id, body);
-  }
-
-  @Delete("calendar/:id")
-  remove(@Param("id") id: string) {
-    this.appService.delete(id);
-    return { ok: true };
-  }
-
-  @Post("api/pitches")
-  createPitch(@Body() body: any) {
-    return this.appService.createPitch(body);
-  }
-
-  @Post("drafts")
-  createDraft(@Body() body: any) {
-    return this.appService.createDraftEntry(body);
+  @ApiOperation({
+    summary: 'Readiness probe',
+    description:
+      'Checks if the service is ready to accept traffic. Verifies database connectivity. Used by OpenShift readiness probes.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Service readiness status',
+    type: ReadinessResponseDto,
+  })
+  @Get('ready')
+  async readiness() {
+    return await this.appService.getReadiness();
   }
 }

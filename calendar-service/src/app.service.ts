@@ -1,45 +1,32 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { CalendarEntry } from "./models/CalendarEntry";
+import { Injectable } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
+import { DATABASE_CLIENT, type Database } from './database/database.provider';
 
 @Injectable()
 export class AppService {
-  private entries = new Map<string, CalendarEntry>();
+  constructor(@Inject(DATABASE_CLIENT) private readonly db: Database) {}
 
-  getAll(): CalendarEntry[] {
-    return Array.from(this.entries.values());
+  getHealth() {
+    return {
+      status: 'ok',
+      uptime: process.uptime(),
+    };
   }
 
-  getOne(id: string): CalendarEntry {
-    const entry = this.entries.get(id);
-    if (!entry) throw new NotFoundException(`Entry ${id} not found`);
-    return entry;
-  }
-
-  create(entry: Partial<CalendarEntry>): CalendarEntry {
-    const id = entry.id || `entry-${Date.now()}`;
-    const newEntry: CalendarEntry = { ...entry, id };
-    this.entries.set(id, newEntry);
-    return newEntry;
-  }
-
-  update(id: string, patch: Partial<CalendarEntry>): CalendarEntry {
-    const existing = this.entries.get(id);
-    if (!existing) throw new NotFoundException(`Entry ${id} not found`);
-    const updated = { ...existing, ...patch, id };
-    this.entries.set(id, updated);
-    return updated;
-  }
-
-  delete(id: string): void {
-    if (!this.entries.delete(id)) throw new NotFoundException(`Entry ${id} not found`);
-  }
-
-  // Lightweight stubs to match client usage
-  createPitch(payload: any) {
-    return { id: `pitch-${Date.now()}`, ...payload };
-  }
-
-  createDraftEntry(payload: any) {
-    return { id: `draft-${Date.now()}`, ...payload };
+  async getReadiness(): Promise<{ ready: boolean; database?: string }> {
+    try {
+      // Check database connectivity with a simple query
+      await this.db.execute(sql`SELECT 1`);
+      return {
+        ready: true,
+        database: 'connected',
+      };
+    } catch {
+      return {
+        ready: false,
+        database: 'disconnected',
+      };
+    }
   }
 }

@@ -1,0 +1,79 @@
+{
+  "name": "@corpcal/shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/esm/schemas/index.d.ts",
+      "import": "./dist/esm/schemas/index.js",
+      "require": "./dist/cjs/schemas/index.js",
+      "default": "./dist/esm/schemas/index.js"
+    },
+    "./utils": {
+      "types": "./dist/esm/utils/index.d.ts",
+      "import": "./dist/esm/utils/index.js",
+      "require": "./dist/cjs/utils/index.js",
+      "default": "./dist/esm/utils/index.js"
+    },
+    "./api": {
+      "types": "./dist/esm/api/index.d.ts",
+      "import": "./dist/esm/api/index.js",
+      "require": "./dist/cjs/api/index.js",
+      "default": "./dist/esm/api/index.js"
+    },
+    "./api/types": {
+      "types": "./dist/esm/api/types.d.ts",
+      "import": "./dist/esm/api/types.js",
+      "require": "./dist/cjs/api/types.js",
+      "default": "./dist/esm/api/types.js"
+    },
+    "./dto": {
+      "types": "./dist/esm/dto/index.d.ts",
+      "import": "./dist/esm/dto/index.js",
+      "require": "./dist/cjs/dto/index.js",
+      "default": "./dist/esm/dto/index.js"
+    },
+    "./constants/constants": {
+      "types": "./dist/esm/constants/constants.d.ts",
+      "import": "./dist/esm/constants/constants.js",
+      "require": "./dist/cjs/constants/constants.js",
+      "default": "./dist/esm/constants/constants.js"
+    },
+    "./test-utils": {
+      "types": "./dist/esm/test-utils/index.d.ts",
+      "import": "./dist/esm/test-utils/index.js",
+      "require": "./dist/cjs/test-utils/index.js",
+      "default": "./dist/esm/test-utils/index.js"
+    }
+  },
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "clean": "rm -rf dist",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "validate-types": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@corpcal/database": "*",
+    "drizzle-orm": "^0.44.7",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}

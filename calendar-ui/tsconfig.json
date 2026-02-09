@@ -1,19 +1,28 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@corpcal/shared": ["../packages/shared/dist/esm"],
+      "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
+      "@corpcal/database": ["../packages/database/dist/esm"],
+      "@corpcal/database/*": ["../packages/database/dist/esm/*"]
+    }
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "../.local/draft_components/tagpicker.tsx",
+    "../.local/draft_components/DynamicWizard",
+    "../.local/draft_components/DynamicCalendarEntryForm.tsx",
+    "../.local/draft_components/data"
+  ],
   "exclude": ["node_modules"]
 }

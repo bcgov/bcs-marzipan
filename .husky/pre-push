@@ -1,0 +1,132 @@
+# Pre-push validation hook
+# 1. Validates full project build succeeds
+# 2. Runs all test suites
+# 3. Validates schema types are in sync
+# 4. Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
+
+# ============================================
+# Build Verification
+# ============================================
+# Ensures the entire project builds successfully before pushing
+# This catches compilation errors, type errors, and build configuration issues
+
+echo "Running full build verification..."
+
+npm run build --silent 2>/dev/null || {
+  echo ""
+  echo "Build failed! Please fix build errors before pushing."
+  echo ""
+  exit 1
+}
+
+echo "Build verification passed."
+echo ""
+
+# ============================================
+# Test Suite Execution
+# ============================================
+# Runs all test suites across all workspaces
+# This ensures all tests pass before pushing to remote
+
+echo "Running test suites..."
+
+# Run calendar-service tests (Jest)
+npm run test --workspace=calendar-service --silent 2>/dev/null || {
+  echo ""
+  echo "Calendar service tests failed! Please fix test failures before pushing."
+  echo ""
+  exit 1
+}
+
+# Run calendar-ui tests (Vitest)
+# Use --run flag to ensure Vitest runs once instead of watch mode
+npm run test --workspace=calendar-ui -- --run --silent 2>/dev/null || {
+  echo ""
+  echo "Calendar UI tests failed! Please fix test failures before pushing."
+  echo ""
+  exit 1
+}
+
+# Run database package tests (Vitest)
+npm run test --workspace=packages/database -- --run --silent 2>/dev/null || {
+  echo ""
+  echo "Database package tests failed! Please fix test failures before pushing."
+  echo ""
+  exit 1
+}
+
+echo "All tests passed."
+echo ""
+
+# ============================================
+# Type Validation
+# ============================================
+# Ensures database schemas and shared types are in sync
+# This runs for all branches to catch type drift early
+# Note: Packages are already built from the build verification step above
+
+echo "Running type validation..."
+
+# Run type validation
+npm run validate-types --workspace=packages/shared --silent 2>/dev/null
+validation_result=$?
+
+if [ $validation_result -ne 0 ]; then
+  echo ""
+  echo "Type validation failed!"
+  echo ""
+  echo "Schema types are out of sync. Please fix the following:"
+  echo "  1. Run: npm run validate-types --workspace=packages/shared"
+  echo "  2. Review the output for type mismatches"
+  echo "  3. Update schemas or types as needed"
+  echo ""
+  echo "See docs/SCHEMA_README.md for guidance on schema updates."
+  echo ""
+  exit 1
+fi
+
+echo "Type validation passed."
+echo ""
+
+# ============================================
+# Branch Naming Validation
+# ============================================
+# Validates branch name against pattern: <type>/CORPCAL-<number>-<short-description>
+# Blocks push if branch name is invalid
+
+# Get the current branch name
+branch_name=$(git rev-parse --abbrev-ref HEAD)
+
+# Skip branch naming validation for main/master branches
+if [ "$branch_name" = "main" ] || [ "$branch_name" = "master" ] || [ "$branch_name" = "develop" ]; then
+  exit 0
+fi
+
+# Branch naming pattern: <type>/CORPCAL-<number>-<short-description>
+# Types: feat, fix, docs, style, refactor, test, build, chore
+# Jira key: CORPCAL- followed by digits
+# Description: lowercase, hyphens allowed, no spaces
+pattern="^(feat|fix|docs|style|refactor|test|build|chore)/CORPCAL-[0-9]+-[a-z0-9-]+$"
+
+if ! echo "$branch_name" | grep -qE "$pattern"; then
+  echo ""
+  echo "Invalid branch name: $branch_name"
+  echo ""
+  echo "Branch names must follow the format: <type>/CORPCAL-<number>-<short-description>"
+  echo ""
+  echo "Valid types: feat, fix, docs, style, refactor, test, build, chore"
+  echo "Jira key format: CORPCAL-<number> (must be uppercase, e.g., CORPCAL-123)"
+  echo "Description: all lowercase, hyphens allowed, no spaces"
+  echo ""
+  echo "Example:"
+  echo "  feat/CORPCAL-123-add-user-authentication"
+  echo ""
+  echo "Invalid examples:"
+  echo "  feature/CORPCAL-123 (wrong type)"
+  echo "  feat/corcal-123 (wrong Jira key format)"
+  echo "  feat/CORPCAL-123 (missing description)"
+  echo ""
+  exit 1
+fi
+
+echo "Branch name is valid: $branch_name"

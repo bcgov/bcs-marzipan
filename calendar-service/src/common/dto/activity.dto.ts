@@ -1,0 +1,37 @@
+import { createZodDto } from 'nestjs-zod';
+import {
+  createActivityRequestSchema,
+  updateActivityRequestSchema,
+  filterActivitiesQuerySchema,
+  softDeleteRequestSchema,
+} from '@corpcal/shared/schemas';
+
+/**
+ * DTO for creating a new activity
+ * Generated from createActivityRequestSchema using nestjs-zod
+ */
+export class CreateActivityDto extends createZodDto(
+  createActivityRequestSchema
+) {}
+
+/**
+ * DTO for updating an activity (partial update)
+ * Generated from updateActivityRequestSchema using nestjs-zod
+ */
+export class UpdateActivityDto extends createZodDto(
+  updateActivityRequestSchema
+) {}
+
+/**
+ * DTO for filtering activities (query parameters)
+ * Generated from filterActivitiesQuerySchema using nestjs-zod
+ */
+export class FilterActivitiesDto extends createZodDto(
+  filterActivitiesQuerySchema
+) {}
+
+/**
+ * DTO for soft deleting an activity
+ * Generated from softDeleteRequestSchema using nestjs-zod
+ */
+export class SoftDeleteDto extends createZodDto(softDeleteRequestSchema) {}
