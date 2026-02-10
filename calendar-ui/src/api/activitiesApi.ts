@@ -30,7 +30,7 @@ export async function fetchActivities(
     return res.data;
   }
 
-  console.error('Unexpected API response structure:', res.data);
+  logger.error('Unexpected API response structure');
   return [];
 }
 

@@ -5,6 +5,7 @@
 import { useState, type SubmitEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { getFriendlyErrorMessage } from '../lib/error-toast';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -40,15 +41,7 @@ export function Login() {
         void navigate(returnTo, { replace: true });
       })
       .catch((err: unknown) => {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Login failed. Please try again.';
-        // Extract error message from axios error response if available
-        const axiosError = err as {
-          response?: { data?: { message?: string } };
-        };
-        setError(axiosError.response?.data?.message || message);
+        setError(getFriendlyErrorMessage(err));
       })
       .finally(() => {
         setIsLoading(false);
