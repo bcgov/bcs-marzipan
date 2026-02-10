@@ -1,4 +1,7 @@
+import { Loader2 } from 'lucide-react';
 import { ReactNode } from 'react';
+
+import { Button } from '../ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Loader2 } from 'lucide-react';
 
 interface AdminModalProps {
   open: boolean;

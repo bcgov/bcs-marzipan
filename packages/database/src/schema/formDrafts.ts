@@ -1,15 +1,15 @@
+import { relations, sql } from 'drizzle-orm';
 import {
+  index,
+  integer,
+  jsonb,
   pgTable,
   serial,
-  integer,
-  varchar,
-  jsonb,
   timestamp,
-  index,
   uniqueIndex,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import { relations } from 'drizzle-orm';
+
 import { users } from './user';
 
 /**

@@ -1,19 +1,20 @@
-import {
-  pgTable,
-  serial,
-  uuid,
-  integer,
-  boolean,
-  varchar,
-  timestamp,
-  primaryKey,
-} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { users } from './user';
+import {
+  boolean,
+  integer,
+  pgTable,
+  primaryKey,
+  serial,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
+
 import { activities } from './activity';
-import { ministryUsers } from './relations';
 import { governmentRepresentatives } from './lookups';
+import { ministryUsers } from './relations';
 import { teams } from './teams';
+import { users } from './user';
 
 /**
  * Ministry table - Government departments

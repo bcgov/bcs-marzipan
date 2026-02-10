@@ -1,35 +1,37 @@
 import {
-  Tab,
-  TabList,
-  SelectTabData,
-  SelectTabEvent,
   Menu,
   MenuButton,
+  MenuCheckedValueChangeData,
   MenuItem,
+  MenuItemCheckbox,
   MenuList,
   MenuPopover,
-  MenuTrigger,
-  MenuItemCheckbox,
   MenuProps,
-  MenuCheckedValueChangeData,
+  MenuTrigger,
   SearchBox,
+  SelectTabData,
+  SelectTabEvent,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
 import { FilterRegular } from '@fluentui/react-icons';
-
 import { ColumnFiltersState } from '@tanstack/react-table';
-import { useState, useEffect, useCallback } from 'react';
-
 import { useCookies } from 'react-cookie';
+import { useCallback, useEffect, useState } from 'react';
+
+import { fetchActivities } from '../api/activitiesApi';
 import {
-  fetchCategories,
-  fetchTags,
-  fetchGovernmentRepresentatives,
-  fetchUsers,
   fetchActivityStatuses,
+  fetchCategories,
+  fetchGovernmentRepresentatives,
+  fetchTags,
+  fetchUsers,
   LookupItem,
   UserLookupItem,
 } from '../api/lookupsApi';
-import { fetchActivities } from '../api/activitiesApi';
+import { createLogger } from '../lib/logger';
+
+const logger = createLogger('CalendarFilters');
 
 interface FilterProps {
   onFiltersChanged: (filters: ColumnFiltersState) => void;
@@ -141,7 +143,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     });
   };
 
-  // Cookie handling: "C" is for "Cookie", and that's good enough for me
+  // Cookie handling
   const [cookies, setCookie, removeCookie] = useCookies(['filtersCookie']);
 
   const handleSetCookie = useCallback(() => {
@@ -309,7 +311,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setCategories(data);
       })
       .catch((error) => {
-        console.error('Error fetching categories:', error);
+        logger.error('Error fetching categories', error);
       });
 
     fetchTags()
@@ -317,7 +319,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setTags(data);
       })
       .catch((error) => {
-        console.error('Error fetching tags:', error);
+        logger.error('Error fetching tags', error);
       });
 
     fetchActivityStatuses()
@@ -325,7 +327,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setStatuses(data);
       })
       .catch((error) => {
-        console.error('Error fetching activity statuses:', error);
+        logger.error('Error fetching activity statuses', error);
       });
 
     fetchGovernmentRepresentatives()
@@ -333,7 +335,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setRepresentatives(data);
       })
       .catch((error) => {
-        console.error('Error fetching representatives:', error);
+        logger.error('Error fetching representatives', error);
       });
 
     // Extract unique comms contact IDs and event lead IDs from activities, then fetch only those users
@@ -372,11 +374,11 @@ export const CalendarFilters: React.FC<FilterProps> = ({
             setLeads(sortedUsers);
           })
           .catch((error) => {
-            console.error('Error fetching users:', error);
+            logger.error('Error fetching users', error);
           });
       })
       .catch((error) => {
-        console.error('Error fetching activities:', error);
+        logger.error('Error fetching activities', error);
       });
   }, []); // Empty dependency array - only run once on mount
 
@@ -406,7 +408,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         handleRemoveCookie();
         handleClearFilters();
         // TODO: handle error
-        console.error('Error parsing filters cookie:', error);
+        logger.error('Error parsing filters cookie', error);
       }
     }
   };

@@ -1,6 +1,7 @@
-import { ZodValidationPipe } from './zod-validation.pipe';
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
+
+import { ZodValidationPipe } from './zod-validation.pipe';
 
 const testSchema = z.object({
   name: z.string(),

@@ -1,9 +1,7 @@
-import { DrawerProps } from '@fluentui/react-components';
-import * as React from 'react';
-
-import { useLocation } from 'react-router-dom';
 import {
+  DrawerProps,
   Hamburger,
+  makeStyles,
   NavCategory,
   NavCategoryItem,
   NavDrawer,
@@ -13,14 +11,16 @@ import {
   NavSectionHeader,
   NavSubItem,
   NavSubItemGroup,
-  Tooltip,
-  makeStyles,
   tokens,
+  Tooltip,
   useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import {
   Board20Filled,
   Board20Regular,
+  bundleIcon,
+  Calendar20Filled,
+  Calendar20Regular,
   HeartPulse20Filled,
   HeartPulse20Regular,
   NotePin20Filled,
@@ -29,12 +29,15 @@ import {
   PersonLightbulb20Regular,
   PersonSearch20Filled,
   PersonSearch20Regular,
-  bundleIcon,
-  Calendar20Regular,
-  Calendar20Filled,
-  Settings20Regular,
   Settings20Filled,
+  Settings20Regular,
 } from '@fluentui/react-icons';
+import { useLocation } from 'react-router-dom';
+import * as React from 'react';
+
+import { PERMISSIONS } from '@corpcal/shared';
+
+import { useAuth } from '../hooks/useAuth';
 
 const useStyles = makeStyles({
   root: {
@@ -94,6 +97,10 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   const [type] = React.useState<DrawerType>('inline');
   const [isMultiple] = React.useState(true);
   const location = useLocation();
+  const { hasPermission } = useAuth();
+
+  // Check if user has permission to view settings (admin-level access)
+  const canManageSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
 
   // Tabster prop used to restore focus to the navigation trigger for overlay nav drawers
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
@@ -106,6 +113,7 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     '/': '2',
     '/drafts': '3',
     '/pitch': '4',
+    '/reports/look-ahead': '7',
     // Add more mappings as needed
   };
 
@@ -150,32 +158,39 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
           <NavCategory value="6">
             <NavCategoryItem icon={<JobPostings />}>Reports</NavCategoryItem>
             <NavSubItemGroup>
-              <NavSubItem href={linkDestination} value="7">
-                Analytics
+              <NavSubItem href="/reports/look-ahead" value="7">
+                Look Ahead
               </NavSubItem>
               <NavSubItem href={linkDestination} value="8">
+                Analytics
+              </NavSubItem>
+              <NavSubItem href={linkDestination} value="9">
                 Submissions
               </NavSubItem>
             </NavSubItemGroup>
           </NavCategory>
 
-          <NavSectionHeader>Manage</NavSectionHeader>
-          <NavItem icon={<HealthPlans />} value="10">
-            Users
-          </NavItem>
-          <NavCategory value="11">
-            <NavItem icon={<Settings />} href="/settings" value="12">
-              Settings
-            </NavItem>
-            <NavSubItemGroup>
-              <NavSubItem href={linkDestination} value="13">
-                Form Templates
-              </NavSubItem>
-              <NavSubItem href={linkDestination} value="14">
-                Data Retention
-              </NavSubItem>
-            </NavSubItemGroup>
-          </NavCategory>
+          {canManageSettings && (
+            <>
+              <NavSectionHeader>Manage</NavSectionHeader>
+              <NavItem icon={<HealthPlans />} value="10">
+                Users
+              </NavItem>
+              <NavCategory value="11">
+                <NavItem icon={<Settings />} href="/settings" value="12">
+                  Settings
+                </NavItem>
+                <NavSubItemGroup>
+                  <NavSubItem href={linkDestination} value="13">
+                    Form Templates
+                  </NavSubItem>
+                  <NavSubItem href={linkDestination} value="14">
+                    Data Retention
+                  </NavSubItem>
+                </NavSubItemGroup>
+              </NavCategory>
+            </>
+          )}
         </NavDrawerBody>
       </NavDrawer>
       <div className={styles.content}>

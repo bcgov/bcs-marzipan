@@ -1,19 +1,20 @@
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Edit, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, Edit, Trash2, XCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
 import type { CategoryLookupItem } from '@corpcal/shared/api/types';
-import { fetchCategories } from '@/api/lookupsApi';
 import api from '@/api/axios';
+import { fetchCategories } from '@/api/lookupsApi';
 import {
-  AdminSection,
   AdminModal,
-  LookupForm,
+  AdminSection,
   FormField,
+  LookupForm,
 } from '@/components/admin';
 import { GenericDataTable } from '@/components/Table/GenericDataTable';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,

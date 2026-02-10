@@ -1,11 +1,12 @@
-import api from './axios.js';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   CreateActivityRequest,
-  UpdateActivityRequest,
   FilterActivitiesQueryParams,
+  UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+
 import { createLogger } from '../lib/logger';
+import api from './axios';
 
 const logger = createLogger('ActivitiesAPI');
 
@@ -30,7 +31,7 @@ export async function fetchActivities(
     return res.data;
   }
 
-  console.error('Unexpected API response structure:', res.data);
+  logger.error('Unexpected API response structure');
   return [];
 }
 

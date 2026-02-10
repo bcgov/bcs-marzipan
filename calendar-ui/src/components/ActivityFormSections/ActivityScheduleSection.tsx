@@ -1,19 +1,20 @@
+import { Calendar } from 'lucide-react';
 import { UseFormReturn } from 'react-hook-form';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
+import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
+import { Checkbox } from '../ui/checkbox';
 import {
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from '../ui/form';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { Checkbox } from '../ui/checkbox';
-import { Calendar } from 'lucide-react';
-import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
-
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

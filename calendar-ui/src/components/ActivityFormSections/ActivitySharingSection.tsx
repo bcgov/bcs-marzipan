@@ -1,11 +1,16 @@
 import { useFormContext } from 'react-hook-form';
+
+import type { Visibility } from '@corpcal/shared/constants/constants';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
+import { Combobox } from '../ui/combobox';
 import {
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
 import {
   Select,
@@ -14,9 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Combobox } from '../ui/combobox';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
-import type { Visibility } from '@corpcal/shared/constants/constants';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

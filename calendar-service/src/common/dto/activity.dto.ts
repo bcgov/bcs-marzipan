@@ -1,9 +1,10 @@
 import { createZodDto } from 'nestjs-zod';
+
 import {
   createActivityRequestSchema,
-  updateActivityRequestSchema,
   filterActivitiesQuerySchema,
   softDeleteRequestSchema,
+  updateActivityRequestSchema,
 } from '@corpcal/shared/schemas';
 
 /**
