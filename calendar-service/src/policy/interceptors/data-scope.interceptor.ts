@@ -4,8 +4,8 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { Observable } from 'rxjs';
-import type { AuthUser } from '@corpcal/shared';
 import type { DataScope } from '../dto/user-context.dto';
 import { PolicyService } from '../policy.service';
 
@@ -22,8 +22,8 @@ export class DataScopeInterceptor implements NestInterceptor {
   constructor(private readonly policyService: PolicyService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as AuthUser | undefined;
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = request.user;
 
     if (user) {
       const bypass = this.policyService.bypassesDataScoping(user.roleName);

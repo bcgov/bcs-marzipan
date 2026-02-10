@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService, type JwtPayload } from '../auth.service';
 
@@ -27,10 +28,7 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<{
-      headers?: { authorization?: string };
-      user?: unknown;
-    }>();
+    const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
 
     if (!token) {
@@ -46,9 +44,7 @@ export class JwtAuthGuard implements CanActivate {
     }
   }
 
-  private extractToken(request: {
-    headers?: { authorization?: string };
-  }): string | null {
+  private extractToken(request: Request): string | null {
     const auth = request.headers?.authorization;
     if (!auth || !auth.startsWith('Bearer ')) {
       return null;

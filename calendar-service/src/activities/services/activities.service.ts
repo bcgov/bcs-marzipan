@@ -280,13 +280,13 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
-   * @param dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
+   * @param _dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
    */
   async findAll(
     filters?: FilterActivitiesQueryParams,
-    dataScope?: DataScope
+    _dataScope?: DataScope
   ): Promise<ActivityResponse[]> {
-    // TODO: When dataScope is provided and dataScope.bypass is false, filter results to only activities visible to dataScope.teamIds
+    // TODO: When _dataScope is provided and _dataScope.bypass is false, filter results to only activities visible to _dataScope.teamIds
     let activityResults: Activity[];
 
     // Get deleted status ID to exclude deleted activities by default

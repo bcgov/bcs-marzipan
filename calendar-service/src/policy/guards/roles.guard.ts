@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { AuthUser } from '@corpcal/shared';
+import type { Request } from 'express';
 import {
   ROLES_METADATA_KEY,
   type RolesMetadata,
@@ -25,8 +25,8 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as AuthUser | undefined;
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = request.user;
 
     if (!user || !user.roleName) {
       throw new ForbiddenException('Authentication required');

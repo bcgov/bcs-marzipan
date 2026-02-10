@@ -9,10 +9,8 @@ import {
   Delete,
   ParseIntPipe,
   Query,
-  Req,
   UsePipes,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -41,6 +39,8 @@ import type {
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AppLogger } from '../common/logger/logger.service';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { RequestContext } from '../policy/decorators/request-context.decorator';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import type { Category } from '@corpcal/database/types';
 import {
   CreateActivityDto,
@@ -113,7 +113,7 @@ export class ActivitiesController {
   async findAll(
     @Query(new ZodValidationPipe(filterActivitiesQuerySchema))
     query: FilterActivitiesQueryParams,
-    @Req() request: Request
+    @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse[] }> {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
@@ -132,7 +132,7 @@ export class ActivitiesController {
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(
       filters,
-      request?.dataScope
+      ctx.dataScope
     );
     return {
       success: true,

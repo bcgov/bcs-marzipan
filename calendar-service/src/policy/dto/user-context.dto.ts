@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import type { AuthUser } from '@corpcal/shared';
 
 /**
@@ -13,3 +14,11 @@ export interface DataScope {
   teamIds: number[];
   bypass: boolean;
 }
+
+/**
+ * Context slice of the augmented Express Request (user + dataScope).
+ * dataScope is required because @RequestContext() always provides it (defaults when absent).
+ */
+export type RequestContext = Pick<Request, 'user' | 'dataScope'> & {
+  dataScope: DataScope;
+};
