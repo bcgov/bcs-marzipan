@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { Calendar } from 'lucide-react';
+import { DateRangePicker } from '../ui/date-range-picker';
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
 import {
   CONFIRMED_STATUS_NAMES,
@@ -51,6 +51,8 @@ export const ActivityScheduleSection: React.FC<
     name: 'timeStatusId',
   });
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
+  const startDateValue = useWatch({ control: form.control, name: 'startDate' });
+  const endDateValue = useWatch({ control: form.control, name: 'endDate' });
 
   // Find "confirmed" status by name
   const confirmedDateStatus = findStatusByName(
@@ -117,6 +119,29 @@ export const ActivityScheduleSection: React.FC<
     }
   };
 
+  const formatDateRange = (start?: string, end?: string) => {
+    const startText = (start || '').trim();
+    const endText = (end || '').trim();
+    if (startText && endText) return `${startText} - ${endText}`;
+    if (startText) return startText;
+    if (endText) return `- ${endText}`;
+    return '';
+  };
+
+  const parseDateRange = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { start: '', end: '' };
+    }
+
+    const parts = trimmed.split(/\s[–-]\s/);
+    if (parts.length === 1) {
+      return { start: parts[0], end: '' };
+    }
+    const [start, end] = parts;
+    return { start: start.trim(), end: (end || '').trim() };
+  };
+
   return (
     <ActivityFormSection title="Date">
       {/* Date Range Input with Confirmation Checkbox */}
@@ -130,35 +155,30 @@ export const ActivityScheduleSection: React.FC<
             </FormLabel>
             <div className="flex items-center gap-2">
               <FormControl>
-                <div className="relative flex flex-1 items-center gap-2">
-                  <Input
-                    type="date"
-                    {...startField}
-                    value={startField.value || ''}
-                    className="flex-1"
-                  />
-                  <span className="text-muted-foreground">—</span>
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field: endField }) => (
-                      <Input
-                        type="date"
-                        {...endField}
-                        value={endField.value || ''}
-                        className="flex-1"
-                      />
-                    )}
-                  />
-                  <Calendar className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
-                </div>
+                <DateRangePicker
+                  startDate={String(startDateValue || '')}
+                  endDate={String(endDateValue || '')}
+                  onStartDateChange={(date) => {
+                    form.setValue('startDate', date, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEndDateChange={(date) => {
+                    form.setValue('endDate', date, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  placeholder="Pick a date"
+                />
               </FormControl>
               <div className="flex items-center">
                 <Button
                   type="button"
                   size="sm"
                   variant={isDateConfirmed ? 'default' : 'outline'}
-                  className="h-8 rounded-full px-3 text-xs"
+                  className="h-8 rounded-full px-3 text-xs whitespace-nowrap"
                   onClick={toggleDateConfirmation}
                   aria-pressed={isDateConfirmed}
                 >
@@ -201,12 +221,12 @@ export const ActivityScheduleSection: React.FC<
               </FormLabel>
               <div className="flex items-center gap-2">
                 <FormControl>
-                  <div className="flex flex-1 items-center gap-2">
+                  <div className="flex w-full max-w-[18rem] items-center gap-2">
                     <Input
                       type="time"
                       {...startTimeField}
                       value={startTimeField.value || ''}
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                     />
                     <span className="text-muted-foreground">—</span>
                     <FormField
@@ -217,7 +237,7 @@ export const ActivityScheduleSection: React.FC<
                           type="time"
                           {...endTimeField}
                           value={endTimeField.value || ''}
-                          className="flex-1"
+                          className="min-w-0 flex-1"
                         />
                       )}
                     />
