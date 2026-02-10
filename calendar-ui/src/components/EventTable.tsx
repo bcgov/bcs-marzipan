@@ -306,7 +306,17 @@ const SummaryCell = ({
           }}
         >
           {tags.map((tag) => (
-            <Badge key={tag.id} appearance="outline" size="small">
+            <Badge
+              key={tag.id}
+              appearance="outline"
+              style={{
+                color: '#616161',
+                whiteSpace: 'normal',
+                height: 'auto',
+                minHeight: '20px',
+                fontSize: '12px',
+              }}
+            >
               {tag.text}
             </Badge>
           ))}
@@ -490,6 +500,7 @@ const ScheduleCell = ({
               height: 'auto',
               minHeight: '20px',
               fontSize: '12px',
+              color: '#616161',
             }}
           >
             Premier Eby: {premierStatus}
@@ -504,6 +515,7 @@ const ScheduleCell = ({
                 height: 'auto',
                 minHeight: '20px',
                 fontSize: '12px',
+                color: '#616161',
               }}
             >
               {representatives[0].representative}
@@ -516,6 +528,7 @@ const ScheduleCell = ({
                   height: 'auto',
                   minHeight: '20px',
                   fontSize: '12px',
+                  color: '#616161',
                 }}
               >
                 +{representatives.length - 1} other

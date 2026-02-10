@@ -1,4 +1,4 @@
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, useWatch } from 'react-hook-form';
 import {
   FormField,
   FormItem,
@@ -6,12 +6,19 @@ import {
   FormControl,
   FormMessage,
 } from '../ui/form';
+import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { Checkbox } from '../ui/checkbox';
 import { Calendar } from 'lucide-react';
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
+import {
+  CONFIRMED_STATUS_NAMES,
+  CONFIRMED_STATUS_LABEL,
+  UNCONFIRMED_STATUS_NAMES,
+  UNCONFIRMED_STATUS_LABEL,
+  findStatusByName,
+} from '../../lib/utils';
 
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -28,36 +35,85 @@ export const ActivityScheduleSection: React.FC<
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
+  const coerceStatusId = (status?: { id?: string | number }) => {
+    if (status?.id == null) return undefined;
+    const asNumber = Number(status.id);
+    return Number.isNaN(asNumber) ? undefined : asNumber;
+  };
+
   // Get current status IDs
-  const currentDateStatusId = form.watch('dateStatusId');
-  const currentTimeStatusId = form.watch('timeStatusId');
+  const currentDateStatusId = useWatch({
+    control: form.control,
+    name: 'dateStatusId',
+  });
+  const currentTimeStatusId = useWatch({
+    control: form.control,
+    name: 'timeStatusId',
+  });
+  const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
 
   // Find "confirmed" status by name
-  const confirmedDateStatus = dateStatuses?.find((s) => s.name === 'confirmed');
-  const confirmedTimeStatus = timeStatuses?.find((s) => s.name === 'confirmed');
+  const confirmedDateStatus = findStatusByName(
+    dateStatuses,
+    CONFIRMED_STATUS_NAMES
+  );
+  const confirmedTimeStatus = findStatusByName(
+    timeStatuses,
+    CONFIRMED_STATUS_NAMES
+  );
 
   // Check if date/time are confirmed
-  const isDateConfirmed = currentDateStatusId === confirmedDateStatus?.id;
-  const isTimeConfirmed = currentTimeStatusId === confirmedTimeStatus?.id;
+  const confirmedDateStatusId = coerceStatusId(confirmedDateStatus);
+  const confirmedTimeStatusId = coerceStatusId(confirmedTimeStatus);
+  const isDateConfirmed =
+    confirmedDateStatusId !== undefined &&
+    Number(currentDateStatusId) === confirmedDateStatusId;
+  const isTimeConfirmed =
+    confirmedTimeStatusId !== undefined &&
+    Number(currentTimeStatusId) === confirmedTimeStatusId;
 
   // Toggle confirmation status
   const toggleDateConfirmation = () => {
     if (!dateStatuses) return;
-    const unconfirmedStatus = dateStatuses.find((s) => s.name === 'unknown');
+    const unconfirmedStatus = findStatusByName(
+      dateStatuses,
+      UNCONFIRMED_STATUS_NAMES
+    );
     if (isDateConfirmed && unconfirmedStatus) {
-      form.setValue('dateStatusId', unconfirmedStatus.id as number);
-    } else if (confirmedDateStatus) {
-      form.setValue('dateStatusId', confirmedDateStatus.id as number);
+      const unconfirmedId = coerceStatusId(unconfirmedStatus);
+      if (unconfirmedId !== undefined) {
+        form.setValue('dateStatusId', unconfirmedId, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    } else if (confirmedDateStatusId !== undefined) {
+      form.setValue('dateStatusId', confirmedDateStatusId, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
   const toggleTimeConfirmation = () => {
     if (!timeStatuses) return;
-    const unconfirmedStatus = timeStatuses.find((s) => s.name === 'unknown');
+    const unconfirmedStatus = findStatusByName(
+      timeStatuses,
+      UNCONFIRMED_STATUS_NAMES
+    );
     if (isTimeConfirmed && unconfirmedStatus) {
-      form.setValue('timeStatusId', unconfirmedStatus.id as number);
-    } else if (confirmedTimeStatus) {
-      form.setValue('timeStatusId', confirmedTimeStatus.id as number);
+      const unconfirmedId = coerceStatusId(unconfirmedStatus);
+      if (unconfirmedId !== undefined) {
+        form.setValue('timeStatusId', unconfirmedId, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    } else if (confirmedTimeStatusId !== undefined) {
+      form.setValue('timeStatusId', confirmedTimeStatusId, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -97,18 +153,19 @@ export const ActivityScheduleSection: React.FC<
                   <Calendar className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
                 </div>
               </FormControl>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="date-confirmed"
-                  checked={isDateConfirmed}
-                  onCheckedChange={toggleDateConfirmation}
-                />
-                <label
-                  htmlFor="date-confirmed"
-                  className="cursor-pointer text-sm leading-none font-medium"
+              <div className="flex items-center">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isDateConfirmed ? 'default' : 'outline'}
+                  className="h-8 rounded-full px-3 text-xs"
+                  onClick={toggleDateConfirmation}
+                  aria-pressed={isDateConfirmed}
                 >
-                  Confirmed
-                </label>
+                  {isDateConfirmed
+                    ? CONFIRMED_STATUS_LABEL
+                    : UNCONFIRMED_STATUS_LABEL}
+                </Button>
               </div>
             </div>
             <FormMessage />
@@ -133,7 +190,7 @@ export const ActivityScheduleSection: React.FC<
       />
 
       {/* Time Range Input with Confirmation Checkbox */}
-      {!form.watch('isAllDay') && (
+      {!isAllDay && (
         <FormField
           control={form.control}
           name="startTime"
@@ -166,18 +223,19 @@ export const ActivityScheduleSection: React.FC<
                     />
                   </div>
                 </FormControl>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="time-confirmed"
-                    checked={isTimeConfirmed}
-                    onCheckedChange={toggleTimeConfirmation}
-                  />
-                  <label
-                    htmlFor="time-confirmed"
-                    className="cursor-pointer text-sm leading-none font-medium"
+                <div className="flex items-center">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isTimeConfirmed ? 'default' : 'outline'}
+                    className="h-8 rounded-full px-3 text-xs"
+                    onClick={toggleTimeConfirmation}
+                    aria-pressed={isTimeConfirmed}
                   >
-                    Confirmed
-                  </label>
+                    {isTimeConfirmed
+                      ? CONFIRMED_STATUS_LABEL
+                      : UNCONFIRMED_STATUS_LABEL}
+                  </Button>
                 </div>
               </div>
               <FormMessage />

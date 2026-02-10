@@ -26,7 +26,11 @@ import {
 import React from 'react';
 import { History } from 'lucide-react';
 import ActivityHistory from '../components/activities/ActivityHistory';
-import { timeAgo } from '../lib/utils';
+import {
+  UNCONFIRMED_STATUS_NAMES,
+  findStatusByName,
+  timeAgo,
+} from '../lib/utils';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -92,14 +96,14 @@ export default function EditActivityForm(): React.ReactElement {
   // Set default date/time status when lookups arrive
   useEffect(() => {
     if (dateStatuses && !form.getValues('dateStatusId')) {
-      const unknown = dateStatuses.find((s) => s.name === 'unknown');
+      const unknown = findStatusByName(dateStatuses, UNCONFIRMED_STATUS_NAMES);
       if (unknown) form.setValue('dateStatusId', unknown.id as number);
     }
   }, [dateStatuses, form]);
 
   useEffect(() => {
     if (timeStatuses && !form.getValues('timeStatusId')) {
-      const unknown = timeStatuses.find((s) => s.name === 'unknown');
+      const unknown = findStatusByName(timeStatuses, UNCONFIRMED_STATUS_NAMES);
       if (unknown) form.setValue('timeStatusId', unknown.id as number);
     }
   }, [timeStatuses, form]);

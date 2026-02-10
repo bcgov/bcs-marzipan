@@ -39,3 +39,27 @@ export function timeAgoShort(dateStr: string): string {
   if (hrs < 24) return `${hrs}h`;
   return d.toLocaleDateString();
 }
+
+type StatusLookupItem = { name?: string; label?: string; id?: string | number };
+
+export const CONFIRMED_STATUS_NAMES = ['confirmed'];
+export const UNCONFIRMED_STATUS_NAMES = [
+  'unknown',
+  'not confirmed',
+  'not_confirmed',
+  'unconfirmed',
+];
+
+export const CONFIRMED_STATUS_LABEL = 'Confirmed';
+export const UNCONFIRMED_STATUS_LABEL = 'Not confirmed';
+
+export function normalizeStatusName(status: StatusLookupItem): string {
+  return (status?.name ?? status?.label ?? '').toString().trim().toLowerCase();
+}
+
+export function findStatusByName(
+  statuses: StatusLookupItem[] | undefined,
+  names: string[]
+): StatusLookupItem | undefined {
+  return statuses?.find((s) => names.includes(normalizeStatusName(s)));
+}
