@@ -287,7 +287,7 @@ npm run format:check
 npm run lint
 
 # Check linting
-npm run lint:check
+npm run lint
 ```
 
 ### Git Hooks
