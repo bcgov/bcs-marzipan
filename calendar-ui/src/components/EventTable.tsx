@@ -40,6 +40,7 @@ import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UserLookupItem } from '@corpcal/shared/api/types';
+import { NotebookText, Languages } from 'lucide-react';
 
 const useStyles = makeStyles({
   container: {
@@ -105,11 +106,13 @@ type EventRow = {
   dateCreated: string;
   dateModified: Date | undefined;
   summary: string | undefined;
+  tags: Array<{ id: number; text: string }> | undefined;
   representatives:
     | Array<{ representative: string; invitationStatus: string }>
     | undefined;
   leads: string[] | undefined;
   commsMaterials: string[] | undefined;
+  translationsRequired: string[] | undefined;
   reports: Report[] | undefined;
   startDate: Date;
   endDate: Date | undefined;
@@ -211,11 +214,16 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
     summary: activity.summary || undefined,
+    tags: activity.tags && activity.tags.length > 0 ? activity.tags : undefined,
     representatives: representatives || undefined,
     leads: leads.length > 0 ? leads : undefined,
     commsMaterials:
       activity.commsMaterials && activity.commsMaterials.length > 0
         ? activity.commsMaterials
+        : undefined,
+    translationsRequired:
+      activity.translationsRequired && activity.translationsRequired.length > 0
+        ? activity.translationsRequired
         : undefined,
     reports: reports.length > 0 ? reports : undefined,
     startDate,
@@ -232,7 +240,13 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
 };
 
 // Summary text truncation component
-const SummaryCell = ({ summary }: { summary: string | undefined }) => {
+const SummaryCell = ({
+  summary,
+  tags,
+}: {
+  summary: string | undefined;
+  tags: Array<{ id: number; text: string }> | undefined;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -281,6 +295,22 @@ const SummaryCell = ({ summary }: { summary: string | undefined }) => {
         >
           {expanded ? 'show less' : 'show more'}
         </button>
+      )}
+      {tags && tags.length > 0 && (
+        <div
+          style={{
+            marginTop: '8px',
+            display: 'flex',
+            gap: '4px',
+            flexWrap: 'wrap',
+          }}
+        >
+          {tags.map((tag) => (
+            <Badge key={tag.id} appearance="outline" size="small">
+              {tag.text}
+            </Badge>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -454,14 +484,11 @@ const ScheduleCell = ({
       >
         {premierStatus && premierStatus !== 'No' && (
           <Badge
-            appearance="filled"
+            appearance="outline"
             style={{
               whiteSpace: 'normal',
               height: 'auto',
               minHeight: '20px',
-              backgroundColor:
-                premierStatus === 'Confirmed' ? '#107c10' : '#ffc107',
-              color: '#fff',
               fontSize: '12px',
             }}
           >
@@ -471,13 +498,11 @@ const ScheduleCell = ({
         {representatives && representatives.length > 0 && (
           <>
             <Badge
-              appearance="filled"
+              appearance="outline"
               style={{
                 whiteSpace: 'normal',
                 height: 'auto',
                 minHeight: '20px',
-                backgroundColor: '#e6e7f2',
-                color: '#1f2937',
                 fontSize: '12px',
               }}
             >
@@ -485,13 +510,11 @@ const ScheduleCell = ({
             </Badge>
             {representatives.length > 1 && (
               <Badge
-                appearance="filled"
+                appearance="outline"
                 style={{
                   whiteSpace: 'normal',
                   height: 'auto',
                   minHeight: '20px',
-                  backgroundColor: '#e6e7f2',
-                  color: '#1f2937',
                   fontSize: '12px',
                 }}
               >
@@ -550,10 +573,11 @@ export const EventTable: React.FC<EventTableProps> = ({
   }, []);
 
   const userMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { name: string; jobTitle?: string | null }>();
     users.forEach((user) => {
       const displayName = user.name || user.email || String(user.id);
-      map.set(String(user.id), displayName);
+      const jobTitle = (user as any).jobTitle ?? null;
+      map.set(String(user.id), { name: displayName, jobTitle });
     });
     return map;
   }, [users]);
@@ -612,7 +636,12 @@ export const EventTable: React.FC<EventTableProps> = ({
       columnHelper.accessor('summary', {
         header: 'Summary',
         size: 300,
-        cell: ({ row }) => <SummaryCell summary={row.original.summary} />,
+        cell: ({ row }) => (
+          <SummaryCell
+            summary={row.original.summary}
+            tags={row.original.tags}
+          />
+        ),
       }),
 
       columnHelper.accessor('startDate', {
@@ -640,16 +669,18 @@ export const EventTable: React.FC<EventTableProps> = ({
         cell: ({ row }) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {row.original.leads?.map((lead) => {
-              const displayName = userMap.get(lead) || lead;
+              const userInfo = userMap.get(lead);
+              const displayName = userInfo?.name || lead;
+              const jobTitle = userInfo?.jobTitle;
               return (
-                <div
-                  key={lead}
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: '600',
-                  }}
-                >
-                  Ministry: {displayName}
+                <div key={lead} style={{ fontSize: '13px' }}>
+                  {jobTitle && (
+                    <div style={{ fontWeight: '400' }}>{jobTitle}</div>
+                  )}
+                  <div>
+                    <span style={{ fontWeight: '400' }}>Ministry: </span>
+                    <span style={{ fontWeight: '600' }}>{displayName}</span>
+                  </div>
                 </div>
               );
             }) || <span style={{ color: '#999' }}>—</span>}
@@ -660,15 +691,62 @@ export const EventTable: React.FC<EventTableProps> = ({
       columnHelper.accessor('commsMaterials', {
         header: 'Materials',
         size: 200,
-        cell: ({ row }) => (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {row.original.commsMaterials?.map((material, idx) => (
-              <Badge key={idx} appearance="filled">
-                {material}
-              </Badge>
-            )) || <span style={{ color: '#999' }}>—</span>}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const hasMaterials =
+            row.original.commsMaterials &&
+            row.original.commsMaterials.length > 0;
+          const hasTranslations =
+            row.original.translationsRequired &&
+            row.original.translationsRequired.length > 0;
+
+          if (!hasMaterials && !hasTranslations) {
+            return <span style={{ color: '#999' }}>—</span>;
+          }
+
+          return (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                fontSize: '13px',
+              }}
+            >
+              {hasMaterials && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <NotebookText
+                    size={16}
+                    strokeWidth={1.5}
+                    style={{ color: '#666', flexShrink: 0 }}
+                  />
+                  <span>{row.original.commsMaterials!.join(', ')}</span>
+                </div>
+              )}
+              {hasTranslations && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Languages
+                    size={16}
+                    strokeWidth={1.5}
+                    style={{ color: '#666', flexShrink: 0 }}
+                  />
+                  <span>{row.original.translationsRequired!.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          );
+        },
       }),
 
       columnHelper.accessor('status', {
