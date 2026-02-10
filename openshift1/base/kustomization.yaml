@@ -1,6 +1,0 @@
-resources:
-  - calendar-service-deployment.yaml
-  - calendar-ui-deployment.yaml
-  - postgres-deployment.yaml
-  - configmap.yaml
-  - secret.yaml

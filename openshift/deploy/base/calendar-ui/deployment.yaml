@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: calendar-service
+  name: calendar-ui
   labels:
-    app: calendar-service
+    app: calendar-ui
     app.kubernetes.io/name: calendar
-    app.kubernetes.io/component: service
+    app.kubernetes.io/component: ui
     app.kubernetes.io/part-of: corporate-calendar
     app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
@@ -15,54 +15,54 @@ metadata:
         {
           "from": {
             "kind": "ImageStreamTag",
-            "name": "calendar-service:latest"
+            "name": "calendar-ui:latest"
           },
-          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-service')].image"
+          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-ui')].image"
         }
       ]
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: calendar-service
+      app: calendar-ui
   template:
     metadata:
       labels:
-        app: calendar-service
+        app: calendar-ui
     spec:
       containers:
-        - name: calendar-service
-          image: image-registry.openshift-image-registry.svc:5000/b3237c-dev/calendar-service:latest
+        - name: calendar-ui
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-ui:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               protocol: TCP
-              containerPort: 3001
+              containerPort: 8080
           env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: calendar-service-secrets
-                  key: DATABASE_URL
-            - name: CORS_ALLOWED_ORIGINS
+            - name: VITE_API_BASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
-                  key: CORS_ALLOWED_ORIGINS
+                  name: calendar-ui-config
+                  key: VITE_API_BASE_URL
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: calendar-ui-config
                   key: NODE_ENV
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-ui-secrets
+                  key: DATABASE_URL
           readinessProbe:
             httpGet:
               path: /ready
-              port: 3001
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: 3001
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 20
