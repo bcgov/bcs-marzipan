@@ -1,11 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { e2eLogin, createAuthRequest } from './test-helpers';
 
 describe('LookupsController (e2e)', () => {
   let app: INestApplication;
-  let accessToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -14,8 +13,6 @@ describe('LookupsController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
-
-    accessToken = await e2eLogin(app);
   });
 
   afterAll(async () => {
@@ -24,7 +21,7 @@ describe('LookupsController (e2e)', () => {
 
   describe('/lookups/categories (GET)', () => {
     it('should return all categories', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/categories')
         .expect(200)
         .expect((res) => {
@@ -41,7 +38,7 @@ describe('LookupsController (e2e)', () => {
     });
 
     it('should have cache-control headers', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/categories')
         .expect(200)
         .expect('Cache-Control', /public/);
@@ -50,7 +47,7 @@ describe('LookupsController (e2e)', () => {
 
   describe('/lookups/organizations (GET)', () => {
     it('should return all organizations', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/organizations')
         .expect(200)
         .expect((res) => {
@@ -61,7 +58,7 @@ describe('LookupsController (e2e)', () => {
     });
 
     it('should filter organizations by userId', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/organizations')
         .query({ userId: 1 })
         .expect(200)
@@ -73,7 +70,7 @@ describe('LookupsController (e2e)', () => {
     });
 
     it('should filter organizations by role', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/organizations')
         .query({ role: 'admin' })
         .expect(200)
@@ -84,7 +81,7 @@ describe('LookupsController (e2e)', () => {
     });
 
     it('should filter organizations by organizationId', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/organizations')
         .query({ organizationId: 'test-org-id' })
         .expect(200)
@@ -97,7 +94,7 @@ describe('LookupsController (e2e)', () => {
 
   describe('/lookups/users (GET)', () => {
     it('should return all users', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/users')
         .expect(200)
         .expect((res) => {
@@ -110,7 +107,7 @@ describe('LookupsController (e2e)', () => {
 
   describe('/lookups/activity-statuses (GET)', () => {
     it('should return all activity statuses', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/activity-statuses')
         .expect(200)
         .expect((res) => {
@@ -123,7 +120,7 @@ describe('LookupsController (e2e)', () => {
 
   describe('/lookups/pitch-statuses (GET)', () => {
     it('should return all pitch statuses', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/lookups/pitch-statuses')
         .expect(200)
         .expect((res) => {
@@ -145,7 +142,7 @@ describe('LookupsController (e2e)', () => {
       ];
 
       for (const endpoint of endpoints) {
-        const response = await createAuthRequest(app, accessToken)
+        const response = await request(app.getHttpServer())
           .get(endpoint)
           .expect(200);
 

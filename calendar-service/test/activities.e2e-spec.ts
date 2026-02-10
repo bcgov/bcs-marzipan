@@ -1,65 +1,14 @@
-/**
- * Activities API integration tests.
- *
- * These tests run the full Nest app in-process and exercise the HTTP layer
- * (controllers, filters, pipes, services, database) via supertest. They are
- * integration tests, not strict e2e (no deployed service or real network).
- * The "e2e" naming follows Nest convention for full request/response tests.
- */
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import {
   createMockActivityRequest,
   createMockUpdateRequest,
-  e2eLogin,
-  createAuthRequest,
 } from './test-helpers';
 
-/** UUID v4 pattern per RFC 4122 */
-const UUID_V4_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function expectProblemDetails(
-  res: {
-    status: number;
-    headers: Record<string, string>;
-    body: Record<string, unknown>;
-  },
-  status: number
-): void {
-  expect(res.status).toBe(status);
-  expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
-  expect(res.body).toMatchObject({
-    type: expect.any(String),
-    title: expect.any(String),
-    status,
-    detail: expect.any(String),
-    instance: expect.any(String),
-    correlationId: expect.any(String),
-    timestamp: expect.any(String),
-  });
-  const correlationId = res.headers['x-correlation-id'];
-  if (correlationId) {
-    expect(correlationId).toMatch(UUID_V4_REGEX);
-  }
-}
-
-function expectValidationErrors(res: {
-  body: { errors?: Array<{ path?: string; message?: string }> };
-}): void {
-  expect(Array.isArray(res.body.errors)).toBe(true);
-  expect(res.body.errors!.length).toBeGreaterThan(0);
-  res.body.errors!.forEach((err) => {
-    expect(err).toHaveProperty('path');
-    expect(err).toHaveProperty('message');
-  });
-}
-
-describe('ActivitiesController (API integration)', () => {
+describe('ActivitiesController (e2e)', () => {
   let app: INestApplication;
-  let accessToken: string;
   let createdActivityId: number;
 
   beforeAll(async () => {
@@ -68,19 +17,10 @@ describe('ActivitiesController (API integration)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalFilters(new HttpExceptionFilter());
+    // Apply the same pipes as in main.ts
+    app.useGlobalPipes(new ValidationPipe());
+
     await app.init();
-
-    accessToken = await e2eLogin(app);
-
-    // Ensure we have an activity ID for get/update tests (from create or from list)
-    const listRes = await createAuthRequest(app, accessToken)
-      .get('/activities')
-      .expect(200);
-    const data = listRes.body?.data;
-    if (Array.isArray(data) && data.length > 0 && data[0]?.id != null) {
-      createdActivityId = data[0].id;
-    }
   });
 
   afterAll(async () => {
@@ -88,29 +28,32 @@ describe('ActivitiesController (API integration)', () => {
   });
 
   describe('/activities (POST)', () => {
-    it('should create a new activity', async () => {
+    it('should create a new activity', () => {
       const createActivityDto = createMockActivityRequest({
-        title: 'Integration Test Activity',
-        summary: 'This is a test activity created via API integration tests',
+        title: 'E2E Test Activity',
+        summary: 'This is a test activity created via E2E tests',
       });
 
-      const res = await createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .post('/activities')
-        .send(createActivityDto);
+        .send(createActivityDto)
+        .expect(201)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('success', true);
+          expect(res.body).toHaveProperty('data');
+          expect(res.body.data).toHaveProperty('id');
+          expect(res.body.data).toHaveProperty(
+            'title',
+            createActivityDto.title
+          );
+          expect(res.body.data).toHaveProperty(
+            'summary',
+            createActivityDto.summary
+          );
 
-      expect([201, 400]).toContain(res.status);
-      if (res.status === 201) {
-        expect(res.body).toHaveProperty('success', true);
-        expect(res.body).toHaveProperty('data');
-        expect(res.body.data).toHaveProperty('id');
-        expect(res.body.data).toHaveProperty('title', createActivityDto.title);
-        expect(res.body.data).toHaveProperty(
-          'summary',
-          createActivityDto.summary
-        );
-        createdActivityId = res.body.data.id;
-      }
-      // When 400, validation failed (e.g. schema/env); get/update tests use ID from list in beforeAll
+          // Store the created activity ID for later tests
+          createdActivityId = res.body.data.id;
+        });
     });
 
     it('should return 400 for invalid activity data', () => {
@@ -119,21 +62,16 @@ describe('ActivitiesController (API integration)', () => {
         summary: 'Invalid activity',
       };
 
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .post('/activities')
         .send(invalidDto)
-        .expect(400)
-        .expect((res) => {
-          expectProblemDetails(res, 400);
-          expectValidationErrors(res);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+        .expect(400);
     });
   });
 
   describe('/activities (GET)', () => {
     it('should return all activities', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/activities')
         .expect(200)
         .expect((res) => {
@@ -145,9 +83,9 @@ describe('ActivitiesController (API integration)', () => {
     });
 
     it('should filter activities by title', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/activities')
-        .query({ title: 'Integration Test' })
+        .query({ title: 'E2E Test' })
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);
@@ -155,13 +93,13 @@ describe('ActivitiesController (API integration)', () => {
           expect(Array.isArray(res.body.data)).toBe(true);
           // All returned activities should have the search term in their title
           res.body.data.forEach((activity: any) => {
-            expect(activity.title.toLowerCase()).toContain('integration test');
+            expect(activity.title.toLowerCase()).toContain('e2e test');
           });
         });
     });
 
     it('should filter activities by date range', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/activities')
         .query({
           startDateFrom: '2025-01-01',
@@ -178,7 +116,7 @@ describe('ActivitiesController (API integration)', () => {
 
   describe('/activities/categories (GET)', () => {
     it('should return all activity categories', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/activities/categories')
         .expect(200)
         .expect((res) => {
@@ -187,32 +125,11 @@ describe('ActivitiesController (API integration)', () => {
           expect(Array.isArray(res.body.data)).toBe(true);
         });
     });
-
-    it('should return X-Correlation-ID header (UUID v4) when not provided', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/activities/categories')
-        .expect(200)
-        .expect((res) => {
-          expect(res.headers['x-correlation-id']).toBeDefined();
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
-    });
-
-    it('should echo X-Correlation-ID when provided', () => {
-      const uuid = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
-      return createAuthRequest(app, accessToken)
-        .get('/activities/categories')
-        .set('X-Correlation-ID', uuid)
-        .expect(200)
-        .expect((res) => {
-          expect(res.headers['x-correlation-id']).toBe(uuid);
-        });
-    });
   });
 
   describe('/activities/:id (GET)', () => {
     it('should return a specific activity by ID', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get(`/activities/${createdActivityId}`)
         .expect(200)
         .expect((res) => {
@@ -224,34 +141,24 @@ describe('ActivitiesController (API integration)', () => {
     });
 
     it('should return 404 for non-existent activity', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/activities/999999')
-        .expect(404)
-        .expect((res) => {
-          expectProblemDetails(res, 404);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+      return request(app.getHttpServer()).get('/activities/999999').expect(404);
     });
 
     it('should return 400 for invalid ID format', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .get('/activities/invalid-id')
-        .expect(400)
-        .expect((res) => {
-          expectProblemDetails(res, 400);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+        .expect(400);
     });
   });
 
   describe('/activities/:id (PATCH)', () => {
     it('should update an activity', () => {
       const updateDto = createMockUpdateRequest({
-        title: 'Updated Integration Test Activity',
-        summary: 'This activity has been updated via API integration tests',
+        title: 'Updated E2E Test Activity',
+        summary: 'This activity has been updated via E2E tests',
       });
 
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .patch(`/activities/${createdActivityId}`)
         .send(updateDto)
         .expect(200)
@@ -269,14 +176,10 @@ describe('ActivitiesController (API integration)', () => {
         title: 'Updated Title',
       });
 
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .patch('/activities/999999')
         .send(updateDto)
-        .expect(404)
-        .expect((res) => {
-          expectProblemDetails(res, 404);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+        .expect(404);
     });
 
     it('should return 400 for invalid update data', () => {
@@ -284,24 +187,16 @@ describe('ActivitiesController (API integration)', () => {
         isAllDay: 'not-a-boolean', // Should be boolean
       };
 
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .patch(`/activities/${createdActivityId}`)
         .send(invalidDto)
-        .expect(400)
-        .expect((res) => {
-          expectProblemDetails(res, 400);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-          if (Array.isArray(res.body.errors) && res.body.errors.length > 0) {
-            expectValidationErrors(res);
-          }
-        });
+        .expect(400);
     });
   });
 
   describe('/activities/:id (DELETE)', () => {
-    it.skip('should delete an activity', () => {
-      // Skip: hard delete fails with 500 when activity_history references the activity (FK). Service may need to soft-delete or cascade.
-      return createAuthRequest(app, accessToken)
+    it('should delete an activity', () => {
+      return request(app.getHttpServer())
         .delete(`/activities/${createdActivityId}`)
         .expect(200)
         .expect((res) => {
@@ -311,24 +206,15 @@ describe('ActivitiesController (API integration)', () => {
     });
 
     it('should return 404 when deleting non-existent activity', () => {
-      return createAuthRequest(app, accessToken)
+      return request(app.getHttpServer())
         .delete('/activities/999999')
-        .expect(404)
-        .expect((res) => {
-          expectProblemDetails(res, 404);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+        .expect(404);
     });
 
-    it.skip('should return 404 when fetching deleted activity', () => {
-      // Skip: depends on delete succeeding; currently delete returns 500 due to activity_history FK.
-      return createAuthRequest(app, accessToken)
+    it('should return 404 when fetching deleted activity', () => {
+      return request(app.getHttpServer())
         .get(`/activities/${createdActivityId}`)
-        .expect(404)
-        .expect((res) => {
-          expectProblemDetails(res, 404);
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
+        .expect(404);
     });
   });
 });

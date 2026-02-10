@@ -1,15 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import { timeAgoShort } from '@/lib/utils';
-import { createLogger } from '../../lib/logger';
-import { showErrorToast } from '../../lib/error-toast';
-import {
-  LOAD_HISTORY_TITLE,
-  LOAD_HISTORY_MESSAGE,
-} from '../../lib/error-messages';
-import { ErrorState } from '../ErrorState';
 
 type HistoryEntry = {
   id: number;
@@ -54,8 +47,6 @@ function getActionText(actionType: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
-const logger = createLogger('ActivityHistory');
-
 export default function ActivityHistory({
   activityId,
   open,
@@ -67,27 +58,27 @@ export default function ActivityHistory({
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<boolean>(false);
-
-  const loadHistory = useCallback(async () => {
-    if (!open) return;
-    setLoading(true);
-    setLoadError(false);
-    try {
-      const data = await fetchActivityHistory(activityId);
-      setEntries(data || []);
-    } catch (err) {
-      logger.error('Failed to load activity history', err);
-      setLoadError(true);
-      showErrorToast(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activityId, open]);
 
   useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
+    let mounted = true;
+    const load = async () => {
+      if (!open) return;
+      setLoading(true);
+      try {
+        const data = await fetchActivityHistory(activityId);
+        if (!mounted) return;
+        setEntries(data || []);
+      } catch (err) {
+        console.error('Failed to load activity history', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [activityId, open]);
 
   // group by local date string
   // Categorize into Today / This week / Earlier
@@ -157,12 +148,6 @@ export default function ActivityHistory({
           <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
             {loading ? (
               <div>Loading history...</div>
-            ) : loadError ? (
-              <ErrorState
-                title={LOAD_HISTORY_TITLE}
-                message={LOAD_HISTORY_MESSAGE}
-                onRetry={() => void loadHistory()}
-              />
             ) : entries.length === 0 ? (
               <div>No history found.</div>
             ) : (

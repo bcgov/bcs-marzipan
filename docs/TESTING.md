@@ -4,7 +4,7 @@ This document describes the testing strategy, folder structure, naming conventio
 
 ## Commands
 
-- **Root:** `npm run test` runs `calendar-service` (Vitest), `calendar-ui` (Vitest), and `packages/shared` (Vitest) concurrently.
+- **Root:** `npm run test` runs `calendar-service` (Jest), `calendar-ui` (Vitest), and `packages/shared` (Vitest) concurrently.
 - **Per-workspace:**
   - `npm run test -w calendar-service`
   - `npm run test -w calendar-ui`
@@ -33,10 +33,10 @@ This document describes the testing strategy, folder structure, naming conventio
 
 ## When Tests Run
 
-- **Pre-commit (lint-staged):** Related tests for changed `calendar-service`, `calendar-ui`, and `packages/*` files via `scripts/test/vitest-related.js` (with workspace argument). `packages/*` run related Vitest tests when applicable.
+- **Pre-commit (lint-staged):** Related tests for changed `calendar-service` and `calendar-ui` files via `scripts/test/jest-related.js` and `vitest-related.js`. `packages/*` only run ESLint.
 - **Pre-push:** Full build, then all test suites (`calendar-service`, `calendar-ui`, `packages/shared`) via the root `npm run test` (after `npm run build`).
 
 ## Related Documentation
 
-- [scripts/test/README.md](../scripts/test/README.md) — `vitest-related.js` script used by lint-staged for all workspaces
+- [scripts/test/README.md](../scripts/test/README.md) — `jest-related` and `vitest-related` scripts used by lint-staged
 - [Pre-Commit Hooks](PRE_COMMIT_HOOKS.md) — Hooks and pre-push behavior

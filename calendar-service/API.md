@@ -196,8 +196,6 @@ Updates an existing activity. Only provided fields are updated (partial update).
 
 Soft deletes an activity by setting `activityStatusId` to 'deleted'. Requires a reason for audit purposes. Deleted activities are excluded from default queries unless explicitly requested via `activityStatusId` filter.
 
-**Authorization:** The caller may perform soft delete if they have the `activities.delete` permission (e.g. Admin, System Admin) **or** if they are the **comms lead** for this activity (the user listed in `activity_comms_contacts` for this activity with `isLead=true`). See **commsContacts** in the Notes section. When the caller lacks permission, the API returns 403 Forbidden and does not reveal whether the activity exists.
-
 **Request Body:**
 
 ```json
@@ -231,8 +229,6 @@ Soft deletes an activity by setting `activityStatusId` to 'deleted'. Requires a 
 **DELETE** `/activities/:id`
 
 Permanently deletes an activity from the database.
-
-**Authorization:** Same as soft delete: the caller may perform hard delete if they have the `activities.delete` permission **or** if they are the **comms lead** for this activity. When the caller lacks permission, the API returns 403 Forbidden and does not reveal whether the activity exists (to avoid information disclosure); when the caller has permission, a non-existent activity returns 404 from the service layer.
 
 **Response:** `200 OK`
 
@@ -581,10 +577,10 @@ Server error occurred.
 
 ## Notes
 
-- **Authentication:** Endpoints that create, update, or delete resources require a valid JWT (cookie or `Authorization: Bearer`). The **authenticated user** is used for audit fields and activity history.
+- **Authentication:** Not currently implemented. All endpoints are publicly accessible.
 - **Rate Limiting:** Not currently implemented.
 - **CORS:** Enabled for development. Configure allowed origins for production.
-- **Audit Fields:** `createdBy`, `lastUpdatedBy`, `createdDateTime`, and `lastUpdatedDateTime` are set from the authenticated user and current time on create and update. Activity history records the user ID for each change.
+- **Audit Fields:** `createdBy`, `lastUpdatedBy`, `createdDateTime`, `lastUpdatedDateTime` are set automatically.
 - **Display ID:** Auto-generated as `<MINISTRY_ABBREV>-<6_DIGIT_ID>` (e.g., `MIN-000006`).
 - **Report Settings:** The `reportSettings` field controls whether activities are omitted from specific reports. Each setting includes:
   - `reportId`: The ID of the report

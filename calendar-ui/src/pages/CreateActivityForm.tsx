@@ -1,27 +1,16 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect, useRef, type FC } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
-import { PERMISSIONS } from '@corpcal/shared/auth';
-import { createLogger } from '../lib/logger';
-import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
-import {
-  RENDER_FORM_ERROR_TITLE,
-  ERROR_DETAILS_LABEL,
-  TRY_AGAIN_LABEL,
-  ACCESS_DENIED_TITLE,
-  ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
-} from '../lib/error-messages';
 import { createActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { useAuth } from '../hooks/useAuth';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
@@ -47,10 +36,8 @@ import {
   ActivityReportsSection,
   ActivitySharingSection,
 } from '../components/ActivityFormSections';
-import { AutosaveIndicator } from '../components/AutosaveIndicator';
-import { PageHeader } from '../components/PageHeader';
-import { StatusMessage } from '../components/StatusMessage';
 import React from 'react';
+import { deleteDraft } from '../api/draftsApi';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -81,27 +68,17 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   pitchRequired: false,
 });
 
-/** Stable default values for autosave comparison and reset (e.g. start fresh). */
-const DEFAULT_FORM_VALUES = getDefaultFormValues();
+// TODO: Replace with actual user from auth context once authentication is implemented
+const TEMPORARY_USER_ID = 1;
 
 // Key used to store draft dialog session state in sessionStorage
 const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
 
-const logger = createLogger('CreateActivityForm');
-
-export const CreateActivityForm: FC = () => {
+export const CreateActivityForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
   const draftCheckedRef = useRef(false);
-
-  // Check permissions and auth state (userId is used internally by useAutoSave)
-  const {
-    hasPermission,
-    isLoading: isAuthLoading,
-    isAuthenticated,
-  } = useAuth();
-  const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -180,30 +157,36 @@ export const CreateActivityForm: FC = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Autosave integration: userId comes from auth context inside useAutoSave
+  // Autosave integration: do not use entityId from existingDraft to avoid circular reference
+  // Track if a draft existed at mount
   const initialDraftExistsRef = useRef(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
-
   const {
     existingDraft,
     isDraftLoading,
     isSaving,
     lastSaved,
-    deleteDraft,
     resetInitialFormData,
   } = useAutoSave(
+    TEMPORARY_USER_ID,
     'activity',
     formValues,
     undefined,
     {
-      debounceMs: 3000, // Save 3 seconds after user stops typing
-      enabled: !isSubmitting, // Disable during submission
-      onSaveError: (err) => {
-        logger.error('Draft save failed', err);
-        showErrorToast(err, 'Draft could not be saved.');
+      debounceMs: 3000,
+      // Always enable initial draft fetch so we can prompt the user to
+      // continue an existing draft on mount. Autosave itself is still
+      // gated by the `isDirty` option below.
+      enabled: true,
+      isDirty:
+        form.formState.isDirty &&
+        JSON.stringify(formValues) !== JSON.stringify(getDefaultFormValues()),
+      onFirstDraftCreate: () => {
+        // If a draft is created after mount, do NOT show the dialog
+        // (no-op here, dialog is only shown if draft existed at mount)
       },
     },
-    DEFAULT_FORM_VALUES
+    getDefaultFormValues()
   );
 
   // On first load, record if a draft existed at mount, and only ever show dialog if it did
@@ -240,8 +223,10 @@ export const CreateActivityForm: FC = () => {
   };
 
   const handleStartFresh = () => {
-    if (existingDraft) {
-      deleteDraft();
+    if (existingDraft && existingDraft.id) {
+      void import('../api/draftsApi').then((draftsApi) => {
+        void draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
+      });
     }
     setShowDraftDialog(false);
     draftCheckedRef.current = false;
@@ -253,22 +238,32 @@ export const CreateActivityForm: FC = () => {
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
   };
 
-  const handleCancel = () => {
-    // Delete the draft if it exists (hook uses delete-by-form; no need to await for close)
-    if (existingDraft) {
+  // ...existing code...
+
+  const handleCancel = async () => {
+    // Delete the draft if it exists and wait for completion so request isn't aborted
+    if (existingDraft && existingDraft.id) {
       try {
-        deleteDraft();
+        const draftsApi = await import('../api/draftsApi');
+        await draftsApi.deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
       } catch (e) {
-        logger.warn('Error deleting draft on cancel', e);
+        // Ignore errors during cancellation delete - user intent is to close
+        console.warn('Error deleting draft on cancel:', e);
       }
     }
 
+    // Ensure dialog session flag is cleared
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
+
+    // Optionally reset the form (not strictly needed if closing)
     form.reset();
+
+    // Close the page
     window.close();
   };
 
   const onSubmit = async (data: FormData) => {
+    console.log('onSubmit called with data:', data);
     setIsSubmitting(true);
     try {
       // Prepare submit data with junction table arrays
@@ -308,25 +303,35 @@ export const CreateActivityForm: FC = () => {
             : undefined,
       };
 
+      console.log('Submitting data to API:', submitData);
       await createActivity(submitData);
 
       // Delete draft after successful creation
-      if (existingDraft) {
-        deleteDraft();
+      if (existingDraft && existingDraft.id) {
+        await deleteDraft(TEMPORARY_USER_ID, existingDraft.id);
       }
 
       // Close the window after successful creation
       window.close();
     } catch (error) {
-      logger.error('Failed to create activity', error);
-      showErrorToast(error);
+      console.error('Failed to create activity:', error);
+      alert('Failed to create activity. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onError = () => {
-    logger.error('Form validation failed');
+  const onError = (errors: any) => {
+    console.error('Form validation errors:', errors);
+    console.error('Form values:', form.getValues());
+    const keys = Object.keys(errors || {});
+    if (keys.length > 0) {
+      const friendly = keys.map(
+        (k) =>
+          `${getFieldLabel(k)}: ${errors[k]?.message || JSON.stringify(errors[k])}`
+      );
+      console.error('Validation summary:', friendly);
+    }
   };
 
   // Map field names to user-friendly labels
@@ -355,42 +360,21 @@ export const CreateActivityForm: FC = () => {
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
 
-  // Show loading state while checking auth
-  if (isAuthLoading) {
-    return (
-      <StatusMessage
-        title="Create New Activity"
-        message="Loading..."
-        variant="loading"
-      />
-    );
-  }
-
-  // Show access denied if user doesn't have permission to create activities
-  if (!canCreateActivity) {
-    return (
-      <StatusMessage
-        title={ACCESS_DENIED_TITLE}
-        message={ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE}
-        variant="error"
-      />
-    );
-  }
-
   // Show loading state if lookups are still loading
   if (lookups.isLoading) {
     return (
-      <StatusMessage
-        title="Create New Activity"
-        message="Loading form data..."
-        variant="loading"
-      />
+      <div className="mx-auto max-w-200 px-4 py-8">
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+          <p className="text-muted-foreground">Loading form data...</p>
+        </div>
+      </div>
     );
   }
 
   // Show error state if lookups failed (but still allow form to be used with empty dropdowns)
   if (lookups.hasError) {
-    logger.warn(
+    console.warn(
       'Failed to load some lookup data. Form may have empty dropdowns.'
     );
   }
@@ -405,25 +389,27 @@ export const CreateActivityForm: FC = () => {
     error: unknown;
     resetErrorBoundary: () => void;
   }) => {
-    const friendlyMessage = getFriendlyErrorMessage(error);
-    const rawMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
     return (
       <div className="mx-auto max-w-200 px-4 py-8" role="alert">
         <div className="mb-8">
           <h1 className="text-destructive mb-2 text-3xl font-bold">
-            {RENDER_FORM_ERROR_TITLE}
+            Something went wrong
           </h1>
-          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
+          <p className="text-muted-foreground mb-4">
+            An error occurred while rendering the form. Please try again.
+          </p>
           <details className="mb-4">
             <summary className="cursor-pointer text-sm font-medium">
-              {ERROR_DETAILS_LABEL}
+              Error details
             </summary>
             <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {rawMessage}
+              {errorMessage}
             </pre>
           </details>
           <Button onClick={resetErrorBoundary} variant="default">
-            {TRY_AGAIN_LABEL}
+            Try again
           </Button>
         </div>
       </div>
@@ -433,157 +419,195 @@ export const CreateActivityForm: FC = () => {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="mx-auto max-w-full px-4 py-8">
-        {/* Draft Recovery Dialog */}
-        <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Continue where you left off?</DialogTitle>
-              <DialogDescription>
-                You have a saved draft for this activity form. Would you like to
-                continue editing it, or start with a fresh form?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleStartFresh}
-                type="button"
-              >
-                Start Fresh
-              </Button>
-              <Button onClick={handleContinueDraft} type="button">
-                Continue Draft
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </ResumeDialog>
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold">New calendar entry</h1>
+          {/* Draft Recovery Dialog */}
+          <ResumeDialog
+            open={showDraftDialog}
+            onOpenChange={setShowDraftDialog}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Continue where you left off?</DialogTitle>
+                <DialogDescription>
+                  You have a saved draft for this activity form. Would you like
+                  to continue editing it, or start with a fresh form?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={handleStartFresh}
+                  type="button"
+                >
+                  Start Fresh
+                </Button>
+                <Button onClick={handleContinueDraft} type="button">
+                  Continue Draft
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </ResumeDialog>
 
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <PageHeader
-            title="Create New Activity"
-            description="Fill in the activity details below"
-            action={
-              <AutosaveIndicator
-                isAuthenticated={isAuthenticated}
-                isSaving={isSaving}
-                lastSaved={lastSaved}
-                isLoading={isDraftLoading}
-              />
-            }
-          />
-
-          <Form {...form}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void form.handleSubmit(onSubmit, onError)(e);
-              }}
-            >
-              {/* Two Column Layout */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Overview Section */}
-                  <ActivityOverviewSection
-                    categories={lookups.categories}
-                    ministries={lookups.ministries}
-                    organizations={lookups.organizations}
-                    tags={lookups.tags}
-                  />
-
-                  {/* Comms Section */}
-                  <ActivityCommsSection
-                    commsMaterialOptions={lookups.commsMaterials}
-                    commsLeadOptions={commsLeadOptions}
-                    activityStatusOptions={lookups.activityStatuses}
-                  />
-
-                  {/* News Release Section */}
-                  <ActivityNewsReleaseSection
-                    translationLanguageOptions={lookups.translationLanguages}
-                    newsReleaseDistributionOptions={
-                      lookups.newsReleaseDistributions
-                    }
-                    newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                  />
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Reports Section */}
-                  <ActivityReportsSection form={form} />
-
-                  {/* Schedule Section */}
-                  <ActivityScheduleSection form={form} />
-
-                  {/* Event Section */}
-                  <ActivityEventSection
-                    representativeOptions={lookups.governmentRepresentatives}
-                    premierRequestedOptions={lookups.premierRequested}
-                    eventPlannerOptions={lookups.eventPlanners}
-                  />
-
-                  {/* Sharing Section */}
-                  <ActivitySharingSection
-                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                  />
-                </div>
+          <div className="mx-auto max-w-200 px-4 py-8">
+            <div className="mb-8 flex items-center justify-between">
+              <div>
+                <h1 className="mb-2 text-3xl font-bold">Create New Activity</h1>
+                <p className="text-muted-foreground">
+                  Fill in the activity details below
+                </p>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex justify-end gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    void handleCancel();
-                  }}
-                  disabled={isSubmitting}
-                  title="This will discard any draft data and close the page"
-                >
-                  Cancel
-                </Button>
-                {!isFormValid && missingFields.length > 0 ? (
-                  <Popover open={showMissingFieldsPopover}>
-                    <PopoverTrigger asChild>
-                      <div
+              {/* Autosave indicator */}
+              <div className="text-sm">
+                {isSaving && (
+                  <span className="text-amber-600">💾 Saving draft...</span>
+                )}
+                {lastSaved && !isSaving && (
+                  <span className="text-green-600">
+                    ✓ Draft saved at {lastSaved.toLocaleTimeString()}
+                  </span>
+                )}
+                {isDraftLoading && (
+                  <span className="text-gray-500">Loading draft...</span>
+                )}
+              </div>
+            </div>
+
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  console.log('Form submit event triggered');
+                  void form.handleSubmit(onSubmit, onError)(e);
+                }}
+              >
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Overview Section */}
+                    <ActivityOverviewSection
+                      categories={lookups.categories}
+                      ministries={lookups.ministries}
+                      organizations={lookups.organizations}
+                      tags={lookups.tags}
+                    />
+
+                    {/* Comms Section */}
+                    <ActivityCommsSection
+                      commsMaterialOptions={lookups.commsMaterials}
+                      commsLeadOptions={commsLeadOptions}
+                      activityStatusOptions={lookups.activityStatuses}
+                    />
+
+                    {/* News Release Section */}
+                    <ActivityNewsReleaseSection
+                      translationLanguageOptions={lookups.translationLanguages}
+                      newsReleaseDistributionOptions={
+                        lookups.newsReleaseDistributions
+                      }
+                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                    />
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Reports Section */}
+                    <ActivityReportsSection form={form} />
+
+                    {/* Schedule Section */}
+                    <ActivityScheduleSection form={form} />
+
+                    {/* Event Section */}
+                    <ActivityEventSection
+                      representativeOptions={lookups.governmentRepresentatives}
+                      premierRequestedOptions={lookups.premierRequested}
+                      eventPlannerOptions={lookups.eventPlanners}
+                    />
+
+                    {/* Sharing Section */}
+                    <ActivitySharingSection
+                      sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
+                    />
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end gap-4 pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      void handleCancel();
+                    }}
+                    disabled={isSubmitting}
+                    title="This will discard any draft data and close the page"
+                  >
+                    Cancel
+                  </Button>
+                  {!isFormValid && missingFields.length > 0 ? (
+                    <Popover open={showMissingFieldsPopover}>
+                      <PopoverTrigger asChild>
+                        <div
+                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                          onMouseLeave={() =>
+                            setShowMissingFieldsPopover(false)
+                          }
+                          onClick={() => {
+                            // Trigger validation and print errors to console when user attempts to submit
+                            void (async () => {
+                              try {
+                                await form.trigger();
+                              } catch {
+                                // ignore
+                              }
+                              console.error(
+                                'Submission blocked by validation. Errors:',
+                                JSON.stringify(form.formState.errors, null, 2)
+                              );
+                              console.error(
+                                'Form values at failed submit:',
+                                JSON.stringify(form.getValues(), null, 2)
+                              );
+                            })();
+                          }}
+                        >
+                          <Button
+                            type="submit"
+                            disabled={true}
+                            className="cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
+                          </Button>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80"
                         onMouseEnter={() => setShowMissingFieldsPopover(true)}
                         onMouseLeave={() => setShowMissingFieldsPopover(false)}
                       >
-                        <Button
-                          type="submit"
-                          disabled={true}
-                          className="cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Submitting...' : 'Submit'}
-                        </Button>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80"
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                    >
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">
-                          Required fields missing:
-                        </h4>
-                        <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                          {missingFields.map((field) => (
-                            <li key={field}>{field}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
-                  </Button>
-                )}
-              </div>
-            </form>
-          </Form>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">
+                            Required fields missing:
+                          </h4>
+                          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                            {missingFields.map((field) => (
+                              <li key={field}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </Form>
+          </div>
         </div>
       </div>
     </ErrorBoundary>

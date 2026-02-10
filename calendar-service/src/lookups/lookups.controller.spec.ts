@@ -1,19 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { LookupItem } from '@corpcal/shared/api/types';
-import type { AuthUser } from '@corpcal/shared';
 import { LookupsController } from './lookups.controller';
 import { LookupsService } from './lookups.service';
-
-const mockUser: AuthUser = {
-  id: 1,
-  username: 'testuser',
-  displayName: 'Test User',
-  email: 'test@example.com',
-  roleId: 4,
-  roleName: 'Admin',
-  permissions: ['lookups.manage'],
-  teamIds: [],
-};
 
 describe('LookupsController', () => {
   let controller: LookupsController;
@@ -26,8 +14,6 @@ describe('LookupsController', () => {
   const mockLookupsService = {
     getCategories: vi.fn(),
     getOrganizations: vi.fn(),
-    createCategory: vi.fn(),
-    updateCategory: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -113,46 +99,6 @@ describe('LookupsController', () => {
         role: 'admin',
         organizationId: undefined,
       });
-    });
-  });
-
-  describe('createCategory', () => {
-    it('should create a category and pass user id to service', async () => {
-      const body = {
-        name: 'New Category',
-        sortOrder: 1,
-      };
-      const created = { id: 10, name: body.name, sortOrder: body.sortOrder };
-      mockLookupsService.createCategory.mockResolvedValue(created);
-
-      const result = await controller.createCategory(body, mockUser);
-
-      expect(result).toEqual({ success: true, data: created });
-      expect(mockLookupsService.createCategory).toHaveBeenCalledWith(
-        body,
-        mockUser.id
-      );
-      expect(mockLookupsService.createCategory).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('updateCategory', () => {
-    it('should update a category and pass user id to service', async () => {
-      const id = '5';
-      const body = { displayName: 'Updated Name' };
-      const transformedBody = { ...body, displayName: body.displayName };
-      const updated = { id: 5, name: 'Cat', displayName: body.displayName };
-      mockLookupsService.updateCategory.mockResolvedValue(updated);
-
-      const result = await controller.updateCategory(id, body, mockUser);
-
-      expect(result).toEqual({ success: true, data: updated });
-      expect(mockLookupsService.updateCategory).toHaveBeenCalledWith(
-        5,
-        transformedBody,
-        mockUser.id
-      );
-      expect(mockLookupsService.updateCategory).toHaveBeenCalledTimes(1);
     });
   });
 });

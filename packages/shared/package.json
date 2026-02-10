@@ -48,12 +48,6 @@
       "require": "./dist/cjs/constants/constants.js",
       "default": "./dist/esm/constants/constants.js"
     },
-    "./auth": {
-      "types": "./dist/esm/auth/index.d.ts",
-      "import": "./dist/esm/auth/index.js",
-      "require": "./dist/cjs/auth/index.js",
-      "default": "./dist/esm/auth/index.js"
-    },
     "./test-utils": {
       "types": "./dist/esm/test-utils/index.d.ts",
       "import": "./dist/esm/test-utils/index.js",

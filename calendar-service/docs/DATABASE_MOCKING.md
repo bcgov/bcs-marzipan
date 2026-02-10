@@ -4,7 +4,7 @@ This document describes the approach used for mocking database operations in the
 
 ## Overview
 
-The Calendar Service uses **Drizzle ORM** for database operations. To enable unit testing without database dependencies, we mock the `DatabaseService` and its underlying Drizzle query builder methods using Vitest.
+The Calendar Service uses **Drizzle ORM** for database operations. To enable unit testing without database dependencies, we mock the `DatabaseService` and its underlying Drizzle query builder methods using Jest.
 
 ## Architecture
 
@@ -15,22 +15,22 @@ The mock database service replicates the Drizzle ORM's fluent query builder API,
 ```typescript
 const mockDatabaseService = {
   db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    leftJoin: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    groupBy: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    offset: vi.fn().mockReturnThis(),
-    transaction: vi.fn().mockResolvedValue(undefined),
+    select: vi.fn()().mockReturnThis(),
+    from: vi.fn()().mockReturnThis(),
+    where: vi.fn()().mockReturnThis(),
+    leftJoin: vi.fn()().mockReturnThis(),
+    innerJoin: vi.fn()().mockReturnThis(),
+    insert: vi.fn()().mockReturnThis(),
+    values: vi.fn()().mockReturnThis(),
+    returning: vi.fn()().mockReturnThis(),
+    update: vi.fn()().mockReturnThis(),
+    set: vi.fn()().mockReturnThis(),
+    delete: vi.fn()().mockReturnThis(),
+    groupBy: vi.fn()().mockReturnThis(),
+    orderBy: vi.fn()().mockReturnThis(),
+    limit: vi.fn()().mockReturnThis(),
+    offset: vi.fn()().mockReturnThis(),
+    transaction: vi.fn()(),
   },
 };
 ```
@@ -53,11 +53,11 @@ it('should find an activity by ID', async () => {
 
   // Mock the query chain
   const mockDbQuery = {
-    leftJoin: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue([mockActivity]),
+    leftJoin: vi.fn()().mockReturnThis(),
+    where: vi.fn()().mockResolvedValue([mockActivity]),
   };
 
-  mockDatabaseService.db.select = vi.fn().mockReturnValue(mockDbQuery);
+  mockDatabaseService.db.select = vi.fn()().mockReturnValue(mockDbQuery);
 
   const result = await service.findOne(1);
 
@@ -77,16 +77,16 @@ it('should retrieve activities with filters', async () => {
   ];
 
   const mockDbQuery = {
-    leftJoin: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    groupBy: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    offset: vi.fn().mockResolvedValue(mockActivities),
+    leftJoin: vi.fn()().mockReturnThis(),
+    innerJoin: vi.fn()().mockReturnThis(),
+    where: vi.fn()().mockReturnThis(),
+    groupBy: vi.fn()().mockReturnThis(),
+    orderBy: vi.fn()().mockReturnThis(),
+    limit: vi.fn()().mockReturnThis(),
+    offset: vi.fn()().mockResolvedValue(mockActivities),
   };
 
-  mockDatabaseService.db.select = vi.fn().mockReturnValue(mockDbQuery);
+  mockDatabaseService.db.select = vi.fn()().mockReturnValue(mockDbQuery);
 
   const result = await service.findAll({ limit: 10, offset: 0 });
 
@@ -112,11 +112,11 @@ it('should create a new activity', async () => {
   });
 
   const mockDbQuery = {
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue([mockInsertedActivity]),
+    values: vi.fn()().mockReturnThis(),
+    returning: vi.fn()().mockResolvedValue([mockInsertedActivity]),
   };
 
-  mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockDbQuery);
+  mockDatabaseService.db.insert = vi.fn()().mockReturnValue(mockDbQuery);
 
   const result = await service.create(createRequest);
 
@@ -133,12 +133,12 @@ it('should update an activity', async () => {
   const mockUpdated = createMockActivity({ id: 1, title: 'Updated Title' });
 
   const mockUpdate = {
-    set: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue([mockUpdated]),
+    set: vi.fn()().mockReturnThis(),
+    where: vi.fn()().mockReturnThis(),
+    returning: vi.fn()().mockResolvedValue([mockUpdated]),
   };
 
-  mockDatabaseService.db.update = vi.fn().mockReturnValue(mockUpdate);
+  mockDatabaseService.db.update = vi.fn()().mockReturnValue(mockUpdate);
 
   const result = await service.update(1, { title: 'Updated Title' });
 
@@ -155,11 +155,11 @@ it('should delete an activity', async () => {
   const mockDeleted = createMockActivity({ id: 1 });
 
   const mockDelete = {
-    where: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue([mockDeleted]),
+    where: vi.fn()().mockReturnThis(),
+    returning: vi.fn()().mockResolvedValue([mockDeleted]),
   };
 
-  mockDatabaseService.db.delete = vi.fn().mockReturnValue(mockDelete);
+  mockDatabaseService.db.delete = vi.fn()().mockReturnValue(mockDelete);
 
   await service.remove(1);
 
@@ -175,7 +175,7 @@ For operations wrapped in database transactions:
 it('should handle transaction operations', async () => {
   const mockResult = { id: 1 };
 
-  mockDatabaseService.db.transaction = vi
+  mockDatabaseService.db.transaction = jest
     .fn()
     .mockImplementation(async (callback) => {
       // Execute the callback with a mock transaction object
@@ -197,21 +197,21 @@ Located in [test/test-helpers.ts](../test/test-helpers.ts), this helper creates 
 ```typescript
 export const createMockDatabaseService = () => ({
   db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    leftJoin: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    groupBy: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    offset: vi.fn().mockReturnThis(),
+    select: vi.fn()().mockReturnThis(),
+    from: vi.fn()().mockReturnThis(),
+    where: vi.fn()().mockReturnThis(),
+    leftJoin: vi.fn()().mockReturnThis(),
+    innerJoin: vi.fn()().mockReturnThis(),
+    insert: vi.fn()().mockReturnThis(),
+    values: vi.fn()().mockReturnThis(),
+    returning: vi.fn()().mockReturnThis(),
+    update: vi.fn()().mockReturnThis(),
+    set: vi.fn()().mockReturnThis(),
+    delete: vi.fn()().mockReturnThis(),
+    groupBy: vi.fn()().mockReturnThis(),
+    orderBy: vi.fn()().mockReturnThis(),
+    limit: vi.fn()().mockReturnThis(),
+    offset: vi.fn()().mockReturnThis(),
   },
 });
 ```
@@ -302,7 +302,7 @@ describe('ActivitiesService', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   // Test cases...
@@ -315,19 +315,18 @@ The `ActivitiesService` fetches related data (categories, tags, organizations, e
 
 ```typescript
 const setupRelatedDataMocks = () => {
-  vi.spyOn(service as any, 'fetchCategoriesForActivities').mockResolvedValue(
-    new Map()
-  );
-  vi.spyOn(service as any, 'fetchTagsForActivities').mockResolvedValue(
-    new Map()
-  );
-  vi.spyOn(service as any, 'fetchPitchStatusesForActivities').mockResolvedValue(
-    new Map([[1, 'Not Started']])
-  );
-  vi.spyOn(
-    service as any,
-    'fetchSchedulingStatusesForActivities'
-  ).mockResolvedValue(new Map([[1, 'Tentative']]));
+  jest
+    .spyOn(service as any, 'fetchCategoriesForActivities')
+    .mockResolvedValue(new Map());
+  jest
+    .spyOn(service as any, 'fetchTagsForActivities')
+    .mockResolvedValue(new Map());
+  jest
+    .spyOn(service as any, 'fetchPitchStatusesForActivities')
+    .mockResolvedValue(new Map([[1, 'Not Started']]));
+  jest
+    .spyOn(service as any, 'fetchSchedulingStatusesForActivities')
+    .mockResolvedValue(new Map([[1, 'Tentative']]));
   // ... other related data fetches
 };
 ```
@@ -348,15 +347,15 @@ Don't mock entire query chains if your test only uses part of it. Keep mocks min
 ```typescript
 // ✅ Good - minimal mock
 const mockDbQuery = {
-  where: vi.fn().mockResolvedValue([mockActivity]),
+  where: vi.fn()().mockResolvedValue([mockActivity]),
 };
 
 // ❌ Unnecessary - mocking unused methods
 const mockDbQuery = {
-  leftJoin: vi.fn().mockReturnThis(),
-  innerJoin: vi.fn().mockReturnThis(),
-  groupBy: vi.fn().mockReturnThis(),
-  where: vi.fn().mockResolvedValue([mockActivity]),
+  leftJoin: vi.fn()().mockReturnThis(),
+  innerJoin: vi.fn()().mockReturnThis(),
+  groupBy: vi.fn()().mockReturnThis(),
+  where: vi.fn()().mockResolvedValue([mockActivity]),
 };
 ```
 
@@ -366,7 +365,7 @@ Always clear mock state to prevent test pollution:
 
 ```typescript
 afterEach(() => {
-  vi.clearAllMocks();
+  jest.clearAllMocks();
 });
 ```
 
@@ -385,10 +384,10 @@ Mock error scenarios to test error handling:
 ```typescript
 it('should handle database errors', async () => {
   const mockDbQuery = {
-    where: vi.fn().mockRejectedValue(new Error('Database error')),
+    where: vi.fn()().mockRejectedValue(new Error('Database error')),
   };
 
-  mockDatabaseService.db.select = vi.fn().mockReturnValue(mockDbQuery);
+  mockDatabaseService.db.select = vi.fn()().mockReturnValue(mockDbQuery);
 
   await expect(service.findOne(1)).rejects.toThrow('Database error');
 });
@@ -410,11 +409,11 @@ expect(mockDbQuery.where).toHaveBeenCalledWith(expect.any(Object));
 **Problem:** Methods in the chain don't return properly.
 
 ```typescript
-// ❌ Wrong (forgetting to chain mockReturnThis())
-select: vi.fn(),
+// ❌ Wrong
+select: vi.fn()(),
 
 // ✅ Correct
-select: vi.fn().mockReturnThis(),
+select: vi.fn()().mockReturnThis(),
 ```
 
 ### Pitfall 2: Not Mocking the Final Method's Return Value
@@ -423,10 +422,10 @@ select: vi.fn().mockReturnThis(),
 
 ```typescript
 // ❌ Wrong
-where: vi.fn().mockReturnThis(),
+where: vi.fn()().mockReturnThis(),
 
 // ✅ Correct (for final method)
-where: vi.fn().mockResolvedValue([mockActivity]),
+where: vi.fn()().mockResolvedValue([mockActivity]),
 ```
 
 ### Pitfall 3: Reusing Mock Objects

@@ -1,5 +1,4 @@
-import api from './axios';
-import { ApiError } from './errors';
+import api from './axios.js';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('DraftsAPI');
@@ -138,9 +137,9 @@ export async function deleteDraftByForm(
 
     await api.delete('/drafts/by-form', { params });
     logger.debug('Draft deleted successfully');
-  } catch (error: unknown) {
+  } catch (error: any) {
     // Treat 404 as success (draft doesn't exist, which is the desired state)
-    if (error instanceof ApiError && error.status === 404) {
+    if (error?.response?.status === 404) {
       logger.debug('No draft found to delete (404) - treating as success');
       return;
     }

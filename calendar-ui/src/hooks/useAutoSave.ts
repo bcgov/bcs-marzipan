@@ -2,11 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as draftsApi from '../api/draftsApi';
 import type { DraftResponse } from '../api/draftsApi';
-import { createLogger } from '../lib/logger';
-import { showErrorToast } from '../lib/error-toast';
-import { useAuth } from './useAuth';
-
-const logger = createLogger('useAutoSave');
 
 // Add an optional callback to notify when a draft is created for the first time
 export interface UseAutoSaveOptions {
@@ -19,31 +14,14 @@ export interface UseAutoSaveOptions {
   onFirstDraftCreate?: () => void;
 }
 
-/**
- * Hook for autosaving form data as drafts
- *
- * Features:
- * - Automatically saves form data after user stops typing (debounced)
- * - Loads existing draft on mount
- * - Provides methods to manually save, delete, and clear drafts
- * - Integrates with React Query for caching and optimistic updates
- * - Automatically gets userId from auth context (no need to pass it manually)
- *
- * @param formType - Type of form (e.g., 'activity', 'event')
- * @param formData - Current form data to autosave
- * @param entityId - Optional entity ID if editing existing item
- * @param options - Configuration options
- */
 export function useAutoSave(
+  userId: number,
   formType: string,
   formData: Record<string, any>,
   entityId?: number,
   options: UseAutoSaveOptions = {},
   defaultFormData?: Record<string, any>
 ) {
-  // Get userId from auth context
-  const { user, isAuthenticated } = useAuth();
-  const userId = user?.id;
   const {
     debounceMs = 2000,
     enabled = true,
@@ -64,28 +42,18 @@ export function useAutoSave(
   // Track if a draft was created after mount
   const draftCreatedRef = useRef(false);
 
-  // Query key for caching - use null-safe userId
-  const draftQueryKey = [
-    'draft',
-    userId ?? 'unauthenticated',
-    formType,
-    entityId,
-  ];
+  // Query key for caching
+  const draftQueryKey = ['draft', userId, formType, entityId];
 
-  // Load existing draft on mount (only when authenticated)
+  // Load existing draft on mount
   const {
     data: existingDraft,
     isLoading: isDraftLoading,
     error: draftLoadError,
   } = useQuery<DraftResponse | null>({
     queryKey: draftQueryKey,
-    queryFn: () => {
-      if (!userId) {
-        return Promise.resolve(null);
-      }
-      return draftsApi.getDraft(userId, formType, entityId);
-    },
-    enabled: enabled && isAuthenticated && !!userId,
+    queryFn: () => draftsApi.getDraft(userId, formType, entityId),
+    enabled: enabled && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -125,16 +93,12 @@ export function useAutoSave(
 
   // Save draft mutation
   const { mutate: saveDraftMutation } = useMutation({
-    mutationFn: () => {
-      if (!userId) {
-        return Promise.reject(new Error('User not authenticated'));
-      }
-      return draftsApi.saveDraft(userId, {
+    mutationFn: () =>
+      draftsApi.saveDraft(userId, {
         formType,
         entityId,
         draftData: formData,
-      });
-    },
+      }),
     onMutate: () => {
       setIsSaving(true);
     },
@@ -153,7 +117,6 @@ export function useAutoSave(
     },
     onError: (error: Error) => {
       setIsSaving(false);
-      logger.error('Draft save failed', error);
       if (onSaveError) {
         onSaveError(error);
       }
@@ -163,9 +126,6 @@ export function useAutoSave(
   // Delete draft mutation
   const { mutate: deleteDraftMutation } = useMutation({
     mutationFn: () => {
-      if (!userId) {
-        return Promise.reject(new Error('User not authenticated'));
-      }
       return draftsApi.deleteDraftByForm(userId, formType, entityId);
     },
     onMutate: () => {
@@ -179,9 +139,8 @@ export function useAutoSave(
       // Invalidate to ensure fresh data on next mount
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
-    onError: (error: unknown) => {
-      logger.error('Draft delete failed', error);
-      showErrorToast(error, 'Draft could not be discarded.');
+    onError: (_error: any) => {
+      // Even on error, log it but keep the cache cleared
       void queryClient.invalidateQueries({ queryKey: draftQueryKey });
     },
   });
@@ -189,20 +148,29 @@ export function useAutoSave(
   // Auto-save effect with debouncing
   useEffect(() => {
     if (!enabled || !userId || !isDirty) {
+      if (!enabled) console.log('[AutoSave] Not enabled, skipping autosave.');
+      if (!userId) console.log('[AutoSave] No userId, skipping autosave.');
+      if (!isDirty)
+        console.log('[AutoSave] Form not dirty, skipping autosave.');
       return;
     }
 
     if (!formData || Object.keys(formData).length === 0) {
+      console.log('[AutoSave] Form data empty, skipping autosave.');
       return;
     }
 
     if (initialFormDataRef.current === null) {
+      console.log('[AutoSave] initialFormDataRef not set, skipping autosave.');
       return;
     }
 
     const currentDataString = JSON.stringify(formData);
 
     if (initialFormDataRef.current === currentDataString) {
+      console.log(
+        '[AutoSave] Form data matches initial form data, skipping autosave.'
+      );
       return;
     }
 
@@ -210,10 +178,16 @@ export function useAutoSave(
       lastSavedDataRef.current &&
       lastSavedDataRef.current === currentDataString
     ) {
+      console.log(
+        '[AutoSave] Form data matches last saved draft, skipping autosave.'
+      );
       return;
     }
 
     if (lastProcessedDataRef.current === currentDataString) {
+      console.log(
+        '[AutoSave] Form data unchanged since last process, skipping autosave.'
+      );
       return;
     }
 
@@ -226,32 +200,49 @@ export function useAutoSave(
 
     timeoutRef.current = setTimeout(() => {
       if (!formData || Object.keys(formData).length === 0) {
+        console.log(
+          '[AutoSave] (debounce) Form data empty, skipping autosave.'
+        );
         return;
       }
       if (initialFormDataRef.current === null) {
+        console.log(
+          '[AutoSave] (debounce) initialFormDataRef not set, skipping autosave.'
+        );
         return;
       }
       if (initialFormDataRef.current === JSON.stringify(formData)) {
+        console.log(
+          '[AutoSave] (debounce) Form data matches initial form data, skipping autosave.'
+        );
         return;
       }
       if (
         lastSavedDataRef.current &&
         lastSavedDataRef.current === JSON.stringify(formData)
       ) {
+        console.log(
+          '[AutoSave] (debounce) Form data matches last saved draft, skipping autosave.'
+        );
         return;
       }
       const currentDataString = JSON.stringify(formData);
       if (lastSavedDataRef.current === currentDataString) {
+        console.log(
+          '[AutoSave] (debounce) Form data unchanged since last save, skipping autosave.'
+        );
         return;
       }
+      // Compute and log the diff between initial and current form data
       let initial: Record<string, any> = {};
       let current: Record<string, any> = {};
       try {
         initial = JSON.parse(initialFormDataRef.current || '{}');
         current = JSON.parse(currentDataString);
-      } catch {
-        return;
+      } catch (e) {
+        console.log('[AutoSave] Error parsing form data for diff:', e);
       }
+      const diff: Record<string, { from: any; to: any }> = {};
       let hasRealChange = false;
       for (const key of new Set([
         ...Object.keys(initial),
@@ -259,6 +250,7 @@ export function useAutoSave(
       ])) {
         const fromVal = initial[key];
         const toVal = current[key];
+        // Ignore null <-> undefined changes
         if (
           (fromVal === null && toVal === undefined) ||
           (fromVal === undefined && toVal === null)
@@ -266,12 +258,20 @@ export function useAutoSave(
           continue;
         }
         if (JSON.stringify(fromVal) !== JSON.stringify(toVal)) {
+          diff[key] = { from: fromVal, to: toVal };
           hasRealChange = true;
-          break;
         }
       }
       if (hasRealChange) {
+        console.log(
+          '[AutoSave] Autosave triggered: user input detected and data changed. Diff:',
+          diff
+        );
         saveDraftMutation();
+      } else {
+        console.log(
+          '[AutoSave] Only null/undefined changes detected, skipping autosave.'
+        );
       }
     }, debounceMs);
 

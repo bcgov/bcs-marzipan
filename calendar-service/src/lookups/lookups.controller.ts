@@ -77,13 +77,9 @@ import {
   createActivityStatusRequestSchema,
   updateActivityStatusRequestSchema,
 } from '@corpcal/shared/schemas';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthUser } from '@corpcal/shared';
 
 @ApiTags('lookups')
 @Controller('lookups')
-@RequirePermission('lookups.view')
 export class LookupsController {
   private readonly logger = new AppLogger(LookupsController.name);
 
@@ -119,14 +115,12 @@ export class LookupsController {
     type: CategoryResponseWrapperDto,
   })
   @ApiBody({ type: CreateCategoryDto })
-  @RequirePermission('lookups.manage')
   @Post('categories')
   async createCategory(
     @Body(new ZodValidationPipe(createCategoryRequestSchema))
-    body: CreateCategoryDto,
-    @CurrentUser() user: AuthUser
+    body: CreateCategoryDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCategory(body, user.id);
+    const data = await this.lookupsService.createCategory(body);
     return { success: true, data };
   }
 
@@ -138,22 +132,20 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
   @ApiBody({ type: UpdateCategoryDto })
-  @RequirePermission('lookups.manage')
   @Patch('categories/:id')
   async updateCategory(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCategoryRequestSchema))
-    body: UpdateCategoryDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateCategoryDto
   ): Promise<{ success: boolean; data: any }> {
+    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateCategory(
       Number(id),
-      transformedBody,
-      user.id
+      transformedBody
     );
     return { success: true, data };
   }
@@ -282,14 +274,12 @@ export class LookupsController {
     type: TagResponseWrapperDto,
   })
   @ApiBody({ type: CreateTagDto })
-  @RequirePermission('lookups.manage')
   @Post('tags')
   async createTag(
     @Body(new ZodValidationPipe(createTagRequestSchema))
-    body: CreateTagDto,
-    @CurrentUser() user: AuthUser
+    body: CreateTagDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createTag(body, user.id);
+    const data = await this.lookupsService.createTag(body);
     return { success: true, data };
   }
 
@@ -301,15 +291,13 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: String, description: 'Tag ID' })
   @ApiBody({ type: UpdateTagDto })
-  @RequirePermission('lookups.manage')
   @Patch('tags/:id')
   async updateTag(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateTagRequestSchema))
-    body: UpdateTagDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateTagDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTag(Number(id), body, user.id);
+    const data = await this.lookupsService.updateTag(Number(id), body);
     return { success: true, data };
   }
 
@@ -336,14 +324,12 @@ export class LookupsController {
     type: ActivityStatusResponseWrapperDto,
   })
   @ApiBody({ type: CreateActivityStatusDto })
-  @RequirePermission('lookups.manage')
   @Post('activity-statuses')
   async createActivityStatus(
     @Body(new ZodValidationPipe(createActivityStatusRequestSchema))
-    body: CreateActivityStatusDto,
-    @CurrentUser() user: AuthUser
+    body: CreateActivityStatusDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createActivityStatus(body, user.id);
+    const data = await this.lookupsService.createActivityStatus(body);
     return { success: true, data };
   }
 
@@ -355,22 +341,20 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity Status ID' })
   @ApiBody({ type: UpdateActivityStatusDto })
-  @RequirePermission('lookups.manage')
   @Patch('activity-statuses/:id')
   async updateActivityStatus(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateActivityStatusRequestSchema))
-    body: UpdateActivityStatusDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateActivityStatusDto
   ): Promise<{ success: boolean; data: any }> {
+    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateActivityStatus(
       Number(id),
-      transformedBody,
-      user.id
+      transformedBody
     );
     return { success: true, data };
   }
@@ -408,14 +392,12 @@ export class LookupsController {
     type: CommsMaterialResponseWrapperDto,
   })
   @ApiBody({ type: CreateCommsMaterialDto })
-  @RequirePermission('lookups.manage')
   @Post('comms-materials')
   async createCommsMaterial(
     @Body(new ZodValidationPipe(createCommsMaterialRequestSchema))
-    body: CreateCommsMaterialDto,
-    @CurrentUser() user: AuthUser
+    body: CreateCommsMaterialDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCommsMaterial(body, user.id);
+    const data = await this.lookupsService.createCommsMaterial(body);
     return { success: true, data };
   }
 
@@ -427,18 +409,15 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: Number, description: 'Comms Material ID' })
   @ApiBody({ type: UpdateCommsMaterialDto })
-  @RequirePermission('lookups.manage')
   @Patch('comms-materials/:id')
   async updateCommsMaterial(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCommsMaterialRequestSchema))
-    body: UpdateCommsMaterialDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateCommsMaterialDto
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateCommsMaterial(
       Number(id),
-      body,
-      user.id
+      body
     );
     return { success: true, data };
   }
@@ -482,17 +461,12 @@ export class LookupsController {
     type: GovernmentRepresentativeResponseWrapperDto,
   })
   @ApiBody({ type: CreateGovernmentRepresentativeDto })
-  @RequirePermission('lookups.manage')
   @Post('government-representatives')
   async createGovernmentRepresentative(
     @Body(new ZodValidationPipe(createGovernmentRepresentativeRequestSchema))
-    body: CreateGovernmentRepresentativeDto,
-    @CurrentUser() user: AuthUser
+    body: CreateGovernmentRepresentativeDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createGovernmentRepresentative(
-      body,
-      user.id
-    );
+    const data = await this.lookupsService.createGovernmentRepresentative(body);
     return { success: true, data };
   }
 
@@ -508,18 +482,15 @@ export class LookupsController {
     description: 'Government Representative ID',
   })
   @ApiBody({ type: UpdateGovernmentRepresentativeDto })
-  @RequirePermission('lookups.manage')
   @Patch('government-representatives/:id')
   async updateGovernmentRepresentative(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateGovernmentRepresentativeRequestSchema))
-    body: UpdateGovernmentRepresentativeDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateGovernmentRepresentativeDto
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateGovernmentRepresentative(
       Number(id),
-      body,
-      user.id
+      body
     );
     return { success: true, data };
   }
@@ -638,14 +609,12 @@ export class LookupsController {
     type: CityResponseWrapperDto,
   })
   @ApiBody({ type: CreateCityDto })
-  @RequirePermission('lookups.manage')
   @Post('cities')
   async createCity(
     @Body(new ZodValidationPipe(createCityRequestSchema))
-    body: CreateCityDto,
-    @CurrentUser() user: AuthUser
+    body: CreateCityDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCity(body, user.id);
+    const data = await this.lookupsService.createCity(body);
     return { success: true, data };
   }
 
@@ -657,22 +626,20 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: Number, description: 'City ID' })
   @ApiBody({ type: UpdateCityDto })
-  @RequirePermission('lookups.manage')
   @Patch('cities/:id')
   async updateCity(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCityRequestSchema))
-    body: UpdateCityDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateCityDto
   ): Promise<{ success: boolean; data: any }> {
+    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateCity(
       Number(id),
-      transformedBody,
-      user.id
+      transformedBody
     );
     return { success: true, data };
   }
@@ -700,14 +667,12 @@ export class LookupsController {
     type: MinistryResponseWrapperDto,
   })
   @ApiBody({ type: CreateMinistryDto })
-  @RequirePermission('lookups.manage')
   @Post('ministries')
   async createMinistry(
     @Body(new ZodValidationPipe(createMinistryRequestSchema))
-    body: CreateMinistryDto,
-    @CurrentUser() user: AuthUser
+    body: CreateMinistryDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createMinistry(body, user.id);
+    const data = await this.lookupsService.createMinistry(body);
     return { success: true, data };
   }
 
@@ -719,15 +684,13 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: String, description: 'Ministry ID (UUID)' })
   @ApiBody({ type: UpdateMinistryDto })
-  @RequirePermission('lookups.manage')
   @Patch('ministries/:id')
   async updateMinistry(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateMinistryRequestSchema))
-    body: UpdateMinistryDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateMinistryDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateMinistry(id, body, user.id);
+    const data = await this.lookupsService.updateMinistry(id, body);
     return { success: true, data };
   }
 
@@ -790,14 +753,12 @@ export class LookupsController {
     type: ThemeResponseWrapperDto,
   })
   @ApiBody({ type: CreateThemeDto })
-  @RequirePermission('lookups.manage')
   @Post('themes')
   async createTheme(
     @Body(new ZodValidationPipe(createThemeRequestSchema))
-    body: CreateThemeDto,
-    @CurrentUser() user: AuthUser
+    body: CreateThemeDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createTheme(body, user.id);
+    const data = await this.lookupsService.createTheme(body);
     return { success: true, data };
   }
 
@@ -809,15 +770,13 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: String, description: 'Theme ID (UUID)' })
   @ApiBody({ type: UpdateThemeDto })
-  @RequirePermission('lookups.manage')
   @Patch('themes/:id')
   async updateTheme(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateThemeRequestSchema))
-    body: UpdateThemeDto,
-    @CurrentUser() user: AuthUser
+    body: UpdateThemeDto
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTheme(id, body, user.id);
+    const data = await this.lookupsService.updateTheme(id, body);
     return { success: true, data };
   }
 

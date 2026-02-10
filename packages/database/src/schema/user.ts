@@ -9,19 +9,15 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { pods } from './ministry';
-import { roles } from './rbac';
 
 /**
  * User table - System users for authentication and authorization
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/User.cs
- * roleId references roles table for RBAC (replaces legacy role varchar)
  */
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  roleId: integer('role_id')
-    .notNull()
-    .references(() => roles.id),
+  role: varchar('role', { length: 50 }).notNull().default('ReadOnly'), // SecurityRole enum
   groupId: integer('group_id'), // FK to Groups TODO
   isActive: boolean('is_active').notNull().default(true),
 
@@ -66,16 +62,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     relationName: 'updatedBy',
   }),
 
-  // RBAC: user's role
-  role: one(roles, {
-    fields: [users.roleId],
-    references: [roles.id],
-  }),
-
   // Relations to other tables - using string references to avoid circular dependencies
   // Note: Reverse relations are defined in activity.ts and ministry.ts
   createdPods: many(pods, { relationName: 'podCreator' }),
   updatedPods: many(pods, { relationName: 'podUpdater' }),
-
-  // Note: userTeams relation is defined in relations.ts to avoid circular imports
 }));

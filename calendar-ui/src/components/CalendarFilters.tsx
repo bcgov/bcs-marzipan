@@ -30,9 +30,6 @@ import {
   UserLookupItem,
 } from '../api/lookupsApi';
 import { fetchActivities } from '../api/activitiesApi';
-import { createLogger } from '../lib/logger';
-
-const logger = createLogger('CalendarFilters');
 
 interface FilterProps {
   onFiltersChanged: (filters: ColumnFiltersState) => void;
@@ -144,7 +141,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
     });
   };
 
-  // Cookie handling
+  // Cookie handling: "C" is for "Cookie", and that's good enough for me
   const [cookies, setCookie, removeCookie] = useCookies(['filtersCookie']);
 
   const handleSetCookie = useCallback(() => {
@@ -312,7 +309,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setCategories(data);
       })
       .catch((error) => {
-        logger.error('Error fetching categories', error);
+        console.error('Error fetching categories:', error);
       });
 
     fetchTags()
@@ -320,7 +317,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setTags(data);
       })
       .catch((error) => {
-        logger.error('Error fetching tags', error);
+        console.error('Error fetching tags:', error);
       });
 
     fetchActivityStatuses()
@@ -328,7 +325,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setStatuses(data);
       })
       .catch((error) => {
-        logger.error('Error fetching activity statuses', error);
+        console.error('Error fetching activity statuses:', error);
       });
 
     fetchGovernmentRepresentatives()
@@ -336,7 +333,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         setRepresentatives(data);
       })
       .catch((error) => {
-        logger.error('Error fetching representatives', error);
+        console.error('Error fetching representatives:', error);
       });
 
     // Extract unique comms contact IDs and event lead IDs from activities, then fetch only those users
@@ -375,11 +372,11 @@ export const CalendarFilters: React.FC<FilterProps> = ({
             setLeads(sortedUsers);
           })
           .catch((error) => {
-            logger.error('Error fetching users', error);
+            console.error('Error fetching users:', error);
           });
       })
       .catch((error) => {
-        logger.error('Error fetching activities', error);
+        console.error('Error fetching activities:', error);
       });
   }, []); // Empty dependency array - only run once on mount
 
@@ -409,7 +406,7 @@ export const CalendarFilters: React.FC<FilterProps> = ({
         handleRemoveCookie();
         handleClearFilters();
         // TODO: handle error
-        logger.error('Error parsing filters cookie', error);
+        console.error('Error parsing filters cookie:', error);
       }
     }
   };

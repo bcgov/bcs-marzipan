@@ -2,11 +2,9 @@ import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import type { ReportResponse } from '@corpcal/shared/schemas/lookup.schema';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 
 @ApiTags('reports')
 @Controller('reports')
-@RequirePermission('reports.view')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 

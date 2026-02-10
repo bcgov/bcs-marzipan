@@ -4,14 +4,10 @@ import { Button } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
 import { ColumnFiltersState } from '@tanstack/react-table';
 import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { PERMISSIONS } from '@corpcal/shared';
 
 export const CalendarEntriesList = () => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<string>('');
-  const { hasPermission } = useAuth();
-  const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 
   // for filters set through the CalendarFilters component
   const handleFilterUpdate = (filters: ColumnFiltersState): void => {
@@ -45,12 +41,6 @@ export const CalendarEntriesList = () => {
             appearance="primary"
             onClick={() => window.open('/create-activity')}
             icon={<Add24Regular />}
-            disabled={!canCreateActivity}
-            title={
-              !canCreateActivity
-                ? 'You do not have permission to create activities'
-                : undefined
-            }
           >
             New Entry
           </Button>

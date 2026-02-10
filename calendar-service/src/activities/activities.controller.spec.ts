@@ -1,26 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
-import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
-import { PolicyService } from '../policy/policy.service';
 import type { Category } from '@corpcal/database/types';
-import type { AuthUser } from '@corpcal/shared';
 import {
   createMockActivityRequest,
   createMockUpdateRequest,
   createMockActivityResponse,
 } from '../common/test-utils';
-
-const mockUser: AuthUser = {
-  id: 1,
-  username: 'testuser',
-  displayName: 'Test User',
-  email: 'test@example.com',
-  roleId: 2,
-  roleName: 'Editor',
-  permissions: ['activities.create', 'activities.edit', 'activities.delete'],
-  teamIds: [],
-};
 
 describe('ActivitiesController', () => {
   let controller: ActivitiesController;
@@ -36,12 +22,6 @@ describe('ActivitiesController', () => {
     findOne: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
-    softDelete: vi.fn(),
-    cancelChanges: vi.fn(),
-    updateCategories: vi.fn(),
-    updateThemes: vi.fn(),
-    updateTags: vi.fn(),
-    updateSharedWith: vi.fn(),
     fetchCategories: vi.fn(),
   };
 
@@ -53,11 +33,6 @@ describe('ActivitiesController', () => {
           provide: ActivitiesService,
           useValue: mockActivitiesService,
         },
-        {
-          provide: PolicyService,
-          useValue: { isCommsLeadForActivity: vi.fn() },
-        },
-        CanDeleteActivityGuard,
       ],
     }).compile();
 
@@ -81,16 +56,13 @@ describe('ActivitiesController', () => {
 
       mockActivitiesService.create.mockResolvedValue(mockActivityResponse);
 
-      const result = await controller.create(createDto, mockUser);
+      const result = await controller.create(createDto);
 
       expect(result).toEqual({
         success: true,
         data: mockActivityResponse,
       });
-      expect(mockActivitiesService.create).toHaveBeenCalledWith(
-        createDto,
-        mockUser.id
-      );
+      expect(mockActivitiesService.create).toHaveBeenCalledWith(createDto);
       expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
     });
   });
@@ -100,19 +72,13 @@ describe('ActivitiesController', () => {
       const activities = [mockActivityResponse];
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
-      const result = await controller.findAll(
-        { page: 1, limit: 10 },
-        {} as Parameters<ActivitiesController['findAll']>[1]
-      );
+      const result = await controller.findAll({ page: 1, limit: 10 });
 
       expect(result).toEqual({
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        undefined,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined);
     });
 
     it('should return filtered activities', async () => {
@@ -120,19 +86,13 @@ describe('ActivitiesController', () => {
       const filters = { page: 1, limit: 10, title: 'Test' };
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
-      const result = await controller.findAll(
-        filters,
-        {} as Parameters<ActivitiesController['findAll']>[1]
-      );
+      const result = await controller.findAll(filters);
 
       expect(result).toEqual({
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        filters,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters);
     });
   });
 
@@ -218,17 +178,13 @@ describe('ActivitiesController', () => {
 
       mockActivitiesService.update.mockResolvedValue(updatedActivity);
 
-      const result = await controller.update(1, updateDto, mockUser);
+      const result = await controller.update(1, updateDto);
 
       expect(result).toEqual({
         success: true,
         data: updatedActivity,
       });
-      expect(mockActivitiesService.update).toHaveBeenCalledWith(
-        1,
-        updateDto,
-        mockUser.id
-      );
+      expect(mockActivitiesService.update).toHaveBeenCalledWith(1, updateDto);
       expect(mockActivitiesService.update).toHaveBeenCalledTimes(1);
     });
 
@@ -241,26 +197,20 @@ describe('ActivitiesController', () => {
         new Error('Activity not found')
       );
 
-      await expect(
-        controller.update(999, updateDto, mockUser)
-      ).rejects.toThrow();
-      expect(mockActivitiesService.update).toHaveBeenCalledWith(
-        999,
-        updateDto,
-        mockUser.id
-      );
+      await expect(controller.update(999, updateDto)).rejects.toThrow();
+      expect(mockActivitiesService.update).toHaveBeenCalledWith(999, updateDto);
     });
   });
 
   describe('remove', () => {
     it('should delete an activity', async () => {
-      const deleteResponse = { message: 'Activity #1 deleted successfully' };
+      const deleteResponse = { message: 'Activity with ID 1 has been deleted' };
       mockActivitiesService.remove.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1, mockUser);
+      const result = await controller.remove(1);
 
       expect(result).toEqual(deleteResponse);
-      expect(mockActivitiesService.remove).toHaveBeenCalledWith(1, mockUser.id);
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(1);
       expect(mockActivitiesService.remove).toHaveBeenCalledTimes(1);
     });
 
@@ -269,47 +219,8 @@ describe('ActivitiesController', () => {
         new Error('Activity not found')
       );
 
-      await expect(controller.remove(999, mockUser)).rejects.toThrow();
-      expect(mockActivitiesService.remove).toHaveBeenCalledWith(
-        999,
-        mockUser.id
-      );
-    });
-  });
-
-  describe('softDelete', () => {
-    it('should soft delete an activity', async () => {
-      const body = { reason: 'Duplicate entry' };
-      mockActivitiesService.softDelete.mockResolvedValue(mockActivityResponse);
-
-      const result = await controller.softDelete(1, body, mockUser);
-
-      expect(result).toEqual({
-        success: true,
-        data: mockActivityResponse,
-      });
-      expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
-        1,
-        body.reason,
-        mockUser.id
-      );
-      expect(mockActivitiesService.softDelete).toHaveBeenCalledTimes(1);
-    });
-
-    it('should throw error when soft deleting non-existent activity', async () => {
-      const body = { reason: 'No longer needed' };
-      mockActivitiesService.softDelete.mockRejectedValue(
-        new Error('Activity not found')
-      );
-
-      await expect(
-        controller.softDelete(999, body, mockUser)
-      ).rejects.toThrow();
-      expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
-        999,
-        body.reason,
-        mockUser.id
-      );
+      await expect(controller.remove(999)).rejects.toThrow();
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(999);
     });
   });
 });

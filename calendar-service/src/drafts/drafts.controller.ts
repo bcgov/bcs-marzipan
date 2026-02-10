@@ -25,12 +25,7 @@ import {
 } from './dto/drafts.dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
-import {
-  RequirePermission,
-  RequireAnyPermission,
-} from '../policy/decorators/require-permission.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthUser } from '@corpcal/shared';
+import { ParsePositiveIntPipe } from '../common/pipes/parse-positive-int.pipe';
 
 @ApiTags('drafts')
 @Controller('drafts')
@@ -46,30 +41,35 @@ export class DraftsController {
   @ApiOperation({
     summary: 'Save or update a form draft',
     description:
-      'Saves incomplete form data for later. The current user is inferred from the JWT. Updates existing draft if one exists for the same user/form/entity combination.',
+      'Saves incomplete form data for later. Updates existing draft if one exists for the same user/form/entity combination.',
   })
   @ApiResponse({
     status: 200,
     description: 'Draft saved successfully',
     type: DraftResponseDto,
   })
-  @RequireAnyPermission('drafts.create', 'drafts.edit')
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    type: Number,
+    description: 'User ID (temporary until authentication is implemented)',
+  })
   @Post('save')
   async saveDraft(
-    @CurrentUser() user: AuthUser,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Body() saveDto: SaveDraftDto
   ): Promise<{ success: boolean; data: DraftResponseDto }> {
     try {
       this.logger.log(
-        `Saving draft for user ${user.id}, form ${saveDto.formType}`
+        `Saving draft for user ${userId}, form ${saveDto.formType}`
       );
-      const data = await this.draftsService.saveDraft(user.id, saveDto);
+      const data = await this.draftsService.saveDraft(userId, saveDto);
       return { success: true, data };
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.stack || error.message : String(error);
       this.logger.error(
-        `Failed to save draft for user ${user.id}, form ${saveDto.formType}`,
+        `Failed to save draft for user ${userId}, form ${saveDto.formType}`,
         errorMessage
       );
       throw error;
@@ -78,12 +78,11 @@ export class DraftsController {
 
   /**
    * Get a specific draft by form type and optional entity ID
-   * GET /drafts?formType=activity&entityId=123
+   * GET /drafts?userId=1&formType=activity&entityId=123
    */
   @ApiOperation({
     summary: 'Get a specific draft',
-    description:
-      'Retrieves a draft by form type and optional entity ID. The current user is inferred from the JWT.',
+    description: 'Retrieves a draft by form type and optional entity ID',
   })
   @ApiResponse({
     status: 200,
@@ -93,6 +92,12 @@ export class DraftsController {
   @ApiResponse({
     status: 404,
     description: 'Draft not found',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    type: Number,
+    description: 'User ID',
   })
   @ApiQuery({
     name: 'formType',
@@ -106,41 +111,44 @@ export class DraftsController {
     type: Number,
     description: 'Entity ID being edited (omit for new items)',
   })
-  @RequirePermission('drafts.view')
   @Get()
   async getDraft(
-    @CurrentUser() user: AuthUser,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Query('formType') formType: string,
     @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
   ): Promise<{ success: boolean; data: DraftResponseDto | null }> {
     this.logger.log(
-      `Getting draft for user ${user.id}, form ${formType}, entity ${entityId}`
+      `Getting draft for user ${userId}, form ${formType}, entity ${entityId}`
     );
-    const data = await this.draftsService.getDraft(user.id, formType, entityId);
+    const data = await this.draftsService.getDraft(userId, formType, entityId);
     return { success: true, data };
   }
 
   /**
-   * Get all drafts for the current user
-   * GET /drafts/list
+   * Get all drafts for a user
+   * GET /drafts/list?userId=1
    */
   @ApiOperation({
-    summary: 'List all drafts for the current user',
-    description:
-      'Retrieves all saved drafts for the authenticated user. The current user is inferred from the JWT.',
+    summary: 'List all drafts for a user',
+    description: 'Retrieves all saved drafts for a specific user',
   })
   @ApiResponse({
     status: 200,
     description: 'Drafts retrieved successfully',
     type: DraftsListResponseDto,
   })
-  @RequirePermission('drafts.view')
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    type: Number,
+    description: 'User ID',
+  })
   @Get('list')
   async listDrafts(
-    @CurrentUser() user: AuthUser
+    @Query('userId', ParsePositiveIntPipe) userId: number
   ): Promise<{ success: boolean; data: DraftsListResponseDto }> {
-    this.logger.log(`Listing all drafts for user ${user.id}`);
-    const drafts = await this.draftsService.listUserDrafts(user.id);
+    this.logger.log(`Listing all drafts for user ${userId}`);
+    const drafts = await this.draftsService.listUserDrafts(userId);
     return {
       success: true,
       data: {
@@ -152,17 +160,22 @@ export class DraftsController {
 
   /**
    * Delete a draft by ID
-   * DELETE /drafts/:id
+   * DELETE /drafts/:id?userId=1
    */
   @ApiOperation({
     summary: 'Delete a draft by ID',
-    description:
-      'Deletes a specific draft. The current user is inferred from the JWT; only the owner can delete.',
+    description: 'Deletes a specific draft. User must own the draft.',
   })
   @ApiParam({
     name: 'id',
     type: Number,
     description: 'Draft ID',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    type: Number,
+    description: 'User ID',
   })
   @ApiResponse({
     status: 204,
@@ -172,25 +185,30 @@ export class DraftsController {
     status: 404,
     description: 'Draft not found or does not belong to user',
   })
-  @RequirePermission('drafts.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraft(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @Query('userId', ParsePositiveIntPipe) userId: number
   ): Promise<void> {
-    this.logger.log(`Deleting draft ${id} for user ${user.id}`);
-    await this.draftsService.deleteDraft(user.id, id);
+    this.logger.log(`Deleting draft ${id} for user ${userId}`);
+    await this.draftsService.deleteDraft(userId, id);
   }
 
   /**
    * Delete a draft by form type and entity ID
-   * DELETE /drafts/by-form?formType=activity&entityId=123
+   * DELETE /drafts/by-form?userId=1&formType=activity&entityId=123
    */
   @ApiOperation({
     summary: 'Delete a draft by form type',
     description:
-      'Deletes a draft by form type and optional entity ID. The current user is inferred from the JWT; only the owner can delete.',
+      'Deletes a draft by form type and optional entity ID. User must own the draft.',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: true,
+    type: Number,
+    description: 'User ID',
   })
   @ApiQuery({
     name: 'formType',
@@ -212,18 +230,17 @@ export class DraftsController {
     status: 404,
     description: 'Draft not found',
   })
-  @RequirePermission('drafts.delete')
   @Delete('by-form')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraftByForm(
-    @CurrentUser() user: AuthUser,
+    @Query('userId', ParsePositiveIntPipe) userId: number,
     @Query('formType') formType: string,
     @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
   ): Promise<void> {
     this.logger.log(
-      `Deleting draft for user ${user.id}, form ${formType}, entity ${entityId}`
+      `Deleting draft for user ${userId}, form ${formType}, entity ${entityId}`
     );
-    await this.draftsService.deleteDraftByForm(user.id, formType, entityId);
+    await this.draftsService.deleteDraftByForm(userId, formType, entityId);
   }
 
   /**
@@ -239,7 +256,6 @@ export class DraftsController {
     status: 200,
     description: 'Cleanup completed',
   })
-  @RequirePermission('drafts.delete')
   @Post('cleanup')
   async cleanupExpiredDrafts(): Promise<{
     success: boolean;

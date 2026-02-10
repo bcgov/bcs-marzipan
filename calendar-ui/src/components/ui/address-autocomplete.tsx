@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createLogger } from '@/lib/logger';
-import { getFriendlyErrorMessage } from '@/lib/error-toast';
-import {
-  ADDRESS_SEARCH_FAILED,
-  ADDRESS_RETRIEVE_FAILED,
-} from '@/lib/error-messages';
-
-const logger = createLogger('AddressAutocomplete');
 
 export interface AddressData {
   street: string;
@@ -98,7 +90,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(ADDRESS_SEARCH_FAILED);
+        throw new Error('Failed to search addresses');
       }
 
       const result = await response.json();
@@ -106,8 +98,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(true);
       setSelectedIndex(-1);
     } catch (err) {
-      logger.error('Address search error', err);
-      setError(getFriendlyErrorMessage(err) || ADDRESS_SEARCH_FAILED);
+      console.error('Address search error:', err);
+      setError('Failed to search addresses');
       setSuggestions([]);
     } finally {
       setIsLoading(false);
@@ -143,7 +135,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(ADDRESS_RETRIEVE_FAILED);
+        throw new Error('Failed to retrieve address');
       }
 
       const result = await response.json();
@@ -154,8 +146,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(false);
       setSuggestions([]);
     } catch (err) {
-      logger.error('Address retrieve error', err);
-      setError(getFriendlyErrorMessage(err) || ADDRESS_RETRIEVE_FAILED);
+      console.error('Address retrieve error:', err);
+      setError('Failed to retrieve address details');
     } finally {
       setIsLoading(false);
     }

@@ -565,7 +565,7 @@ describe('ActivitiesService', () => {
       // Mock select for findOne call after create
       mockDatabaseService.db.select = createMockSelect([createdActivity]);
 
-      const result = await service.create(createDto, 1);
+      const result = await service.create(createDto);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.id).toBe(2);
@@ -651,7 +651,7 @@ describe('ActivitiesService', () => {
       const updateDto = createMockUpdateRequest({
         title: 'Updated Activity',
       });
-      const result = await service.update(1, updateDto, 1);
+      const result = await service.update(1, updateDto);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.title).toBe('Updated Activity');

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { Activity } from '@corpcal/database/types';
 import type {
   ActivityResponse,
@@ -21,8 +21,6 @@ import { activityResponseSchema } from '@corpcal/shared/schemas';
  */
 @Injectable()
 export class ActivityMapperService {
-  private readonly logger = new Logger(ActivityMapperService.name);
-
   /**
    * Map database Activity to API ActivityResponse
    * Validates against Zod schema to ensure DTO matches schema contract
@@ -190,9 +188,9 @@ export class ActivityMapperService {
       // Log validation errors with context for debugging
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown validation error';
-      this.logger.error(
-        `Response validation failed for activity ${activity.id}: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined
+      console.error(
+        `[ActivityMapperService] Response validation failed for activity ${activity.id}:`,
+        errorMessage
       );
       // Fail-fast in all environments to prevent invalid responses
       throw new Error(

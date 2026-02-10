@@ -12,14 +12,13 @@
 -- MUST be seeded first as other tables reference them via created_by/last_updated_by
 -- ============================================================================
 
--- role_id: 1=View Only, 2=Editor, 3=Advanced, 4=Admin, 5=System Admin (from roles table)
-INSERT INTO users (id, ad_username, ad_display_name, ad_email, ad_department, role_id, is_active) VALUES
-  (1, 'john.doe', 'John Doe', 'john.doe@gov.bc.ca', 'Office of the Premier', 4, true),
-  (2, 'jane.smith', 'Jane Smith', 'jane.smith@gov.bc.ca', 'Communications', 2, true),
-  (3, 'sam.wilson', 'Sam Wilson', 'sam.wilson@gov.bc.ca', 'Public Affairs', 2, true),
-  (4, 'david.chen', 'David Chen', 'david.chen@gov.bc.ca', 'Media Relations', 2, true),
-  (5, 'emily.wang', 'Emily Wang', 'emily.wang@gov.bc.ca', 'Policy', 1, true),
-  (6, 'michael.brown', 'Michael Brown', 'michael.brown@gov.bc.ca', 'Research', 1, true)
+INSERT INTO users (id, ad_username, ad_display_name, ad_email, ad_department, role, is_active) VALUES
+  (1, 'john.doe', 'John Doe', 'john.doe@gov.bc.ca', 'Office of the Premier', 'Admin', true),
+  (2, 'jane.smith', 'Jane Smith', 'jane.smith@gov.bc.ca', 'Communications', 'Editor', true),
+  (3, 'sam.wilson', 'Sam Wilson', 'sam.wilson@gov.bc.ca', 'Public Affairs', 'Editor', true),
+  (4, 'david.chen', 'David Chen', 'david.chen@gov.bc.ca', 'Media Relations', 'Editor', true),
+  (5, 'emily.wang', 'Emily Wang', 'emily.wang@gov.bc.ca', 'Policy', 'ReadOnly', true),
+  (6, 'michael.brown', 'Michael Brown', 'michael.brown@gov.bc.ca', 'Research', 'ReadOnly', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

@@ -8,15 +8,6 @@ import {
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 import { createLogger } from '../lib/logger';
-import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
-import {
-  LOAD_ACTIVITY_TITLE,
-  LOAD_ACTIVITY_NO_ID,
-  RENDER_FORM_ERROR_TITLE,
-  ERROR_DETAILS_LABEL,
-  TRY_AGAIN_LABEL,
-} from '../lib/error-messages';
-import { ErrorState } from '../components/ErrorState';
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -118,7 +109,7 @@ export default function EditActivityForm(): React.ReactElement {
     let mounted = true;
     const load = async () => {
       if (!id) {
-        setLoadError(LOAD_ACTIVITY_NO_ID);
+        setLoadError('No activity id provided');
         setIsLoading(false);
         return;
       }
@@ -130,9 +121,9 @@ export default function EditActivityForm(): React.ReactElement {
         // should be compatible but may include extra fields from the API.
         form.reset(activity as any);
         setLoadedActivity(activity as LoadedActivity);
-      } catch (err: unknown) {
+      } catch (err: any) {
         logger.error('Failed to load activity', err);
-        setLoadError(getFriendlyErrorMessage(err));
+        setLoadError(err?.message || String(err));
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -166,8 +157,9 @@ export default function EditActivityForm(): React.ReactElement {
           if (typeof reportId === 'number') {
             normalized.push({ reportId, omitted });
           } else {
-            logger.warn(
-              'Skipping invalid reportSettings entry (missing numeric reportId)'
+            console.warn(
+              'Skipping invalid reportSettings entry (missing numeric reportId):',
+              it
             );
           }
         }
@@ -220,14 +212,22 @@ export default function EditActivityForm(): React.ReactElement {
       void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
-      showErrorToast(err);
+      alert('Failed to save activity. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onError = () => {
-    logger.error('Form validation failed');
+  const onError = (errors: any) => {
+    console.error('Form validation errors:', errors);
+    console.error('Form values:', form.getValues());
+    const keys = Object.keys(errors || {});
+    if (keys.length > 0) {
+      const friendly = keys.map(
+        (k) => `${k}: ${errors[k]?.message || JSON.stringify(errors[k])}`
+      );
+      console.error('Validation summary:', friendly);
+    }
   };
 
   const formatActivityStatus = (s: unknown) => {
@@ -247,26 +247,27 @@ export default function EditActivityForm(): React.ReactElement {
   };
 
   const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
-    const friendlyMessage = getFriendlyErrorMessage(error);
-    const rawMessage = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
 
     return (
       <div className="mx-auto max-w-200 px-4 py-8" role="alert">
         <div className="mb-8">
           <h1 className="text-destructive mb-2 text-3xl font-bold">
-            {RENDER_FORM_ERROR_TITLE}
+            Something went wrong
           </h1>
-          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
+          <p className="text-muted-foreground mb-4">
+            An error occurred while rendering the edit form. Please try again.
+          </p>
           <details className="mb-4">
             <summary className="cursor-pointer text-sm font-medium">
-              {ERROR_DETAILS_LABEL}
+              Error details
             </summary>
             <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {rawMessage}
+              {message}
             </pre>
           </details>
           <Button onClick={resetErrorBoundary} variant="default">
-            {TRY_AGAIN_LABEL}
+            Try again
           </Button>
         </div>
       </div>
@@ -284,38 +285,20 @@ export default function EditActivityForm(): React.ReactElement {
   }
 
   if (loadError) {
-    const handleRetry = () => {
-      setLoadError(null);
-      setIsLoading(true);
-      if (!id) return;
-      fetchActivity(Number(id))
-        .then((activity) => {
-          form.reset(activity as any);
-          setLoadedActivity(activity as LoadedActivity);
-        })
-        .catch((err: unknown) => {
-          logger.error('Failed to load activity', err);
-          setLoadError(getFriendlyErrorMessage(err));
-        })
-        .finally(() => setIsLoading(false));
-    };
     return (
       <div className="mx-auto max-w-200 px-4 py-8">
-        <ErrorState
-          title={LOAD_ACTIVITY_TITLE}
-          message={loadError}
-          onRetry={handleRetry}
-          action={
-            <Button
-              variant="outline"
-              onClick={() => {
-                void navigate(-1);
-              }}
-            >
-              Back
-            </Button>
-          }
-        />
+        <div className="mb-8">
+          <p className="text-destructive">
+            Failed to load activity: {loadError}
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            void navigate(-1);
+          }}
+        >
+          Back
+        </Button>
       </div>
     );
   }
