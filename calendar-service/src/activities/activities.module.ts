@@ -8,9 +8,10 @@ import { ActivityDataFetcherService } from './services/activity-data-fetcher.ser
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 import { DatabaseModule } from '../database/database.module';
+import { PolicyModule } from '../policy/policy.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, PolicyModule],
   providers: [
     ActivitiesService,
     ActivitiesGateway,
@@ -21,5 +22,6 @@ import { DatabaseModule } from '../database/database.module';
     ActivityUtilsService,
   ],
   controllers: [ActivitiesController],
+  exports: [ActivitiesService],
 })
 export class ActivitiesModule {}
