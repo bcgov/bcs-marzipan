@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - calendar-service/configmap.yaml
+  - calendar-service/secret.yaml
+  - calendar-service/imagestream.yaml
+  - calendar-service/deployment.yaml
+  - calendar-service/service.yaml
+  - calendar-service/route.yaml
+  - calendar-ui/configmap.yaml
+  - calendar-ui/secret.yaml
+  - calendar-ui/imagestream.yaml
+  - calendar-ui/deployment.yaml
+  - calendar-ui/service.yaml
+  - calendar-ui/route.yaml
+  - database/postgres-secret.yaml
+  - database/postgres-pvc.yaml
+  - database/postgres-statefulset.yaml
+  - database/postgres-service.yaml

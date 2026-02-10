@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - calendar-service/imagestream.yaml
+  - calendar-service/buildconfig.yaml
+  - calendar-service/configmap.yaml
+  - calendar-ui/imagestream.yaml
+  - calendar-ui/buildconfig.yaml
+  - calendar-ui/configmap.yaml
+namespace: ${TOOLS_NAMESPACE}
