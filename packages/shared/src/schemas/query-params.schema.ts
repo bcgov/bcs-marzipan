@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LOOK_AHEAD_SECTION } from '../constants/constants';
 
 /**
  * Query Parameter Schemas
@@ -56,6 +57,7 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int())
     .optional(),
   leadMinistryId: z.string().uuid().optional(),
+  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).optional(),
   city: z.string().optional(),
   isIssue: z
     .string()

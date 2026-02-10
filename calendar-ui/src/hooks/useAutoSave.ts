@@ -19,6 +19,21 @@ export interface UseAutoSaveOptions {
   onFirstDraftCreate?: () => void;
 }
 
+/**
+ * Hook for autosaving form data as drafts
+ *
+ * Features:
+ * - Automatically saves form data after user stops typing (debounced)
+ * - Loads existing draft on mount
+ * - Provides methods to manually save, delete, and clear drafts
+ * - Integrates with React Query for caching and optimistic updates
+ * - Automatically gets userId from auth context (no need to pass it manually)
+ *
+ * @param formType - Type of form (e.g., 'activity', 'event')
+ * @param formData - Current form data to autosave
+ * @param entityId - Optional entity ID if editing existing item
+ * @param options - Configuration options
+ */
 export function useAutoSave(
   formType: string,
   formData: Record<string, any>,
