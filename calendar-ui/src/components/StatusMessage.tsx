@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
-import { Button } from './ui/button';
+
 import { ERROR_DETAILS_LABEL, TRY_AGAIN_LABEL } from '../lib/error-messages';
+import { Button } from './ui/button';
 
 interface StatusMessageProps {
   title: string;

@@ -3,6 +3,7 @@
  * Provides access to auth context and permission checking utilities
  */
 import { useContext } from 'react';
+
 import { AuthContext, type AuthContextType } from '../contexts/AuthContext';
 
 /**

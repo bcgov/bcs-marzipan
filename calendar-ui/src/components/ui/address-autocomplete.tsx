@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createLogger } from '@/lib/logger';
-import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import {
-  ADDRESS_SEARCH_FAILED,
   ADDRESS_RETRIEVE_FAILED,
+  ADDRESS_SEARCH_FAILED,
 } from '@/lib/error-messages';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('AddressAutocomplete');
 

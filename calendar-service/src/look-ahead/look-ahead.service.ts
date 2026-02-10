@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { LOOK_AHEAD_SECTION } from '@corpcal/shared';
-import type { LookAheadSection } from '@corpcal/shared';
+
+import { LOOK_AHEAD_SECTION, type LookAheadSection } from '@corpcal/shared';
 import type { ActivityResponse, ReportResponse } from '@corpcal/shared/api';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
-import { ReportsService } from '../reports/reports.service';
+
 import { ActivitiesService } from '../activities/services/activities.service';
+import { ReportsService } from '../reports/reports.service';
 
 const SECTION_DISPLAY_NAMES: Record<LookAheadSection, string> = {
   events: 'Events, Speeches & Releases',

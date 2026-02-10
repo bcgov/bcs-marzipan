@@ -6,5 +6,36 @@
   "endOfLine": "auto",
   "trailingComma": "es5",
   "arrowParens": "always",
-  "plugins": ["prettier-plugin-tailwindcss"]
+  "plugins": [
+    "@ianvs/prettier-plugin-sort-imports",
+    "prettier-plugin-tailwindcss"
+  ],
+  "importOrderTypeScriptVersion": "5.0.0",
+  "importOrderParserPlugins": ["typescript", "jsx", "decorators-legacy"],
+  "importOrder": [
+    "<<BUILTIN_MODULES>>",
+    "",
+    "<<THIRD_PARTY_MODULES>>",
+    "",
+    "^@corpcal/(.*)$",
+    "",
+    "^[.]"
+  ],
+  "overrides": [
+    {
+      "files": "calendar-ui/**/*.{ts,tsx}",
+      "options": {
+        "importOrder": [
+          "^react$",
+          "",
+          "<<THIRD_PARTY_MODULES>>",
+          "",
+          "^@corpcal/(.*)$",
+          "^@/(.*)$",
+          "",
+          "^[.]"
+        ]
+      }
+    }
+  ]
 }

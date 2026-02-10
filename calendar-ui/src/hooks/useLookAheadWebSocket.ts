@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 interface UseLookAheadWebSocketOptions {
   onActivityUpdate?: () => void;

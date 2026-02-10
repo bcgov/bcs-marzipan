@@ -1,16 +1,18 @@
 import {
   Injectable,
-  UnauthorizedException,
   NotImplementedException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+
 import type { AuthUser } from '@corpcal/shared';
+
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
-import { findUserByUsername } from './strategies/mock.strategy';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
+import { findUserByUsername } from './strategies/mock.strategy';
 
 export interface JwtPayload {
   sub: number;

@@ -1,12 +1,13 @@
+import { relations } from 'drizzle-orm';
 import {
+  index,
+  integer,
   pgTable,
   serial,
-  integer,
-  varchar,
   timestamp,
-  index,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { users } from './user';
 
 /**

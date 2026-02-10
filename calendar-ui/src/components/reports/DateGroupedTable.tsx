@@ -1,8 +1,10 @@
 import { Fragment } from 'react';
+
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import { sortLookAheadActivities } from '@/lib/look-ahead-sort';
-import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+
+import { Badge } from '../ui/badge';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '–';

@@ -1,11 +1,12 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import {
+  PAGE_NOT_FOUND_MESSAGE,
+  PAGE_NOT_FOUND_TITLE,
+} from '../lib/error-messages';
+import { createLogger } from '../lib/logger';
 import { StatusMessage } from './StatusMessage';
 import { Button } from './ui/button';
-import { createLogger } from '../lib/logger';
-import {
-  PAGE_NOT_FOUND_TITLE,
-  PAGE_NOT_FOUND_MESSAGE,
-} from '../lib/error-messages';
 
 const logger = createLogger('RouterErrorBoundary');
 

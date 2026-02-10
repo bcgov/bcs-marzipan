@@ -1,33 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+
 import {
   activities,
-  activityStatuses,
-  dateStatuses,
-  timeStatuses,
-  venueAddresses,
   activityCategories,
-  activityTags,
-  categories,
-  tags,
+  activityCommsContacts,
   activityCommsMaterials,
-  activityTranslationsRequired,
+  activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
-  activityCommsContacts,
-  organizations,
+  activityStatuses,
+  activityTags,
+  activityTranslationsRequired,
+  categories,
   commsMaterials,
+  dateStatuses,
+  eventPlanners,
+  newsReleaseDistributions,
+  newsReleaseOrigins,
+  organizations,
+  premierRequested,
+  reports,
+  tags,
+  teams,
+  timeStatuses,
   translatedLanguages,
   users,
-  teams,
-  newsReleaseDistributions,
-  premierRequested,
-  eventPlanners,
-  newsReleaseOrigins,
-  activityReportSettings,
-  reports,
+  venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
+
 import { DatabaseService } from '../../database/database.service';
 
 /**

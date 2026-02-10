@@ -1,17 +1,19 @@
 // src/index.tsx
-import { StrictMode } from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import { CookiesProvider } from 'react-cookie';
 import {
+  MutationCache,
   QueryCache,
   QueryClient,
   QueryClientProvider,
-  MutationCache,
 } from '@tanstack/react-query';
+import { CookiesProvider } from 'react-cookie';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { StrictMode } from 'react';
+
 import { ApiError } from './api/errors';
+import App from './App';
 import { createLogger } from './lib/logger';
+
 import './styles/globals.css';
 
 const logger = createLogger('ReactQuery');

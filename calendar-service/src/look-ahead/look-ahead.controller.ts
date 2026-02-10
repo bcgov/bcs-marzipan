@@ -1,8 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { LookAheadService } from './look-ahead.service';
-import type { LookAheadResponse } from './look-ahead.service';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { LookAheadService, type LookAheadResponse } from './look-ahead.service';
 
 @ApiTags('look-ahead')
 @Controller('look-ahead')

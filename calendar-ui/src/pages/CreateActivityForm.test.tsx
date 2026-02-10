@@ -16,7 +16,7 @@
  * - Form submission payload structure test (too tied to implementation details)
  */
 
-import { describe, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, it, vi } from 'vitest';
 
 describe('CreateActivityForm', () => {
   beforeEach(() => {

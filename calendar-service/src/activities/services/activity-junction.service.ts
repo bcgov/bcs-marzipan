@@ -1,14 +1,16 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { eq, and, inArray } from 'drizzle-orm';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { and, eq, inArray } from 'drizzle-orm';
+
 import {
+  activityCommsContacts,
+  activityReportSettings,
   activityRepresentatives,
   governmentRepresentatives,
-  venueAddresses,
-  activityReportSettings,
   reports,
-  activityCommsContacts,
+  venueAddresses,
 } from '@corpcal/database/schema';
 import type { VenueAddress } from '@corpcal/shared/schemas';
+
 import { DatabaseService } from '../../database/database.service';
 
 /**

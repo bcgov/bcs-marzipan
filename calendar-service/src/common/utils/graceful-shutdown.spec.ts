@@ -4,9 +4,10 @@
  * the rule flags those when the same reference is assigned to object properties.
  */
 
-import { setupGracefulShutdown } from './graceful-shutdown';
 import type { INestApplication } from '@nestjs/common';
+
 import type { AppLogger } from '../logger/logger.service';
+import { setupGracefulShutdown } from './graceful-shutdown';
 
 function flushPromises(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));

@@ -1,25 +1,27 @@
 import {
-  Controller,
-  Post,
-  Get,
+  BadRequestException,
   Body,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
-  BadRequestException,
+  Post,
   Res,
 } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
+  ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+
+import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
+
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { loginBodySchema } from './dto/login.dto';
-import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 
 @ApiTags('auth')
 @Controller('auth')

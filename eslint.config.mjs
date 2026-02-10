@@ -9,6 +9,7 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import json from '@eslint/json';
+import unusedImports from 'eslint-plugin-unused-imports';
 
 /**
  * Creates a type-checked ESLint configuration for TypeScript files.
@@ -51,7 +52,6 @@ const nestjsSharedRules = {
   '@typescript-eslint/no-unsafe-return': 'off',
   '@typescript-eslint/explicit-function-return-type': 'off',
   '@typescript-eslint/explicit-module-boundary-types': 'off',
-  '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
   '@typescript-eslint/no-misused-promises': 'off',
   'prettier/prettier': 'error',
 };
@@ -171,11 +171,7 @@ export default defineConfig(
       'react/react-in-jsx-scope': 'off',
       // Disabled: triggers on idiomatic patterns (context+provider, shadcn variants)
       'react-refresh/only-export-components': 'off',
-      // TypeScript rules
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_' },
-      ],
+      // TypeScript rules (no-unused-vars handled by unused-imports block below)
       // TODO: Re-enable these rules after fixing `any` type issues in calendar-ui
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -200,6 +196,27 @@ export default defineConfig(
     ['./packages/shared/tsconfig.json'],
     { globals: globals.node }
   ),
+
+  // ============================================
+  // Unused imports (auto-fix removal for all TS/TSX)
+  // ============================================
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    plugins: { 'unused-imports': unusedImports },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'warn',
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
 
   // ============================================
   // Prettier (must be last to override formatting rules)

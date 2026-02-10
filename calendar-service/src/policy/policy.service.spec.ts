@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PolicyService } from './policy.service';
-import { DatabaseService } from '../database/database.service';
+
 import { SYSTEM_ROLES } from '@corpcal/shared';
+
+import { DatabaseService } from '../database/database.service';
+import { PolicyService } from './policy.service';
 
 describe('PolicyService', () => {
   let service: PolicyService;

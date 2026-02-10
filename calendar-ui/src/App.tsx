@@ -1,22 +1,25 @@
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { Toaster } from './components/ui/sonner';
-import { Routes, Route } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { Route, Routes } from 'react-router-dom';
+
 import { PERMISSIONS } from '@corpcal/shared';
 
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { Layout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Toaster } from './components/ui/sonner';
+import { AuthProvider } from './contexts/AuthContext';
 import { CalendarEntriesList } from './pages/CalendarEntriesList';
 import { Dashboard } from './pages/Dashboard';
+
 import './styles/App.css';
-import DraftsPage from './pages/Drafts';
+
 import { CreateActivityForm } from './pages/CreateActivityForm';
+import DraftsPage from './pages/Drafts';
 import EditActivityForm from './pages/EditActivityForm';
-import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { NotFound } from './pages/NotFound';
 import { LookAheadReport } from './pages/LookAheadReport';
+import { NotFound } from './pages/NotFound';
+import { Settings } from './pages/Settings';
 
 function App() {
   return (

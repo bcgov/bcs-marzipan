@@ -1,15 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ActivitiesController } from './activities.controller';
-import { ActivitiesService } from './services/activities.service';
-import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
-import { PolicyService } from '../policy/policy.service';
+
 import type { Category } from '@corpcal/database/types';
 import type { AuthUser } from '@corpcal/shared';
+
 import {
   createMockActivityRequest,
-  createMockUpdateRequest,
   createMockActivityResponse,
+  createMockUpdateRequest,
 } from '../common/test-utils';
+import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { PolicyService } from '../policy/policy.service';
+import { ActivitiesController } from './activities.controller';
+import { ActivitiesService } from './services/activities.service';
 
 const mockUser: AuthUser = {
   id: 1,

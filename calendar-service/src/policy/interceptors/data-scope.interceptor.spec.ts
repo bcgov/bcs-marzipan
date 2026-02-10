@@ -1,11 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { CallHandler, ExecutionContext } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { of } from 'rxjs';
-import { DataScopeInterceptor } from './data-scope.interceptor';
-import { PolicyService } from '../policy.service';
-import type { AuthUser } from '@corpcal/shared';
-import { SYSTEM_ROLES, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type { Mock } from 'vitest';
+
+import { SYSTEM_ROLE_IDS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
+
+import { PolicyService } from '../policy.service';
+import { DataScopeInterceptor } from './data-scope.interceptor';
 
 describe('DataScopeInterceptor', () => {
   let interceptor: DataScopeInterceptor;

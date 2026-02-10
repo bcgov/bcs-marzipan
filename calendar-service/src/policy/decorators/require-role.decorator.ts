@@ -1,4 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
+
 import type { SystemRoleName } from '@corpcal/shared';
 
 export const ROLES_METADATA_KEY = 'policy:roles';

@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
-import { reports, activityReportSettings } from '@corpcal/database/schema';
-import { DatabaseService } from '../database/database.service';
+import { and, eq } from 'drizzle-orm';
+
+import { activityReportSettings, reports } from '@corpcal/database/schema';
+import type { Visibility } from '@corpcal/shared';
 import type { ReportResponse } from '@corpcal/shared/api/types';
 import { reportConfigSchema } from '@corpcal/shared/schemas';
-import type { Visibility } from '@corpcal/shared';
+
+import { DatabaseService } from '../database/database.service';
 
 export interface ReportSettingsDto {
   reportId: number;

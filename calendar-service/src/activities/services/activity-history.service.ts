@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { eq, desc, and } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
+
 import { activityHistory } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
+
 import { DatabaseService } from '../../database/database.service';
 
 export interface ActivityChange {

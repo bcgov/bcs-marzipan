@@ -1,22 +1,23 @@
-import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+
 import { activities } from './schema/activity';
 import { activityHistory } from './schema/activityHistory';
-import { users } from './schema/user';
-import { ministries } from './schema/ministry';
 import {
   activityStatuses,
-  cities,
-  governmentRepresentatives,
-  commsContacts,
   categories,
-  themes,
-  tags,
-  pitchStatuses,
+  cities,
+  commsContacts,
   dateStatuses,
+  governmentRepresentatives,
+  pitchStatuses,
+  tags,
+  themes,
   timeStatuses,
   venueStatuses,
 } from './schema/lookups';
+import { ministries } from './schema/ministry';
 import { organizations } from './schema/organizations';
+import { users } from './schema/user';
 
 /**
  * TypeScript types inferred from Drizzle schema tables

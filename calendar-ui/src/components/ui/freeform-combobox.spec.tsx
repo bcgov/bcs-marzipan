@@ -1,8 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FreeformCombobox } from './freeform-combobox';
-import type { FreeformComboboxValue } from './freeform-combobox';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from './freeform-combobox';
 
 const mockOptions = [
   { value: 'option1', label: 'Option 1' },

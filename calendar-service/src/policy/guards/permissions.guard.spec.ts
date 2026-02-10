@@ -1,11 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Reflector } from '@nestjs/core';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { PermissionsGuard } from './permissions.guard';
-import { type PermissionsMetadata } from '../decorators/require-permission.decorator';
-import type { AuthUser } from '@corpcal/shared';
-import { SYSTEM_ROLES, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { Reflector } from '@nestjs/core';
+import { Test, TestingModule } from '@nestjs/testing';
 import type { Mock } from 'vitest';
+
+import { SYSTEM_ROLE_IDS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
+
+import { type PermissionsMetadata } from '../decorators/require-permission.decorator';
+import { PermissionsGuard } from './permissions.guard';
 
 describe('PermissionsGuard', () => {
   let guard: PermissionsGuard;

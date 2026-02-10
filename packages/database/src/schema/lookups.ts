@@ -1,18 +1,19 @@
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
+  jsonb,
   pgTable,
   serial,
-  varchar,
-  integer,
-  boolean,
   text,
   timestamp,
   uuid,
-  jsonb,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { ministries } from './ministry';
-import { users } from './user';
 import { teamCategories } from './relations';
+import { users } from './user';
 
 /**
  * ActivityStatus lookup table - Activity statuses

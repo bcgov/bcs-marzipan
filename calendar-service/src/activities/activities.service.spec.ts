@@ -1,25 +1,27 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ActivitiesService } from './services/activities.service';
-import { DatabaseService } from '../database/database.service';
-import { ActivitiesGateway } from './activities.gateway';
-import { ActivityHistoryService } from './services/activity-history.service';
-import { ActivityJunctionService } from './services/activity-junction.service';
-import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
-import { ActivityMapperService } from './services/activity-mapper.service';
-import { ActivityUtilsService } from './services/activity-utils.service';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
+
 import type { Activity } from '@corpcal/database/types';
 import type {
-  LookAheadStatus,
   LookAheadSection,
+  LookAheadStatus,
   Visibility,
 } from '@corpcal/shared';
-import { NotFoundException } from '@nestjs/common';
+import { activityResponseSchema } from '@corpcal/shared/schemas';
+
 import {
+  createMockActivity,
   createMockActivityRequest,
   createMockUpdateRequest,
-  createMockActivity,
 } from '../common/test-utils';
+import { DatabaseService } from '../database/database.service';
+import { ActivitiesGateway } from './activities.gateway';
+import { ActivitiesService } from './services/activities.service';
+import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
+import { ActivityHistoryService } from './services/activity-history.service';
+import { ActivityJunctionService } from './services/activity-junction.service';
+import { ActivityMapperService } from './services/activity-mapper.service';
+import { ActivityUtilsService } from './services/activity-utils.service';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;

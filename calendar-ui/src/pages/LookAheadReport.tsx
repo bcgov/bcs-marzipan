@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchLookAheadData } from '../api/reportsApi';
-import type { LookAheadSectionData } from '../api/reportsApi';
+
+import {
+  fetchLookAheadData,
+  type LookAheadSectionData,
+} from '../api/reportsApi';
 import { PageHeader } from '../components/PageHeader';
+import { LookAheadSection } from '../components/reports/LookAheadSection';
+import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
 import {
   Tabs,
@@ -9,9 +14,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '../components/ui/tabs';
-import { LookAheadSection } from '../components/reports/LookAheadSection';
 import { useLookAheadWebSocket } from '../hooks/useLookAheadWebSocket';
-import { StatusMessage } from '../components/StatusMessage';
 import { exportLookAheadToPdf } from '../lib/look-ahead-pdf-export';
 
 export function LookAheadReport() {

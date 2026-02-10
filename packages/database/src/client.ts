@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as postgresModule from 'postgres';
+
 import * as schema from './schema';
 
 const connectionString = process.env.DATABASE_URL || '';

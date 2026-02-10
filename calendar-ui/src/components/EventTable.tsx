@@ -1,29 +1,19 @@
-import React from 'react';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
   Badge,
   Button,
   makeStyles,
   Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   Toast,
-  ToastTitle,
   ToastBody,
+  ToastTitle,
   useToastController,
 } from '@fluentui/react-components';
-import io from 'socket.io-client';
-
-import { createLogger } from '../lib/logger';
-import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
-import {
-  LOAD_ACTIVITIES_TITLE,
-  LOAD_ACTIVITIES_INVALID_RESPONSE,
-} from '../lib/error-messages';
-import { ErrorState } from './ErrorState';
 import {
   Calendar24Regular,
   CheckmarkCircle24Regular,
@@ -31,27 +21,38 @@ import {
   Location20Regular,
 } from '@fluentui/react-icons';
 import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getSortedRowModel,
-  getPaginationRowModel,
-  SortingState,
-  getFilteredRowModel,
   ColumnFiltersState,
   createColumnHelper,
-  SortingFn,
   FilterFn,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingFn,
+  SortingState,
+  useReactTable,
 } from '@tanstack/react-table';
-
-import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { PERMISSIONS } from '@corpcal/shared';
+import type {
+  ActivityResponse,
+  UserLookupItem,
+} from '@corpcal/shared/api/types';
+
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
-import type { UserLookupItem } from '@corpcal/shared/api/types';
 import { useAuth } from '../hooks/useAuth';
+import {
+  LOAD_ACTIVITIES_INVALID_RESPONSE,
+  LOAD_ACTIVITIES_TITLE,
+} from '../lib/error-messages';
+import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
+import { ErrorState } from './ErrorState';
 
 const useStyles = makeStyles({
   statusBadge: {

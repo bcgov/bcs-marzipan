@@ -1,20 +1,21 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import { StatusMessage } from './StatusMessage';
-import { Button } from './ui/button';
-import { createLogger } from '../lib/logger';
+
 import { ApiError } from '../api/errors';
-import { getFriendlyErrorMessage } from '../lib/error-toast';
 import {
-  DEFAULT_ERROR_TITLE,
-  ACCESS_DENIED_TITLE,
   ACCESS_DENIED_MESSAGE,
-  NOT_FOUND_TITLE,
-  NOT_FOUND_MESSAGE,
-  SERVER_ERROR_TITLE,
-  SERVER_ERROR_MESSAGE,
+  ACCESS_DENIED_TITLE,
+  DEFAULT_ERROR_TITLE,
   ERROR_DETAILS_LABEL,
+  NOT_FOUND_MESSAGE,
+  NOT_FOUND_TITLE,
+  SERVER_ERROR_MESSAGE,
+  SERVER_ERROR_TITLE,
   TRY_AGAIN_LABEL,
 } from '../lib/error-messages';
+import { getFriendlyErrorMessage } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
+import { StatusMessage } from './StatusMessage';
+import { Button } from './ui/button';
 
 const logger = createLogger('GlobalErrorBoundary');
 

@@ -3,6 +3,7 @@
  * Convenience hooks for checking user permissions
  */
 import type { PermissionKey } from '@corpcal/shared';
+
 import { useAuth } from './useAuth';
 
 /**

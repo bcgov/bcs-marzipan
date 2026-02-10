@@ -1,6 +1,6 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
+import { Injectable, NestMiddleware } from '@nestjs/common';
+import { NextFunction, Request, Response } from 'express';
 
 /** UUID v4 pattern per RFC 4122: version 4, variant 10x */
 const UUID_V4_REGEX =

@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
+
 import type { LookAheadSectionData } from '../../api/reportsApi';
-import { DateGroupedTable } from './DateGroupedTable';
 import { Button } from '../ui/button';
+import { DateGroupedTable } from './DateGroupedTable';
 
 const PAGE_SIZE = 20;
 

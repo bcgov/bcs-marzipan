@@ -1,37 +1,39 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Dropdown,
+  Field,
+  Input,
+  Link,
+  Option,
+  Spinner,
+} from '@fluentui/react-components';
+import { Add20Regular } from '@fluentui/react-icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ColumnDef } from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
+
+import { PERMISSIONS } from '@corpcal/shared/auth';
+
+import api from '../api/axios';
+import {
+  fetchActivityStatuses,
   fetchCategories,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
-  fetchTags,
   fetchMinistries,
-  fetchActivityStatuses,
+  fetchTags,
   fetchThemes,
 } from '../api/lookupsApi';
-import {
-  Spinner,
-  Dropdown,
-  Option,
-  Link,
-  Button,
-  Dialog,
-  DialogSurface,
-  DialogTitle,
-  DialogBody,
-  DialogActions,
-  DialogContent,
-  Field,
-  Input,
-} from '@fluentui/react-components';
-import { Add20Regular } from '@fluentui/react-icons';
-import { ColumnDef } from '@tanstack/react-table';
-import { GenericDataTable } from '../components/Table/GenericDataTable';
-import { useMemo, useState } from 'react';
-import api from '../api/axios';
-import { PERMISSIONS } from '@corpcal/shared/auth';
-import { useAuth } from '../hooks/useAuth';
 import { PermissionGate } from '../components/PermissionGate';
+import { GenericDataTable } from '../components/Table/GenericDataTable';
+import { useAuth } from '../hooks/useAuth';
 
 type Category = {
   id: number;

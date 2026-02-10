@@ -1,85 +1,87 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Patch,
-  Body,
-  Query,
   Header,
   Param,
+  Patch,
+  Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
   ApiBody,
+  ApiOperation,
   ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
+
+import {
+  DYNAMIC_LOOKUP_CACHE_SECONDS,
+  REFERENCE_LOOKUP_CACHE_SECONDS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type {
+  CategoryLookupItem,
   LookupItem,
   LookupQueryParams,
-  OrganizationLookupItem,
-  CategoryLookupItem,
   MinistryLookupItem,
+  OrganizationLookupItem,
   ThemeLookupItem,
 } from '@corpcal/shared/api/types';
 import {
-  REFERENCE_LOOKUP_CACHE_SECONDS,
-  DYNAMIC_LOOKUP_CACHE_SECONDS,
-} from '@corpcal/shared';
-import { LookupsService } from './lookups.service';
+  createActivityStatusRequestSchema,
+  createCategoryRequestSchema,
+  createCityRequestSchema,
+  createCommsMaterialRequestSchema,
+  createGovernmentRepresentativeRequestSchema,
+  createMinistryRequestSchema,
+  createTagRequestSchema,
+  createThemeRequestSchema,
+  updateActivityStatusRequestSchema,
+  updateCategoryRequestSchema,
+  updateCityRequestSchema,
+  updateCommsMaterialRequestSchema,
+  updateGovernmentRepresentativeRequestSchema,
+  updateMinistryRequestSchema,
+  updateTagRequestSchema,
+  updateThemeRequestSchema,
+} from '@corpcal/shared/schemas';
+
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  ActivityStatusResponseWrapperDto,
+  CategoryResponseWrapperDto,
+  CityResponseWrapperDto,
+  CommsMaterialResponseWrapperDto,
+  CreateActivityStatusDto,
+  CreateCategoryDto,
+  CreateCityDto,
+  CreateCommsMaterialDto,
+  CreateGovernmentRepresentativeDto,
+  CreateMinistryDto,
+  CreateTagDto,
+  CreateThemeDto,
+  GovernmentRepresentativeResponseWrapperDto,
+  LookupArrayResponseWrapperDto,
+  MinistryResponseWrapperDto,
+  TagResponseWrapperDto,
+  ThemeResponseWrapperDto,
+  UpdateActivityStatusDto,
+  UpdateCategoryDto,
+  UpdateCityDto,
+  UpdateCommsMaterialDto,
+  UpdateGovernmentRepresentativeDto,
+  UpdateMinistryDto,
+  UpdateTagDto,
+  UpdateThemeDto,
+} from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
-import {
-  LookupArrayResponseWrapperDto,
-  CreateCategoryDto,
-  UpdateCategoryDto,
-  CategoryResponseWrapperDto,
-  CreateTagDto,
-  UpdateTagDto,
-  TagResponseWrapperDto,
-  CreateCityDto,
-  UpdateCityDto,
-  CityResponseWrapperDto,
-  CreateMinistryDto,
-  UpdateMinistryDto,
-  MinistryResponseWrapperDto,
-  CreateCommsMaterialDto,
-  UpdateCommsMaterialDto,
-  CommsMaterialResponseWrapperDto,
-  CreateGovernmentRepresentativeDto,
-  UpdateGovernmentRepresentativeDto,
-  GovernmentRepresentativeResponseWrapperDto,
-  CreateThemeDto,
-  UpdateThemeDto,
-  ThemeResponseWrapperDto,
-  CreateActivityStatusDto,
-  UpdateActivityStatusDto,
-  ActivityStatusResponseWrapperDto,
-} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import {
-  createCategoryRequestSchema,
-  updateCategoryRequestSchema,
-  createTagRequestSchema,
-  updateTagRequestSchema,
-  createCityRequestSchema,
-  updateCityRequestSchema,
-  createMinistryRequestSchema,
-  updateMinistryRequestSchema,
-  createCommsMaterialRequestSchema,
-  updateCommsMaterialRequestSchema,
-  createGovernmentRepresentativeRequestSchema,
-  updateGovernmentRepresentativeRequestSchema,
-  createThemeRequestSchema,
-  updateThemeRequestSchema,
-  createActivityStatusRequestSchema,
-  updateActivityStatusRequestSchema,
-} from '@corpcal/shared/schemas';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthUser } from '@corpcal/shared';
+import { LookupsService } from './lookups.service';
 
 @ApiTags('lookups')
 @Controller('lookups')

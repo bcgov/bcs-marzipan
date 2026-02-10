@@ -1,4 +1,6 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { Bell, ChevronDown, LogOut, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+
 import logo from '../../assets/Logo.svg';
 import { useAuth } from '../../hooks/useAuth';
 import { Avatar, AvatarFallback } from '../ui/avatar';
@@ -11,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { Bell, LogOut, User, ChevronDown } from 'lucide-react';
 import { UserSwitcher } from '../UserSwitcher';
 
 /**

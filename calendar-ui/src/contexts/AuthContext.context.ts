@@ -3,6 +3,7 @@
  * Kept in a separate file so AuthProvider can live in a component-only file for Fast Refresh.
  */
 import { createContext } from 'react';
+
 import type { AuthUser } from '@corpcal/shared';
 
 export interface AuthContextType {

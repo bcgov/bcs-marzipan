@@ -1,43 +1,44 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
-import { eq, and, gte, lte, inArray, ne } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
-import type { ActivityStatusName } from '@corpcal/shared';
+import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
+
 import {
   activities,
   activityCategories,
+  activityCommsContacts,
+  activityCommsMaterials,
+  activityHistory,
+  activityReportSettings,
+  activityRepresentatives,
+  activitySharedWithTeams,
+  activityStatuses,
   activityTags,
   activityThemes,
-  activityCommsMaterials,
   activityTranslationsRequired,
-  activitySharedWithTeams,
-  activityCommsContacts,
-  activityRepresentatives,
-  activityReportSettings,
   categories,
   ministries,
-  activityHistory,
   venueAddresses,
-  activityStatuses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
+import type { ActivityStatusName } from '@corpcal/shared';
 import type {
+  ActivityResponse,
   CreateActivityRequest,
-  UpdateActivityRequest,
   FilterActivitiesQueryParams,
+  UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/schemas';
+
 import { DatabaseService } from '../../database/database.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { DataScope } from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
+import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
-import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityMapperService } from './activity-mapper.service';
 import { ActivityUtilsService } from './activity-utils.service';
 

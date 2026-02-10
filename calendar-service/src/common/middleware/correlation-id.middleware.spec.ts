@@ -1,5 +1,6 @@
+import type { NextFunction, Request, Response } from 'express';
+
 import { CorrelationIdMiddleware } from './correlation-id.middleware';
-import type { Request, Response, NextFunction } from 'express';
 
 /** UUID v4 pattern per RFC 4122 - same as in middleware */
 const UUID_V4_REGEX =

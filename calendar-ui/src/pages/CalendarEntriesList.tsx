@@ -1,11 +1,13 @@
-import { EventTable } from '../components/EventTable';
-import { CalendarFilters } from '../components/CalendarFilters';
 import { Button } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
 import { ColumnFiltersState } from '@tanstack/react-table';
 import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+
 import { PERMISSIONS } from '@corpcal/shared';
+
+import { CalendarFilters } from '../components/CalendarFilters';
+import { EventTable } from '../components/EventTable';
+import { useAuth } from '../hooks/useAuth';
 
 export const CalendarEntriesList = () => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);

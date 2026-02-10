@@ -1,35 +1,34 @@
 import {
-  Tab,
-  TabList,
-  SelectTabData,
-  SelectTabEvent,
   Menu,
   MenuButton,
+  MenuCheckedValueChangeData,
   MenuItem,
+  MenuItemCheckbox,
   MenuList,
   MenuPopover,
-  MenuTrigger,
-  MenuItemCheckbox,
   MenuProps,
-  MenuCheckedValueChangeData,
+  MenuTrigger,
   SearchBox,
+  SelectTabData,
+  SelectTabEvent,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
 import { FilterRegular } from '@fluentui/react-icons';
-
 import { ColumnFiltersState } from '@tanstack/react-table';
-import { useState, useEffect, useCallback } from 'react';
-
 import { useCookies } from 'react-cookie';
+import { useCallback, useEffect, useState } from 'react';
+
+import { fetchActivities } from '../api/activitiesApi';
 import {
-  fetchCategories,
-  fetchTags,
-  fetchGovernmentRepresentatives,
-  fetchUsers,
   fetchActivityStatuses,
+  fetchCategories,
+  fetchGovernmentRepresentatives,
+  fetchTags,
+  fetchUsers,
   LookupItem,
   UserLookupItem,
 } from '../api/lookupsApi';
-import { fetchActivities } from '../api/activitiesApi';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CalendarFilters');

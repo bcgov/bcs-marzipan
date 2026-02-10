@@ -1,5 +1,7 @@
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+
 import { users } from '@corpcal/database/schema';
+
 import type { Database } from '../../database/database.provider';
 
 /**

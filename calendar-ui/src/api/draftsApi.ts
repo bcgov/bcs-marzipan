@@ -1,6 +1,6 @@
+import { createLogger } from '../lib/logger';
 import api from './axios';
 import { ApiError } from './errors';
-import { createLogger } from '../lib/logger';
 
 const logger = createLogger('DraftsAPI');
 

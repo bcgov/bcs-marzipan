@@ -1,7 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
 import { AppModule } from '../src/app.module';
-import { e2eLogin, createAuthRequest } from './test-helpers';
+import { createAuthRequest, e2eLogin } from './test-helpers';
 
 describe('LookupsController (e2e)', () => {
   let app: INestApplication;

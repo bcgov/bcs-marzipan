@@ -1,15 +1,16 @@
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  serial,
-  varchar,
-  integer,
   boolean,
+  integer,
+  pgTable,
+  primaryKey,
+  serial,
   text,
   timestamp,
-  primaryKey,
+  varchar,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { users } from './user';
 
 /**

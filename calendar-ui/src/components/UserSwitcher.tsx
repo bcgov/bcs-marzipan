@@ -7,8 +7,12 @@
  * Users are hardcoded from the seed data to avoid an extra API call and to ensure
  * we have representative users for each role level.
  */
+import { Loader2, Users } from 'lucide-react';
 import { useState } from 'react';
+
 import { useAuth } from '../hooks/useAuth';
+import { createLogger } from '../lib/logger';
+import { Badge } from './ui/badge';
 import {
   Select,
   SelectContent,
@@ -16,9 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Badge } from './ui/badge';
-import { Users, Loader2 } from 'lucide-react';
-import { createLogger } from '../lib/logger';
 
 const logger = createLogger('UserSwitcher');
 

@@ -1,14 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
-import { CanDeleteActivityGuard } from './can-delete-activity.guard';
-import { PolicyService } from '../policy.service';
-import { PERMISSIONS } from '@corpcal/shared';
-import type { AuthUser } from '@corpcal/shared';
+import { Test, TestingModule } from '@nestjs/testing';
 import type { Mock } from 'vitest';
+
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
+
+import { PolicyService } from '../policy.service';
+import { CanDeleteActivityGuard } from './can-delete-activity.guard';
 
 describe('CanDeleteActivityGuard', () => {
   let guard: CanDeleteActivityGuard;

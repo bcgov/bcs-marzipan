@@ -1,62 +1,62 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Put,
-  Body,
-  Param,
-  Patch,
-  Delete,
-  ParseIntPipe,
   Query,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBody,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { ActivitiesService } from './services/activities.service';
+
+import type { Category } from '@corpcal/database/types';
+import type { AuthUser } from '@corpcal/shared';
+import type { ActivityResponse } from '@corpcal/shared/api';
 import {
   createActivityRequestSchema,
-  updateActivityRequestSchema,
   filterActivitiesQuerySchema,
   softDeleteRequestSchema,
+  updateActivityRequestSchema,
   updateCategoriesSchema,
-  updateThemesSchema,
-  updateTagsSchema,
   updateSharedWithSchema,
+  updateTagsSchema,
+  updateThemesSchema,
+  type CreateActivityRequest,
+  type FilterActivitiesQueryParams,
+  type SoftDeleteRequest,
+  type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/api';
-import type {
-  CreateActivityRequest,
-  UpdateActivityRequest,
-  FilterActivitiesQueryParams,
-  SoftDeleteRequest,
-} from '@corpcal/shared/schemas';
-import type { AuthUser } from '@corpcal/shared';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { AppLogger } from '../common/logger/logger.service';
+
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  ActivityArrayResponseWrapperDto,
+  ActivityResponseWrapperDto,
+  CreateActivityDto,
+  SoftDeleteDto,
+  UpdateActivityDto,
+  UpdateCategoriesDto,
+  UpdateSharedWithDto,
+  UpdateTagsDto,
+  UpdateThemesDto,
+} from '../common/dto';
+import { AppLogger } from '../common/logger/logger.service';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
+import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
-import type { Category } from '@corpcal/database/types';
-import {
-  CreateActivityDto,
-  UpdateActivityDto,
-  SoftDeleteDto,
-  ActivityResponseWrapperDto,
-  ActivityArrayResponseWrapperDto,
-  UpdateCategoriesDto,
-  UpdateThemesDto,
-  UpdateTagsDto,
-  UpdateSharedWithDto,
-} from '../common/dto';
+import { ActivitiesService } from './services/activities.service';
 
 @ApiTags('activities')
 @Controller('activities')

@@ -1,14 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { fetchActivityHistory } from '../../api/activitiesApi';
+import React, { useCallback, useEffect, useState } from 'react';
+
 import { timeAgoShort } from '@/lib/utils';
-import { createLogger } from '../../lib/logger';
-import { showErrorToast } from '../../lib/error-toast';
+
+import { fetchActivityHistory } from '../../api/activitiesApi';
 import {
-  LOAD_HISTORY_TITLE,
   LOAD_HISTORY_MESSAGE,
+  LOAD_HISTORY_TITLE,
 } from '../../lib/error-messages';
+import { showErrorToast } from '../../lib/error-toast';
+import { createLogger } from '../../lib/logger';
 import { ErrorState } from '../ErrorState';
 
 type HistoryEntry = {

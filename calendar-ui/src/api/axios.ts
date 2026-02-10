@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+
 import { createApiError } from './errors';
 
 const api = axios.create({

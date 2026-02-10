@@ -1,5 +1,6 @@
-import { ParseOptionalIntPipe } from './parse-optional-int.pipe';
 import { BadRequestException } from '@nestjs/common';
+
+import { ParseOptionalIntPipe } from './parse-optional-int.pipe';
 
 describe('ParseOptionalIntPipe', () => {
   let pipe: ParseOptionalIntPipe;

@@ -1,8 +1,9 @@
-import api from './axios';
 import type {
   ActivityResponse,
   ReportResponse,
 } from '@corpcal/shared/api/types';
+
+import api from './axios';
 
 export interface LookAheadSectionData {
   id: string;

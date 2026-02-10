@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+
 import { AppLogger } from '../logger/logger.service';
 
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;

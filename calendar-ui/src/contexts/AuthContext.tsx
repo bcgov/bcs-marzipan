@@ -5,12 +5,14 @@
  */
 import {
   createContext,
-  useState,
-  useEffect,
   useCallback,
+  useEffect,
+  useState,
   type ReactNode,
 } from 'react';
+
 import type { AuthUser, PermissionKey } from '@corpcal/shared';
+
 import * as authApi from '../api/authApi';
 
 export interface AuthContextType {

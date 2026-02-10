@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
-import { Button } from './ui/button';
+
 import { cn } from '@/lib/utils';
+
 import { TRY_AGAIN_LABEL } from '../lib/error-messages';
+import { Button } from './ui/button';
 
 export interface ErrorStateProps {
   /** Short heading for the error (e.g. "Unable to load activities") */

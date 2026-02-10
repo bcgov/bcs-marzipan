@@ -1,8 +1,8 @@
+import type { Activity } from '@corpcal/database/types';
 import type {
   CreateActivityRequest,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { Activity } from '@corpcal/database/types';
 
 /**
  * Helper functions to generate test data for activities

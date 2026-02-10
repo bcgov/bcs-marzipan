@@ -1,44 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and, inArray, ne } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
-import type { ActivityStatusName } from '@corpcal/shared';
+import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
+
 import {
-  categories,
-  organizations,
-  users,
-  tags,
-  pitchStatuses,
-  activityStatuses,
-  commsMaterials,
-  translatedLanguages,
-  governmentRepresentatives,
   activities,
-  eventPlanners,
-  newsReleaseDistributions,
-  premierRequested,
-  newsReleaseOrigins,
+  activityStatuses,
+  categories,
   cities,
-  ministries,
-  themes,
-  reports,
+  commsMaterials,
   dateStatuses,
+  eventPlanners,
+  governmentRepresentatives,
+  ministries,
+  newsReleaseDistributions,
+  newsReleaseOrigins,
+  organizations,
+  pitchStatuses,
+  premierRequested,
+  reports,
+  tags,
+  themes,
   timeStatuses,
+  translatedLanguages,
+  users,
 } from '@corpcal/database/schema';
+import type { ActivityStatusName } from '@corpcal/shared';
 import type {
+  CategoryLookupItem,
+  CommsMaterialsLookupItem,
+  GovernmentRepresentativeLookupItem,
   LookupItem,
   LookupQueryParams,
-  CategoryLookupItem,
-  OrganizationLookupItem,
-  UserLookupItem,
-  TagLookupItem,
-  PitchStatusLookupItem,
-  CommsMaterialsLookupItem,
-  TranslationLanguageLookupItem,
-  GovernmentRepresentativeLookupItem,
   MinistryLookupItem,
-  ThemeLookupItem,
+  OrganizationLookupItem,
+  PitchStatusLookupItem,
   ReportResponse,
+  TagLookupItem,
+  ThemeLookupItem,
+  TranslationLanguageLookupItem,
+  UserLookupItem,
 } from '@corpcal/shared/api/types';
+
 import { DatabaseService } from '../database/database.service';
 import { getVisibleCategoryIds } from '../policy/category-scoping.helper';
 

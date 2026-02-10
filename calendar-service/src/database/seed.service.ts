@@ -1,12 +1,14 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+
 import {
   SeedRunner,
-  type SeedResult,
-  type SeedOptions,
   type SeedableDatabase,
+  type SeedOptions,
+  type SeedResult,
 } from '@corpcal/database';
-import { DATABASE_CLIENT, type Database } from './database.provider';
+
 import { AppLogger } from '../common/logger/logger.service';
+import { DATABASE_CLIENT, type Database } from './database.provider';
 
 /**
  * Seed Service

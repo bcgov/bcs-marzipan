@@ -1,18 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import type { Activity } from '@corpcal/database/types';
-import type {
-  ActivityResponse,
-  LookAheadStatus,
-  LookAheadSection,
-  Visibility,
-} from '@corpcal/shared';
 import {
-  LOOK_AHEAD_STATUS,
-  LOOK_AHEAD_SECTION,
-  DEFAULT_STATUS,
-  DEFAULT_LOOK_AHEAD_STATUS,
   DEFAULT_LOOK_AHEAD_SECTION,
+  DEFAULT_LOOK_AHEAD_STATUS,
+  DEFAULT_STATUS,
   DEFAULT_VISIBILITY,
+  LOOK_AHEAD_SECTION,
+  LOOK_AHEAD_STATUS,
+  type ActivityResponse,
+  type LookAheadSection,
+  type LookAheadStatus,
+  type Visibility,
 } from '@corpcal/shared';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 

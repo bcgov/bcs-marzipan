@@ -1,5 +1,6 @@
-import { ParsePositiveIntPipe } from './parse-positive-int.pipe';
 import { BadRequestException } from '@nestjs/common';
+
+import { ParsePositiveIntPipe } from './parse-positive-int.pipe';
 
 describe('ParsePositiveIntPipe', () => {
   let pipe: ParsePositiveIntPipe;

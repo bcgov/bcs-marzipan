@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+
 import type { AuthUser } from '@corpcal/shared';
 
 /**

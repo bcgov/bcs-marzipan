@@ -3,9 +3,9 @@
  * Re-exports test utilities from src/common/test-utils for use in e2e tests
  * This allows both src/ and test/ directories to use the same factory functions
  */
+import type { INestApplication } from '@nestjs/common';
 import supertest from 'supertest';
 import { vi } from 'vitest';
-import type { INestApplication } from '@nestjs/common';
 
 const request =
   typeof supertest === 'function'

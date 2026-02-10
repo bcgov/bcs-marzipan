@@ -1,4 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
+
 import type { PermissionKey } from '@corpcal/shared';
 
 export const PERMISSIONS_METADATA_KEY = 'policy:permissions';

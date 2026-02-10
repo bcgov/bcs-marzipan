@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import type { LookupItem } from '@corpcal/shared/api/types';
+
 import type { AuthUser } from '@corpcal/shared';
+import type { LookupItem } from '@corpcal/shared/api/types';
+
 import { LookupsController } from './lookups.controller';
 import { LookupsService } from './lookups.service';
 

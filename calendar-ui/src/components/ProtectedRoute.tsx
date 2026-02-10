@@ -2,10 +2,12 @@
  * Protected Route Component
  * Guards routes that require authentication and optionally specific permissions/roles
  */
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import type { PermissionKey } from '@corpcal/shared';
-import { useAuth } from '../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+
+import type { PermissionKey } from '@corpcal/shared';
+
+import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/button';
 
 interface ProtectedRouteProps {

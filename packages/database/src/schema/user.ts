@@ -1,13 +1,14 @@
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
-  varchar,
-  integer,
-  boolean,
   text,
   timestamp,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { pods } from './ministry';
 import { roles } from './rbac';
 

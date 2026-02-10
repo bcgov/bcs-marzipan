@@ -1,40 +1,41 @@
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect } from 'react';
+import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { createLogger } from '../lib/logger';
-import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
-import {
-  LOAD_ACTIVITY_TITLE,
-  LOAD_ACTIVITY_NO_ID,
-  RENDER_FORM_ERROR_TITLE,
-  ERROR_DETAILS_LABEL,
-  TRY_AGAIN_LABEL,
-} from '../lib/error-messages';
-import { ErrorState } from '../components/ErrorState';
+
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
-import { Button } from '../components/ui/button';
+import ActivityHistory from '../components/activities/ActivityHistory';
+import {
+  ActivityCommsSection,
+  ActivityEventSection,
+  ActivityNewsReleaseSection,
+  ActivityOverviewSection,
+  ActivityReportsSection,
+  ActivityScheduleSection,
+  ActivitySharingSection,
+} from '../components/ActivityFormSections';
+import { ErrorState } from '../components/ErrorState';
 import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
-  ActivityOverviewSection,
-  ActivityScheduleSection,
-  ActivityCommsSection,
-  ActivityNewsReleaseSection,
-  ActivityEventSection,
-  ActivityReportsSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
-import React from 'react';
-import { History } from 'lucide-react';
-import ActivityHistory from '../components/activities/ActivityHistory';
+  ERROR_DETAILS_LABEL,
+  LOAD_ACTIVITY_NO_ID,
+  LOAD_ACTIVITY_TITLE,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
+import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
 import { timeAgo } from '../lib/utils';
 
 type FormData = CreateActivityRequest & {

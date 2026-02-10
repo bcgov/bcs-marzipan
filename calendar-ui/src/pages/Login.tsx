@@ -2,12 +2,11 @@
  * Login Page
  * Simple username login for Corporate Calendar (mock auth mode).
  */
-import { useState, type SubmitEvent } from 'react';
+import { Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { getFriendlyErrorMessage } from '../lib/error-toast';
+import { useState, type SubmitEvent } from 'react';
+
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import {
   Card,
   CardContent,
@@ -15,8 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { getFriendlyErrorMessage } from '../lib/error-toast';
 
 export function Login() {
   const navigate = useNavigate();

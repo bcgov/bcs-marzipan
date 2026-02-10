@@ -1,12 +1,13 @@
 import {
   BadRequestException,
-  Injectable,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Injectable,
 } from '@nestjs/common';
-import type { AuthUser } from '@corpcal/shared';
-import { PERMISSIONS } from '@corpcal/shared';
+
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
+
 import { PolicyService } from '../policy.service';
 
 /**

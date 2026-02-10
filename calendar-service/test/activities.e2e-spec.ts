@@ -6,15 +6,16 @@
  * integration tests, not strict e2e (no deployed service or real network).
  * The "e2e" naming follows Nest convention for full request/response tests.
  */
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
 import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import {
+  createAuthRequest,
   createMockActivityRequest,
   createMockUpdateRequest,
   e2eLogin,
-  createAuthRequest,
 } from './test-helpers';
 
 /** UUID v4 pattern per RFC 4122 */

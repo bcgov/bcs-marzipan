@@ -2,8 +2,9 @@
  * Authentication API functions
  * Works with httpOnly cookies - token is set/cleared by backend
  */
+import type { AuthResponse, AuthUser, LoginBody } from '@corpcal/shared';
+
 import api from './axios';
-import type { AuthUser, AuthResponse, LoginBody } from '@corpcal/shared';
 
 /**
  * Login with username (and optional password for mock auth)

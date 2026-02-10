@@ -1,4 +1,5 @@
 import type { AuthUser } from '@corpcal/shared';
+
 import type { DataScope } from '../policy/dto/user-context.dto';
 
 declare global {

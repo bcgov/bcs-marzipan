@@ -1,56 +1,57 @@
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect, useRef, type FC } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+import { useForm } from 'react-hook-form';
+import React, { useEffect, useRef, useState, type FC } from 'react';
+
+import { PERMISSIONS } from '@corpcal/shared/auth';
+import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { ActivityStatusName } from '@corpcal/shared/constants/constants';
-import { PERMISSIONS } from '@corpcal/shared/auth';
-import { createLogger } from '../lib/logger';
-import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
-import {
-  RENDER_FORM_ERROR_TITLE,
-  ERROR_DETAILS_LABEL,
-  TRY_AGAIN_LABEL,
-  ACCESS_DENIED_TITLE,
-  ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
-} from '../lib/error-messages';
+
 import { createActivity } from '../api/activitiesApi';
+import {
+  ActivityCommsSection,
+  ActivityEventSection,
+  ActivityNewsReleaseSection,
+  ActivityOverviewSection,
+  ActivityReportsSection,
+  ActivityScheduleSection,
+  ActivitySharingSection,
+} from '../components/ActivityFormSections';
+import { AutosaveIndicator } from '../components/AutosaveIndicator';
+import { PageHeader } from '../components/PageHeader';
+import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
-import { useAutoSave } from '../hooks/useAutoSave';
-import { useAuth } from '../hooks/useAuth';
-import { getMissingRequiredFields } from '../lib/form-utils';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
 import {
-  ResumeDialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ResumeDialog,
 } from '../components/ui/resumeDraftDialog';
+import { useAuth } from '../hooks/useAuth';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
-  ActivityOverviewSection,
-  ActivityScheduleSection,
-  ActivityCommsSection,
-  ActivityNewsReleaseSection,
-  ActivityEventSection,
-  ActivityReportsSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
-import { AutosaveIndicator } from '../components/AutosaveIndicator';
-import { PageHeader } from '../components/PageHeader';
-import { StatusMessage } from '../components/StatusMessage';
-import React from 'react';
+  ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
+  ACCESS_DENIED_TITLE,
+  ERROR_DETAILS_LABEL,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
+import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { getMissingRequiredFields } from '../lib/form-utils';
+import { createLogger } from '../lib/logger';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];

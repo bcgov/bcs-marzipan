@@ -1,28 +1,29 @@
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  integer,
   boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  serial,
   timestamp,
   uuid,
-  primaryKey,
   varchar,
-  serial,
-  index,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { activities } from './activity';
 import {
-  themes,
-  tags,
   categories,
   commsMaterials,
-  translatedLanguages,
-  sectors,
   reports,
+  sectors,
+  tags,
+  themes,
+  translatedLanguages,
 } from './lookups';
 import { ministries } from './ministry';
-import { users } from './user';
 import { teams } from './teams';
+import { users } from './user';
 
 /**
  * ActivityThemes junction table - Many-to-many relationship between Activities and Themes

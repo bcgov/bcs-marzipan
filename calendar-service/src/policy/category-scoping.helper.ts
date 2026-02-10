@@ -1,6 +1,8 @@
-import { eq, and, inArray, sql } from 'drizzle-orm';
-import type { Visibility } from '@corpcal/shared';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+
 import { categories, teamCategories } from '@corpcal/database/schema';
+import type { Visibility } from '@corpcal/shared';
+
 import type { Database } from '../database/database.provider';
 
 /**

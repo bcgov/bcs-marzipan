@@ -1,8 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+
 import { AppService } from './app.service';
-import { HealthResponseDto, ReadinessResponseDto } from './common/dto';
 import { Public } from './auth/decorators/public.decorator';
+import { HealthResponseDto, ReadinessResponseDto } from './common/dto';
 
 @ApiTags('health')
 @Controller()

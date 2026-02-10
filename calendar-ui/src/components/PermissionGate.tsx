@@ -3,8 +3,10 @@
  * Use to show/hide UI elements based on user permissions
  */
 import type { ReactNode } from 'react';
+
 import type { PermissionKey } from '@corpcal/shared';
-import { usePermission, useAnyPermission } from '../hooks/usePermissions';
+
+import { useAnyPermission, usePermission } from '../hooks/usePermissions';
 
 interface PermissionGateProps {
   /** Permission key to check (e.g., 'activities.create') */

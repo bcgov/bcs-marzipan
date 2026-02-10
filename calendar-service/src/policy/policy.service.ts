@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+
 import {
-  rolePermissions,
+  activityCommsContacts,
   permissions,
+  rolePermissions,
   roles,
   userTeams,
-  activityCommsContacts,
 } from '@corpcal/database/schema';
-import { DatabaseService } from '../database/database.service';
 import { SYSTEM_ROLES } from '@corpcal/shared';
+
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class PolicyService {
