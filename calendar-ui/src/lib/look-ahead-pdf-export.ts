@@ -4,8 +4,10 @@
  * DRAFT AND CONFIDENTIAL markings, and tabular section layout.
  */
 
-import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
+import { jsPDF } from 'jspdf';
+import sanitizeHtml from 'sanitize-html';
+
 import type { LookAheadResponse } from '../api/reportsApi';
 import { sortLookAheadActivities } from './look-ahead-sort';
 
@@ -16,8 +18,11 @@ const FOOTER_HEIGHT = 20;
 
 function stripHtml(html: string): string {
   if (!html) return '';
-  return html
-    .replace(/<[^>]*>/g, '')
+  const cleaned = sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+  return cleaned
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .trim();
