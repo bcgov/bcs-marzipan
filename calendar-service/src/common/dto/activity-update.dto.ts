@@ -1,9 +1,10 @@
 import { createZodDto } from 'nestjs-zod';
+
 import {
   updateCategoriesSchema,
-  updateThemesSchema,
-  updateTagsSchema,
   updateSharedWithSchema,
+  updateTagsSchema,
+  updateThemesSchema,
 } from '@corpcal/shared/schemas';
 
 /**

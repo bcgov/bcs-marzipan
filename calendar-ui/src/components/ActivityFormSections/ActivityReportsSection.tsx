@@ -1,25 +1,27 @@
 import { UseFormReturn } from 'react-hook-form';
+import { useMemo } from 'react';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
 import {
+  lookAheadSectionOptions,
+  lookAheadStatusOptions,
+} from '../../constants/form-options';
+import { useReports } from '../../hooks/useLookups';
+import { Badge } from '../ui/badge';
+import { Checkbox } from '../ui/checkbox';
+import {
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
-import { Badge } from '../ui/badge';
-import { Checkbox } from '../ui/checkbox';
-import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
-import {
-  lookAheadStatusOptions,
-  lookAheadSectionOptions,
-} from '../../constants/form-options';
-import { useReports } from '../../hooks/useLookups';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
-import { ActivityFormSection } from './ActivityFormSection';
-import { useMemo } from 'react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Textarea } from '../ui/textarea';
+import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;
 

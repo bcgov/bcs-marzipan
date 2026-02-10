@@ -1,13 +1,26 @@
 import { useFormContext } from 'react-hook-form';
 import { useState } from 'react';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
 import {
+  AddressAutocomplete,
+  type AddressData,
+} from '../ui/address-autocomplete';
+import { Combobox } from '../ui/combobox';
+import {
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
+import { Input } from '../ui/input';
 import {
   Select,
   SelectContent,
@@ -15,18 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Combobox } from '../ui/combobox';
-import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
-import {
-  FreeformCombobox,
-  type FreeformComboboxValue,
-} from '../ui/freeform-combobox';
-import {
-  AddressAutocomplete,
-  type AddressData,
-} from '../ui/address-autocomplete';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type RepresentativeFormData = {

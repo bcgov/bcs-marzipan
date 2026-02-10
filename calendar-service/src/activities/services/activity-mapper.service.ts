@@ -1,18 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+
 import type { Activity } from '@corpcal/database/types';
-import type {
-  ActivityResponse,
-  LookAheadStatus,
-  LookAheadSection,
-  Visibility,
-} from '@corpcal/shared';
 import {
-  LOOK_AHEAD_STATUS,
-  LOOK_AHEAD_SECTION,
-  DEFAULT_STATUS,
-  DEFAULT_LOOK_AHEAD_STATUS,
   DEFAULT_LOOK_AHEAD_SECTION,
+  DEFAULT_LOOK_AHEAD_STATUS,
+  DEFAULT_STATUS,
   DEFAULT_VISIBILITY,
+  LOOK_AHEAD_SECTION,
+  LOOK_AHEAD_STATUS,
+  type ActivityResponse,
+  type LookAheadSection,
+  type LookAheadStatus,
+  type Visibility,
 } from '@corpcal/shared';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 
@@ -21,6 +20,8 @@ import { activityResponseSchema } from '@corpcal/shared/schemas';
  */
 @Injectable()
 export class ActivityMapperService {
+  private readonly logger = new Logger(ActivityMapperService.name);
+
   /**
    * Map database Activity to API ActivityResponse
    * Validates against Zod schema to ensure DTO matches schema contract
@@ -188,9 +189,9 @@ export class ActivityMapperService {
       // Log validation errors with context for debugging
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown validation error';
-      console.error(
-        `[ActivityMapperService] Response validation failed for activity ${activity.id}:`,
-        errorMessage
+      this.logger.error(
+        `Response validation failed for activity ${activity.id}: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined
       );
       // Fail-fast in all environments to prevent invalid responses
       throw new Error(

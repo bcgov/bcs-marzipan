@@ -1,32 +1,42 @@
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useEffect } from 'react';
-import { Text, Badge } from '@fluentui/react-components';
+import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+
 import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { createLogger } from '../lib/logger';
+
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
+import ActivityHistory from '../components/activities/ActivityHistory';
+import {
+  ActivityCommsSection,
+  ActivityEventSection,
+  ActivityNewsReleaseSection,
+  ActivityOverviewSection,
+  ActivityReportsSection,
+  ActivityScheduleSection,
+  ActivitySharingSection,
+} from '../components/ActivityFormSections';
+import { ErrorState } from '../components/ErrorState';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
-  ActivityOverviewSection,
-  ActivityScheduleSection,
-  ActivityCommsSection,
-  ActivityNewsReleaseSection,
-  ActivityEventSection,
-  ActivityReportsSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
-import React from 'react';
-import { HistoryRegular } from '@fluentui/react-icons';
-import ActivityHistory from '../components/activities/ActivityHistory';
-import { timeAgo } from '../lib/utils/timeAgo';
+  ERROR_DETAILS_LABEL,
+  LOAD_ACTIVITY_NO_ID,
+  LOAD_ACTIVITY_TITLE,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
+import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
+import { timeAgo } from '../lib/utils';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -109,7 +119,7 @@ export default function EditActivityForm(): React.ReactElement {
     let mounted = true;
     const load = async () => {
       if (!id) {
-        setLoadError('No activity id provided');
+        setLoadError(LOAD_ACTIVITY_NO_ID);
         setIsLoading(false);
         return;
       }
@@ -121,9 +131,9 @@ export default function EditActivityForm(): React.ReactElement {
         // should be compatible but may include extra fields from the API.
         form.reset(activity as any);
         setLoadedActivity(activity as LoadedActivity);
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error('Failed to load activity', err);
-        setLoadError(err?.message || String(err));
+        setLoadError(getFriendlyErrorMessage(err));
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -132,7 +142,7 @@ export default function EditActivityForm(): React.ReactElement {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, form]);
 
   const onSubmit = async (data: FormData) => {
     if (!id) return;
@@ -142,7 +152,7 @@ export default function EditActivityForm(): React.ReactElement {
       // Normalize reportSettings so each entry has a numeric reportId as expected by the API/schema
       const normalizeReportSettings = (items: any[] | undefined) => {
         if (!items || !Array.isArray(items)) return undefined;
-        const normalized: { reportId: number; omitted?: boolean }[] = [];
+        const normalized: { reportId: number; omitted: boolean }[] = [];
         for (const it of items) {
           const reportId =
             (it && typeof it.reportId === 'number' && it.reportId) ||
@@ -157,9 +167,8 @@ export default function EditActivityForm(): React.ReactElement {
           if (typeof reportId === 'number') {
             normalized.push({ reportId, omitted });
           } else {
-            console.warn(
-              'Skipping invalid reportSettings entry (missing numeric reportId):',
-              it
+            logger.warn(
+              'Skipping invalid reportSettings entry (missing numeric reportId)'
             );
           }
         }
@@ -205,29 +214,21 @@ export default function EditActivityForm(): React.ReactElement {
             : undefined,
         // attach normalized report settings if present
         reportSettings: normalizedReportSettings,
-      } as any;
+      };
 
       await updateActivity(Number(id), submitData);
       // Navigate back to the entries list view
       void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
-      alert('Failed to save activity. Please try again.');
+      showErrorToast(err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const onError = (errors: any) => {
-    console.error('Form validation errors:', errors);
-    console.error('Form values:', form.getValues());
-    const keys = Object.keys(errors || {});
-    if (keys.length > 0) {
-      const friendly = keys.map(
-        (k) => `${k}: ${errors[k]?.message || JSON.stringify(errors[k])}`
-      );
-      console.error('Validation summary:', friendly);
-    }
+  const onError = () => {
+    logger.error('Form validation failed');
   };
 
   const formatActivityStatus = (s: unknown) => {
@@ -247,27 +248,26 @@ export default function EditActivityForm(): React.ReactElement {
   };
 
   const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
-    const message = error instanceof Error ? error.message : String(error);
+    const friendlyMessage = getFriendlyErrorMessage(error);
+    const rawMessage = error instanceof Error ? error.message : String(error);
 
     return (
       <div className="mx-auto max-w-200 px-4 py-8" role="alert">
         <div className="mb-8">
           <h1 className="text-destructive mb-2 text-3xl font-bold">
-            Something went wrong
+            {RENDER_FORM_ERROR_TITLE}
           </h1>
-          <p className="text-muted-foreground mb-4">
-            An error occurred while rendering the edit form. Please try again.
-          </p>
+          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
           <details className="mb-4">
             <summary className="cursor-pointer text-sm font-medium">
-              Error details
+              {ERROR_DETAILS_LABEL}
             </summary>
             <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {message}
+              {rawMessage}
             </pre>
           </details>
           <Button onClick={resetErrorBoundary} variant="default">
-            Try again
+            {TRY_AGAIN_LABEL}
           </Button>
         </div>
       </div>
@@ -285,20 +285,38 @@ export default function EditActivityForm(): React.ReactElement {
   }
 
   if (loadError) {
+    const handleRetry = () => {
+      setLoadError(null);
+      setIsLoading(true);
+      if (!id) return;
+      fetchActivity(Number(id))
+        .then((activity) => {
+          form.reset(activity as any);
+          setLoadedActivity(activity as LoadedActivity);
+        })
+        .catch((err: unknown) => {
+          logger.error('Failed to load activity', err);
+          setLoadError(getFriendlyErrorMessage(err));
+        })
+        .finally(() => setIsLoading(false));
+    };
     return (
       <div className="mx-auto max-w-200 px-4 py-8">
-        <div className="mb-8">
-          <p className="text-destructive">
-            Failed to load activity: {loadError}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            void navigate(-1);
-          }}
-        >
-          Back
-        </Button>
+        <ErrorState
+          title={LOAD_ACTIVITY_TITLE}
+          message={loadError}
+          onRetry={handleRetry}
+          action={
+            <Button
+              variant="outline"
+              onClick={() => {
+                void navigate(-1);
+              }}
+            >
+              Back
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -323,19 +341,13 @@ export default function EditActivityForm(): React.ReactElement {
                   <div style={{ color: '#6b6b6b', marginBottom: 6 }}>
                     {loadedActivity.displayId || `ACT-${loadedActivity.id}`}
                   </div>
-                  <Text as="h1" weight="bold" style={{ fontSize: 18 }}>
-                    {loadedActivity.title}
-                  </Text>
+                  <h1 className="text-lg font-bold">{loadedActivity.title}</h1>
                   <div style={{ marginTop: 8 }}>
                     {loadedActivity.category &&
                     loadedActivity.category.length > 0
                       ? loadedActivity.category.map(
                           (cat: string, idx: number) => (
-                            <Badge
-                              key={idx}
-                              appearance="filled"
-                              style={{ marginRight: 8 }}
-                            >
+                            <Badge key={idx} variant="default" className="mr-2">
                               {cat}
                             </Badge>
                           )
@@ -352,7 +364,7 @@ export default function EditActivityForm(): React.ReactElement {
                 <div style={{ textAlign: 'right', minWidth: 180 }}>
                   {loadedActivity.activityStatus ? (
                     <div style={{ marginBottom: 8 }}>
-                      <Badge appearance="filled">
+                      <Badge variant="default">
                         {formatActivityStatus(loadedActivity.activityStatus)}
                       </Badge>
                     </div>
@@ -392,7 +404,7 @@ export default function EditActivityForm(): React.ReactElement {
                       type="button"
                       onClick={() => setHistoryOpen(true)}
                     >
-                      <HistoryRegular />
+                      <History className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
+import type { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form';
 import { useCallback, useMemo } from 'react';
-import type { UseFormReturn, FieldPath, FieldValues } from 'react-hook-form';
 
 /**
  * Generic hook for managing multi-select form fields

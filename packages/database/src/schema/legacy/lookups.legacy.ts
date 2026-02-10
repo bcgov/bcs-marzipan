@@ -7,14 +7,14 @@
  */
 
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
-  varchar,
-  integer,
-  boolean,
   text,
   timestamp,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 /**

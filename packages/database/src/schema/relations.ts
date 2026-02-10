@@ -1,28 +1,29 @@
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  integer,
   boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  serial,
   timestamp,
   uuid,
-  primaryKey,
   varchar,
-  serial,
-  index,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { activities } from './activity';
 import {
-  themes,
-  tags,
   categories,
   commsMaterials,
-  translatedLanguages,
-  sectors,
   reports,
+  sectors,
+  tags,
+  themes,
+  translatedLanguages,
 } from './lookups';
 import { ministries } from './ministry';
-import { users } from './user';
 import { teams } from './teams';
+import { users } from './user';
 
 /**
  * ActivityThemes junction table - Many-to-many relationship between Activities and Themes
@@ -326,6 +327,39 @@ export const ministryUsersRelations = relations(ministryUsers, ({ one }) => ({
   user: one(users, {
     fields: [ministryUsers.userId],
     references: [users.id],
+  }),
+}));
+
+/**
+ * UserTeams junction table - Many-to-many relationship between Users and Teams
+ * Defines which teams a user belongs to for data scoping (what data the user can see).
+ * Advanced, Admin, and System Admin roles bypass team scoping and see all data.
+ */
+export const userTeams = pgTable(
+  'user_teams',
+  {
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.teamId] })]
+);
+
+export const userTeamsRelations = relations(userTeams, ({ one }) => ({
+  user: one(users, {
+    fields: [userTeams.userId],
+    references: [users.id],
+  }),
+  team: one(teams, {
+    fields: [userTeams.teamId],
+    references: [teams.id],
   }),
 }));
 

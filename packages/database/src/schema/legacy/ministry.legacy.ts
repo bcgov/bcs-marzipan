@@ -6,19 +6,20 @@
  * break the migration process.
  */
 
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  uuid,
-  integer,
   boolean,
-  varchar,
+  integer,
+  pgTable,
   text,
   timestamp,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { systemUsers, systemUserMinistries } from './user.legacy';
+
 import { activities } from './activity.legacy';
 import { newsFeeds } from './audit.legacy';
+import { systemUserMinistries, systemUsers } from './user.legacy';
 
 /**
  * Ministry table - Government departments

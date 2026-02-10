@@ -1,18 +1,26 @@
-import { useFormContext, useWatch, useFormState } from 'react-hook-form';
+import { X } from 'lucide-react';
+import { useFormContext, useFormState, useWatch } from 'react-hook-form';
+import { useEffect } from 'react';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
+import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { Badge } from '../ui/badge';
+import { Checkbox } from '../ui/checkbox';
 import {
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
-import { Checkbox } from '../ui/checkbox';
-import { Switch } from '../ui/switch';
-import { Badge } from '../ui/badge';
 import {
   Select,
   SelectContent,
@@ -20,15 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import {
-  FreeformCombobox,
-  type FreeformComboboxValue,
-} from '../ui/freeform-combobox';
-import { X } from 'lucide-react';
-import { useMultiSelect } from '../../hooks/useMultiSelect';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import { Switch } from '../ui/switch';
+import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
-import { useEffect } from 'react';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -51,24 +53,6 @@ export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
 > = ({ categories, ministries, organizations, tags }) => {
   const form = useFormContext<FormData>();
-
-  // const [categories, setCategories] = useState<any[]>([]);
-  // Move useMultiSelect hooks into the component
-
-  // useEffect(() => {
-  //   const loadCategories = async () => {
-  //     try {
-  //       const response = await fetchCategories();
-  //       if (response) {
-  //         setCategories(response);
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching categories:', error);
-  //     }
-  //   };
-
-  //   void loadCategories();
-  // }, []);
 
   const [selectedCategories, toggleCategory] = useMultiSelect<
     FormData,
@@ -136,13 +120,12 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Title *
+              Title <span className="text-destructive">*</span>
               {titleChanged && (
                 <Badge variant="warning" className="ml-2">
                   Changed
                 </Badge>
               )}
-              Title <span className="text-destructive">*</span>
             </FormLabel>
             <FormControl>
               <Input

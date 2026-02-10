@@ -1,5 +1,6 @@
-import { pgTable, serial, integer, varchar, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { integer, pgTable, serial, unique, varchar } from 'drizzle-orm/pg-core';
+
 import { activities } from './activity';
 
 /**

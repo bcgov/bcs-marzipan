@@ -1,12 +1,10 @@
-import { defineConfig } from 'drizzle-kit';
-import { config } from "dotenv";
-
-    // Load environment variables from .env.local (or .env if path is not specified)
-config({ path: "../../.env" }); 
-
-import * as path from 'path';
 import * as fs from 'fs';
-import type { Config } from 'drizzle-kit';
+import * as path from 'path';
+import { config } from 'dotenv';
+import { defineConfig, type Config } from 'drizzle-kit';
+
+// Load environment variables from .env.local (or .env if path is not specified)
+config({ path: '../../.env' });
 
 // Load environment variables from .env files
 // Try to load dotenv if available

@@ -1,42 +1,44 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
-import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
-import type { Visibility, ActivityStatusName } from '@corpcal/shared';
+import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
+
 import {
   activities,
   activityCategories,
+  activityCommsContacts,
+  activityCommsMaterials,
+  activityHistory,
+  activityReportSettings,
+  activityRepresentatives,
+  activitySharedWithTeams,
+  activityStatuses,
   activityTags,
   activityThemes,
-  activityCommsMaterials,
   activityTranslationsRequired,
-  activitySharedWithTeams,
-  activityCommsContacts,
-  activityRepresentatives,
-  activityReportSettings,
   categories,
   ministries,
-  activityHistory,
   venueAddresses,
-  teamCategories,
-  activityStatuses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
+import type { ActivityStatusName } from '@corpcal/shared';
 import type {
+  ActivityResponse,
   CreateActivityRequest,
-  UpdateActivityRequest,
   FilterActivitiesQueryParams,
+  UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityResponse } from '@corpcal/shared/schemas';
+
 import { DatabaseService } from '../../database/database.service';
+import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
+import type { DataScope } from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
+import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
-import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityMapperService } from './activity-mapper.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
@@ -56,7 +58,10 @@ export class ActivitiesService {
   /**
    * Create a new activity with related junction table records
    */
-  async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
+  async create(
+    dto: CreateActivityRequest,
+    userId: number
+  ): Promise<ActivityResponse> {
     // Extract junction table IDs and venue address from the DTO
     // These fields are defined in createActivityRequestSchema but not in the base activity schema
     const {
@@ -77,8 +82,6 @@ export class ActivitiesService {
       await this.utilsService.validateCategoryIds(categoryIds);
     }
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Use transaction to ensure atomicity of activity and junction table inserts
@@ -103,8 +106,8 @@ export class ActivitiesService {
       } = {
         ...activityData,
         displayId: null,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
+        createdBy: userId,
+        lastUpdatedBy: userId,
         createdDateTime: now,
         lastUpdatedDateTime: now,
       };
@@ -166,7 +169,7 @@ export class ActivitiesService {
           activityId,
           categoryIds,
           (id: number) => ({ categoryId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Tags
@@ -176,7 +179,7 @@ export class ActivitiesService {
           activityId,
           tagIds,
           (id: number) => ({ tagId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Comms Materials
@@ -186,7 +189,7 @@ export class ActivitiesService {
           activityId,
           commsMaterialIds,
           (id: number) => ({ commsMaterialId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Translation Languages
@@ -196,7 +199,7 @@ export class ActivitiesService {
           activityId,
           translationLanguageIds,
           (id: number) => ({ languageId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Shared With Teams
@@ -206,7 +209,7 @@ export class ActivitiesService {
           activityId,
           sharedWithTeamIds,
           (id: number) => ({ teamId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Comms Contacts (with isLead flag)
@@ -237,8 +240,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'create: skipping malformed reportSettings entry',
               setting
             );
@@ -260,7 +262,7 @@ export class ActivitiesService {
     // Record activity creation in history
     await this.activityHistoryService.recordChange(
       result.id,
-      currentUserId,
+      userId,
       'created',
       undefined, // No changes for creation
       'Activity created'
@@ -277,10 +279,14 @@ export class ActivitiesService {
 
   /**
    * Find all activities with optional filtering
+   * @param filters - Optional query filters (title, dates, status, etc.)
+   * @param _dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
    */
   async findAll(
-    filters?: FilterActivitiesQueryParams
+    filters?: FilterActivitiesQueryParams,
+    _dataScope?: DataScope
   ): Promise<ActivityResponse[]> {
+    // TODO: When _dataScope is provided and _dataScope.bypass is false, filter results to only activities visible to _dataScope.teamIds
     let activityResults: Activity[];
 
     // Get deleted status ID to exclude deleted activities by default
@@ -310,6 +316,11 @@ export class ActivitiesService {
       }
       if (filters.leadMinistryId !== undefined) {
         conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
+      }
+      if (filters.lookAheadSection) {
+        conditions.push(
+          eq(activities.lookAheadSection, filters.lookAheadSection)
+        );
       }
       // Note: City filter is handled after initial query with a separate join
       // TODO: Optimize with proper join in main query
@@ -533,7 +544,8 @@ export class ActivitiesService {
    */
   async update(
     id: number,
-    dto: UpdateActivityRequest
+    dto: UpdateActivityRequest,
+    userId: number
   ): Promise<ActivityResponse> {
     // Get current activity state to track changes
     const [oldActivity] = await this.databaseService.db
@@ -565,28 +577,17 @@ export class ActivitiesService {
       lastUpdatedDateTime: new Date(),
     };
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
     // Ensure lastUpdatedBy is set for audit/history
-    updateData.lastUpdatedBy = currentUserId;
+    updateData.lastUpdatedBy = userId;
 
     // Capture existing related data for history (before transaction)
-    const existingVenue = (
-      await this.databaseService.db
-        .select()
-        .from(venueAddresses)
-        .where(eq(venueAddresses.activityId, id))
-        .limit(1)
-    )[0]
-      ? (
-          await this.databaseService.db
-            .select()
-            .from(venueAddresses)
-            .where(eq(venueAddresses.activityId, id))
-            .limit(1)
-        )[0]
-      : null;
+    const venueRows = await this.databaseService.db
+      .select()
+      .from(venueAddresses)
+      .where(eq(venueAddresses.activityId, id))
+      .limit(1);
+    const existingVenue = venueRows[0] ?? null;
 
     const existingComms = await this.databaseService.db
       .select({
@@ -649,8 +650,8 @@ export class ActivitiesService {
         this.logger.debug(
           `update() id=${id} updatedActivity=${JSON.stringify(updatedActivity)}`
         );
-      } catch (err) {
-        // ignore
+      } catch {
+        // ignore debug log failure
       }
 
       // Handle venue address update
@@ -668,7 +669,7 @@ export class ActivitiesService {
           categoryIds,
           (id: number) => ({ categoryId: id }),
           'categoryId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -682,7 +683,7 @@ export class ActivitiesService {
           tagIds,
           (id: number) => ({ tagId: id }),
           'tagId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -696,7 +697,7 @@ export class ActivitiesService {
           commsMaterialIds,
           (id: number) => ({ commsMaterialId: id }),
           'commsMaterialId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -710,7 +711,7 @@ export class ActivitiesService {
           translationLanguageIds,
           (id: number) => ({ languageId: id }),
           'languageId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -724,7 +725,7 @@ export class ActivitiesService {
           sharedWithTeamIds,
           (id: number) => ({ teamId: id }),
           'teamId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -760,8 +761,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'update: skipping malformed reportSettings entry',
               setting
             );
@@ -844,7 +844,7 @@ export class ActivitiesService {
     if (venueAddress !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -860,7 +860,7 @@ export class ActivitiesService {
     if (commsContactsArray !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -876,7 +876,7 @@ export class ActivitiesService {
     if (representatives !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -892,7 +892,7 @@ export class ActivitiesService {
     if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -916,14 +916,14 @@ export class ActivitiesService {
     // Debug: log detected changes
     try {
       this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
-    } catch (err) {
-      // ignore
+    } catch {
+      // ignore debug log failure
     }
 
     // Record activity update in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       changes.length > 0 ? changes : undefined,
       'Activity updated'
@@ -938,14 +938,14 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete)
    */
-  async remove(id: number): Promise<{ message: string }> {
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
+  async remove(id: number, userId: number): Promise<{ message: string }> {
+    // Verify activity exists so we return 404 for non-existent IDs
+    await this.findOne(id);
 
     // Record deletion in history before deleting
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'deleted',
       undefined,
       'Activity permanently deleted'
@@ -1138,71 +1138,16 @@ export class ActivitiesService {
    * @returns Categories that are either global or team-scoped for the user's teams
    */
   public async fetchCategories(userTeams?: number[]): Promise<Category[]> {
-    if (userTeams && userTeams.length > 0) {
-      // Return global categories OR team-scoped categories for user's teams
-      // Query global categories
-      const globalCategories = await this.databaseService.db
-        .select()
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        );
-
-      // Query team-scoped categories accessible to user's teams
-      const teamScopedCategories = await this.databaseService.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          displayName: categories.displayName,
-          sortOrder: categories.sortOrder,
-          allowsPitch: categories.allowsPitch,
-          visibility: categories.visibility,
-          isActive: categories.isActive,
-          description: categories.description,
-          createdDateTime: categories.createdDateTime,
-          createdBy: categories.createdBy,
-          lastUpdatedDateTime: categories.lastUpdatedDateTime,
-          lastUpdatedBy: categories.lastUpdatedBy,
-        })
-        .from(categories)
-        .innerJoin(
-          teamCategories,
-          and(
-            eq(categories.id, teamCategories.categoryId),
-            eq(teamCategories.isActive, true),
-            inArray(teamCategories.teamId, userTeams)
-          )
-        )
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'team' satisfies Visibility}`
-          )
-        );
-
-      // Combine and deduplicate by ID
-      const allCategories = [...globalCategories, ...teamScopedCategories];
-      const uniqueCategories = Array.from(
-        new Map(allCategories.map((cat) => [cat.id, cat])).values()
-      );
-
-      return uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      // If no teams provided, return only global categories
-      return await this.databaseService.db
-        .select()
-        .from(categories)
-        .where(
-          and(
-            eq(categories.isActive, true),
-            sql`${categories.visibility} = ${'global' satisfies Visibility}`
-          )
-        )
-        .orderBy(categories.name);
+    const ids = await getVisibleCategoryIds(this.databaseService.db, userTeams);
+    if (ids.length === 0) {
+      return [];
     }
+    const rows = await this.databaseService.db
+      .select()
+      .from(categories)
+      .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
+      .orderBy(categories.name);
+    return rows as Category[];
   }
 
   /**
@@ -1210,13 +1155,12 @@ export class ActivitiesService {
    */
   async updateCategories(
     id: number,
-    categoryIds: number[]
+    categoryIds: number[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Validate category IDs if provided
@@ -1239,7 +1183,7 @@ export class ActivitiesService {
         categoryIds,
         (id: number) => ({ categoryId: id }),
         'categoryId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1247,7 +1191,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [
         {
@@ -1268,13 +1212,12 @@ export class ActivitiesService {
    */
   async updateThemes(
     id: number,
-    themeIds: string[]
+    themeIds: string[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing themes for history
@@ -1292,7 +1235,7 @@ export class ActivitiesService {
         themeIds,
         (id: string) => ({ themeId: id }),
         'themeId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1300,7 +1243,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
       'Activity themes updated'
@@ -1314,12 +1257,14 @@ export class ActivitiesService {
    * Update activity tags
    * Tags now use string IDs (converted from integer IDs)
    */
-  async updateTags(id: number, tagIds: number[]): Promise<ActivityResponse> {
+  async updateTags(
+    id: number,
+    tagIds: number[],
+    userId: number
+  ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing tags for history
@@ -1337,7 +1282,7 @@ export class ActivitiesService {
         tagIds,
         (id: number) => ({ tagId: id }),
         'tagId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1345,7 +1290,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
       'Activity tags updated'
@@ -1360,13 +1305,12 @@ export class ActivitiesService {
    */
   async updateSharedWith(
     id: number,
-    teamIds: number[]
+    teamIds: number[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing shared-with teams for history
@@ -1384,14 +1328,14 @@ export class ActivitiesService {
         teamIds,
         (id: number) => ({ teamId: id }),
         'teamId',
-        currentUserId,
+        userId,
         now
       );
     });
 
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
       'Activity shared with teams updated'

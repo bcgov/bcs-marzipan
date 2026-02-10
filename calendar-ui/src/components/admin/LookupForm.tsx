@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
+
 import { Checkbox } from '../ui/checkbox';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 export interface FormField {
   name: string;

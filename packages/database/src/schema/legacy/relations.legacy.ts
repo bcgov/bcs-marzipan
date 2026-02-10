@@ -6,20 +6,21 @@
  * break the migration process.
  */
 
+import { relations } from 'drizzle-orm';
 import {
-  pgTable,
-  integer,
   boolean,
-  timestamp,
-  uuid,
+  integer,
+  pgTable,
   primaryKey,
   serial,
+  timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { activities } from './activity.legacy';
-import { themes, tags, categories } from './lookups.legacy';
-import { systemUsers } from './user.legacy';
+import { categories, tags, themes } from './lookups.legacy';
 import { ministries } from './ministry.legacy';
+import { systemUsers } from './user.legacy';
 
 /**
  * ActivityThemes junction table - Many-to-many relationship between Activities and Themes

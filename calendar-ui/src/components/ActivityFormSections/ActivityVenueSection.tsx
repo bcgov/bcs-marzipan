@@ -1,24 +1,26 @@
 import { UseFormReturn } from 'react-hook-form';
 import { useState } from 'react';
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-  FormDescription,
-} from '../ui/form';
-import { Input } from '../ui/input';
-import { Switch } from '../ui/switch';
-import {
-  FreeformCombobox,
-  type FreeformComboboxValue,
-} from '../ui/freeform-combobox';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
 import {
   AddressAutocomplete,
   type AddressData,
 } from '../ui/address-autocomplete';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../ui/form';
+import {
+  FreeformCombobox,
+  type FreeformComboboxValue,
+} from '../ui/freeform-combobox';
+import { Input } from '../ui/input';
+import { Switch } from '../ui/switch';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

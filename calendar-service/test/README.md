@@ -6,16 +6,19 @@ This directory contains the testing suite for the Calendar Service API endpoints
 
 ```
 test/
-├── jest-e2e.json           # E2E test configuration
 ├── test-helpers.ts         # Test utilities and mock data factories
 ├── activities.e2e-spec.ts  # End-to-end integration tests
 └── README.md              # This file
+```
+
+E2E tests use Vitest with config in `vitest.config.e2e.ts` at the service root.
 
 src/
 ├── activities/
-│   ├── activities.controller.spec.ts  # Controller unit tests
-│   └── activities.service.spec.ts     # Service unit tests (existing)
-```
+│ ├── activities.controller.spec.ts # Controller unit tests
+│ └── activities.service.spec.ts # Service unit tests (existing)
+
+````
 
 ## Running Tests
 
@@ -23,13 +26,11 @@ src/
 
 ```bash
 npm test
-```
+````
 
 ### Unit Tests Only
 
-```bash
-npm run test -- --testPathIgnorePatterns=e2e
-```
+Default `npm run test` runs unit tests only. E2E tests are run separately via `npm run test:e2e` (they use a different Vitest config).
 
 ### E2E Tests Only
 
@@ -247,11 +248,15 @@ Then attach your debugger to the Node process.
 
 ### Tests failing with timeout errors
 
-Increase Jest timeout in the test file:
+Increase the timeout in the test file:
 
 ```typescript
-jest.setTimeout(10000); // 10 seconds
+import { test } from 'vitest';
+
+test.setTimeout(10000); // 10 seconds
 ```
+
+Or in `beforeEach` / per test: `test('name', async () => { ... }, 10000)`.
 
 ### Database connection issues
 
@@ -263,7 +268,7 @@ npm run test:db
 
 ### Module not found errors
 
-Check `moduleNameMapper` in `jest-e2e.json` for correct path mappings.
+Check path aliases in `vitest.config.ts` or `vitest.config.e2e.ts` for correct module resolution.
 
 ## Contributing
 
@@ -276,6 +281,6 @@ When adding new endpoints:
 
 ## Resources
 
-- [Jest Documentation](https://jestjs.io/)
+- [Vitest Documentation](https://vitest.dev/)
 - [NestJS Testing](https://docs.nestjs.com/fundamentals/testing)
 - [Supertest Documentation](https://github.com/visionmedia/supertest)
