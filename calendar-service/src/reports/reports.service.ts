@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { reports, activityReportSettings } from '@corpcal/database/schema';
 import { DatabaseService } from '../database/database.service';
@@ -20,6 +20,8 @@ export interface ActivityReportInfo {
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
@@ -42,9 +44,8 @@ export class ReportsService {
           config = configResult.data;
         } else {
           // Log validation error but don't fail the request
-          console.warn(
-            `Invalid report config for report ${report.id}:`,
-            configResult.error
+          this.logger.warn(
+            `Invalid report config for report ${report.id}: ${configResult.error.message}`
           );
         }
       }
@@ -87,9 +88,8 @@ export class ReportsService {
         config = configResult.data;
       } else {
         // Log validation error but don't fail the request
-        console.warn(
-          `Invalid report config for report ${result.id}:`,
-          configResult.error
+        this.logger.warn(
+          `Invalid report config for report ${result.id}: ${configResult.error.message}`
         );
       }
     }
@@ -131,9 +131,8 @@ export class ReportsService {
         config = configResult.data;
       } else {
         // Log validation error but don't fail the request
-        console.warn(
-          `Invalid report config for report ${result.id}:`,
-          configResult.error
+        this.logger.warn(
+          `Invalid report config for report ${result.id}: ${configResult.error.message}`
         );
       }
     }

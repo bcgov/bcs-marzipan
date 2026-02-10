@@ -371,6 +371,16 @@ export class AppController {
 }
 ```
 
+### 403 Response Convention (Policy Guards)
+
+When policy guards (e.g. `PermissionsGuard`, custom guards that throw `ForbiddenException`) deny access, the response body must follow this convention so that clients can handle 403s consistently:
+
+- **`message`** (string): User-facing description. May include alternative conditions (e.g. "Required: activities.delete or be the comms lead for this activity").
+- **`required`** (string[]): **Permission keys only** (e.g. values from `PERMISSIONS` in `@corpcal/shared`). Used by clients for programmatic handling (e.g. showing "You need permission X"). Do not put human-readable alternatives or free text in `required`; keep it machine-parseable and consistent with `PermissionsGuard`.
+- **`hint`** (optional, string): Extra context, e.g. alternative ways to satisfy the check (e.g. "or be the comms lead for this activity").
+
+Human-readable alternatives must not be placed in `required`. They belong in `message` or in the optional `hint` field.
+
 ### Data Scoping
 
 The `DataScopeInterceptor` automatically sets `request.dataScope` with team-based filtering information:

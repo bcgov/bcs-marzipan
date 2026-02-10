@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -13,11 +14,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { loginBodySchema } from './dto/login.dto';
-import type { AuthUser } from '@corpcal/shared';
+import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -33,12 +35,26 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Body() body: unknown) {
+  async login(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) res: Response
+  ) {
     const parsed = loginBodySchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.message ?? 'Invalid request');
     }
-    return this.authService.login(parsed.data);
+    const result = await this.authService.login(parsed.data);
+
+    // Set httpOnly cookie with JWT for browser authentication
+    res.cookie(ACCESS_TOKEN_COOKIE, result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: (result.expiresIn ?? 3600) * 1000,
+    });
+
+    return result;
   }
 
   @Get('me')
@@ -58,10 +74,17 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Logout',
-    description: 'Log out (client should discard token)',
+    description: 'Log out and clear auth cookie',
   })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  logout() {
+  logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the httpOnly auth cookie
+    res.clearCookie(ACCESS_TOKEN_COOKIE, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
     return this.authService.logout();
   }
 

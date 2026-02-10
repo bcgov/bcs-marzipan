@@ -4,9 +4,9 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { eq, and, gte, lte, inArray, sql, ne } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray, ne } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { Visibility, ActivityStatusName } from '@corpcal/shared';
+import type { ActivityStatusName } from '@corpcal/shared';
 import {
   activities,
   activityCategories,
@@ -22,7 +22,6 @@ import {
   ministries,
   activityHistory,
   venueAddresses,
-  teamCategories,
   activityStatuses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
@@ -58,7 +57,10 @@ export class ActivitiesService {
   /**
    * Create a new activity with related junction table records
    */
-  async create(dto: CreateActivityRequest): Promise<ActivityResponse> {
+  async create(
+    dto: CreateActivityRequest,
+    userId: number
+  ): Promise<ActivityResponse> {
     // Extract junction table IDs and venue address from the DTO
     // These fields are defined in createActivityRequestSchema but not in the base activity schema
     const {
@@ -79,8 +81,6 @@ export class ActivitiesService {
       await this.utilsService.validateCategoryIds(categoryIds);
     }
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Use transaction to ensure atomicity of activity and junction table inserts
@@ -105,8 +105,8 @@ export class ActivitiesService {
       } = {
         ...activityData,
         displayId: null,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
+        createdBy: userId,
+        lastUpdatedBy: userId,
         createdDateTime: now,
         lastUpdatedDateTime: now,
       };
@@ -168,7 +168,7 @@ export class ActivitiesService {
           activityId,
           categoryIds,
           (id: number) => ({ categoryId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Tags
@@ -178,7 +178,7 @@ export class ActivitiesService {
           activityId,
           tagIds,
           (id: number) => ({ tagId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Comms Materials
@@ -188,7 +188,7 @@ export class ActivitiesService {
           activityId,
           commsMaterialIds,
           (id: number) => ({ commsMaterialId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Translation Languages
@@ -198,7 +198,7 @@ export class ActivitiesService {
           activityId,
           translationLanguageIds,
           (id: number) => ({ languageId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Shared With Teams
@@ -208,7 +208,7 @@ export class ActivitiesService {
           activityId,
           sharedWithTeamIds,
           (id: number) => ({ teamId: id }),
-          currentUserId,
+          userId,
           now
         ),
         // Comms Contacts (with isLead flag)
@@ -239,8 +239,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'create: skipping malformed reportSettings entry',
               setting
             );
@@ -262,7 +261,7 @@ export class ActivitiesService {
     // Record activity creation in history
     await this.activityHistoryService.recordChange(
       result.id,
-      currentUserId,
+      userId,
       'created',
       undefined, // No changes for creation
       'Activity created'
@@ -316,6 +315,11 @@ export class ActivitiesService {
       }
       if (filters.leadMinistryId !== undefined) {
         conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
+      }
+      if (filters.lookAheadSection) {
+        conditions.push(
+          eq(activities.lookAheadSection, filters.lookAheadSection)
+        );
       }
       // Note: City filter is handled after initial query with a separate join
       // TODO: Optimize with proper join in main query
@@ -539,7 +543,8 @@ export class ActivitiesService {
    */
   async update(
     id: number,
-    dto: UpdateActivityRequest
+    dto: UpdateActivityRequest,
+    userId: number
   ): Promise<ActivityResponse> {
     // Get current activity state to track changes
     const [oldActivity] = await this.databaseService.db
@@ -571,11 +576,9 @@ export class ActivitiesService {
       lastUpdatedDateTime: new Date(),
     };
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
     // Ensure lastUpdatedBy is set for audit/history
-    updateData.lastUpdatedBy = currentUserId;
+    updateData.lastUpdatedBy = userId;
 
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
@@ -646,8 +649,8 @@ export class ActivitiesService {
         this.logger.debug(
           `update() id=${id} updatedActivity=${JSON.stringify(updatedActivity)}`
         );
-      } catch (err) {
-        // ignore
+      } catch {
+        // ignore debug log failure
       }
 
       // Handle venue address update
@@ -665,7 +668,7 @@ export class ActivitiesService {
           categoryIds,
           (id: number) => ({ categoryId: id }),
           'categoryId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -679,7 +682,7 @@ export class ActivitiesService {
           tagIds,
           (id: number) => ({ tagId: id }),
           'tagId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -693,7 +696,7 @@ export class ActivitiesService {
           commsMaterialIds,
           (id: number) => ({ commsMaterialId: id }),
           'commsMaterialId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -707,7 +710,7 @@ export class ActivitiesService {
           translationLanguageIds,
           (id: number) => ({ languageId: id }),
           'languageId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -721,7 +724,7 @@ export class ActivitiesService {
           sharedWithTeamIds,
           (id: number) => ({ teamId: id }),
           'teamId',
-          currentUserId,
+          userId,
           now
         );
       }
@@ -757,8 +760,7 @@ export class ActivitiesService {
             reportSettingsMap.set(reportId, setting.omitted);
           } else {
             // Log and skip malformed entries
-
-            console.warn(
+            this.logger.warn(
               'update: skipping malformed reportSettings entry',
               setting
             );
@@ -841,7 +843,7 @@ export class ActivitiesService {
     if (venueAddress !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -857,7 +859,7 @@ export class ActivitiesService {
     if (commsContactsArray !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -873,7 +875,7 @@ export class ActivitiesService {
     if (representatives !== undefined) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -889,7 +891,7 @@ export class ActivitiesService {
     if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
       await this.activityHistoryService.recordChange(
         id,
-        currentUserId,
+        userId,
         'updated',
         [
           {
@@ -913,14 +915,14 @@ export class ActivitiesService {
     // Debug: log detected changes
     try {
       this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
-    } catch (err) {
-      // ignore
+    } catch {
+      // ignore debug log failure
     }
 
     // Record activity update in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       changes.length > 0 ? changes : undefined,
       'Activity updated'
@@ -935,14 +937,14 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete)
    */
-  async remove(id: number): Promise<{ message: string }> {
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
+  async remove(id: number, userId: number): Promise<{ message: string }> {
+    // Verify activity exists so we return 404 for non-existent IDs
+    await this.findOne(id);
 
     // Record deletion in history before deleting
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'deleted',
       undefined,
       'Activity permanently deleted'
@@ -1152,13 +1154,12 @@ export class ActivitiesService {
    */
   async updateCategories(
     id: number,
-    categoryIds: number[]
+    categoryIds: number[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Validate category IDs if provided
@@ -1181,7 +1182,7 @@ export class ActivitiesService {
         categoryIds,
         (id: number) => ({ categoryId: id }),
         'categoryId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1189,7 +1190,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [
         {
@@ -1210,13 +1211,12 @@ export class ActivitiesService {
    */
   async updateThemes(
     id: number,
-    themeIds: string[]
+    themeIds: string[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing themes for history
@@ -1234,7 +1234,7 @@ export class ActivitiesService {
         themeIds,
         (id: string) => ({ themeId: id }),
         'themeId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1242,7 +1242,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
       'Activity themes updated'
@@ -1256,12 +1256,14 @@ export class ActivitiesService {
    * Update activity tags
    * Tags now use string IDs (converted from integer IDs)
    */
-  async updateTags(id: number, tagIds: number[]): Promise<ActivityResponse> {
+  async updateTags(
+    id: number,
+    tagIds: number[],
+    userId: number
+  ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing tags for history
@@ -1279,7 +1281,7 @@ export class ActivitiesService {
         tagIds,
         (id: number) => ({ tagId: id }),
         'tagId',
-        currentUserId,
+        userId,
         now
       );
     });
@@ -1287,7 +1289,7 @@ export class ActivitiesService {
     // Record change in history
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
       'Activity tags updated'
@@ -1302,13 +1304,12 @@ export class ActivitiesService {
    */
   async updateSharedWith(
     id: number,
-    teamIds: number[]
+    teamIds: number[],
+    userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
     await this.findOne(id);
 
-    // TODO: Get current user ID from auth context
-    const currentUserId = 1;
     const now = new Date();
 
     // Capture existing shared-with teams for history
@@ -1326,14 +1327,14 @@ export class ActivitiesService {
         teamIds,
         (id: number) => ({ teamId: id }),
         'teamId',
-        currentUserId,
+        userId,
         now
       );
     });
 
     await this.activityHistoryService.recordChange(
       id,
-      currentUserId,
+      userId,
       'updated',
       [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
       'Activity shared with teams updated'

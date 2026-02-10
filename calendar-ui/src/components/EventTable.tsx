@@ -17,6 +17,13 @@ import {
 } from '@fluentui/react-components';
 import io from 'socket.io-client';
 
+import { createLogger } from '../lib/logger';
+import { showErrorToast, getFriendlyErrorMessage } from '../lib/error-toast';
+import {
+  LOAD_ACTIVITIES_TITLE,
+  LOAD_ACTIVITIES_INVALID_RESPONSE,
+} from '../lib/error-messages';
+import { ErrorState } from './ErrorState';
 import {
   Calendar24Regular,
   CheckmarkCircle24Regular,
@@ -39,10 +46,12 @@ import {
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PERMISSIONS } from '@corpcal/shared';
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UserLookupItem } from '@corpcal/shared/api/types';
+import { useAuth } from '../hooks/useAuth';
 
 const useStyles = makeStyles({
   statusBadge: {
@@ -321,6 +330,8 @@ interface EventTableProps {
   globalFilterString: string;
 }
 
+const logger = createLogger('EventTable');
+
 export const EventTable: React.FC<EventTableProps> = ({
   filters,
   globalFilterString,
@@ -328,6 +339,8 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pageIndex, setPageIndex] = useState(0);
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -360,8 +373,8 @@ export const EventTable: React.FC<EventTableProps> = ({
 
       // Check if activities is an array
       if (!Array.isArray(activities)) {
-        console.error('Activities response is not an array:', activities);
-        setError('Invalid response format from server');
+        logger.error('Activities response is not an array');
+        setError(LOAD_ACTIVITIES_INVALID_RESPONSE);
         setEventData([]);
         return;
       }
@@ -369,11 +382,10 @@ export const EventTable: React.FC<EventTableProps> = ({
       const mappedData = activities.map(mapActivityToEventRow);
       setEventData(mappedData);
     } catch (err) {
-      console.error('Error fetching activities:', err);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch activities'
-      );
+      logger.error('Error fetching activities', err);
+      setError(getFriendlyErrorMessage(err));
       setEventData([]); // Set to empty array on error
+      showErrorToast(err);
     } finally {
       setIsLoading(false);
     }
@@ -389,19 +401,15 @@ export const EventTable: React.FC<EventTableProps> = ({
     const socket = io(apiUrl);
 
     socket.on('connect', () => {
-      console.log('EventTable WebSocket connected:', socket.id);
-      // Subscribe to activity table updates
       socket.emit('subscribeToActivities');
     });
 
     socket.on('connect_error', (error) => {
-      console.error('EventTable WebSocket connection error:', error);
+      logger.error('WebSocket connection error', error);
     });
 
     // Listen for new activity created
     socket.on('activityCreated', async (data) => {
-      console.log('Activity created:', data);
-
       // Refresh the table data
       await loadActivities();
 
@@ -419,8 +427,6 @@ export const EventTable: React.FC<EventTableProps> = ({
 
     // Listen for activity updated
     socket.on('activityUpdated', async (data) => {
-      console.log('Activity updated:', data);
-
       // Refresh the table data
       await loadActivities();
 
@@ -934,17 +940,14 @@ export const EventTable: React.FC<EventTableProps> = ({
         </div>
       )}
       {error && (
-        <div
-          style={{
-            padding: 32,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'red',
+        <ErrorState
+          title={LOAD_ACTIVITIES_TITLE}
+          message={error}
+          onRetry={() => {
+            setError(null);
+            void loadActivities();
           }}
-        >
-          Error: {error}
-        </div>
+        />
       )}
       {!isLoading && !error && (
         <>
@@ -1018,10 +1021,21 @@ export const EventTable: React.FC<EventTableProps> = ({
                       key={row.id}
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
-                        // Navigate to the edit view for the selected activity
-                        void navigate(
-                          `/activities/${row.original.activityId}/edit`
-                        );
+                        if (canEditActivity) {
+                          void navigate(
+                            `/activities/${row.original.activityId}/edit`
+                          );
+                        } else {
+                          dispatchToast(
+                            <Toast>
+                              <ToastTitle>View only</ToastTitle>
+                              <ToastBody>
+                                You have view-only access to activities.
+                              </ToastBody>
+                            </Toast>,
+                            { intent: 'info', timeout: 3000 }
+                          );
+                        }
                       }}
                     >
                       {row.getVisibleCells().map((cell) => (

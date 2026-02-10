@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { ACCESS_TOKEN_COOKIE } from '@corpcal/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService, type JwtPayload } from '../auth.service';
 
@@ -44,11 +45,16 @@ export class JwtAuthGuard implements CanActivate {
     }
   }
 
+  /**
+   * Extract JWT from request.
+   * Priority: Authorization header first (API clients), then httpOnly cookie (browser).
+   */
   private extractToken(request: Request): string | null {
     const auth = request.headers?.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) {
-      return null;
+    if (auth?.startsWith('Bearer ')) {
+      return auth.slice(7);
     }
-    return auth.slice(7);
+    // 2. Fall back to httpOnly cookie (browser)
+    return request.cookies?.[ACCESS_TOKEN_COOKIE] ?? null;
   }
 }

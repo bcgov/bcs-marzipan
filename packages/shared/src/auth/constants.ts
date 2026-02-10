@@ -3,6 +3,9 @@
  * System role names, IDs, and permission keys for type-safe usage
  */
 
+/** Cookie name for JWT access token (httpOnly, set by backend on login) */
+export const ACCESS_TOKEN_COOKIE = 'access_token';
+
 /**
  * Single source of truth for system role configuration.
  * Role IDs must match the database seed data.

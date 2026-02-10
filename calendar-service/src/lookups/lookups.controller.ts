@@ -78,6 +78,8 @@ import {
   updateActivityStatusRequestSchema,
 } from '@corpcal/shared/schemas';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthUser } from '@corpcal/shared';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -121,9 +123,10 @@ export class LookupsController {
   @Post('categories')
   async createCategory(
     @Body(new ZodValidationPipe(createCategoryRequestSchema))
-    body: CreateCategoryDto
+    body: CreateCategoryDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCategory(body);
+    const data = await this.lookupsService.createCategory(body, user.id);
     return { success: true, data };
   }
 
@@ -140,16 +143,17 @@ export class LookupsController {
   async updateCategory(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCategoryRequestSchema))
-    body: UpdateCategoryDto
+    body: UpdateCategoryDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateCategory(
       Number(id),
-      transformedBody
+      transformedBody,
+      user.id
     );
     return { success: true, data };
   }
@@ -282,9 +286,10 @@ export class LookupsController {
   @Post('tags')
   async createTag(
     @Body(new ZodValidationPipe(createTagRequestSchema))
-    body: CreateTagDto
+    body: CreateTagDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createTag(body);
+    const data = await this.lookupsService.createTag(body, user.id);
     return { success: true, data };
   }
 
@@ -301,9 +306,10 @@ export class LookupsController {
   async updateTag(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateTagRequestSchema))
-    body: UpdateTagDto
+    body: UpdateTagDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTag(Number(id), body);
+    const data = await this.lookupsService.updateTag(Number(id), body, user.id);
     return { success: true, data };
   }
 
@@ -334,9 +340,10 @@ export class LookupsController {
   @Post('activity-statuses')
   async createActivityStatus(
     @Body(new ZodValidationPipe(createActivityStatusRequestSchema))
-    body: CreateActivityStatusDto
+    body: CreateActivityStatusDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createActivityStatus(body);
+    const data = await this.lookupsService.createActivityStatus(body, user.id);
     return { success: true, data };
   }
 
@@ -353,16 +360,17 @@ export class LookupsController {
   async updateActivityStatus(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateActivityStatusRequestSchema))
-    body: UpdateActivityStatusDto
+    body: UpdateActivityStatusDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateActivityStatus(
       Number(id),
-      transformedBody
+      transformedBody,
+      user.id
     );
     return { success: true, data };
   }
@@ -404,9 +412,10 @@ export class LookupsController {
   @Post('comms-materials')
   async createCommsMaterial(
     @Body(new ZodValidationPipe(createCommsMaterialRequestSchema))
-    body: CreateCommsMaterialDto
+    body: CreateCommsMaterialDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCommsMaterial(body);
+    const data = await this.lookupsService.createCommsMaterial(body, user.id);
     return { success: true, data };
   }
 
@@ -423,11 +432,13 @@ export class LookupsController {
   async updateCommsMaterial(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCommsMaterialRequestSchema))
-    body: UpdateCommsMaterialDto
+    body: UpdateCommsMaterialDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateCommsMaterial(
       Number(id),
-      body
+      body,
+      user.id
     );
     return { success: true, data };
   }
@@ -475,9 +486,13 @@ export class LookupsController {
   @Post('government-representatives')
   async createGovernmentRepresentative(
     @Body(new ZodValidationPipe(createGovernmentRepresentativeRequestSchema))
-    body: CreateGovernmentRepresentativeDto
+    body: CreateGovernmentRepresentativeDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createGovernmentRepresentative(body);
+    const data = await this.lookupsService.createGovernmentRepresentative(
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 
@@ -498,11 +513,13 @@ export class LookupsController {
   async updateGovernmentRepresentative(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateGovernmentRepresentativeRequestSchema))
-    body: UpdateGovernmentRepresentativeDto
+    body: UpdateGovernmentRepresentativeDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateGovernmentRepresentative(
       Number(id),
-      body
+      body,
+      user.id
     );
     return { success: true, data };
   }
@@ -625,9 +642,10 @@ export class LookupsController {
   @Post('cities')
   async createCity(
     @Body(new ZodValidationPipe(createCityRequestSchema))
-    body: CreateCityDto
+    body: CreateCityDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createCity(body);
+    const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
   }
 
@@ -644,16 +662,17 @@ export class LookupsController {
   async updateCity(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateCityRequestSchema))
-    body: UpdateCityDto
+    body: UpdateCityDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    // Transform null to undefined for displayName to match service signature
     const transformedBody = {
       ...body,
       displayName: body.displayName === null ? undefined : body.displayName,
     };
     const data = await this.lookupsService.updateCity(
       Number(id),
-      transformedBody
+      transformedBody,
+      user.id
     );
     return { success: true, data };
   }
@@ -685,9 +704,10 @@ export class LookupsController {
   @Post('ministries')
   async createMinistry(
     @Body(new ZodValidationPipe(createMinistryRequestSchema))
-    body: CreateMinistryDto
+    body: CreateMinistryDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createMinistry(body);
+    const data = await this.lookupsService.createMinistry(body, user.id);
     return { success: true, data };
   }
 
@@ -704,9 +724,10 @@ export class LookupsController {
   async updateMinistry(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateMinistryRequestSchema))
-    body: UpdateMinistryDto
+    body: UpdateMinistryDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateMinistry(id, body);
+    const data = await this.lookupsService.updateMinistry(id, body, user.id);
     return { success: true, data };
   }
 
@@ -773,9 +794,10 @@ export class LookupsController {
   @Post('themes')
   async createTheme(
     @Body(new ZodValidationPipe(createThemeRequestSchema))
-    body: CreateThemeDto
+    body: CreateThemeDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.createTheme(body);
+    const data = await this.lookupsService.createTheme(body, user.id);
     return { success: true, data };
   }
 
@@ -792,9 +814,10 @@ export class LookupsController {
   async updateTheme(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(updateThemeRequestSchema))
-    body: UpdateThemeDto
+    body: UpdateThemeDto,
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTheme(id, body);
+    const data = await this.lookupsService.updateTheme(id, body, user.id);
     return { success: true, data };
   }
 

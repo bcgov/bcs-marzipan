@@ -155,6 +155,7 @@ bcs-marzipan/
 │       └── package.json
 ├── docs/                      # Additional documentation
 │   ├── AUTH_AND_RBAC.md       # Authentication and RBAC documentation
+│   ├── ERROR_HANDLING.md      # Error handling (backend, frontend, database)
 │   ├── TESTING.md             # Testing strategy and standards
 │   ├── SCHEMA_README.md       # Schema and type safety documentation
 │   ├── DOCKER_DEPLOYMENT.md   # Docker deployment guide
@@ -239,6 +240,7 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 ## Additional Documentation
 
 - **[Authentication and RBAC](docs/AUTH_AND_RBAC.md)**: JWT authentication, roles, permissions, and authorization
+- **[Error Handling](docs/ERROR_HANDLING.md)**: How errors are handled (backend, frontend, database), global handling, and how to add or extend error handling
 - **[Testing](docs/TESTING.md)**: Testing strategy, standards, naming conventions (`*.spec.ts` / `*.spec.tsx`), and what to test
 - **[Schema Documentation](packages/database/src/schema/docs/SCHEMA_README.md)**: Detailed information about schema flow, type safety, and how to update schemas
 - **[Schema Mapping](packages/database/src/schema/docs/SCHEMA_MAPPING.md)**: Legacy to new schema field mappings
