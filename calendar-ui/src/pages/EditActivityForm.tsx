@@ -38,6 +38,7 @@ type FormData = CreateActivityRequest & {
   commsMaterialIds?: number[];
   translationLanguageIds?: number[];
   sharedWithMinistryIds?: string[];
+  commsContactLeadId?: string | null;
 };
 
 type LoadedActivity = {
@@ -248,7 +249,7 @@ export default function EditActivityForm(): React.ReactElement {
             : undefined,
         // Transform commsContactLeadId back to commsContacts array format
         commsContacts: formValues.commsContactLeadId
-          ? [{ userId: formValues.commsContactLeadId, isLead: true }]
+          ? [{ userId: Number(formValues.commsContactLeadId), isLead: true }]
           : undefined,
         // attach normalized report settings if present
         reportSettings: normalizedReportSettings,
