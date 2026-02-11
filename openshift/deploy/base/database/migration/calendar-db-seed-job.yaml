@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: calendar-db-seed
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: postgres:16-alpine
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: seeds
+              mountPath: /seeds
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+
+              echo "Waiting for database..."
+              until pg_isready -d "$DATABASE_URL"; do
+                sleep 2
+              done
+
+              echo "Checking for seed files..."
+
+              found=false
+              for f in /seeds/*.sql; do
+                if [ ! -e "$f" ]; then
+                  continue
+                fi
+                found=true
+                break
+              done
+              if [ "$found" = false ]; then
+                echo "No seed files found. Nothing to apply."
+                exit 0
+              fi
+
+              echo "Running DB seeds..."
+              for f in /seeds/*.sql; do
+                echo "Applying $f"
+                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+              done
+
+              echo "DB seeds completed successfully."
+      volumes:
+        - name: seeds
+          configMap:
+            name: calendar-db-seed-migrations
