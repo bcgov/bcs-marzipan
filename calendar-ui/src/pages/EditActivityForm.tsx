@@ -156,6 +156,9 @@ export default function EditActivityForm(): React.ReactElement {
                 return { representativeName: rep.representative };
               }
             }) || [],
+          // Extract the lead contact from commsContacts array
+          commsContactLeadId:
+            activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
         };
 
         // Reset the form with the transformed activity data
@@ -243,6 +246,10 @@ export default function EditActivityForm(): React.ReactElement {
           formValues.sharedWithMinistryIds.length > 0
             ? formValues.sharedWithMinistryIds
             : undefined,
+        // Transform commsContactLeadId back to commsContacts array format
+        commsContacts: formValues.commsContactLeadId
+          ? [{ userId: formValues.commsContactLeadId, isLead: true }]
+          : undefined,
         // attach normalized report settings if present
         reportSettings: normalizedReportSettings,
       };

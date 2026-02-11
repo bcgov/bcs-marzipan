@@ -95,6 +95,11 @@ type Report = {
   type?: 'planning' | 'look-ahead' | '30-60-90' | 'exec-look-ahead';
 };
 
+type LeadInfo = {
+  userId: number | string;
+  type: 'comms' | 'eventPlanner';
+};
+
 type EventRow = {
   id: string;
   displayId: string;
@@ -110,7 +115,7 @@ type EventRow = {
   representatives:
     | Array<{ representative: string; invitationStatus: string }>
     | undefined;
-  leads: string[] | undefined;
+  leads: LeadInfo[] | undefined;
   commsMaterials: string[] | undefined;
   translationsRequired: string[] | undefined;
   reports: Report[] | undefined;
@@ -150,16 +155,19 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     invitationStatus: r.invitationStatus || 'No',
   }));
 
-  const leads: string[] = [];
+  const leads: LeadInfo[] = [];
   const leadCommsContact = activity.commsContacts?.find((c) => c.isLead);
   if (leadCommsContact) {
-    leads.push(String(leadCommsContact.userId));
+    leads.push({ userId: String(leadCommsContact.userId), type: 'comms' });
   }
   if (
     activity.eventPlannerLeadId &&
     activity.eventPlannerLeadId !== leadCommsContact?.userId
   ) {
-    leads.push(String(activity.eventPlannerLeadId));
+    leads.push({
+      userId: String(activity.eventPlannerLeadId),
+      type: 'eventPlanner',
+    });
   }
 
   const reports: Report[] = [];
@@ -231,8 +239,8 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     location,
     startTime,
     endTime,
-    dateConfirmed: activity.dateStatus === 'Confirmed' || false,
-    timeConfirmed: activity.timeStatus === 'Confirmed' || false,
+    dateConfirmed: activity.dateStatus === 'confirmed',
+    timeConfirmed: activity.timeStatus === 'confirmed',
     premierInvited: activity.premierRequestedId !== null,
     premierStatus: activity.premierRequested || 'No',
     ministers,
@@ -395,6 +403,7 @@ const MinistersCell = ({
 };
 
 // Schedule cell component
+// Schedule cell component
 const ScheduleCell = ({
   startDate,
   endDate,
@@ -428,7 +437,7 @@ const ScheduleCell = ({
           marginBottom: '6px',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '6px',
         }}
       >
         <Calendar24Regular style={{ fontSize: '16px' }} />
@@ -436,19 +445,27 @@ const ScheduleCell = ({
           {formatDate(startDate)}
           {endDate ? ` – ${formatDate(endDate)}` : ''}
         </span>
-        {dateConfirmed && (
-          <CheckmarkCircle24Regular
-            style={{ fontSize: '14px', color: '#107c10' }}
-          />
-        )}
+        <Badge
+          appearance="outline"
+          style={{
+            fontSize: '11px',
+            padding: '2px 6px',
+            height: '20px',
+            color: '#616161',
+            borderColor: '#d1d1d1',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {dateConfirmed ? 'Confirmed' : 'Not confirmed'}
+        </Badge>
       </div>
-      {(startTime || timeConfirmed) && (
+      {(startTime || timeConfirmed !== undefined) && (
         <div
           style={{
             marginBottom: '6px',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '6px',
           }}
         >
           <Clock24Regular style={{ fontSize: '16px' }} />
@@ -459,12 +476,21 @@ const ScheduleCell = ({
                 {endTime ? ` – ${endTime}` : ''}
               </>
             )}
+            {!startTime && '--:-- – --:--'}
           </span>
-          {timeConfirmed && (
-            <CheckmarkCircle24Regular
-              style={{ fontSize: '14px', color: '#107c10' }}
-            />
-          )}
+          <Badge
+            appearance="outline"
+            style={{
+              fontSize: '11px',
+              padding: '2px 6px',
+              height: '20px',
+              color: '#616161',
+              borderColor: '#d1d1d1',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {timeConfirmed ? 'Confirmed' : 'Not confirmed'}
+          </Badge>
         </div>
       )}
       {location && (
@@ -682,16 +708,13 @@ export const EventTable: React.FC<EventTableProps> = ({
         cell: ({ row }) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {row.original.leads?.map((lead) => {
-              const userInfo = userMap.get(lead);
-              const displayName = userInfo?.name || lead;
-              const jobTitle = userInfo?.jobTitle;
+              const userInfo = userMap.get(String(lead.userId));
+              const displayName = userInfo?.name || String(lead.userId);
+              const leadTitle = lead.type === 'comms' ? 'Comms' : 'Event Lead';
               return (
-                <div key={lead} style={{ fontSize: '13px' }}>
-                  {jobTitle && (
-                    <div style={{ fontWeight: '400' }}>{jobTitle}</div>
-                  )}
+                <div key={lead.userId} style={{ fontSize: '13px' }}>
+                  <div style={{ fontWeight: '400' }}>{leadTitle}</div>
                   <div>
-                    <span style={{ fontWeight: '400' }}>Ministry: </span>
                     <span style={{ fontWeight: '600' }}>{displayName}</span>
                   </div>
                 </div>
