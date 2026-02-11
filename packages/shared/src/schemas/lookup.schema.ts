@@ -56,7 +56,6 @@ export const categoryResponseSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
-  allowsPitch: z.boolean(),
   visibility: z.enum(VISIBILITY),
 });
 
@@ -65,7 +64,6 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
   displayName: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
-  allowsPitch: z.boolean(),
 });
 
 // ============================================
@@ -258,6 +256,51 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 });
 
 // ============================================
+// Pitch Required Status Schema
+// ============================================
+
+/**
+ * Pitch Required Status Response Schema
+ * Values: pending, required, not_required
+ */
+export const pitchRequiredStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const pitchRequiredStatusLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string().nullable(),
+});
+
+// ============================================
+// Translation Required Status Schema
+// ============================================
+
+/**
+ * Translation Required Status Response Schema
+ * Values: pending, required, not_required
+ */
+export const translationRequiredStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const translationRequiredStatusLookupItemSchema =
+  lookupItemSchema.extend({
+    name: z.string(),
+    displayName: z.string().nullable(),
+  });
+
+// ============================================
 // Venue Status Schema
 // ============================================
 
@@ -330,20 +373,27 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 
 /**
  * Translation Language Response Schema
- * Fields from the translated_languages table exposed via API
+ * Fields from the translated_languages table exposed via API.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string().nullable(),
+  shortcode: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
 });
 
+/**
+ * Translation Language Lookup Item Schema.
+ * shortcode: BCP 47 language tag when set.
+ */
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string().nullable(),
+  shortcode: z.string().nullable(),
 });
 
 // ============================================
@@ -461,6 +511,20 @@ export type DateStatusLookupItem = z.infer<typeof dateStatusLookupItemSchema>;
 export type TimeStatusResponse = z.infer<typeof timeStatusResponseSchema>;
 export type TimeStatusLookupItem = z.infer<typeof timeStatusLookupItemSchema>;
 
+export type PitchRequiredStatusResponse = z.infer<
+  typeof pitchRequiredStatusResponseSchema
+>;
+export type PitchRequiredStatusLookupItem = z.infer<
+  typeof pitchRequiredStatusLookupItemSchema
+>;
+
+export type TranslationRequiredStatusResponse = z.infer<
+  typeof translationRequiredStatusResponseSchema
+>;
+export type TranslationRequiredStatusLookupItem = z.infer<
+  typeof translationRequiredStatusLookupItemSchema
+>;
+
 export type VenueStatusResponse = z.infer<typeof venueStatusResponseSchema>;
 export type VenueStatusLookupItem = z.infer<typeof venueStatusLookupItemSchema>;
 
@@ -507,7 +571,6 @@ export const createCategoryRequestSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(VISIBILITY).default('global').optional(),
-  allowsPitch: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
 });
 

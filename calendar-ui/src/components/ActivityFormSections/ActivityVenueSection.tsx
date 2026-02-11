@@ -1,7 +1,7 @@
 import { UseFormReturn } from 'react-hook-form';
 import { useState } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import {
   AddressAutocomplete,
@@ -23,10 +23,8 @@ import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest;
-
 type ActivityVenueSectionProps = {
-  form: UseFormReturn<FormData>;
+  form: UseFormReturn<ActivityFormData>;
   eventPlannerOptions: Array<{ value: string; label: string }>;
 };
 

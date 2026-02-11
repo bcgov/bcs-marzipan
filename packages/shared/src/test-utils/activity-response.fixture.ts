@@ -58,6 +58,7 @@ export function createMockActivityResponse(
     endTime: '12:00',
     timeStatusId: 1,
     schedulingNotes: null,
+    strategy: null,
 
     // News Release
     newsReleaseOriginId: null,
@@ -76,7 +77,8 @@ export function createMockActivityResponse(
     // Notes and additional fields
     notes: null,
     pitchDate: null,
-    pitchRequired: null,
+    pitchRequiredStatusId: null,
+    translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: DEFAULT_VISIBILITY,
 

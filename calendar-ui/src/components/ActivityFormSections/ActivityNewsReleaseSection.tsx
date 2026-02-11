@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import { Button } from '../ui/button';
@@ -26,12 +26,6 @@ import {
 } from '../ui/select';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest & {
-  translationLanguageIds?: number[];
-  newsReleaseOriginId?: number | null;
-  newsReleaseDistributionId?: number | null;
-};
-
 type ActivityNewsReleaseSectionProps = {
   translationLanguageOptions: Array<{
     id: number;
@@ -49,10 +43,10 @@ export const ActivityNewsReleaseSection: React.FC<
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
 }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
 
   const [selectedTranslationLanguages, toggleTranslationLanguage] =
-    useMultiSelect<FormData, 'translationLanguageIds', number>(
+    useMultiSelect<ActivityFormData, 'translationLanguageIds', number>(
       form,
       'translationLanguageIds'
     );

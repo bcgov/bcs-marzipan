@@ -123,16 +123,17 @@ When migrating legacy data:
 
 ### New Fields (Not in Legacy Schema)
 
-| New Field Name        | Type          | New Constraints             | Description                                                                                      |
-| --------------------- | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `displayId`           | `varchar(50)` | `unique`                    | Computed field: {ministryAbbreviation}-{paddedLast6Digits} format (e.g., AG-000123, HLTH-456789) |
-| `dateStatusId`        | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                           |
-| `timeStatusId`        | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                        |
-| `newsReleaseOriginId` | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                             |
-| `newsReleaseId`       | `uuid`        | nullable                    | Reference to news release                                                                        |
-| `pitchDate`           | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                             |
-| `pitchRequired`       | `boolean`     | nullable                    | Whether pitch is required for this activity (nullable - can override category default)           |
-| `isConfidential`      | `boolean`     | `notNull`, `default(false)` | Activity-level property - if true, activity shows as placeholder in reports (default: false)     |
+| New Field Name                 | Type          | New Constraints             | Description                                                                                      |
+| ------------------------------ | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `displayId`                    | `varchar(50)` | `unique`                    | Computed field: {ministryAbbreviation}-{paddedLast6Digits} format (e.g., AG-000123, HLTH-456789) |
+| `dateStatusId`                 | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                           |
+| `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                        |
+| `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                             |
+| `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                        |
+| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                             |
+| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                  |
+| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                            |
+| `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level property - if true, activity shows as placeholder in reports (default: false)     |
 
 ### Moved to Separate Tables
 
@@ -285,24 +286,23 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[Category]`  
 **New Table Name:** `categories`
 
-**Description:** Classification categories for activities. Categories can be restricted to specific teams via the visibility field and teamCategories junction table.
+**Description:** Classification categories for activities. Categories can be restricted to specific teams via the visibility field and teamCategories junction table. Pitch is not category-scoped; it may be required for any activity and is expressed at the activity level via `pitchRequiredStatusId` (see Activities and pitch_required_statuses).
 
 ### Field Mappings
 
-| Legacy Field Name     | Legacy Type     | New Field Name        | New Type                   | New Constraints                | Mapping Notes                                                                                                                                                     |
-| --------------------- | --------------- | --------------------- | -------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                  | `int` (serial)  | `id`                  | `serial`                   | `notNull`, primary key         | Direct mapping - Primary key                                                                                                                                      |
-| `name`                | `nvarchar(255)` | `name`                | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                                    |
-| `displayName`         | `nvarchar(255)` | `displayName`         | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                                    |
-| `sortOrder`           | `int`           | `sortOrder`           | `integer`                  | `notNull`, `default(0)`        | Direct mapping                                                                                                                                                    |
-| `pitchRequired`       | `bit`           | `allowsPitch`         | `boolean`                  | `notNull`, `default(true)`     | **Direct mapping** - `pitchRequired=true` in legacy maps to `allowsPitch=true` in new schema. Categories where pitch is allowed/required have `allowsPitch=true`. |
-| -                     | -               | `visibility`          | `varchar(50)`              | `notNull`, `default('global')` | **New field** - Controls category visibility: 'global' (visible to all teams) or 'team' (visible only to teams in teamCategories junction table)                  |
-| `isActive`            | `bit`           | `isActive`            | `boolean`                  | `notNull`, `default(true)`     | Direct mapping                                                                                                                                                    |
-| `description`         | `nvarchar(max)` | `description`         | `text`                     | nullable                       | Direct mapping                                                                                                                                                    |
-| `createdDateTime`     | `datetime`      | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                                    |
-| `createdBy`           | `int`           | `createdBy`           | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                                       |
-| `lastUpdatedDateTime` | `datetime`      | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                                    |
-| `lastUpdatedBy`       | `int`           | `lastUpdatedBy`       | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                                       |
+| Legacy Field Name     | Legacy Type     | New Field Name        | New Type                   | New Constraints                | Mapping Notes                                                                                                                                    |
+| --------------------- | --------------- | --------------------- | -------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                  | `int` (serial)  | `id`                  | `serial`                   | `notNull`, primary key         | Direct mapping - Primary key                                                                                                                     |
+| `name`                | `nvarchar(255)` | `name`                | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                   |
+| `displayName`         | `nvarchar(255)` | `displayName`         | `varchar(255)`             | `notNull`                      | Direct mapping                                                                                                                                   |
+| `sortOrder`           | `int`           | `sortOrder`           | `integer`                  | `notNull`, `default(0)`        | Direct mapping                                                                                                                                   |
+| -                     | -               | `visibility`          | `varchar(50)`              | `notNull`, `default('global')` | **New field** - Controls category visibility: 'global' (visible to all teams) or 'team' (visible only to teams in teamCategories junction table) |
+| `isActive`            | `bit`           | `isActive`            | `boolean`                  | `notNull`, `default(true)`     | Direct mapping                                                                                                                                   |
+| `description`         | `nvarchar(max)` | `description`         | `text`                     | nullable                       | Direct mapping                                                                                                                                   |
+| `createdDateTime`     | `datetime`      | `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                   |
+| `createdBy`           | `int`           | `createdBy`           | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                      |
+| `lastUpdatedDateTime` | `datetime`      | `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`      | Direct mapping                                                                                                                                   |
+| `lastUpdatedBy`       | `int`           | `lastUpdatedBy`       | `integer`                  | `notNull`, FK                  | Direct mapping - FK to User                                                                                                                      |
 
 ### Access Control
 
@@ -312,6 +312,47 @@ Categories use an explicit visibility model aligned with the pods visibility pat
 
 - **Junction Tables**:
   - `teamCategories`: Many-to-many relationship between Categories and Teams for team-scoped access control (used when `visibility = 'team'`)
+
+---
+
+## Pitch Required Statuses and Translation Required Statuses
+
+**Table Names:** `pitch_required_statuses`, `translation_required_statuses`
+
+**Description:** Small lookup tables for tri-state "required" status on activities. Both tables share the same three values: `pending`, `required`, `not_required`. Activities reference them via nullable FKs `pitchRequiredStatusId` and `translationsRequiredStatusId` (replacing the former boolean `pitchRequired` on activities).
+
+### Field Mappings (each table)
+
+| Column         | Type           | Constraints            | Notes                                          |
+| -------------- | -------------- | ---------------------- | ---------------------------------------------- |
+| `id`           | `serial`       | primary key            | 1=pending, 2=required, 3=not_required (seeded) |
+| `name`         | `varchar(255)` | notNull                | Internal name                                  |
+| `display_name` | `varchar(255)` | notNull                | Display label                                  |
+| `sort_order`   | `integer`      | notNull, default(0)    | Order in UI                                    |
+| `is_active`    | `boolean`      | notNull, default(true) |                                                |
+| `description`  | `text`         | nullable               |                                                |
+| Audit columns  |                |                        | created_by, last_updated_by, etc.              |
+
+---
+
+## Translated Languages
+
+**Table Name:** `translated_languages`
+
+**Description:** Lookup table for languages used for activity translations. Used by the `activityTranslationsRequired` junction table. Each row has an optional **BCP 47** language tag in `shortcode` for use in the UI (e.g. `lang` attributes) or external systems.
+
+### Field Mappings
+
+| Column         | Type           | Constraints            | Notes                                  |
+| -------------- | -------------- | ---------------------- | -------------------------------------- |
+| `id`           | `serial`       | primary key            |                                        |
+| `name`         | `varchar(255)` | notNull                | Internal name                          |
+| `display_name` | `varchar(255)` | nullable               | Display label                          |
+| `shortcode`    | `varchar(15)`  | nullable               | BCP 47 language tag (e.g. ar, zh-Hans) |
+| `sort_order`   | `integer`      | notNull, default(0)    | Order in UI                            |
+| `is_active`    | `boolean`      | notNull, default(true) |                                        |
+| `description`  | `text`         | nullable               |                                        |
+| Audit columns  |                |                        | created_by, last_updated_by, etc.      |
 
 ---
 

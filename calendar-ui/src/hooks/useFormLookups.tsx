@@ -21,7 +21,6 @@ export interface FormLookupData {
     id: number;
     name: string;
     displayName?: string;
-    allowsPitch: boolean;
   }>;
 
   // Organizations - for Select/Combobox
@@ -48,11 +47,12 @@ export interface FormLookupData {
   // Comms Materials - for Badge components
   commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
 
-  // Translation Languages - for Badge components
+  // Translation Languages - for Badge components (shortcode is BCP 47 when set)
   translationLanguages: Array<{
     id: number;
     name: string;
     displayName?: string;
+    shortcode?: string | null;
   }>;
 
   // Government Representatives - for Badge components
@@ -133,7 +133,6 @@ export function useFormLookups(): FormLookupData {
       id: item.id,
       name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
-      allowsPitch: item.allowsPitch ?? false,
     })) || [];
 
   // Transform organizations for Select/Combobox (UUIDs are strings)
@@ -202,6 +201,7 @@ export function useFormLookups(): FormLookupData {
       id: item.id,
       name: item.name || item.label,
       displayName: (item.displayName as string) || item.label,
+      shortcode: item.shortcode ?? null,
     })) || [];
 
   // Transform government representatives for Badge components
@@ -239,7 +239,6 @@ export function useFormLookups(): FormLookupData {
       id: number;
       name: string;
       displayName?: string;
-      allowsPitch: boolean;
     }>,
     organizations,
     ministries,
@@ -265,6 +264,7 @@ export function useFormLookups(): FormLookupData {
       id: number;
       name: string;
       displayName?: string;
+      shortcode?: string | null;
     }>,
     governmentRepresentatives: governmentRepresentatives as Array<{
       id: number;

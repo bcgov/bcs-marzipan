@@ -44,4 +44,8 @@ export type {
   ThemeResponse,
   ThemeLookupItem,
   ReportResponse,
+  DateStatusLookupItem,
+  TimeStatusLookupItem,
+  PitchRequiredStatusLookupItem,
+  TranslationRequiredStatusLookupItem,
 } from '../schemas/lookup.schema';

@@ -114,22 +114,42 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
 -- ============================================================================
+-- PITCH REQUIRED STATUSES (pending, required, not_required)
+-- ============================================================================
+INSERT INTO pitch_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
+VALUES
+  (1, 'pending', 'Pending review', 1, true, 1, 1),
+  (2, 'required', 'Required', 2, true, 1, 1),
+  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- TRANSLATION REQUIRED STATUSES (pending, required, not_required)
+-- ============================================================================
+INSERT INTO translation_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
+VALUES
+  (1, 'pending', 'Pending review', 1, true, 1, 1),
+  (2, 'required', 'Required', 2, true, 1, 1),
+  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- CATEGORIES
 -- Classification categories for activities
 -- Keep all existing values and add 'HQ Placeholder'
 -- ============================================================================
 
-INSERT INTO categories (id, name, display_name, sort_order, allows_pitch, visibility, is_active, description, created_by, last_updated_by)
+INSERT INTO categories (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'event', 'Event', 1, true, 'global', true, 'Event category (may require pitch approval)', 1, 1),
-  (2, 'release', 'Release', 2, true, 'global', true, 'Release category (may require pitch approval)', 1, 1),
-  (3, 'awareness', 'Awareness date', 3, true, 'global', true, 'Awareness category', 1, 1),
-  (4, 'conference', 'Conference', 4, true, 'global', true, 'Conference / AGM / Forum category', 1, 1),
-  (5, 'fyi', 'FYI', 5, false, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
-  (6, 'social media', 'Social media', 6, true, 'global', true, 'Social media category', 1, 1),
-  (7, 'speech', 'Speech', 7, true, 'global', true, 'Speech category', 1, 1),
-  (8, 'tv radio', 'TV/Radio', 8, true, 'global', true, 'TV/Radio category', 1, 1),
-  (9, 'hq placeholder', 'HQ Placeholder', 9, false, 'global', true, 'HQ Placeholder category', 1, 1)
+  (1, 'event', 'Event', 1, 'global', true, 'Event category', 1, 1),
+  (2, 'release', 'Release', 2, 'global', true, 'Release category', 1, 1),
+  (3, 'awareness', 'Awareness date', 3, 'global', true, 'Awareness category', 1, 1),
+  (4, 'conference', 'Conference', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
+  (5, 'fyi', 'FYI', 5, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
+  (6, 'social media', 'Social media', 6, 'global', true, 'Social media category', 1, 1),
+  (7, 'speech', 'Speech', 7, 'global', true, 'Speech category', 1, 1),
+  (8, 'tv radio', 'TV/Radio', 8, 'global', true, 'TV/Radio category', 1, 1),
+  (9, 'hq placeholder', 'HQ Placeholder', 9, 'global', true, 'HQ Placeholder category', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -167,35 +187,35 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
--- Languages for translations
+-- Languages for translations. shortcode values are BCP 47 language tags.
 -- Updated with new values
 -- ============================================================================
 
-INSERT INTO translated_languages (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
+INSERT INTO translated_languages (id, name, display_name, shortcode, sort_order, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'arabic', 'Arabic', 1, true, 'Arabic translation required', 1, 1),
-  (2, 'chinese simplified', 'Chinese (Simplified)', 2, true, 'Simplified Chinese translation required', 1, 1),
-  (3, 'chinese traditional', 'Chinese (Traditional)', 3, true, 'Traditional Chinese translation required', 1, 1),
-  (4, 'dutch', 'Dutch', 4, true, 'Dutch translation required', 1, 1),
-  (5, 'farsi', 'Farsi', 5, true, 'Farsi translation required', 1, 1),
-  (6, 'finnish', 'Finnish', 6, true, 'Finnish translation required', 1, 1),
-  (7, 'french', 'French', 7, true, 'French translation required', 1, 1),
-  (8, 'gujarati', 'Gujarati', 8, true, 'Gujarati translation required', 1, 1),
-  (9, 'hebrew', 'Hebrew', 9, true, 'Hebrew translation required', 1, 1),
-  (10, 'hindi', 'Hindi', 10, true, 'Hindi translation required', 1, 1),
-  (11, 'indonesian', 'Indonesian', 11, true, 'Indonesian translation required', 1, 1),
-  (12, 'japanese', 'Japanese', 12, true, 'Japanese translation required', 1, 1),
-  (13, 'korean', 'Korean', 13, true, 'Korean translation required', 1, 1),
-  (14, 'portuguese', 'Portuguese', 14, true, 'Portuguese translation required', 1, 1),
-  (15, 'punjabi', 'Punjabi', 15, true, 'Punjabi translation required', 1, 1),
-  (16, 'russian', 'Russian', 16, true, 'Russian translation required', 1, 1),
-  (17, 'somali', 'Somali', 17, true, 'Somali translation required', 1, 1),
-  (18, 'spanish', 'Spanish', 18, true, 'Spanish translation required', 1, 1),
-  (19, 'swahili', 'Swahili', 19, true, 'Swahili translation required', 1, 1),
-  (20, 'tagalog', 'Tagalog', 20, true, 'Tagalog translation required', 1, 1),
-  (21, 'ukrainian', 'Ukrainian', 21, true, 'Ukrainian translation required', 1, 1),
-  (22, 'urdu', 'Urdu', 22, true, 'Urdu translation required', 1, 1),
-  (23, 'vietnamese', 'Vietnamese', 23, true, 'Vietnamese translation required', 1, 1)
+  (1, 'arabic', 'Arabic', 'ar', 1, true, 'Arabic', 1, 1),
+  (2, 'chinese simplified', 'Chinese (Simplified)', 'zh-Hans', 2, true, 'Simplified Chinese', 1, 1),
+  (3, 'chinese traditional', 'Chinese (Traditional)', 'zh-Hant', 3, true, 'Traditional Chinese', 1, 1),
+  (4, 'dutch', 'Dutch', 'nl', 4, true, 'Dutch', 1, 1),
+  (5, 'farsi', 'Farsi', 'fa', 5, true, 'Farsi', 1, 1),
+  (6, 'finnish', 'Finnish', 'fi', 6, true, 'Finnish', 1, 1),
+  (7, 'french', 'French', 'fr', 7, true, 'French', 1, 1),
+  (8, 'gujarati', 'Gujarati', 'gu', 8, true, 'Gujarati', 1, 1),
+  (9, 'hebrew', 'Hebrew', 'he', 9, true, 'Hebrew', 1, 1),
+  (10, 'hindi', 'Hindi', 'hi', 10, true, 'Hindi', 1, 1),
+  (11, 'indonesian', 'Indonesian', 'id', 11, true, 'Indonesian', 1, 1),
+  (12, 'japanese', 'Japanese', 'ja', 12, true, 'Japanese', 1, 1),
+  (13, 'korean', 'Korean', 'ko', 13, true, 'Korean', 1, 1),
+  (14, 'portuguese', 'Portuguese', 'pt', 14, true, 'Portuguese', 1, 1),
+  (15, 'punjabi', 'Punjabi', 'pa', 15, true, 'Punjabi', 1, 1),
+  (16, 'russian', 'Russian', 'ru', 16, true, 'Russian', 1, 1),
+  (17, 'somali', 'Somali', 'so', 17, true, 'Somali', 1, 1),
+  (18, 'spanish', 'Spanish', 'es', 18, true, 'Spanish', 1, 1),
+  (19, 'swahili', 'Swahili', 'sw', 19, true, 'Swahili', 1, 1),
+  (20, 'tagalog', 'Tagalog', 'tl', 20, true, 'Tagalog', 1, 1),
+  (21, 'ukrainian', 'Ukrainian', 'uk', 21, true, 'Ukrainian', 1, 1),
+  (22, 'urdu', 'Urdu', 'ur', 22, true, 'Urdu', 1, 1),
+  (23, 'vietnamese', 'Vietnamese', 'vi', 23, true, 'Vietnamese', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

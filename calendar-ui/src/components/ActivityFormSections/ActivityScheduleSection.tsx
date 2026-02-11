@@ -1,6 +1,6 @@
 import { UseFormReturn, useWatch } from 'react-hook-form';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
 import {
@@ -24,10 +24,8 @@ import { Switch } from '../ui/switch';
 import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest;
-
 type ActivityScheduleSectionProps = {
-  form: UseFormReturn<FormData>;
+  form: UseFormReturn<ActivityFormData>;
 };
 
 export const ActivityScheduleSection: React.FC<

@@ -228,7 +228,9 @@ describe('ActivitiesService', () => {
               .toISOString()
               .split('T')[0]
           : null,
-        pitchRequired: activity.pitchRequired ?? null,
+        pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
+        translationsRequiredStatusId:
+          activity.translationsRequiredStatusId ?? null,
         premierRequestedId: activity.premierRequestedId ?? null,
         visibility: activity.visibility ?? ('global' satisfies Visibility),
         sharedWithAll: activity.sharedWithAll ?? false,

@@ -3,14 +3,18 @@ import type {
   CategoryLookupItem,
   CityLookupItem,
   CommsMaterialsLookupItem,
+  DateStatusLookupItem,
   GovernmentRepresentativeLookupItem,
   MinistryLookupItem,
   OrganizationLookupItem,
+  PitchRequiredStatusLookupItem,
   PitchStatusLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
+  TimeStatusLookupItem,
   TranslationLanguageLookupItem,
+  TranslationRequiredStatusLookupItem,
   UserLookupItem,
 } from '@corpcal/shared/api/types';
 import type {
@@ -182,17 +186,39 @@ export async function fetchActivitiesForLookup(
   return res.data.data;
 }
 
-export async function fetchDateStatuses(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/date-statuses'
-  );
+export async function fetchDateStatuses(): Promise<DateStatusLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: DateStatusLookupItem[];
+  }>('/lookups/date-statuses');
   return res.data.data;
 }
 
-export async function fetchTimeStatuses(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
-    '/lookups/time-statuses'
-  );
+export async function fetchTimeStatuses(): Promise<TimeStatusLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: TimeStatusLookupItem[];
+  }>('/lookups/time-statuses');
+  return res.data.data;
+}
+
+export async function fetchPitchRequiredStatuses(): Promise<
+  PitchRequiredStatusLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: PitchRequiredStatusLookupItem[];
+  }>('/lookups/pitch-required-statuses');
+  return res.data.data;
+}
+
+export async function fetchTranslationRequiredStatuses(): Promise<
+  TranslationRequiredStatusLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: TranslationRequiredStatusLookupItem[];
+  }>('/lookups/translation-required-statuses');
   return res.data.data;
 }
 

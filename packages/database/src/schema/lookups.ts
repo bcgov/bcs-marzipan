@@ -59,7 +59,6 @@ export const categories = pgTable('categories', {
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
-  allowsPitch: boolean('allows_pitch').notNull().default(true),
   visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team'
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -132,6 +131,63 @@ export const timeStatuses = pgTable('time_statuses', {
     .notNull()
     .references(() => users.id),
 });
+
+/**
+ * PitchRequiredStatus lookup table - Tri-state for whether pitch is required
+ * Values: 'pending', 'required', 'not_required'
+ */
+export const pitchRequiredStatuses = pgTable('pitch_required_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdDateTime: timestamp('created_date_time', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdBy: integer('created_by')
+    .notNull()
+    .references(() => users.id),
+  lastUpdatedDateTime: timestamp('last_updated_date_time', {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUpdatedBy: integer('last_updated_by')
+    .notNull()
+    .references(() => users.id),
+});
+
+/**
+ * TranslationRequiredStatus lookup table - Tri-state for whether translations are required
+ * Values: 'pending', 'required', 'not_required'
+ */
+export const translationRequiredStatuses = pgTable(
+  'translation_required_statuses',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    description: text('description'),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  }
+);
 
 /**
  * VenueStatus lookup table - Venue statuses
@@ -424,11 +480,14 @@ export const commsMaterials = pgTable('comms_materials', {
 /**
  * TranslatedLanguage lookup table - Languages for translations
  * Values: 'Arabic','Chinese Simplified','Chinese Traditional','Dutch','Farsi','Finnish','French','Gujarati','Hebrew','Hindi','Indonesian','Japanese','Korean','Portuguese','Punjabi','Russian','Somali','Spanish','Swahili','Tagalog','Ukrainian','Urdu','Vietnamese' (user editable)
+ * shortcode: BCP 47 language tag for use in UI (e.g. lang attributes) or external systems.
  */
 export const translatedLanguages = pgTable('translated_languages', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
+  /** BCP 47 language tag (e.g. ar, zh-Hans, fr) */
+  shortcode: varchar('shortcode', { length: 15 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),

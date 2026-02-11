@@ -67,6 +67,7 @@ export const activityDbFieldsSchema = z.object({
   endTime: z.string().nullable(),
   timeStatusId: z.number().int(),
   schedulingNotes: z.string().nullable(),
+  strategy: z.string().nullable(),
 
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
@@ -85,7 +86,8 @@ export const activityDbFieldsSchema = z.object({
   // Notes and additional fields
   notes: z.string().nullable(),
   pitchDate: z.string().nullable(), // Date when activity was or will be pitched
-  pitchRequired: z.boolean().nullable(), // Whether pitch is required (can override category default)
+  pitchRequiredStatusId: z.number().int().nullable(),
+  translationsRequiredStatusId: z.number().int().nullable(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 

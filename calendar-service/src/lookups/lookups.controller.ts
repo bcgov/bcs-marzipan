@@ -759,6 +759,38 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all pitch required statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pitch required statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('pitch-required-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getPitchRequiredStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getPitchRequiredStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all translation required statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Translation required statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('translation-required-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getTranslationRequiredStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getTranslationRequiredStatuses();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all reports' })
   @ApiResponse({
     status: 200,

@@ -1,7 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 import { useState } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import {
   AddressAutocomplete,
@@ -31,15 +31,6 @@ import {
 import { Switch } from '../ui/switch';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type RepresentativeFormData = {
-  representativeId?: number;
-  representativeName?: string;
-};
-
-type FormData = Omit<CreateActivityRequest, 'representatives'> & {
-  representatives?: RepresentativeFormData[];
-};
-
 type ActivityEventSectionProps = {
   representativeOptions: Array<{
     id: number;
@@ -56,7 +47,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   premierRequestedOptions,
   eventPlannerOptions,
 }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
 
   // Convert representative options to combobox format

@@ -14,6 +14,7 @@ import {
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
+  pitchRequiredStatuses,
   pitchStatuses,
   premierRequested,
   reports,
@@ -21,6 +22,7 @@ import {
   themes,
   timeStatuses,
   translatedLanguages,
+  translationRequiredStatuses,
   users,
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
@@ -64,7 +66,6 @@ export class LookupsService {
         displayName: categories.displayName,
         sortOrder: categories.sortOrder,
         isActive: categories.isActive,
-        allowsPitch: categories.allowsPitch,
       })
       .from(categories)
       .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
@@ -78,7 +79,6 @@ export class LookupsService {
       displayName: cat.displayName,
       sortOrder: cat.sortOrder,
       isActive: cat.isActive,
-      allowsPitch: cat.allowsPitch,
     }));
   }
 
@@ -248,6 +248,52 @@ export class LookupsService {
   }
 
   /**
+   * Get all active pitch required statuses (pending, required, not_required)
+   */
+  async getPitchRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: pitchRequiredStatuses.id,
+        name: pitchRequiredStatuses.name,
+        displayName: pitchRequiredStatuses.displayName,
+      })
+      .from(pitchRequiredStatuses)
+      .where(eq(pitchRequiredStatuses.isActive, true))
+      .orderBy(pitchRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active translation required statuses (pending, required, not_required)
+   */
+  async getTranslationRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.name,
+        displayName: translationRequiredStatuses.displayName,
+      })
+      .from(translationRequiredStatuses)
+      .where(eq(translationRequiredStatuses.isActive, true))
+      .orderBy(translationRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
    * Search for Canadian addresses using Canada Post API
    */
   async findAddresses(
@@ -375,6 +421,7 @@ export class LookupsService {
         id: translatedLanguages.id,
         name: translatedLanguages.name,
         displayName: translatedLanguages.displayName,
+        shortcode: translatedLanguages.shortcode,
       })
       .from(translatedLanguages)
       .where(eq(translatedLanguages.isActive, true))
@@ -386,6 +433,7 @@ export class LookupsService {
       value: lang.id,
       name: lang.name,
       displayName: lang.displayName,
+      shortcode: lang.shortcode,
     }));
   }
 
@@ -669,7 +717,6 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
       visibility?: 'global' | 'team';
-      allowsPitch?: boolean;
       description?: string | null;
     },
     currentUserId: number
@@ -683,7 +730,6 @@ export class LookupsService {
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         visibility: data.visibility || 'global',
-        allowsPitch: data.allowsPitch ?? true,
         description: data.description ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
@@ -929,7 +975,6 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
       visibility: 'global' | 'team';
-      allowsPitch: boolean;
       description: string | null;
     }>,
     currentUserId: number
@@ -946,8 +991,6 @@ export class LookupsService {
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.visibility !== undefined) updateData.visibility = data.visibility;
-    if (data.allowsPitch !== undefined)
-      updateData.allowsPitch = data.allowsPitch;
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 

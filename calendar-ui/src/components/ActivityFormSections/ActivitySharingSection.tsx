@@ -1,7 +1,11 @@
 import { useFormContext } from 'react-hook-form';
 
-import type { Visibility } from '@corpcal/shared/constants/constants';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import {
+  DEFAULT_VISIBILITY,
+  VISIBILITY,
+  type Visibility,
+} from '@corpcal/shared/constants/constants';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { Combobox } from '../ui/combobox';
 import {
@@ -21,8 +25,6 @@ import {
 } from '../ui/select';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest;
-
 type ActivitySharingSectionProps = {
   sharedWithTeamOptions: Array<{ value: string; label: string }>;
 };
@@ -30,7 +32,7 @@ type ActivitySharingSectionProps = {
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   sharedWithTeamOptions,
 }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
   return (
     <ActivityFormSection title="Sharing">
       <FormField
@@ -41,9 +43,14 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
             <FormLabel>Visibility</FormLabel>
             <Select
               onValueChange={(value) => {
-                field.onChange(value as Visibility);
+                const visibility: Visibility = (
+                  VISIBILITY as readonly string[]
+                ).includes(value)
+                  ? (value as Visibility)
+                  : DEFAULT_VISIBILITY;
+                field.onChange(visibility);
               }}
-              value={field.value || 'global'}
+              value={field.value || DEFAULT_VISIBILITY}
             >
               <FormControl>
                 <SelectTrigger>

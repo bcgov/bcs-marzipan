@@ -1,7 +1,7 @@
 import { UseFormReturn } from 'react-hook-form';
 import { useMemo } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import {
   lookAheadSectionOptions,
@@ -23,10 +23,8 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest;
-
 type ActivityReportsSectionProps = {
-  form: UseFormReturn<FormData>;
+  form: UseFormReturn<ActivityFormData>;
 };
 
 export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({

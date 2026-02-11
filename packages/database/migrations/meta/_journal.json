@@ -8,6 +8,34 @@
       "when": 1770962206902,
       "tag": "0000_20260212_schema_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770703330645,
+      "tag": "0001_activity_check_constraints_at_most_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770929594230,
+      "tag": "0002_drop_categories_allows_pitch",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1739318400000,
+      "tag": "0003_20260212_pitch_and_translations_required_status_lookups",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1739318500000,
+      "tag": "0004_20260212_translated_languages_shortcode_bcp47",
+      "breakpoints": true
     }
   ]
 }
