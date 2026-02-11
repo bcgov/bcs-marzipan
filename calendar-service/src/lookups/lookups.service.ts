@@ -297,6 +297,52 @@ export class LookupsService {
   }
 
   /**
+   * Get all active pitch required statuses (pending, required, not_required)
+   */
+  async getPitchRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: pitchRequiredStatuses.id,
+        name: pitchRequiredStatuses.name,
+        displayName: pitchRequiredStatuses.displayName,
+      })
+      .from(pitchRequiredStatuses)
+      .where(eq(pitchRequiredStatuses.isActive, true))
+      .orderBy(pitchRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active translation required statuses (pending, required, not_required)
+   */
+  async getTranslationRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.name,
+        displayName: translationRequiredStatuses.displayName,
+      })
+      .from(translationRequiredStatuses)
+      .where(eq(translationRequiredStatuses.isActive, true))
+      .orderBy(translationRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName || status.name,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
    * Search for Canadian addresses using Canada Post API
    */
   async findAddresses(
