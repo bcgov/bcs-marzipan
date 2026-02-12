@@ -5,7 +5,7 @@ permissions:
 on:
   push:
     branches:
-      - feat/CORPCAL-95-openshift-db-migration-scripts
+      - develop
 
 jobs:
   deploy:
