@@ -15,8 +15,9 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Languages, Languages, NotebookText, NotebookText } from 'lucide-react';
+import { Languages, NotebookText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type {
