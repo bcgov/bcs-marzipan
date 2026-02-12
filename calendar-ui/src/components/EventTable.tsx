@@ -5,12 +5,10 @@ import {
   LocationRegular,
 } from '@fluentui/react-icons';
 import {
-  ColumnFiltersState,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
@@ -27,6 +25,7 @@ import type {
 
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
+import { ErrorState } from '../components/ErrorState';
 import { useAuth } from '../hooks/useAuth';
 import { createLogger } from '../lib/logger';
 
@@ -196,7 +195,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
   return {
     id: String(activity.id),
     displayId: activity.displayId || `ACT-${activity.id}`,
-    activityId: activity.id, // <- ADD THIS LINE
+    activityId: activity.id,
     title: activity.title || '',
     category:
       activity.category && activity.category.length > 0
@@ -322,75 +321,6 @@ const SummaryCell = ({
   );
 };
 
-// Ministers expandable cell component
-const MinistersCell = ({
-  ministers,
-}: {
-  ministers: Array<{ name: string; confirmed?: boolean }>;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-
-  if (!ministers || ministers.length === 0) {
-    return <div style={{ color: '#999' }}>—</div>;
-  }
-
-  const displayedMinisters = expanded ? ministers : ministers.slice(0, 2);
-  const hasMore = ministers.length > 2;
-
-  return (
-    <div>
-      {displayedMinisters.map((minister, idx) => (
-        <div key={idx} style={{ marginBottom: '4px' }}>
-          <Badge
-            appearance="outline"
-            style={{
-              whiteSpace: 'normal',
-              height: 'auto',
-              minHeight: '20px',
-            }}
-          >
-            {minister.name}
-            {minister.confirmed && ' ✓'}
-          </Badge>
-        </div>
-      ))}
-      {hasMore && !expanded && (
-        <button
-          onClick={() => setExpanded(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#0078d4',
-            cursor: 'pointer',
-            padding: '0',
-            fontSize: '12px',
-            marginTop: '4px',
-          }}
-        >
-          + {ministers.length - 2} more
-        </button>
-      )}
-      {expanded && hasMore && (
-        <button
-          onClick={() => setExpanded(false)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#0078d4',
-            cursor: 'pointer',
-            padding: '0',
-            fontSize: '12px',
-            marginTop: '4px',
-          }}
-        >
-          show less
-        </button>
-      )}
-    </div>
-  );
-};
-
-// Schedule cell component
 // Schedule cell component
 const ScheduleCell = ({
   startDate,
@@ -400,7 +330,6 @@ const ScheduleCell = ({
   location,
   dateConfirmed,
   timeConfirmed,
-  premierInvited,
   premierStatus,
   representatives,
 }: {
@@ -411,7 +340,6 @@ const ScheduleCell = ({
   location?: string;
   dateConfirmed: boolean;
   timeConfirmed: boolean;
-  premierInvited: boolean;
   premierStatus: string;
   representatives?: Array<{ representative: string; invitationStatus: string }>;
 }) => {
@@ -556,10 +484,8 @@ const ScheduleCell = ({
   );
 };
 
-interface EventTableProps {
-  filters: ColumnFiltersState;
-  globalFilterString: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface EventTableProps {}
 
 const statusColor = {
   New: 'informative',
@@ -567,12 +493,10 @@ const statusColor = {
   Changed: 'warning',
   Deleted: 'danger',
 } as const;
+
 const logger = createLogger('EventTable');
 
-export const EventTable: React.FC<EventTableProps> = ({
-  filters,
-  globalFilterString,
-}) => {
+export const EventTable: React.FC<EventTableProps> = () => {
   const styles = useStyles();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -582,6 +506,7 @@ export const EventTable: React.FC<EventTableProps> = ({
   const [activities, setActivities] = useState<ActivityResponse[]>([]);
   const [users, setUsers] = useState<UserLookupItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -592,8 +517,10 @@ export const EventTable: React.FC<EventTableProps> = ({
         ]);
         setActivities(activitiesData);
         setUsers(usersData);
+        setError(null);
       } catch (error) {
-        console.error('Error loading data:', error);
+        logger.error('Error loading data:', error);
+        setError('Failed to load activities. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -626,8 +553,14 @@ export const EventTable: React.FC<EventTableProps> = ({
         size: 220,
         cell: ({ row }) => (
           <div
-            onClick={() => void navigate(`/activities/${row.original.id}/edit`)}
-            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              if (canEditActivity) {
+                void navigate(`/activities/${row.original.id}/edit`);
+              }
+            }}
+            style={{
+              cursor: canEditActivity ? 'pointer' : 'default',
+            }}
           >
             <div
               style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}
@@ -686,7 +619,6 @@ export const EventTable: React.FC<EventTableProps> = ({
             location={row.original.location}
             dateConfirmed={row.original.dateConfirmed}
             timeConfirmed={row.original.timeConfirmed}
-            premierInvited={row.original.premierInvited}
             premierStatus={row.original.premierStatus}
             representatives={row.original.representatives}
           />
@@ -812,7 +744,7 @@ export const EventTable: React.FC<EventTableProps> = ({
         ),
       }),
     ],
-    [columnHelper, userMap, navigate]
+    [columnHelper, userMap, navigate, canEditActivity]
   );
 
   const table = useReactTable({
@@ -820,13 +752,10 @@ export const EventTable: React.FC<EventTableProps> = ({
     columns,
     state: {
       sorting,
-      // Remove columnFilters from state since we're not using filter columns anymore
-      // columnFilters: filters,
     },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     meta: {
       userMap,
@@ -841,6 +770,34 @@ export const EventTable: React.FC<EventTableProps> = ({
     );
   }
 
+  if (error) {
+    return (
+      <div style={{ padding: '40px' }}>
+        <ErrorState
+          title="Failed to load activities"
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setError(null);
+            fetchActivities()
+              .then((activitiesData) => {
+                setActivities(activitiesData);
+                return fetchUsers();
+              })
+              .then((usersData) => {
+                setUsers(usersData);
+              })
+              .catch((err) => {
+                logger.error('Error loading data:', err);
+                setError('Failed to load activities. Please try again.');
+              })
+              .finally(() => setLoading(false));
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <table className={styles.table}>
@@ -851,7 +808,15 @@ export const EventTable: React.FC<EventTableProps> = ({
                 <th
                   key={header.id}
                   className={styles.headerCell}
-                  style={{ width: header.getSize() }}
+                  style={{
+                    width: header.getSize(),
+                    cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                  }}
+                  onClick={
+                    header.column.getCanSort()
+                      ? header.column.getToggleSortingHandler()
+                      : undefined
+                  }
                 >
                   {header.isPlaceholder
                     ? null

@@ -13,20 +13,14 @@ test/
 
 E2E tests use Vitest with config in `vitest.config.e2e.ts` at the service root.
 
+```
 src/
 ├── activities/
 │ ├── activities.controller.spec.ts # Controller unit tests
 │ └── activities.service.spec.ts # Service unit tests (existing)
-
-````
+```
 
 ## Running Tests
-
-### All Tests
-
-```bash
-npm test
-````
 
 ### Unit Tests Only
 
