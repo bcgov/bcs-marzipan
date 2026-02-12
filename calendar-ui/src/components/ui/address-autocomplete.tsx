@@ -1,6 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  ADDRESS_RETRIEVE_FAILED,
+  ADDRESS_SEARCH_FAILED,
+} from '@/lib/error-messages';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { createLogger } from '@/lib/logger';
+
+const logger = createLogger('AddressAutocomplete');
 
 export interface AddressData {
   street: string;
@@ -90,7 +99,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to search addresses');
+        throw new Error(ADDRESS_SEARCH_FAILED);
       }
 
       const result = await response.json();
@@ -98,8 +107,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(true);
       setSelectedIndex(-1);
     } catch (err) {
-      console.error('Address search error:', err);
-      setError('Failed to search addresses');
+      logger.error('Address search error', err);
+      setError(getFriendlyErrorMessage(err) || ADDRESS_SEARCH_FAILED);
       setSuggestions([]);
     } finally {
       setIsLoading(false);
@@ -135,7 +144,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to retrieve address');
+        throw new Error(ADDRESS_RETRIEVE_FAILED);
       }
 
       const result = await response.json();
@@ -146,8 +155,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setShowDropdown(false);
       setSuggestions([]);
     } catch (err) {
-      console.error('Address retrieve error:', err);
-      setError('Failed to retrieve address details');
+      logger.error('Address retrieve error', err);
+      setError(getFriendlyErrorMessage(err) || ADDRESS_RETRIEVE_FAILED);
     } finally {
       setIsLoading(false);
     }

@@ -14,31 +14,32 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   Activity,
-  Category,
-  Tag,
   ActivityStatus,
+  Category,
   City,
   GovernmentRepresentative,
+  Tag,
 } from '@corpcal/database/types';
+
+import type {
+  ActivityComputedFields,
+  ActivityDbFields,
+  ActivityResponse,
+} from '../src/schemas/activity-response.schema';
 import {
   createActivityRequestSchema,
   updateActivityRequestSchema,
   type CreateActivityRequest,
   type UpdateActivityRequest,
 } from '../src/schemas/activity.schema';
-import type {
-  ActivityResponse,
-  ActivityDbFields,
-  ActivityComputedFields,
-} from '../src/schemas/activity-response.schema';
 import {
   lookupItemSchema,
-  type LookupItem,
-  type CategoryResponse,
-  type TagResponse,
   type ActivityStatusResponse,
+  type CategoryResponse,
   type CityResponse,
   type GovernmentRepresentativeResponse,
+  type LookupItem,
+  type TagResponse,
 } from '../src/schemas/lookup.schema';
 
 // ============================================================================

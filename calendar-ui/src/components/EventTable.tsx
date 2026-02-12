@@ -1,46 +1,42 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-  TableHeader,
-  TableHeaderCell,
   Badge,
-  Button,
   makeStyles,
   Spinner,
   Toast,
-  ToastTitle,
   ToastBody,
+  ToastTitle,
   useToastController,
 } from '@fluentui/react-components';
 import {
   Calendar24Regular,
-  ChevronDown24Regular,
-  CheckmarkCircle24Regular,
   Clock24Regular,
   LocationRegular,
 } from '@fluentui/react-icons';
 import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-  getSortedRowModel,
-  getPaginationRowModel,
-  SortingState,
-  getFilteredRowModel,
   ColumnFiltersState,
   createColumnHelper,
-  SortingFn,
-  FilterFn,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
 } from '@tanstack/react-table';
+import { Languages, NotebookText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
+import React, { useEffect, useMemo, useState } from 'react';
+
+import type {
+  ActivityResponse,
+  UserLookupItem,
+} from '@corpcal/shared/api/types';
+
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
-import type { UserLookupItem } from '@corpcal/shared/api/types';
-import { NotebookText, Languages } from 'lucide-react';
+import { showErrorToast } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
 
 const useStyles = makeStyles({
   container: {
@@ -579,6 +575,7 @@ const statusColor = {
   Changed: 'warning',
   Deleted: 'danger',
 } as const;
+const logger = createLogger('EventTable');
 
 export const EventTable: React.FC<EventTableProps> = ({
   filters,
@@ -586,6 +583,7 @@ export const EventTable: React.FC<EventTableProps> = ({
 }) => {
   const styles = useStyles();
   const navigate = useNavigate();
+  const { dispatchToast } = useToastController();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [activities, setActivities] = useState<ActivityResponse[]>([]);
@@ -625,6 +623,72 @@ export const EventTable: React.FC<EventTableProps> = ({
     () => activities.map(mapActivityToEventRow),
     [activities]
   );
+
+  const loadActivities = React.useCallback(async () => {
+    try {
+      const activitiesData = await fetchActivities();
+      setActivities(activitiesData);
+    } catch (error) {
+      logger.error('Error loading activities', error);
+      showErrorToast(error);
+    }
+  }, []);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const socket = io(apiUrl);
+
+    socket.on('connect', () => {
+      socket.emit('subscribeToActivities');
+    });
+
+    socket.on('connect_error', (error) => {
+      logger.error('WebSocket connection error', error);
+    });
+
+    // Listen for new activity created
+    socket.on('activityCreated', async (data) => {
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>New Activity Created</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'success', timeout: 5000 }
+      );
+    });
+
+    // Listen for activity updated
+    socket.on('activityUpdated', async (data) => {
+      // Refresh the table data
+      await loadActivities();
+
+      // Show toast notification
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Activity Updated</ToastTitle>
+          <ToastBody>
+            {data.displayId || `ACT-${data.id}`}: {data.title}
+          </ToastBody>
+        </Toast>,
+        { intent: 'info', timeout: 5000 }
+      );
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socket.emit('unsubscribeFromActivities');
+      socket.off('activityCreated');
+      socket.off('activityUpdated');
+      socket.disconnect();
+    };
+  }, [dispatchToast]);
 
   const columnHelper = createColumnHelper<EventRow>();
 
@@ -829,8 +893,8 @@ export const EventTable: React.FC<EventTableProps> = ({
     columns,
     state: {
       sorting,
-      // Remove columnFilters from state since we're not using filter columns anymore
-      // columnFilters: filters,
+      columnFilters: filters,
+      globalFilter: globalFilterString,
     },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),

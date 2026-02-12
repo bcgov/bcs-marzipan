@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+
+# Namespace is injected at deploy time by GitHub Actions.
+namespace: ${STAGING_NAMESPACE}
+
+# Replace images built into the OpenShift internal registry.
+images:
+  - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-service
+    newName: image-registry.openshift-image-registry.svc:5000/${STAGING_NAMESPACE}/calendar-service
+    newTag: latest
+  - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-ui
+    newName: image-registry.openshift-image-registry.svc:5000/${STAGING_NAMESPACE}/calendar-ui
+    newTag: latest
+
+# Set environment-specific API base URL
+vars:
+  - name: CALENDAR_UI_API_BASE_URL
+    value: https://calendar-service-${STAGING_NAMESPACE}.apps.silver.devops.gov.bc.ca

@@ -1,26 +1,27 @@
 import { UseFormReturn, useWatch } from 'react-hook-form';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
+import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
 import {
+  CONFIRMED_STATUS_LABEL,
+  CONFIRMED_STATUS_NAMES,
+  findStatusByName,
+  UNCONFIRMED_STATUS_LABEL,
+  UNCONFIRMED_STATUS_NAMES,
+} from '../../lib/utils';
+import { Button } from '../ui/button';
+import { DateRangePicker } from '../ui/date-range-picker';
+import {
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from '../ui/form';
-import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
-import { DateRangePicker } from '../ui/date-range-picker';
-import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
-import {
-  CONFIRMED_STATUS_NAMES,
-  CONFIRMED_STATUS_LABEL,
-  UNCONFIRMED_STATUS_NAMES,
-  UNCONFIRMED_STATUS_LABEL,
-  findStatusByName,
-} from '../../lib/utils';
-
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type FormData = CreateActivityRequest;

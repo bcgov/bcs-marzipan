@@ -1,15 +1,22 @@
+import { ChevronDown } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
+import { useState } from 'react';
+
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+
+import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import {
+  FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '../ui/form';
 import { Label } from '../ui/label';
-import { Checkbox } from '../ui/checkbox';
-import { Button } from '../ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import {
   Select,
   SelectContent,
@@ -17,12 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ChevronDown } from 'lucide-react';
-import { useMultiSelect } from '../../hooks/useMultiSelect';
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 import { ActivityFormSection } from './ActivityFormSection';
-import { useState } from 'react';
 
 type FormData = CreateActivityRequest & {
   translationLanguageIds?: number[];

@@ -1,7 +1,9 @@
+import { ArrowUp, Plus } from 'lucide-react';
 import { ReactNode } from 'react';
-import { Button } from '../ui/button';
-import { Plus, ArrowUp } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
+
+import { Button } from '../ui/button';
 
 interface AdminSectionProps {
   title: string;

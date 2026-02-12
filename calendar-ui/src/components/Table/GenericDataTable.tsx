@@ -1,20 +1,20 @@
-import * as React from 'react';
 import {
   Table,
-  TableHeader,
-  TableRow,
-  TableHeaderCell,
   TableBody,
   TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
 } from '@fluentui/react-components';
 import {
-  useReactTable,
   ColumnDef,
+  flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  flexRender,
   SortingState,
+  useReactTable,
 } from '@tanstack/react-table';
+import * as React from 'react';
 
 interface GenericDataTableProps<T extends object> {
   data: T[];

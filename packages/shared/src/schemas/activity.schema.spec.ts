@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+
 import {
   DEFAULT_LOOK_AHEAD_SECTION,
   DEFAULT_LOOK_AHEAD_STATUS,

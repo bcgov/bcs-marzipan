@@ -1,25 +1,27 @@
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ActivitiesService } from './services/activities.service';
-import { DatabaseService } from '../database/database.service';
-import { ActivitiesGateway } from './activities.gateway';
-import { ActivityHistoryService } from './services/activity-history.service';
-import { ActivityJunctionService } from './services/activity-junction.service';
-import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
-import { ActivityMapperService } from './services/activity-mapper.service';
-import { ActivityUtilsService } from './services/activity-utils.service';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
+
 import type { Activity } from '@corpcal/database/types';
 import type {
-  LookAheadStatus,
   LookAheadSection,
+  LookAheadStatus,
   Visibility,
 } from '@corpcal/shared';
-import { NotFoundException } from '@nestjs/common';
+import { activityResponseSchema } from '@corpcal/shared/schemas';
+
 import {
+  createMockActivity,
   createMockActivityRequest,
   createMockUpdateRequest,
-  createMockActivity,
 } from '../common/test-utils';
+import { DatabaseService } from '../database/database.service';
+import { ActivitiesGateway } from './activities.gateway';
+import { ActivitiesService } from './services/activities.service';
+import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
+import { ActivityHistoryService } from './services/activity-history.service';
+import { ActivityJunctionService } from './services/activity-junction.service';
+import { ActivityMapperService } from './services/activity-mapper.service';
+import { ActivityUtilsService } from './services/activity-utils.service';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -565,7 +567,7 @@ describe('ActivitiesService', () => {
       // Mock select for findOne call after create
       mockDatabaseService.db.select = createMockSelect([createdActivity]);
 
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, 1);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.id).toBe(2);
@@ -651,7 +653,7 @@ describe('ActivitiesService', () => {
       const updateDto = createMockUpdateRequest({
         title: 'Updated Activity',
       });
-      const result = await service.update(1, updateDto);
+      const result = await service.update(1, updateDto, 1);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.title).toBe('Updated Activity');

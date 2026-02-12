@@ -1,7 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { ActivityUtilsService } from './activity-utils.service';
+import { Test, TestingModule } from '@nestjs/testing';
+
 import { DatabaseService } from '../../database/database.service';
+import { ActivityUtilsService } from './activity-utils.service';
 
 describe('ActivityUtilsService', () => {
   let service: ActivityUtilsService;

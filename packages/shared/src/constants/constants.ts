@@ -122,3 +122,13 @@ export const DEFAULT_LOOK_AHEAD_SECTION = 'events' as const;
  * Default visibility level
  */
 export const DEFAULT_VISIBILITY = 'global' as const;
+
+// ============================================================================
+// Auth Constants
+// ============================================================================
+
+/**
+ * Default JWT token expiration time in seconds (1 hour)
+ * Used when JWT_EXPIRES_IN environment variable is not set
+ */
+export const DEFAULT_JWT_EXPIRES_IN = 3600;

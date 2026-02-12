@@ -1,23 +1,24 @@
 import {
+  Activity,
+  Building2,
+  FileText,
+  FolderTree,
+  MapPin,
+  Palette,
+  Tag,
+  Users,
+} from 'lucide-react';
+
+import {
+  ActivityStatusesAdmin,
   CategoriesAdmin,
   CitiesAdmin,
   CommsMaterialsAdmin,
   GovernmentRepresentativesAdmin,
-  TagsAdmin,
   MinistriesAdmin,
-  ActivityStatusesAdmin,
+  TagsAdmin,
   ThemesAdmin,
 } from '@/components/admin/LookupAdmins';
-import {
-  FolderTree,
-  MapPin,
-  FileText,
-  Users,
-  Tag,
-  Building2,
-  Activity,
-  Palette,
-} from 'lucide-react';
 
 type Section =
   | 'categories'

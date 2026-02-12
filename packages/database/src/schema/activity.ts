@@ -1,46 +1,45 @@
+import { relations, sql } from 'drizzle-orm';
 import {
+  bigint,
+  boolean,
+  check,
+  date,
+  integer,
   pgTable,
   serial,
-  timestamp,
-  date,
-  time,
-  varchar,
   text,
-  integer,
-  boolean,
+  time,
+  timestamp,
   uuid,
-  bigint,
-  check,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations, sql } from 'drizzle-orm';
 
 import {
   activityStatuses,
   dateStatuses,
-  timeStatuses,
   eventPlanners,
   newsReleaseDistributions,
-  premierRequested,
   newsReleaseOrigins,
+  premierRequested,
+  timeStatuses,
 } from './lookups';
-
-import { organizations } from './organizations';
-import { users } from './user';
-import {
-  activityThemes,
-  activityTags,
-  activitySubscriptions,
-  activityCategories,
-  activityCommsMaterials,
-  activityTranslationsRequired,
-  activityRepresentatives,
-  activitySharedWithTeams,
-  activityCommsContacts,
-  activitySectors,
-  favoriteActivities,
-  activityReportSettings,
-} from './relations';
 import { ministries } from './ministry';
+import { organizations } from './organizations';
+import {
+  activityCategories,
+  activityCommsContacts,
+  activityCommsMaterials,
+  activityReportSettings,
+  activityRepresentatives,
+  activitySectors,
+  activitySharedWithTeams,
+  activitySubscriptions,
+  activityTags,
+  activityThemes,
+  activityTranslationsRequired,
+  favoriteActivities,
+} from './relations';
+import { users } from './user';
 import { venueAddresses } from './venue-address';
 
 /**

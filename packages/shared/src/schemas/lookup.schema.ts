@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
 import { reportConfigSchema } from './report-config.schema';
 

@@ -1,16 +1,17 @@
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
-  varchar,
-  integer,
-  boolean,
   text,
   timestamp,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
-import { users } from './user';
-import { teamCategories } from './relations';
+
 import { podSharedWithTeams } from './ministry';
+import { teamCategories } from './relations';
+import { users } from './user';
 
 /**
  * Teams table - Groups of system users
