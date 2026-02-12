@@ -10,13 +10,15 @@ test/
 ├── activities.e2e-spec.ts  # End-to-end integration tests
 └── README.md              # This file
 ```
+
 E2E tests use Vitest with config in `vitest.config.e2e.ts` at the service root.
 
 src/
 ├── activities/
-│   ├── activities.controller.spec.ts  # Controller unit tests
-│   └── activities.service.spec.ts     # Service unit tests (existing)
-```
+│ ├── activities.controller.spec.ts # Controller unit tests
+│ └── activities.service.spec.ts # Service unit tests (existing)
+
+````
 
 ## Running Tests
 
@@ -24,7 +26,7 @@ src/
 
 ```bash
 npm test
-```
+````
 
 ### Unit Tests Only
 
@@ -250,6 +252,7 @@ Increase the timeout in the test file:
 
 ```typescript
 import { test } from 'vitest';
+
 test.setTimeout(10000); // 10 seconds
 ```
 

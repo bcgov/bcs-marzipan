@@ -277,8 +277,9 @@ const mockActivity = createMockActivity({
 
 ```typescript
 import { Test, TestingModule } from '@nestjs/testing';
-import { ActivitiesService } from './activities.service';
+
 import { DatabaseService } from '../database/database.service';
+import { ActivitiesService } from './activities.service';
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;

@@ -69,7 +69,7 @@ Example -- validation error (400 with field errors):
 Example -- handling a mutation error with toast and inline validation:
 
 ```typescript
-import { createApiError, ApiError, NetworkError } from '@/api/errors';
+import { ApiError, createApiError, NetworkError } from '@/api/errors';
 import { showErrorToast } from '@/lib/error-toast';
 
 // In a React Query mutation's onError callback:
@@ -97,7 +97,7 @@ onError: (error) => {
 Example -- deciding whether to retry based on error type:
 
 ```typescript
-import { createApiError, ApiError } from '@/api/errors';
+import { ApiError, createApiError } from '@/api/errors';
 
 try {
   await saveActivity(payload);

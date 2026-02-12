@@ -337,8 +337,9 @@ export class AdminController {
 ### Accessing Current User
 
 ```typescript
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '@corpcal/shared';
+
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('activities')
 export class ActivitiesController {
