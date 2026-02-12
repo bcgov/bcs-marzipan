@@ -8,18 +8,9 @@ import {
   TableHeaderCell,
   TableRow,
 } from '@fluentui/react-components';
-import {
-  BarElement,
-  CategoryScale,
-  Chart,
-  Legend,
-  LinearScale,
-  Title,
-  Tooltip,
-} from 'chart.js';
-// You can use a chart library like recharts or chart.js for graphs
-import { Bar } from 'react-chartjs-2';
-import React from 'react';
+import { lazy, Suspense } from 'react';
+
+const LazyBarChart = lazy(() => import('./DashboardBarChart'));
 
 // Dummy data for demonstration
 const recentChanges = [
@@ -53,8 +44,6 @@ const graphData = {
     },
   ],
 };
-
-Chart.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 export const Dashboard = () => (
   <div
@@ -128,17 +117,31 @@ export const Dashboard = () => (
       </Table>
     </Card>
 
-    {/* Section 4: Graph */}
+    {/* Section 4: Graph - chart.js + react-chartjs-2 loaded on demand */}
     <Card>
       <h3>Entries Over Time</h3>
       <div style={{ height: '200px' }}>
-        <Bar
-          data={graphData}
-          options={{
-            responsive: true,
-            plugins: { legend: { display: false } },
-          }}
-        />
+        <Suspense
+          fallback={
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                height: '200px',
+              }}
+            >
+              Loading chart...
+            </div>
+          }
+        >
+          <LazyBarChart
+            data={graphData}
+            options={{
+              responsive: true,
+              plugins: { legend: { display: false } },
+            }}
+          />
+        </Suspense>
       </div>
     </Card>
 
