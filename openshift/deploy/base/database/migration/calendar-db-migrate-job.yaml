@@ -2,9 +2,19 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: calendar-db-migrate
+  labels:
+    app: calendar-db-migrate
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: job
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
 spec:
   backoffLimit: 1
   template:
+    metadata:
+      labels:
+        app: calendar-db-migrate
     spec:
       restartPolicy: Never
       containers:
