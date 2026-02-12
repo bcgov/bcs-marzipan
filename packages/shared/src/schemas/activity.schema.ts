@@ -1,7 +1,8 @@
 import { z } from 'zod';
+
 import {
-  LOOK_AHEAD_STATUS,
   LOOK_AHEAD_SECTION,
+  LOOK_AHEAD_STATUS,
   VISIBILITY,
 } from '../constants/constants';
 

@@ -1,8 +1,8 @@
-import type { ActivityResponse } from '../schemas/activity-response.schema';
 import {
   DEFAULT_ACTIVITY_STATUS,
   DEFAULT_VISIBILITY,
 } from '../constants/constants';
+import type { ActivityResponse } from '../schemas/activity-response.schema';
 
 /**
  * Creates a mock ActivityResponse object for testing.

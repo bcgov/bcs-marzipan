@@ -8,3 +8,5 @@ export * from './relations';
 export * from './formDrafts';
 export * from './teams';
 export * from './venue-address';
+export * from './rbac';
+export * from './sessions';

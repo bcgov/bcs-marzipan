@@ -6,19 +6,20 @@
  * break the migration process.
  */
 
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
-  integer,
-  varchar,
-  boolean,
   timestamp,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { activities } from './activity.legacy';
-import { systemUsers } from './user.legacy';
 import { ministries } from './ministry.legacy';
+import { systemUsers } from './user.legacy';
 
 /**
  * Log table - Activity change log/audit trail

@@ -1,18 +1,18 @@
 import {
-  useCategories,
-  useOrganizations,
-  useUsers,
-  useTags,
-  usePitchStatuses,
   useActivityStatuses,
+  useCategories,
   useCommsMaterials,
-  useTranslationLanguages,
-  useGovernmentRepresentatives,
   useEventPlanners,
-  useNewsReleaseDistributions,
-  usePremierRequested,
-  useNewsReleaseOrigins,
+  useGovernmentRepresentatives,
   useMinistries,
+  useNewsReleaseDistributions,
+  useNewsReleaseOrigins,
+  useOrganizations,
+  usePitchStatuses,
+  usePremierRequested,
+  useTags,
+  useTranslationLanguages,
+  useUsers,
 } from './useLookups';
 
 export interface FormLookupData {

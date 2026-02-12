@@ -6,31 +6,29 @@
  * break the migration process.
  */
 
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
   timestamp,
-  varchar,
-  integer,
-  boolean,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
 
+import { logs, newsFeeds } from './audit.legacy';
 // Import table objects for relations
 import {
-  statuses,
   cities,
-  governmentRepresentatives,
   communicationContacts,
   eventPlanners,
+  governmentRepresentatives,
+  statuses,
   videographers,
 } from './lookups.legacy';
 import { ministries } from './ministry.legacy';
-import { systemUsers } from './user.legacy';
 import {
-  activityThemes,
-  activityTags,
   activityCategories,
   activityCommunicationMaterials,
   activityInitiatives,
@@ -38,9 +36,11 @@ import {
   activityNROrigins,
   activitySectors,
   activitySharedWith,
+  activityTags,
+  activityThemes,
   favoriteActivities,
 } from './relations.legacy';
-import { logs, newsFeeds } from './audit.legacy';
+import { systemUsers } from './user.legacy';
 
 /**
  * Activity table - Core entity for calendar events

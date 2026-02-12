@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+
 import {
   DEFAULT_VISIBILITY,
   LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
   VISIBILITY,
 } from '../constants/constants';
-import { activityResponseSchema } from './activity-response.schema';
 import { createMockActivityResponse } from '../test-utils';
+import { activityResponseSchema } from './activity-response.schema';
 
 describe('activityResponseSchema', () => {
   it('accepts minimal valid response', () => {

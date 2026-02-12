@@ -1,6 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { eq, and, inArray } from 'drizzle-orm';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { and, eq, inArray } from 'drizzle-orm';
+
 import { categories } from '@corpcal/database/schema';
+
 import { DatabaseService } from '../../database/database.service';
 
 /**

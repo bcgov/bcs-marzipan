@@ -5,19 +5,20 @@
  * using the GenericLookupAdmin template.
  */
 
-import { GenericLookupAdmin } from './GenericLookupAdmin';
-import { FormField } from './LookupForm';
 import {
+  fetchActivityStatuses,
   fetchCategories,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
-  fetchTags,
   fetchMinistries,
-  fetchActivityStatuses,
+  fetchTags,
   fetchThemes,
   type LookupItem,
 } from '@/api/lookupsApi';
+
+import { GenericLookupAdmin } from './GenericLookupAdmin';
+import { FormField } from './LookupForm';
 
 // Type definitions - these extend the base LookupItem from the API
 type Category = LookupItem & {

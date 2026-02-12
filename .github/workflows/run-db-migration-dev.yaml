@@ -1,0 +1,95 @@
+name: DB Migrations to Openshift
+
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+    inputs:
+      run_seeds:
+        description: 'Run seed data after migrations'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  deploy:
+    name: DB Migration to OpenShift Dev
+    runs-on: ubuntu-latest
+    environment: dev-silver
+    env:
+      OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+      OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+      TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
+      DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | tar xz
+          sudo mv oc /usr/local/bin/
+
+      - name: Install envsubst
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+
+      - name: Login to OpenShift
+        run: |
+          oc login \
+            --token=${OPENSHIFT_TOKEN} \
+            --server=${OPENSHIFT_SERVER} \
+            --insecure-skip-tls-verify=true
+
+      - name: Apply DB migration ConfigMap
+        run: |
+          oc project ${DEV_NAMESPACE}
+          ls packages/database/migrations/*.sql
+          oc create configmap calendar-db-migrations \
+            --from-file=packages/database/migrations \
+            --dry-run=client -o yaml | oc apply -f -
+
+      - name: Apply DB seed ConfigMap
+        if: ${{ inputs.run_seeds == true }}
+        run: |
+          oc project ${DEV_NAMESPACE}
+          ls packages/database/seeds/*.sql
+          oc create configmap calendar-db-seed-migrations \
+            --from-file=packages/database/seeds \
+            --dry-run=client -o yaml | oc apply -f -
+
+      - name: Run DB migrations
+        run: |
+          oc delete job calendar-db-migrate \
+            -n ${DEV_NAMESPACE} \
+            --ignore-not-found
+
+          oc apply -f openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
+            -n ${DEV_NAMESPACE}
+
+          oc wait --for=condition=complete job/calendar-db-migrate \
+            -n ${DEV_NAMESPACE} \
+            --timeout=300s
+
+      - name: Run DB seeds
+        if: ${{ inputs.run_seeds == true }}
+        run: |
+          oc delete job calendar-db-seed \
+            -n ${DEV_NAMESPACE} \
+            --ignore-not-found
+
+          oc apply -n ${DEV_NAMESPACE} -f openshift/deploy/base/database/migration/calendar-db-seed-job.yaml
+
+          oc wait --for=condition=complete job/calendar-db-seed \
+            -n ${DEV_NAMESPACE} \
+            --timeout=300s
+
+      - name: Deploy to Dev environment
+        run: |
+          oc project ${DEV_NAMESPACE}
+          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
+          oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
+          oc rollout restart deployment/calendar-service
+          oc rollout restart deployment/calendar-ui

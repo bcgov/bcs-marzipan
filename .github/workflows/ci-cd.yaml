@@ -30,7 +30,7 @@ jobs:
         run: npm run build
 
       - name: Check linting and types
-        run: npm run lint:check
+        run: npm run check
 
       # Security audit: check for known vulnerabilities in dependencies
       - name: Run npm audit

@@ -6,17 +6,18 @@
  * break the migration process.
  */
 
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  integer,
   pgTable,
   serial,
-  varchar,
-  integer,
-  boolean,
   text,
   timestamp,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+
 import { ministries } from './ministry.legacy';
 import { favoriteActivities } from './relations.legacy';
 
