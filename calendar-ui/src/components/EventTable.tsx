@@ -484,9 +484,6 @@ const ScheduleCell = ({
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface EventTableProps {}
-
 const statusColor = {
   New: 'informative',
   Reviewed: 'success',
@@ -496,7 +493,7 @@ const statusColor = {
 
 const logger = createLogger('EventTable');
 
-export const EventTable: React.FC<EventTableProps> = () => {
+export const EventTable: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();

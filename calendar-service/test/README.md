@@ -24,6 +24,10 @@ src/
 
 ### Unit Tests Only
 
+```bash
+npm test
+```
+
 Default `npm run test` runs unit tests only. E2E tests are run separately via `npm run test:e2e` (they use a different Vitest config).
 
 ### E2E Tests Only
