@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Trash2, XCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import api from '@/api/axios';
 import {
@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const EMPTY_INITIAL: Record<string, unknown> = {};
+
 interface BaseLookupItem {
   id: number | string;
   name?: string;
@@ -29,6 +31,12 @@ interface BaseLookupItem {
   sortOrder?: number;
   isActive?: boolean;
   [key: string]: any; // Allow additional properties
+}
+
+export interface RenderModalContentProps {
+  initialData: Record<string, unknown>;
+  onChange: (data: Record<string, unknown>) => void;
+  isSubmitting: boolean;
 }
 
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
@@ -41,6 +49,8 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   formFields: FormField[];
   additionalColumns?: ColumnDef<T>[];
   getItemName?: (item: T) => string;
+  /** When provided, renders custom modal body instead of LookupForm (e.g. for address search). */
+  renderModalContent?: (props: RenderModalContentProps) => ReactNode;
 }
 
 /**
@@ -59,6 +69,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   formFields,
   additionalColumns = [],
   getItemName = (item) => item.name || item.key || String(item.id),
+  renderModalContent,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -276,11 +287,22 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         confirmLabel={editingItem ? 'Update' : 'Create'}
         isLoading={createMutation.isPending || updateMutation.isPending}
       >
-        <LookupForm
-          fields={formFields}
-          initialData={editingItem || {}}
-          onChange={setFormData}
-        />
+        {renderModalContent ? (
+          renderModalContent({
+            initialData: (editingItem ?? EMPTY_INITIAL) as Record<
+              string,
+              unknown
+            >,
+            onChange: setFormData as (data: Record<string, unknown>) => void,
+            isSubmitting: createMutation.isPending || updateMutation.isPending,
+          })
+        ) : (
+          <LookupForm
+            fields={formFields}
+            initialData={editingItem ?? EMPTY_INITIAL}
+            onChange={setFormData}
+          />
+        )}
       </AdminModal>
     </AdminSection>
   );

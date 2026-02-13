@@ -536,6 +536,84 @@ Simplified activity list for "Related Activities" dropdowns.
 
 ---
 
+### Get Venue Quick-Picks
+
+**GET** `/lookups/venue-quick-picks`
+
+Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input.
+
+**Cache:** 1 hour
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "venueName": "BC Legislature",
+      "street": "501 Belleville St",
+      "city": "Victoria",
+      "provinceOrState": "British Columbia",
+      "country": "Canada"
+    }
+  ]
+}
+```
+
+---
+
+### Get Venue Last-Used
+
+**GET** `/lookups/venue-last-used`
+
+Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": -1,
+      "venueName": "Conference Room A",
+      "street": "123 Main St",
+      "city": "Victoria",
+      "provinceOrState": "British Columbia",
+      "country": "Canada"
+    }
+  ]
+}
+```
+
+---
+
+### Create Venue Quick-Pick
+
+**POST** `/lookups/venue-quick-picks`
+
+**Permission:** `lookups.manage`
+
+**Body:** `venueName` (required), `street`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
+
+---
+
+### Update Venue Quick-Pick
+
+**PATCH** `/lookups/venue-quick-picks/:id`
+
+**Permission:** `lookups.manage`
+
+**Body:** Same as create (all optional for partial update).
+
+---
+
+### Delete Venue Quick-Pick
+
+**DELETE** `/lookups/venue-quick-picks/:id`
+
+**Permission:** `lookups.manage`
+
+---
+
 ## Error Responses
 
 ### 400 Bad Request

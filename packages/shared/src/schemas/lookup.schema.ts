@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
+import { venueAddressSchema } from './activity.schema';
 import { reportConfigSchema } from './report-config.schema';
 
 /**
@@ -470,6 +471,21 @@ export const themeLookupItemSchema = z.object({
 });
 
 // ============================================
+// Venue Quick Pick Schema
+// ============================================
+
+/**
+ * Venue Quick Pick Item - admin-configured quick-pick venue for the activity form.
+ * GET /lookups/venue-quick-picks returns an array of these.
+ * Same shape as VenueAddress plus id for fixed quick-picks.
+ */
+export const venueQuickPickItemSchema = z
+  .object({
+    id: z.number().int(),
+  })
+  .merge(venueAddressSchema);
+
+// ============================================
 // TypeScript Types (inferred from schemas)
 // ============================================
 
@@ -556,6 +572,8 @@ export type ThemeResponse = z.infer<typeof themeResponseSchema>;
 export type ThemeLookupItem = z.infer<typeof themeLookupItemSchema>;
 
 export type ReportResponse = z.infer<typeof reportResponseSchema>;
+
+export type VenueQuickPickItem = z.infer<typeof venueQuickPickItemSchema>;
 
 // ============================================
 // Request Schemas (for create/update operations)
@@ -705,6 +723,25 @@ export const createActivityStatusRequestSchema = z.object({
 export const updateActivityStatusRequestSchema =
   createActivityStatusRequestSchema.partial();
 
+/**
+ * Create Venue Quick Pick Request Schema
+ */
+export const createVenueQuickPickRequestSchema = z.object({
+  venueName: z.string().min(1).max(255),
+  street: z.string().max(255).nullable().optional(),
+  city: z.string().max(255).nullable().optional(),
+  provinceOrState: z.string().max(255).nullable().optional(),
+  country: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int().default(0).optional(),
+  isActive: z.boolean().default(true).optional(),
+});
+
+/**
+ * Update Venue Quick Pick Request Schema
+ */
+export const updateVenueQuickPickRequestSchema =
+  createVenueQuickPickRequestSchema.partial();
+
 // ============================================
 // Request Type Exports
 // ============================================
@@ -736,4 +773,10 @@ export type CreateActivityStatusRequest = z.infer<
 >;
 export type UpdateActivityStatusRequest = z.infer<
   typeof updateActivityStatusRequestSchema
+>;
+export type CreateVenueQuickPickRequest = z.infer<
+  typeof createVenueQuickPickRequestSchema
+>;
+export type UpdateVenueQuickPickRequest = z.infer<
+  typeof updateVenueQuickPickRequestSchema
 >;

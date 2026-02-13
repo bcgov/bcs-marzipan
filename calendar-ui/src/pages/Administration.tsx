@@ -16,12 +16,14 @@ import {
 import { Add20Regular } from '@fluentui/react-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 
 import api from '../api/axios';
 import {
+  createVenueQuickPick,
+  deleteVenueQuickPick,
   fetchActivityStatuses,
   fetchCategories,
   fetchCities,
@@ -30,6 +32,9 @@ import {
   fetchMinistries,
   fetchTags,
   fetchThemes,
+  fetchVenueQuickPicks,
+  updateVenueQuickPick,
+  type VenueQuickPickItem,
 } from '../api/lookupsApi';
 import { PermissionGate } from '../components/PermissionGate';
 import { GenericDataTable } from '../components/Table/GenericDataTable';
@@ -162,6 +167,157 @@ const AddModal = ({
             </Button>
             <Button appearance="primary" onClick={handleSubmit}>
               Submit
+            </Button>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+};
+
+type VenueQuickPickModalProps = {
+  open: boolean;
+  onClose: () => void;
+  editingItem: VenueQuickPickItem | null;
+  onSubmit: (data: {
+    venueName: string;
+    street?: string | null;
+    city?: string | null;
+    provinceOrState?: string | null;
+    country?: string | null;
+    sortOrder?: number;
+  }) => void;
+  isLoading: boolean;
+};
+
+const VenueQuickPickModal = ({
+  open,
+  onClose,
+  editingItem,
+  onSubmit,
+  isLoading,
+}: VenueQuickPickModalProps) => {
+  const [venueName, setVenueName] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [provinceOrState, setProvinceOrState] = useState('');
+  const [country, setCountry] = useState('');
+  const [sortOrder, setSortOrder] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      if (editingItem) {
+        setVenueName(editingItem.venueName ?? '');
+        setStreet(editingItem.street ?? '');
+        setCity(editingItem.city ?? '');
+        setProvinceOrState(editingItem.provinceOrState ?? '');
+        setCountry(editingItem.country ?? '');
+        setSortOrder(0);
+      } else {
+        setVenueName('');
+        setStreet('');
+        setCity('');
+        setProvinceOrState('');
+        setCountry('');
+        setSortOrder(0);
+      }
+    }
+  }, [open, editingItem]);
+
+  const handleSubmit = () => {
+    onSubmit({
+      venueName: venueName.trim() || '',
+      street: street.trim() || null,
+      city: city.trim() || null,
+      provinceOrState: provinceOrState.trim() || null,
+      country: country.trim() || null,
+      sortOrder,
+    });
+    setVenueName('');
+    setStreet('');
+    setCity('');
+    setProvinceOrState('');
+    setCountry('');
+    setSortOrder(0);
+    onClose();
+  };
+
+  const handleCancel = () => {
+    setVenueName('');
+    setStreet('');
+    setCity('');
+    setProvinceOrState('');
+    setCountry('');
+    setSortOrder(0);
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(_, data) => !data.open && handleCancel()}
+    >
+      <DialogSurface>
+        <DialogBody>
+          <DialogTitle>
+            {editingItem ? 'Edit Venue Quick Pick' : 'Add Venue Quick Pick'}
+          </DialogTitle>
+          <DialogContent
+            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+          >
+            <Field label="Venue Name" required>
+              <Input
+                type="text"
+                value={venueName}
+                onChange={(_, d) => setVenueName(d.value)}
+              />
+            </Field>
+            <Field label="Street">
+              <Input
+                type="text"
+                value={street}
+                onChange={(_, d) => setStreet(d.value)}
+              />
+            </Field>
+            <Field label="City">
+              <Input
+                type="text"
+                value={city}
+                onChange={(_, d) => setCity(d.value)}
+              />
+            </Field>
+            <Field label="Province/State">
+              <Input
+                type="text"
+                value={provinceOrState}
+                onChange={(_, d) => setProvinceOrState(d.value)}
+              />
+            </Field>
+            <Field label="Country">
+              <Input
+                type="text"
+                value={country}
+                onChange={(_, d) => setCountry(d.value)}
+              />
+            </Field>
+            <Field label="Sort Order">
+              <Input
+                type="number"
+                value={String(sortOrder)}
+                onChange={(_, d) => setSortOrder(parseInt(d.value, 10) || 0)}
+              />
+            </Field>
+          </DialogContent>
+          <DialogActions>
+            <Button appearance="secondary" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button
+              appearance="primary"
+              onClick={handleSubmit}
+              disabled={isLoading || !venueName.trim()}
+            >
+              {editingItem ? 'Update' : 'Add'}
             </Button>
           </DialogActions>
         </DialogBody>
@@ -333,6 +489,10 @@ export const Administration = () => {
   const [showMinistryModal, setShowMinistryModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showVenueQuickPickModal, setShowVenueQuickPickModal] = useState(false);
+  const [editingVenueQuickPick, setEditingVenueQuickPick] =
+    useState<VenueQuickPickItem | null>(null);
+  const [venueQuickPicksFilter, setVenueQuickPicksFilter] = useState('all');
 
   // Mutation for creating categories
   const createCategoryMutation = useMutation({
@@ -492,6 +652,45 @@ export const Administration = () => {
     queryFn: fetchThemes,
   });
 
+  const {
+    data: venueQuickPicks,
+    isLoading: venueQuickPicksLoading,
+    error: venueQuickPicksError,
+  } = useQuery({
+    queryKey: ['venueQuickPicks'],
+    queryFn: fetchVenueQuickPicks,
+  });
+
+  const createVenueQuickPickMutation = useMutation({
+    mutationFn: createVenueQuickPick,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['venueQuickPicks'] });
+      setShowVenueQuickPickModal(false);
+    },
+  });
+
+  const updateVenueQuickPickMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof updateVenueQuickPick>[1];
+    }) => updateVenueQuickPick(id, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['venueQuickPicks'] });
+      setShowVenueQuickPickModal(false);
+      setEditingVenueQuickPick(null);
+    },
+  });
+
+  const deleteVenueQuickPickMutation = useMutation({
+    mutationFn: deleteVenueQuickPick,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['venueQuickPicks'] });
+    },
+  });
+
   const categoriesColumns = useMemo<ColumnDef<Category>[]>(
     () => [
       { accessorKey: 'id', header: 'ID', enableSorting: true },
@@ -645,6 +844,74 @@ export const Administration = () => {
     []
   );
 
+  const venueQuickPicksColumns = useMemo<ColumnDef<VenueQuickPickItem>[]>(
+    () => [
+      { accessorKey: 'id', header: 'ID', enableSorting: true },
+      {
+        accessorKey: 'venueName',
+        header: 'Venue Name',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'street',
+        header: 'Street',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'city',
+        header: 'City',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'provinceOrState',
+        header: 'Province/State',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'country',
+        header: 'Country',
+        cell: (info) => info.getValue() || '-',
+        enableSorting: true,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => {
+          const row = info.row.original;
+          const id = row.id;
+          if (typeof id !== 'number' || id <= 0) return null;
+          return (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                appearance="subtle"
+                size="small"
+                onClick={() => {
+                  setEditingVenueQuickPick(row);
+                  setShowVenueQuickPickModal(true);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                appearance="subtle"
+                size="small"
+                onClick={() => deleteVenueQuickPickMutation.mutate(id)}
+              >
+                Delete
+              </Button>
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+    ],
+    [deleteVenueQuickPickMutation]
+  );
+
   // Show loading state while checking auth
   if (isAuthLoading) {
     return (
@@ -739,6 +1006,18 @@ export const Administration = () => {
             Transfer Activities
           </Link>
         </PermissionGate>
+        <Link
+          href="#venue-quick-picks"
+          style={{
+            display: 'inline-block',
+            color: '#0078d4',
+            textDecoration: 'underline',
+            marginLeft: '16px',
+            fontSize: '14px',
+          }}
+        >
+          Venue Quick Picks
+        </Link>
       </div>
 
       <AddModal
@@ -988,6 +1267,51 @@ export const Administration = () => {
         onAdd={() => setShowThemeModal(true)}
         canAdd={canManageLookups}
       />
+
+      <VenueQuickPickModal
+        open={showVenueQuickPickModal}
+        onClose={() => {
+          setShowVenueQuickPickModal(false);
+          setEditingVenueQuickPick(null);
+        }}
+        editingItem={editingVenueQuickPick}
+        onSubmit={(data) => {
+          if (
+            editingVenueQuickPick &&
+            typeof editingVenueQuickPick.id === 'number' &&
+            editingVenueQuickPick.id > 0
+          ) {
+            updateVenueQuickPickMutation.mutate({
+              id: editingVenueQuickPick.id,
+              data,
+            });
+          } else {
+            createVenueQuickPickMutation.mutate(data);
+          }
+        }}
+        isLoading={
+          createVenueQuickPickMutation.isPending ||
+          updateVenueQuickPickMutation.isPending
+        }
+      />
+
+      <div id="venue-quick-picks">
+        <LookupSection
+          title="Venue Quick Picks"
+          entityType="Venue Quick Pick"
+          data={venueQuickPicks || []}
+          columns={venueQuickPicksColumns}
+          isLoading={venueQuickPicksLoading}
+          error={venueQuickPicksError}
+          activeFilter={venueQuickPicksFilter}
+          setActiveFilter={setVenueQuickPicksFilter}
+          onAdd={() => {
+            setEditingVenueQuickPick(null);
+            setShowVenueQuickPickModal(true);
+          }}
+          canAdd={canManageLookups}
+        />
+      </div>
     </div>
   );
 };

@@ -16,6 +16,7 @@ import type {
   TranslationLanguageLookupItem,
   TranslationRequiredStatusLookupItem,
   UserLookupItem,
+  VenueQuickPickItem,
 } from '@corpcal/shared/api/types';
 import type {
   CreateActivityStatusRequest,
@@ -26,6 +27,7 @@ import type {
   CreateMinistryRequest,
   CreateTagRequest,
   CreateThemeRequest,
+  CreateVenueQuickPickRequest,
   UpdateActivityStatusRequest,
   UpdateCategoryRequest,
   UpdateCityRequest,
@@ -34,6 +36,7 @@ import type {
   UpdateMinistryRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
+  UpdateVenueQuickPickRequest,
 } from '@corpcal/shared/schemas';
 
 import api from './axios';
@@ -244,6 +247,22 @@ export async function fetchThemes(): Promise<ThemeLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchVenueQuickPicks(): Promise<VenueQuickPickItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: VenueQuickPickItem[];
+  }>('/lookups/venue-quick-picks');
+  return res.data.data;
+}
+
+export async function fetchLastUsedAddresses(): Promise<VenueQuickPickItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: VenueQuickPickItem[];
+  }>('/lookups/venue-last-used');
+  return res.data.data;
+}
+
 // ============================================
 // Admin CRUD Functions
 // ============================================
@@ -288,6 +307,37 @@ export async function updateTag(
   const res = await api.patch<{ success: boolean; data: any }>(
     `/lookups/tags/${id}`,
     data
+  );
+  return res.data;
+}
+
+// Venue quick picks
+export async function createVenueQuickPick(
+  data: CreateVenueQuickPickRequest
+): Promise<{ success: boolean; data: VenueQuickPickItem }> {
+  const res = await api.post<{ success: boolean; data: VenueQuickPickItem }>(
+    '/lookups/venue-quick-picks',
+    data
+  );
+  return res.data;
+}
+
+export async function updateVenueQuickPick(
+  id: number,
+  data: UpdateVenueQuickPickRequest
+): Promise<{ success: boolean; data: VenueQuickPickItem }> {
+  const res = await api.patch<{ success: boolean; data: VenueQuickPickItem }>(
+    `/lookups/venue-quick-picks/${id}`,
+    data
+  );
+  return res.data;
+}
+
+export async function deleteVenueQuickPick(
+  id: number
+): Promise<{ success: boolean }> {
+  const res = await api.delete<{ success: boolean }>(
+    `/lookups/venue-quick-picks/${id}`
   );
   return res.data;
 }
@@ -445,4 +495,5 @@ export type {
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
   MinistryLookupItem,
+  VenueQuickPickItem,
 };

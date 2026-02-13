@@ -42,6 +42,7 @@ When migrating legacy data:
 10. [RolePermissions](#rolepermissions)
 11. [Sessions](#sessions)
 12. [UserTeams](#userteams)
+13. [Venue Quick Picks](#venue-quick-picks)
 
 ---
 
@@ -217,6 +218,7 @@ When migrating legacy data:
    - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
    - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
    - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
+   - `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
 
 ### Visibility and Sharing
 
@@ -244,6 +246,37 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 - `unique`: Field must have unique values across all rows
 - `FK`: Foreign key constraint to another table
 - `nullable`: Field can be null (no constraint specified means nullable)
+
+---
+
+## Venue Quick Picks
+
+**Legacy Table Name:** _N/A (New table, no legacy mapping)_  
+**New Table Name:** `venue_quick_picks`
+
+**Description:** Admin-configurable quick-pick venues for the activity form. Stores 2-4 fixed venue options (e.g. BC Legislature, Vancouver Convention Centre) that appear as tags under the Venue address input. Managed via the admin UI; not migrated from legacy.
+
+### Field Mappings
+
+| New Field Name        | New Type                   | New Constraints            | Description                                                    |
+| --------------------- | -------------------------- | -------------------------- | -------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                    |
+| `venueName`           | `varchar(255)`             | `notNull`                  | Display name for the venue (e.g. "BC Legislature")             |
+| `street`              | `varchar(255)`             | nullable                   | Street address                                                 |
+| `city`                | `varchar(255)`             | nullable                   | City                                                           |
+| `provinceOrState`     | `varchar(255)`             | nullable                   | Province or state                                              |
+| `country`             | `varchar(255)`             | nullable                   | Country                                                        |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Display order (lower first)                                    |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the quick-pick is shown (max 4 active enforced in app) |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was created                                    |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to users - user who created the record                      |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was last updated                               |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to users - user who last updated the record                 |
+
+### Notes
+
+- **No legacy mapping**: This table is new; data is entered via the admin UI.
+- **Purpose**: Enables "quick pick" venue tags on the Create/Edit Activity form so users can one-click fill the venue address.
 
 ---
 

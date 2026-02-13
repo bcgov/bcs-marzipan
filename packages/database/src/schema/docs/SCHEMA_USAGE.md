@@ -9,6 +9,7 @@ This document provides detailed usage information, examples, and behavioral patt
 3. [Pods Access Control](#pods-access-control)
 4. [Reports Configuration](#reports-configuration)
 5. [Activity Report Settings](#activity-report-settings)
+6. [Venue Quick Picks and Last-Used Addresses](#venue-quick-picks-and-last-used-addresses)
 
 ---
 
@@ -284,3 +285,19 @@ When team visibility is enabled:
 
 - Tags with `visibility = 'team'` will be restricted via a junction table (e.g., `teamTags`)
 - Query pattern will follow the same approach as categories: check visibility field first, then consult junction table if needed
+
+---
+
+## Venue Quick Picks and Last-Used Addresses
+
+The activity form (Create/Edit) shows quick-pick venue tags under the Venue address input so users can one-click fill the venue.
+
+### Data sources
+
+- **Fixed quick-picks (max 4)**: Stored in `venue_quick_picks`. Admins configure these in Administration (Venue Quick Picks). Only active rows (`is_active = true`) are returned by the API; the app enforces a maximum of 4 active rows on create/update.
+- **Last-used (up to 2)**: Derived from `venue_addresses` joined to `activities` where `activities.last_updated_by = current user`, ordered by `activities.last_updated_date_time` desc, deduplicated by address and limited to 2. No separate table.
+
+### Behaviour
+
+- The form shows up to 4 fixed tags plus up to 2 last-used tags (total quick-pick slots capped at 4: if 3 fixed are configured, only 1 last-used is shown).
+- Clicking a tag sets the form’s `venueAddress` (venueName, street, city, provinceOrState, country) and updates the address input via the controlled `value` prop on the address autocomplete.

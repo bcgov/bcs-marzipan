@@ -656,3 +656,18 @@ SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true
 
 -- Teams sequence
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
+
+-- ============================================================================
+-- VENUE QUICK PICKS
+-- Admin-configured quick-pick venues for the activity form (max 4 active)
+-- ============================================================================
+
+INSERT INTO venue_quick_picks (venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+SELECT * FROM (VALUES
+  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, 1, 1),
+  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, 1, 1)
+) AS v(venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+WHERE NOT EXISTS (SELECT 1 FROM venue_quick_picks LIMIT 1);
+
+-- Venue quick picks sequence
+SELECT setval('venue_quick_picks_id_seq', COALESCE((SELECT MAX(id) FROM venue_quick_picks), 1), true);

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -24,6 +24,8 @@ import {
   translatedLanguages,
   translationRequiredStatuses,
   users,
+  venueAddresses,
+  venueQuickPicks,
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
@@ -40,6 +42,7 @@ import type {
   ThemeLookupItem,
   TranslationLanguageLookupItem,
   UserLookupItem,
+  VenueQuickPickItem,
 } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../database/database.service';
@@ -362,6 +365,193 @@ export class LookupsService {
       countryCode: item.CountryIso2,
       postalCode: item.PostalCode,
     };
+  }
+
+  /**
+   * Get active venue quick-picks for the activity form (admin-configured, max 4).
+   */
+  async getVenueQuickPicks(): Promise<VenueQuickPickItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: venueQuickPicks.id,
+        venueName: venueQuickPicks.venueName,
+        street: venueQuickPicks.street,
+        city: venueQuickPicks.city,
+        provinceOrState: venueQuickPicks.provinceOrState,
+        country: venueQuickPicks.country,
+      })
+      .from(venueQuickPicks)
+      .where(eq(venueQuickPicks.isActive, true))
+      .orderBy(venueQuickPicks.sortOrder);
+    return results.map((row) => ({
+      id: row.id,
+      venueName: row.venueName,
+      street: row.street,
+      city: row.city,
+      provinceOrState: row.provinceOrState,
+      country: row.country,
+    }));
+  }
+
+  /**
+   * Get last 2 distinct venue addresses used by the current user (from activities they last updated).
+   */
+  async getVenueLastUsed(userId: number): Promise<VenueQuickPickItem[]> {
+    const rows = await this.databaseService.db
+      .select({
+        venueName: venueAddresses.venueName,
+        street: venueAddresses.street,
+        city: venueAddresses.city,
+        provinceOrState: venueAddresses.provinceOrState,
+        country: venueAddresses.country,
+        lastUpdated: activities.lastUpdatedDateTime,
+      })
+      .from(venueAddresses)
+      .innerJoin(activities, eq(venueAddresses.activityId, activities.id))
+      .where(eq(activities.lastUpdatedBy, userId))
+      .orderBy(desc(activities.lastUpdatedDateTime))
+      .limit(10);
+    const seen = new Set<string>();
+    const out: Array<{
+      venueName: string | null;
+      street: string | null;
+      city: string | null;
+      provinceOrState: string | null;
+      country: string | null;
+    }> = [];
+    for (const row of rows) {
+      const key = `${row.street ?? ''}|${row.city ?? ''}|${row.country ?? ''}`;
+      if (seen.has(key) || out.length >= 2) continue;
+      seen.add(key);
+      out.push({
+        venueName: row.venueName,
+        street: row.street,
+        city: row.city,
+        provinceOrState: row.provinceOrState,
+        country: row.country,
+      });
+    }
+    return out.map((item, index) => ({ id: -(index + 1), ...item }));
+  }
+
+  /**
+   * Create a venue quick-pick. Enforce max 4 active.
+   */
+  async createVenueQuickPick(
+    data: {
+      venueName: string;
+      street?: string | null;
+      city?: string | null;
+      provinceOrState?: string | null;
+      country?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ): Promise<VenueQuickPickItem> {
+    const activeList = await this.databaseService.db
+      .select({ id: venueQuickPicks.id })
+      .from(venueQuickPicks)
+      .where(eq(venueQuickPicks.isActive, true));
+    if (activeList.length >= 4) {
+      throw new Error('Maximum 4 active venue quick-picks allowed');
+    }
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(venueQuickPicks)
+      .values({
+        venueName: data.venueName,
+        street: data.street ?? undefined,
+        city: data.city ?? undefined,
+        provinceOrState: data.provinceOrState ?? undefined,
+        country: data.country ?? undefined,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return {
+      id: result.id,
+      venueName: result.venueName,
+      street: result.street,
+      city: result.city,
+      provinceOrState: result.provinceOrState,
+      country: result.country,
+    };
+  }
+
+  /**
+   * Update a venue quick-pick. Enforce max 4 active when setting isActive to true.
+   */
+  async updateVenueQuickPick(
+    id: number,
+    data: {
+      venueName?: string;
+      street?: string | null;
+      city?: string | null;
+      provinceOrState?: string | null;
+      country?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ): Promise<VenueQuickPickItem> {
+    if (data.isActive === true) {
+      const activeCount = await this.databaseService.db
+        .select({ id: venueQuickPicks.id })
+        .from(venueQuickPicks)
+        .where(eq(venueQuickPicks.isActive, true));
+      const current = await this.databaseService.db
+        .select({ isActive: venueQuickPicks.isActive })
+        .from(venueQuickPicks)
+        .where(eq(venueQuickPicks.id, id))
+        .limit(1);
+      const wasAlreadyActive = current[0]?.isActive ?? false;
+      if (!wasAlreadyActive && activeCount.length >= 4) {
+        throw new Error('Maximum 4 active venue quick-picks allowed');
+      }
+    }
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .update(venueQuickPicks)
+      .set({
+        ...(data.venueName !== undefined && { venueName: data.venueName }),
+        ...(data.street !== undefined && { street: data.street }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.provinceOrState !== undefined && {
+          provinceOrState: data.provinceOrState,
+        }),
+        ...(data.country !== undefined && { country: data.country }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(venueQuickPicks.id, id))
+      .returning();
+    if (!result) throw new Error('Venue quick-pick not found');
+    return {
+      id: result.id,
+      venueName: result.venueName,
+      street: result.street,
+      city: result.city,
+      provinceOrState: result.provinceOrState,
+      country: result.country,
+    };
+  }
+
+  /**
+   * Delete a venue quick-pick (hard delete).
+   */
+  async deleteVenueQuickPick(id: number): Promise<void> {
+    const deleted = await this.databaseService.db
+      .delete(venueQuickPicks)
+      .where(eq(venueQuickPicks.id, id))
+      .returning({ id: venueQuickPicks.id });
+    if (deleted.length === 0) throw new Error('Venue quick-pick not found');
   }
 
   /**

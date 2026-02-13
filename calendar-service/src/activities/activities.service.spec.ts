@@ -2,11 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
-import type {
-  LookAheadSection,
-  LookAheadStatus,
-  Visibility,
-} from '@corpcal/shared';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 
 import {
@@ -159,99 +154,6 @@ describe('ActivitiesService', () => {
     fetchReportSettingsForActivities: vi.fn().mockResolvedValue(new Map()),
   };
 
-  // Mock mapper service
-  const mockMapperService = {
-    mapToResponseDto: vi.fn((activity, relatedData) => {
-      // Format time to HH:mm (matches real mapper behavior)
-      const formatTime = (time: string | null): string | null => {
-        if (!time) return null;
-        // If it's already in HH:mm format, return as is
-        if (time.match(/^\d{2}:\d{2}$/)) return time;
-        // If it's a full time string, extract HH:mm
-        return time.substring(0, 5);
-      };
-
-      // Return a minimal valid response for testing
-      return {
-        id: activity.id,
-        displayId: activity.displayId ?? null,
-        activityStatusId: activity.activityStatusId ?? 0,
-        dateStatusId: activity.dateStatusId ?? 0,
-        timeStatusId: activity.timeStatusId ?? 0,
-        category: relatedData?.categories ?? [],
-        title: activity.title ?? '',
-        summary: activity.summary ?? '',
-        isIssue: activity.isIssue ?? false,
-        isConfidential: activity.isConfidential ?? false,
-        leadOrgId: activity.leadOrgId ?? null,
-        leadOrgName: activity.leadOrgName ?? null,
-        leadOrg: relatedData?.leadOrgName ?? null,
-        tags: relatedData?.tags ?? [],
-        significance: activity.significance ?? '',
-        activityStatus: relatedData?.activityStatus ?? 'unknown',
-        dateStatus: relatedData?.dateStatus ?? 'unknown',
-        timeStatus: relatedData?.timeStatus ?? 'unknown',
-        isAllDay: activity.isAllDay ?? false,
-        startDate: activity.startDate
-          ? new Date(activity.startDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
-          : null,
-        startTime: formatTime(activity.startTime as string | null),
-        endDate: activity.endDate
-          ? new Date(activity.endDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
-          : null,
-        endTime: formatTime(activity.endTime as string | null),
-        schedulingNotes: activity.schedulingNotes ?? null,
-        commsMaterials: relatedData?.commsMaterials ?? [],
-        newsReleaseId: activity.newsReleaseId ?? null,
-        newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
-        newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
-        translationsRequired: relatedData?.translationsRequired ?? [],
-        representativesAttending: relatedData?.representativesAttending ?? [],
-        venueAddress: relatedData?.venueAddress ?? null,
-        eventPlannerLeadId: activity.eventPlannerLeadId ?? null,
-        eventLead:
-          activity.eventPlannerLeadName ?? relatedData?.eventLeadName ?? null,
-        eventPlannerLeadName: activity.eventPlannerLeadName ?? null,
-        reportSettings: [],
-        executiveSummary: activity.executiveSummary ?? null,
-        lookAheadStatus:
-          activity.lookAheadStatus ?? ('none' satisfies LookAheadStatus),
-        lookAheadSection:
-          activity.lookAheadSection ?? ('events' satisfies LookAheadSection),
-        notes: activity.notes ?? null,
-        pitchDate: activity.pitchDate
-          ? new Date(activity.pitchDate as string | number | Date)
-              .toISOString()
-              .split('T')[0]
-          : null,
-        pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
-        translationsRequiredStatusId:
-          activity.translationsRequiredStatusId ?? null,
-        premierRequestedId: activity.premierRequestedId ?? null,
-        visibility: activity.visibility ?? ('global' satisfies Visibility),
-        sharedWithAll: activity.sharedWithAll ?? false,
-        leadMinistryId: activity.leadMinistryId,
-        sharedWith: relatedData?.sharedWith ?? [],
-        commsContacts: relatedData?.commsContacts ?? [],
-        newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
-        newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
-        premierRequested: relatedData?.premierRequested ?? null,
-        createdDateTime:
-          activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
-        createdBy: activity.createdBy ?? 0,
-        lastUpdatedDateTime:
-          activity.lastUpdatedDateTime?.toISOString() ??
-          activity.createdDateTime?.toISOString() ??
-          new Date().toISOString(),
-        lastUpdatedBy: activity.lastUpdatedBy ?? 0,
-      };
-    }),
-  };
-
   // Mock utils service
   const mockUtilsService = {
     generateDisplayId: vi.fn(
@@ -285,10 +187,7 @@ describe('ActivitiesService', () => {
           provide: ActivityDataFetcherService,
           useValue: mockDataFetcherService,
         },
-        {
-          provide: ActivityMapperService,
-          useValue: mockMapperService,
-        },
+        ActivityMapperService,
         {
           provide: ActivityUtilsService,
           useValue: mockUtilsService,
@@ -447,7 +346,9 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('isAllDay');
       expect(result).toHaveProperty('reportSettings');
       expect(Array.isArray(result.reportSettings)).toBe(true);
-      expect(result).toHaveProperty('sharedWithAll');
+      expect(result).toHaveProperty('sharedWith');
+      expect(Array.isArray(result.sharedWith)).toBe(true);
+      expect(result).toHaveProperty('strategy');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');

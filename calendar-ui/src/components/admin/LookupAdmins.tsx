@@ -5,6 +5,8 @@
  * using the GenericLookupAdmin template.
  */
 
+import type { ColumnDef } from '@tanstack/react-table';
+
 import {
   fetchActivityStatuses,
   fetchCategories,
@@ -14,11 +16,13 @@ import {
   fetchMinistries,
   fetchTags,
   fetchThemes,
+  fetchVenueQuickPicks,
   type LookupItem,
 } from '@/api/lookupsApi';
 
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
+import { VenueQuickPickForm } from './VenueQuickPickForm';
 
 // Type definitions - these extend the base LookupItem from the API
 type Category = LookupItem & {
@@ -62,6 +66,16 @@ type ActivityStatus = LookupItem & {
 type Theme = LookupItem & {
   key?: string;
   displayName?: string | null;
+};
+
+type VenueQuickPick = LookupItem & {
+  venueName?: string | null;
+  street?: string | null;
+  city?: string | null;
+  provinceOrState?: string | null;
+  country?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
 };
 
 // Form field configurations
@@ -262,6 +276,23 @@ const themeFields: FormField[] = [
   },
 ];
 
+const venueQuickPickFields: FormField[] = [
+  {
+    name: 'venueName',
+    label: 'Venue Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter venue name',
+  },
+  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
 // Component exports
 export function CategoriesAdmin() {
   return (
@@ -422,6 +453,48 @@ export function ThemesAdmin() {
       queryFn={fetchThemes as () => Promise<Theme[]>}
       formFields={themeFields}
       getItemName={(item) => (item.key as string) || String(item.id)}
+    />
+  );
+}
+
+const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
+  {
+    accessorKey: 'street',
+    header: 'Street Address',
+    cell: ({ row }) => (
+      <span className="text-slate-600">{row.original.street || '—'}</span>
+    ),
+  },
+  {
+    accessorKey: 'city',
+    header: 'City',
+    cell: ({ row }) => (
+      <span className="text-slate-600">{row.original.city || '—'}</span>
+    ),
+  },
+];
+
+export function VenueQuickPicksAdmin() {
+  return (
+    <GenericLookupAdmin<VenueQuickPick>
+      title="Venue Quick Picks"
+      description="Manage venue quick picks for the activity form"
+      entityType="Venue Quick Pick"
+      apiEndpoint="/lookups/venue-quick-picks"
+      queryKey="venueQuickPicks"
+      queryFn={fetchVenueQuickPicks as () => Promise<VenueQuickPick[]>}
+      formFields={venueQuickPickFields}
+      additionalColumns={venueQuickPicksAdditionalColumns}
+      getItemName={(item) =>
+        (item.venueName as string) || String(item.id ?? '')
+      }
+      renderModalContent={({ initialData, onChange, isSubmitting }) => (
+        <VenueQuickPickForm
+          initialData={initialData}
+          onChange={onChange}
+          isSubmitting={isSubmitting}
+        />
+      )}
     />
   );
 }

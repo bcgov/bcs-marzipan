@@ -48,4 +48,5 @@ export type {
   TimeStatusLookupItem,
   PitchRequiredStatusLookupItem,
   TranslationRequiredStatusLookupItem,
+  VenueQuickPickItem,
 } from '../schemas/lookup.schema';
