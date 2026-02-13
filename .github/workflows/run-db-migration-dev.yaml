@@ -51,15 +51,6 @@ jobs:
             --from-file=packages/database/migrations \
             --dry-run=client -o yaml | oc apply -f -
 
-      - name: Apply DB seed ConfigMap
-        if: ${{ inputs.run_seeds == true }}
-        run: |
-          oc project ${DEV_NAMESPACE}
-          ls packages/database/seeds/*.sql
-          oc create configmap calendar-db-seed-migrations \
-            --from-file=packages/database/seeds \
-            --dry-run=client -o yaml | oc apply -f -
-
       - name: Run DB migrations
         run: |
           oc delete job calendar-db-migrate \
@@ -76,11 +67,19 @@ jobs:
       - name: Run DB seeds
         if: ${{ inputs.run_seeds == true }}
         run: |
+          oc project ${TOOLS_NAMESPACE}
+          oc start-build calendar-db-seed-build \
+            --from-dir=. \
+            --follow \
+            --commit=$(git rev-parse HEAD)
+          oc tag ${TOOLS_NAMESPACE}/calendar-db-seed:latest ${DEV_NAMESPACE}/calendar-db-seed:latest
+
           oc delete job calendar-db-seed \
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          oc apply -n ${DEV_NAMESPACE} -f openshift/deploy/base/database/migration/calendar-db-seed-job.yaml
+          envsubst < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
+            | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-seed \
             -n ${DEV_NAMESPACE} \

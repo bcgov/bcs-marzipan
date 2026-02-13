@@ -1,0 +1,27 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: calendar-db-seed-build
+  labels:
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/bcgov/bcs-marzipan.git
+      ref: develop
+    contextDir: .
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile.seed
+  output:
+    to:
+      kind: ImageStreamTag
+      name: calendar-db-seed:latest
+  triggers:
+    - type: ConfigChange
