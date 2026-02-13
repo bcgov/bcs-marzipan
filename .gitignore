@@ -5,22 +5,22 @@
 .pnp.js
 
 # build output
-/dist
-/build
-/out
-**/dist
-**/build
-**/out
-/calendar-service/dist
-/calendar-service/build
-/calendar-ui/dist
-/calendar-ui/build
-!/openshift/build
+/dist/
+/build/
+/out/
+**/dist/
+**/build/
+**/out/
+/calendar-service/dist/
+/calendar-service/build/
+/calendar-ui/dist/
+/calendar-ui/build/
+!/openshift/build/
 !/openshift/build/**
 
 # packages build output and dependencies
-/packages/*/dist
-/packages/*/node_modules
+/packages/*/dist/
+/packages/*/node_modules/
 
 # logs
 npm-debug.log*
