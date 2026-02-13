@@ -189,6 +189,12 @@ If a migration fails or causes issues:
 | `npm run db:migrate --workspace=packages/database`            | Run incremental migrations (production)                             |
 | `npm run db:studio --workspace=packages/database`             | Open Drizzle Studio for visual DB exploration                       |
 | `npm run seed --workspace=calendar-service`                   | Seed lookup tables and sample data                                  |
+| `npm run erd:build --workspace=packages/database`             | Generate a static ER diagram from Drizzle schema (Liam ERD)         |
+| `npm run erd:serve --workspace=packages/database`             | Serve the generated ER diagram locally (view in browser)            |
+
+### ER diagram (Liam ERD)
+
+[Liam ERD](https://liambx.com/docs/parser/supported-formats/drizzle) generates a static ER diagram from the Drizzle schema in `src/schema/*.ts`. It does not watch for changes; rerun `erd:build` after schema updates. Output is written to `dist/` (gitignored). To view the diagram, run `erd:serve` and open the URL shown in your browser.
 
 ### db:push vs db:migrate
 

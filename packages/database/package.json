@@ -37,7 +37,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "erd:build": "npx @liam-hq/cli erd build --format drizzle --input \"src/schema/*.ts\"",
+    "erd:serve": "npx serve dist/"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.7",
