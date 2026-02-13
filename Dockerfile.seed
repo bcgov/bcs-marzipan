@@ -3,29 +3,34 @@ FROM postgres:16-alpine
 WORKDIR /seeds
 
 # Bundle seed files directly into the image
-COPY packages/database/seeds /seeds
+COPY packages/database/seeds/*.sql /seeds
+COPY run-seed.sh /run-seed.sh
 
-CMD sh -c "\
-  set -e; \
-  echo \"Waiting for database...\"; \
-  until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done; \
-  echo \"Checking for seed files...\"; \
-  ls -l /seeds; \
-  found=false; \
-  for f in /seeds/*.sql; do \
-    if [ ! -e \"$f\" ]; then continue; fi; \
-    found=true; \
-    echo \"Found seed file: $f\"; \
-    break; \
-  done; \
-  if [ \"$found\" = false ]; then \
-    echo \"No seed files found. Nothing to apply.\"; \
-    exit 0; \
-  fi; \
-  echo \"Running DB seeds...\"; \
-  for f in /seeds/*.sql; do \
-    echo \"Applying $f\"; \
-    psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; \
-  done; \
-  echo \"DB seeds completed successfully.\"; \
-"
+RUN chmod +x /run-seed.sh
+
+ENTRYPOINT ["/run-seed.sh"]
+
+# CMD sh -c "\
+#   set -e; \
+#   echo \"Waiting for database...\"; \
+#   until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done; \
+#   echo \"Checking for seed files...\"; \
+#   ls -l /seeds; \
+#   found=false; \
+#   for f in /seeds/*.sql; do \
+#     if [ ! -e \"$f\" ]; then continue; fi; \
+#     found=true; \
+#     echo \"Found seed file: $f\"; \
+#     break; \
+#   done; \
+#   if [ \"$found\" = false ]; then \
+#     echo \"No seed files found. Nothing to apply.\"; \
+#     exit 0; \
+#   fi; \
+#   echo \"Running DB seeds...\"; \
+#   for f in /seeds/*.sql; do \
+#     echo \"Applying $f\"; \
+#     psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f \"$f\"; \
+#   done; \
+#   echo \"DB seeds completed successfully.\"; \
+# "
