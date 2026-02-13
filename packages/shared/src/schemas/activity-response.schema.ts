@@ -111,13 +111,6 @@ const tagSchema = z.object({
 });
 
 /**
- * Representative Attending Schema
- */
-const representativeAttendingSchema = z.object({
-  representative: z.string(),
-});
-
-/**
  * Report Setting Schema
  * Includes whether the activity is omitted from this report
  */
@@ -147,7 +140,7 @@ export const activityComputedFieldsSchema = z.object({
   tags: z.array(tagSchema).default([]),
   commsMaterials: z.array(z.string()).default([]),
   translationsRequired: z.array(z.string()).default([]),
-  representativesAttending: z.array(representativeAttendingSchema).default([]),
+  representativesAttending: z.array(z.string()).default([]), // Representative display names
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
   commsContacts: z
     .array(

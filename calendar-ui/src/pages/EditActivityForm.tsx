@@ -259,10 +259,8 @@ export function EditActivityForm(): React.ReactElement {
         clearTimeout(timeoutId);
       }
     };
-<<<<<<< HEAD
     // Granular lookups deps intentional: full lookups is a new ref each render; we only re-run when these arrays change.
-=======
->>>>>>> 935720e (refactor(schema): update schema; improve type safety)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [
     id,
     form,
