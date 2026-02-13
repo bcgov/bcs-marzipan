@@ -115,7 +115,6 @@ const tagSchema = z.object({
  */
 const representativeAttendingSchema = z.object({
   representative: z.string(),
-  invitationStatus: z.string().default('No'), // e.g., 'Yes', 'No', 'TBC', 'Confirmed', 'Not Available'
 });
 
 /**
