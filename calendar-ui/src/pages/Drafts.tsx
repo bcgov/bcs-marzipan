@@ -23,6 +23,6 @@ const dummyDrafts: DraftEntry[] = [
   },
 ];
 
-export default function DraftsPage() {
+export function DraftsPage() {
   return <DraftTable entries={dummyDrafts} />;
 }

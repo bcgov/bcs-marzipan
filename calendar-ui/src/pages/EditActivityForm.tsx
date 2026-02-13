@@ -76,7 +76,7 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   pitchRequired: false,
 });
 
-export default function EditActivityForm(): React.ReactElement {
+export function EditActivityForm(): React.ReactElement {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);

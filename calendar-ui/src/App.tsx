@@ -1,5 +1,6 @@
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { Route, Routes } from 'react-router-dom';
+import { Suspense } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 
@@ -8,18 +9,47 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
-import { CalendarEntriesList } from './pages/CalendarEntriesList';
-import { Dashboard } from './pages/Dashboard';
+import { lazyWithRetry } from './lib/lazy-with-retry';
 
 import './styles/App.css';
 
-import { CreateActivityForm } from './pages/CreateActivityForm';
-import DraftsPage from './pages/Drafts';
-import EditActivityForm from './pages/EditActivityForm';
-import { Login } from './pages/Login';
-import { LookAheadReport } from './pages/LookAheadReport';
-import { NotFound } from './pages/NotFound';
-import { Settings } from './pages/Settings';
+// Route-based code splitting: each page is loaded only when its route is visited.
+// lazyWithRetry adds a single retry on chunk-load failure (stale deploys).
+const CalendarEntriesList = lazyWithRetry(() =>
+  import('./pages/CalendarEntriesList').then((m) => ({
+    default: m.CalendarEntriesList,
+  }))
+);
+const Dashboard = lazyWithRetry(() =>
+  import('./pages/Dashboard').then((m) => ({ default: m.Dashboard }))
+);
+const CreateActivityForm = lazyWithRetry(() =>
+  import('./pages/CreateActivityForm').then((m) => ({
+    default: m.CreateActivityForm,
+  }))
+);
+const DraftsPage = lazyWithRetry(() =>
+  import('./pages/Drafts').then((m) => ({ default: m.DraftsPage }))
+);
+const EditActivityForm = lazyWithRetry(() =>
+  import('./pages/EditActivityForm').then((m) => ({
+    default: m.EditActivityForm,
+  }))
+);
+const Login = lazyWithRetry(() =>
+  import('./pages/Login').then((m) => ({ default: m.Login }))
+);
+const LookAheadReport = lazyWithRetry(() =>
+  import('./pages/LookAheadReport').then((m) => ({
+    default: m.LookAheadReport,
+  }))
+);
+const NotFound = lazyWithRetry(() =>
+  import('./pages/NotFound').then((m) => ({ default: m.NotFound }))
+);
+const Settings = lazyWithRetry(() =>
+  import('./pages/Settings').then((m) => ({ default: m.Settings }))
+);
 
 function App() {
   return (
@@ -27,65 +57,75 @@ function App() {
       <FluentProvider theme={webLightTheme}>
         <GlobalErrorBoundary>
           <Toaster position="top-right" />
-          <Routes>
-            {/* Public route - Login */}
-            <Route path="/login" element={<Login />} />
+          <Suspense
+            fallback={
+              <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
+                Loading…
+              </div>
+            }
+          >
+            <Routes>
+              {/* Public route - Login */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Protected routes - require authentication */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<CalendarEntriesList />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="drafts" element={<DraftsPage />} />
+              {/* Protected routes - require authentication */}
               <Route
-                path="create-activity"
+                path="/"
                 element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
-                  >
-                    <CreateActivityForm />
+                  <ProtectedRoute>
+                    <Layout />
                   </ProtectedRoute>
                 }
-              />
-              <Route
-                path="activities/:id/edit"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
-                  >
-                    <EditActivityForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="settings"
-                element={
-                  <ProtectedRoute
-                    requiredPermission={PERMISSIONS.SETTINGS.VIEW}
-                  >
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="reports/look-ahead"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
-                    <LookAheadReport />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
+              >
+                <Route index element={<CalendarEntriesList />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="drafts" element={<DraftsPage />} />
+                <Route
+                  path="create-activity"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
+                    >
+                      <CreateActivityForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="activities/:id/edit"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                    >
+                      <EditActivityForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.SETTINGS.VIEW}
+                    >
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports/look-ahead"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.REPORTS.VIEW}
+                    >
+                      <LookAheadReport />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
 
-            {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </GlobalErrorBoundary>
       </FluentProvider>
     </AuthProvider>
