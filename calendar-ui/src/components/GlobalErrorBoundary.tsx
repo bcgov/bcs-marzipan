@@ -13,6 +13,7 @@ import {
   TRY_AGAIN_LABEL,
 } from '../lib/error-messages';
 import { getFriendlyErrorMessage } from '../lib/error-toast';
+import { ChunkLoadError } from '../lib/lazy-with-retry';
 import { createLogger } from '../lib/logger';
 import { StatusMessage } from './StatusMessage';
 import { Button } from './ui/button';
@@ -57,7 +58,11 @@ function GlobalErrorFallback({
   let message = getFriendlyErrorMessage(error);
   let showDetails = true;
 
-  if (error instanceof ApiError) {
+  if (error instanceof ChunkLoadError) {
+    title = 'Update Available';
+    message = error.message;
+    showDetails = false;
+  } else if (error instanceof ApiError) {
     if (error.status === 403) {
       title = ACCESS_DENIED_TITLE;
       message = ACCESS_DENIED_MESSAGE;

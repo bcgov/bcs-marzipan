@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import {
   fetchLookAheadData,
@@ -15,9 +16,10 @@ import {
   TabsTrigger,
 } from '../components/ui/tabs';
 import { useLookAheadWebSocket } from '../hooks/useLookAheadWebSocket';
-import { exportLookAheadToPdf } from '../lib/look-ahead-pdf-export';
+import { showErrorToast } from '../lib/error-toast';
 
 export function LookAheadReport() {
+  const [isExporting, setIsExporting] = useState(false);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['look-ahead'],
     queryFn: () => fetchLookAheadData(),
@@ -29,9 +31,17 @@ export function LookAheadReport() {
     },
   });
 
-  const handleExportPdf = () => {
-    if (data?.sections) {
+  const handleExportPdf = async () => {
+    if (!data?.sections) return;
+    setIsExporting(true);
+    try {
+      const { exportLookAheadToPdf } =
+        await import('../lib/look-ahead-pdf-export');
       exportLookAheadToPdf(data);
+    } catch (error) {
+      showErrorToast(error, 'Failed to export PDF. Please try again.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -67,8 +77,12 @@ export function LookAheadReport() {
         title="Look Ahead"
         description={data.report?.displayName ?? undefined}
         action={
-          <Button variant="outline" onClick={handleExportPdf}>
-            Export PDF
+          <Button
+            variant="outline"
+            onClick={() => void handleExportPdf()}
+            disabled={isExporting}
+          >
+            {isExporting ? 'Preparing PDF...' : 'Export PDF'}
           </Button>
         }
       />

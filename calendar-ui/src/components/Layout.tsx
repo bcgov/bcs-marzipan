@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import React, { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import Header from './Header/Header';
 import { Sidebar } from './Sidebar';
@@ -18,7 +18,15 @@ export const Layout = () => {
             minWidth: 0,
           }}
         >
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
+                Loading…
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

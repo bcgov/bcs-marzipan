@@ -13,9 +13,9 @@ RUN npm ci --ignore-scripts
 
 # ARG VITE_API_BASE_URL
 # ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
 # Build shared packages, then the UI
-RUN npm run build --workspace=packages/database && \
+RUN NODE_OPTIONS=--max-old-space-size=4096 \
+    npm run build --workspace=packages/database && \
     npm run build --workspace=packages/shared && \
     npm run build --workspace=calendar-ui
 

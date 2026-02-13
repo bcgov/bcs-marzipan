@@ -43,12 +43,6 @@ jobs:
             --server=${OPENSHIFT_SERVER} \
             --insecure-skip-tls-verify=true
 
-      - name: Apply build resources in tools namespace
-        run: |
-          oc project ${TOOLS_NAMESPACE}
-          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
-          oc kustomize openshift/build | envsubst | oc apply -f -
-
       - name: Apply DB migration ConfigMap
         run: |
           oc project ${DEV_NAMESPACE}
@@ -86,66 +80,7 @@ jobs:
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          oc apply -n ${DEV_NAMESPACE} -f - <<'EOF'
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: calendar-db-seed
-          spec:
-            backoffLimit: 1
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                  - name: seed
-                    image: postgres:16-alpine
-                    env:
-                      - name: DATABASE_URL
-                        valueFrom:
-                          secretKeyRef:
-                            name: calendar-service-secrets
-                            key: DATABASE_URL
-                    volumeMounts:
-                      - name: seeds
-                        mountPath: /seeds
-                    command:
-                      - sh
-                      - -c
-                      - |
-                        set -e
-
-                        echo "Waiting for database..."
-                        until pg_isready -d "$DATABASE_URL"; do
-                          sleep 2
-                        done
-
-                        echo "Checking for seed files..."
-
-                        found=false
-                        for f in /seeds/*.sql; do
-                          if [ ! -e "$f" ]; then
-                            continue
-                          fi
-                          found=true
-                          break
-                        done
-                        if [ "$found" = false ]; then
-                          echo "No seed files found. Nothing to apply."
-                          exit 0
-                        fi
-
-                        echo "Running DB seeds..."
-                        for f in /seeds/*.sql; do
-                          echo "Applying $f"
-                          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-                        done
-
-                        echo "DB seeds completed successfully."
-                volumes:
-                  - name: seeds
-                    configMap:
-                      name: calendar-db-seed-migrations
-          EOF
+          oc apply -n ${DEV_NAMESPACE} -f openshift/deploy/base/database/migration/calendar-db-seed-job.yaml
 
           oc wait --for=condition=complete job/calendar-db-seed \
             -n ${DEV_NAMESPACE} \

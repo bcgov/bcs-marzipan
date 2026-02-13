@@ -14,8 +14,3 @@ images:
   - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-ui
     newName: image-registry.openshift-image-registry.svc:5000/${PROD_NAMESPACE}/calendar-ui
     newTag: latest
-
-# Set environment-specific API base URL
-vars:
-  - name: CALENDAR_UI_API_BASE_URL
-    value: https://calendar-service-${PROD_NAMESPACE}.apps.silver.devops.gov.bc.ca
