@@ -10,10 +10,12 @@ CMD sh -c "\
   echo \"Waiting for database...\"; \
   until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done; \
   echo \"Checking for seed files...\"; \
+  ls -l /seeds; \
   found=false; \
   for f in /seeds/*.sql; do \
     if [ ! -e \"$f\" ]; then continue; fi; \
     found=true; \
+    echo \"Found seed file: $f\"; \
     break; \
   done; \
   if [ \"$found\" = false ]; then \
