@@ -13,7 +13,7 @@ spec:
     type: Git
     git:
       uri: https://github.com/bcgov/bcs-marzipan.git
-      ref: feat/CORPCAL-95-openshift-db-migration-scripts
+      ref: develop
     contextDir: .
   strategy:
     type: Docker
