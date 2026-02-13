@@ -1,29 +1,14 @@
 import { Button } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
-import { ColumnFiltersState } from '@tanstack/react-table';
-import { useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 
-import { CalendarFilters } from '../components/CalendarFilters';
 import { EventTable } from '../components/EventTable';
 import { useAuth } from '../hooks/useAuth';
 
 export const CalendarEntriesList = () => {
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState<string>('');
   const { hasPermission } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
-
-  // for filters set through the CalendarFilters component
-  const handleFilterUpdate = (filters: ColumnFiltersState): void => {
-    setColumnFilters(filters);
-  };
-
-  //for keyword filters set in this component
-  const handleKeywordInput = (keyword: string) => {
-    setGlobalFilter(keyword);
-  };
 
   return (
     <div>
@@ -67,14 +52,7 @@ export const CalendarEntriesList = () => {
             flex: 1,
           }}
         >
-          <CalendarFilters
-            onFiltersChanged={handleFilterUpdate}
-            onKeywordFilterChanged={handleKeywordInput}
-          />
-          <EventTable
-            filters={columnFilters}
-            globalFilterString={globalFilter}
-          />
+          <EventTable />
         </div>
       </div>
     </div>

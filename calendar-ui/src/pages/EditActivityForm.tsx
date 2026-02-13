@@ -122,6 +122,8 @@ export default function EditActivityForm(): React.ReactElement {
   // Load activity on mount
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const load = async () => {
       if (!id) {
         setLoadError(LOAD_ACTIVITY_NO_ID);
@@ -137,7 +139,7 @@ export default function EditActivityForm(): React.ReactElement {
         // This is needed to map representative names back to IDs
         if (!lookups.governmentRepresentatives) {
           // Retry after a short delay if lookups aren't ready yet
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             void load();
           }, 100);
           return;
@@ -185,6 +187,9 @@ export default function EditActivityForm(): React.ReactElement {
     void load();
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [id, form, lookups.governmentRepresentatives]);
 

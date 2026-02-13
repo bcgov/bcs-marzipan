@@ -120,36 +120,13 @@ export const ActivityScheduleSection: React.FC<
     }
   };
 
-  const formatDateRange = (start?: string, end?: string) => {
-    const startText = (start || '').trim();
-    const endText = (end || '').trim();
-    if (startText && endText) return `${startText} - ${endText}`;
-    if (startText) return startText;
-    if (endText) return `- ${endText}`;
-    return '';
-  };
-
-  const parseDateRange = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return { start: '', end: '' };
-    }
-
-    const parts = trimmed.split(/\s[–-]\s/);
-    if (parts.length === 1) {
-      return { start: parts[0], end: '' };
-    }
-    const [start, end] = parts;
-    return { start: start.trim(), end: (end || '').trim() };
-  };
-
   return (
     <ActivityFormSection title="Date">
       {/* Date Range Input with Confirmation Checkbox */}
       <FormField
         control={form.control}
         name="startDate"
-        render={({ field: startField }) => (
+        render={() => (
           <FormItem>
             <FormLabel className="flex items-center gap-1">
               Date <span className="text-destructive">*</span>
