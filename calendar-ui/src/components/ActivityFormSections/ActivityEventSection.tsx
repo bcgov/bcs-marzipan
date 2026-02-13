@@ -73,10 +73,11 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           <FormItem>
             <FormLabel>Premier</FormLabel>
             <Select
-              onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
-              }
-              value={field.value?.toString() || ''}
+              onValueChange={(value) => {
+                const parsed = value ? parseInt(value, 10) : null;
+                field.onChange(isNaN(parsed as number) ? null : parsed);
+              }}
+              value={field.value ? field.value.toString() : ''}
             >
               <FormControl>
                 <SelectTrigger>

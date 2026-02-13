@@ -9,6 +9,13 @@ import {
   createActivityRequestSchema,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
+import {
+  ERROR_DETAILS_LABEL,
+  LOAD_ACTIVITY_NO_ID,
+  LOAD_ACTIVITY_TITLE,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '@/lib/error-messages';
 
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
@@ -27,16 +34,13 @@ import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
-import {
-  ERROR_DETAILS_LABEL,
-  LOAD_ACTIVITY_NO_ID,
-  LOAD_ACTIVITY_TITLE,
-  RENDER_FORM_ERROR_TITLE,
-  TRY_AGAIN_LABEL,
-} from '../lib/error-messages';
 import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
-import { timeAgo } from '../lib/utils';
+import {
+  findStatusByName,
+  timeAgo,
+  UNCONFIRMED_STATUS_NAMES,
+} from '../lib/utils';
 
 type FormData = CreateActivityRequest & {
   categoryIds?: number[];
@@ -44,6 +48,7 @@ type FormData = CreateActivityRequest & {
   commsMaterialIds?: number[];
   translationLanguageIds?: number[];
   sharedWithMinistryIds?: string[];
+  commsContactLeadId?: string | null;
 };
 
 type LoadedActivity = {
@@ -102,14 +107,14 @@ export function EditActivityForm(): React.ReactElement {
   // Set default date/time status when lookups arrive
   useEffect(() => {
     if (dateStatuses && !form.getValues('dateStatusId')) {
-      const unknown = dateStatuses.find((s) => s.name === 'unknown');
+      const unknown = findStatusByName(dateStatuses, UNCONFIRMED_STATUS_NAMES);
       if (unknown) form.setValue('dateStatusId', unknown.id as number);
     }
   }, [dateStatuses, form]);
 
   useEffect(() => {
     if (timeStatuses && !form.getValues('timeStatusId')) {
-      const unknown = timeStatuses.find((s) => s.name === 'unknown');
+      const unknown = findStatusByName(timeStatuses, UNCONFIRMED_STATUS_NAMES);
       if (unknown) form.setValue('timeStatusId', unknown.id as number);
     }
   }, [timeStatuses, form]);
@@ -117,6 +122,8 @@ export function EditActivityForm(): React.ReactElement {
   // Load activity on mount
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const load = async () => {
       if (!id) {
         setLoadError(LOAD_ACTIVITY_NO_ID);
@@ -127,9 +134,48 @@ export function EditActivityForm(): React.ReactElement {
       try {
         const activity = await fetchActivity(Number(id));
         if (!mounted) return;
-        // Reset the form with the activity data. Cast to any since the shape
-        // should be compatible but may include extra fields from the API.
-        form.reset(activity as any);
+
+        // Wait for lookups to be available before transforming data
+        // This is needed to map representative names back to IDs
+        if (!lookups.governmentRepresentatives) {
+          // Retry after a short delay if lookups aren't ready yet
+          timeoutId = setTimeout(() => {
+            void load();
+          }, 100);
+          return;
+        }
+
+        // Create a map of representative names to IDs for lookup
+        const repNameToIdMap = new Map<string, number>();
+        lookups.governmentRepresentatives.forEach((rep) => {
+          const name = rep.displayName || rep.name;
+          repNameToIdMap.set(name.toLowerCase(), rep.id);
+        });
+
+        // Transform API response to form data structure
+        const formData: any = {
+          ...activity,
+          // Convert representativesAttending (API response) to representatives (form format)
+          // Try to match names to IDs from the lookup table
+          representatives:
+            activity.representativesAttending?.map((rep: any) => {
+              const repId = repNameToIdMap.get(
+                rep.representative.toLowerCase()
+              );
+              if (repId) {
+                return { representativeId: repId };
+              } else {
+                // Keep as free-text if not found in lookup
+                return { representativeName: rep.representative };
+              }
+            }) || [],
+          // Extract the lead contact from commsContacts array
+          commsContactLeadId:
+            activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
+        };
+
+        // Reset the form with the transformed activity data
+        form.reset(formData);
         setLoadedActivity(activity as LoadedActivity);
       } catch (err: unknown) {
         logger.error('Failed to load activity', err);
@@ -141,8 +187,11 @@ export function EditActivityForm(): React.ReactElement {
     void load();
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [id, form]);
+  }, [id, form, lookups.governmentRepresentatives]);
 
   const onSubmit = async (data: FormData) => {
     if (!id) return;
@@ -212,6 +261,10 @@ export function EditActivityForm(): React.ReactElement {
           formValues.sharedWithMinistryIds.length > 0
             ? formValues.sharedWithMinistryIds
             : undefined,
+        // Transform commsContactLeadId back to commsContacts array format
+        commsContacts: formValues.commsContactLeadId
+          ? [{ userId: Number(formValues.commsContactLeadId), isLead: true }]
+          : undefined,
         // attach normalized report settings if present
         reportSettings: normalizedReportSettings,
       };

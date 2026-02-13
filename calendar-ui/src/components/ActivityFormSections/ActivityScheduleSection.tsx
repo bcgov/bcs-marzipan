@@ -1,10 +1,17 @@
-import { Calendar } from 'lucide-react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, useWatch } from 'react-hook-form';
 
 import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
-import { Checkbox } from '../ui/checkbox';
+import {
+  CONFIRMED_STATUS_LABEL,
+  CONFIRMED_STATUS_NAMES,
+  findStatusByName,
+  UNCONFIRMED_STATUS_LABEL,
+  UNCONFIRMED_STATUS_NAMES,
+} from '../../lib/utils';
+import { Button } from '../ui/button';
+import { DateRangePicker } from '../ui/date-range-picker';
 import {
   FormControl,
   FormField,
@@ -29,36 +36,87 @@ export const ActivityScheduleSection: React.FC<
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
+  const coerceStatusId = (status?: { id?: string | number }) => {
+    if (status?.id == null) return undefined;
+    const asNumber = Number(status.id);
+    return Number.isNaN(asNumber) ? undefined : asNumber;
+  };
+
   // Get current status IDs
-  const currentDateStatusId = form.watch('dateStatusId');
-  const currentTimeStatusId = form.watch('timeStatusId');
+  const currentDateStatusId = useWatch({
+    control: form.control,
+    name: 'dateStatusId',
+  });
+  const currentTimeStatusId = useWatch({
+    control: form.control,
+    name: 'timeStatusId',
+  });
+  const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
+  const startDateValue = useWatch({ control: form.control, name: 'startDate' });
+  const endDateValue = useWatch({ control: form.control, name: 'endDate' });
 
   // Find "confirmed" status by name
-  const confirmedDateStatus = dateStatuses?.find((s) => s.name === 'confirmed');
-  const confirmedTimeStatus = timeStatuses?.find((s) => s.name === 'confirmed');
+  const confirmedDateStatus = findStatusByName(
+    dateStatuses,
+    CONFIRMED_STATUS_NAMES
+  );
+  const confirmedTimeStatus = findStatusByName(
+    timeStatuses,
+    CONFIRMED_STATUS_NAMES
+  );
 
   // Check if date/time are confirmed
-  const isDateConfirmed = currentDateStatusId === confirmedDateStatus?.id;
-  const isTimeConfirmed = currentTimeStatusId === confirmedTimeStatus?.id;
+  const confirmedDateStatusId = coerceStatusId(confirmedDateStatus);
+  const confirmedTimeStatusId = coerceStatusId(confirmedTimeStatus);
+  const isDateConfirmed =
+    confirmedDateStatusId !== undefined &&
+    Number(currentDateStatusId) === confirmedDateStatusId;
+  const isTimeConfirmed =
+    confirmedTimeStatusId !== undefined &&
+    Number(currentTimeStatusId) === confirmedTimeStatusId;
 
   // Toggle confirmation status
   const toggleDateConfirmation = () => {
     if (!dateStatuses) return;
-    const unconfirmedStatus = dateStatuses.find((s) => s.name === 'unknown');
+    const unconfirmedStatus = findStatusByName(
+      dateStatuses,
+      UNCONFIRMED_STATUS_NAMES
+    );
     if (isDateConfirmed && unconfirmedStatus) {
-      form.setValue('dateStatusId', unconfirmedStatus.id as number);
-    } else if (confirmedDateStatus) {
-      form.setValue('dateStatusId', confirmedDateStatus.id as number);
+      const unconfirmedId = coerceStatusId(unconfirmedStatus);
+      if (unconfirmedId !== undefined) {
+        form.setValue('dateStatusId', unconfirmedId, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    } else if (confirmedDateStatusId !== undefined) {
+      form.setValue('dateStatusId', confirmedDateStatusId, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
   const toggleTimeConfirmation = () => {
     if (!timeStatuses) return;
-    const unconfirmedStatus = timeStatuses.find((s) => s.name === 'unknown');
+    const unconfirmedStatus = findStatusByName(
+      timeStatuses,
+      UNCONFIRMED_STATUS_NAMES
+    );
     if (isTimeConfirmed && unconfirmedStatus) {
-      form.setValue('timeStatusId', unconfirmedStatus.id as number);
-    } else if (confirmedTimeStatus) {
-      form.setValue('timeStatusId', confirmedTimeStatus.id as number);
+      const unconfirmedId = coerceStatusId(unconfirmedStatus);
+      if (unconfirmedId !== undefined) {
+        form.setValue('timeStatusId', unconfirmedId, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      }
+    } else if (confirmedTimeStatusId !== undefined) {
+      form.setValue('timeStatusId', confirmedTimeStatusId, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -68,48 +126,44 @@ export const ActivityScheduleSection: React.FC<
       <FormField
         control={form.control}
         name="startDate"
-        render={({ field: startField }) => (
+        render={() => (
           <FormItem>
             <FormLabel className="flex items-center gap-1">
               Date <span className="text-destructive">*</span>
             </FormLabel>
             <div className="flex items-center gap-2">
               <FormControl>
-                <div className="relative flex flex-1 items-center gap-2">
-                  <Input
-                    type="date"
-                    {...startField}
-                    value={startField.value || ''}
-                    className="flex-1"
-                  />
-                  <span className="text-muted-foreground">—</span>
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field: endField }) => (
-                      <Input
-                        type="date"
-                        {...endField}
-                        value={endField.value || ''}
-                        className="flex-1"
-                      />
-                    )}
-                  />
-                  <Calendar className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
-                </div>
-              </FormControl>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="date-confirmed"
-                  checked={isDateConfirmed}
-                  onCheckedChange={toggleDateConfirmation}
+                <DateRangePicker
+                  startDate={String(startDateValue || '')}
+                  endDate={String(endDateValue || '')}
+                  onStartDateChange={(date) => {
+                    form.setValue('startDate', date, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onEndDateChange={(date) => {
+                    form.setValue('endDate', date, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  placeholder="Pick a date"
                 />
-                <label
-                  htmlFor="date-confirmed"
-                  className="cursor-pointer text-sm leading-none font-medium"
+              </FormControl>
+              <div className="flex items-center">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isDateConfirmed ? 'default' : 'outline'}
+                  className="h-8 rounded-full px-3 text-xs whitespace-nowrap"
+                  onClick={toggleDateConfirmation}
+                  aria-pressed={isDateConfirmed}
                 >
-                  Confirmed
-                </label>
+                  {isDateConfirmed
+                    ? CONFIRMED_STATUS_LABEL
+                    : UNCONFIRMED_STATUS_LABEL}
+                </Button>
               </div>
             </div>
             <FormMessage />
@@ -134,7 +188,7 @@ export const ActivityScheduleSection: React.FC<
       />
 
       {/* Time Range Input with Confirmation Checkbox */}
-      {!form.watch('isAllDay') && (
+      {!isAllDay && (
         <FormField
           control={form.control}
           name="startTime"
@@ -145,12 +199,12 @@ export const ActivityScheduleSection: React.FC<
               </FormLabel>
               <div className="flex items-center gap-2">
                 <FormControl>
-                  <div className="flex flex-1 items-center gap-2">
+                  <div className="flex w-full max-w-[18rem] items-center gap-2">
                     <Input
                       type="time"
                       {...startTimeField}
                       value={startTimeField.value || ''}
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                     />
                     <span className="text-muted-foreground">—</span>
                     <FormField
@@ -161,24 +215,25 @@ export const ActivityScheduleSection: React.FC<
                           type="time"
                           {...endTimeField}
                           value={endTimeField.value || ''}
-                          className="flex-1"
+                          className="min-w-0 flex-1"
                         />
                       )}
                     />
                   </div>
                 </FormControl>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="time-confirmed"
-                    checked={isTimeConfirmed}
-                    onCheckedChange={toggleTimeConfirmation}
-                  />
-                  <label
-                    htmlFor="time-confirmed"
-                    className="cursor-pointer text-sm leading-none font-medium"
+                <div className="flex items-center">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isTimeConfirmed ? 'default' : 'outline'}
+                    className="h-8 rounded-full px-3 text-xs"
+                    onClick={toggleTimeConfirmation}
+                    aria-pressed={isTimeConfirmed}
                   >
-                    Confirmed
-                  </label>
+                    {isTimeConfirmed
+                      ? CONFIRMED_STATUS_LABEL
+                      : UNCONFIRMED_STATUS_LABEL}
+                  </Button>
                 </div>
               </div>
               <FormMessage />

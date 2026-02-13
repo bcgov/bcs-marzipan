@@ -131,6 +131,7 @@ export class LookupsService {
         adUsername: users.adUsername,
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
+        adJobTitle: users.adJobTitle,
       })
       .from(users)
       .where(and(...conditions))
@@ -145,6 +146,7 @@ export class LookupsService {
         name,
         email: user.adEmail,
         username: user.adUsername,
+        jobTitle: user.adJobTitle,
       };
     });
   }

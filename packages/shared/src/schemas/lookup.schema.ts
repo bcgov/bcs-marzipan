@@ -166,6 +166,7 @@ export const userLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   email: z.string().nullable(),
   username: z.string().nullable(),
+  jobTitle: z.string().nullable().optional(),
 });
 
 // ============================================
