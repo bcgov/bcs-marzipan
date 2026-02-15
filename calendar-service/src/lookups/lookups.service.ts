@@ -18,6 +18,7 @@ import {
   pitchStatuses,
   premierRequested,
   reports,
+  roles,
   tags,
   themes,
   timeStatuses,
@@ -109,6 +110,18 @@ export class LookupsService {
       name: org.name,
       displayName: org.displayName,
     }));
+  }
+
+  /**
+   * Get all active roles (id, name) for dropdowns
+   */
+  async getRoles(): Promise<{ id: number; name: string }[]> {
+    const results = await this.databaseService.db
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(eq(roles.isActive, true))
+      .orderBy(roles.name);
+    return results;
   }
 
   /**

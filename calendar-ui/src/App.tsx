@@ -50,6 +50,9 @@ const NotFound = lazyWithRetry(() =>
 const Settings = lazyWithRetry(() =>
   import('./pages/Settings').then((m) => ({ default: m.Settings }))
 );
+const Users = lazyWithRetry(() =>
+  import('./pages/Users').then((m) => ({ default: m.Users }))
+);
 
 function App() {
   return (
@@ -107,6 +110,14 @@ function App() {
                       requiredPermission={PERMISSIONS.SETTINGS.VIEW}
                     >
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
+                      <Users />
                     </ProtectedRoute>
                   }
                 />

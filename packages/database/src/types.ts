@@ -19,6 +19,7 @@ import {
 } from './schema/lookups';
 import { ministries } from './schema/ministry';
 import { organizations } from './schema/organizations';
+import { teamHistory } from './schema/teamHistory';
 import { users } from './schema/user';
 
 /**
@@ -118,3 +119,7 @@ export type NewOrganization = InferInsertModel<typeof organizations>;
 // Activity History
 export type ActivityHistory = InferSelectModel<typeof activityHistory>;
 export type NewActivityHistory = InferInsertModel<typeof activityHistory>;
+
+// Team History
+export type TeamHistory = InferSelectModel<typeof teamHistory>;
+export type NewTeamHistory = InferInsertModel<typeof teamHistory>;

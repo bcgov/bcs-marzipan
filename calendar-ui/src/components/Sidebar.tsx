@@ -173,7 +173,7 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
           {canManageSettings && (
             <>
               <NavSectionHeader>Manage</NavSectionHeader>
-              <NavItem icon={<HealthPlans />} value="10">
+              <NavItem icon={<HealthPlans />} href="/users" value="10">
                 Users
               </NavItem>
               <NavCategory value="11">

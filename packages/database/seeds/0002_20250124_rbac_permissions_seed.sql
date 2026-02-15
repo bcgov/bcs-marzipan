@@ -26,6 +26,7 @@ INSERT INTO permissions (key, display_name, category, subcategory, resource, act
   ('users.edit', 'Edit users', 'Users', 'Basic', 'users', 'edit', 42),
   ('users.delete', 'Delete users', 'Users', 'Basic', 'users', 'delete', 43),
   ('users.manage_roles', 'Manage user roles', 'Users', 'Admin', 'users', 'manage_roles', 44),
+  ('users.transfer_activities', 'Transfer activities between users', 'Users', 'Admin', 'users', 'transfer_activities', 45),
   ('teams.view', 'View teams', 'Teams', 'Basic', 'teams', 'view', 50),
   ('teams.create', 'Create teams', 'Teams', 'Basic', 'teams', 'create', 51),
   ('teams.edit', 'Edit teams', 'Teams', 'Basic', 'teams', 'edit', 52),
@@ -73,7 +74,7 @@ WHERE r.name = 'Admin' AND p.key IN (
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','reports.create_custom',
   'lookups.view','lookups.manage',
-  'users.view','users.edit',
+  'users.view','users.edit','users.transfer_activities',
   'teams.view','teams.create','teams.edit','teams.delete',
   'settings.view','settings.manage'
 )

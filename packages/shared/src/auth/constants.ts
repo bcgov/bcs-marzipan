@@ -89,6 +89,7 @@ export const PERMISSIONS = {
     EDIT: 'users.edit',
     DELETE: 'users.delete',
     MANAGE_ROLES: 'users.manage_roles',
+    TRANSFER_ACTIVITIES: 'users.transfer_activities',
   },
   TEAMS: {
     VIEW: 'teams.view',

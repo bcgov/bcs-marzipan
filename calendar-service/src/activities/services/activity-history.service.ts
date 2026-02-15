@@ -3,25 +3,12 @@ import { and, desc, eq } from 'drizzle-orm';
 
 import { activityHistory } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
+import type {
+  ActivityHistoryEntry,
+  HistoryChange,
+} from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
-
-export interface ActivityChange {
-  field: string;
-  oldValue: unknown;
-  newValue: unknown;
-}
-
-export interface ActivityHistoryEntry {
-  id: number;
-  activityId: number;
-  userId: number;
-  actionType: string;
-  changes: ActivityChange[] | null;
-  notes: string | null;
-  timestamp: Date;
-  userName?: string;
-}
 
 /**
  * Service for tracking and retrieving activity change history
@@ -82,7 +69,7 @@ export class ActivityHistoryService {
     activityId: number,
     userId: number,
     actionType: string,
-    changes?: ActivityChange[],
+    changes?: HistoryChange[],
     notes?: string
   ): Promise<ActivityHistory> {
     const [historyEntry] = await this.databaseService.db
@@ -123,7 +110,11 @@ export class ActivityHistoryService {
     // For now, return with userId as userName placeholder
     return historyEntries.map((entry) => ({
       ...entry,
-      changes: (entry.changes as ActivityChange[] | null) ?? null,
+      changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
+      timestamp:
+        entry.timestamp instanceof Date
+          ? entry.timestamp.toISOString()
+          : String(entry.timestamp),
       userName: `User ${entry.userId}`, // Placeholder until user join is added
     }));
   }
@@ -161,8 +152,8 @@ export class ActivityHistoryService {
   generateChangeList(
     oldActivity: Record<string, unknown>,
     newActivity: Record<string, unknown>
-  ): ActivityChange[] {
-    const changes: ActivityChange[] = [];
+  ): HistoryChange[] {
+    const changes: HistoryChange[] = [];
     const allKeys = new Set([
       ...Object.keys(oldActivity),
       ...Object.keys(newActivity),

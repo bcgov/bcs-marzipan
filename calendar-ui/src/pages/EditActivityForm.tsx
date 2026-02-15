@@ -264,6 +264,7 @@ export function EditActivityForm(): React.ReactElement {
   }, [
     id,
     form,
+    lookups,
     lookups.governmentRepresentatives,
     lookups.categories,
     lookups.commsMaterials,

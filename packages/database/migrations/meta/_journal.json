@@ -8,6 +8,20 @@
       "when": 1771360908106,
       "tag": "0000_20260217_add_venue_update_lookups",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770981463650,
+      "tag": "0001_20260213_teams_user_history_role_team_ministries",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771008881948,
+      "tag": "0002_20260213_team_history",
+      "breakpoints": true
     }
   ]
 }

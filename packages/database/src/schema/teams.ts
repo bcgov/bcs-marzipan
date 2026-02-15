@@ -10,14 +10,12 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { podSharedWithTeams } from './ministry';
-import { teamCategories } from './relations';
+import { teamCategories, teamMinistries, userTeams } from './relations';
 import { users } from './user';
 
 /**
- * Teams table - Groups of system users
- * TODO: placeholder - This is a placeholder table for team-based access control.
- * Represents a group of users that can be used for category access control.
- * Full implementation pending.
+ * Teams table - Groups of users
+ * Represents a group of users and is used to scope data access to activities, categories, tags, etc.
  */
 export const teams = pgTable('teams', {
   id: serial('id').primaryKey(),
@@ -42,7 +40,6 @@ export const teams = pgTable('teams', {
 });
 
 // Relations for Teams
-// TODO: placeholder - Add teamSystemUsers junction table when teams are fully implemented
 export const teamsRelations = relations(teams, ({ one, many }) => ({
   creator: one(users, {
     fields: [teams.createdBy],
@@ -55,6 +52,8 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     relationName: 'teamUpdater',
   }),
   teamCategories: many(teamCategories),
+  teamMinistries: many(teamMinistries),
+  userTeams: many(userTeams),
   podSharedWithTeams: many(podSharedWithTeams, {
     relationName: 'teamPodSharedWithTeams',
   }),

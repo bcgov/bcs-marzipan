@@ -6,7 +6,7 @@
  * Do not manually define these types - always use the inferred types from schemas.
  *
  * Dates are ISO strings (string | null) for JSON serialization.
- * Frontend should import from '@bcs-marzipan/shared/api/types' or '@bcs-marzipan/shared/api'.
+ * Frontend should import from '@corpcal/shared/api/types' or '@corpcal/shared/api'.
  */
 
 // Re-export types from Zod schemas (single source of truth)
@@ -14,6 +14,36 @@ export type { ActivityResponse } from '../schemas/activity-response.schema';
 
 // Query params types - re-exported from query-params schema
 export type { LookupQueryParams } from '../schemas/query-params.schema';
+
+// History types - shared across activity, user, and team history
+export type {
+  HistoryChange,
+  ActivityHistoryEntry,
+  UserHistoryEntry,
+  TeamHistoryEntry,
+} from '../schemas/history.schema';
+
+// User CRUD API types
+export type {
+  UserTeam,
+  UserListItem,
+  UserDetail,
+  RoleOption,
+  UpdateUserBody,
+  AddUserToTeamBody,
+  UpdateUserTeamRoleBody,
+  TransferActivitiesBody,
+} from '../schemas/user.schema';
+
+// Team CRUD API types
+export type {
+  TeamListItem,
+  TeamMinistry,
+  TeamMember,
+  TeamDetail,
+  CreateTeamBody,
+  UpdateTeamBody,
+} from '../schemas/team.schema';
 
 // Lookup types - re-exported from lookup schema
 export type {

@@ -21,6 +21,8 @@ import { RolesGuard } from './policy/guards/roles.guard';
 import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
 import { PolicyModule } from './policy/policy.module';
 import { ReportsModule } from './reports/reports.module';
+import { TeamsModule } from './teams/teams.module';
+import { UsersModule } from './users/users.module';
 
 /**
  * Resolves the root .env file path.
@@ -50,6 +52,8 @@ function resolveRootEnvPath(): string {
     DraftsModule,
     ReportsModule,
     LookAheadModule,
+    UsersModule,
+    TeamsModule,
   ],
   controllers: [AppController],
   providers: [
