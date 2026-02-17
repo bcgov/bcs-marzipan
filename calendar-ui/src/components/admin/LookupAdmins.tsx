@@ -74,16 +74,6 @@ type VenueQuickPick = LookupItem & {
   isActive?: boolean;
 };
 
-type VenueQuickPick = LookupItem & {
-  venueName?: string | null;
-  street?: string | null;
-  city?: string | null;
-  provinceOrState?: string | null;
-  country?: string | null;
-  sortOrder?: number;
-  isActive?: boolean;
-};
-
 // Form field configurations
 const categoryFields: FormField[] = [
   {
@@ -463,48 +453,6 @@ export function ThemesAdmin() {
       queryFn={fetchThemes}
       formFields={themeFields}
       getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
-    />
-  );
-}
-
-const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
-  {
-    accessorKey: 'street',
-    header: 'Street Address',
-    cell: ({ row }) => (
-      <span className="text-slate-600">{row.original.street || '—'}</span>
-    ),
-  },
-  {
-    accessorKey: 'city',
-    header: 'City',
-    cell: ({ row }) => (
-      <span className="text-slate-600">{row.original.city || '—'}</span>
-    ),
-  },
-];
-
-export function VenueQuickPicksAdmin() {
-  return (
-    <GenericLookupAdmin<VenueQuickPick>
-      title="Venue Quick Picks"
-      description="Manage venue quick picks for the activity form"
-      entityType="Venue Quick Pick"
-      apiEndpoint="/lookups/venue-quick-picks"
-      queryKey="venueQuickPicks"
-      queryFn={fetchVenueQuickPicks as () => Promise<VenueQuickPick[]>}
-      formFields={venueQuickPickFields}
-      additionalColumns={venueQuickPicksAdditionalColumns}
-      getItemName={(item) =>
-        (item.venueName as string) || String(item.id ?? '')
-      }
-      renderModalContent={({ initialData, onChange, isSubmitting }) => (
-        <VenueQuickPickForm
-          initialData={initialData}
-          onChange={onChange}
-          isSubmitting={isSubmitting}
-        />
-      )}
     />
   );
 }

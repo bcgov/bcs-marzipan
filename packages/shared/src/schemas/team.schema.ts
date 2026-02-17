@@ -29,9 +29,10 @@ export type TeamListItem = z.infer<typeof teamListItemSchema>;
 
 /**
  * Team ministry membership.
+ * ministryId matches ministries.id (serial integer); consistent with other lookup IDs in the API.
  */
 export const teamMinistrySchema = z.object({
-  ministryId: z.string(),
+  ministryId: z.number().int(),
   ministryName: z.string(),
 });
 

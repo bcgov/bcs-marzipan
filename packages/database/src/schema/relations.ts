@@ -341,7 +341,7 @@ export const teamMinistries = pgTable(
     teamId: integer('team_id')
       .notNull()
       .references(() => teams.id, { onDelete: 'cascade' }),
-    ministryId: uuid('ministry_id')
+    ministryId: integer('ministry_id')
       .notNull()
       .references(() => ministries.id, { onDelete: 'cascade' }),
     isActive: boolean('is_active').notNull().default(true),

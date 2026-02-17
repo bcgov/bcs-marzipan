@@ -169,7 +169,7 @@ export class TeamsService {
       })),
       ministries: ministryRows.map((m) => ({
         ministryId: m.ministryId,
-        ministryName: ministryMap.get(m.ministryId) ?? m.ministryId,
+        ministryName: ministryMap.get(m.ministryId) ?? String(m.ministryId),
       })),
     };
   }
@@ -187,7 +187,10 @@ export class TeamsService {
       })
       .returning();
 
-    const ministryIds = dto.ministryIds?.filter((id) => id?.trim()) ?? [];
+    const ministryIdStrs = dto.ministryIds?.filter((id) => id?.trim()) ?? [];
+    const ministryIds = ministryIdStrs
+      .map((id) => parseInt(id, 10))
+      .filter((n) => !Number.isNaN(n));
     if (ministryIds.length > 0) {
       await this.databaseService.db.insert(teamMinistries).values(
         ministryIds.map((ministryId) => ({
@@ -198,11 +201,11 @@ export class TeamsService {
     }
 
     const changes: HistoryChange[] = [];
-    if (ministryIds.length > 0) {
+    if (ministryIdStrs.length > 0) {
       changes.push({
         field: 'ministryIds',
         oldValue: null,
-        newValue: ministryIds,
+        newValue: ministryIdStrs,
       });
     }
     await this.recordTeamHistory(
@@ -234,7 +237,7 @@ export class TeamsService {
 
     const previousMinistryIds = existing.ministries
       .map((m) => m.ministryId)
-      .sort();
+      .sort((a, b) => a - b);
     let newMinistryIds: string[] | null = null;
     if (dto.ministryIds !== undefined) {
       newMinistryIds = dto.ministryIds.filter((mid) => mid?.trim());
@@ -242,7 +245,10 @@ export class TeamsService {
         .update(teamMinistries)
         .set({ isActive: false })
         .where(eq(teamMinistries.teamId, id));
-      for (const ministryId of newMinistryIds) {
+      const ministryIdsNum = newMinistryIds
+        .map((mid) => parseInt(mid, 10))
+        .filter((n) => !Number.isNaN(n));
+      for (const ministryId of ministryIdsNum) {
         await this.databaseService.db
           .insert(teamMinistries)
           .values({ teamId: id, ministryId, isActive: true })
@@ -298,15 +304,18 @@ export class TeamsService {
       });
     }
     if (newMinistryIds !== null) {
-      const sortedNew = [...newMinistryIds].sort();
+      const sortedNewNum = newMinistryIds
+        .map((mid) => parseInt(mid, 10))
+        .filter((n) => !Number.isNaN(n))
+        .sort((a, b) => a - b);
       if (
-        previousMinistryIds.length !== sortedNew.length ||
-        previousMinistryIds.some((id, i) => id !== sortedNew[i])
+        previousMinistryIds.length !== sortedNewNum.length ||
+        previousMinistryIds.some((id, i) => id !== sortedNewNum[i])
       ) {
         changes.push({
           field: 'ministryIds',
           oldValue: previousMinistryIds,
-          newValue: sortedNew,
+          newValue: newMinistryIds,
         });
       }
     }

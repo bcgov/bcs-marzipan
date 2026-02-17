@@ -93,12 +93,10 @@ function activityToFormData(
     repNameToIdMap.set(name.toLowerCase(), rep.id);
   });
   const representatives =
-    activity.representativesAttending?.map((rep) => {
-      const repId = repNameToIdMap.get(
-        String(rep.representative).toLowerCase()
-      );
+    activity.representativesAttending?.map((representative) => {
+      const repId = repNameToIdMap.get(String(representative).toLowerCase());
       if (repId != null) return { representativeId: repId };
-      return { representativeName: rep.representative };
+      return { representativeName: representative };
     }) ?? [];
   const commsContactLeadId =
     activity.commsContacts?.find((c) => c.isLead)?.userId ?? null;
@@ -260,7 +258,6 @@ export function EditActivityForm(): React.ReactElement {
       }
     };
     // Granular lookups deps intentional: full lookups is a new ref each render; we only re-run when these arrays change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [
     id,
     form,
