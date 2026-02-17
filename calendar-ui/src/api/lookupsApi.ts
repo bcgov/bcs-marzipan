@@ -5,6 +5,7 @@ import type {
   CommsMaterialsLookupItem,
   DateStatusLookupItem,
   GovernmentRepresentativeLookupItem,
+  LookupItem,
   MinistryLookupItem,
   OrganizationLookupItem,
   PitchRequiredStatusLookupItem,
@@ -40,13 +41,6 @@ import type {
 } from '@corpcal/shared/schemas';
 
 import api from './axios';
-
-export interface LookupItem {
-  id: string | number;
-  label: string;
-  value: string | number;
-  [key: string]: unknown;
-}
 
 export interface LookupQueryParams {
   userId?: number;
@@ -483,7 +477,6 @@ export async function fetchReports(): Promise<ReportResponse[]> {
 }
 
 // Export types for use in other files
-// Export types for use in other files
 export type {
   CategoryLookupItem,
   OrganizationLookupItem,
@@ -494,6 +487,7 @@ export type {
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeLookupItem,
+  LookupItem,
   MinistryLookupItem,
   VenueQuickPickItem,
 };

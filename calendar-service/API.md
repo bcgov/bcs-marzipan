@@ -35,10 +35,13 @@ Creates a new calendar activity with related junction table records.
     { "userId": 8, "isLead": true },
     { "userId": 12, "isLead": false }
   ],
-  "sharedWithAll": false,
+  "sharedWithTeamIds": [],
   "schedulingNotes": "Room booking required",
+  "strategy": null,
   "notes": "General notes for admin change log",
   "pitchDate": "2026-03-10",
+  "pitchRequiredStatusId": null,
+  "translationsRequiredStatusId": null,
   "newsReleaseDistributionId": 1,
   "premierRequestedId": 2,
   "venueAddress": {
@@ -49,7 +52,7 @@ Creates a new calendar activity with related junction table records.
     "country": "Canada"
   },
   "categoryIds": [2, 5],
-  "tagIds": ["00000000-0000-4000-8000-000000000105"]
+  "tagIds": [1, 2]
 }
 ```
 

@@ -14,13 +14,6 @@ import {
   mapResponseToFormData,
   normalizeReportSettings,
 } from '@corpcal/shared/utils';
-import {
-  ERROR_DETAILS_LABEL,
-  LOAD_ACTIVITY_NO_ID,
-  LOAD_ACTIVITY_TITLE,
-  RENDER_FORM_ERROR_TITLE,
-  TRY_AGAIN_LABEL,
-} from '../lib/error-messages';
 
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
@@ -39,6 +32,13 @@ import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups, type FormLookupData } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
+import {
+  ERROR_DETAILS_LABEL,
+  LOAD_ACTIVITY_NO_ID,
+  LOAD_ACTIVITY_TITLE,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
 import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
 import { formatDisplayValue } from '../lib/formatDisplayValue';
 import { createLogger } from '../lib/logger';
@@ -78,7 +78,11 @@ function activityToFormData(
   const base = mapResponseToFormData(activity, buildFormLookups(lookups));
   const reps = lookups.governmentRepresentatives;
   if (!reps?.length) {
-    return { ...base, commsContactLeadId: activity.commsContacts?.find((c) => c.isLead)?.userId ?? null };
+    return {
+      ...base,
+      commsContactLeadId:
+        activity.commsContacts?.find((c) => c.isLead)?.userId ?? null,
+    };
   }
   const repNameToIdMap = new Map<string, number>();
   reps.forEach((rep) => {
@@ -87,7 +91,9 @@ function activityToFormData(
   });
   const representatives =
     activity.representativesAttending?.map((rep) => {
-      const repId = repNameToIdMap.get(String(rep.representative).toLowerCase());
+      const repId = repNameToIdMap.get(
+        String(rep.representative).toLowerCase()
+      );
       if (repId != null) return { representativeId: repId };
       return { representativeName: rep.representative };
     }) ?? [];
@@ -95,7 +101,8 @@ function activityToFormData(
     activity.commsContacts?.find((c) => c.isLead)?.userId ?? null;
   return {
     ...base,
-    representatives: representatives.length > 0 ? representatives : base.representatives,
+    representatives:
+      representatives.length > 0 ? representatives : base.representatives,
     commsContactLeadId,
   };
 }
@@ -203,6 +210,8 @@ export function EditActivityForm(): React.ReactElement {
         clearTimeout(timeoutId);
       }
     };
+    // Granular lookups deps intentional: full lookups is a new ref each render; we only re-run when these arrays change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [
     id,
     form,

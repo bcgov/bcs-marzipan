@@ -233,7 +233,6 @@ describe('ActivitiesService', () => {
           { reportId: 1, omitted: true },
           { reportId: 2, omitted: true },
         ],
-        sharedWithAll: true,
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
         leadMinistryId: '123e4567-e89b-12d3-a456-426614174003',
