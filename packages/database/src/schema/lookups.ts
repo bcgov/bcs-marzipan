@@ -196,7 +196,7 @@ export const translationRequiredStatuses = pgTable(
 export const venueStatuses = pgTable('venue_statuses', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -279,11 +279,11 @@ export const venues = pgTable('venues', {
 export const governmentRepresentatives = pgTable('government_representatives', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   title: varchar('title', { length: 255 }),
-  ministryId: uuid('ministry_id').references(() => ministries.id), // Nullable FK - links ministers to ministries
+  ministryId: integer('ministry_id').references(() => ministries.id), // Nullable FK - links ministers to ministries
   representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'cabinet_member', 'mla', 'other'
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
@@ -309,7 +309,7 @@ export const governmentRepresentatives = pgTable('government_representatives', {
 export const commsContacts = pgTable('comms_contacts', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   email: varchar('email', { length: 255 }),
@@ -337,7 +337,7 @@ export const commsContacts = pgTable('comms_contacts', {
 export const eventPlanners = pgTable('event_planners', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   email: varchar('email', { length: 255 }),
@@ -360,14 +360,14 @@ export const eventPlanners = pgTable('event_planners', {
 
 /**
  * Theme lookup table - Classification themes for activities
- * Uses UUID primary key (unlike Category which uses serial).
+ * Legacy: used UUID primary key.
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Theme.cs
+ * Note: The `key` column was removed as a legacy field
  */
 export const themes = pgTable('themes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  key: varchar('key', { length: 100 }),
+  id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   topReleaseId: uuid('top_release_id'), // FK to News Release (integration)
@@ -402,7 +402,7 @@ export const themes = pgTable('themes', {
 export const tags = pgTable('tags', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team' - future feature flag use `global` for now
   isActive: boolean('is_active').notNull().default(true),
@@ -430,7 +430,7 @@ export const tags = pgTable('tags', {
 export const pitchStatuses = pgTable('pitch_statuses', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -457,7 +457,7 @@ export const pitchStatuses = pgTable('pitch_statuses', {
 export const commsMaterials = pgTable('comms_materials', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -485,7 +485,7 @@ export const commsMaterials = pgTable('comms_materials', {
 export const translatedLanguages = pgTable('translated_languages', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   /** BCP 47 language tag (e.g. ar, zh-Hans, fr) */
   shortcode: varchar('shortcode', { length: 15 }),
   sortOrder: integer('sort_order').notNull().default(0),
@@ -514,7 +514,7 @@ export const translatedLanguages = pgTable('translated_languages', {
 export const newsReleaseOrigins = pgTable('news_release_origins', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -541,7 +541,7 @@ export const newsReleaseOrigins = pgTable('news_release_origins', {
 export const sectors = pgTable('sectors', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -568,7 +568,7 @@ export const sectors = pgTable('sectors', {
 export const newsReleaseDistributions = pgTable('news_release_distributions', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),
@@ -595,7 +595,7 @@ export const newsReleaseDistributions = pgTable('news_release_distributions', {
 export const premierRequested = pgTable('premier_requested', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   description: text('description'),

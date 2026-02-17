@@ -22,7 +22,11 @@ import { LOOK_AHEAD_SECTION } from '../constants/constants';
 export const lookupQueryParamsSchema = z.object({
   userId: z.string().transform(Number).pipe(z.number().int()).optional(),
   role: z.string().optional(),
-  organizationId: z.string().uuid().optional(),
+  organizationId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
   userIds: z
     .union([
       z.array(z.string().transform(Number).pipe(z.number().int())),
@@ -57,7 +61,11 @@ export const filterActivitiesQuerySchema = z.object({
     .transform(Number)
     .pipe(z.number().int())
     .optional(),
-  leadMinistryId: z.string().uuid().optional(),
+  leadMinistryId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
   lookAheadSection: z.enum(LOOK_AHEAD_SECTION).optional(),
   city: z.string().optional(),
   isIssue: z

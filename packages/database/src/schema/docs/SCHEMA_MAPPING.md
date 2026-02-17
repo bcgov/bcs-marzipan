@@ -8,8 +8,8 @@ This document provides a comprehensive mapping between the legacy database schem
 
 ### Database Layer
 
-- **Serial IDs**: Most lookup tables use `serial` (integer) primary keys
-- **UUID IDs**: ministries, organizations, themes, sectors use UUID primary keys
+- **Serial IDs**: Most lookup tables use `serial` (integer) primary keys, including ministries, organizations, and themes (legacy: these used UUID).
+- **UUID IDs**: sectors and some integration FKs (e.g. news release) use UUID
 
 ### API Response Layer
 
@@ -27,6 +27,13 @@ When migrating legacy data:
 - Integer IDs map directly (no conversion needed)
 - GUID/UUID fields map to UUID columns
 - Legacy `RowGuid` field has been removed (unused in business logic)
+
+### Lookup Table Conventions
+
+Lookup tables use a consistent shape for type safety and generic UI components:
+
+- **`name`** (notNull): Stable key or code (e.g. slug, abbreviation, internal identifier).
+- **`display_name`** (notNull): User-facing label for UI display.
 
 ## Table of Contents
 
@@ -68,7 +75,7 @@ When migrating legacy data:
 | `Strategy`                          | `nvarchar(500)`     | `strategy`                                    | `text`                     | nullable                                                | Type changed from varchar(500) to text                                                                                                             |
 | `Comments`                          | `nvarchar(4000)`    | `notes`                                       | `text`                     | nullable                                                | Renamed from Comments to notes, type changed to text (nullable)                                                                                    |
 | `HqComments`                        | `nvarchar(2000)`    | `executiveSummary`                            | `text`                     | nullable                                                | Renamed from HqComments to executiveSummary, type changed to text                                                                                  |
-| `LeadOrganization`                  | `nvarchar(100)`     | `leadOrgId` + `leadOrgName`                   | `uuid` + `varchar(255)`    | nullable (XOR constraint: exactly one must be provided) | Split into FK to Organizations table (leadOrgId) or free text (leadOrgName) - mutually exclusive (XOR)                                             |
+| `LeadOrganization`                  | `nvarchar(100)`     | `leadOrgId` + `leadOrgName`                   | `integer` + `varchar(255)` | nullable (XOR constraint: exactly one must be provided) | Split into FK to Organizations table (leadOrgId) or free text (leadOrgName) - mutually exclusive (XOR)                                             |
 | `Translations`                      | `nvarchar(500)`     | _Moved to activityTranslationsRequired_       | -                          | -                                                       | Moved to junction table activityTranslationsRequired                                                                                               |
 | `StatusId`                          | `int`               | `activityStatusId`                            | `integer`                  | `notNull`, FK                                           | Renamed, now required (not nullable), FK to ActivityStatus (replaces generic Status)                                                               |
 | `HqStatusId`                        | `int`               | `lookAheadStatus`                             | `varchar(50)`              | nullable                                                | Changed from FK to Status to enum-like varchar: 'none', 'new', 'changed'                                                                           |
@@ -77,7 +84,7 @@ When migrating legacy data:
 | `NRDateTime`                        | `datetime`          | `newsReleaseDateTime`                         | `timestamp with time zone` | nullable                                                | Renamed from NRDateTime to newsReleaseDateTime                                                                                                     |
 | `NRDistributionId`                  | `int`               | `newsReleaseDistributionId`                   | `integer`                  | nullable, FK                                            | Direct mapping, FK to NRDistribution (nullable)                                                                                                    |
 | `PremierRequestedId`                | `int`               | `premierRequestedId`                          | `integer`                  | nullable, FK                                            | Direct mapping, FK to PremierRequested (nullable)                                                                                                  |
-| `ContactMinistryId`                 | `unique identifier` | `leadMinistryId`                              | `uuid`                     | `notNull`, FK                                           | Renamed from ContactMinistryId to leadMinistryId, now required (not nullable) - required for displayId generation                                  |
+| `ContactMinistryId`                 | `unique identifier` | `leadMinistryId`                              | `integer`                  | `notNull`, FK                                           | Renamed from ContactMinistryId to leadMinistryId, now required (not nullable) - required for displayId generation. Ministries now use serial PK.   |
 | `GovernmentRepresentativeId`        | `int`               | _Moved to activityRepresentatives_            | -                          | -                                                       | Moved to junction table activityRepresentatives                                                                                                    |
 | `CommunicationContactId`            | `int`               | _Moved to activityCommsContacts_              | -                          | -                                                       | Moved to activityCommsContacts junction table with isLead flag. Lead contact has isLead=true.                                                      |
 | `EventPlannerId`                    | `int`               | `eventPlannerLeadId` + `eventPlannerLeadName` | `integer` + `varchar(255)` | nullable (XOR constraint: exactly one must be provided) | Split into FK to EventPlanner lookup table (eventPlannerLeadId) or free text (eventPlannerLeadName) - mutually exclusive (XOR)                     |

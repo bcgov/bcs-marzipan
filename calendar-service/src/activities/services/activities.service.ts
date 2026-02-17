@@ -1212,7 +1212,7 @@ export class ActivitiesService {
    */
   async updateThemes(
     id: number,
-    themeIds: string[],
+    themeIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
     // Verify activity exists
@@ -1233,7 +1233,7 @@ export class ActivitiesService {
         activityThemes,
         id,
         themeIds,
-        (id: string) => ({ themeId: id }),
+        (id: number) => ({ themeId: id }),
         'themeId',
         userId,
         now

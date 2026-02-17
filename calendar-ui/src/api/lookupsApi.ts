@@ -45,7 +45,7 @@ import api from './axios';
 export interface LookupQueryParams {
   userId?: number;
   role?: string;
-  organizationId?: string;
+  organizationId?: number;
   userIds?: number[];
 }
 
@@ -489,5 +489,6 @@ export type {
   GovernmentRepresentativeLookupItem,
   LookupItem,
   MinistryLookupItem,
+  ThemeLookupItem,
   VenueQuickPickItem,
 };

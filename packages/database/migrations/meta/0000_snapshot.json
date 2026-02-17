@@ -1,5 +1,5 @@
 {
-  "id": "dec8a21a-fda6-45d7-a925-7c796496684e",
+  "id": "a429dce0-aca0-47ad-b09c-3f09989b2e9b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -28,7 +28,7 @@
         },
         "lead_org_id": {
           "name": "lead_org_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -212,7 +212,7 @@
         },
         "lead_ministry_id": {
           "name": "lead_ministry_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -690,10 +690,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -707,6 +706,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
         },
         "display_name": {
           "name": "display_name",
@@ -822,7 +827,7 @@
         },
         "ministry_id": {
           "name": "ministry_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -1046,10 +1051,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -1061,7 +1065,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "organization_type": {
           "name": "organization_type",
@@ -1071,7 +1075,7 @@
         },
         "ministry_id": {
           "name": "ministry_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -1566,7 +1570,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -1668,7 +1672,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -1860,7 +1864,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -1962,7 +1966,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -1986,7 +1990,7 @@
         },
         "ministry_id": {
           "name": "ministry_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -2079,7 +2083,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2175,7 +2179,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2367,7 +2371,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2463,7 +2467,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2675,7 +2679,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2771,7 +2775,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -2860,16 +2864,9 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "uuid",
+          "type": "serial",
           "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "key": {
-          "name": "key",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -2881,7 +2878,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -3079,7 +3076,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "shortcode": {
           "name": "shortcode",
@@ -3277,7 +3274,7 @@
           "name": "display_name",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "sort_order": {
           "name": "sort_order",
@@ -4100,7 +4097,7 @@
         },
         "theme_id": {
           "name": "theme_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -4269,7 +4266,7 @@
       "columns": {
         "ministry_id": {
           "name": "ministry_id",
-          "type": "uuid",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },

@@ -25,7 +25,7 @@ Creates a new calendar activity with related junction table records.
   "dateStatusId": 1,
   "timeStatusId": 1,
   "activityStatusId": 1,
-  "leadMinistryId": "00000000-0000-4000-8000-000000000004",
+  "leadMinistryId": 1,
   "isIssue": false,
   "reportSettings": [
     { "reportId": 1, "omitted": false },
@@ -89,7 +89,7 @@ Retrieves all activities with optional filtering.
 | `endDateFrom` | ISO date | Activities ending on or after this date |
 | `endDateTo` | ISO date | Activities ending on or before this date |
 | `activityStatusId` | integer | Filter by activity status (default: excludes deleted activities) |
-| `leadMinistryId` | UUID | Filter by lead ministry |
+| `leadMinistryId` | integer | Filter by lead ministry |
 | `city` | string | Filter by city (from venueAddress) |
 | `isIssue` | boolean | Filter by issue flag |
 
@@ -303,7 +303,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/organizations`
 
-**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (UUID)
+**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (integer)
 
 **Cache:** 5 minutes
 
@@ -328,7 +328,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/users`
 
-**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (UUID), `userIds` (comma-separated integers)
+**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (integer), `userIds` (comma-separated integers)
 
 **Cache:** 5 minutes
 

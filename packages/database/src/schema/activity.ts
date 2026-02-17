@@ -59,7 +59,7 @@ export const activities = pgTable(
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),
-    leadOrgId: uuid('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
+    leadOrgId: integer('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
     leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
     summary: text('summary').notNull(),
     significance: text('significance').notNull(),
@@ -123,7 +123,7 @@ export const activities = pgTable(
       .notNull()
       .default('global'), // 'global' or 'team' - controls base access visibility
 
-    leadMinistryId: uuid('lead_ministry_id')
+    leadMinistryId: integer('lead_ministry_id')
       .notNull()
       .references(() => ministries.id), // FK to Ministry (required for displayId generation)
     activityStatusId: integer('activity_status_id')

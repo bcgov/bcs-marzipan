@@ -24,13 +24,12 @@ import {
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
 interface BaseLookupItem {
-  id: number | string;
+  id: number;
   name?: string;
-  key?: string;
   displayName?: string | null;
   sortOrder?: number;
   isActive?: boolean;
-  [key: string]: any; // Allow additional properties
+  [key: string]: unknown; // Allow additional properties (e.g. abbreviation, ministerName)
 }
 
 export interface RenderModalContentProps {
@@ -68,7 +67,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   queryFn,
   formFields,
   additionalColumns = [],
-  getItemName = (item) => item.name || item.key || String(item.id),
+  getItemName = (item) => {
+    const v = item.name ?? item.displayName ?? item.label ?? item.id;
+    return typeof v === 'string' ? v : String(item.id);
+  },
   renderModalContent,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
@@ -289,10 +291,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       >
         {renderModalContent ? (
           renderModalContent({
-            initialData: (editingItem ?? EMPTY_INITIAL) as Record<
-              string,
-              unknown
-            >,
+            initialData: editingItem ?? EMPTY_INITIAL,
             onChange: setFormData as (data: Record<string, unknown>) => void,
             isSubmitting: createMutation.isPending || updateMutation.isPending,
           })

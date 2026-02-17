@@ -87,7 +87,7 @@ describe('LookupsController (e2e)', () => {
     it('should filter organizations by organizationId', () => {
       return createAuthRequest(app, accessToken)
         .get('/lookups/organizations')
-        .query({ organizationId: 'test-org-id' })
+        .query({ organizationId: 1 })
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);

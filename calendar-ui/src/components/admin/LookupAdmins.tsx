@@ -18,6 +18,8 @@ import {
   fetchThemes,
   fetchVenueQuickPicks,
   type LookupItem,
+  type MinistryLookupItem,
+  type ThemeLookupItem,
 } from '@/api/lookupsApi';
 
 import { GenericLookupAdmin } from './GenericLookupAdmin';
@@ -48,23 +50,17 @@ type GovernmentRepresentative = LookupItem & {
 };
 
 type Tag = LookupItem & {
-  key?: string;
+  name?: string;
   displayName?: string | null;
 };
 
-type Ministry = LookupItem & {
-  displayName?: string | null;
-  abbreviation?: string | null;
+/** Ministry list item; API may include ministerName on list responses */
+type MinistryAdminItem = MinistryLookupItem & {
   ministerName?: string | null;
 };
 
 type ActivityStatus = LookupItem & {
   name?: string;
-  displayName?: string | null;
-};
-
-type Theme = LookupItem & {
-  key?: string;
   displayName?: string | null;
 };
 
@@ -180,11 +176,11 @@ const govRepFields: FormField[] = [
 
 const tagFields: FormField[] = [
   {
-    name: 'key',
-    label: 'Key',
+    name: 'name',
+    label: 'Name',
     type: 'text',
     required: true,
-    placeholder: 'Enter tag key',
+    placeholder: 'Enter tag name',
   },
   {
     name: 'displayName',
@@ -203,6 +199,13 @@ const tagFields: FormField[] = [
 
 const ministryFields: FormField[] = [
   {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'e.g., PREM, AGRI',
+  },
+  {
     name: 'displayName',
     label: 'Display Name',
     type: 'text',
@@ -213,6 +216,7 @@ const ministryFields: FormField[] = [
     name: 'abbreviation',
     label: 'Abbreviation',
     type: 'text',
+    required: true,
     placeholder: 'e.g., AG',
   },
   {
@@ -255,11 +259,11 @@ const statusFields: FormField[] = [
 
 const themeFields: FormField[] = [
   {
-    name: 'key',
-    label: 'Key',
+    name: 'name',
+    label: 'Name',
     type: 'text',
     required: true,
-    placeholder: 'Enter theme key',
+    placeholder: 'Enter theme name',
   },
   {
     name: 'displayName',
@@ -384,20 +388,20 @@ export function TagsAdmin() {
       queryKey="tags"
       queryFn={fetchTags as () => Promise<Tag[]>}
       formFields={tagFields}
-      getItemName={(item) => (item.key as string) || String(item.id)}
+      getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
     />
   );
 }
 
 export function MinistriesAdmin() {
   return (
-    <GenericLookupAdmin<Ministry>
+    <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
       description="Manage BC government ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       queryKey="ministries"
-      queryFn={fetchMinistries as () => Promise<Ministry[]>}
+      queryFn={fetchMinistries as () => Promise<MinistryAdminItem[]>}
       formFields={ministryFields}
       additionalColumns={[
         {
@@ -419,11 +423,7 @@ export function MinistriesAdmin() {
           ),
         },
       ]}
-      getItemName={(item) =>
-        (item.displayName as string) ||
-        (item.abbreviation as string) ||
-        String(item.id)
-      }
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
     />
   );
 }
@@ -444,15 +444,15 @@ export function ActivityStatusesAdmin() {
 
 export function ThemesAdmin() {
   return (
-    <GenericLookupAdmin<Theme>
+    <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
       description="Manage activity themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
       queryKey="themes"
-      queryFn={fetchThemes as () => Promise<Theme[]>}
+      queryFn={fetchThemes}
       formFields={themeFields}
-      getItemName={(item) => (item.key as string) || String(item.id)}
+      getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
     />
   );
 }

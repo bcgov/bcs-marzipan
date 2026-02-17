@@ -29,7 +29,7 @@ export const createMockActivityRequest = (
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
-    leadMinistryId: '00000000-0000-4000-8000-000000000001', // Office of the Premier (from seed)
+    leadMinistryId: 1, // Office of the Premier (from seed)
     visibility: 'global',
     leadOrgName: 'Test Org', // XOR with leadOrgId: exactly one must be set
     eventPlannerLeadName: 'Test Lead', // XOR with eventPlannerLeadId: exactly one must be set
@@ -85,7 +85,7 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: 'global',
-    leadMinistryId: '00000000-0000-4000-8000-000000000000',
+    leadMinistryId: 1,
     createdDateTime: now,
     createdBy: 1,
     lastUpdatedDateTime: now,

@@ -6,7 +6,6 @@ import {
   primaryKey,
   serial,
   timestamp,
-  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -19,13 +18,15 @@ import { users } from './user';
 /**
  * Ministry table - Government departments
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Ministry.cs
+ * Legacy: used UUID primary key.
  * TODO: Consider ministry API for future.
  * TODO: This is a blend of ministries and groups. Use as basis for future group table.
  */
 export const ministries = pgTable('ministries', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: serial('id').primaryKey(),
   sortOrder: integer('sort_order').notNull(),
   isActive: boolean('is_active').notNull().default(true),
+  name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
   abbreviation: varchar('abbreviation', { length: 10 }).notNull(),
 
@@ -111,7 +112,7 @@ export const podMinistries = pgTable(
     podId: integer('pod_id')
       .notNull()
       .references(() => pods.id),
-    ministryId: uuid('ministry_id')
+    ministryId: integer('ministry_id')
       .notNull()
       .references(() => ministries.id),
     isPrimary: boolean('is_primary').notNull().default(false),

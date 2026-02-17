@@ -83,7 +83,7 @@ export function createMockActivityResponse(
     visibility: DEFAULT_VISIBILITY,
 
     // Ownership
-    leadMinistryId: '00000000-0000-4000-8000-000000000000',
+    leadMinistryId: 1,
     activityStatusId: 1,
 
     // Audit fields (fixed timestamps for deterministic tests)

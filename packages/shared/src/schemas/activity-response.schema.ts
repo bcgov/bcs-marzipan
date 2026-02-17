@@ -55,7 +55,7 @@ export const activityDbFieldsSchema = z.object({
   significance: z.string(),
 
   // Lead organization (mutually exclusive: either ID or Name)
-  leadOrgId: z.string().uuid().nullable(),
+  leadOrgId: z.number().int().nullable(),
   leadOrgName: z.string().nullable(),
 
   // Scheduling
@@ -92,7 +92,7 @@ export const activityDbFieldsSchema = z.object({
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
-  leadMinistryId: z.string().uuid(),
+  leadMinistryId: z.number().int(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)

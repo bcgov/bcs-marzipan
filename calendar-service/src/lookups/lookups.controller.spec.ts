@@ -136,9 +136,15 @@ describe('LookupsController', () => {
     it('should create a category and pass user id to service', async () => {
       const body = {
         name: 'New Category',
+        displayName: 'New Category',
         sortOrder: 1,
       };
-      const created = { id: 10, name: body.name, sortOrder: body.sortOrder };
+      const created = {
+        id: 10,
+        name: body.name,
+        displayName: body.displayName,
+        sortOrder: body.sortOrder,
+      };
       mockLookupsService.createCategory.mockResolvedValue(created);
 
       const result = await controller.createCategory(body, mockUser);

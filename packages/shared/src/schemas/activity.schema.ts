@@ -99,7 +99,7 @@ const activityCoreFieldsSchema = z.object({
   // Optional foreign key fields (with empty string preprocessing)
   leadOrgId: z.preprocess(
     emptyStringToNull,
-    z.string().uuid().nullable().optional()
+    z.number().int().nullable().optional()
   ),
   leadOrgName: z.string().max(255).nullable().optional(),
   newsReleaseId: z.preprocess(
@@ -107,7 +107,7 @@ const activityCoreFieldsSchema = z.object({
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
-  leadMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
+  leadMinistryId: z.preprocess(emptyStringToNull, z.number().int()), // Required for displayId generation
 
   // Optional user ID fields
   eventPlannerLeadId: z.number().int().nullable().optional(),

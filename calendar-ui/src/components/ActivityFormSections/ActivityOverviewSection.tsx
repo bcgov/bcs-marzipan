@@ -40,8 +40,8 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  ministries: Array<{ id: string; name: string; displayName?: string }>;
-  organizations: Array<{ value: string; label: string }>;
+  ministries: Array<{ id: number; name: string; displayName?: string }>;
+  organizations: Array<{ value: number; label: string }>;
   tags: Array<{ id: number; text: string }>;
 };
 
@@ -132,8 +132,10 @@ export const ActivityOverviewSection: React.FC<
               Lead Ministry <span className="text-destructive">*</span>
             </FormLabel>
             <Select
-              onValueChange={(value) => field.onChange(value)}
-              value={field.value || ''}
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+              value={field.value != null ? String(field.value) : ''}
             >
               <FormControl>
                 <SelectTrigger>
@@ -142,7 +144,7 @@ export const ActivityOverviewSection: React.FC<
               </FormControl>
               <SelectContent>
                 {ministries.map((ministry) => (
-                  <SelectItem key={ministry.id} value={ministry.id}>
+                  <SelectItem key={ministry.id} value={String(ministry.id)}>
                     {ministry.displayName || ministry.name}
                   </SelectItem>
                 ))}
@@ -161,18 +163,19 @@ export const ActivityOverviewSection: React.FC<
           const leadOrgId = field.value;
           const leadOrgName = form.watch('leadOrgName');
 
-          const comboboxValue: FreeformComboboxValue = leadOrgId
-            ? { type: 'option', value: leadOrgId }
-            : leadOrgName
-              ? { type: 'freeform', value: leadOrgName }
-              : null;
+          const comboboxValue: FreeformComboboxValue =
+            leadOrgId != null
+              ? { type: 'option', value: String(leadOrgId) }
+              : leadOrgName
+                ? { type: 'freeform', value: leadOrgName }
+                : null;
 
           const handleChange = (value: FreeformComboboxValue) => {
             if (!value) {
               field.onChange(null);
               form.setValue('leadOrgName', null);
             } else if (value.type === 'option') {
-              field.onChange(value.value);
+              field.onChange(Number(value.value));
               form.setValue('leadOrgName', null);
             } else {
               field.onChange(null);
@@ -185,7 +188,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>Lead Organization</FormLabel>
               <FormControl>
                 <FreeformCombobox
-                  options={organizations}
+                  options={organizations.map((o) => ({
+                    value: String(o.value),
+                    label: o.label,
+                  }))}
                   value={comboboxValue}
                   onChange={handleChange}
                   placeholder="Select lead organization"

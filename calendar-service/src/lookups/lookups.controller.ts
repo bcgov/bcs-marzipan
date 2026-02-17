@@ -193,15 +193,15 @@ export class LookupsController {
   @ApiQuery({
     name: 'organizationId',
     required: false,
-    type: String,
-    description: 'Filter to a specific organization by UUID',
+    type: Number,
+    description: 'Filter to a specific organization by ID',
   })
   @Get('organizations')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
   async getOrganizations(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string
+    @Query('organizationId', new ParseOptionalIntPipe()) organizationId?: number
   ): Promise<{ success: boolean; data: OrganizationLookupItem[] }> {
     const params: LookupQueryParams = { userId, role, organizationId };
     const data = await this.lookupsService.getOrganizations(params);
@@ -233,8 +233,8 @@ export class LookupsController {
   @ApiQuery({
     name: 'organizationId',
     required: false,
-    type: String,
-    description: 'Filter users by organization UUID',
+    type: Number,
+    description: 'Filter users by organization ID',
   })
   @ApiQuery({
     name: 'userIds',
@@ -248,7 +248,8 @@ export class LookupsController {
   async getUsers(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string,
+    @Query('organizationId', new ParseOptionalIntPipe())
+    organizationId?: number,
     @Query('userIds') userIds?: string
   ): Promise<{ success: boolean; data: LookupItem[] }> {
     // Parse comma-separated userIds string into array of numbers
@@ -727,7 +728,7 @@ export class LookupsController {
     description: 'Ministry updated successfully',
     type: MinistryResponseWrapperDto,
   })
-  @ApiParam({ name: 'id', type: String, description: 'Ministry ID (UUID)' })
+  @ApiParam({ name: 'id', type: Number, description: 'Ministry ID' })
   @ApiBody({ type: UpdateMinistryDto })
   @RequirePermission('lookups.manage')
   @Patch('ministries/:id')
@@ -737,7 +738,11 @@ export class LookupsController {
     body: UpdateMinistryDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateMinistry(id, body, user.id);
+    const data = await this.lookupsService.updateMinistry(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 
@@ -849,7 +854,7 @@ export class LookupsController {
     description: 'Theme updated successfully',
     type: ThemeResponseWrapperDto,
   })
-  @ApiParam({ name: 'id', type: String, description: 'Theme ID (UUID)' })
+  @ApiParam({ name: 'id', type: Number, description: 'Theme ID' })
   @ApiBody({ type: UpdateThemeDto })
   @RequirePermission('lookups.manage')
   @Patch('themes/:id')
@@ -859,7 +864,11 @@ export class LookupsController {
     body: UpdateThemeDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTheme(id, body, user.id);
+    const data = await this.lookupsService.updateTheme(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 

@@ -76,7 +76,7 @@ export class LookupsService {
 
     return results.map((cat) => ({
       id: cat.id,
-      label: cat.displayName || cat.name,
+      label: cat.displayName,
       value: cat.id,
       name: cat.name,
       displayName: cat.displayName,
@@ -104,7 +104,7 @@ export class LookupsService {
 
     return results.map((org) => ({
       id: org.id,
-      label: org.displayName || org.name,
+      label: org.displayName,
       value: org.id,
       name: org.name,
       displayName: org.displayName,
@@ -141,12 +141,12 @@ export class LookupsService {
       .orderBy(users.adDisplayName, users.adUsername);
 
     return results.map((user) => {
-      const name = user.adDisplayName || user.adUsername || `User ${user.id}`;
+      const label = user.adDisplayName ?? user.adUsername ?? `User ${user.id}`;
       return {
         id: user.id,
-        label: name,
+        label,
         value: user.id,
-        name,
+        name: label,
         email: user.adEmail,
         username: user.adUsername,
         jobTitle: user.adJobTitle,
@@ -172,7 +172,7 @@ export class LookupsService {
 
     return results.map((tag) => ({
       id: tag.id,
-      label: tag.displayName || tag.name || String(tag.id),
+      label: tag.displayName,
       value: tag.id,
       name: tag.name,
       displayName: tag.displayName,
@@ -197,7 +197,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -220,7 +220,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -243,7 +243,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -266,7 +266,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -289,7 +289,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -593,7 +593,7 @@ export class LookupsService {
 
     return results.map((material) => ({
       id: material.id,
-      label: material.displayName || material.name,
+      label: material.displayName,
       value: material.id,
       name: material.name,
       displayName: material.displayName,
@@ -619,7 +619,7 @@ export class LookupsService {
 
     return results.map((lang) => ({
       id: lang.id,
-      label: lang.displayName || lang.name,
+      label: lang.displayName,
       value: lang.id,
       name: lang.name,
       displayName: lang.displayName,
@@ -648,7 +648,7 @@ export class LookupsService {
 
     return results.map((rep) => ({
       id: rep.id,
-      label: rep.displayName || rep.name,
+      label: rep.displayName,
       value: rep.id,
       name: rep.name,
       displayName: rep.displayName,
@@ -675,7 +675,7 @@ export class LookupsService {
 
     return results.map((planner) => ({
       id: planner.id,
-      label: planner.displayName || planner.name,
+      label: planner.displayName,
       value: planner.id,
       name: planner.name,
       displayName: planner.displayName,
@@ -698,7 +698,7 @@ export class LookupsService {
 
     return results.map((dist) => ({
       id: dist.id,
-      label: dist.displayName || dist.name,
+      label: dist.displayName,
       value: dist.id,
       name: dist.name,
       displayName: dist.displayName,
@@ -721,7 +721,7 @@ export class LookupsService {
 
     return results.map((premier) => ({
       id: premier.id,
-      label: premier.displayName || premier.name,
+      label: premier.displayName,
       value: premier.id,
       name: premier.name,
       displayName: premier.displayName,
@@ -744,7 +744,7 @@ export class LookupsService {
 
     return results.map((origin) => ({
       id: origin.id,
-      label: origin.displayName || origin.name,
+      label: origin.displayName,
       value: origin.id,
       name: origin.name,
       displayName: origin.displayName,
@@ -783,7 +783,7 @@ export class LookupsService {
 
     return results.map((activity) => ({
       id: activity.id,
-      label: activity.title || `Activity ${activity.id}`,
+      label: activity.title,
       value: activity.id,
       title: activity.title,
     }));
@@ -807,7 +807,7 @@ export class LookupsService {
 
     return results.map((city) => ({
       id: city.id,
-      label: city.displayName || city.name,
+      label: city.displayName,
       value: city.id,
       name: city.name,
       displayName: city.displayName,
@@ -824,6 +824,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: ministries.id,
+        name: ministries.name,
         displayName: ministries.displayName,
         abbreviation: ministries.abbreviation,
         ministerName: ministries.ministerName,
@@ -835,8 +836,9 @@ export class LookupsService {
 
     return results.map((ministry) => ({
       id: ministry.id,
-      label: ministry.displayName || ministry.abbreviation || ministry.id,
+      label: ministry.displayName,
       value: ministry.id,
+      name: ministry.name,
       displayName: ministry.displayName,
       abbreviation: ministry.abbreviation,
       ministerName: ministry.ministerName,
@@ -852,7 +854,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: themes.id,
-        key: themes.key,
+        name: themes.name,
         displayName: themes.displayName,
         sortOrder: themes.sortOrder,
         isActive: themes.isActive,
@@ -862,9 +864,9 @@ export class LookupsService {
 
     return results.map((theme) => ({
       id: theme.id,
-      label: theme.displayName || theme.key || theme.id,
+      label: theme.displayName,
       value: theme.id,
-      key: theme.key,
+      name: theme.name,
       displayName: theme.displayName,
       sortOrder: theme.sortOrder,
       isActive: theme.isActive,
@@ -888,7 +890,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -979,7 +981,7 @@ export class LookupsService {
       .insert(commsMaterials)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         description: data.description ?? undefined,
@@ -1002,7 +1004,7 @@ export class LookupsService {
       title?: string | null;
       sortOrder: number;
       isActive?: boolean;
-      ministryId?: string | null;
+      ministryId?: number | null;
       representativeType?: string | null;
     },
     currentUserId: number
@@ -1012,7 +1014,7 @@ export class LookupsService {
       .insert(governmentRepresentatives)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         title: data.title ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
@@ -1046,7 +1048,7 @@ export class LookupsService {
       .insert(tags)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         visibility: data.visibility || 'global',
@@ -1065,6 +1067,7 @@ export class LookupsService {
    */
   async createMinistry(
     data: {
+      name: string;
       displayName: string;
       abbreviation: string; // Required by schema
       ministerName?: string | null;
@@ -1077,6 +1080,7 @@ export class LookupsService {
     const [result] = await this.databaseService.db
       .insert(ministries)
       .values({
+        name: data.name,
         displayName: data.displayName,
         abbreviation: data.abbreviation,
         ministerName: data.ministerName ?? undefined,
@@ -1127,7 +1131,6 @@ export class LookupsService {
    */
   async createTheme(
     data: {
-      key?: string | null;
       name: string;
       displayName?: string | null;
       sortOrder: number;
@@ -1139,9 +1142,8 @@ export class LookupsService {
     const [result] = await this.databaseService.db
       .insert(themes)
       .values({
-        key: data.key ?? null,
         name: data.name,
-        displayName: data.displayName ?? null,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         createdBy: currentUserId,
@@ -1266,7 +1268,7 @@ export class LookupsService {
       title: string | null;
       sortOrder: number;
       isActive: boolean;
-      ministryId: string | null;
+      ministryId: number | null;
       representativeType: string | null;
     }>,
     currentUserId: number
@@ -1332,8 +1334,9 @@ export class LookupsService {
   }
 
   async updateMinistry(
-    id: string,
+    id: number,
     data: Partial<{
+      name: string;
       displayName: string;
       abbreviation: string;
       ministerName: string | null;
@@ -1348,6 +1351,7 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
+    if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
     if (data.abbreviation !== undefined)
@@ -1399,9 +1403,8 @@ export class LookupsService {
   }
 
   async updateTheme(
-    id: string,
+    id: number,
     data: Partial<{
-      key: string | null;
       name: string;
       displayName: string | null;
       sortOrder: number;
@@ -1415,7 +1418,6 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.key !== undefined) updateData.key = data.key ?? undefined;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;

@@ -2,7 +2,7 @@ CREATE TABLE "activities" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"display_id" varchar(50),
 	"title" varchar(255) NOT NULL,
-	"lead_org_id" uuid,
+	"lead_org_id" integer,
 	"lead_org_name" varchar(255),
 	"summary" text NOT NULL,
 	"significance" text NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE "activities" (
 	"news_release_distribution_id" integer,
 	"premier_requested_id" integer,
 	"visibility" varchar(50) DEFAULT 'global' NOT NULL,
-	"lead_ministry_id" uuid NOT NULL,
+	"lead_ministry_id" integer NOT NULL,
 	"activity_status_id" integer NOT NULL,
 	"created_by" integer NOT NULL,
 	"last_updated_by" integer NOT NULL,
@@ -78,9 +78,10 @@ CREATE TABLE "users" (
 );
 --> statement-breakpoint
 CREATE TABLE "ministries" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"sort_order" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
+	"name" varchar(255) NOT NULL,
 	"display_name" varchar(255) NOT NULL,
 	"abbreviation" varchar(10) NOT NULL,
 	"minister_name" varchar(255),
@@ -94,7 +95,7 @@ CREATE TABLE "ministries" (
 --> statement-breakpoint
 CREATE TABLE "pod_ministries" (
 	"pod_id" integer NOT NULL,
-	"ministry_id" uuid NOT NULL,
+	"ministry_id" integer NOT NULL,
 	"is_primary" boolean DEFAULT false NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -123,11 +124,11 @@ CREATE TABLE "pods" (
 );
 --> statement-breakpoint
 CREATE TABLE "organizations" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"organization_type" varchar(50),
-	"ministry_id" uuid,
+	"ministry_id" integer,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"description" text,
@@ -193,7 +194,7 @@ CREATE TABLE "cities" (
 CREATE TABLE "comms_contacts" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"email" varchar(255),
@@ -207,7 +208,7 @@ CREATE TABLE "comms_contacts" (
 CREATE TABLE "comms_materials" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -233,7 +234,7 @@ CREATE TABLE "date_statuses" (
 CREATE TABLE "event_planners" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"email" varchar(255),
@@ -247,11 +248,11 @@ CREATE TABLE "event_planners" (
 CREATE TABLE "government_representatives" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"title" varchar(255),
-	"ministry_id" uuid,
+	"ministry_id" integer,
 	"representative_type" varchar(50),
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" integer NOT NULL,
@@ -262,7 +263,7 @@ CREATE TABLE "government_representatives" (
 CREATE TABLE "news_release_distributions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -275,7 +276,7 @@ CREATE TABLE "news_release_distributions" (
 CREATE TABLE "news_release_origins" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -301,7 +302,7 @@ CREATE TABLE "pitch_required_statuses" (
 CREATE TABLE "pitch_statuses" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -314,7 +315,7 @@ CREATE TABLE "pitch_statuses" (
 CREATE TABLE "premier_requested" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -343,7 +344,7 @@ CREATE TABLE "reports" (
 CREATE TABLE "sectors" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -356,7 +357,7 @@ CREATE TABLE "sectors" (
 CREATE TABLE "tags" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"visibility" varchar(50) DEFAULT 'global' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -368,10 +369,9 @@ CREATE TABLE "tags" (
 );
 --> statement-breakpoint
 CREATE TABLE "themes" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"key" varchar(100),
+	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"top_release_id" uuid,
@@ -398,7 +398,7 @@ CREATE TABLE "time_statuses" (
 CREATE TABLE "translated_languages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"shortcode" varchar(15),
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -425,7 +425,7 @@ CREATE TABLE "translation_required_statuses" (
 CREATE TABLE "venue_statuses" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255),
+	"display_name" varchar(255) NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"description" text,
@@ -524,7 +524,7 @@ CREATE TABLE "activity_tags" (
 --> statement-breakpoint
 CREATE TABLE "activity_themes" (
 	"activity_id" integer NOT NULL,
-	"theme_id" uuid NOT NULL,
+	"theme_id" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "activity_themes_activity_id_theme_id_pk" PRIMARY KEY("activity_id","theme_id")
@@ -545,7 +545,7 @@ CREATE TABLE "favorite_activities" (
 );
 --> statement-breakpoint
 CREATE TABLE "ministry_users" (
-	"ministry_id" uuid NOT NULL,
+	"ministry_id" integer NOT NULL,
 	"user_id" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
