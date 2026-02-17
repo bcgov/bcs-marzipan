@@ -56,6 +56,46 @@ export class ActivitiesService {
   ) {}
 
   /**
+   * Deep equality comparison for any two values
+   * Handles primitives, arrays, and objects recursively
+   */
+  private isDeepEqual(a: unknown, b: unknown): boolean {
+    // Handle null/undefined
+    if (a === null || a === undefined) {
+      return b === null || b === undefined;
+    }
+    if (b === null || b === undefined) {
+      return a === null || a === undefined;
+    }
+
+    // Handle primitives
+    if (typeof a !== 'object' || typeof b !== 'object') {
+      return a === b;
+    }
+
+    // Handle arrays
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((val, idx) => this.isDeepEqual(val, b[idx]));
+    }
+
+    // Handle objects
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+
+    if (keysA.length !== keysB.length) return false;
+
+    return keysA.every((key) =>
+      this.isDeepEqual(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key]
+      )
+    );
+  }
+
+  /**
    * Create a new activity with related junction table records
    */
   async create(
@@ -840,92 +880,83 @@ export class ActivitiesService {
       reportSettings: reportSettingsMap.get(id) ?? [],
     });
 
-    // Record junction/related changes in history (separate entries)
-    if (venueAddress !== undefined) {
-      await this.activityHistoryService.recordChange(
-        id,
-        userId,
-        'updated',
-        [
-          {
-            field: 'venueAddress',
-            oldValue: existingVenue ?? null,
-            newValue: venueAddress,
-          },
-        ],
-        'Activity venue address updated'
-      );
-    }
-
-    if (commsContactsArray !== undefined) {
-      await this.activityHistoryService.recordChange(
-        id,
-        userId,
-        'updated',
-        [
-          {
-            field: 'commsContacts',
-            oldValue: existingComms,
-            newValue: commsContactsArray,
-          },
-        ],
-        'Activity comms contacts updated'
-      );
-    }
-
-    if (representatives !== undefined) {
-      await this.activityHistoryService.recordChange(
-        id,
-        userId,
-        'updated',
-        [
-          {
-            field: 'representatives',
-            oldValue: existingRepresentatives,
-            newValue: representatives,
-          },
-        ],
-        'Activity representatives updated'
-      );
-    }
-
-    if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
-      await this.activityHistoryService.recordChange(
-        id,
-        userId,
-        'updated',
-        [
-          {
-            field: 'reportSettings',
-            oldValue: existingReportSettings,
-            newValue: reportSettingsArray,
-          },
-        ],
-        'Activity report settings updated'
-      );
-    }
-
-    // Generate change list for history tracking
+    // Generate change list for history tracking (main activity fields)
     // Convert Activity objects to generic records for comparison
     // Activity is a plain object that can be treated as Record<string, unknown>
-    const changes = this.activityHistoryService.generateChangeList(
+    const mainChanges = this.activityHistoryService.generateChangeList(
       oldActivity as Record<string, unknown>,
       updated as Record<string, unknown>
     );
 
+    // Collect all changes from this update into a single array
+    const allChanges: Array<{
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+    }> = [...mainChanges];
+
+    // Add junction table changes to the same history entry
+    // Only add if the values have actually changed (using deep equality)
+    if (
+      venueAddress !== undefined &&
+      !this.isDeepEqual(existingVenue, venueAddress)
+    ) {
+      allChanges.push({
+        field: 'venueAddress',
+        oldValue: existingVenue ?? null,
+        newValue: venueAddress,
+      });
+    }
+
+    if (
+      commsContactsArray !== undefined &&
+      !this.isDeepEqual(existingComms, commsContactsArray)
+    ) {
+      allChanges.push({
+        field: 'commsContacts',
+        oldValue: existingComms,
+        newValue: commsContactsArray,
+      });
+    }
+
+    if (
+      representatives !== undefined &&
+      !this.isDeepEqual(existingRepresentatives, representatives)
+    ) {
+      allChanges.push({
+        field: 'representatives',
+        oldValue: existingRepresentatives,
+        newValue: representatives,
+      });
+    }
+
+    if (
+      reportSettingsArray !== undefined &&
+      reportSettingsArray.length > 0 &&
+      !this.isDeepEqual(existingReportSettings, reportSettingsArray)
+    ) {
+      allChanges.push({
+        field: 'reportSettings',
+        oldValue: existingReportSettings,
+        newValue: reportSettingsArray,
+      });
+    }
+
     // Debug: log detected changes
     try {
-      this.logger.debug(`update() id=${id} changes=${JSON.stringify(changes)}`);
+      this.logger.debug(
+        `update() id=${id} changes=${JSON.stringify(allChanges)}`
+      );
     } catch {
       // ignore debug log failure
     }
 
-    // Record activity update in history
+    // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
       id,
       userId,
       'updated',
-      changes.length > 0 ? changes : undefined,
+      allChanges.length > 0 ? allChanges : undefined,
       'Activity updated'
     );
 
@@ -1188,20 +1219,22 @@ export class ActivitiesService {
       );
     });
 
-    // Record change in history
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'updated',
-      [
-        {
-          field: 'categories',
-          oldValue: existingCategoryIds,
-          newValue: categoryIds,
-        },
-      ],
-      'Activity categories updated'
-    );
+    // Record change in history only if categories actually changed
+    if (!this.isDeepEqual(existingCategoryIds, categoryIds)) {
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'updated',
+        [
+          {
+            field: 'categories',
+            oldValue: existingCategoryIds,
+            newValue: categoryIds,
+          },
+        ],
+        'Activity categories updated'
+      );
+    }
 
     // Return updated activity
     return this.findOne(id);
@@ -1240,14 +1273,16 @@ export class ActivitiesService {
       );
     });
 
-    // Record change in history
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'updated',
-      [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
-      'Activity themes updated'
-    );
+    // Record change in history only if themes actually changed
+    if (!this.isDeepEqual(existingThemeIds, themeIds)) {
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'updated',
+        [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
+        'Activity themes updated'
+      );
+    }
 
     // Return updated activity
     return this.findOne(id);
@@ -1287,14 +1322,16 @@ export class ActivitiesService {
       );
     });
 
-    // Record change in history
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'updated',
-      [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
-      'Activity tags updated'
-    );
+    // Record change in history only if tags actually changed
+    if (!this.isDeepEqual(existingTagIds, tagIds)) {
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'updated',
+        [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
+        'Activity tags updated'
+      );
+    }
 
     // Return updated activity
     return this.findOne(id);
@@ -1333,13 +1370,16 @@ export class ActivitiesService {
       );
     });
 
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'updated',
-      [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
-      'Activity shared with teams updated'
-    );
+    // Record change in history only if shared-with teams actually changed
+    if (!this.isDeepEqual(existingTeamIds, teamIds)) {
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'updated',
+        [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
+        'Activity shared with teams updated'
+      );
+    }
 
     // Return updated activity
     return this.findOne(id);

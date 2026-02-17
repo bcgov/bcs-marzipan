@@ -136,8 +136,8 @@ export function EditActivityForm(): React.ReactElement {
         if (!mounted) return;
 
         // Wait for lookups to be available before transforming data
-        // This is needed to map representative names back to IDs
-        if (!lookups.governmentRepresentatives) {
+        // This is needed to map representative names back to IDs and category names to IDs
+        if (!lookups.governmentRepresentatives || !lookups.categories) {
           // Retry after a short delay if lookups aren't ready yet
           timeoutId = setTimeout(() => {
             void load();
@@ -150,6 +150,12 @@ export function EditActivityForm(): React.ReactElement {
         lookups.governmentRepresentatives.forEach((rep) => {
           const name = rep.displayName || rep.name;
           repNameToIdMap.set(name.toLowerCase(), rep.id);
+        });
+
+        // Create a map of category names to IDs for lookup
+        const categoryNameToIdMap = new Map<string, number>();
+        lookups.categories.forEach((cat) => {
+          categoryNameToIdMap.set(cat.name.toLowerCase(), cat.id);
         });
 
         // Transform API response to form data structure
@@ -169,6 +175,14 @@ export function EditActivityForm(): React.ReactElement {
                 return { representativeName: rep.representative };
               }
             }) || [],
+          // Map category names to category IDs
+          categoryIds: activity.category
+            ? activity.category
+                .map((catName: string) =>
+                  categoryNameToIdMap.get(catName.toLowerCase())
+                )
+                .filter((id): id is number => id !== undefined)
+            : [],
           // Extract the lead contact from commsContacts array
           commsContactLeadId:
             activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
@@ -535,6 +549,7 @@ export function EditActivityForm(): React.ReactElement {
         activityId={Number(id)}
         open={historyOpen}
         onOpenChange={(v) => setHistoryOpen(!!v)}
+        dateStatuses={dateStatuses}
       />
     </ErrorBoundary>
   );

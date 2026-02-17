@@ -31,6 +31,46 @@ export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
+   * Deep equality comparison for any two values
+   * Handles primitives, arrays, and objects recursively
+   */
+  private isDeepEqual(a: unknown, b: unknown): boolean {
+    // Handle null/undefined
+    if (a === null || a === undefined) {
+      return b === null || b === undefined;
+    }
+    if (b === null || b === undefined) {
+      return a === null || a === undefined;
+    }
+
+    // Handle primitives
+    if (typeof a !== 'object' || typeof b !== 'object') {
+      return a === b;
+    }
+
+    // Handle arrays
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((val, idx) => this.isDeepEqual(val, b[idx]));
+    }
+
+    // Handle objects
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+
+    if (keysA.length !== keysB.length) return false;
+
+    return keysA.every((key) =>
+      this.isDeepEqual(
+        (a as Record<string, unknown>)[key],
+        (b as Record<string, unknown>)[key]
+      )
+    );
+  }
+
+  /**
    * Record a change to an activity
    * @param activityId - ID of the activity being changed
    * @param userId - ID of the user making the change
@@ -143,8 +183,8 @@ export class ActivityHistoryService {
         continue;
       }
 
-      // Compare values (handling null/undefined)
-      if (oldValue !== newValue) {
+      // Compare values using deep equality (handles objects and arrays)
+      if (!this.isDeepEqual(oldValue, newValue)) {
         changes.push({
           field: key,
           oldValue: oldValue ?? null,
