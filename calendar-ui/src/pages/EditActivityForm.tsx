@@ -38,6 +38,9 @@ import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
 import {
   findStatusByName,
+  formatLongDate,
+  formatTime,
+  isSameDay,
   timeAgo,
   UNCONFIRMED_STATUS_NAMES,
 } from '../lib/utils';
@@ -443,16 +446,24 @@ export function EditActivityForm(): React.ReactElement {
                       loadedActivity.createdDateTime ? (
                       <div>
                         Updated{' '}
-                        {timeAgo(new Date(loadedActivity.lastUpdatedDateTime))}{' '}
-                        ago
+                        {isSameDay(
+                          new Date(loadedActivity.lastUpdatedDateTime),
+                          new Date()
+                        )
+                          ? `today at ${formatTime(
+                              new Date(loadedActivity.lastUpdatedDateTime)
+                            )}`
+                          : `${timeAgo(
+                              new Date(loadedActivity.lastUpdatedDateTime)
+                            )} ago`}
                       </div>
                     ) : null}
                     <div>
                       Created{' '}
                       {loadedActivity.createdDateTime
-                        ? new Date(
-                            loadedActivity.createdDateTime
-                          ).toLocaleDateString()
+                        ? formatLongDate(
+                            new Date(loadedActivity.createdDateTime)
+                          )
                         : ''}
                     </div>
                   </div>

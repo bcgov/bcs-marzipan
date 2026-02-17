@@ -2,7 +2,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { timeAgoShort } from '@/lib/utils';
+import { formatLongDate, formatTime } from '@/lib/utils';
 
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import {
@@ -353,10 +353,10 @@ export default function ActivityHistory({
                             </div>
                             <div className="text-muted-foreground text-sm">
                               {groupKey === 'Today'
-                                ? timeAgoShort(entry.timestamp)
-                                : new Date(
-                                    entry.timestamp
-                                  ).toLocaleDateString()}
+                                ? `Today at ${formatTime(
+                                    new Date(entry.timestamp)
+                                  )}`
+                                : formatLongDate(new Date(entry.timestamp))}
                             </div>
                           </div>
 

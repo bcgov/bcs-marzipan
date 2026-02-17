@@ -29,6 +29,29 @@ export function timeAgo(date: Date): string {
   return '0 seconds';
 }
 
+export function formatLongDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export function formatTime(date: Date): string {
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 export function timeAgoShort(dateStr: string): string {
   const d = new Date(dateStr);
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
