@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   Param,
@@ -29,6 +30,7 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
+  VenueQuickPickItem,
 } from '@corpcal/shared/api/types';
 import {
   createActivityStatusRequestSchema,
@@ -39,6 +41,7 @@ import {
   createMinistryRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
+  createVenueQuickPickRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -47,6 +50,7 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
+  updateVenueQuickPickRequestSchema,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -63,6 +67,7 @@ import {
   CreateMinistryDto,
   CreateTagDto,
   CreateThemeDto,
+  CreateVenueQuickPickDto,
   GovernmentRepresentativeResponseWrapperDto,
   LookupArrayResponseWrapperDto,
   MinistryResponseWrapperDto,
@@ -76,6 +81,9 @@ import {
   UpdateMinistryDto,
   UpdateTagDto,
   UpdateThemeDto,
+  UpdateVenueQuickPickDto,
+  VenueQuickPickArrayResponseWrapperDto,
+  VenueQuickPickResponseWrapperDto,
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
@@ -185,15 +193,15 @@ export class LookupsController {
   @ApiQuery({
     name: 'organizationId',
     required: false,
-    type: String,
-    description: 'Filter to a specific organization by UUID',
+    type: Number,
+    description: 'Filter to a specific organization by ID',
   })
   @Get('organizations')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
   async getOrganizations(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string
+    @Query('organizationId', new ParseOptionalIntPipe()) organizationId?: number
   ): Promise<{ success: boolean; data: OrganizationLookupItem[] }> {
     const params: LookupQueryParams = { userId, role, organizationId };
     const data = await this.lookupsService.getOrganizations(params);
@@ -225,8 +233,8 @@ export class LookupsController {
   @ApiQuery({
     name: 'organizationId',
     required: false,
-    type: String,
-    description: 'Filter users by organization UUID',
+    type: Number,
+    description: 'Filter users by organization ID',
   })
   @ApiQuery({
     name: 'userIds',
@@ -240,7 +248,8 @@ export class LookupsController {
   async getUsers(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId') organizationId?: string,
+    @Query('organizationId', new ParseOptionalIntPipe())
+    organizationId?: number,
     @Query('userIds') userIds?: string
   ): Promise<{ success: boolean; data: LookupItem[] }> {
     // Parse comma-separated userIds string into array of numbers
@@ -719,7 +728,7 @@ export class LookupsController {
     description: 'Ministry updated successfully',
     type: MinistryResponseWrapperDto,
   })
-  @ApiParam({ name: 'id', type: String, description: 'Ministry ID (UUID)' })
+  @ApiParam({ name: 'id', type: Number, description: 'Ministry ID' })
   @ApiBody({ type: UpdateMinistryDto })
   @RequirePermission('lookups.manage')
   @Patch('ministries/:id')
@@ -729,7 +738,11 @@ export class LookupsController {
     body: UpdateMinistryDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateMinistry(id, body, user.id);
+    const data = await this.lookupsService.updateMinistry(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 
@@ -756,6 +769,38 @@ export class LookupsController {
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
   async getTimeStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getTimeStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all pitch required statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pitch required statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('pitch-required-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getPitchRequiredStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getPitchRequiredStatuses();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all translation required statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Translation required statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('translation-required-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getTranslationRequiredStatuses(): Promise<{
+    success: boolean;
+    data: LookupItem[];
+  }> {
+    const data = await this.lookupsService.getTranslationRequiredStatuses();
     return { success: true, data };
   }
 
@@ -809,7 +854,7 @@ export class LookupsController {
     description: 'Theme updated successfully',
     type: ThemeResponseWrapperDto,
   })
-  @ApiParam({ name: 'id', type: String, description: 'Theme ID (UUID)' })
+  @ApiParam({ name: 'id', type: Number, description: 'Theme ID' })
   @ApiBody({ type: UpdateThemeDto })
   @RequirePermission('lookups.manage')
   @Patch('themes/:id')
@@ -819,8 +864,104 @@ export class LookupsController {
     body: UpdateThemeDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.updateTheme(id, body, user.id);
+    const data = await this.lookupsService.updateTheme(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get venue quick-picks',
+    description:
+      'Returns admin-configured quick-pick venues for the activity form (max 4 active).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Venue quick-picks retrieved successfully',
+    type: VenueQuickPickArrayResponseWrapperDto,
+  })
+  @Get('venue-quick-picks')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getVenueQuickPicks(): Promise<{
+    success: boolean;
+    data: VenueQuickPickItem[];
+  }> {
+    const data = await this.lookupsService.getVenueQuickPicks();
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get last-used venue addresses',
+    description:
+      'Returns the last 2 distinct venue addresses used by the current user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Last-used venues retrieved successfully',
+    type: VenueQuickPickArrayResponseWrapperDto,
+  })
+  @Get('venue-last-used')
+  async getVenueLastUsed(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: VenueQuickPickItem[] }> {
+    const data = await this.lookupsService.getVenueLastUsed(user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a venue quick-pick' })
+  @ApiResponse({
+    status: 201,
+    description: 'Venue quick-pick created successfully',
+    type: VenueQuickPickResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateVenueQuickPickDto })
+  @RequirePermission('lookups.manage')
+  @Post('venue-quick-picks')
+  async createVenueQuickPick(
+    @Body(new ZodValidationPipe(createVenueQuickPickRequestSchema))
+    body: CreateVenueQuickPickDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: VenueQuickPickItem }> {
+    const data = await this.lookupsService.createVenueQuickPick(body, user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a venue quick-pick' })
+  @ApiResponse({
+    status: 200,
+    description: 'Venue quick-pick updated successfully',
+    type: VenueQuickPickResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Venue quick-pick ID' })
+  @ApiBody({ type: UpdateVenueQuickPickDto })
+  @RequirePermission('lookups.manage')
+  @Patch('venue-quick-picks/:id')
+  async updateVenueQuickPick(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateVenueQuickPickRequestSchema))
+    body: UpdateVenueQuickPickDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: VenueQuickPickItem }> {
+    const data = await this.lookupsService.updateVenueQuickPick(
+      Number(id),
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Delete a venue quick-pick' })
+  @ApiResponse({ status: 200, description: 'Venue quick-pick deleted' })
+  @ApiParam({ name: 'id', type: Number, description: 'Venue quick-pick ID' })
+  @RequirePermission('lookups.manage')
+  @Delete('venue-quick-picks/:id')
+  async deleteVenueQuickPick(
+    @Param('id') id: string
+  ): Promise<{ success: boolean }> {
+    await this.lookupsService.deleteVenueQuickPick(Number(id));
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Search for Canadian addresses' })

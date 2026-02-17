@@ -20,8 +20,10 @@ import {
   eventPlanners,
   newsReleaseDistributions,
   newsReleaseOrigins,
+  pitchRequiredStatuses,
   premierRequested,
   timeStatuses,
+  translationRequiredStatuses,
 } from './lookups';
 import { ministries } from './ministry';
 import { organizations } from './organizations';
@@ -57,7 +59,7 @@ export const activities = pgTable(
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),
-    leadOrgId: uuid('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
+    leadOrgId: integer('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
     leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
     summary: text('summary').notNull(),
     significance: text('significance').notNull(),
@@ -105,7 +107,12 @@ export const activities = pgTable(
     // Notes and additional fields
     notes: text('notes'), // Maps to legacy Comments field
     pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
-    pitchRequired: boolean('pitch_required'), // Whether pitch is required for this activity (nullable - can override category default)
+    pitchRequiredStatusId: integer('pitch_required_status_id').references(
+      () => pitchRequiredStatuses.id
+    ), // pending, required, not_required
+    translationsRequiredStatusId: integer(
+      'translations_required_status_id'
+    ).references(() => translationRequiredStatuses.id), // pending, required, not_required
     newsReleaseDistributionId: integer(
       'news_release_distribution_id'
     ).references(() => newsReleaseDistributions.id), // FK to NewsReleaseDistribution - maps to legacy NRDistributionId
@@ -116,7 +123,7 @@ export const activities = pgTable(
       .notNull()
       .default('global'), // 'global' or 'team' - controls base access visibility
 
-    leadMinistryId: uuid('lead_ministry_id')
+    leadMinistryId: integer('lead_ministry_id')
       .notNull()
       .references(() => ministries.id), // FK to Ministry (required for displayId generation)
     activityStatusId: integer('activity_status_id')
@@ -141,15 +148,15 @@ export const activities = pgTable(
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
   },
   (table) => [
-    // CHECK constraint: exactly one of leadOrgId or leadOrgName must be provided (XOR)
+    // CHECK constraint: at most one of leadOrgId or leadOrgName (both null allowed)
     check(
-      'lead_org_xor',
-      sql`(${table.leadOrgId} IS NULL) <> (${table.leadOrgName} IS NULL)`
+      'lead_org_at_most_one',
+      sql`NOT (${table.leadOrgId} IS NOT NULL AND ${table.leadOrgName} IS NOT NULL)`
     ),
-    // CHECK constraint: exactly one of eventPlannerLeadId or eventPlannerLeadName must be provided (XOR)
+    // CHECK constraint: at most one of eventPlannerLeadId or eventPlannerLeadName (both null allowed)
     check(
-      'event_planner_lead_xor',
-      sql`(${table.eventPlannerLeadId} IS NULL) <> (${table.eventPlannerLeadName} IS NULL)`
+      'event_planner_lead_at_most_one',
+      sql`NOT (${table.eventPlannerLeadId} IS NOT NULL AND ${table.eventPlannerLeadName} IS NOT NULL)`
     ),
   ]
 );
@@ -201,6 +208,16 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.premierRequestedId],
     references: [premierRequested.id],
     relationName: 'premierRequestedLookup',
+  }),
+  pitchRequiredStatus: one(pitchRequiredStatuses, {
+    fields: [activities.pitchRequiredStatusId],
+    references: [pitchRequiredStatuses.id],
+    relationName: 'pitchRequiredStatus',
+  }),
+  translationsRequiredStatus: one(translationRequiredStatuses, {
+    fields: [activities.translationsRequiredStatusId],
+    references: [translationRequiredStatuses.id],
+    relationName: 'translationsRequiredStatus',
   }),
 
   // Junction tables

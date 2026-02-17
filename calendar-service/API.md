@@ -25,7 +25,7 @@ Creates a new calendar activity with related junction table records.
   "dateStatusId": 1,
   "timeStatusId": 1,
   "activityStatusId": 1,
-  "leadMinistryId": "00000000-0000-4000-8000-000000000004",
+  "leadMinistryId": 1,
   "isIssue": false,
   "reportSettings": [
     { "reportId": 1, "omitted": false },
@@ -35,10 +35,13 @@ Creates a new calendar activity with related junction table records.
     { "userId": 8, "isLead": true },
     { "userId": 12, "isLead": false }
   ],
-  "sharedWithAll": false,
+  "sharedWithTeamIds": [],
   "schedulingNotes": "Room booking required",
+  "strategy": null,
   "notes": "General notes for admin change log",
   "pitchDate": "2026-03-10",
+  "pitchRequiredStatusId": null,
+  "translationsRequiredStatusId": null,
   "newsReleaseDistributionId": 1,
   "premierRequestedId": 2,
   "venueAddress": {
@@ -49,7 +52,7 @@ Creates a new calendar activity with related junction table records.
     "country": "Canada"
   },
   "categoryIds": [2, 5],
-  "tagIds": ["00000000-0000-4000-8000-000000000105"]
+  "tagIds": [1, 2]
 }
 ```
 
@@ -86,7 +89,7 @@ Retrieves all activities with optional filtering.
 | `endDateFrom` | ISO date | Activities ending on or after this date |
 | `endDateTo` | ISO date | Activities ending on or before this date |
 | `activityStatusId` | integer | Filter by activity status (default: excludes deleted activities) |
-| `leadMinistryId` | UUID | Filter by lead ministry |
+| `leadMinistryId` | integer | Filter by lead ministry |
 | `city` | string | Filter by city (from venueAddress) |
 | `isIssue` | boolean | Filter by issue flag |
 
@@ -300,7 +303,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/organizations`
 
-**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (UUID)
+**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (integer)
 
 **Cache:** 5 minutes
 
@@ -325,7 +328,7 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/users`
 
-**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (UUID), `userIds` (comma-separated integers)
+**Query Parameters:** `userId` (integer), `role` (string), `organizationId` (integer), `userIds` (comma-separated integers)
 
 **Cache:** 5 minutes
 
@@ -533,6 +536,84 @@ Simplified activity list for "Related Activities" dropdowns.
   ]
 }
 ```
+
+---
+
+### Get Venue Quick-Picks
+
+**GET** `/lookups/venue-quick-picks`
+
+Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input.
+
+**Cache:** 1 hour
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "venueName": "BC Legislature",
+      "street": "501 Belleville St",
+      "city": "Victoria",
+      "provinceOrState": "British Columbia",
+      "country": "Canada"
+    }
+  ]
+}
+```
+
+---
+
+### Get Venue Last-Used
+
+**GET** `/lookups/venue-last-used`
+
+Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": -1,
+      "venueName": "Conference Room A",
+      "street": "123 Main St",
+      "city": "Victoria",
+      "provinceOrState": "British Columbia",
+      "country": "Canada"
+    }
+  ]
+}
+```
+
+---
+
+### Create Venue Quick-Pick
+
+**POST** `/lookups/venue-quick-picks`
+
+**Permission:** `lookups.manage`
+
+**Body:** `venueName` (required), `street`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
+
+---
+
+### Update Venue Quick-Pick
+
+**PATCH** `/lookups/venue-quick-picks/:id`
+
+**Permission:** `lookups.manage`
+
+**Body:** Same as create (all optional for partial update).
+
+---
+
+### Delete Venue Quick-Pick
+
+**DELETE** `/lookups/venue-quick-picks/:id`
+
+**Permission:** `lookups.manage`
 
 ---
 

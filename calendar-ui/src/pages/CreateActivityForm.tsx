@@ -1,13 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import {
   createActivityRequestSchema,
-  type CreateActivityRequest,
+  type ActivityFormData,
 } from '@corpcal/shared/schemas';
 
 import { createActivity } from '../api/activitiesApi';
@@ -53,19 +53,11 @@ import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
-type FormData = CreateActivityRequest & {
-  categoryIds?: number[];
-  tagIds?: number[];
-  commsMaterialIds?: number[];
-  translationLanguageIds?: number[];
-  sharedWithMinistryIds?: string[];
-};
-
 /**
  * Default form values that match the FormData type.
  * Used for both form initialization and reset operations.
  */
-const getDefaultFormValues = (): Partial<FormData> => ({
+const getDefaultFormValues = (): Partial<ActivityFormData> => ({
   isAllDay: false,
   isIssue: false,
   isConfidential: false,
@@ -74,12 +66,13 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   commsMaterialIds: [],
   translationLanguageIds: [],
   representatives: [],
-  sharedWithMinistryIds: [],
+  sharedWithTeamIds: [],
   reportSettings: [],
   // Set these to match what the effects set on mount
   dateStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
   timeStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
-  pitchRequired: false,
+  pitchRequiredStatusId: undefined,
+  translationsRequiredStatusId: undefined,
 });
 
 /** Stable default values for autosave comparison and reset (e.g. start fresh). */
@@ -111,8 +104,10 @@ export const CreateActivityForm: FC = () => {
   // Fetch all lookup data
   const lookups = useFormLookups();
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(createActivityRequestSchema) as any,
+  const form = useForm<ActivityFormData>({
+    resolver: zodResolver(
+      createActivityRequestSchema
+    ) as Resolver<ActivityFormData>,
     mode: 'onChange', // Validate on change to enable real-time validation
     defaultValues: {
       ...getDefaultFormValues(),
@@ -124,7 +119,7 @@ export const CreateActivityForm: FC = () => {
     if (dateStatuses && !form.getValues('dateStatusId')) {
       const unknownStatus = dateStatuses.find((s) => s.name === 'unknown');
       if (unknownStatus) {
-        form.setValue('dateStatusId', unknownStatus.id as number);
+        form.setValue('dateStatusId', unknownStatus.id);
       }
     }
   }, [dateStatuses, form]);
@@ -133,7 +128,7 @@ export const CreateActivityForm: FC = () => {
     if (timeStatuses && !form.getValues('timeStatusId')) {
       const unknownStatus = timeStatuses.find((s) => s.name === 'unknown');
       if (unknownStatus) {
-        form.setValue('timeStatusId', unknownStatus.id as number);
+        form.setValue('timeStatusId', unknownStatus.id);
       }
     }
   }, [timeStatuses, form]);
@@ -157,7 +152,7 @@ export const CreateActivityForm: FC = () => {
   }, [lookups.activityStatuses, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
-  const [formValues, setFormValues] = useState<Partial<FormData>>(() =>
+  const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
     form.getValues()
   );
   const previousValuesRef = useRef<string>('');
@@ -165,7 +160,7 @@ export const CreateActivityForm: FC = () => {
   useEffect(() => {
     // Subscribe to form changes and only update state when values actually change
     const subscription = form.watch((values) => {
-      const newValues = values as Partial<FormData>;
+      const newValues = values as Partial<ActivityFormData>;
       const newValuesStr = JSON.stringify(newValues);
 
       // Only update if values actually changed
@@ -234,7 +229,7 @@ export const CreateActivityForm: FC = () => {
   // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
-      form.reset(existingDraft.draftData as FormData);
+      form.reset(existingDraft.draftData as ActivityFormData);
     }
     setShowDraftDialog(false);
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
@@ -269,7 +264,7 @@ export const CreateActivityForm: FC = () => {
     window.close();
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: ActivityFormData) => {
     setIsSubmitting(true);
     try {
       // Prepare submit data with junction table arrays
@@ -302,10 +297,10 @@ export const CreateActivityForm: FC = () => {
           formValues.representatives && formValues.representatives.length > 0
             ? formValues.representatives
             : undefined,
-        sharedWithMinistryIds:
-          formValues.sharedWithMinistryIds &&
-          formValues.sharedWithMinistryIds.length > 0
-            ? formValues.sharedWithMinistryIds
+        sharedWithTeamIds:
+          formValues.sharedWithTeamIds &&
+          formValues.sharedWithTeamIds.length > 0
+            ? formValues.sharedWithTeamIds
             : undefined,
       };
 

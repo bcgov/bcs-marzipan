@@ -18,7 +18,7 @@ export const updateCategoriesSchema = z.object({
  * Schema for updating activity themes
  */
 export const updateThemesSchema = z.object({
-  themeIds: z.array(z.string().uuid()),
+  themeIds: z.array(z.number().int()),
 });
 
 /**

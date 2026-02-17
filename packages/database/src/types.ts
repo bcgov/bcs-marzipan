@@ -9,10 +9,12 @@ import {
   commsContacts,
   dateStatuses,
   governmentRepresentatives,
+  pitchRequiredStatuses,
   pitchStatuses,
   tags,
   themes,
   timeStatuses,
+  translationRequiredStatuses,
   venueStatuses,
 } from './schema/lookups';
 import { ministries } from './schema/ministry';
@@ -91,6 +93,20 @@ export type NewDateStatus = InferInsertModel<typeof dateStatuses>;
 
 export type TimeStatus = InferSelectModel<typeof timeStatuses>;
 export type NewTimeStatus = InferInsertModel<typeof timeStatuses>;
+
+export type PitchRequiredStatus = InferSelectModel<
+  typeof pitchRequiredStatuses
+>;
+export type NewPitchRequiredStatus = InferInsertModel<
+  typeof pitchRequiredStatuses
+>;
+
+export type TranslationRequiredStatus = InferSelectModel<
+  typeof translationRequiredStatuses
+>;
+export type NewTranslationRequiredStatus = InferInsertModel<
+  typeof translationRequiredStatuses
+>;
 
 export type VenueStatus = InferSelectModel<typeof venueStatuses>;
 export type NewVenueStatus = InferInsertModel<typeof venueStatuses>;

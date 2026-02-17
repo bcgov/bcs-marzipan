@@ -23,16 +23,15 @@ describe('lookupQueryParamsSchema', () => {
     });
   });
 
-  it('validates organizationId as UUID', () => {
-    const uuid = '550e8400-e29b-41d4-a716-446655440000';
-    expect(lookupQueryParamsSchema.parse({ organizationId: uuid })).toEqual({
-      organizationId: uuid,
+  it('parses organizationId as integer', () => {
+    expect(lookupQueryParamsSchema.parse({ organizationId: '5' })).toEqual({
+      organizationId: 5,
     });
   });
 
-  it('rejects invalid organizationId (non-UUID)', () => {
+  it('rejects invalid organizationId (non-integer)', () => {
     expect(() =>
-      lookupQueryParamsSchema.parse({ organizationId: 'not-a-uuid' })
+      lookupQueryParamsSchema.parse({ organizationId: 'not-a-number' })
     ).toThrow();
   });
 
@@ -86,7 +85,7 @@ describe('filterActivitiesQuerySchema', () => {
       startDateFrom: '2025-01-01',
       startDateTo: '2025-12-31',
       activityStatusId: '1',
-      leadMinistryId: '550e8400-e29b-41d4-a716-446655440000',
+      leadMinistryId: '2',
       city: 'Victoria',
       isIssue: 'true',
     });
@@ -94,7 +93,7 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.startDateFrom).toBe('2025-01-01');
     expect(result.startDateTo).toBe('2025-12-31');
     expect(result.activityStatusId).toBe(1);
-    expect(result.leadMinistryId).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(result.leadMinistryId).toBe(2);
     expect(result.city).toBe('Victoria');
     expect(result.isIssue).toBe(true);
   });
@@ -117,9 +116,9 @@ describe('filterActivitiesQuerySchema', () => {
     ).toThrow();
   });
 
-  it('rejects invalid UUID for leadMinistryId', () => {
+  it('rejects invalid leadMinistryId (non-integer)', () => {
     expect(() =>
-      filterActivitiesQuerySchema.parse({ leadMinistryId: 'not-a-uuid' })
+      filterActivitiesQuerySchema.parse({ leadMinistryId: 'not-a-number' })
     ).toThrow();
   });
 

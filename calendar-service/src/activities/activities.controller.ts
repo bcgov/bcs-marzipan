@@ -495,7 +495,7 @@ export class ActivitiesController {
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateThemesSchema))
-    body: { themeIds: string[] },
+    body: { themeIds: number[] },
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateThemes(

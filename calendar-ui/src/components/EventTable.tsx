@@ -99,9 +99,7 @@ type EventRow = {
   dateModified: Date | undefined;
   summary: string | undefined;
   tags: Array<{ id: number; text: string }> | undefined;
-  representatives:
-    | Array<{ representative: string; invitationStatus: string }>
-    | undefined;
+  representatives: Array<{ representative: string }> | undefined;
   leads: LeadInfo[] | undefined;
   commsMaterials: string[] | undefined;
   translationsRequired: string[] | undefined;
@@ -139,7 +137,6 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
 
   const representatives = activity.representativesAttending?.map((r) => ({
     representative: r.representative,
-    invitationStatus: r.invitationStatus || 'No',
   }));
 
   const leads: LeadInfo[] = [];
@@ -341,7 +338,7 @@ const ScheduleCell = ({
   dateConfirmed: boolean;
   timeConfirmed: boolean;
   premierStatus: string;
-  representatives?: Array<{ representative: string; invitationStatus: string }>;
+  representatives?: Array<{ representative: string }>;
 }) => {
   const formatDate = (date: Date) =>
     date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

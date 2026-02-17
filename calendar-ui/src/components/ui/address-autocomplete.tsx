@@ -32,7 +32,10 @@ interface AddressSuggestion {
 
 interface AddressAutocompleteProps {
   onAddressSelect: (address: AddressData) => void;
+  /** Initial value when uncontrolled */
   defaultValue?: string;
+  /** When provided, syncs the input display from parent (e.g. after quick-pick selection). Uncontrolled when omitted. */
+  value?: string;
   placeholder?: string;
   label?: string;
   required?: boolean;
@@ -43,13 +46,16 @@ interface AddressAutocompleteProps {
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   onAddressSelect,
   defaultValue = '',
+  value: valueProp,
   placeholder = 'Start typing an address...',
   label = 'Address',
   required = false,
   disabled = false,
   className = '',
 }) => {
-  const [searchTerm, setSearchTerm] = useState(defaultValue);
+  const [searchTerm, setSearchTerm] = useState(
+    valueProp !== undefined ? valueProp : defaultValue
+  );
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -59,6 +65,13 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // When parent provides value (e.g. after quick-pick), sync the input display
+  useEffect(() => {
+    if (valueProp !== undefined) {
+      setSearchTerm(valueProp);
+    }
+  }, [valueProp]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

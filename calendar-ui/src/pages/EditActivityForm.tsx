@@ -1,21 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 
 import {
   createActivityRequestSchema,
-  type CreateActivityRequest,
+  type ActivityFormData,
+  type ActivityResponse,
 } from '@corpcal/shared/schemas';
 import {
-  ERROR_DETAILS_LABEL,
-  LOAD_ACTIVITY_NO_ID,
-  LOAD_ACTIVITY_TITLE,
-  RENDER_FORM_ERROR_TITLE,
-  TRY_AGAIN_LABEL,
-} from '@/lib/error-messages';
+  mapResponseToFormData,
+  normalizeReportSettings,
+} from '@corpcal/shared/utils';
 
 import { fetchActivity, updateActivity } from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
@@ -32,9 +30,17 @@ import { ErrorState } from '../components/ErrorState';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
-import { useFormLookups } from '../hooks/useFormLookups';
+import { useFormLookups, type FormLookupData } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
+import {
+  ERROR_DETAILS_LABEL,
+  LOAD_ACTIVITY_NO_ID,
+  LOAD_ACTIVITY_TITLE,
+  RENDER_FORM_ERROR_TITLE,
+  TRY_AGAIN_LABEL,
+} from '../lib/error-messages';
 import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { formatDisplayValue } from '../lib/formatDisplayValue';
 import { createLogger } from '../lib/logger';
 import {
   findStatusByName,
@@ -42,30 +48,66 @@ import {
   UNCONFIRMED_STATUS_NAMES,
 } from '../lib/utils';
 
-type FormData = CreateActivityRequest & {
-  categoryIds?: number[];
-  tagIds?: number[];
-  commsMaterialIds?: number[];
-  translationLanguageIds?: number[];
-  sharedWithMinistryIds?: string[];
-  commsContactLeadId?: string | null;
-};
-
-type LoadedActivity = {
-  id?: number;
-  displayId?: string;
-  title?: string;
-  category?: string[];
-  leadOrg?: string;
-  activityStatus?: string | number | Record<string, unknown>;
-  lastUpdatedDateTime?: string;
-  createdDateTime?: string;
-  [key: string]: unknown;
-};
-
 const logger = createLogger('EditActivityForm');
 
-const getDefaultFormValues = (): Partial<FormData> => ({
+function buildFormLookups(
+  lookups: Pick<
+    FormLookupData,
+    'categories' | 'commsMaterials' | 'translationLanguages'
+  >
+): Parameters<typeof mapResponseToFormData>[1] {
+  return {
+    categoryNameToId: (name: string) =>
+      lookups.categories.find((c) => c.name === name || c.displayName === name)
+        ?.id,
+    commsMaterialNameToId: (name: string) =>
+      lookups.commsMaterials.find(
+        (m) => m.name === name || m.displayName === name
+      )?.id,
+    translationLanguageNameToId: (name: string) =>
+      lookups.translationLanguages.find(
+        (l) => l.name === name || l.displayName === name
+      )?.id,
+  };
+}
+
+function activityToFormData(
+  activity: ActivityResponse,
+  lookups: FormLookupData
+): ActivityFormData {
+  const base = mapResponseToFormData(activity, buildFormLookups(lookups));
+  const reps = lookups.governmentRepresentatives;
+  if (!reps?.length) {
+    return {
+      ...base,
+      commsContactLeadId:
+        activity.commsContacts?.find((c) => c.isLead)?.userId ?? null,
+    };
+  }
+  const repNameToIdMap = new Map<string, number>();
+  reps.forEach((rep) => {
+    const name = rep.displayName || rep.name;
+    repNameToIdMap.set(name.toLowerCase(), rep.id);
+  });
+  const representatives =
+    activity.representativesAttending?.map((rep) => {
+      const repId = repNameToIdMap.get(
+        String(rep.representative).toLowerCase()
+      );
+      if (repId != null) return { representativeId: repId };
+      return { representativeName: rep.representative };
+    }) ?? [];
+  const commsContactLeadId =
+    activity.commsContacts?.find((c) => c.isLead)?.userId ?? null;
+  return {
+    ...base,
+    representatives:
+      representatives.length > 0 ? representatives : base.representatives,
+    commsContactLeadId,
+  };
+}
+
+const getDefaultFormValues = (): Partial<ActivityFormData> => ({
   isAllDay: false,
   isIssue: false,
   isConfidential: false,
@@ -74,11 +116,12 @@ const getDefaultFormValues = (): Partial<FormData> => ({
   commsMaterialIds: [],
   translationLanguageIds: [],
   representatives: [],
-  sharedWithMinistryIds: [],
+  sharedWithTeamIds: [],
   reportSettings: [],
   dateStatusId: 1,
   timeStatusId: 1,
-  pitchRequired: false,
+  pitchRequiredStatusId: undefined,
+  translationsRequiredStatusId: undefined,
 });
 
 export function EditActivityForm(): React.ReactElement {
@@ -87,7 +130,7 @@ export function EditActivityForm(): React.ReactElement {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loadedActivity, setLoadedActivity] = useState<LoadedActivity | null>(
+  const [loadedActivity, setLoadedActivity] = useState<ActivityResponse | null>(
     null
   );
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -96,8 +139,10 @@ export function EditActivityForm(): React.ReactElement {
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(createActivityRequestSchema) as any,
+  const form = useForm<ActivityFormData>({
+    resolver: zodResolver(
+      createActivityRequestSchema
+    ) as Resolver<ActivityFormData>,
     mode: 'onChange',
     defaultValues: {
       ...getDefaultFormValues(),
@@ -108,14 +153,20 @@ export function EditActivityForm(): React.ReactElement {
   useEffect(() => {
     if (dateStatuses && !form.getValues('dateStatusId')) {
       const unknown = findStatusByName(dateStatuses, UNCONFIRMED_STATUS_NAMES);
-      if (unknown) form.setValue('dateStatusId', unknown.id as number);
+      if (unknown?.id != null) {
+        const id = Number(unknown.id);
+        if (!Number.isNaN(id)) form.setValue('dateStatusId', id);
+      }
     }
   }, [dateStatuses, form]);
 
   useEffect(() => {
     if (timeStatuses && !form.getValues('timeStatusId')) {
       const unknown = findStatusByName(timeStatuses, UNCONFIRMED_STATUS_NAMES);
-      if (unknown) form.setValue('timeStatusId', unknown.id as number);
+      if (unknown?.id != null) {
+        const id = Number(unknown.id);
+        if (!Number.isNaN(id)) form.setValue('timeStatusId', id);
+      }
     }
   }, [timeStatuses, form]);
 
@@ -135,48 +186,16 @@ export function EditActivityForm(): React.ReactElement {
         const activity = await fetchActivity(Number(id));
         if (!mounted) return;
 
-        // Wait for lookups to be available before transforming data
-        // This is needed to map representative names back to IDs
+        // Wait for lookups to be available before transforming data (for representative name-to-ID and comms lead)
         if (!lookups.governmentRepresentatives) {
-          // Retry after a short delay if lookups aren't ready yet
           timeoutId = setTimeout(() => {
             void load();
           }, 100);
           return;
         }
 
-        // Create a map of representative names to IDs for lookup
-        const repNameToIdMap = new Map<string, number>();
-        lookups.governmentRepresentatives.forEach((rep) => {
-          const name = rep.displayName || rep.name;
-          repNameToIdMap.set(name.toLowerCase(), rep.id);
-        });
-
-        // Transform API response to form data structure
-        const formData: any = {
-          ...activity,
-          // Convert representativesAttending (API response) to representatives (form format)
-          // Try to match names to IDs from the lookup table
-          representatives:
-            activity.representativesAttending?.map((rep: any) => {
-              const repId = repNameToIdMap.get(
-                rep.representative.toLowerCase()
-              );
-              if (repId) {
-                return { representativeId: repId };
-              } else {
-                // Keep as free-text if not found in lookup
-                return { representativeName: rep.representative };
-              }
-            }) || [],
-          // Extract the lead contact from commsContacts array
-          commsContactLeadId:
-            activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
-        };
-
-        // Reset the form with the transformed activity data
-        form.reset(formData);
-        setLoadedActivity(activity as LoadedActivity);
+        form.reset(activityToFormData(activity, lookups));
+        setLoadedActivity(activity);
       } catch (err: unknown) {
         logger.error('Failed to load activity', err);
         setLoadError(getFriendlyErrorMessage(err));
@@ -191,42 +210,34 @@ export function EditActivityForm(): React.ReactElement {
         clearTimeout(timeoutId);
       }
     };
-  }, [id, form, lookups.governmentRepresentatives]);
+    // Granular lookups deps intentional: full lookups is a new ref each render; we only re-run when these arrays change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
+  }, [
+    id,
+    form,
+    lookups.governmentRepresentatives,
+    lookups.categories,
+    lookups.commsMaterials,
+    lookups.translationLanguages,
+  ]);
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: ActivityFormData) => {
     if (!id) return;
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
-      // Normalize reportSettings so each entry has a numeric reportId as expected by the API/schema
-      const normalizeReportSettings = (items: any[] | undefined) => {
-        if (!items || !Array.isArray(items)) return undefined;
-        const normalized: { reportId: number; omitted: boolean }[] = [];
-        for (const it of items) {
-          const reportId =
-            (it && typeof it.reportId === 'number' && it.reportId) ||
-            (it && typeof it.id === 'number' && it.id) ||
-            (it &&
-              it.report &&
-              typeof it.report.id === 'number' &&
-              it.report.id);
-          const omitted = !!(it && typeof it.omitted === 'boolean'
-            ? it.omitted
-            : it?.omitted);
-          if (typeof reportId === 'number') {
-            normalized.push({ reportId, omitted });
-          } else {
-            logger.warn(
-              'Skipping invalid reportSettings entry (missing numeric reportId)'
-            );
-          }
-        }
-        return normalized.length > 0 ? normalized : undefined;
-      };
-
-      const normalizedReportSettings = normalizeReportSettings(
-        formValues.reportSettings as any
-      );
+      const rawReportSettings = formValues.reportSettings;
+      const normalizedReportSettings =
+        normalizeReportSettings(rawReportSettings);
+      if (
+        rawReportSettings?.length != null &&
+        rawReportSettings.length > 0 &&
+        (normalizedReportSettings?.length ?? 0) < rawReportSettings.length
+      ) {
+        logger.warn(
+          'Skipping invalid reportSettings entry (missing numeric reportId)'
+        );
+      }
 
       const submitData = {
         ...data,
@@ -256,10 +267,10 @@ export function EditActivityForm(): React.ReactElement {
           formValues.representatives && formValues.representatives.length > 0
             ? formValues.representatives
             : undefined,
-        sharedWithMinistryIds:
-          formValues.sharedWithMinistryIds &&
-          formValues.sharedWithMinistryIds.length > 0
-            ? formValues.sharedWithMinistryIds
+        sharedWithTeamIds:
+          formValues.sharedWithTeamIds &&
+          formValues.sharedWithTeamIds.length > 0
+            ? formValues.sharedWithTeamIds
             : undefined,
         // Transform commsContactLeadId back to commsContacts array format
         commsContacts: formValues.commsContactLeadId
@@ -282,22 +293,6 @@ export function EditActivityForm(): React.ReactElement {
 
   const onError = () => {
     logger.error('Form validation failed');
-  };
-
-  const formatActivityStatus = (s: unknown) => {
-    if (s == null) return '';
-    if (typeof s === 'string' || typeof s === 'number') return String(s);
-    if (typeof s === 'object') {
-      const obj = s as any;
-      if (typeof obj.name === 'string') return obj.name;
-      if (typeof obj.label === 'string') return obj.label;
-      try {
-        return JSON.stringify(obj);
-      } catch {
-        return String(obj);
-      }
-    }
-    return String(JSON.stringify(s));
   };
 
   const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
@@ -344,8 +339,8 @@ export function EditActivityForm(): React.ReactElement {
       if (!id) return;
       fetchActivity(Number(id))
         .then((activity) => {
-          form.reset(activity as any);
-          setLoadedActivity(activity as LoadedActivity);
+          form.reset(activityToFormData(activity, lookups));
+          setLoadedActivity(activity);
         })
         .catch((err: unknown) => {
           logger.error('Failed to load activity', err);
@@ -418,7 +413,7 @@ export function EditActivityForm(): React.ReactElement {
                   {loadedActivity.activityStatus ? (
                     <div style={{ marginBottom: 8 }}>
                       <Badge variant="default">
-                        {formatActivityStatus(loadedActivity.activityStatus)}
+                        {formatDisplayValue(loadedActivity.activityStatus)}
                       </Badge>
                     </div>
                   ) : null}

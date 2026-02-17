@@ -114,22 +114,42 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
 -- ============================================================================
+-- PITCH REQUIRED STATUSES (pending, required, not_required)
+-- ============================================================================
+INSERT INTO pitch_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
+VALUES
+  (1, 'pending', 'Pending review', 1, true, 1, 1),
+  (2, 'required', 'Required', 2, true, 1, 1),
+  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- TRANSLATION REQUIRED STATUSES (pending, required, not_required)
+-- ============================================================================
+INSERT INTO translation_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
+VALUES
+  (1, 'pending', 'Pending review', 1, true, 1, 1),
+  (2, 'required', 'Required', 2, true, 1, 1),
+  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- CATEGORIES
 -- Classification categories for activities
 -- Keep all existing values and add 'HQ Placeholder'
 -- ============================================================================
 
-INSERT INTO categories (id, name, display_name, sort_order, allows_pitch, visibility, is_active, description, created_by, last_updated_by)
+INSERT INTO categories (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'event', 'Event', 1, true, 'global', true, 'Event category (may require pitch approval)', 1, 1),
-  (2, 'release', 'Release', 2, true, 'global', true, 'Release category (may require pitch approval)', 1, 1),
-  (3, 'awareness', 'Awareness date', 3, true, 'global', true, 'Awareness category', 1, 1),
-  (4, 'conference', 'Conference', 4, true, 'global', true, 'Conference / AGM / Forum category', 1, 1),
-  (5, 'fyi', 'FYI', 5, false, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
-  (6, 'social media', 'Social media', 6, true, 'global', true, 'Social media category', 1, 1),
-  (7, 'speech', 'Speech', 7, true, 'global', true, 'Speech category', 1, 1),
-  (8, 'tv radio', 'TV/Radio', 8, true, 'global', true, 'TV/Radio category', 1, 1),
-  (9, 'hq placeholder', 'HQ Placeholder', 9, false, 'global', true, 'HQ Placeholder category', 1, 1)
+  (1, 'event', 'Event', 1, 'global', true, 'Event category', 1, 1),
+  (2, 'release', 'Release', 2, 'global', true, 'Release category', 1, 1),
+  (3, 'awareness', 'Awareness date', 3, 'global', true, 'Awareness category', 1, 1),
+  (4, 'conference', 'Conference', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
+  (5, 'fyi', 'FYI', 5, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
+  (6, 'social media', 'Social media', 6, 'global', true, 'Social media category', 1, 1),
+  (7, 'speech', 'Speech', 7, 'global', true, 'Speech category', 1, 1),
+  (8, 'tv radio', 'TV/Radio', 8, 'global', true, 'TV/Radio category', 1, 1),
+  (9, 'hq placeholder', 'HQ Placeholder', 9, 'global', true, 'HQ Placeholder category', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -167,35 +187,35 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
--- Languages for translations
+-- Languages for translations. shortcode values are BCP 47 language tags.
 -- Updated with new values
 -- ============================================================================
 
-INSERT INTO translated_languages (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
+INSERT INTO translated_languages (id, name, display_name, shortcode, sort_order, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'arabic', 'Arabic', 1, true, 'Arabic translation required', 1, 1),
-  (2, 'chinese simplified', 'Chinese (Simplified)', 2, true, 'Simplified Chinese translation required', 1, 1),
-  (3, 'chinese traditional', 'Chinese (Traditional)', 3, true, 'Traditional Chinese translation required', 1, 1),
-  (4, 'dutch', 'Dutch', 4, true, 'Dutch translation required', 1, 1),
-  (5, 'farsi', 'Farsi', 5, true, 'Farsi translation required', 1, 1),
-  (6, 'finnish', 'Finnish', 6, true, 'Finnish translation required', 1, 1),
-  (7, 'french', 'French', 7, true, 'French translation required', 1, 1),
-  (8, 'gujarati', 'Gujarati', 8, true, 'Gujarati translation required', 1, 1),
-  (9, 'hebrew', 'Hebrew', 9, true, 'Hebrew translation required', 1, 1),
-  (10, 'hindi', 'Hindi', 10, true, 'Hindi translation required', 1, 1),
-  (11, 'indonesian', 'Indonesian', 11, true, 'Indonesian translation required', 1, 1),
-  (12, 'japanese', 'Japanese', 12, true, 'Japanese translation required', 1, 1),
-  (13, 'korean', 'Korean', 13, true, 'Korean translation required', 1, 1),
-  (14, 'portuguese', 'Portuguese', 14, true, 'Portuguese translation required', 1, 1),
-  (15, 'punjabi', 'Punjabi', 15, true, 'Punjabi translation required', 1, 1),
-  (16, 'russian', 'Russian', 16, true, 'Russian translation required', 1, 1),
-  (17, 'somali', 'Somali', 17, true, 'Somali translation required', 1, 1),
-  (18, 'spanish', 'Spanish', 18, true, 'Spanish translation required', 1, 1),
-  (19, 'swahili', 'Swahili', 19, true, 'Swahili translation required', 1, 1),
-  (20, 'tagalog', 'Tagalog', 20, true, 'Tagalog translation required', 1, 1),
-  (21, 'ukrainian', 'Ukrainian', 21, true, 'Ukrainian translation required', 1, 1),
-  (22, 'urdu', 'Urdu', 22, true, 'Urdu translation required', 1, 1),
-  (23, 'vietnamese', 'Vietnamese', 23, true, 'Vietnamese translation required', 1, 1)
+  (1, 'arabic', 'Arabic', 'ar', 1, true, 'Arabic', 1, 1),
+  (2, 'chinese simplified', 'Chinese (Simplified)', 'zh-Hans', 2, true, 'Simplified Chinese', 1, 1),
+  (3, 'chinese traditional', 'Chinese (Traditional)', 'zh-Hant', 3, true, 'Traditional Chinese', 1, 1),
+  (4, 'dutch', 'Dutch', 'nl', 4, true, 'Dutch', 1, 1),
+  (5, 'farsi', 'Farsi', 'fa', 5, true, 'Farsi', 1, 1),
+  (6, 'finnish', 'Finnish', 'fi', 6, true, 'Finnish', 1, 1),
+  (7, 'french', 'French', 'fr', 7, true, 'French', 1, 1),
+  (8, 'gujarati', 'Gujarati', 'gu', 8, true, 'Gujarati', 1, 1),
+  (9, 'hebrew', 'Hebrew', 'he', 9, true, 'Hebrew', 1, 1),
+  (10, 'hindi', 'Hindi', 'hi', 10, true, 'Hindi', 1, 1),
+  (11, 'indonesian', 'Indonesian', 'id', 11, true, 'Indonesian', 1, 1),
+  (12, 'japanese', 'Japanese', 'ja', 12, true, 'Japanese', 1, 1),
+  (13, 'korean', 'Korean', 'ko', 13, true, 'Korean', 1, 1),
+  (14, 'portuguese', 'Portuguese', 'pt', 14, true, 'Portuguese', 1, 1),
+  (15, 'punjabi', 'Punjabi', 'pa', 15, true, 'Punjabi', 1, 1),
+  (16, 'russian', 'Russian', 'ru', 16, true, 'Russian', 1, 1),
+  (17, 'somali', 'Somali', 'so', 17, true, 'Somali', 1, 1),
+  (18, 'spanish', 'Spanish', 'es', 18, true, 'Spanish', 1, 1),
+  (19, 'swahili', 'Swahili', 'sw', 19, true, 'Swahili', 1, 1),
+  (20, 'tagalog', 'Tagalog', 'tl', 20, true, 'Tagalog', 1, 1),
+  (21, 'ukrainian', 'Ukrainian', 'uk', 21, true, 'Ukrainian', 1, 1),
+  (22, 'urdu', 'Urdu', 'ur', 22, true, 'Urdu', 1, 1),
+  (23, 'vietnamese', 'Vietnamese', 'vi', 23, true, 'Vietnamese', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -220,71 +240,71 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- MINISTRIES
 -- Government departments
--- Uses UUID primary key, sort_order is required
+-- Legacy: used UUID primary key. Now uses serial (integer) id.
 -- MUST be seeded before government_representatives as they reference ministries
 -- ============================================================================
 
-INSERT INTO ministries (id, sort_order, is_active, display_name, abbreviation, created_by, last_updated_by) VALUES
-  ('00000000-0000-4000-8000-000000000001', 1, true, 'Office of the Premier', 'PREM', 1, 1),
-  ('00000000-0000-4000-8000-000000000002', 2, true, 'Agriculture and Food', 'AGRI', 1, 1),
-  ('00000000-0000-4000-8000-000000000003', 3, true, 'Attorney General', 'AG', 1, 1),
-  ('00000000-0000-4000-8000-000000000004', 4, true, 'Children and Family Development', 'CFD', 1, 1),
-  ('00000000-0000-4000-8000-000000000005', 5, true, 'Citizens'' Services', 'CITZ', 1, 1),
-  ('00000000-0000-4000-8000-000000000006', 6, true, 'Education and Child Care', 'EDUC', 1, 1),
-  ('00000000-0000-4000-8000-000000000007', 7, true, 'Emergency Management and Climate Readiness', 'EMCR', 1, 1),
-  ('00000000-0000-4000-8000-000000000008', 8, true, 'Energy and Climate Solutions', 'ENER', 1, 1),
-  ('00000000-0000-4000-8000-000000000009', 9, true, 'Environment and Parks', 'ENV', 1, 1),
-  ('00000000-0000-4000-8000-000000000010', 10, true, 'Finance', 'FIN', 1, 1),
-  ('00000000-0000-4000-8000-000000000011', 11, true, 'Forests', 'FOR', 1, 1),
-  ('00000000-0000-4000-8000-000000000012', 12, true, 'Health', 'HLTH', 1, 1),
-  ('00000000-0000-4000-8000-000000000013', 13, true, 'Housing and Municipal Affairs', 'HOUS', 1, 1),
-  ('00000000-0000-4000-8000-000000000014', 14, true, 'Indigenous Relations and Reconciliation', 'IRR', 1, 1),
-  ('00000000-0000-4000-8000-000000000015', 15, true, 'Infrastructure', 'INFRA', 1, 1),
-  ('00000000-0000-4000-8000-000000000016', 16, true, 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
-  ('00000000-0000-4000-8000-000000000017', 17, true, 'Jobs and Economic Growth', 'JEG', 1, 1),
-  ('00000000-0000-4000-8000-000000000018', 18, true, 'Labour', 'LAB', 1, 1),
-  ('00000000-0000-4000-8000-000000000019', 19, true, 'Mining and Critical Minerals', 'MIN', 1, 1),
-  ('00000000-0000-4000-8000-000000000020', 20, true, 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
-  ('00000000-0000-4000-8000-000000000021', 21, true, 'Public Safety and Solicitor General', 'PSSG', 1, 1),
-  ('00000000-0000-4000-8000-000000000022', 22, true, 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
-  ('00000000-0000-4000-8000-000000000023', 23, true, 'Tourism, Arts, Culture and Sport', 'TACS', 1, 1),
-  ('00000000-0000-4000-8000-000000000024', 24, true, 'Transportation and Transit', 'TRAN', 1, 1),
-  ('00000000-0000-4000-8000-000000000025', 25, true, 'Water, Land and Resource Stewardship', 'WLRS', 1, 1)
+INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviation, created_by, last_updated_by) VALUES
+  (1, 1, true, 'PREM', 'Office of the Premier', 'PREM', 1, 1),
+  (2, 2, true, 'AGRI', 'Agriculture and Food', 'AGRI', 1, 1),
+  (3, 3, true, 'AG', 'Attorney General', 'AG', 1, 1),
+  (4, 4, true, 'CFD', 'Children and Family Development', 'CFD', 1, 1),
+  (5, 5, true, 'CITZ', 'Citizens'' Services', 'CITZ', 1, 1),
+  (6, 6, true, 'EDUC', 'Education and Child Care', 'EDUC', 1, 1),
+  (7, 7, true, 'EMCR', 'Emergency Management and Climate Readiness', 'EMCR', 1, 1),
+  (8, 8, true, 'ENER', 'Energy and Climate Solutions', 'ENER', 1, 1),
+  (9, 9, true, 'ENV', 'Environment and Parks', 'ENV', 1, 1),
+  (10, 10, true, 'FIN', 'Finance', 'FIN', 1, 1),
+  (11, 11, true, 'FOR', 'Forests', 'FOR', 1, 1),
+  (12, 12, true, 'HLTH', 'Health', 'HLTH', 1, 1),
+  (13, 13, true, 'HOUS', 'Housing and Municipal Affairs', 'HOUS', 1, 1),
+  (14, 14, true, 'IRR', 'Indigenous Relations and Reconciliation', 'IRR', 1, 1),
+  (15, 15, true, 'INFRA', 'Infrastructure', 'INFRA', 1, 1),
+  (16, 16, true, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
+  (17, 17, true, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 1),
+  (18, 18, true, 'LAB', 'Labour', 'LAB', 1, 1),
+  (19, 19, true, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 1),
+  (20, 20, true, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
+  (21, 21, true, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 1),
+  (22, 22, true, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
+  (23, 23, true, 'TACS', 'Tourism, Arts, Culture and Sport', 'TACS', 1, 1),
+  (24, 24, true, 'TRAN', 'Transportation and Transit', 'TRAN', 1, 1),
+  (25, 25, true, 'WLRS', 'Water, Land and Resource Stewardship', 'WLRS', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- ORGANIZATIONS
 -- Organizations (superset of ministries)
--- Uses UUID primary key
+-- Legacy: used UUID primary key. Now uses serial (integer) id.
 -- Links to ministries where applicable (BC government ministries)
 -- ============================================================================
 
 INSERT INTO organizations (id, name, display_name, organization_type, ministry_id, is_active, sort_order, created_by, last_updated_by) VALUES
-  ('00000000-0000-4000-8000-000000000001', 'Office of the Premier', 'Office of the Premier', 'bcgov', '00000000-0000-4000-8000-000000000001', true, 1, 1, 1),
-  ('00000000-0000-4000-8000-000000000002', 'Agriculture and Food', 'Agriculture and Food', 'bcgov', '00000000-0000-4000-8000-000000000002', true, 2, 1, 1),
-  ('00000000-0000-4000-8000-000000000003', 'Attorney General', 'Attorney General', 'bcgov', '00000000-0000-4000-8000-000000000003', true, 3, 1, 1),
-  ('00000000-0000-4000-8000-000000000004', 'Children and Family Development', 'Children and Family Development', 'bcgov', '00000000-0000-4000-8000-000000000004', true, 4, 1, 1),
-  ('00000000-0000-4000-8000-000000000005', 'Citizens'' Services', 'Citizens'' Services', 'bcgov', '00000000-0000-4000-8000-000000000005', true, 5, 1, 1),
-  ('00000000-0000-4000-8000-000000000006', 'Education and Child Care', 'Education and Child Care', 'bcgov', '00000000-0000-4000-8000-000000000006', true, 6, 1, 1),
-  ('00000000-0000-4000-8000-000000000007', 'Emergency Management and Climate Readiness', 'Emergency Management and Climate Readiness', 'bcgov', '00000000-0000-4000-8000-000000000007', true, 7, 1, 1),
-  ('00000000-0000-4000-8000-000000000008', 'Energy and Climate Solutions', 'Energy and Climate Solutions', 'bcgov', '00000000-0000-4000-8000-000000000008', true, 8, 1, 1),
-  ('00000000-0000-4000-8000-000000000009', 'Environment and Parks', 'Environment and Parks', 'bcgov', '00000000-0000-4000-8000-000000000009', true, 9, 1, 1),
-  ('00000000-0000-4000-8000-000000000010', 'Finance', 'Finance', 'bcgov', '00000000-0000-4000-8000-000000000010', true, 10, 1, 1),
-  ('00000000-0000-4000-8000-000000000011', 'Forests', 'Forests', 'bcgov', '00000000-0000-4000-8000-000000000011', true, 11, 1, 1),
-  ('00000000-0000-4000-8000-000000000012', 'Health', 'Health', 'bcgov', '00000000-0000-4000-8000-000000000012', true, 12, 1, 1),
-  ('00000000-0000-4000-8000-000000000013', 'Housing and Municipal Affairs', 'Housing and Municipal Affairs', 'bcgov', '00000000-0000-4000-8000-000000000013', true, 13, 1, 1),
-  ('00000000-0000-4000-8000-000000000014', 'Indigenous Relations and Reconciliation', 'Indigenous Relations and Reconciliation', 'bcgov', '00000000-0000-4000-8000-000000000014', true, 14, 1, 1),
-  ('00000000-0000-4000-8000-000000000015', 'Infrastructure', 'Infrastructure', 'bcgov', '00000000-0000-4000-8000-000000000015', true, 15, 1, 1),
-  ('00000000-0000-4000-8000-000000000016', 'Intergovernmental Relations Secretariat', 'Intergovernmental Relations Secretariat', 'bcgov', '00000000-0000-4000-8000-000000000016', true, 16, 1, 1),
-  ('00000000-0000-4000-8000-000000000017', 'Jobs and Economic Growth', 'Jobs and Economic Growth', 'bcgov', '00000000-0000-4000-8000-000000000017', true, 17, 1, 1),
-  ('00000000-0000-4000-8000-000000000018', 'Labour', 'Labour', 'bcgov', '00000000-0000-4000-8000-000000000018', true, 18, 1, 1),
-  ('00000000-0000-4000-8000-000000000019', 'Mining and Critical Minerals', 'Mining and Critical Minerals', 'bcgov', '00000000-0000-4000-8000-000000000019', true, 19, 1, 1),
-  ('00000000-0000-4000-8000-000000000020', 'Post-Secondary Education and Future Skills', 'Post-Secondary Education and Future Skills', 'bcgov', '00000000-0000-4000-8000-000000000020', true, 20, 1, 1),
-  ('00000000-0000-4000-8000-000000000021', 'Public Safety and Solicitor General', 'Public Safety and Solicitor General', 'bcgov', '00000000-0000-4000-8000-000000000021', true, 21, 1, 1),
-  ('00000000-0000-4000-8000-000000000022', 'Social Development and Poverty Reduction', 'Social Development and Poverty Reduction', 'bcgov', '00000000-0000-4000-8000-000000000022', true, 22, 1, 1),
-  ('00000000-0000-4000-8000-000000000023', 'Tourism, Arts, Culture and Sport', 'Tourism, Arts, Culture and Sport', 'bcgov', '00000000-0000-4000-8000-000000000023', true, 23, 1, 1),
-  ('00000000-0000-4000-8000-000000000024', 'Transportation and Transit', 'Transportation and Transit', 'bcgov', '00000000-0000-4000-8000-000000000024', true, 24, 1, 1),
-  ('00000000-0000-4000-8000-000000000025', 'Water, Land and Resource Stewardship', 'Water, Land and Resource Stewardship', 'bcgov', '00000000-0000-4000-8000-000000000025', true, 25, 1, 1)
+  (1, 'Office of the Premier', 'Office of the Premier', 'bcgov', 1, true, 1, 1, 1),
+  (2, 'Agriculture and Food', 'Agriculture and Food', 'bcgov', 2, true, 2, 1, 1),
+  (3, 'Attorney General', 'Attorney General', 'bcgov', 3, true, 3, 1, 1),
+  (4, 'Children and Family Development', 'Children and Family Development', 'bcgov', 4, true, 4, 1, 1),
+  (5, 'Citizens'' Services', 'Citizens'' Services', 'bcgov', 5, true, 5, 1, 1),
+  (6, 'Education and Child Care', 'Education and Child Care', 'bcgov', 6, true, 6, 1, 1),
+  (7, 'Emergency Management and Climate Readiness', 'Emergency Management and Climate Readiness', 'bcgov', 7, true, 7, 1, 1),
+  (8, 'Energy and Climate Solutions', 'Energy and Climate Solutions', 'bcgov', 8, true, 8, 1, 1),
+  (9, 'Environment and Parks', 'Environment and Parks', 'bcgov', 9, true, 9, 1, 1),
+  (10, 'Finance', 'Finance', 'bcgov', 10, true, 10, 1, 1),
+  (11, 'Forests', 'Forests', 'bcgov', 11, true, 11, 1, 1),
+  (12, 'Health', 'Health', 'bcgov', 12, true, 12, 1, 1),
+  (13, 'Housing and Municipal Affairs', 'Housing and Municipal Affairs', 'bcgov', 13, true, 13, 1, 1),
+  (14, 'Indigenous Relations and Reconciliation', 'Indigenous Relations and Reconciliation', 'bcgov', 14, true, 14, 1, 1),
+  (15, 'Infrastructure', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
+  (16, 'Intergovernmental Relations Secretariat', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
+  (17, 'Jobs and Economic Growth', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
+  (18, 'Labour', 'Labour', 'bcgov', 18, true, 18, 1, 1),
+  (19, 'Mining and Critical Minerals', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
+  (20, 'Post-Secondary Education and Future Skills', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
+  (21, 'Public Safety and Solicitor General', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
+  (22, 'Social Development and Poverty Reduction', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),
+  (23, 'Tourism, Arts, Culture and Sport', 'Tourism, Arts, Culture and Sport', 'bcgov', 23, true, 23, 1, 1),
+  (24, 'Transportation and Transit', 'Transportation and Transit', 'bcgov', 24, true, 24, 1, 1),
+  (25, 'Water, Land and Resource Stewardship', 'Water, Land and Resource Stewardship', 'bcgov', 25, true, 25, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -294,7 +314,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- PREMIER
 INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type, created_by, last_updated_by) VALUES
-  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', '00000000-0000-4000-8000-000000000001', 'premier', 1, 1)
+  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', 1, 'premier', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
@@ -308,29 +328,29 @@ ON CONFLICT (id) DO UPDATE
 
 -- MINISTERS
 INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type, created_by, last_updated_by) VALUES
-  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', '00000000-0000-4000-8000-000000000002', 'minister', 1, 1),
-  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', '00000000-0000-4000-8000-000000000003', 'minister', 1, 1),
-  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', '00000000-0000-4000-8000-000000000004', 'minister', 1, 1),
-  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', '00000000-0000-4000-8000-000000000005', 'minister', 1, 1),
-  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', '00000000-0000-4000-8000-000000000006', 'minister', 1, 1),
-  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', '00000000-0000-4000-8000-000000000007', 'minister', 1, 1),
-  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', '00000000-0000-4000-8000-000000000008', 'minister', 1, 1),
-  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', '00000000-0000-4000-8000-000000000009', 'minister', 1, 1),
-  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', '00000000-0000-4000-8000-000000000010', 'minister', 1, 1),
-  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', '00000000-0000-4000-8000-000000000011', 'minister', 1, 1),
-  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', '00000000-0000-4000-8000-000000000012', 'minister', 1, 1),
-  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', '00000000-0000-4000-8000-000000000013', 'minister', 1, 1),
-  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', '00000000-0000-4000-8000-000000000014', 'minister', 1, 1),
-  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', '00000000-0000-4000-8000-000000000015', 'minister', 1, 1),
-  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', '00000000-0000-4000-8000-000000000017', 'minister', 1, 1),
-  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', '00000000-0000-4000-8000-000000000018', 'minister', 1, 1),
-  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', '00000000-0000-4000-8000-000000000019', 'minister', 1, 1),
-  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', '00000000-0000-4000-8000-000000000020', 'minister', 1, 1),
-  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', '00000000-0000-4000-8000-000000000021', 'minister', 1, 1),
-  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', '00000000-0000-4000-8000-000000000022', 'minister', 1, 1),
-  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', '00000000-0000-4000-8000-000000000023', 'minister', 1, 1),
-  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', '00000000-0000-4000-8000-000000000024', 'minister', 1, 1),
-  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', '00000000-0000-4000-8000-000000000025', 'minister', 1, 1)
+  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', 2, 'minister', 1, 1),
+  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', 3, 'minister', 1, 1),
+  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', 4, 'minister', 1, 1),
+  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', 5, 'minister', 1, 1),
+  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', 6, 'minister', 1, 1),
+  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', 7, 'minister', 1, 1),
+  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', 8, 'minister', 1, 1),
+  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', 9, 'minister', 1, 1),
+  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', 10, 'minister', 1, 1),
+  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', 11, 'minister', 1, 1),
+  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', 12, 'minister', 1, 1),
+  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', 13, 'minister', 1, 1),
+  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', 14, 'minister', 1, 1),
+  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', 15, 'minister', 1, 1),
+  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', 17, 'minister', 1, 1),
+  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', 18, 'minister', 1, 1),
+  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', 19, 'minister', 1, 1),
+  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', 20, 'minister', 1, 1),
+  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', 21, 'minister', 1, 1),
+  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', 22, 'minister', 1, 1),
+  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', 23, 'minister', 1, 1),
+  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', 24, 'minister', 1, 1),
+  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', 25, 'minister', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
@@ -363,29 +383,28 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- THEMES
 -- Classification themes for activities
--- Uses UUID primary key
--- Updated with new values
+-- Legacy: used UUID primary key. Now uses serial (integer) id.
 -- ============================================================================
 
-INSERT INTO themes (id, key, name, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
-  ('00000000-0000-4000-8000-000000000201', 'birth', 'birth', 'Birth', 1, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000202', 'adoption', 'adoption', 'Adoption', 2, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000203', 'death', 'death', 'Death', 3, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000204', 'marriage and divorce', 'marriage and divorce', 'Marriage and Divorce', 4, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000205', 'british columbians and our governments', 'british columbians and our governments', 'British Columbians and Our Governments', 5, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000206', 'driving and transportation', 'driving and transportation', 'Driving and Transportation', 6, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000207', 'education and training', 'education and training', 'Education and Training', 7, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000208', 'employment business and economic development', 'employment business and economic development', 'Employment, Business and Economic Development', 8, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000209', 'environmental protection and sustainability', 'environmental protection and sustainability', 'Environmental Protection and Sustainability', 9, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000210', 'family and social supports', 'family and social supports', 'Family and Social Supports', 10, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000211', 'farming natural resources and industry', 'farming natural resources and industry', 'Farming, Natural Resources and Industry', 11, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000212', 'health', 'health', 'Health', 12, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000213', 'housing and tenancy', 'housing and tenancy', 'Housing and Tenancy', 13, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000214', 'law crime and justice', 'law crime and justice', 'Law, Crime and Justice', 14, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000215', 'public safety and emergency services', 'public safety and emergency services', 'Public Safety and Emergency Services', 15, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000216', 'sports recreation arts and culture', 'sports recreation arts and culture', 'Sports, Recreation, Arts and Culture', 16, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000217', 'taxes and tax credits', 'taxes and tax credits', 'Taxes and Tax Credits', 17, true, 1, 1),
-  ('00000000-0000-4000-8000-000000000218', 'tourism and immigration', 'tourism and immigration', 'Tourism and Immigration', 18, true, 1, 1)
+INSERT INTO themes (id, name, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
+  (1, 'birth', 'Birth', 1, true, 1, 1),
+  (2, 'adoption', 'Adoption', 2, true, 1, 1),
+  (3, 'death', 'Death', 3, true, 1, 1),
+  (4, 'marriage and divorce', 'Marriage and Divorce', 4, true, 1, 1),
+  (5, 'british columbians and our governments', 'British Columbians and Our Governments', 5, true, 1, 1),
+  (6, 'driving and transportation', 'Driving and Transportation', 6, true, 1, 1),
+  (7, 'education and training', 'Education and Training', 7, true, 1, 1),
+  (8, 'employment business and economic development', 'Employment, Business and Economic Development', 8, true, 1, 1),
+  (9, 'environmental protection and sustainability', 'Environmental Protection and Sustainability', 9, true, 1, 1),
+  (10, 'family and social supports', 'Family and Social Supports', 10, true, 1, 1),
+  (11, 'farming natural resources and industry', 'Farming, Natural Resources and Industry', 11, true, 1, 1),
+  (12, 'health', 'Health', 12, true, 1, 1),
+  (13, 'housing and tenancy', 'Housing and Tenancy', 13, true, 1, 1),
+  (14, 'law crime and justice', 'Law, Crime and Justice', 14, true, 1, 1),
+  (15, 'public safety and emergency services', 'Public Safety and Emergency Services', 15, true, 1, 1),
+  (16, 'sports recreation arts and culture', 'Sports, Recreation, Arts and Culture', 16, true, 1, 1),
+  (17, 'taxes and tax credits', 'Taxes and Tax Credits', 17, true, 1, 1),
+  (18, 'tourism and immigration', 'Tourism and Immigration', 18, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -636,3 +655,18 @@ SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true
 
 -- Teams sequence
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
+
+-- ============================================================================
+-- VENUE QUICK PICKS
+-- Admin-configured quick-pick venues for the activity form (max 4 active)
+-- ============================================================================
+
+INSERT INTO venue_quick_picks (venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+SELECT * FROM (VALUES
+  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, 1, 1),
+  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, 1, 1)
+) AS v(venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+WHERE NOT EXISTS (SELECT 1 FROM venue_quick_picks LIMIT 1);
+
+-- Venue quick picks sequence
+SELECT setval('venue_quick_picks_id_seq', COALESCE((SELECT MAX(id) FROM venue_quick_picks), 1), true);

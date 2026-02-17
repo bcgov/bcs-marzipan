@@ -62,6 +62,7 @@ const activityCoreFieldsSchema = z.object({
   summary: z.string().max(1000),
   significance: z.string().max(1000),
   schedulingNotes: z.string().max(500).optional().nullable(),
+  strategy: z.string().nullable().optional(),
 
   // Status IDs (required, numbers for database)
   // Note: These are numbers in requests (matching database schema) but converted to strings
@@ -88,7 +89,8 @@ const activityCoreFieldsSchema = z.object({
   // Optional text fields
   notes: z.string().nullable().optional(), // Maps to legacy Comments
   executiveSummary: z.string().nullable().optional(),
-  pitchRequired: z.boolean().nullable().optional(), // Whether pitch is required (can override category default)
+  pitchRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
+  translationsRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
@@ -97,7 +99,7 @@ const activityCoreFieldsSchema = z.object({
   // Optional foreign key fields (with empty string preprocessing)
   leadOrgId: z.preprocess(
     emptyStringToNull,
-    z.string().uuid().nullable().optional()
+    z.number().int().nullable().optional()
   ),
   leadOrgName: z.string().max(255).nullable().optional(),
   newsReleaseId: z.preprocess(
@@ -105,7 +107,7 @@ const activityCoreFieldsSchema = z.object({
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
-  leadMinistryId: z.preprocess(emptyStringToNull, z.string().uuid()), // Required for displayId generation
+  leadMinistryId: z.preprocess(emptyStringToNull, z.number().int()), // Required for displayId generation
 
   // Optional user ID fields
   eventPlannerLeadId: z.number().int().nullable().optional(),
@@ -114,6 +116,9 @@ const activityCoreFieldsSchema = z.object({
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable().optional(),
+
+  // UI convenience: single comms lead (converted to commsContacts with isLead on submit)
+  commsContactLeadId: z.number().int().nullable().optional(),
 });
 
 // ============================================================================
@@ -245,3 +250,9 @@ export const softDeleteRequestSchema = z.object({
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
+
+/**
+ * Form data type for create/edit activity forms.
+ * Single source of truth: same as CreateActivityRequest (schema-inferred).
+ */
+export type ActivityFormData = CreateActivityRequest;

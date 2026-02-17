@@ -1,12 +1,17 @@
+import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { VenueQuickPickItem } from '@corpcal/shared/api/types';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { fetchLastUsedAddresses, fetchVenueQuickPicks } from '@/api/lookupsApi';
 
 import {
   AddressAutocomplete,
   type AddressData,
 } from '../ui/address-autocomplete';
+import { Badge } from '../ui/badge';
 import { Combobox } from '../ui/combobox';
 import {
   FormControl,
@@ -31,14 +36,45 @@ import {
 import { Switch } from '../ui/switch';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type RepresentativeFormData = {
-  representativeId?: number;
-  representativeName?: string;
+const QUICK_PICK_MAX_TOTAL = 4;
+
+type VenueFormValue = {
+  venueName: string | null;
+  street: string | null;
+  city: string | null;
+  provinceOrState: string | null;
+  country: string | null;
 };
 
-type FormData = Omit<CreateActivityRequest, 'representatives'> & {
-  representatives?: RepresentativeFormData[];
-};
+function venueToFormValue(item: VenueQuickPickItem): VenueFormValue {
+  return {
+    venueName: item.venueName ?? null,
+    street: item.street ?? null,
+    city: item.city ?? null,
+    provinceOrState: item.provinceOrState ?? null,
+    country: item.country ?? null,
+  };
+}
+
+function venueTagLabel(item: VenueQuickPickItem): string {
+  if (item.venueName) return item.venueName;
+  const parts = [item.street, item.city].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : 'Address';
+}
+
+function addressMatchesQuickPick(
+  currentVenue: VenueFormValue,
+  item: VenueQuickPickItem
+): boolean {
+  const n = (v: string | null | undefined) => v ?? null;
+  return (
+    n(currentVenue.venueName) === n(item.venueName) &&
+    n(currentVenue.street) === n(item.street) &&
+    n(currentVenue.city) === n(item.city) &&
+    n(currentVenue.provinceOrState) === n(item.provinceOrState) &&
+    n(currentVenue.country) === n(item.country)
+  );
+}
 
 type ActivityEventSectionProps = {
   representativeOptions: Array<{
@@ -56,8 +92,22 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   premierRequestedOptions,
   eventPlannerOptions,
 }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
+
+  const { data: fixedQuickPicks = [] } = useQuery({
+    queryKey: ['venueQuickPicks'],
+    queryFn: fetchVenueQuickPicks,
+  });
+  const { data: lastUsed = [] } = useQuery({
+    queryKey: ['venueLastUsed'],
+    queryFn: fetchLastUsedAddresses,
+  });
+
+  const lastUsedSlots = QUICK_PICK_MAX_TOTAL - fixedQuickPicks.length;
+  const lastUsedDisplay =
+    lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
+  const quickPickTags = [...fixedQuickPicks, ...lastUsedDisplay];
 
   // Convert representative options to combobox format
   const representativeComboboxOptions = representativeOptions.map((rep) => ({
@@ -162,7 +212,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         control={form.control}
         name="venueAddress"
         render={({ field }) => {
-          const currentVenue = field.value || {
+          const currentVenue: VenueFormValue = field.value || {
             venueName: null,
             street: null,
             city: null,
@@ -181,13 +231,58 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
             field.onChange(updated);
           };
 
+          const handleQuickPickSelect = (item: VenueQuickPickItem) => {
+            field.onChange(venueToFormValue(item));
+          };
+
           return (
             <div className="space-y-4">
+              <FormItem>
+                <FormLabel>Venue</FormLabel>
+                <FormControl>
+                  <Input
+                    value={currentVenue.venueName ?? ''}
+                    onChange={(e) =>
+                      field.onChange({
+                        ...currentVenue,
+                        venueName: e.target.value || null,
+                      })
+                    }
+                    placeholder="Venue name"
+                    disabled={isVenueTbd}
+                    className={isVenueTbd ? 'opacity-50' : ''}
+                  />
+                </FormControl>
+                {quickPickTags.length > 0 && !isVenueTbd && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {quickPickTags.map((item) => {
+                      const isSelected = addressMatchesQuickPick(
+                        currentVenue,
+                        item
+                      );
+                      return (
+                        <Badge
+                          key={item.id}
+                          variant={isSelected ? 'selected' : 'outline'}
+                          className="cursor-pointer gap-1 font-normal"
+                          onClick={() => handleQuickPickSelect(item)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          {venueTagLabel(item)}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+                <FormMessage />
+              </FormItem>
+
               <FormItem>
                 <AddressAutocomplete
                   label="Street Address"
                   placeholder="Start typing an address..."
                   defaultValue={currentVenue.street || ''}
+                  value={currentVenue.street ?? ''}
                   onAddressSelect={handleAddressSelect}
                   required={!isVenueTbd}
                   disabled={isVenueTbd}
@@ -199,9 +294,15 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormLabel>City</FormLabel>
                 <FormControl>
                   <Input
-                    value={currentVenue.city || ''}
-                    disabled
-                    placeholder="City will be populated from address"
+                    value={currentVenue.city ?? ''}
+                    onChange={(e) =>
+                      field.onChange({
+                        ...currentVenue,
+                        city: e.target.value || null,
+                      })
+                    }
+                    placeholder="City"
+                    disabled={isVenueTbd}
                     className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
@@ -211,9 +312,15 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormLabel>Province/State</FormLabel>
                 <FormControl>
                   <Input
-                    value={currentVenue.provinceOrState || ''}
-                    disabled
-                    placeholder="Province will be populated from address"
+                    value={currentVenue.provinceOrState ?? ''}
+                    onChange={(e) =>
+                      field.onChange({
+                        ...currentVenue,
+                        provinceOrState: e.target.value || null,
+                      })
+                    }
+                    placeholder="Province/State"
+                    disabled={isVenueTbd}
                     className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
@@ -223,9 +330,15 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormLabel>Country</FormLabel>
                 <FormControl>
                   <Input
-                    value={currentVenue.country || ''}
-                    disabled
-                    placeholder="Country will be populated from address"
+                    value={currentVenue.country ?? ''}
+                    onChange={(e) =>
+                      field.onChange({
+                        ...currentVenue,
+                        country: e.target.value || null,
+                      })
+                    }
+                    placeholder="Country"
+                    disabled={isVenueTbd}
                     className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>

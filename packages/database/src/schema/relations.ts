@@ -35,7 +35,7 @@ export const activityThemes = pgTable(
     activityId: integer('activity_id')
       .notNull()
       .references(() => activities.id),
-    themeId: uuid('theme_id')
+    themeId: integer('theme_id')
       .notNull()
       .references(() => themes.id),
     isActive: boolean('is_active').notNull().default(true),
@@ -305,7 +305,7 @@ export const activityCommsContactsRelations = relations(
 export const ministryUsers = pgTable(
   'ministry_users',
   {
-    ministryId: uuid('ministry_id')
+    ministryId: integer('ministry_id')
       .notNull()
       .references(() => ministries.id),
     userId: integer('user_id')
