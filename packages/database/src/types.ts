@@ -21,6 +21,7 @@ import { ministries } from './schema/ministry';
 import { organizations } from './schema/organizations';
 import { teamHistory } from './schema/teamHistory';
 import { users } from './schema/user';
+import { userHistory } from './schema/userHistory';
 
 /**
  * TypeScript types inferred from Drizzle schema tables
@@ -123,3 +124,7 @@ export type NewActivityHistory = InferInsertModel<typeof activityHistory>;
 // Team History
 export type TeamHistory = InferSelectModel<typeof teamHistory>;
 export type NewTeamHistory = InferInsertModel<typeof teamHistory>;
+
+// User History
+export type UserHistory = InferSelectModel<typeof userHistory>;
+export type NewUserHistory = InferInsertModel<typeof userHistory>;

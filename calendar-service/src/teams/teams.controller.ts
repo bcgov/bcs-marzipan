@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -18,11 +19,9 @@ import {
 
 import type { AuthUser } from '@corpcal/shared';
 import type {
-  CreateTeamBody,
   TeamDetail,
   TeamHistoryEntry,
   TeamListItem,
-  UpdateTeamBody,
 } from '@corpcal/shared/api/types';
 import {
   createTeamBodySchema,
@@ -32,6 +31,13 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  CreateTeamDto,
+  TeamDetailResponseWrapperDto,
+  TeamHistoryResponseWrapperDto,
+  TeamListResponseWrapperDto,
+  UpdateTeamDto,
+} from './dto/teams.dto';
 import { TeamsService } from './teams.service';
 
 @ApiTags('teams')
@@ -50,7 +56,11 @@ export class TeamsController {
     type: Boolean,
     description: 'If true, return only active teams (default: true)',
   })
-  @ApiResponse({ status: 200, description: 'List of teams' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of teams',
+    type: TeamListResponseWrapperDto,
+  })
   @Get()
   async findAll(
     @Query('activeOnly') activeOnly?: string
@@ -62,7 +72,11 @@ export class TeamsController {
 
   @ApiOperation({ summary: 'Get team by ID' })
   @ApiParam({ name: 'id', description: 'Team ID' })
-  @ApiResponse({ status: 200, description: 'Team details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Team details. Data is null when team is not found.',
+    type: TeamDetailResponseWrapperDto,
+  })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @Get(':id')
   async findOne(
@@ -73,26 +87,36 @@ export class TeamsController {
   }
 
   @ApiOperation({ summary: 'Create team' })
-  @ApiResponse({ status: 201, description: 'Team created' })
+  @ApiBody({ type: CreateTeamDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Team created',
+    type: TeamDetailResponseWrapperDto,
+  })
   @RequirePermission('teams.create')
   @Post()
   async create(
-    @Body(new ZodValidationPipe(createTeamBodySchema)) dto: CreateTeamBody,
+    @Body(new ZodValidationPipe(createTeamBodySchema)) dto: CreateTeamDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: TeamListItem }> {
+  ): Promise<{ success: boolean; data: TeamDetail }> {
     const data = await this.teamsService.create(dto, user.id);
     return { success: true, data };
   }
 
   @ApiOperation({ summary: 'Update team' })
   @ApiParam({ name: 'id', description: 'Team ID' })
-  @ApiResponse({ status: 200, description: 'Team updated' })
+  @ApiBody({ type: UpdateTeamDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Team updated',
+    type: TeamDetailResponseWrapperDto,
+  })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @RequirePermission('teams.edit')
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateTeamBodySchema)) dto: UpdateTeamBody,
+    @Body(new ZodValidationPipe(updateTeamBodySchema)) dto: UpdateTeamDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: TeamDetail }> {
     const data = await this.teamsService.update(id, dto, user.id);
@@ -101,7 +125,11 @@ export class TeamsController {
 
   @ApiOperation({ summary: 'Get team change history' })
   @ApiParam({ name: 'id', description: 'Team ID' })
-  @ApiResponse({ status: 200, description: 'Team history entries' })
+  @ApiResponse({
+    status: 200,
+    description: 'Team history entries',
+    type: TeamHistoryResponseWrapperDto,
+  })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @Get(':id/history')
   async getHistory(

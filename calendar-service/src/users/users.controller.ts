@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -19,10 +20,6 @@ import {
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import type {
-  AddUserToTeamBody,
-  TransferActivitiesBody,
-  UpdateUserBody,
-  UpdateUserTeamRoleBody,
   UserDetail,
   UserHistoryEntry,
   UserListItem,
@@ -37,6 +34,17 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  AddUserToTeamDto,
+  TransferActivitiesDto,
+  TransferActivitiesResponseDto,
+  UpdateUserDto,
+  UpdateUserTeamRoleDto,
+  UserActivitiesResponseWrapperDto,
+  UserDetailResponseWrapperDto,
+  UserHistoryResponseWrapperDto,
+  UserListResponseWrapperDto,
+} from './dto/users.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
@@ -55,7 +63,11 @@ export class UsersController {
     required: false,
     description: 'Search by display name, username, or email',
   })
-  @ApiResponse({ status: 200, description: 'List of users' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of users',
+    type: UserListResponseWrapperDto,
+  })
   @Get()
   async findAll(
     @Query('search') search?: string
@@ -73,6 +85,7 @@ export class UsersController {
   @ApiResponse({
     status: 200,
     description: 'List of activities (id, label, value)',
+    type: UserActivitiesResponseWrapperDto,
   })
   @Get(':id/activities')
   async getActivities(@Param('id', ParseIntPipe) id: number): Promise<{
@@ -85,7 +98,11 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'User details' })
+  @ApiResponse({
+    status: 200,
+    description: 'User details. Data is null when user is not found.',
+    type: UserDetailResponseWrapperDto,
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   @Get(':id')
   async findOne(
@@ -97,13 +114,18 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Update user (role, active status, notes)' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'Updated user' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated user',
+    type: UserDetailResponseWrapperDto,
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   @RequirePermission('users.edit')
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateUserBodySchema)) dto: UpdateUserBody,
+    @Body(new ZodValidationPipe(updateUserBodySchema)) dto: UpdateUserDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
     const data = await this.usersService.update(id, dto, user.id);
@@ -112,6 +134,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Add user to team' })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({ type: AddUserToTeamDto })
   @ApiResponse({ status: 201, description: 'User added to team' })
   @ApiResponse({ status: 404, description: 'User or team not found' })
   @ApiResponse({ status: 409, description: 'User already in team' })
@@ -119,8 +142,7 @@ export class UsersController {
   @Post(':id/teams')
   async addToTeam(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(addUserToTeamBodySchema))
-    dto: AddUserToTeamBody,
+    @Body(new ZodValidationPipe(addUserToTeamBodySchema)) dto: AddUserToTeamDto,
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean }> {
     await this.usersService.addUserToTeam(id, dto, currentUser.id);
@@ -146,6 +168,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user role in team' })
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiParam({ name: 'teamId', description: 'Team ID' })
+  @ApiBody({ type: UpdateUserTeamRoleDto })
   @ApiResponse({ status: 200, description: 'Team role updated' })
   @ApiResponse({ status: 404, description: 'User not in team' })
   @RequirePermission('users.edit')
@@ -154,7 +177,7 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Param('teamId', ParseIntPipe) teamId: number,
     @Body(new ZodValidationPipe(updateUserTeamRoleBodySchema))
-    dto: UpdateUserTeamRoleBody,
+    dto: UpdateUserTeamRoleDto,
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean }> {
     await this.usersService.updateUserTeamRole(id, teamId, dto, currentUser.id);
@@ -163,7 +186,11 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Get user change history' })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'User history entries' })
+  @ApiResponse({
+    status: 200,
+    description: 'User history entries',
+    type: UserHistoryResponseWrapperDto,
+  })
   @Get(':id/history')
   async getHistory(
     @Param('id', ParseIntPipe) id: number
@@ -174,14 +201,19 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Transfer activities from this user to another' })
   @ApiParam({ name: 'id', description: 'Source user ID' })
-  @ApiResponse({ status: 200, description: 'Transfer result' })
+  @ApiBody({ type: TransferActivitiesDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Transfer result',
+    type: TransferActivitiesResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @RequirePermission(PERMISSIONS.USERS.TRANSFER_ACTIVITIES)
   @Post(':id/transfer-activities')
   async transferActivities(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(transferActivitiesBodySchema))
-    dto: TransferActivitiesBody,
+    dto: TransferActivitiesDto,
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean; transferredCount: number }> {
     const { transferredCount } = await this.usersService.transferActivities(

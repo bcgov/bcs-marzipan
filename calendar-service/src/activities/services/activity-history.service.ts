@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 
-import { activityHistory } from '@corpcal/database/schema';
+import { activityHistory, users } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import type {
   ActivityHistoryEntry,
@@ -106,8 +106,25 @@ export class ActivityHistoryService {
       .where(eq(activityHistory.activityId, activityId))
       .orderBy(desc(activityHistory.timestamp));
 
-    // TODO: Join with users to get userName
-    // For now, return with userId as userName placeholder
+    const userIds = [...new Set(historyEntries.map((e) => e.userId))];
+    const userRows =
+      userIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: users.id,
+              adDisplayName: users.adDisplayName,
+              adUsername: users.adUsername,
+            })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+    const userMap = new Map(
+      userRows.map((u) => [
+        u.id,
+        u.adDisplayName || u.adUsername || `User ${u.id}`,
+      ])
+    );
+
     return historyEntries.map((entry) => ({
       ...entry,
       changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
@@ -115,7 +132,7 @@ export class ActivityHistoryService {
         entry.timestamp instanceof Date
           ? entry.timestamp.toISOString()
           : String(entry.timestamp),
-      userName: `User ${entry.userId}`, // Placeholder until user join is added
+      userName: userMap.get(entry.userId) ?? `User ${entry.userId}`,
     }));
   }
 

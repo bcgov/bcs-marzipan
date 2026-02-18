@@ -1,62 +1,100 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
 
-export class UpdateUserDto {
-  @ApiPropertyOptional({ description: 'System role ID' })
-  roleId?: number;
+import {
+  addUserToTeamBodySchema,
+  createArrayResponseWrapperSchema,
+  createResponseWrapperSchema,
+  transferActivitiesBodySchema,
+  transferActivitiesResponseSchema,
+  updateUserBodySchema,
+  updateUserTeamRoleBodySchema,
+  userDetailSchema,
+  userHistoryEntrySchema,
+  userListItemSchema,
+} from '@corpcal/shared/schemas';
 
-  @ApiPropertyOptional({ description: 'Whether the user is active' })
-  isActive?: boolean;
+/**
+ * Request DTO for PATCH /users/:id - Update user role, active status, or notes.
+ */
+export class UpdateUserDto extends createZodDto(updateUserBodySchema) {}
 
-  @ApiPropertyOptional({ description: 'Admin notes about the user' })
-  notes?: string | null;
-}
+/**
+ * Request DTO for POST /users/:id/teams - Add user to team.
+ */
+export class AddUserToTeamDto extends createZodDto(addUserToTeamBodySchema) {}
 
-export class AddUserToTeamDto {
-  @ApiProperty({ description: 'Team ID' })
-  teamId!: number;
+/**
+ * Request DTO for PATCH /users/:id/teams/:teamId - Update user role in team.
+ */
+export class UpdateUserTeamRoleDto extends createZodDto(
+  updateUserTeamRoleBodySchema
+) {}
 
-  @ApiProperty({
-    description: 'Team role: owner or member',
-    enum: ['owner', 'member'],
-  })
-  role!: 'owner' | 'member';
+/**
+ * Request DTO for POST /users/:id/transfer-activities - Transfer activities.
+ */
+export class TransferActivitiesDto extends createZodDto(
+  transferActivitiesBodySchema
+) {}
 
-  @ApiPropertyOptional({ description: 'Admin notes for audit trail' })
-  notes?: string;
-}
+/**
+ * Response DTO for a single user list item.
+ */
+export class UserListItemDto extends createZodDto(userListItemSchema) {}
 
-export class UpdateUserTeamRoleDto {
-  @ApiProperty({
-    description: 'Team role: owner or member',
-    enum: ['owner', 'member'],
-  })
-  role!: 'owner' | 'member';
+/**
+ * Response DTO for user detail (GET /users/:id).
+ */
+export class UserDetailDto extends createZodDto(userDetailSchema) {}
 
-  @ApiPropertyOptional({ description: 'Admin notes for audit trail' })
-  notes?: string;
-}
+/**
+ * Response DTO for a single user history entry.
+ */
+export class UserHistoryEntryDto extends createZodDto(userHistoryEntrySchema) {}
 
-export class TransferActivitiesDto {
-  @ApiProperty({ description: 'User ID to transfer activities to' })
-  targetUserId!: number;
+/**
+ * Response DTO for GET /users/:id/transfer-activities result.
+ */
+export class TransferActivitiesResponseDto extends createZodDto(
+  transferActivitiesResponseSchema
+) {}
 
-  @ApiPropertyOptional({
-    description:
-      'Specific activity IDs to transfer. Omit or empty to transfer all.',
-    type: [Number],
-  })
-  activityIds?: number[];
+/**
+ * Schema for one activity option in GET /users/:id/activities response.
+ */
+const userActivityOptionSchema = z.object({
+  id: z.number().int(),
+  label: z.string(),
+  value: z.number().int(),
+});
 
-  @ApiProperty({
-    description: 'Transfer lead comms contact (isLead=true) assignments',
-  })
-  transferCommsLead!: boolean;
+/**
+ * Wrapped response: { success: true, data: UserListItem[] }
+ */
+export class UserListResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(userListItemSchema)
+) {}
 
-  @ApiProperty({
-    description: 'Transfer comms contact (isLead=false) assignments',
-  })
-  transferCommsContact!: boolean;
+/**
+ * Wrapped response: { success: true, data: UserDetail }
+ * For GET /users/:id, data may be null when user is not found.
+ */
+export class UserDetailResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(userDetailSchema)
+) {}
 
-  @ApiPropertyOptional({ description: 'Admin notes for audit trail' })
-  notes?: string;
-}
+/**
+ * Wrapped response: { success: true, data: UserHistoryEntry[] }
+ */
+export class UserHistoryResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(userHistoryEntrySchema)
+) {}
+
+/**
+ * Wrapped response: { success: true, data: { id, label, value }[] }
+ * For GET /users/:id/activities.
+ */
+export class UserActivitiesResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(userActivityOptionSchema)
+) {}

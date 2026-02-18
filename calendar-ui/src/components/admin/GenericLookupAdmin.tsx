@@ -291,10 +291,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       >
         {renderModalContent ? (
           renderModalContent({
-            initialData: (editingItem ?? EMPTY_INITIAL) as Record<
-              string,
-              unknown
-            >,
+            initialData: editingItem ?? EMPTY_INITIAL,
             onChange: setFormData as (data: Record<string, unknown>) => void,
             isSubmitting: createMutation.isPending || updateMutation.isPending,
           })

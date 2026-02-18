@@ -176,7 +176,7 @@ export class TeamsService {
     };
   }
 
-  async create(dto: CreateTeamBody, createdBy: number): Promise<TeamListItem> {
+  async create(dto: CreateTeamBody, createdBy: number): Promise<TeamDetail> {
     const [inserted] = await this.databaseService.db
       .insert(teams)
       .values({

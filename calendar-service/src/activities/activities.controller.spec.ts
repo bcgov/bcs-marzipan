@@ -8,10 +8,15 @@ import {
   createMockActivityResponse,
   createMockUpdateRequest,
 } from '../common/test-utils';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { PolicyService } from '../policy/policy.service';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
+
+const mockRequestContext: RequestContextType = {
+  dataScope: { teamIds: [], bypass: true },
+};
 
 const mockUser: AuthUser = {
   id: 1,
@@ -184,13 +189,16 @@ describe('ActivitiesController', () => {
     it('should return a single activity by ID', async () => {
       mockActivitiesService.findOne.mockResolvedValue(mockActivityResponse);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, mockRequestContext);
 
       expect(result).toEqual({
         success: true,
         data: mockActivityResponse,
       });
-      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(1);
+      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
+        1,
+        mockRequestContext.dataScope
+      );
       expect(mockActivitiesService.findOne).toHaveBeenCalledTimes(1);
     });
 
@@ -199,8 +207,13 @@ describe('ActivitiesController', () => {
         new Error('Activity not found')
       );
 
-      await expect(controller.findOne(999)).rejects.toThrow();
-      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(999);
+      await expect(
+        controller.findOne(999, mockRequestContext)
+      ).rejects.toThrow();
+      expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
+        999,
+        mockRequestContext.dataScope
+      );
     });
   });
 

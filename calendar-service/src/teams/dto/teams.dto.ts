@@ -1,65 +1,58 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
 
-export class CreateTeamDto {
-  @ApiProperty({ description: 'Internal team name', maxLength: 255 })
-  name!: string;
+import {
+  createArrayResponseWrapperSchema,
+  createResponseWrapperSchema,
+  createTeamBodySchema,
+  teamDetailSchema,
+  teamHistoryEntrySchema,
+  teamListItemSchema,
+  updateTeamBodySchema,
+} from '@corpcal/shared/schemas';
 
-  @ApiPropertyOptional({ description: 'Display name', maxLength: 255 })
-  displayName?: string;
+/**
+ * Request DTO for POST /teams - Create a new team.
+ */
+export class CreateTeamDto extends createZodDto(createTeamBodySchema) {}
 
-  @ApiPropertyOptional({ description: 'Team description' })
-  description?: string;
+/**
+ * Request DTO for PATCH /teams/:id - Update an existing team.
+ */
+export class UpdateTeamDto extends createZodDto(updateTeamBodySchema) {}
 
-  @ApiPropertyOptional({
-    description: 'Display order (lower first)',
-    default: 0,
-  })
-  sortOrder?: number;
+/**
+ * Response DTO for a single team list item.
+ */
+export class TeamListItemDto extends createZodDto(teamListItemSchema) {}
 
-  @ApiPropertyOptional({
-    description: 'Whether the team is active',
-    default: true,
-  })
-  isActive?: boolean;
+/**
+ * Response DTO for team detail (GET /teams/:id).
+ */
+export class TeamDetailDto extends createZodDto(teamDetailSchema) {}
 
-  @ApiPropertyOptional({
-    description: 'Ministry UUIDs to associate with the team',
-    type: [String],
-    isArray: true,
-  })
-  ministryIds?: string[];
+/**
+ * Response DTO for a single team history entry.
+ */
+export class TeamHistoryEntryDto extends createZodDto(teamHistoryEntrySchema) {}
 
-  @ApiPropertyOptional({
-    description: 'Notes for audit trail (stored in team history)',
-  })
-  notes?: string;
-}
+/**
+ * Wrapped response: { success: true, data: TeamListItem[] }
+ */
+export class TeamListResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(teamListItemSchema)
+) {}
 
-export class UpdateTeamDto {
-  @ApiPropertyOptional({ description: 'Internal team name', maxLength: 255 })
-  name?: string;
+/**
+ * Wrapped response: { success: true, data: TeamDetail }
+ * For GET /teams/:id, data may be null when team is not found.
+ */
+export class TeamDetailResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(teamDetailSchema)
+) {}
 
-  @ApiPropertyOptional({ description: 'Display name', maxLength: 255 })
-  displayName?: string;
-
-  @ApiPropertyOptional({ description: 'Team description' })
-  description?: string;
-
-  @ApiPropertyOptional({ description: 'Display order (lower first)' })
-  sortOrder?: number;
-
-  @ApiPropertyOptional({ description: 'Whether the team is active' })
-  isActive?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Ministry UUIDs to set on the team (replaces current list)',
-    type: [String],
-    isArray: true,
-  })
-  ministryIds?: string[];
-
-  @ApiPropertyOptional({
-    description: 'Notes for audit trail (stored in team history)',
-  })
-  notes?: string;
-}
+/**
+ * Wrapped response: { success: true, data: TeamHistoryEntry[] }
+ */
+export class TeamHistoryResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(teamHistoryEntrySchema)
+) {}

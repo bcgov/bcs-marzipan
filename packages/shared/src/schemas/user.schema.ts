@@ -120,3 +120,19 @@ export const transferActivitiesBodySchema = z.object({
 export type TransferActivitiesBody = z.infer<
   typeof transferActivitiesBodySchema
 >;
+
+// ============================================
+// Response Schemas (non-standard shape)
+// ============================================
+
+/**
+ * POST /users/:id/transfer-activities - Response body.
+ */
+export const transferActivitiesResponseSchema = z.object({
+  success: z.literal(true),
+  transferredCount: z.number().int(),
+});
+
+export type TransferActivitiesResponse = z.infer<
+  typeof transferActivitiesResponseSchema
+>;

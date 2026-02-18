@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -23,11 +24,13 @@ import type { AuthUser } from '@corpcal/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   RequireAnyPermission,
   RequirePermission,
 } from '../policy/decorators/require-permission.decorator';
 import { DraftsService } from './drafts.service';
+import { saveDraftBodySchema } from './dto/draft.schema';
 import {
   DraftResponseDto,
   DraftsListResponseDto,
@@ -50,6 +53,7 @@ export class DraftsController {
     description:
       'Saves incomplete form data for later. The current user is inferred from the JWT. Updates existing draft if one exists for the same user/form/entity combination.',
   })
+  @ApiBody({ type: SaveDraftDto })
   @ApiResponse({
     status: 200,
     description: 'Draft saved successfully',
@@ -59,7 +63,7 @@ export class DraftsController {
   @Post('save')
   async saveDraft(
     @CurrentUser() user: AuthUser,
-    @Body() saveDto: SaveDraftDto
+    @Body(new ZodValidationPipe(saveDraftBodySchema)) saveDto: SaveDraftDto
   ): Promise<{ success: boolean; data: DraftResponseDto }> {
     try {
       this.logger.log(

@@ -232,9 +232,9 @@ export class DraftsService {
       formType: draft.formType,
       entityId: draft.entityId,
       draftData: draft.draftData as Record<string, any>,
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      expiresAt: draft.expiresAt,
+      createdAt: draft.createdAt.toISOString(),
+      updatedAt: draft.updatedAt.toISOString(),
+      expiresAt: draft.expiresAt?.toISOString() ?? null,
     };
   }
 }

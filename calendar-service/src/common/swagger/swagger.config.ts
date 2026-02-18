@@ -129,6 +129,12 @@ export function setupSwagger(
     .addTag('activities', 'Calendar activity management endpoints')
     .addTag('lookups', 'Reference data lookup endpoints')
     .addTag('health', 'Health check and readiness probe endpoints')
+    .addTag('teams', 'Team and membership management')
+    .addTag('users', 'User and role management')
+    .addTag('drafts', 'Form draft save and restore')
+    .addTag('auth', 'Authentication')
+    .addTag('reports', 'Reporting')
+    .addTag('look-ahead', 'Look-ahead report data')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

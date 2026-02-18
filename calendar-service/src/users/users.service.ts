@@ -401,7 +401,7 @@ export class UsersService {
     const [deletedStatus] = await this.databaseService.db
       .select({ id: activityStatuses.id })
       .from(activityStatuses)
-      .where(eq(activityStatuses.name, 'deleted' as ActivityStatusName))
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
 
     const conditions = [eq(activityCommsContacts.userId, userId)];
