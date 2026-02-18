@@ -4,7 +4,13 @@ import {
   DYNAMIC_LOOKUP_CACHE_MS,
   REFERENCE_LOOKUP_CACHE_MS,
 } from '@corpcal/shared';
-import type { ReportResponse } from '@corpcal/shared/api/types';
+import type {
+  DateStatusLookupItem,
+  PitchRequiredStatusLookupItem,
+  ReportResponse,
+  TimeStatusLookupItem,
+  TranslationRequiredStatusLookupItem,
+} from '@corpcal/shared/api/types';
 
 import {
   fetchActivitiesForLookup,
@@ -18,12 +24,14 @@ import {
   fetchNewsReleaseDistributions,
   fetchNewsReleaseOrigins,
   fetchOrganizations,
+  fetchPitchRequiredStatuses,
   fetchPitchStatuses,
   fetchPremierRequested,
   fetchReports,
   fetchTags,
   fetchTimeStatuses,
   fetchTranslationLanguages,
+  fetchTranslationRequiredStatuses,
   fetchUsers,
   type ActivityStatusLookupItem,
   type CategoryLookupItem,
@@ -162,7 +170,7 @@ export function useReports() {
 }
 
 export function useDateStatuses() {
-  return useQuery<LookupItem[]>({
+  return useQuery<DateStatusLookupItem[]>({
     queryKey: ['lookups', 'date-statuses'],
     queryFn: () => fetchDateStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
@@ -170,9 +178,25 @@ export function useDateStatuses() {
 }
 
 export function useTimeStatuses() {
-  return useQuery<LookupItem[]>({
+  return useQuery<TimeStatusLookupItem[]>({
     queryKey: ['lookups', 'time-statuses'],
     queryFn: () => fetchTimeStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function usePitchRequiredStatuses() {
+  return useQuery<PitchRequiredStatusLookupItem[]>({
+    queryKey: ['lookups', 'pitch-required-statuses'],
+    queryFn: () => fetchPitchRequiredStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useTranslationRequiredStatuses() {
+  return useQuery<TranslationRequiredStatusLookupItem[]>({
+    queryKey: ['lookups', 'translation-required-statuses'],
+    queryFn: () => fetchTranslationRequiredStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

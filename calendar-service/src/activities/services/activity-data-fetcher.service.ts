@@ -610,15 +610,7 @@ export class ActivityDataFetcherService {
    */
   async fetchRepresentativesAttendingForActivities(
     activityIds: number[]
-  ): Promise<
-    Map<
-      number,
-      Array<{
-        representative: string;
-        invitationStatus: string;
-      }>
-    >
-  > {
+  ): Promise<Map<number, Array<{ representative: string }>>> {
     if (activityIds.length === 0) {
       return new Map();
     }
@@ -636,20 +628,13 @@ export class ActivityDataFetcherService {
         )
       );
 
-    const map = new Map<
-      number,
-      Array<{
-        representative: string;
-        invitationStatus: string;
-      }>
-    >();
+    const map = new Map<number, Array<{ representative: string }>>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
       // Use representativeName (governmentRepresentatives lookup table has been removed)
       if (row.representativeName) {
         existing.push({
           representative: row.representativeName,
-          invitationStatus: 'No', // Default to 'No' until database column is added
         });
         map.set(row.activityId, existing);
       }
@@ -788,8 +773,8 @@ export class ActivityDataFetcherService {
     const map = new Map<number, string | null>();
 
     // Collect organization IDs that need to be looked up
-    const orgIdsToLookup = new Set<string>();
-    const activityIdToOrgId = new Map<number, string>();
+    const orgIdsToLookup = new Set<number>();
+    const activityIdToOrgId = new Map<number, number>();
 
     for (const activity of activities) {
       // If free text name exists, use it
@@ -823,7 +808,7 @@ export class ActivityDataFetcherService {
           )
         );
 
-      const orgIdToName = new Map(
+      const orgIdToName = new Map<number, string>(
         results.map((row) => [row.orgId, row.orgName])
       );
 

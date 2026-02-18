@@ -11,7 +11,7 @@ import {
   venueAddressFieldsSchema,
 } from './activity.schema';
 
-const validLeadMinistryId = '550e8400-e29b-41d4-a716-446655440000';
+const validLeadMinistryId = 1;
 
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -105,10 +105,10 @@ describe('createActivityRequestSchema', () => {
     expect(result.leadOrgId).toBeNull();
   });
 
-  it('validates leadMinistryId as UUID', () => {
+  it('validates leadMinistryId as integer', () => {
     expect(() =>
       createActivityRequestSchema.parse(
-        minimalCreateRequest({ leadMinistryId: 'not-a-uuid' })
+        minimalCreateRequest({ leadMinistryId: 'not-a-number' })
       )
     ).toThrow();
   });

@@ -5,6 +5,8 @@
  * using the GenericLookupAdmin template.
  */
 
+import type { ColumnDef } from '@tanstack/react-table';
+
 import {
   fetchActivityStatuses,
   fetchCategories,
@@ -14,11 +16,15 @@ import {
   fetchMinistries,
   fetchTags,
   fetchThemes,
+  fetchVenueQuickPicks,
   type LookupItem,
+  type MinistryLookupItem,
+  type ThemeLookupItem,
 } from '@/api/lookupsApi';
 
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
+import { VenueQuickPickForm } from './VenueQuickPickForm';
 
 // Type definitions - these extend the base LookupItem from the API
 type Category = LookupItem & {
@@ -44,13 +50,12 @@ type GovernmentRepresentative = LookupItem & {
 };
 
 type Tag = LookupItem & {
-  key?: string;
+  name?: string;
   displayName?: string | null;
 };
 
-type Ministry = LookupItem & {
-  displayName?: string | null;
-  abbreviation?: string | null;
+/** Ministry list item; API may include ministerName on list responses */
+type MinistryAdminItem = MinistryLookupItem & {
   ministerName?: string | null;
 };
 
@@ -59,9 +64,14 @@ type ActivityStatus = LookupItem & {
   displayName?: string | null;
 };
 
-type Theme = LookupItem & {
-  key?: string;
-  displayName?: string | null;
+type VenueQuickPick = LookupItem & {
+  venueName?: string | null;
+  street?: string | null;
+  city?: string | null;
+  provinceOrState?: string | null;
+  country?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
 };
 
 // Form field configurations
@@ -166,11 +176,11 @@ const govRepFields: FormField[] = [
 
 const tagFields: FormField[] = [
   {
-    name: 'key',
-    label: 'Key',
+    name: 'name',
+    label: 'Name',
     type: 'text',
     required: true,
-    placeholder: 'Enter tag key',
+    placeholder: 'Enter tag name',
   },
   {
     name: 'displayName',
@@ -189,6 +199,13 @@ const tagFields: FormField[] = [
 
 const ministryFields: FormField[] = [
   {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'e.g., PREM, AGRI',
+  },
+  {
     name: 'displayName',
     label: 'Display Name',
     type: 'text',
@@ -199,6 +216,7 @@ const ministryFields: FormField[] = [
     name: 'abbreviation',
     label: 'Abbreviation',
     type: 'text',
+    required: true,
     placeholder: 'e.g., AG',
   },
   {
@@ -241,17 +259,34 @@ const statusFields: FormField[] = [
 
 const themeFields: FormField[] = [
   {
-    name: 'key',
-    label: 'Key',
+    name: 'name',
+    label: 'Name',
     type: 'text',
     required: true,
-    placeholder: 'Enter theme key',
+    placeholder: 'Enter theme name',
   },
   {
     name: 'displayName',
     label: 'Display Name',
     type: 'text',
     placeholder: 'Optional display name',
+  },
+  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
+const venueQuickPickFields: FormField[] = [
+  {
+    name: 'venueName',
+    label: 'Venue Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter venue name',
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
   {
@@ -353,20 +388,20 @@ export function TagsAdmin() {
       queryKey="tags"
       queryFn={fetchTags as () => Promise<Tag[]>}
       formFields={tagFields}
-      getItemName={(item) => (item.key as string) || String(item.id)}
+      getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
     />
   );
 }
 
 export function MinistriesAdmin() {
   return (
-    <GenericLookupAdmin<Ministry>
+    <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
       description="Manage BC government ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       queryKey="ministries"
-      queryFn={fetchMinistries as () => Promise<Ministry[]>}
+      queryFn={fetchMinistries as () => Promise<MinistryAdminItem[]>}
       formFields={ministryFields}
       additionalColumns={[
         {
@@ -388,11 +423,7 @@ export function MinistriesAdmin() {
           ),
         },
       ]}
-      getItemName={(item) =>
-        (item.displayName as string) ||
-        (item.abbreviation as string) ||
-        String(item.id)
-      }
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
     />
   );
 }
@@ -413,15 +444,57 @@ export function ActivityStatusesAdmin() {
 
 export function ThemesAdmin() {
   return (
-    <GenericLookupAdmin<Theme>
+    <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
       description="Manage activity themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
       queryKey="themes"
-      queryFn={fetchThemes as () => Promise<Theme[]>}
+      queryFn={fetchThemes}
       formFields={themeFields}
-      getItemName={(item) => (item.key as string) || String(item.id)}
+      getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
+    />
+  );
+}
+
+const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
+  {
+    accessorKey: 'street',
+    header: 'Street Address',
+    cell: ({ row }) => (
+      <span className="text-slate-600">{row.original.street || '—'}</span>
+    ),
+  },
+  {
+    accessorKey: 'city',
+    header: 'City',
+    cell: ({ row }) => (
+      <span className="text-slate-600">{row.original.city || '—'}</span>
+    ),
+  },
+];
+
+export function VenueQuickPicksAdmin() {
+  return (
+    <GenericLookupAdmin<VenueQuickPick>
+      title="Venue Quick Picks"
+      description="Manage venue quick picks for the activity form"
+      entityType="Venue Quick Pick"
+      apiEndpoint="/lookups/venue-quick-picks"
+      queryKey="venueQuickPicks"
+      queryFn={fetchVenueQuickPicks as () => Promise<VenueQuickPick[]>}
+      formFields={venueQuickPickFields}
+      additionalColumns={venueQuickPicksAdditionalColumns}
+      getItemName={(item) =>
+        (item.venueName as string) || String(item.id ?? '')
+      }
+      renderModalContent={({ initialData, onChange, isSubmitting }) => (
+        <VenueQuickPickForm
+          initialData={initialData}
+          onChange={onChange}
+          isSubmitting={isSubmitting}
+        />
+      )}
     />
   );
 }

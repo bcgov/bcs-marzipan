@@ -55,7 +55,7 @@ export const activityDbFieldsSchema = z.object({
   significance: z.string(),
 
   // Lead organization (mutually exclusive: either ID or Name)
-  leadOrgId: z.string().uuid().nullable(),
+  leadOrgId: z.number().int().nullable(),
   leadOrgName: z.string().nullable(),
 
   // Scheduling
@@ -67,6 +67,7 @@ export const activityDbFieldsSchema = z.object({
   endTime: z.string().nullable(),
   timeStatusId: z.number().int(),
   schedulingNotes: z.string().nullable(),
+  strategy: z.string().nullable(),
 
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
@@ -85,12 +86,13 @@ export const activityDbFieldsSchema = z.object({
   // Notes and additional fields
   notes: z.string().nullable(),
   pitchDate: z.string().nullable(), // Date when activity was or will be pitched
-  pitchRequired: z.boolean().nullable(), // Whether pitch is required (can override category default)
+  pitchRequiredStatusId: z.number().int().nullable(),
+  translationsRequiredStatusId: z.number().int().nullable(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
-  leadMinistryId: z.string().uuid(),
+  leadMinistryId: z.number().int(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -113,7 +115,6 @@ const tagSchema = z.object({
  */
 const representativeAttendingSchema = z.object({
   representative: z.string(),
-  invitationStatus: z.string().default('No'), // e.g., 'Yes', 'No', 'TBC', 'Confirmed', 'Not Available'
 });
 
 /**

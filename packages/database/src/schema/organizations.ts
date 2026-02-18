@@ -3,9 +3,9 @@ import {
   boolean,
   integer,
   pgTable,
+  serial,
   text,
   timestamp,
-  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -16,13 +16,14 @@ import { users } from './user';
  * Organizations table - Organizations (superset of ministries)
  * Includes BC government ministries, federal ministries, crown corporations, and other organizations
  * BC government ministries link to the ministries table via ministryId
+ * Legacy: used UUID primary key.
  */
 export const organizations = pgTable('organizations', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
+  displayName: varchar('display_name', { length: 255 }).notNull(),
   organizationType: varchar('organization_type', { length: 50 }), // 'bcgov', 'provincial', 'federal', 'other'
-  ministryId: uuid('ministry_id').references(() => ministries.id), // FK to ministries (nullable - only for BC gov ministries)
+  ministryId: integer('ministry_id').references(() => ministries.id), // FK to ministries (nullable - only for BC gov ministries)
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
   description: text('description'),

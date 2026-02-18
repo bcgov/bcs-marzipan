@@ -47,10 +47,7 @@ export class ActivityMapperService {
       } | null;
       commsMaterials?: string[];
       translationsRequired?: string[];
-      representativesAttending?: Array<{
-        representative: string;
-        invitationStatus: string;
-      }>;
+      representativesAttending?: Array<{ representative: string }>;
       sharedWith?: string[];
       commsContacts?: Array<{
         userId: number;
@@ -120,6 +117,7 @@ export class ActivityMapperService {
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
       schedulingNotes: activity.schedulingNotes ?? null,
+      strategy: activity.strategy ?? null,
 
       // Comms
       commsMaterials: relatedData?.commsMaterials ?? [],
@@ -153,7 +151,9 @@ export class ActivityMapperService {
       // Notes and additional fields
       notes: activity.notes ?? null,
       pitchDate: formatDate(activity.pitchDate),
-      pitchRequired: activity.pitchRequired ?? null,
+      pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
+      translationsRequiredStatusId:
+        activity.translationsRequiredStatusId ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
       visibility:
         (activity.visibility as Visibility) ??

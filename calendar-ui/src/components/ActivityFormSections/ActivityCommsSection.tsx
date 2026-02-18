@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState } from 'react';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import { Button } from '../ui/button';
@@ -27,12 +27,6 @@ import {
 import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type FormData = CreateActivityRequest & {
-  commsMaterialIds?: number[];
-  commsContactLeadId?: number | null;
-  strategy?: string;
-};
-
 type ActivityCommsSectionProps = {
   commsMaterialOptions: Array<{
     id: number;
@@ -52,11 +46,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsLeadOptions,
   activityStatusOptions,
 }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
 
   // Move useMultiSelect hooks into the component
   const [selectedCommsMaterials, toggleCommsMaterial] = useMultiSelect<
-    FormData,
+    ActivityFormData,
     'commsMaterialIds',
     number
   >(form, 'commsMaterialIds');
@@ -87,7 +81,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {activityStatusOptions.map((option: any) => (
+                {activityStatusOptions.map((option) => (
                   <SelectItem key={option.id} value={String(option.id)}>
                     {option.displayName || option.name}
                   </SelectItem>

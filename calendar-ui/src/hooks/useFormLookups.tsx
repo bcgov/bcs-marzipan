@@ -21,14 +21,13 @@ export interface FormLookupData {
     id: number;
     name: string;
     displayName?: string;
-    allowsPitch: boolean;
   }>;
 
-  // Organizations - for Select/Combobox
-  organizations: Array<{ value: string; label: string }>;
+  // Organizations - for Select/Combobox (id is number; coerce to string where UI requires)
+  organizations: Array<{ value: number; label: string }>;
 
-  // Ministries - for Select
-  ministries: Array<{ id: string; name: string; displayName?: string }>;
+  // Ministries - for Select (id is number; coerce to string where UI requires)
+  ministries: Array<{ id: number; name: string; displayName?: string }>;
 
   // Users - for Select/Combobox
   users: Array<{ value: string; label: string }>;
@@ -48,11 +47,12 @@ export interface FormLookupData {
   // Comms Materials - for Badge components
   commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
 
-  // Translation Languages - for Badge components
+  // Translation Languages - for Badge components (shortcode is BCP 47 when set)
   translationLanguages: Array<{
     id: number;
     name: string;
     displayName?: string;
+    shortcode?: string | null;
   }>;
 
   // Government Representatives - for Badge components
@@ -132,11 +132,10 @@ export function useFormLookups(): FormLookupData {
     categoriesQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
-      allowsPitch: item.allowsPitch ?? false,
+      displayName: item.displayName || item.label,
     })) || [];
 
-  // Transform organizations for Select/Combobox (UUIDs are strings)
+  // Transform organizations for Select/Combobox (lookup ids are numbers)
   const organizations =
     organizationsQuery.data?.map((item) => ({
       value: item.value,
@@ -169,7 +168,7 @@ export function useFormLookups(): FormLookupData {
   const tags =
     tagsQuery.data?.map((item) => ({
       id: item.id,
-      text: (item.displayName as string) || item.name || item.label,
+      text: item.displayName || item.name || item.label,
     })) || [];
 
   // Transform pitch statuses for Select
@@ -177,7 +176,7 @@ export function useFormLookups(): FormLookupData {
     pitchStatusesQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
+      displayName: item.displayName || item.label,
     })) || [];
 
   // Transform activity statuses for Select
@@ -185,7 +184,7 @@ export function useFormLookups(): FormLookupData {
     activityStatusesQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
+      displayName: item.displayName || item.label,
     })) || [];
 
   // Transform comms materials for Badge components
@@ -193,7 +192,7 @@ export function useFormLookups(): FormLookupData {
     commsMaterialsQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
+      displayName: item.displayName || item.label,
     })) || [];
 
   // Transform translation languages for Badge components
@@ -201,7 +200,8 @@ export function useFormLookups(): FormLookupData {
     translationLanguagesQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
+      displayName: item.displayName || item.label,
+      shortcode: item.shortcode ?? null,
     })) || [];
 
   // Transform government representatives for Badge components
@@ -209,7 +209,7 @@ export function useFormLookups(): FormLookupData {
     governmentRepresentativesQuery.data?.map((item) => ({
       id: item.id,
       name: item.name || item.label,
-      displayName: (item.displayName as string) || item.label,
+      displayName: item.displayName || item.label,
       title: item.title as string | undefined,
     })) || [];
 
@@ -239,7 +239,6 @@ export function useFormLookups(): FormLookupData {
       id: number;
       name: string;
       displayName?: string;
-      allowsPitch: boolean;
     }>,
     organizations,
     ministries,
@@ -265,6 +264,7 @@ export function useFormLookups(): FormLookupData {
       id: number;
       name: string;
       displayName?: string;
+      shortcode?: string | null;
     }>,
     governmentRepresentatives: governmentRepresentatives as Array<{
       id: number;

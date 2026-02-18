@@ -17,6 +17,6 @@
       "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../.local/draft_components/Administration.tsx"],
   "exclude": ["node_modules"]
 }

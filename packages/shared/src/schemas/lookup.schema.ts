@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
+import { venueAddressSchema } from './activity.schema';
 import { reportConfigSchema } from './report-config.schema';
 
 /**
@@ -23,8 +24,7 @@ import { reportConfigSchema } from './report-config.schema';
  * Generic lookup item schema for dropdown components
  * All lookup endpoints return data in this format for UI consistency
  *
- * Note: For serial IDs (auto-increment), id and value are numbers.
- * For UUID IDs (organizations, ministries), these are strings.
+ * Note: Lookup id and value are numbers (serial IDs).
  */
 export const lookupItemSchema = z.object({
   id: z.number().int(),
@@ -38,7 +38,7 @@ export const lookupItemSchema = z.object({
  */
 export const extendedLookupItemSchema = lookupItemSchema.extend({
   name: z.string().optional(),
-  displayName: z.string().nullable().optional(),
+  displayName: z.string().optional(),
 });
 
 // ============================================
@@ -52,20 +52,18 @@ export const extendedLookupItemSchema = lookupItemSchema.extend({
 export const categoryResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
-  allowsPitch: z.boolean(),
   visibility: z.enum(VISIBILITY),
 });
 
 export const categoryLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
-  allowsPitch: z.boolean(),
 });
 
 // ============================================
@@ -81,7 +79,7 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
 export const tagResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   visibility: z.enum(['global', 'team']),
   isActive: z.boolean(),
@@ -90,7 +88,7 @@ export const tagResponseSchema = z.object({
 
 export const tagLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -102,22 +100,22 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
  * Fields from the organizations table exposed via API
  */
 export const organizationResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   organizationType: z.string().nullable(),
-  ministryId: z.string().uuid().nullable(),
+  ministryId: z.number().int().nullable(),
   isActive: z.boolean(),
   sortOrder: z.number().int(),
   description: z.string().nullable(),
 });
 
 export const organizationLookupItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.number().int(),
   label: z.string(),
-  value: z.string().uuid(),
+  value: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -129,19 +127,21 @@ export const organizationLookupItemSchema = z.object({
  * Fields from the ministries table exposed via API
  */
 export const ministryResponseSchema = z.object({
-  id: z.string().uuid(),
-  displayName: z.string().nullable(),
-  abbreviation: z.string().nullable(),
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  abbreviation: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   ministerName: z.string().nullable(),
 });
 
 export const ministryLookupItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.number().int(),
   label: z.string(),
-  value: z.string().uuid(),
-  displayName: z.string().nullable(),
+  value: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
   abbreviation: z.string().nullable(),
 });
 
@@ -180,7 +180,7 @@ export const userLookupItemSchema = lookupItemSchema.extend({
 export const pitchStatusResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -188,7 +188,7 @@ export const pitchStatusResponseSchema = z.object({
 
 export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -202,7 +202,7 @@ export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
 export const activityStatusResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -210,7 +210,7 @@ export const activityStatusResponseSchema = z.object({
 
 export const activityStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -224,7 +224,7 @@ export const activityStatusLookupItemSchema = lookupItemSchema.extend({
 export const dateStatusResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -232,7 +232,7 @@ export const dateStatusResponseSchema = z.object({
 
 export const dateStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -246,7 +246,7 @@ export const dateStatusLookupItemSchema = lookupItemSchema.extend({
 export const timeStatusResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -254,8 +254,53 @@ export const timeStatusResponseSchema = z.object({
 
 export const timeStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
+
+// ============================================
+// Pitch Required Status Schema
+// ============================================
+
+/**
+ * Pitch Required Status Response Schema
+ * Values: pending, required, not_required
+ */
+export const pitchRequiredStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const pitchRequiredStatusLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string(),
+});
+
+// ============================================
+// Translation Required Status Schema
+// ============================================
+
+/**
+ * Translation Required Status Response Schema
+ * Values: pending, required, not_required
+ */
+export const translationRequiredStatusResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const translationRequiredStatusLookupItemSchema =
+  lookupItemSchema.extend({
+    name: z.string(),
+    displayName: z.string(),
+  });
 
 // ============================================
 // Venue Status Schema
@@ -268,7 +313,7 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 export const venueStatusResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -276,7 +321,7 @@ export const venueStatusResponseSchema = z.object({
 
 export const venueStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -290,7 +335,7 @@ export const venueStatusLookupItemSchema = lookupItemSchema.extend({
 export const cityResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   province: z.string().nullable(),
@@ -298,7 +343,7 @@ export const cityResponseSchema = z.object({
 
 export const cityLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   province: z.string().nullable(),
 });
 
@@ -313,7 +358,7 @@ export const cityLookupItemSchema = lookupItemSchema.extend({
 export const commsMaterialsResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
@@ -321,7 +366,7 @@ export const commsMaterialsResponseSchema = z.object({
 
 export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
 });
 
 // ============================================
@@ -330,20 +375,27 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 
 /**
  * Translation Language Response Schema
- * Fields from the translated_languages table exposed via API
+ * Fields from the translated_languages table exposed via API.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
+  shortcode: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
 });
 
+/**
+ * Translation Language Lookup Item Schema.
+ * shortcode: BCP 47 language tag when set.
+ */
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
+  shortcode: z.string().nullable(),
 });
 
 // ============================================
@@ -357,21 +409,21 @@ export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
 export const governmentRepresentativeResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   title: z.string().nullable(),
   email: z.string().nullable(),
-  ministryId: z.string().uuid().nullable(),
+  ministryId: z.number().int().nullable(),
   representativeType: z.enum(REPRESENTATIVE_TYPE).nullable(),
 });
 
 export const governmentRepresentativeLookupItemSchema = lookupItemSchema.extend(
   {
     name: z.string(),
-    displayName: z.string().nullable(),
+    displayName: z.string(),
     title: z.string().nullable(),
-    ministryId: z.string().uuid().nullable(),
+    ministryId: z.number().int().nullable(),
   }
 );
 
@@ -403,21 +455,35 @@ export const reportResponseSchema = z.object({
  * Fields from the themes table exposed via API
  */
 export const themeResponseSchema = z.object({
-  id: z.string().uuid(),
-  key: z.string().nullable(),
+  id: z.number().int(),
   name: z.string(),
-  displayName: z.string().nullable(),
+  displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
 });
 
 export const themeLookupItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.number().int(),
   label: z.string(),
-  value: z.string().uuid(),
-  key: z.string().nullable(),
-  displayName: z.string().nullable(),
+  value: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
 });
+
+// ============================================
+// Venue Quick Pick Schema
+// ============================================
+
+/**
+ * Venue Quick Pick Item - admin-configured quick-pick venue for the activity form.
+ * GET /lookups/venue-quick-picks returns an array of these.
+ * Same shape as VenueAddress plus id for fixed quick-picks.
+ */
+export const venueQuickPickItemSchema = z
+  .object({
+    id: z.number().int(),
+  })
+  .merge(venueAddressSchema);
 
 // ============================================
 // TypeScript Types (inferred from schemas)
@@ -461,6 +527,20 @@ export type DateStatusLookupItem = z.infer<typeof dateStatusLookupItemSchema>;
 export type TimeStatusResponse = z.infer<typeof timeStatusResponseSchema>;
 export type TimeStatusLookupItem = z.infer<typeof timeStatusLookupItemSchema>;
 
+export type PitchRequiredStatusResponse = z.infer<
+  typeof pitchRequiredStatusResponseSchema
+>;
+export type PitchRequiredStatusLookupItem = z.infer<
+  typeof pitchRequiredStatusLookupItemSchema
+>;
+
+export type TranslationRequiredStatusResponse = z.infer<
+  typeof translationRequiredStatusResponseSchema
+>;
+export type TranslationRequiredStatusLookupItem = z.infer<
+  typeof translationRequiredStatusLookupItemSchema
+>;
+
 export type VenueStatusResponse = z.infer<typeof venueStatusResponseSchema>;
 export type VenueStatusLookupItem = z.infer<typeof venueStatusLookupItemSchema>;
 
@@ -493,6 +573,8 @@ export type ThemeLookupItem = z.infer<typeof themeLookupItemSchema>;
 
 export type ReportResponse = z.infer<typeof reportResponseSchema>;
 
+export type VenueQuickPickItem = z.infer<typeof venueQuickPickItemSchema>;
+
 // ============================================
 // Request Schemas (for create/update operations)
 // ============================================
@@ -503,11 +585,10 @@ export type ReportResponse = z.infer<typeof reportResponseSchema>;
  */
 export const createCategoryRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(VISIBILITY).default('global').optional(),
-  allowsPitch: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
 });
 
@@ -523,7 +604,7 @@ export const updateCategoryRequestSchema =
  */
 export const createTagRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(['global', 'team']).default('global').optional(),
@@ -540,7 +621,7 @@ export const updateTagRequestSchema = createTagRequestSchema.partial();
  */
 export const createCityRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   province: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
@@ -555,6 +636,7 @@ export const updateCityRequestSchema = createCityRequestSchema.partial();
  * Create Ministry Request Schema
  */
 export const createMinistryRequestSchema = z.object({
+  name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   abbreviation: z.string().min(1).max(10),
   ministerName: z.string().max(255).nullable().optional(),
@@ -566,6 +648,7 @@ export const createMinistryRequestSchema = z.object({
  * Update Ministry Request Schema
  */
 export const updateMinistryRequestSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
   displayName: z.string().min(1).max(255).optional(),
   abbreviation: z.string().min(1).max(10).optional(),
   ministerName: z.string().max(255).nullable().optional(),
@@ -578,7 +661,7 @@ export const updateMinistryRequestSchema = z.object({
  */
 export const createCommsMaterialRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
@@ -595,11 +678,11 @@ export const updateCommsMaterialRequestSchema =
  */
 export const createGovernmentRepresentativeRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   title: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
-  ministryId: z.string().uuid().nullable().optional(),
+  ministryId: z.number().int().nullable().optional(),
   representativeType: z.enum(REPRESENTATIVE_TYPE).nullable().optional(),
 });
 
@@ -613,9 +696,8 @@ export const updateGovernmentRepresentativeRequestSchema =
  * Create Theme Request Schema
  */
 export const createThemeRequestSchema = z.object({
-  key: z.string().max(100).nullable().optional(),
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
 });
@@ -630,7 +712,7 @@ export const updateThemeRequestSchema = createThemeRequestSchema.partial();
  */
 export const createActivityStatusRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().max(255).nullable().optional(),
+  displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
@@ -641,6 +723,25 @@ export const createActivityStatusRequestSchema = z.object({
  */
 export const updateActivityStatusRequestSchema =
   createActivityStatusRequestSchema.partial();
+
+/**
+ * Create Venue Quick Pick Request Schema
+ */
+export const createVenueQuickPickRequestSchema = z.object({
+  venueName: z.string().min(1).max(255),
+  street: z.string().max(255).nullable().optional(),
+  city: z.string().max(255).nullable().optional(),
+  provinceOrState: z.string().max(255).nullable().optional(),
+  country: z.string().max(255).nullable().optional(),
+  sortOrder: z.number().int().default(0).optional(),
+  isActive: z.boolean().default(true).optional(),
+});
+
+/**
+ * Update Venue Quick Pick Request Schema
+ */
+export const updateVenueQuickPickRequestSchema =
+  createVenueQuickPickRequestSchema.partial();
 
 // ============================================
 // Request Type Exports
@@ -673,4 +774,10 @@ export type CreateActivityStatusRequest = z.infer<
 >;
 export type UpdateActivityStatusRequest = z.infer<
   typeof updateActivityStatusRequestSchema
+>;
+export type CreateVenueQuickPickRequest = z.infer<
+  typeof createVenueQuickPickRequestSchema
+>;
+export type UpdateVenueQuickPickRequest = z.infer<
+  typeof updateVenueQuickPickRequestSchema
 >;

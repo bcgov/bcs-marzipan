@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -14,6 +14,7 @@ import {
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
+  pitchRequiredStatuses,
   pitchStatuses,
   premierRequested,
   reports,
@@ -21,7 +22,10 @@ import {
   themes,
   timeStatuses,
   translatedLanguages,
+  translationRequiredStatuses,
   users,
+  venueAddresses,
+  venueQuickPicks,
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
@@ -38,6 +42,7 @@ import type {
   ThemeLookupItem,
   TranslationLanguageLookupItem,
   UserLookupItem,
+  VenueQuickPickItem,
 } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../database/database.service';
@@ -64,7 +69,6 @@ export class LookupsService {
         displayName: categories.displayName,
         sortOrder: categories.sortOrder,
         isActive: categories.isActive,
-        allowsPitch: categories.allowsPitch,
       })
       .from(categories)
       .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
@@ -72,13 +76,12 @@ export class LookupsService {
 
     return results.map((cat) => ({
       id: cat.id,
-      label: cat.displayName || cat.name,
+      label: cat.displayName,
       value: cat.id,
       name: cat.name,
       displayName: cat.displayName,
       sortOrder: cat.sortOrder,
       isActive: cat.isActive,
-      allowsPitch: cat.allowsPitch,
     }));
   }
 
@@ -101,7 +104,7 @@ export class LookupsService {
 
     return results.map((org) => ({
       id: org.id,
-      label: org.displayName || org.name,
+      label: org.displayName,
       value: org.id,
       name: org.name,
       displayName: org.displayName,
@@ -138,12 +141,12 @@ export class LookupsService {
       .orderBy(users.adDisplayName, users.adUsername);
 
     return results.map((user) => {
-      const name = user.adDisplayName || user.adUsername || `User ${user.id}`;
+      const label = user.adDisplayName ?? user.adUsername ?? `User ${user.id}`;
       return {
         id: user.id,
-        label: name,
+        label,
         value: user.id,
-        name,
+        name: label,
         email: user.adEmail,
         username: user.adUsername,
         jobTitle: user.adJobTitle,
@@ -169,7 +172,7 @@ export class LookupsService {
 
     return results.map((tag) => ({
       id: tag.id,
-      label: tag.displayName || tag.name || String(tag.id),
+      label: tag.displayName,
       value: tag.id,
       name: tag.name,
       displayName: tag.displayName,
@@ -194,7 +197,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -217,7 +220,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -240,7 +243,53 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active pitch required statuses (pending, required, not_required)
+   */
+  async getPitchRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: pitchRequiredStatuses.id,
+        name: pitchRequiredStatuses.name,
+        displayName: pitchRequiredStatuses.displayName,
+      })
+      .from(pitchRequiredStatuses)
+      .where(eq(pitchRequiredStatuses.isActive, true))
+      .orderBy(pitchRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Get all active translation required statuses (pending, required, not_required)
+   */
+  async getTranslationRequiredStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.name,
+        displayName: translationRequiredStatuses.displayName,
+      })
+      .from(translationRequiredStatuses)
+      .where(eq(translationRequiredStatuses.isActive, true))
+      .orderBy(translationRequiredStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -319,6 +368,193 @@ export class LookupsService {
   }
 
   /**
+   * Get active venue quick-picks for the activity form (admin-configured, max 4).
+   */
+  async getVenueQuickPicks(): Promise<VenueQuickPickItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: venueQuickPicks.id,
+        venueName: venueQuickPicks.venueName,
+        street: venueQuickPicks.street,
+        city: venueQuickPicks.city,
+        provinceOrState: venueQuickPicks.provinceOrState,
+        country: venueQuickPicks.country,
+      })
+      .from(venueQuickPicks)
+      .where(eq(venueQuickPicks.isActive, true))
+      .orderBy(venueQuickPicks.sortOrder);
+    return results.map((row) => ({
+      id: row.id,
+      venueName: row.venueName,
+      street: row.street,
+      city: row.city,
+      provinceOrState: row.provinceOrState,
+      country: row.country,
+    }));
+  }
+
+  /**
+   * Get last 2 distinct venue addresses used by the current user (from activities they last updated).
+   */
+  async getVenueLastUsed(userId: number): Promise<VenueQuickPickItem[]> {
+    const rows = await this.databaseService.db
+      .select({
+        venueName: venueAddresses.venueName,
+        street: venueAddresses.street,
+        city: venueAddresses.city,
+        provinceOrState: venueAddresses.provinceOrState,
+        country: venueAddresses.country,
+        lastUpdated: activities.lastUpdatedDateTime,
+      })
+      .from(venueAddresses)
+      .innerJoin(activities, eq(venueAddresses.activityId, activities.id))
+      .where(eq(activities.lastUpdatedBy, userId))
+      .orderBy(desc(activities.lastUpdatedDateTime))
+      .limit(10);
+    const seen = new Set<string>();
+    const out: Array<{
+      venueName: string | null;
+      street: string | null;
+      city: string | null;
+      provinceOrState: string | null;
+      country: string | null;
+    }> = [];
+    for (const row of rows) {
+      const key = `${row.street ?? ''}|${row.city ?? ''}|${row.country ?? ''}`;
+      if (seen.has(key) || out.length >= 2) continue;
+      seen.add(key);
+      out.push({
+        venueName: row.venueName,
+        street: row.street,
+        city: row.city,
+        provinceOrState: row.provinceOrState,
+        country: row.country,
+      });
+    }
+    return out.map((item, index) => ({ id: -(index + 1), ...item }));
+  }
+
+  /**
+   * Create a venue quick-pick. Enforce max 4 active.
+   */
+  async createVenueQuickPick(
+    data: {
+      venueName: string;
+      street?: string | null;
+      city?: string | null;
+      provinceOrState?: string | null;
+      country?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ): Promise<VenueQuickPickItem> {
+    const activeList = await this.databaseService.db
+      .select({ id: venueQuickPicks.id })
+      .from(venueQuickPicks)
+      .where(eq(venueQuickPicks.isActive, true));
+    if (activeList.length >= 4) {
+      throw new Error('Maximum 4 active venue quick-picks allowed');
+    }
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(venueQuickPicks)
+      .values({
+        venueName: data.venueName,
+        street: data.street ?? undefined,
+        city: data.city ?? undefined,
+        provinceOrState: data.provinceOrState ?? undefined,
+        country: data.country ?? undefined,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return {
+      id: result.id,
+      venueName: result.venueName,
+      street: result.street,
+      city: result.city,
+      provinceOrState: result.provinceOrState,
+      country: result.country,
+    };
+  }
+
+  /**
+   * Update a venue quick-pick. Enforce max 4 active when setting isActive to true.
+   */
+  async updateVenueQuickPick(
+    id: number,
+    data: {
+      venueName?: string;
+      street?: string | null;
+      city?: string | null;
+      provinceOrState?: string | null;
+      country?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ): Promise<VenueQuickPickItem> {
+    if (data.isActive === true) {
+      const activeCount = await this.databaseService.db
+        .select({ id: venueQuickPicks.id })
+        .from(venueQuickPicks)
+        .where(eq(venueQuickPicks.isActive, true));
+      const current = await this.databaseService.db
+        .select({ isActive: venueQuickPicks.isActive })
+        .from(venueQuickPicks)
+        .where(eq(venueQuickPicks.id, id))
+        .limit(1);
+      const wasAlreadyActive = current[0]?.isActive ?? false;
+      if (!wasAlreadyActive && activeCount.length >= 4) {
+        throw new Error('Maximum 4 active venue quick-picks allowed');
+      }
+    }
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .update(venueQuickPicks)
+      .set({
+        ...(data.venueName !== undefined && { venueName: data.venueName }),
+        ...(data.street !== undefined && { street: data.street }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.provinceOrState !== undefined && {
+          provinceOrState: data.provinceOrState,
+        }),
+        ...(data.country !== undefined && { country: data.country }),
+        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(venueQuickPicks.id, id))
+      .returning();
+    if (!result) throw new Error('Venue quick-pick not found');
+    return {
+      id: result.id,
+      venueName: result.venueName,
+      street: result.street,
+      city: result.city,
+      provinceOrState: result.provinceOrState,
+      country: result.country,
+    };
+  }
+
+  /**
+   * Delete a venue quick-pick (hard delete).
+   */
+  async deleteVenueQuickPick(id: number): Promise<void> {
+    const deleted = await this.databaseService.db
+      .delete(venueQuickPicks)
+      .where(eq(venueQuickPicks.id, id))
+      .returning({ id: venueQuickPicks.id });
+    if (deleted.length === 0) throw new Error('Venue quick-pick not found');
+  }
+
+  /**
    * Get all active reports
    */
   async getReports(): Promise<ReportResponse[]> {
@@ -357,7 +593,7 @@ export class LookupsService {
 
     return results.map((material) => ({
       id: material.id,
-      label: material.displayName || material.name,
+      label: material.displayName,
       value: material.id,
       name: material.name,
       displayName: material.displayName,
@@ -375,6 +611,7 @@ export class LookupsService {
         id: translatedLanguages.id,
         name: translatedLanguages.name,
         displayName: translatedLanguages.displayName,
+        shortcode: translatedLanguages.shortcode,
       })
       .from(translatedLanguages)
       .where(eq(translatedLanguages.isActive, true))
@@ -382,10 +619,11 @@ export class LookupsService {
 
     return results.map((lang) => ({
       id: lang.id,
-      label: lang.displayName || lang.name,
+      label: lang.displayName,
       value: lang.id,
       name: lang.name,
       displayName: lang.displayName,
+      shortcode: lang.shortcode,
     }));
   }
 
@@ -410,7 +648,7 @@ export class LookupsService {
 
     return results.map((rep) => ({
       id: rep.id,
-      label: rep.displayName || rep.name,
+      label: rep.displayName,
       value: rep.id,
       name: rep.name,
       displayName: rep.displayName,
@@ -437,7 +675,7 @@ export class LookupsService {
 
     return results.map((planner) => ({
       id: planner.id,
-      label: planner.displayName || planner.name,
+      label: planner.displayName,
       value: planner.id,
       name: planner.name,
       displayName: planner.displayName,
@@ -460,7 +698,7 @@ export class LookupsService {
 
     return results.map((dist) => ({
       id: dist.id,
-      label: dist.displayName || dist.name,
+      label: dist.displayName,
       value: dist.id,
       name: dist.name,
       displayName: dist.displayName,
@@ -483,7 +721,7 @@ export class LookupsService {
 
     return results.map((premier) => ({
       id: premier.id,
-      label: premier.displayName || premier.name,
+      label: premier.displayName,
       value: premier.id,
       name: premier.name,
       displayName: premier.displayName,
@@ -506,7 +744,7 @@ export class LookupsService {
 
     return results.map((origin) => ({
       id: origin.id,
-      label: origin.displayName || origin.name,
+      label: origin.displayName,
       value: origin.id,
       name: origin.name,
       displayName: origin.displayName,
@@ -545,7 +783,7 @@ export class LookupsService {
 
     return results.map((activity) => ({
       id: activity.id,
-      label: activity.title || `Activity ${activity.id}`,
+      label: activity.title,
       value: activity.id,
       title: activity.title,
     }));
@@ -569,7 +807,7 @@ export class LookupsService {
 
     return results.map((city) => ({
       id: city.id,
-      label: city.displayName || city.name,
+      label: city.displayName,
       value: city.id,
       name: city.name,
       displayName: city.displayName,
@@ -586,6 +824,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: ministries.id,
+        name: ministries.name,
         displayName: ministries.displayName,
         abbreviation: ministries.abbreviation,
         ministerName: ministries.ministerName,
@@ -597,8 +836,9 @@ export class LookupsService {
 
     return results.map((ministry) => ({
       id: ministry.id,
-      label: ministry.displayName || ministry.abbreviation || ministry.id,
+      label: ministry.displayName,
       value: ministry.id,
+      name: ministry.name,
       displayName: ministry.displayName,
       abbreviation: ministry.abbreviation,
       ministerName: ministry.ministerName,
@@ -614,7 +854,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: themes.id,
-        key: themes.key,
+        name: themes.name,
         displayName: themes.displayName,
         sortOrder: themes.sortOrder,
         isActive: themes.isActive,
@@ -624,9 +864,9 @@ export class LookupsService {
 
     return results.map((theme) => ({
       id: theme.id,
-      label: theme.displayName || theme.key || theme.id,
+      label: theme.displayName,
       value: theme.id,
-      key: theme.key,
+      name: theme.name,
       displayName: theme.displayName,
       sortOrder: theme.sortOrder,
       isActive: theme.isActive,
@@ -650,7 +890,7 @@ export class LookupsService {
 
     return results.map((status) => ({
       id: status.id,
-      label: status.displayName || status.name,
+      label: status.displayName,
       value: status.id,
       name: status.name,
       displayName: status.displayName,
@@ -669,7 +909,6 @@ export class LookupsService {
       sortOrder: number;
       isActive?: boolean;
       visibility?: 'global' | 'team';
-      allowsPitch?: boolean;
       description?: string | null;
     },
     currentUserId: number
@@ -683,7 +922,6 @@ export class LookupsService {
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         visibility: data.visibility || 'global',
-        allowsPitch: data.allowsPitch ?? true,
         description: data.description ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
@@ -743,7 +981,7 @@ export class LookupsService {
       .insert(commsMaterials)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         description: data.description ?? undefined,
@@ -766,7 +1004,7 @@ export class LookupsService {
       title?: string | null;
       sortOrder: number;
       isActive?: boolean;
-      ministryId?: string | null;
+      ministryId?: number | null;
       representativeType?: string | null;
     },
     currentUserId: number
@@ -776,7 +1014,7 @@ export class LookupsService {
       .insert(governmentRepresentatives)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         title: data.title ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
@@ -810,7 +1048,7 @@ export class LookupsService {
       .insert(tags)
       .values({
         name: data.name,
-        displayName: data.displayName ?? undefined,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         visibility: data.visibility || 'global',
@@ -829,6 +1067,7 @@ export class LookupsService {
    */
   async createMinistry(
     data: {
+      name: string;
       displayName: string;
       abbreviation: string; // Required by schema
       ministerName?: string | null;
@@ -841,6 +1080,7 @@ export class LookupsService {
     const [result] = await this.databaseService.db
       .insert(ministries)
       .values({
+        name: data.name,
         displayName: data.displayName,
         abbreviation: data.abbreviation,
         ministerName: data.ministerName ?? undefined,
@@ -891,7 +1131,6 @@ export class LookupsService {
    */
   async createTheme(
     data: {
-      key?: string | null;
       name: string;
       displayName?: string | null;
       sortOrder: number;
@@ -903,9 +1142,8 @@ export class LookupsService {
     const [result] = await this.databaseService.db
       .insert(themes)
       .values({
-        key: data.key ?? null,
         name: data.name,
-        displayName: data.displayName ?? null,
+        displayName: data.displayName ?? data.name,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         createdBy: currentUserId,
@@ -929,7 +1167,6 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
       visibility: 'global' | 'team';
-      allowsPitch: boolean;
       description: string | null;
     }>,
     currentUserId: number
@@ -946,8 +1183,6 @@ export class LookupsService {
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.visibility !== undefined) updateData.visibility = data.visibility;
-    if (data.allowsPitch !== undefined)
-      updateData.allowsPitch = data.allowsPitch;
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 
@@ -1033,7 +1268,7 @@ export class LookupsService {
       title: string | null;
       sortOrder: number;
       isActive: boolean;
-      ministryId: string | null;
+      ministryId: number | null;
       representativeType: string | null;
     }>,
     currentUserId: number
@@ -1099,8 +1334,9 @@ export class LookupsService {
   }
 
   async updateMinistry(
-    id: string,
+    id: number,
     data: Partial<{
+      name: string;
       displayName: string;
       abbreviation: string;
       ministerName: string | null;
@@ -1115,6 +1351,7 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
+    if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
     if (data.abbreviation !== undefined)
@@ -1166,9 +1403,8 @@ export class LookupsService {
   }
 
   async updateTheme(
-    id: string,
+    id: number,
     data: Partial<{
-      key: string | null;
       name: string;
       displayName: string | null;
       sortOrder: number;
@@ -1182,7 +1418,6 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.key !== undefined) updateData.key = data.key ?? undefined;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;

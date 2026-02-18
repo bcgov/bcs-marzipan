@@ -329,6 +329,23 @@ Each log entry should include:
 - Consider backfilling default preferences for existing users
 ```
 
+#### 2026-02-12 - Add venue_quick_picks table
+
+**Migration File(s):** `0005_20260212_venue_quick_picks.sql`
+
+**Changes:**
+
+- Created new `venue_quick_picks` table with columns: id, venue_name, street, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
+- Added foreign key constraints: created_by and last_updated_by reference users.id
+
+**Breaking Changes:**
+
+- None (new table, existing tables unchanged)
+
+**Notes:**
+
+- Used for admin-configured quick-pick venues on the activity form (max 4 active). No legacy data; populated via admin UI or seeds.
+
 #### Benefits
 
 - **Historical Record**: Track when and why schema changes were made

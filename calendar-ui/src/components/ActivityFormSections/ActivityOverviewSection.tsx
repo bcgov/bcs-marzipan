@@ -1,9 +1,12 @@
 import { X } from 'lucide-react';
-import { useFormContext, useFormState, useWatch } from 'react-hook-form';
-import { useEffect } from 'react';
+import { useFormContext, useFormState } from 'react-hook-form';
 
-import type { CreateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityFormData } from '@corpcal/shared/schemas';
 
+import {
+  usePitchRequiredStatuses,
+  useTranslationRequiredStatuses,
+} from '../../hooks/useLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
@@ -28,63 +31,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Switch } from '../ui/switch';
 import { Textarea } from '../ui/textarea';
 import { ActivityFormSection } from './ActivityFormSection';
-
-type FormData = CreateActivityRequest & {
-  categoryIds?: number[];
-  tagIds?: number[];
-};
 
 type ActivityOverviewSectionProps = {
   categories: Array<{
     id: number;
     name: string;
     displayName?: string;
-    allowsPitch: boolean;
   }>;
-  ministries: Array<{ id: string; name: string; displayName?: string }>;
-  organizations: Array<{ value: string; label: string }>;
+  ministries: Array<{ id: number; name: string; displayName?: string }>;
+  organizations: Array<{ value: number; label: string }>;
   tags: Array<{ id: number; text: string }>;
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
 > = ({ categories, ministries, organizations, tags }) => {
-  const form = useFormContext<FormData>();
+  const form = useFormContext<ActivityFormData>();
 
   const [selectedCategories, toggleCategory] = useMultiSelect<
-    FormData,
+    ActivityFormData,
     'categoryIds',
     number
   >(form, 'categoryIds');
 
-  const [selectedTags, toggleTag] = useMultiSelect<FormData, 'tagIds', number>(
-    form,
-    'tagIds'
-  );
+  const [selectedTags, toggleTag] = useMultiSelect<
+    ActivityFormData,
+    'tagIds',
+    number
+  >(form, 'tagIds');
 
-  // Watch categoryIds to determine if pitch is required
-  const categoryIds = useWatch({
-    control: form.control,
-    name: 'categoryIds',
-  });
+  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
+  const { data: translationRequiredStatuses = [] } =
+    useTranslationRequiredStatuses();
 
   // Track dirty fields to show change indicators
   const { dirtyFields } = useFormState({ control: form.control });
-  const titleChanged = !!(dirtyFields as any)?.title;
-
-  // Calculate if pitch is required based on selected categories
-  const isPitchRequired = (categoryIds || []).some((categoryId) => {
-    const category = categories.find((c) => c.id === categoryId);
-    return category?.allowsPitch === true;
-  });
-
-  // Update pitchRequired field when categories change
-  useEffect(() => {
-    form.setValue('pitchRequired', isPitchRequired);
-  }, [isPitchRequired, form]);
+  const titleChanged = 'title' in dirtyFields && Boolean(dirtyFields.title);
 
   return (
     <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
@@ -148,8 +132,10 @@ export const ActivityOverviewSection: React.FC<
               Lead Ministry <span className="text-destructive">*</span>
             </FormLabel>
             <Select
-              onValueChange={(value) => field.onChange(value)}
-              value={field.value || ''}
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+              value={field.value != null ? String(field.value) : ''}
             >
               <FormControl>
                 <SelectTrigger>
@@ -158,7 +144,7 @@ export const ActivityOverviewSection: React.FC<
               </FormControl>
               <SelectContent>
                 {ministries.map((ministry) => (
-                  <SelectItem key={ministry.id} value={ministry.id}>
+                  <SelectItem key={ministry.id} value={String(ministry.id)}>
                     {ministry.displayName || ministry.name}
                   </SelectItem>
                 ))}
@@ -177,18 +163,19 @@ export const ActivityOverviewSection: React.FC<
           const leadOrgId = field.value;
           const leadOrgName = form.watch('leadOrgName');
 
-          const comboboxValue: FreeformComboboxValue = leadOrgId
-            ? { type: 'option', value: leadOrgId }
-            : leadOrgName
-              ? { type: 'freeform', value: leadOrgName }
-              : null;
+          const comboboxValue: FreeformComboboxValue =
+            leadOrgId != null
+              ? { type: 'option', value: String(leadOrgId) }
+              : leadOrgName
+                ? { type: 'freeform', value: leadOrgName }
+                : null;
 
           const handleChange = (value: FreeformComboboxValue) => {
             if (!value) {
               field.onChange(null);
               form.setValue('leadOrgName', null);
             } else if (value.type === 'option') {
-              field.onChange(value.value);
+              field.onChange(Number(value.value));
               form.setValue('leadOrgName', null);
             } else {
               field.onChange(null);
@@ -201,7 +188,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>Lead Organization</FormLabel>
               <FormControl>
                 <FreeformCombobox
-                  options={organizations}
+                  options={organizations.map((o) => ({
+                    value: String(o.value),
+                    label: o.label,
+                  }))}
                   value={comboboxValue}
                   onChange={handleChange}
                   placeholder="Select lead organization"
@@ -299,18 +289,34 @@ export const ActivityOverviewSection: React.FC<
 
         <FormField
           control={form.control}
-          name="pitchRequired"
+          name="pitchRequiredStatusId"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-              <FormControl>
-                <Switch checked={field.value ?? false} disabled />
-              </FormControl>
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">Pitch Required</FormLabel>
-                <FormDescription>
-                  Determined by selected category types
-                </FormDescription>
-              </div>
+            <FormItem>
+              <FormLabel>Pitch required status</FormLabel>
+              <Select
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {pitchRequiredStatuses.map((status) => (
+                    <SelectItem key={status.id} value={String(status.id)}>
+                      {status.displayName ?? status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -324,6 +330,44 @@ export const ActivityOverviewSection: React.FC<
               <FormControl>
                 <Input type="date" {...field} value={field.value || ''} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Translations</h3>
+
+        <FormField
+          control={form.control}
+          name="translationsRequiredStatusId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Translations required status</FormLabel>
+              <Select
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {translationRequiredStatuses.map((status) => (
+                    <SelectItem key={status.id} value={String(status.id)}>
+                      {status.displayName ?? status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

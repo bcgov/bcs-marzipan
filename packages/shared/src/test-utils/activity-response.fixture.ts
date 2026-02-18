@@ -58,6 +58,7 @@ export function createMockActivityResponse(
     endTime: '12:00',
     timeStatusId: 1,
     schedulingNotes: null,
+    strategy: null,
 
     // News Release
     newsReleaseOriginId: null,
@@ -76,12 +77,13 @@ export function createMockActivityResponse(
     // Notes and additional fields
     notes: null,
     pitchDate: null,
-    pitchRequired: null,
+    pitchRequiredStatusId: null,
+    translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: DEFAULT_VISIBILITY,
 
     // Ownership
-    leadMinistryId: '00000000-0000-4000-8000-000000000000',
+    leadMinistryId: 1,
     activityStatusId: 1,
 
     // Audit fields (fixed timestamps for deterministic tests)
