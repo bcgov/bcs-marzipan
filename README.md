@@ -239,6 +239,7 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 
 ## Additional Documentation
 
+- **[API DTOs and Swagger](docs/API_DTO_AND_SWAGGER.md)**: How DTOs, Zod schemas, and Swagger are implemented for the API; use this when adding or changing endpoints
 - **[Authentication and RBAC](docs/AUTH_AND_RBAC.md)**: JWT authentication, roles, permissions, and authorization
 - **[Error Handling](docs/ERROR_HANDLING.md)**: How errors are handled (backend, frontend, database), global handling, and how to add or extend error handling
 - **[Testing](docs/TESTING.md)**: Testing strategy, standards, naming conventions (`*.spec.ts` / `*.spec.tsx`), and what to test

@@ -99,7 +99,7 @@ type EventRow = {
   dateModified: Date | undefined;
   summary: string | undefined;
   tags: Array<{ id: number; text: string }> | undefined;
-  representatives: Array<{ representative: string }> | undefined;
+  representatives: string[] | undefined;
   leads: LeadInfo[] | undefined;
   commsMaterials: string[] | undefined;
   translationsRequired: string[] | undefined;
@@ -135,9 +135,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     ? statusMap[activity.lookAheadStatus] || 'Reviewed'
     : 'Reviewed';
 
-  const representatives = activity.representativesAttending?.map((r) => ({
-    representative: r.representative,
-  }));
+  const representatives = activity.representativesAttending;
 
   const leads: LeadInfo[] = [];
   const leadCommsContact = activity.commsContacts?.find((c) => c.isLead);
@@ -185,9 +183,8 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
 
   // Extract ministers (excluding premier)
   const ministers =
-    activity.representativesAttending
-      ?.slice(0, 3)
-      .map((r) => ({ name: r.representative })) || [];
+    activity.representativesAttending?.slice(0, 3).map((name) => ({ name })) ||
+    [];
 
   return {
     id: String(activity.id),
@@ -338,7 +335,7 @@ const ScheduleCell = ({
   dateConfirmed: boolean;
   timeConfirmed: boolean;
   premierStatus: string;
-  representatives?: Array<{ representative: string }>;
+  representatives?: string[];
 }) => {
   const formatDate = (date: Date) =>
     date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -457,7 +454,7 @@ const ScheduleCell = ({
                 color: '#616161',
               }}
             >
-              {representatives[0].representative}
+              {representatives[0]}
             </Badge>
             {representatives.length > 1 && (
               <Badge
@@ -791,6 +788,24 @@ export const EventTable: React.FC = () => {
       </div>
     );
   }
+
+  // TODO: placeholder for no activities found UI
+  if (data.length === 0)
+    return (
+      <div
+        style={{
+          padding: '40px',
+          textAlign: 'center',
+          color: '#666',
+          fontSize: '14px',
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: '8px' }}>
+          No activities found
+        </div>
+        <div>Create a new entry or adjust filters to see activities here.</div>
+      </div>
+    );
 
   return (
     <div className={styles.container}>

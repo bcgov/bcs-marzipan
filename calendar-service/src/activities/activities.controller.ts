@@ -193,9 +193,10 @@ export class ActivitiesController {
   @RequirePermission('activities.view')
   @Get(':id')
   async findOne(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.findOne(id);
+    const result = await this.activitiesService.findOne(id, ctx.dataScope);
     return {
       success: true,
       data: result,

@@ -1,27 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 
-import { activityHistory } from '@corpcal/database/schema';
+import { activityHistory, users } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
+import type {
+  ActivityHistoryEntry,
+  HistoryChange,
+} from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
-
-export interface ActivityChange {
-  field: string;
-  oldValue: unknown;
-  newValue: unknown;
-}
-
-export interface ActivityHistoryEntry {
-  id: number;
-  activityId: number;
-  userId: number;
-  actionType: string;
-  changes: ActivityChange[] | null;
-  notes: string | null;
-  timestamp: Date;
-  userName?: string;
-}
 
 /**
  * Service for tracking and retrieving activity change history
@@ -82,7 +69,7 @@ export class ActivityHistoryService {
     activityId: number,
     userId: number,
     actionType: string,
-    changes?: ActivityChange[],
+    changes?: HistoryChange[],
     notes?: string
   ): Promise<ActivityHistory> {
     const [historyEntry] = await this.databaseService.db
@@ -119,12 +106,33 @@ export class ActivityHistoryService {
       .where(eq(activityHistory.activityId, activityId))
       .orderBy(desc(activityHistory.timestamp));
 
-    // TODO: Join with users to get userName
-    // For now, return with userId as userName placeholder
+    const userIds = [...new Set(historyEntries.map((e) => e.userId))];
+    const userRows =
+      userIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: users.id,
+              adDisplayName: users.adDisplayName,
+              adUsername: users.adUsername,
+            })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+    const userMap = new Map(
+      userRows.map((u) => [
+        u.id,
+        u.adDisplayName || u.adUsername || `User ${u.id}`,
+      ])
+    );
+
     return historyEntries.map((entry) => ({
       ...entry,
-      changes: (entry.changes as ActivityChange[] | null) ?? null,
-      userName: `User ${entry.userId}`, // Placeholder until user join is added
+      changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
+      timestamp:
+        entry.timestamp instanceof Date
+          ? entry.timestamp.toISOString()
+          : String(entry.timestamp),
+      userName: userMap.get(entry.userId) ?? `User ${entry.userId}`,
     }));
   }
 
@@ -161,8 +169,8 @@ export class ActivityHistoryService {
   generateChangeList(
     oldActivity: Record<string, unknown>,
     newActivity: Record<string, unknown>
-  ): ActivityChange[] {
-    const changes: ActivityChange[] = [];
+  ): HistoryChange[] {
+    const changes: HistoryChange[] = [];
     const allKeys = new Set([
       ...Object.keys(oldActivity),
       ...Object.keys(newActivity),

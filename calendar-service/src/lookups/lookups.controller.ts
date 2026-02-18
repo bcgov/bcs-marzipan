@@ -209,6 +209,24 @@ export class LookupsController {
   }
 
   @ApiOperation({
+    summary: 'Get all roles',
+    description: 'Retrieves active roles for user management dropdowns.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Roles retrieved successfully',
+  })
+  @Get('roles')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getRoles(): Promise<{
+    success: boolean;
+    data: { id: number; name: string }[];
+  }> {
+    const data = await this.lookupsService.getRoles();
+    return { success: true, data };
+  }
+
+  @ApiOperation({
     summary: 'Get all users',
     description:
       'Retrieves users filtered by various criteria. Results are cached for 5 minutes',

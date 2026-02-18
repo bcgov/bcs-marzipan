@@ -67,4 +67,16 @@ describe('activityResponseSchema', () => {
       })
     );
   });
+
+  it('accepts representativesAttending as string array', () => {
+    const result = activityResponseSchema.parse(
+      createMockActivityResponse({
+        representativesAttending: ['Minister Smith', 'MLA Jones'],
+      })
+    );
+    expect(result.representativesAttending).toEqual([
+      'Minister Smith',
+      'MLA Jones',
+    ]);
+  });
 });

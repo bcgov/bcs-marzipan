@@ -47,7 +47,7 @@ export class ActivityMapperService {
       } | null;
       commsMaterials?: string[];
       translationsRequired?: string[];
-      representativesAttending?: Array<{ representative: string }>;
+      representativesAttending?: string[];
       sharedWith?: string[];
       commsContacts?: Array<{
         userId: number;

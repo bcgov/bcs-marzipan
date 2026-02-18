@@ -21,6 +21,8 @@ import {
   activityTranslationsRequired,
   categories,
   ministries,
+  teamMinistries,
+  userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
@@ -318,6 +320,54 @@ export class ActivitiesService {
   }
 
   /**
+   * Get activity IDs visible to the given teams via (1) comms lead user in team or (2) lead ministry in team
+   */
+  private async getVisibleActivityIdsForTeams(
+    teamIds: number[]
+  ): Promise<Set<number>> {
+    if (teamIds.length === 0) return new Set();
+
+    const [commsLeadActivityIds, leadMinistryActivityIds] = await Promise.all([
+      this.databaseService.db
+        .selectDistinct({ activityId: activityCommsContacts.activityId })
+        .from(activityCommsContacts)
+        .innerJoin(
+          userTeams,
+          eq(activityCommsContacts.userId, userTeams.userId)
+        )
+        .where(
+          and(
+            eq(activityCommsContacts.isLead, true),
+            eq(activityCommsContacts.isActive, true),
+            eq(userTeams.isActive, true),
+            inArray(userTeams.teamId, teamIds)
+          )
+        )
+        .then((rows) => new Set(rows.map((r) => r.activityId))),
+      this.databaseService.db
+        .select({ id: activities.id })
+        .from(activities)
+        .innerJoin(
+          teamMinistries,
+          eq(activities.leadMinistryId, teamMinistries.ministryId)
+        )
+        .where(
+          and(
+            eq(teamMinistries.isActive, true),
+            inArray(teamMinistries.teamId, teamIds)
+          )
+        )
+        .then((rows) => new Set(rows.map((r) => r.id))),
+    ]);
+
+    const visible = new Set<number>([
+      ...commsLeadActivityIds,
+      ...leadMinistryActivityIds,
+    ]);
+    return visible;
+  }
+
+  /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
    * @param _dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
@@ -326,7 +376,6 @@ export class ActivitiesService {
     filters?: FilterActivitiesQueryParams,
     _dataScope?: DataScope
   ): Promise<ActivityResponse[]> {
-    // TODO: When _dataScope is provided and _dataScope.bypass is false, filter results to only activities visible to _dataScope.teamIds
     let activityResults: Activity[];
 
     // Get deleted status ID to exclude deleted activities by default
@@ -423,6 +472,21 @@ export class ActivitiesService {
       );
     }
 
+    // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
+    // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
+    if (_dataScope && !_dataScope.bypass && _dataScope.teamIds.length > 0) {
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        _dataScope.teamIds
+      );
+      activityResults = activityResults.filter((a) => visibleIds.has(a.id));
+    } else if (
+      _dataScope &&
+      !_dataScope.bypass &&
+      _dataScope.teamIds.length === 0
+    ) {
+      activityResults = [];
+    }
+
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
 
@@ -502,9 +566,9 @@ export class ActivitiesService {
   }
 
   /**
-   * Find one activity by ID
+   * Find one activity by ID. When dataScope is provided and bypass is false, returns 404 if the activity is not visible to the user's teams.
    */
-  async findOne(id: number): Promise<ActivityResponse> {
+  async findOne(id: number, dataScope?: DataScope): Promise<ActivityResponse> {
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -513,6 +577,18 @@ export class ActivitiesService {
 
     if (!activity) {
       throw new NotFoundException(`Activity #${id} not found`);
+    }
+
+    if (dataScope && !dataScope.bypass) {
+      if (dataScope.teamIds.length === 0) {
+        throw new NotFoundException(`Activity #${id} not found`);
+      }
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        dataScope.teamIds
+      );
+      if (!visibleIds.has(id)) {
+        throw new NotFoundException(`Activity #${id} not found`);
+      }
     }
 
     // Fetch related data

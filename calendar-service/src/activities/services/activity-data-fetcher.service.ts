@@ -610,7 +610,7 @@ export class ActivityDataFetcherService {
    */
   async fetchRepresentativesAttendingForActivities(
     activityIds: number[]
-  ): Promise<Map<number, Array<{ representative: string }>>> {
+  ): Promise<Map<number, string[]>> {
     if (activityIds.length === 0) {
       return new Map();
     }
@@ -628,14 +628,11 @@ export class ActivityDataFetcherService {
         )
       );
 
-    const map = new Map<number, Array<{ representative: string }>>();
+    const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      // Use representativeName (governmentRepresentatives lookup table has been removed)
       if (row.representativeName) {
-        existing.push({
-          representative: row.representativeName,
-        });
+        existing.push(row.representativeName);
         map.set(row.activityId, existing);
       }
     }

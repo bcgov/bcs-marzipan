@@ -384,27 +384,73 @@ Human-readable alternatives must not be placed in `required`. They belong in `me
 
 ### Data Scoping
 
-The `DataScopeInterceptor` automatically sets `request.dataScope` with team-based filtering information:
+Data scoping controls **which data** a user can see based on **teams** and **roles**. The backend sets `request.dataScope` on each request; services use it to filter results or enforce visibility.
+
+#### Where teams and roles come from
+
+- **Roles**: Each user has a `roleId`. At login, the auth service resolves it to a **role name** via `PolicyService.getRoleName(roleId)` and stores it in the JWT (along with permissions).
+- **Teams**: At login, `PolicyService.getTeamIdsForUser(userId)` reads active rows from the `user_teams` table and stores the user's team IDs in the JWT as `teamIds`.
+
+The JWT therefore carries `roleName`, `permissions`, and `teamIds`. These values do not change until the next login or token expiry (see [Token content and policy changes](#token-content-and-policy-changes)). For the schema behind team membership, see [SCHEMA_MAPPING.md](../packages/database/src/schema/docs/SCHEMA_MAPPING.md) (UserTeams section).
+
+#### How dataScope is set
+
+After the JWT is validated, **DataScopeInterceptor** (policy module) runs and sets `request.dataScope` using the authenticated user's **role** and **teamIds**:
 
 ```typescript
 interface DataScope {
-  teamIds: number[]; // User's team IDs (empty if bypass)
-  bypass: boolean; // true for Advanced/Admin/System Admin
+  teamIds: number[]; // User's team IDs (empty when bypass is true)
+  bypass: boolean; // true for Advanced, Admin, System Admin
 }
 ```
 
-Services can use this for filtering:
+- **`bypass`**: Determined by `PolicyService.bypassesDataScoping(user.roleName)`. It is `true` only for **Advanced**, **Admin**, and **System Admin**.
+- **`teamIds`**: When `bypass` is true, `teamIds` is set to `[]`. Otherwise it is the user's `teamIds` from the JWT (sourced from `user_teams` at login).
+
+So **dataScope** is derived from role + teams: the role decides whether to bypass; the teams define the scope when not bypassing.
+
+#### Which roles bypass
+
+| Role         | Bypass | Effect                              |
+| ------------ | ------ | ----------------------------------- |
+| View Only    | No     | Data restricted to the user's teams |
+| Editor       | No     | Data restricted to the user's teams |
+| Advanced     | Yes    | Can see all data (no team filter)   |
+| Admin        | Yes    | Can see all data (no team filter)   |
+| System Admin | Yes    | Can see all data (no team filter)   |
+
+#### Using dataScope in controllers and services
+
+Controllers obtain `dataScope` via the `@RequestContext()` decorator and pass it into services:
+
+```typescript
+import { RequestContext } from '../policy/decorators/request-context.decorator';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+
+@Get()
+async findAll(@RequestContext() ctx: RequestContextType) {
+  const results = await this.activitiesService.findAll(filters, ctx.dataScope);
+  return { success: true, data: results };
+}
+```
+
+Services branch on `bypass` and `teamIds`:
+
+- **`dataScope.bypass === true`**: Do not apply a team filter; return all rows the permission system allows.
+- **`dataScope.bypass === false`**: Filter by `dataScope.teamIds` (e.g. `WHERE teamId IN (dataScope.teamIds)`). If `teamIds` is empty (user has no teams), the service should return no rows or treat the request as no access.
+
+Example:
 
 ```typescript
 @Injectable()
 export class ActivitiesService {
   async findAll(dataScope: DataScope) {
     if (dataScope.bypass) {
-      // Advanced/Admin/System Admin - return all activities
       return this.db.select().from(activities);
     }
-
-    // Filter by user's teams
+    if (dataScope.teamIds.length === 0) {
+      return []; // or throw ForbiddenException depending on product rules
+    }
     return this.db
       .select()
       .from(activities)
@@ -412,6 +458,14 @@ export class ActivitiesService {
   }
 }
 ```
+
+#### End-to-end flow
+
+1. **Login**: Auth loads user, then `getRoleName(roleId)`, `getPermissionsForRole(roleId)`, and `getTeamIdsForUser(userId)`; JWT is issued with `roleName`, `permissions`, and `teamIds`.
+2. **Request**: JWT guard sets `request.user` (including `roleName` and `teamIds`).
+3. **DataScopeInterceptor**: Sets `request.dataScope` from `user.roleName` (bypass) and `user.teamIds` (or `[]` when bypass).
+4. **Handlers**: Use `@RequestContext()` to read `ctx.dataScope` and pass it to services.
+5. **Services**: If `dataScope.bypass` then do not filter by team; otherwise filter by `dataScope.teamIds`.
 
 ## Shared Types (packages/shared/src/auth/)
 

@@ -782,7 +782,9 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 
 - Users with `Advanced`, `Admin`, or `System Admin` roles bypass team-based data scoping and can see all data
 - Other users can only see data associated with their team memberships
-- The `DataScopeInterceptor` in the backend sets `request.dataScope` based on user's team memberships
+- The `DataScopeInterceptor` in the backend sets `request.dataScope` based on user's team memberships and role
+
+For a full description of how dataScope and bypass work with teams and roles (including the request flow and how to use them in controllers and services), see [Authentication and RBAC - Data Scoping](../../../../../../docs/AUTH_AND_RBAC.md#data-scoping).
 
 ### Related Tables
 

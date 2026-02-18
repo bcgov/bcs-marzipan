@@ -93,12 +93,10 @@ function activityToFormData(
     repNameToIdMap.set(name.toLowerCase(), rep.id);
   });
   const representatives =
-    activity.representativesAttending?.map((rep) => {
-      const repId = repNameToIdMap.get(
-        String(rep.representative).toLowerCase()
-      );
+    activity.representativesAttending?.map((representative) => {
+      const repId = repNameToIdMap.get(String(representative).toLowerCase());
       if (repId != null) return { representativeId: repId };
-      return { representativeName: rep.representative };
+      return { representativeName: representative };
     }) ?? [];
   const commsContactLeadId =
     activity.commsContacts?.find((c) => c.isLead)?.userId ?? null;
@@ -263,6 +261,7 @@ export function EditActivityForm(): React.ReactElement {
   }, [
     id,
     form,
+    lookups,
     lookups.governmentRepresentatives,
     lookups.categories,
     lookups.commsMaterials,

@@ -55,8 +55,8 @@ export function mapResponseToFormData(
 
   const representatives =
     response.representativesAttending?.length > 0
-      ? response.representativesAttending.map((r) => ({
-          representativeName: r.representative,
+      ? response.representativesAttending.map((name) => ({
+          representativeName: name,
         }))
       : undefined;
 

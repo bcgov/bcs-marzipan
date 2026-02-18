@@ -1,11 +1,24 @@
 import type { Activity } from '@corpcal/database/types';
 import type {
+  AddUserToTeamBody,
+  CreateTeamBody,
+  TeamDetail,
+  TeamHistoryEntry,
+  TeamListItem,
+  TransferActivitiesBody,
+  UpdateTeamBody,
+  UpdateUserTeamRoleBody,
+  UserDetail,
+  UserHistoryEntry,
+  UserListItem,
+} from '@corpcal/shared/api/types';
+import type {
   CreateActivityRequest,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
 /**
- * Helper functions to generate test data for activities
+ * Helper functions to generate test data for activities, teams, and users
  */
 
 // Re-export shared test fixtures for ActivityResponse
@@ -94,3 +107,132 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     ...overrides,
   };
 };
+
+// ============================================
+// Teams and Users test fixtures
+// ============================================
+
+export const createMockTeamListItem = (
+  overrides?: Partial<TeamListItem>
+): TeamListItem => ({
+  id: 1,
+  name: 'Test Team',
+  displayName: 'Test Team Display',
+  description: 'Test description',
+  sortOrder: 0,
+  isActive: true,
+  memberCount: 2,
+  ministryCount: 1,
+  ...overrides,
+});
+
+export const createMockTeamDetail = (
+  overrides?: Partial<TeamDetail>
+): TeamDetail => ({
+  ...createMockTeamListItem(),
+  members: [
+    { userId: 1, userName: 'User One', role: 'owner' },
+    { userId: 2, userName: 'User Two', role: 'member' },
+  ],
+  ministries: [{ ministryId: 1, ministryName: 'Office of the Premier' }],
+  ...overrides,
+});
+
+export const createMockTeamHistoryEntry = (
+  overrides?: Partial<TeamHistoryEntry>
+): TeamHistoryEntry => ({
+  id: 1,
+  teamId: 1,
+  changedByUserId: 1,
+  actionType: 'created',
+  changes: null,
+  notes: null,
+  timestamp: new Date().toISOString(),
+  changedByUserName: 'Admin User',
+  ...overrides,
+});
+
+export const createMockCreateTeamBody = (
+  overrides?: Partial<CreateTeamBody>
+): CreateTeamBody => ({
+  name: 'New Team',
+  displayName: 'New Team Display',
+  description: undefined,
+  sortOrder: 0,
+  isActive: true,
+  ministryIds: ['1'],
+  notes: undefined,
+  ...overrides,
+});
+
+export const createMockUpdateTeamBody = (
+  overrides?: Partial<UpdateTeamBody>
+): UpdateTeamBody => ({
+  name: 'Updated Team',
+  displayName: 'Updated Display',
+  ...overrides,
+});
+
+export const createMockUserListItem = (
+  overrides?: Partial<UserListItem>
+): UserListItem => ({
+  id: 1,
+  adUsername: 'user1',
+  adDisplayName: 'Test User',
+  adEmail: 'user@example.com',
+  roleId: 2,
+  roleName: 'Editor',
+  isActive: true,
+  teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
+  ...overrides,
+});
+
+export const createMockUserDetail = (
+  overrides?: Partial<UserDetail>
+): UserDetail => ({
+  ...createMockUserListItem(),
+  notes: null,
+  ...overrides,
+});
+
+export const createMockUserHistoryEntry = (
+  overrides?: Partial<UserHistoryEntry>
+): UserHistoryEntry => ({
+  id: 1,
+  userId: 1,
+  changedByUserId: 2,
+  actionType: 'role_changed',
+  changes: [{ field: 'roleId', oldValue: 1, newValue: 2 }],
+  notes: null,
+  timestamp: new Date().toISOString(),
+  changedByUserName: 'Admin User',
+  ...overrides,
+});
+
+export const createMockAddUserToTeamBody = (
+  overrides?: Partial<AddUserToTeamBody>
+): AddUserToTeamBody => ({
+  teamId: 1,
+  role: 'member',
+  notes: undefined,
+  ...overrides,
+});
+
+export const createMockUpdateUserTeamRoleBody = (
+  overrides?: Partial<UpdateUserTeamRoleBody>
+): UpdateUserTeamRoleBody => ({
+  role: 'owner',
+  notes: undefined,
+  ...overrides,
+});
+
+export const createMockTransferActivitiesBody = (
+  overrides?: Partial<TransferActivitiesBody>
+): TransferActivitiesBody => ({
+  targetUserId: 2,
+  activityIds: [1, 2],
+  transferCommsLead: true,
+  transferCommsContact: true,
+  notes: undefined,
+  ...overrides,
+});
