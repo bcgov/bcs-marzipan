@@ -2,7 +2,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { timeAgoShort } from '@/lib/utils';
+import { formatLongDate, formatTime } from '@/lib/utils';
 
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import {
@@ -56,20 +56,167 @@ function getActionText(actionType: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+// Convert field names from camelCase to readable Title Case
+function getFieldLabel(field: string): string {
+  if (!field) return '';
+
+  // Special cases with custom labels
+  const specialLabels: Record<string, string> = {
+    dateStatusId: 'Date Status',
+  };
+
+  if (specialLabels[field]) {
+    return specialLabels[field];
+  }
+
+  // Convert camelCase to spaced words, then capitalize each word
+  const spaced = field
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim();
+  // Capitalize first letter of each word
+  return spaced
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 const logger = createLogger('ActivityHistory');
+
+// Format complex field changes for display
+function formatFieldValue(
+  field: string,
+  value: unknown,
+  dateStatusMap?: Map<number | string, string>
+): string {
+  if (value === null || value === undefined) {
+    return '(empty)';
+  }
+
+  // Handle dateStatusId - look up the display name
+  if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {
+    return dateStatusMap.get(value) || String(value);
+  }
+
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return String(value);
+  }
+
+  if (typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  // Handle venueAddress
+  if (field === 'venueAddress') {
+    const addr = value as Record<string, unknown>;
+    const parts = [];
+    if (typeof addr.venueName === 'string') parts.push(addr.venueName);
+    if (typeof addr.street === 'string') parts.push(addr.street);
+    if (typeof addr.city === 'string') parts.push(addr.city);
+    if (typeof addr.provinceOrState === 'string')
+      parts.push(addr.provinceOrState);
+    if (typeof addr.country === 'string') parts.push(addr.country);
+    return parts.length > 0 ? parts.join(', ') : '(address)';
+  }
+
+  // Handle representatives array
+  if (field === 'representatives') {
+    if (Array.isArray(value)) {
+      const reps = value as Array<{
+        representativeId?: number;
+        representativeName?: string;
+      }>;
+      const names = reps
+        .map((r) => r.representativeName || `Rep ${r.representativeId}`)
+        .join(', ');
+      return names || '(no representatives)';
+    }
+  }
+
+  // Handle commsContacts array
+  if (field === 'commsContacts') {
+    if (Array.isArray(value)) {
+      const contacts = value as Array<{ userId?: number; isLead?: boolean }>;
+      if (contacts.length === 0) return '(no contacts)';
+      const leadCount = contacts.filter((c) => c.isLead).length;
+      return `${contacts.length} contact(s)${leadCount > 0 ? ` (${leadCount} lead)` : ''}`;
+    }
+  }
+
+  // Handle reportSettings array
+  if (field === 'reportSettings') {
+    if (Array.isArray(value)) {
+      const settings = value as Array<{
+        reportId?: number;
+        omitted?: boolean;
+      }>;
+      if (settings.length === 0) return '(no reports)';
+      const omitted = settings.filter((s) => s.omitted).length;
+      const active = settings.length - omitted;
+      return `${active} active, ${omitted} omitted`;
+    }
+  }
+
+  // Handle other arrays - show count
+  if (Array.isArray(value)) {
+    return `${value.length} item(s)`;
+  }
+
+  // Default: JSON stringify
+  return JSON.stringify(value);
+}
+
+export interface DateStatusLookupItem {
+  id: string | number;
+  label: string;
+  value?: string | number;
+}
 
 export default function ActivityHistory({
   activityId,
   open,
   onOpenChange,
+  dateStatuses,
 }: {
   activityId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  dateStatuses?: DateStatusLookupItem[];
 }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
+    new Set()
+  );
+
+  // Toggle expanded state for a history entry
+  const toggleExpandedEntry = useCallback((entryId: number) => {
+    setExpandedEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Create a map of date status ID to label for quick lookup
+  const dateStatusMap = React.useMemo(() => {
+    const map = new Map<number | string, string>();
+    if (dateStatuses) {
+      dateStatuses.forEach((status) => {
+        map.set(status.id, status.label);
+      });
+    }
+    return map;
+  }, [dateStatuses]);
 
   const loadHistory = useCallback(async () => {
     if (!open) return;
@@ -119,13 +266,6 @@ export default function ActivityHistory({
       groups['Earlier'].push(e);
     }
   }
-
-  const formatValue = (v: unknown) =>
-    v === null || v === undefined
-      ? ''
-      : typeof v === 'object'
-        ? JSON.stringify(v)
-        : String(JSON.stringify(v));
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -213,31 +353,52 @@ export default function ActivityHistory({
                             </div>
                             <div className="text-muted-foreground text-sm">
                               {groupKey === 'Today'
-                                ? timeAgoShort(entry.timestamp)
-                                : new Date(
-                                    entry.timestamp
-                                  ).toLocaleDateString()}
+                                ? `Today at ${formatTime(
+                                    new Date(entry.timestamp)
+                                  )}`
+                                : formatLongDate(new Date(entry.timestamp))}
                             </div>
                           </div>
 
                           <div className="text-foreground mt-2 text-sm">
                             {entry.changes && entry.changes.length > 0 ? (
                               <div>
-                                {entry.changes.slice(0, 3).map((c, idx) => (
+                                {(expandedEntries.has(entry.id)
+                                  ? entry.changes
+                                  : entry.changes.slice(0, 3)
+                                ).map((c, idx) => (
                                   <div key={idx} className="mb-1 text-sm">
                                     <strong className="font-medium">
-                                      {c.field}:
+                                      {getFieldLabel(c.field)}:
                                     </strong>{' '}
                                     <span className="text-muted-foreground">
-                                      {formatValue(c.oldValue)}
+                                      {formatFieldValue(
+                                        c.field,
+                                        c.oldValue,
+                                        dateStatusMap
+                                      )}
                                     </span>{' '}
-                                    → <span>{formatValue(c.newValue)}</span>
+                                    →{' '}
+                                    <span>
+                                      {formatFieldValue(
+                                        c.field,
+                                        c.newValue,
+                                        dateStatusMap
+                                      )}
+                                    </span>
                                   </div>
                                 ))}
                                 {entry.changes.length > 3 ? (
-                                  <div className="mt-1 cursor-pointer text-sm text-blue-600">
-                                    Show more
-                                  </div>
+                                  <button
+                                    onClick={() =>
+                                      toggleExpandedEntry(entry.id)
+                                    }
+                                    className="mt-1 cursor-pointer border-none bg-none p-0 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                  >
+                                    {expandedEntries.has(entry.id)
+                                      ? 'Show less'
+                                      : 'Show more'}
+                                  </button>
                                 ) : null}
                               </div>
                             ) : entry.notes ? (

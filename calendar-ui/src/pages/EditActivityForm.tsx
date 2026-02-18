@@ -44,6 +44,9 @@ import { formatDisplayValue } from '../lib/formatDisplayValue';
 import { createLogger } from '../lib/logger';
 import {
   findStatusByName,
+  formatLongDate,
+  formatTime,
+  isSameDay,
   timeAgo,
   UNCONFIRMED_STATUS_NAMES,
 } from '../lib/utils';
@@ -186,15 +189,61 @@ export function EditActivityForm(): React.ReactElement {
         const activity = await fetchActivity(Number(id));
         if (!mounted) return;
 
-        // Wait for lookups to be available before transforming data (for representative name-to-ID and comms lead)
-        if (!lookups.governmentRepresentatives) {
+        // Wait for lookups to be available before transforming data
+        // This is needed to map representative names back to IDs and category names to IDs
+        if (!lookups.governmentRepresentatives || !lookups.categories) {
+          // Retry after a short delay if lookups aren't ready yet
           timeoutId = setTimeout(() => {
             void load();
           }, 100);
           return;
         }
 
-        form.reset(activityToFormData(activity, lookups));
+        // Create a map of representative names to IDs for lookup
+        const repNameToIdMap = new Map<string, number>();
+        lookups.governmentRepresentatives.forEach((rep) => {
+          const name = rep.displayName || rep.name;
+          repNameToIdMap.set(name.toLowerCase(), rep.id);
+        });
+
+        // Create a map of category names to IDs for lookup
+        const categoryNameToIdMap = new Map<string, number>();
+        lookups.categories.forEach((cat) => {
+          categoryNameToIdMap.set(cat.name.toLowerCase(), cat.id);
+        });
+
+        // Transform API response to form data structure
+        const formData: any = {
+          ...activity,
+          // Convert representativesAttending (API response) to representatives (form format)
+          // Try to match names to IDs from the lookup table
+          representatives:
+            activity.representativesAttending?.map((rep: any) => {
+              const repId = repNameToIdMap.get(
+                rep.representative.toLowerCase()
+              );
+              if (repId) {
+                return { representativeId: repId };
+              } else {
+                // Keep as free-text if not found in lookup
+                return { representativeName: rep.representative };
+              }
+            }) || [],
+          // Map category names to category IDs
+          categoryIds: activity.category
+            ? activity.category
+                .map((catName: string) =>
+                  categoryNameToIdMap.get(catName.toLowerCase())
+                )
+                .filter((id): id is number => id !== undefined)
+            : [],
+          // Extract the lead contact from commsContacts array
+          commsContactLeadId:
+            activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
+        };
+
+        // Reset the form with the transformed activity data
+        form.reset(formData);
         setLoadedActivity(activity);
       } catch (err: unknown) {
         logger.error('Failed to load activity', err);
@@ -211,7 +260,6 @@ export function EditActivityForm(): React.ReactElement {
       }
     };
     // Granular lookups deps intentional: full lookups is a new ref each render; we only re-run when these arrays change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
   }, [
     id,
     form,
@@ -424,16 +472,24 @@ export function EditActivityForm(): React.ReactElement {
                       loadedActivity.createdDateTime ? (
                       <div>
                         Updated{' '}
-                        {timeAgo(new Date(loadedActivity.lastUpdatedDateTime))}{' '}
-                        ago
+                        {isSameDay(
+                          new Date(loadedActivity.lastUpdatedDateTime),
+                          new Date()
+                        )
+                          ? `today at ${formatTime(
+                              new Date(loadedActivity.lastUpdatedDateTime)
+                            )}`
+                          : `${timeAgo(
+                              new Date(loadedActivity.lastUpdatedDateTime)
+                            )} ago`}
                       </div>
                     ) : null}
                     <div>
                       Created{' '}
                       {loadedActivity.createdDateTime
-                        ? new Date(
-                            loadedActivity.createdDateTime
-                          ).toLocaleDateString()
+                        ? formatLongDate(
+                            new Date(loadedActivity.createdDateTime)
+                          )
                         : ''}
                     </div>
                   </div>
@@ -530,6 +586,7 @@ export function EditActivityForm(): React.ReactElement {
         activityId={Number(id)}
         open={historyOpen}
         onOpenChange={(v) => setHistoryOpen(!!v)}
+        dateStatuses={dateStatuses}
       />
     </ErrorBoundary>
   );
