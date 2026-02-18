@@ -44,6 +44,7 @@ export const userListItemSchema = z.object({
   roleName: z.string(),
   isActive: z.boolean(),
   teams: z.array(userTeamSchema),
+  lastUpdatedDateTime: z.string().nullable().optional(),
 });
 
 export type UserListItem = z.infer<typeof userListItemSchema>;

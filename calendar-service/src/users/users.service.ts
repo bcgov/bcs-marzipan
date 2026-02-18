@@ -50,13 +50,35 @@ export class UsersService {
     });
   }
 
-  async findAll(search?: string): Promise<UserListItem[]> {
+  async findAll(
+    search?: string,
+    teamIds?: number[],
+    roleIds?: number[]
+  ): Promise<UserListItem[]> {
     const conditions = [];
     if (search?.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
       conditions.push(
         sql`(lower(${users.adDisplayName}) like ${term} OR lower(${users.adUsername}) like ${term} OR lower(${users.adEmail}) like ${term})`
       );
+    }
+    if (roleIds?.length) {
+      conditions.push(inArray(users.roleId, roleIds));
+    }
+    if (teamIds && teamIds.length > 0) {
+      const filterTeamIds = teamIds;
+      const userIdsInTeams = await this.databaseService.db
+        .selectDistinct({ userId: userTeams.userId })
+        .from(userTeams)
+        .where(
+          and(
+            inArray(userTeams.teamId, filterTeamIds),
+            eq(userTeams.isActive, true)
+          )
+        );
+      const ids = userIdsInTeams.map((r) => r.userId);
+      if (ids.length === 0) return [];
+      conditions.push(inArray(users.id, ids));
     }
 
     const userRows = await this.databaseService.db
@@ -67,6 +89,7 @@ export class UsersService {
         adEmail: users.adEmail,
         roleId: users.roleId,
         isActive: users.isActive,
+        lastUpdatedDateTime: users.lastUpdatedDateTime,
       })
       .from(users)
       .where(conditions.length ? and(...conditions) : undefined)
@@ -86,13 +109,13 @@ export class UsersService {
       .from(userTeams)
       .where(eq(userTeams.isActive, true));
 
-    const teamIds = [...new Set(teamRows.map((t) => t.teamId))];
+    const distinctTeamIds = [...new Set(teamRows.map((t) => t.teamId))];
     const teamNameRows =
-      teamIds.length > 0
+      distinctTeamIds.length > 0
         ? await this.databaseService.db
             .select({ id: teams.id, name: teams.name })
             .from(teams)
-            .where(inArray(teams.id, teamIds))
+            .where(inArray(teams.id, distinctTeamIds))
         : [];
     const teamNameMap = new Map(teamNameRows.map((t) => [t.id, t.name]));
 
@@ -119,6 +142,11 @@ export class UsersService {
       roleName: roleMap.get(u.roleId) ?? 'Unknown',
       isActive: u.isActive,
       teams: teamsByUser.get(u.id) ?? [],
+      lastUpdatedDateTime: u.lastUpdatedDateTime
+        ? u.lastUpdatedDateTime instanceof Date
+          ? u.lastUpdatedDateTime.toISOString()
+          : String(u.lastUpdatedDateTime)
+        : null,
     }));
   }
 

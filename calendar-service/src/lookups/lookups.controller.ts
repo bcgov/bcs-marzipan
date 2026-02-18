@@ -88,6 +88,7 @@ import {
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { LookupsService } from './lookups.service';
 
@@ -270,13 +271,7 @@ export class LookupsController {
     organizationId?: number,
     @Query('userIds') userIds?: string
   ): Promise<{ success: boolean; data: LookupItem[] }> {
-    // Parse comma-separated userIds string into array of numbers
-    const parsedUserIds = userIds
-      ? userIds
-          .split(',')
-          .map((id) => parseInt(id.trim(), 10))
-          .filter((id) => !isNaN(id))
-      : undefined;
+    const parsedUserIds = userIds ? parseCommaSeparatedIds(userIds) : undefined;
 
     const params: LookupQueryParams = {
       userId,

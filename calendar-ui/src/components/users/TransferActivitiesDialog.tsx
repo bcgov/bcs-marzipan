@@ -79,7 +79,7 @@ export function TransferActivitiesDialog({
 
   const { data: searchUsers = [], isFetching: isSearching } = useQuery({
     queryKey: ['users', userSearch],
-    queryFn: () => fetchUsers(userSearch.trim() || undefined),
+    queryFn: () => fetchUsers({ search: userSearch.trim() || undefined }),
     enabled: comboboxOpen,
   });
 
