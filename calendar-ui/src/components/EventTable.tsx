@@ -743,7 +743,7 @@ export const EventTable: React.FC = () => {
                 </Avatar>
                 <span>
                   {hasUpdatedDate
-                    ? `Updated ${new Date(row.original.dateModified).toLocaleDateString()}`
+                    ? `Updated ${new Date(row.original.dateModified!).toLocaleDateString()}`
                     : `Created ${row.original.dateCreated}`}
                 </span>
               </div>
