@@ -28,6 +28,7 @@ import { fetchUsers } from '../api/lookupsApi';
 import { ErrorState } from '../components/ErrorState';
 import { useAuth } from '../hooks/useAuth';
 import { createLogger } from '../lib/logger';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 const useStyles = makeStyles({
   container: {
@@ -97,6 +98,7 @@ type EventRow = {
   status: 'New' | 'Reviewed' | 'Changed' | 'Deleted';
   dateCreated: string;
   dateModified: Date | undefined;
+  lastUpdatedBy: number;
   summary: string | undefined;
   tags: Array<{ id: number; text: string }> | undefined;
   representatives: string[] | undefined;
@@ -202,6 +204,7 @@ const mapActivityToEventRow = (activity: ActivityResponse): EventRow => {
     dateModified: activity.lastUpdatedDateTime
       ? new Date(activity.lastUpdatedDateTime)
       : undefined,
+    lastUpdatedBy: activity.lastUpdatedBy,
     summary: activity.summary || undefined,
     tags: activity.tags && activity.tags.length > 0 ? activity.tags : undefined,
     representatives: representatives || undefined,
@@ -702,37 +705,62 @@ export const EventTable: React.FC = () => {
       columnHelper.accessor('status', {
         header: 'Status',
         size: 150,
-        cell: ({ row }) => (
-          <div>
-            <Badge
-              appearance="filled"
-              color={statusColor[row.original.status]}
-              shape="circular"
-            >
-              {row.original.status}
-            </Badge>
-            <div
-              style={{
-                fontSize: '12px',
-                color: '#666',
-                marginTop: '4px',
-              }}
-            >
-              Updated{' '}
-              {row.original.dateModified
-                ? new Date(row.original.dateModified).toLocaleDateString()
-                : 'N/A'}
+        cell: ({ row }) => {
+          const lastUpdatedUser = userMap.get(
+            String(row.original.lastUpdatedBy)
+          );
+          const userName = lastUpdatedUser?.name || 'Unknown';
+          const initials = userName
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+
+          const hasUpdatedDate = row.original.dateModified;
+
+          return (
+            <div>
+              <Badge
+                appearance="filled"
+                color={statusColor[row.original.status]}
+                shape="circular"
+              >
+                {row.original.status}
+              </Badge>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  marginTop: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Avatar size="sm" title={userName}>
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <span>
+                  {hasUpdatedDate
+                    ? `Updated ${new Date(row.original.dateModified).toLocaleDateString()}`
+                    : `Created ${row.original.dateCreated}`}
+                </span>
+              </div>
+              {hasUpdatedDate && (
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    marginTop: '4px',
+                  }}
+                >
+                  Created {row.original.dateCreated}
+                </div>
+              )}
             </div>
-            <div
-              style={{
-                fontSize: '12px',
-                color: '#666',
-              }}
-            >
-              Created {row.original.dateCreated}
-            </div>
-          </div>
-        ),
+          );
+        },
       }),
     ],
     [columnHelper, userMap, navigate, canEditActivity]
