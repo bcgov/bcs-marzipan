@@ -94,7 +94,7 @@ function activityToFormData(
   });
   const representatives =
     activity.representativesAttending?.map((representative) => {
-      const repId = repNameToIdMap.get(String(representative).toLowerCase());
+      const repId = repNameToIdMap.get(representative.toLowerCase());
       if (repId != null) return { representativeId: repId };
       return { representativeName: representative };
     }) ?? [];
@@ -197,50 +197,10 @@ export function EditActivityForm(): React.ReactElement {
           return;
         }
 
-        // Create a map of representative names to IDs for lookup
-        const repNameToIdMap = new Map<string, number>();
-        lookups.governmentRepresentatives.forEach((rep) => {
-          const name = rep.displayName || rep.name;
-          repNameToIdMap.set(name.toLowerCase(), rep.id);
-        });
-
-        // Create a map of category names to IDs for lookup
-        const categoryNameToIdMap = new Map<string, number>();
-        lookups.categories.forEach((cat) => {
-          categoryNameToIdMap.set(cat.name.toLowerCase(), cat.id);
-        });
-
-        // Transform API response to form data structure
-        const formData: any = {
-          ...activity,
-          // Convert representativesAttending (API response) to representatives (form format)
-          // Try to match names to IDs from the lookup table
-          representatives:
-            activity.representativesAttending?.map((rep: any) => {
-              const repId = repNameToIdMap.get(
-                rep.representative.toLowerCase()
-              );
-              if (repId) {
-                return { representativeId: repId };
-              } else {
-                // Keep as free-text if not found in lookup
-                return { representativeName: rep.representative };
-              }
-            }) || [],
-          // Map category names to category IDs
-          categoryIds: activity.category
-            ? activity.category
-                .map((catName: string) =>
-                  categoryNameToIdMap.get(catName.toLowerCase())
-                )
-                .filter((id): id is number => id !== undefined)
-            : [],
-          // Extract the lead contact from commsContacts array
-          commsContactLeadId:
-            activity.commsContacts?.find((c: any) => c.isLead)?.userId || null,
-        };
-
-        // Reset the form with the transformed activity data
+        const formData: ActivityFormData = activityToFormData(
+          activity,
+          lookups
+        );
         form.reset(formData);
         setLoadedActivity(activity);
       } catch (err: unknown) {
