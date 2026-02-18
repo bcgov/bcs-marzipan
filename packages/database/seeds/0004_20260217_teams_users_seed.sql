@@ -137,9 +137,22 @@ ON CONFLICT (user_id, team_id) DO NOTHING;
 -- ----------------------------------------------------------------------------
 
 INSERT INTO team_history (team_id, changed_by_user_id, action_type, changes, notes)
-SELECT t.id, 1, 'created', '[]'::jsonb, 'Seeded by 0004_20260217_teams_users_seed.sql'
+SELECT t.id, 1, 'created', '[]'::jsonb, 'Seeded by system seed script'
 FROM teams t
 WHERE NOT EXISTS (
   SELECT 1 FROM team_history th
   WHERE th.team_id = t.id AND th.action_type = 'created'
+);
+
+-- ----------------------------------------------------------------------------
+-- USER_HISTORY (optional audit)
+-- One 'created' row per user, idempotent: only insert when none exists for that user.
+-- ----------------------------------------------------------------------------
+
+INSERT INTO user_history (user_id, changed_by_user_id, action_type, changes, notes)
+SELECT u.id, 1, 'created', '[]'::jsonb, 'Seeded by system seed script'
+FROM users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM user_history uh
+  WHERE uh.user_id = u.id AND uh.action_type = 'created'
 );
