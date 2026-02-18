@@ -63,7 +63,6 @@ describe('addUserToTeamBodySchema', () => {
     expect(() =>
       addUserToTeamBodySchema.parse({
         teamId: 1,
-        // @ts-expect-error Testing invalid value
         role: 'invalid',
       })
     ).toThrow();

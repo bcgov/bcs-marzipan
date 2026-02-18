@@ -1,7 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { createMockUpdateTeamBody } from '../common/test-utils';
+import {
+  createMockCreateTeamBody,
+  createMockUpdateTeamBody,
+} from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
 import { TeamsService } from './teams.service';
 
