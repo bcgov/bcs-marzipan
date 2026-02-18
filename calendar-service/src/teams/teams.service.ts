@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   ministries,
@@ -47,11 +47,12 @@ export class TeamsService {
         name: teams.name,
         displayName: teams.displayName,
         description: teams.description,
+        sortOrder: teams.sortOrder,
         isActive: teams.isActive,
       })
       .from(teams)
       .where(activeOnly ? eq(teams.isActive, true) : undefined)
-      .orderBy(teams.name);
+      .orderBy(asc(teams.sortOrder), teams.name);
 
     const teamIds = teamRows.map((t) => t.id);
     if (teamIds.length === 0) return [];
@@ -99,6 +100,7 @@ export class TeamsService {
         name: teams.name,
         displayName: teams.displayName,
         description: teams.description,
+        sortOrder: teams.sortOrder,
         isActive: teams.isActive,
       })
       .from(teams)
@@ -181,6 +183,7 @@ export class TeamsService {
         name: dto.name,
         displayName: dto.displayName ?? null,
         description: dto.description ?? null,
+        sortOrder: dto.sortOrder ?? 0,
         isActive: dto.isActive ?? true,
         createdBy,
         lastUpdatedBy: createdBy,
@@ -233,6 +236,7 @@ export class TeamsService {
     if (dto.name !== undefined) updates.name = dto.name;
     if (dto.displayName !== undefined) updates.displayName = dto.displayName;
     if (dto.description !== undefined) updates.description = dto.description;
+    if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
 
     const previousMinistryIds = existing.ministries
@@ -294,6 +298,13 @@ export class TeamsService {
         field: 'description',
         oldValue: existing.description,
         newValue: dto.description,
+      });
+    }
+    if (dto.sortOrder !== undefined && dto.sortOrder !== existing.sortOrder) {
+      changes.push({
+        field: 'sortOrder',
+        oldValue: existing.sortOrder,
+        newValue: dto.sortOrder,
       });
     }
     if (dto.isActive !== undefined && dto.isActive !== existing.isActive) {

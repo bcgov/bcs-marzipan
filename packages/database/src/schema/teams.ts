@@ -22,6 +22,7 @@ export const teams = pgTable('teams', {
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
   description: text('description'),
+  sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()

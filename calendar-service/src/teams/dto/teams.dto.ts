@@ -11,6 +11,12 @@ export class CreateTeamDto {
   description?: string;
 
   @ApiPropertyOptional({
+    description: 'Display order (lower first)',
+    default: 0,
+  })
+  sortOrder?: number;
+
+  @ApiPropertyOptional({
     description: 'Whether the team is active',
     default: true,
   })
@@ -38,6 +44,9 @@ export class UpdateTeamDto {
 
   @ApiPropertyOptional({ description: 'Team description' })
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Display order (lower first)' })
+  sortOrder?: number;
 
   @ApiPropertyOptional({ description: 'Whether the team is active' })
   isActive?: boolean;

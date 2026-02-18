@@ -789,6 +789,24 @@ export const EventTable: React.FC = () => {
     );
   }
 
+  // TODO: placeholder for no activities found UI
+  if (data.length === 0)
+    return (
+      <div
+        style={{
+          padding: '40px',
+          textAlign: 'center',
+          color: '#666',
+          fontSize: '14px',
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: '8px' }}>
+          No activities found
+        </div>
+        <div>Create a new entry or adjust filters to see activities here.</div>
+      </div>
+    );
+
   return (
     <div className={styles.container}>
       <table className={styles.table}>
