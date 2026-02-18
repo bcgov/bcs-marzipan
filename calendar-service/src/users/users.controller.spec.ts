@@ -1,0 +1,227 @@
+import { Test, TestingModule } from '@nestjs/testing';
+
+import type { AuthUser } from '@corpcal/shared';
+
+import {
+  createMockAddUserToTeamBody,
+  createMockTransferActivitiesBody,
+  createMockUpdateUserTeamRoleBody,
+  createMockUserDetail,
+  createMockUserHistoryEntry,
+  createMockUserListItem,
+} from '../common/test-utils';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+
+const mockUser: AuthUser = {
+  id: 1,
+  username: 'testuser',
+  displayName: 'Test User',
+  email: 'test@example.com',
+  roleId: 4,
+  roleName: 'Admin',
+  permissions: ['users.view', 'users.edit', 'users.transfer_activities'],
+  teamIds: [],
+};
+
+describe('UsersController', () => {
+  let controller: UsersController;
+
+  const mockUsersService = {
+    findAll: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    getActivitiesForUser: vi.fn(),
+    addUserToTeam: vi.fn(),
+    removeUserFromTeam: vi.fn(),
+    updateUserTeamRole: vi.fn(),
+    getUserHistory: vi.fn(),
+    transferActivities: vi.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [UsersController],
+      providers: [
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
+        },
+      ],
+    }).compile();
+
+    controller = module.get<UsersController>(UsersController);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  describe('findAll', () => {
+    it('should return users list with optional search', async () => {
+      const users = [createMockUserListItem()];
+      mockUsersService.findAll.mockResolvedValue(users);
+
+      const result = await controller.findAll(undefined);
+
+      expect(result).toEqual({ success: true, data: users });
+      expect(mockUsersService.findAll).toHaveBeenCalledWith(undefined);
+      expect(mockUsersService.findAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass search query to service', async () => {
+      const users = [createMockUserListItem()];
+      mockUsersService.findAll.mockResolvedValue(users);
+
+      await controller.findAll('john');
+
+      expect(mockUsersService.findAll).toHaveBeenCalledWith('john');
+    });
+  });
+
+  describe('getActivities', () => {
+    it('should return activities for user', async () => {
+      const activities = [
+        { id: 1, label: 'Activity One', value: 1 },
+        { id: 2, label: 'Activity Two', value: 2 },
+      ];
+      mockUsersService.getActivitiesForUser.mockResolvedValue(activities);
+
+      const result = await controller.getActivities(1);
+
+      expect(result).toEqual({ success: true, data: activities });
+      expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(1);
+      expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return user detail by ID', async () => {
+      const user = createMockUserDetail({ id: 5 });
+      mockUsersService.findOne.mockResolvedValue(user);
+
+      const result = await controller.findOne(5);
+
+      expect(result).toEqual({ success: true, data: user });
+      expect(mockUsersService.findOne).toHaveBeenCalledWith(5);
+      expect(mockUsersService.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return success with null data when user not found', async () => {
+      mockUsersService.findOne.mockResolvedValue(null);
+
+      const result = await controller.findOne(999);
+
+      expect(result).toEqual({ success: true, data: null });
+      expect(mockUsersService.findOne).toHaveBeenCalledWith(999);
+    });
+  });
+
+  describe('update', () => {
+    it('should update user and return updated detail', async () => {
+      const dto = { roleId: 2, isActive: true };
+      const updated = createMockUserDetail({ id: 1, roleId: 2 });
+      mockUsersService.update.mockResolvedValue(updated);
+
+      const result = await controller.update(1, dto, mockUser);
+
+      expect(result).toEqual({ success: true, data: updated });
+      expect(mockUsersService.update).toHaveBeenCalledWith(1, dto, mockUser.id);
+      expect(mockUsersService.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('addToTeam', () => {
+    it('should add user to team and return success', async () => {
+      mockUsersService.addUserToTeam.mockResolvedValue(undefined);
+
+      const dto = createMockAddUserToTeamBody({ teamId: 2, role: 'member' });
+      const result = await controller.addToTeam(1, dto, mockUser);
+
+      expect(result).toEqual({ success: true });
+      expect(mockUsersService.addUserToTeam).toHaveBeenCalledWith(
+        1,
+        dto,
+        mockUser.id
+      );
+      expect(mockUsersService.addUserToTeam).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('removeFromTeam', () => {
+    it('should remove user from team and return success', async () => {
+      mockUsersService.removeUserFromTeam.mockResolvedValue(undefined);
+
+      const result = await controller.removeFromTeam(1, 2, mockUser);
+
+      expect(result).toEqual({ success: true });
+      expect(mockUsersService.removeUserFromTeam).toHaveBeenCalledWith(
+        1,
+        2,
+        mockUser.id
+      );
+      expect(mockUsersService.removeUserFromTeam).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('updateTeamRole', () => {
+    it('should update user role in team and return success', async () => {
+      mockUsersService.updateUserTeamRole.mockResolvedValue(undefined);
+
+      const dto = createMockUpdateUserTeamRoleBody({ role: 'owner' });
+      const result = await controller.updateTeamRole(1, 2, dto, mockUser);
+
+      expect(result).toEqual({ success: true });
+      expect(mockUsersService.updateUserTeamRole).toHaveBeenCalledWith(
+        1,
+        2,
+        dto,
+        mockUser.id
+      );
+      expect(mockUsersService.updateUserTeamRole).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('should return user history entries', async () => {
+      const history = [
+        createMockUserHistoryEntry({ id: 1, actionType: 'role_changed' }),
+        createMockUserHistoryEntry({ id: 2, actionType: 'team_added' }),
+      ];
+      mockUsersService.getUserHistory.mockResolvedValue(history);
+
+      const result = await controller.getHistory(1);
+
+      expect(result).toEqual({ success: true, data: history });
+      expect(mockUsersService.getUserHistory).toHaveBeenCalledWith(1);
+      expect(mockUsersService.getUserHistory).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('transferActivities', () => {
+    it('should transfer activities and return transferredCount', async () => {
+      mockUsersService.transferActivities.mockResolvedValue({
+        transferredCount: 3,
+      });
+
+      const dto = createMockTransferActivitiesBody({
+        targetUserId: 2,
+        transferCommsLead: true,
+        transferCommsContact: true,
+      });
+      const result = await controller.transferActivities(1, dto, mockUser);
+
+      expect(result).toEqual({ success: true, transferredCount: 3 });
+      expect(mockUsersService.transferActivities).toHaveBeenCalledWith(
+        1,
+        dto,
+        mockUser.id
+      );
+      expect(mockUsersService.transferActivities).toHaveBeenCalledTimes(1);
+    });
+  });
+});
