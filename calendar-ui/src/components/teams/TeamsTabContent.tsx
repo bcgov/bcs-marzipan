@@ -38,10 +38,10 @@ function statusBadge(isActive: boolean) {
 }
 
 export function TeamsTabContent({
-  canCreate,
+  // canCreate,
   canEdit,
   canDelete,
-  onAddTeam,
+  // onAddTeam,
   onEditTeam,
   onViewHistory,
   onDeactivate,
