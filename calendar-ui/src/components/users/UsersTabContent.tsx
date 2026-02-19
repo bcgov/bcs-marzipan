@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftRight,
   History,
-  Loader2,
   MoreHorizontal,
   Pencil,
   UsersRound,
@@ -20,9 +19,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
 
 const IDIR_PLACEHOLDER = 'MYIDIR';
+const TABLE_SCROLL_HEIGHT = 'min(480px, 60vh)';
+const SKELETON_ROW_COUNT = 8;
+const TABLE_COLUMN_COUNT = 8;
 const DEFAULT_SORT_KEY = 'name';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
 
@@ -208,15 +211,28 @@ export function UsersTabContent({
           },
         ]}
       />
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
-      ) : (
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <table className="w-full table-auto border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+      <div
+        className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white"
+        style={{ height: TABLE_SCROLL_HEIGHT }}
+      >
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table
+            className="w-full min-w-[640px] table-fixed border-collapse"
+            role="grid"
+            aria-colcount={TABLE_COLUMN_COUNT}
+          >
+            <colgroup>
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+              <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
                   <span className="inline-flex items-center gap-1">
                     Name
@@ -274,119 +290,156 @@ export function UsersTabContent({
                     />
                   </span>
                 </th>
-                <th className="w-[60px] px-4 py-3 text-left text-sm font-medium text-slate-700">
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {displayedUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-b border-slate-100 hover:bg-slate-50/50"
-                >
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    {displayName(user)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {user.adEmail ?? '-'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {IDIR_PLACEHOLDER}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded border border-slate-200 px-2 py-0.5 text-xs">
-                      {user.roleName}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {user.teams.length === 0 ? (
-                        <span className="text-slate-400">-</span>
-                      ) : (
-                        user.teams.map((t) => (
-                          <span
-                            key={t.teamId}
-                            className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-                          >
-                            {t.teamName}
-                            {t.role !== 'member' ? ` (${t.role})` : ''}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">{statusBadge(user.isActive)}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">
-                    {formatLastUpdated(
-                      (user as { lastUpdatedDateTime?: string | null })
-                        .lastUpdatedDateTime
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label="Actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {canEdit && (
-                          <DropdownMenuItem onClick={() => onEditUser(user)}>
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {canEdit && (
-                          <DropdownMenuItem onClick={() => onEditUser(user)}>
-                            <UsersRound className="h-4 w-4" />
-                            Add to team / Edit teams
-                          </DropdownMenuItem>
-                        )}
-                        {canTransfer && (
-                          <DropdownMenuItem onClick={() => onTransfer(user)}>
-                            <ArrowLeftRight className="h-4 w-4" />
-                            Transfer activities
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => onViewHistory(user)}>
-                          <History className="h-4 w-4" />
-                          View history
-                        </DropdownMenuItem>
-                        {canEdit && user.isActive && (
-                          <DropdownMenuItem
-                            onClick={() => onDeactivate(user)}
-                            variant="destructive"
-                          >
-                            Deactivate
-                          </DropdownMenuItem>
-                        )}
-                        {canEdit && !user.isActive && (
-                          <DropdownMenuItem onClick={() => onReactivate(user)}>
-                            Reactivate
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {isLoading ? (
+                Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
+                  <tr key={i} className="border-b border-slate-100" aria-hidden>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-28" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-36" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-14" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-24" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-14" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-8 w-8 rounded" />
+                    </td>
+                  </tr>
+                ))
+              ) : displayedUsers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={TABLE_COLUMN_COUNT}
+                    className="px-4 py-12 text-center text-slate-500"
+                  >
+                    {keyword || teamIds.length > 0 || roleIds.length > 0
+                      ? 'No users match your filters'
+                      : 'No users found'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                displayedUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b border-slate-100 hover:bg-slate-50/50"
+                  >
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      {displayName(user)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {user.adEmail ?? '-'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {IDIR_PLACEHOLDER}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded border border-slate-200 px-2 py-0.5 text-xs">
+                        {user.roleName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {user.teams.length === 0 ? (
+                          <span className="text-slate-400">-</span>
+                        ) : (
+                          user.teams.map((t) => (
+                            <span
+                              key={t.teamId}
+                              className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                            >
+                              {t.teamName}
+                              {t.role !== 'member' ? ` (${t.role})` : ''}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">{statusBadge(user.isActive)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {formatLastUpdated(
+                        (user as { lastUpdatedDateTime?: string | null })
+                          .lastUpdatedDateTime
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Actions"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => onEditUser(user)}>
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => onEditUser(user)}>
+                              <UsersRound className="h-4 w-4" />
+                              Add to team / Edit teams
+                            </DropdownMenuItem>
+                          )}
+                          {canTransfer && (
+                            <DropdownMenuItem onClick={() => onTransfer(user)}>
+                              <ArrowLeftRight className="h-4 w-4" />
+                              Transfer activities
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => onViewHistory(user)}>
+                            <History className="h-4 w-4" />
+                            View history
+                          </DropdownMenuItem>
+                          {canEdit && user.isActive && (
+                            <DropdownMenuItem
+                              onClick={() => onDeactivate(user)}
+                              variant="destructive"
+                            >
+                              Deactivate
+                            </DropdownMenuItem>
+                          )}
+                          {canEdit && !user.isActive && (
+                            <DropdownMenuItem
+                              onClick={() => onReactivate(user)}
+                            >
+                              Reactivate
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-          {displayedUsers.length === 0 && (
-            <div className="py-12 text-center text-slate-500">
-              {keyword || teamIds.length > 0 || roleIds.length > 0
-                ? 'No users match your filters'
-                : 'No users found'}
-            </div>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
