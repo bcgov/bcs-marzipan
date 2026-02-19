@@ -1,16 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
+import {
   ArrowLeftRight,
   History,
   MoreHorizontal,
   Pencil,
   UsersRound,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
 import { fetchRoles, fetchTeams, fetchUsers } from '@/api/usersApi';
 import { SortIndicator } from '@/components/Table/SortIndicator';
+import { TablePagination } from '@/components/Table/TablePagination';
 import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +35,7 @@ const SKELETON_ROW_COUNT = 8;
 const TABLE_COLUMN_COUNT = 8;
 const DEFAULT_SORT_KEY = 'name';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
+const DEFAULT_PAGE_SIZE = 10;
 
 type UserSortKey = 'name' | 'role' | 'lastUpdated';
 
@@ -124,6 +132,11 @@ export function UsersTabContent({
     DEFAULT_SORT_DIRECTION
   );
   const [showInactive, setShowInactive] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const fetchUsersParams = useMemo(
     () => ({
@@ -174,6 +187,24 @@ export function UsersTabContent({
     return sortedUsers.filter((u) => u.isActive);
   }, [sortedUsers, showInactive]);
 
+  const userColumns = useMemo<ColumnDef<UserListItem>[]>(
+    () => [{ id: '_', header: () => null, cell: () => null }],
+    []
+  );
+
+  const table = useReactTable({
+    data: displayedUsers,
+    columns: userColumns,
+    getRowId: (row) => String(row.id),
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    state: { pagination },
+    onPaginationChange: setPagination,
+    autoResetPageIndex: true,
+  });
+
+  const pageRows = table.getRowModel().rows.map((row) => row.original);
+
   const handleSortChange = (key: string | null, direction: 'asc' | 'desc') => {
     setSortKey(key as UserSortKey | null);
     setSortDirection(direction);
@@ -215,7 +246,7 @@ export function UsersTabContent({
         className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white"
         style={{ height: TABLE_SCROLL_HEIGHT }}
       >
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-auto">
           <table
             className="w-full min-w-[640px] table-fixed border-collapse"
             role="grid"
@@ -337,7 +368,7 @@ export function UsersTabContent({
                   </td>
                 </tr>
               ) : (
-                displayedUsers.map((user) => (
+                pageRows.map((user) => (
                   <tr
                     key={user.id}
                     className="border-b border-slate-100 hover:bg-slate-50/50"
@@ -440,6 +471,22 @@ export function UsersTabContent({
           </table>
         </div>
       </div>
+      {displayedUsers.length > 0 && (
+        <TablePagination
+          totalItems={displayedUsers.length}
+          page={pagination.pageIndex + 1}
+          pageSize={pagination.pageSize}
+          onPageChange={(p) => {
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }));
+            tableScrollRef.current?.scrollTo({ top: 0 });
+          }}
+          onPageSizeChange={(ps) => {
+            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }));
+            tableScrollRef.current?.scrollTo({ top: 0 });
+          }}
+          aria-label="Users table pagination"
+        />
+      )}
     </div>
   );
 }
