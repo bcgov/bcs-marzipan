@@ -402,7 +402,15 @@ export function EditActivityForm(): React.ReactElement {
                     loadedActivity.category.length > 0
                       ? loadedActivity.category.map(
                           (cat: string, idx: number) => (
-                            <Badge key={idx} variant="default" className="mr-2">
+                            <Badge
+                              key={idx}
+                              variant="default"
+                              className="mr-2"
+                              style={{
+                                backgroundColor: '#0F6CBD',
+                                color: '#ffffff',
+                              }}
+                            >
                               {cat}
                             </Badge>
                           )

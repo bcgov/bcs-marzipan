@@ -4,13 +4,11 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
 import {
-  CONFIRMED_STATUS_LABEL,
   CONFIRMED_STATUS_NAMES,
   findStatusByName,
-  UNCONFIRMED_STATUS_LABEL,
   UNCONFIRMED_STATUS_NAMES,
 } from '../../lib/utils';
-import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { DateRangePicker } from '../ui/date-range-picker';
 import {
   FormControl,
@@ -129,7 +127,7 @@ export const ActivityScheduleSection: React.FC<
             <FormLabel className="flex items-center gap-1">
               Date <span className="text-destructive">*</span>
             </FormLabel>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <FormControl>
                 <DateRangePicker
                   startDate={String(startDateValue || '')}
@@ -149,19 +147,12 @@ export const ActivityScheduleSection: React.FC<
                   placeholder="Pick a date"
                 />
               </FormControl>
-              <div className="flex items-center">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={isDateConfirmed ? 'default' : 'outline'}
-                  className="h-8 rounded-full px-3 text-xs whitespace-nowrap"
-                  onClick={toggleDateConfirmation}
-                  aria-pressed={isDateConfirmed}
-                >
-                  {isDateConfirmed
-                    ? CONFIRMED_STATUS_LABEL
-                    : UNCONFIRMED_STATUS_LABEL}
-                </Button>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={isDateConfirmed}
+                  onCheckedChange={toggleDateConfirmation}
+                />
+                <FormLabel className="mt-0">Confirmed</FormLabel>
               </div>
             </div>
             <FormMessage />
@@ -195,7 +186,7 @@ export const ActivityScheduleSection: React.FC<
               <FormLabel className="flex items-center gap-1">
                 Time <span className="text-destructive">*</span>
               </FormLabel>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <FormControl>
                   <div className="flex w-full max-w-[18rem] items-center gap-2">
                     <Input
@@ -219,19 +210,12 @@ export const ActivityScheduleSection: React.FC<
                     />
                   </div>
                 </FormControl>
-                <div className="flex items-center">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={isTimeConfirmed ? 'default' : 'outline'}
-                    className="h-8 rounded-full px-3 text-xs"
-                    onClick={toggleTimeConfirmation}
-                    aria-pressed={isTimeConfirmed}
-                  >
-                    {isTimeConfirmed
-                      ? CONFIRMED_STATUS_LABEL
-                      : UNCONFIRMED_STATUS_LABEL}
-                  </Button>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={isTimeConfirmed}
+                    onCheckedChange={toggleTimeConfirmation}
+                  />
+                  <FormLabel className="mt-0">Confirmed</FormLabel>
                 </div>
               </div>
               <FormMessage />
