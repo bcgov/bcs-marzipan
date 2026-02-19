@@ -5,6 +5,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  Plus,
   UsersRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,6 +21,9 @@ import {
   removeUserFromTeam,
   updateUser,
 } from '@/api/usersApi';
+import { PageHeader } from '@/components/PageHeader';
+import { SortIndicator } from '@/components/Table/SortIndicator';
+import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { TeamHistoryDrawer } from '@/components/teams/TeamHistoryDrawer';
 import { TeamsTabContent } from '@/components/teams/TeamsTabContent';
@@ -32,6 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TransferActivitiesDialog } from '@/components/users/TransferActivitiesDialog';
+import { UserCreateModal } from '@/components/users/UserCreateModal';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserHistoryDrawer } from '@/components/users/UserHistoryDrawer';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
@@ -73,16 +78,59 @@ function statusBadge(isActive: boolean) {
 
 const IDIR_PLACEHOLDER = 'MYIDIR';
 
+const DEFAULT_SORT_KEY = 'name';
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
+
+type UserSortKey = 'name' | 'role' | 'lastUpdated';
+
+function compareUsers(
+  a: UserListItem,
+  b: UserListItem,
+  sortKey: UserSortKey,
+  direction: 'asc' | 'desc'
+): number {
+  const mult = direction === 'asc' ? 1 : -1;
+  switch (sortKey) {
+    case 'name': {
+      const na = (a.adDisplayName ?? a.adUsername ?? '').toLowerCase();
+      const nb = (b.adDisplayName ?? b.adUsername ?? '').toLowerCase();
+      return mult * na.localeCompare(nb);
+    }
+    case 'role': {
+      const ra = (a.roleName ?? '').toLowerCase();
+      const rb = (b.roleName ?? '').toLowerCase();
+      return mult * ra.localeCompare(rb);
+    }
+    case 'lastUpdated': {
+      const ta = new Date(
+        (a as { lastUpdatedDateTime?: string | null }).lastUpdatedDateTime ?? 0
+      ).getTime();
+      const tb = new Date(
+        (b as { lastUpdatedDateTime?: string | null }).lastUpdatedDateTime ?? 0
+      ).getTime();
+      return mult * (ta - tb);
+    }
+    default:
+      return 0;
+  }
+}
+
 export function Users() {
   const [activeTab, setActiveTab] = useState<'users' | 'teams'>('users');
   const [keyword, setKeyword] = useState('');
   const [teamIds, setTeamIds] = useState<number[]>([]);
   const [roleIds, setRoleIds] = useState<number[]>([]);
+  const [sortKey, setSortKey] = useState<UserSortKey | null>(DEFAULT_SORT_KEY);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
+    DEFAULT_SORT_DIRECTION
+  );
   const [editUser, setEditUser] = useState<UserListItem | null>(null);
   const [transferSourceUser, setTransferSourceUser] =
     useState<UserListItem | null>(null);
   const [historyUser, setHistoryUser] = useState<UserListItem | null>(null);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [teamToEdit, setTeamToEdit] = useState<TeamListItem | null>(null);
   const [teamHistoryTeam, setTeamHistoryTeam] = useState<TeamListItem | null>(
     null
@@ -91,6 +139,7 @@ export function Users() {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canEdit = hasPermission(PERMISSIONS.USERS.EDIT);
+  const canCreateUser = hasPermission(PERMISSIONS.USERS.CREATE);
   const canTransfer = hasPermission(PERMISSIONS.USERS.TRANSFER_ACTIVITIES);
   const canViewTeams = hasPermission(PERMISSIONS.TEAMS.VIEW);
   const canCreateTeam = hasPermission(PERMISSIONS.TEAMS.CREATE);
@@ -110,6 +159,12 @@ export function Users() {
     queryKey: ['users', fetchUsersParams],
     queryFn: () => fetchUsers(fetchUsersParams),
   });
+
+  const sortedUsers = useMemo(() => {
+    const key = sortKey ?? DEFAULT_SORT_KEY;
+    const dir = sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
+    return [...users].sort((a, b) => compareUsers(a, b, key, dir));
+  }, [users, sortKey, sortDirection]);
 
   const { data: teamsForFilter = [] } = useQuery({
     queryKey: ['teams'],
@@ -196,27 +251,39 @@ export function Users() {
     [updateMutation]
   );
 
+  const handleSortChange = useCallback(
+    (key: string | null, direction: 'asc' | 'desc') => {
+      setSortKey(key as UserSortKey | null);
+      setSortDirection(direction);
+    },
+    []
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            User & Team Management
-          </h1>
-          <p className="text-sm text-slate-600">
-            Manage user accounts, teams, and roles
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="User & Team Management"
+        description="Manage user accounts, teams, and roles"
+        action={
+          canCreateUser && (
+            <Button onClick={() => setShowCreateUser(true)}>
+              <Plus className="h-4 w-4" />
+              Add user
+            </Button>
+          )
+        }
+      />
 
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as 'users' | 'teams')}
       >
-        <TabsList className="mb-4">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          {canViewTeams && <TabsTrigger value="teams">Teams</TabsTrigger>}
-        </TabsList>
+        <div className="mb-0">
+          <TabsList className="mb-0" variant="line">
+            <TabsTrigger value="users">Users</TabsTrigger>
+            {canViewTeams && <TabsTrigger value="teams">Teams</TabsTrigger>}
+          </TabsList>
+        </div>
 
         <TabsContent value="users" className="mt-0">
           <UserManagementFilters
@@ -228,11 +295,27 @@ export function Users() {
             onRoleIdsChange={setRoleIds}
             teamOptions={teamOptions}
             roleOptions={roleOptions}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+            defaultSortKey={DEFAULT_SORT_KEY}
+            defaultSortDirection={DEFAULT_SORT_DIRECTION}
             className="mb-4"
           />
-          <div className="mb-2 text-sm text-slate-500">
-            {users.length} {users.length === 1 ? 'user' : 'users'}
-          </div>
+
+          <TableSummaryBar
+            count={sortedUsers.length}
+            singularLabel="user"
+            pluralLabel="users"
+            filters={[
+              {
+                id: 'show-inactive',
+                label: 'Show inactive',
+                checked: showInactive,
+                onCheckedChange: setShowInactive,
+              },
+            ]}
+          />
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -243,7 +326,19 @@ export function Users() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                      Name
+                      <span className="inline-flex items-center gap-1">
+                        Name
+                        <SortIndicator
+                          columnId="name"
+                          sortKey={sortKey}
+                          sortDirection={
+                            sortKey !== null
+                              ? sortDirection
+                              : DEFAULT_SORT_DIRECTION
+                          }
+                          className="h-4 w-4"
+                        />
+                      </span>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
                       Email
@@ -252,7 +347,19 @@ export function Users() {
                       IDIR
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                      Role
+                      <span className="inline-flex items-center gap-1">
+                        Role
+                        <SortIndicator
+                          columnId="role"
+                          sortKey={sortKey}
+                          sortDirection={
+                            sortKey !== null
+                              ? sortDirection
+                              : DEFAULT_SORT_DIRECTION
+                          }
+                          className="h-4 w-4"
+                        />
+                      </span>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
                       Teams
@@ -261,7 +368,19 @@ export function Users() {
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                      Last updated
+                      <span className="inline-flex items-center gap-1">
+                        Last updated
+                        <SortIndicator
+                          columnId="lastUpdated"
+                          sortKey={sortKey}
+                          sortDirection={
+                            sortKey !== null
+                              ? sortDirection
+                              : DEFAULT_SORT_DIRECTION
+                          }
+                          className="h-4 w-4"
+                        />
+                      </span>
                     </th>
                     <th className="w-[60px] px-4 py-3 text-left text-sm font-medium text-slate-700">
                       Actions
@@ -269,7 +388,7 @@ export function Users() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {sortedUsers.map((user) => (
                     <tr
                       key={user.id}
                       className="border-b border-slate-100 hover:bg-slate-50/50"
@@ -379,7 +498,7 @@ export function Users() {
                   ))}
                 </tbody>
               </table>
-              {users.length === 0 && (
+              {sortedUsers.length === 0 && (
                 <div className="py-12 text-center text-slate-500">
                   {keyword || teamIds.length > 0 || roleIds.length > 0
                     ? 'No users match your filters'
@@ -421,6 +540,11 @@ export function Users() {
               onClose={() => setHistoryUser(null)}
             />
           )}
+
+          <UserCreateModal
+            open={showCreateUser}
+            onClose={() => setShowCreateUser(false)}
+          />
         </TabsContent>
 
         <TabsContent value="teams" className="mt-0">

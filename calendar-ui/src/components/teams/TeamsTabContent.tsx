@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { History, Loader2, MoreHorizontal, Pencil, Plus } from 'lucide-react';
+import { History, Loader2, MoreHorizontal, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
+import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,24 +55,19 @@ export function TeamsTabContent({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <Checkbox
-            checked={showInactive}
-            onCheckedChange={(v) => setShowInactive(v === true)}
-          />
-          Show inactive
-        </label>
-        {canCreate && (
-          <Button onClick={onAddTeam}>
-            <Plus className="h-4 w-4" />
-            Add team
-          </Button>
-        )}
-      </div>
-      <div className="mb-2 text-sm text-slate-500">
-        {teams.length} {teams.length === 1 ? 'team' : 'teams'}
-      </div>
+      <TableSummaryBar
+        count={teams.length}
+        singularLabel="team"
+        pluralLabel="teams"
+        filters={[
+          {
+            id: 'show-inactive',
+            label: 'Show inactive',
+            checked: showInactive,
+            onCheckedChange: setShowInactive,
+          },
+        ]}
+      />
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
