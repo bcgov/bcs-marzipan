@@ -6,7 +6,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import { History, MoreHorizontal, Pencil } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
@@ -23,8 +23,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const TABLE_SCROLL_HEIGHT = 'min(480px, 60vh)';
+const TABLE_SCROLL_HEIGHT = 'max(240px, min(600px, 60vh, 100vh - 400px))';
 const SKELETON_ROW_COUNT = 8;
+const SKELETON_DELAY_MS = 300;
 const TABLE_COLUMN_COUNT = 6;
 
 const DEFAULT_SORT_KEY = 'displayName';
@@ -102,6 +103,19 @@ export function TeamsTabContent({
     queryKey: ['teams', 'list', showInactive],
     queryFn: () => fetchTeamsList(!showInactive),
   });
+
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setShowSkeleton(false);
+      return;
+    }
+    const id = window.setTimeout(
+      () => setShowSkeleton(true),
+      SKELETON_DELAY_MS
+    );
+    return () => window.clearTimeout(id);
+  }, [isLoading]);
 
   const filteredTeams = useMemo(() => {
     if (!keyword.trim()) return teams;
@@ -259,7 +273,7 @@ export function TeamsTabContent({
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isLoading && showSkeleton ? (
                 Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
                   <tr key={i} className="border-b border-slate-100" aria-hidden>
                     <td className="px-4 py-3">
