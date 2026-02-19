@@ -1,0 +1,230 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useEffect, useMemo, useState } from 'react';
+
+import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { fetchMinistries } from '@/api/lookupsApi';
+import { createTeam, fetchTeamById, updateTeam } from '@/api/teamsApi';
+import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+
+interface TeamEditModalProps {
+  /** When null, modal is in create mode. Otherwise edit mode for this team. */
+  team: TeamListItem | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+export function TeamEditModal({
+  team,
+  open,
+  onClose,
+  onSaved,
+}: TeamEditModalProps) {
+  const isCreate = team === null;
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [ministryIds, setMinistryIds] = useState<string[]>([]);
+
+  const { data: detail, isLoading: isLoadingDetail } =
+    useQuery<TeamDetail | null>({
+      queryKey: ['team', team?.id],
+      queryFn: () => (team ? fetchTeamById(team.id) : Promise.resolve(null)),
+      enabled: open && !!team?.id,
+    });
+
+  const { data: ministries = [] } = useQuery({
+    queryKey: ['lookups', 'ministries'],
+    queryFn: fetchMinistries,
+    enabled: open,
+  });
+
+  const ministryOptions = useMemo(
+    () =>
+      ministries.map((m) => ({
+        value: String(m.id),
+        label: m.displayName ?? m.name ?? String(m.id),
+      })),
+    [ministries]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    if (isCreate) {
+      setName('');
+      setDisplayName('');
+      setDescription('');
+      setIsActive(true);
+      setMinistryIds([]);
+    } else if (detail) {
+      setName(detail.name);
+      setDisplayName(detail.displayName ?? '');
+      setDescription(detail.description ?? '');
+      setIsActive(detail.isActive);
+      setMinistryIds(detail.ministries.map((m) => String(m.ministryId)));
+    }
+  }, [open, isCreate, detail]);
+
+  const createMutation = useMutation({
+    mutationFn: createTeam,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast.success('Team created');
+      onSaved();
+      onClose();
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to create team');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: number;
+      body: Parameters<typeof updateTeam>[1];
+    }) => updateTeam(id, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast.success('Team updated');
+      onSaved();
+      onClose();
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update team');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      toast.error('Name is required');
+      return;
+    }
+    if (isCreate) {
+      createMutation.mutate({
+        name: trimmedName,
+        displayName: displayName.trim() || undefined,
+        description: description.trim() || undefined,
+        isActive,
+        ministryIds: ministryIds.length ? ministryIds : undefined,
+      });
+    } else if (team) {
+      updateMutation.mutate({
+        id: team.id,
+        body: {
+          name: trimmedName,
+          displayName: displayName.trim() || undefined,
+          description: description.trim() || undefined,
+          isActive,
+          ministryIds: ministryIds.length ? ministryIds : undefined,
+        },
+      });
+    }
+  };
+
+  const handleMinistryToggle = (value: string) => {
+    setMinistryIds((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  const isLoading = !isCreate && isLoadingDetail;
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isCreate ? 'Create team' : 'Edit team'}</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="team-name">Name *</Label>
+              <Input
+                id="team-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Team name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-display-name">Display name</Label>
+              <Input
+                id="team-display-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Short or display name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-description">Description</Label>
+              <Textarea
+                id="team-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional description"
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="team-active"
+                checked={isActive}
+                onCheckedChange={setIsActive}
+              />
+              <Label htmlFor="team-active">Active</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Ministries</Label>
+              <Combobox
+                options={ministryOptions}
+                selectedValues={ministryIds}
+                onSelect={handleMinistryToggle}
+                placeholder="Select ministries..."
+                searchPlaceholder="Search ministries..."
+                emptyMessage="No ministries found."
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {isCreate ? 'Create' : 'Save'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

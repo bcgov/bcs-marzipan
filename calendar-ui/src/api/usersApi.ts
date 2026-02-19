@@ -15,11 +15,29 @@ import type {
 
 import api from './axios';
 
-export async function fetchUsers(search?: string): Promise<UserListItem[]> {
-  const params = search ? { search: search.trim() } : {};
+export interface FetchUsersParams {
+  search?: string;
+  teamIds?: number[];
+  roleIds?: number[];
+}
+
+export async function fetchUsers(
+  params?: FetchUsersParams
+): Promise<UserListItem[]> {
+  const search = params?.search?.trim();
+  const teamIds = params?.teamIds?.length
+    ? params.teamIds.join(',')
+    : undefined;
+  const roleIds = params?.roleIds?.length
+    ? params.roleIds.join(',')
+    : undefined;
+  const query: Record<string, string> = {};
+  if (search) query.search = search;
+  if (teamIds) query.teamIds = teamIds;
+  if (roleIds) query.roleIds = roleIds;
   const response = await api.get<{ success: boolean; data: UserListItem[] }>(
     '/users',
-    { params }
+    { params: Object.keys(query).length ? query : undefined }
   );
   return response.data.data;
 }

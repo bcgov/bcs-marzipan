@@ -118,7 +118,7 @@ The system includes 5 predefined roles with hierarchical capabilities:
 | lookups.view              | x         | x      | x        | x     | x            |
 | lookups.manage            |           |        |          | x     | x            |
 | users.view                |           |        |          | x     | x            |
-| users.create              |           |        |          |       | x            |
+| users.create              |           |        |          | x     | x            |
 | users.edit                |           |        |          | x     | x            |
 | users.delete              |           |        |          |       | x            |
 | users.manage_roles        |           |        |          |       | x            |

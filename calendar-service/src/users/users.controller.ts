@@ -33,6 +33,7 @@ import {
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import {
   AddUserToTeamDto,
@@ -56,12 +57,22 @@ export class UsersController {
   @ApiOperation({
     summary: 'List users',
     description:
-      'Returns all users with team memberships and roles. Optional search by name, email, username.',
+      'Returns all users with team memberships and roles. Optional search by name, email, username; filter by teamIds or roleIds (comma-separated).',
   })
   @ApiQuery({
     name: 'search',
     required: false,
     description: 'Search by display name, username, or email',
+  })
+  @ApiQuery({
+    name: 'teamIds',
+    required: false,
+    description: 'Filter users in any of these teams (comma-separated IDs)',
+  })
+  @ApiQuery({
+    name: 'roleIds',
+    required: false,
+    description: 'Filter users with any of these roles (comma-separated IDs)',
   })
   @ApiResponse({
     status: 200,
@@ -70,9 +81,13 @@ export class UsersController {
   })
   @Get()
   async findAll(
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('teamIds') teamIdsParam?: string,
+    @Query('roleIds') roleIdsParam?: string
   ): Promise<{ success: boolean; data: UserListItem[] }> {
-    const data = await this.usersService.findAll(search);
+    const teamIds = parseCommaSeparatedIds(teamIdsParam);
+    const roleIds = parseCommaSeparatedIds(roleIdsParam);
+    const data = await this.usersService.findAll(search, teamIds, roleIds);
     return { success: true, data };
   }
 
