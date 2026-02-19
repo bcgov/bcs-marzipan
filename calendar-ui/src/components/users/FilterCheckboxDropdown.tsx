@@ -1,13 +1,13 @@
 import { ChevronDown, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 export interface FilterCheckboxOption {
@@ -36,7 +36,6 @@ export function FilterCheckboxDropdown({
   disabled = false,
   className,
 }: FilterCheckboxDropdownProps) {
-  const [open, setOpen] = useState(false);
   const hasSelection = selectedValues.length > 0;
 
   const handleToggle = useCallback(
@@ -60,8 +59,8 @@ export function FilterCheckboxDropdown({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           variant={hasSelection ? 'default' : 'outline'}
           size="sm"
@@ -75,43 +74,45 @@ export function FilterCheckboxDropdown({
             {hasSelection ? `${label} (${selectedValues.length})` : label}
           </span>
           {hasSelection ? (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               onClick={handleClear}
-              className="ml-1 rounded p-0.5 hover:bg-white/20"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChange([]);
+                }
+              }}
+              className="ml-1 inline-flex cursor-pointer rounded p-0.5 hover:bg-white/20"
               aria-label={`Clear ${label} filter`}
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </span>
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
-        <div className="max-h-64 overflow-auto p-2">
-          {options.length === 0 ? (
-            <p className="text-muted-foreground py-2 text-center text-sm">
-              No options
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {options.map((opt) => (
-                <label
-                  key={opt.value}
-                  className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-                >
-                  <Checkbox
-                    checked={selectedValues.includes(opt.value)}
-                    onCheckedChange={() => handleToggle(opt.value)}
-                  />
-                  <span className="flex-1 truncate">{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="max-h-64 overflow-auto" align="start">
+        {options.length === 0 ? (
+          <p className="text-muted-foreground py-2 text-center text-sm">
+            No options
+          </p>
+        ) : (
+          options.map((opt) => (
+            <DropdownMenuCheckboxItem
+              key={opt.value}
+              checked={selectedValues.includes(opt.value)}
+              onCheckedChange={() => handleToggle(opt.value)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <span className="truncate">{opt.label}</span>
+            </DropdownMenuCheckboxItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

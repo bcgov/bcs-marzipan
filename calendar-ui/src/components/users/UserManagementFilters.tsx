@@ -15,12 +15,12 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { Input } from '@/components/ui/input';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
 import { cn } from '@/lib/utils';
 
@@ -62,7 +62,6 @@ interface UserManagementFiltersProps {
 
 /**
  * Filter bar for the Users table: Team (combobox), Role (checkbox dropdown), Job (disabled), and keyword search.
- * Uses Shad/cn components only.
  */
 export function UserManagementFilters({
   keyword,
@@ -95,7 +94,6 @@ export function UserManagementFilters({
     [teamIds, onTeamIdsChange]
   );
 
-  const [teamPopoverOpen, setTeamPopoverOpen] = useState(false);
   const [teamSearch, setTeamSearch] = useState('');
   const filteredTeamOptions = useMemo(() => {
     if (!teamSearch.trim()) return teamOptions;
@@ -115,7 +113,17 @@ export function UserManagementFilters({
     },
     [onTeamIdsChange]
   );
-  const handleTeamSelectAndClose = useCallback(
+  const handleTeamClearKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        onTeamIdsChange([]);
+      }
+    },
+    [onTeamIdsChange]
+  );
+  const handleTeamSelectItem = useCallback(
     (value: string) => {
       handleTeamSelect(value);
       setTeamSearch('');
@@ -147,8 +155,8 @@ export function UserManagementFilters({
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Popover open={teamPopoverOpen} onOpenChange={setTeamPopoverOpen}>
-            <PopoverTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant={hasTeamSelection ? 'default' : 'outline'}
                 size="sm"
@@ -158,20 +166,22 @@ export function UserManagementFilters({
                   {hasTeamSelection ? `Team (${teamIds.length})` : 'Team'}
                 </span>
                 {hasTeamSelection ? (
-                  <button
-                    type="button"
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={handleTeamClear}
-                    className="ml-1 rounded p-0.5 hover:bg-white/20"
+                    onKeyDown={handleTeamClearKeyDown}
+                    className="ml-1 inline-flex cursor-pointer rounded p-0.5 hover:bg-white/20"
                     aria-label="Clear Team filter"
                   >
                     <X className="h-3.5 w-3.5" />
-                  </button>
+                  </span>
                 ) : (
                   <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                 )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 p-0" align="start">
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-72 p-0" align="start">
               <Command className="rounded-md border-0" shouldFilter={false}>
                 <CommandInput
                   placeholder="Search teams..."
@@ -204,7 +214,7 @@ export function UserManagementFilters({
                         <CommandItem
                           key={opt.value}
                           value={opt.value}
-                          onSelect={() => handleTeamSelectAndClose(opt.value)}
+                          onSelect={() => handleTeamSelectItem(opt.value)}
                         >
                           <Check
                             className={cn(
@@ -219,8 +229,8 @@ export function UserManagementFilters({
                   </CommandGroup>
                 </CommandList>
               </Command>
-            </PopoverContent>
-          </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <FilterCheckboxDropdown
             label="Job"
             options={jobOptions}

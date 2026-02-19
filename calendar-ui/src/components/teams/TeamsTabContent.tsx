@@ -6,7 +6,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import { History, MoreHorizontal, Pencil } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
@@ -127,6 +127,29 @@ export function TeamsTabContent({
     []
   );
 
+  const onPaginationChangeStable = useCallback(
+    (
+      updaterOrValue:
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
+    ) => {
+      setPagination((prev) => {
+        const next =
+          typeof updaterOrValue === 'function'
+            ? updaterOrValue(prev)
+            : updaterOrValue;
+        if (
+          next.pageIndex === prev.pageIndex &&
+          next.pageSize === prev.pageSize
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   const table = useReactTable({
     data: sortedTeams,
     columns: teamColumns,
@@ -134,7 +157,7 @@ export function TeamsTabContent({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     state: { pagination },
-    onPaginationChange: setPagination,
+    onPaginationChange: onPaginationChangeStable,
     autoResetPageIndex: true,
   });
 
