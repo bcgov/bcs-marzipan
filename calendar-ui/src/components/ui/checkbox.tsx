@@ -15,10 +15,7 @@ const Checkbox = React.forwardRef<
       className
     )}
     style={{
-      backgroundColor:
-        props.checked || props['data-state'] === 'checked'
-          ? '#0F6CBD'
-          : undefined,
+      backgroundColor: props.checked ? '#0F6CBD' : undefined,
     }}
     {...props}
   >
