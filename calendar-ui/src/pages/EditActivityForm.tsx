@@ -507,19 +507,25 @@ export function EditActivityForm(): React.ReactElement {
                       tags={lookups.tags}
                     />
 
-                    <ActivityCommsSection
-                      commsMaterialOptions={lookups.commsMaterials}
-                      commsLeadOptions={lookups.users}
-                      activityStatusOptions={lookups.activityStatuses}
-                    />
+                    <div>
+                      <ActivityCommsSection
+                        commsMaterialOptions={lookups.commsMaterials}
+                        commsLeadOptions={lookups.users}
+                        activityStatusOptions={lookups.activityStatuses}
+                      />
 
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
+                      <div className="mx-6 border-t border-gray-300"></div>
+
+                      <ActivityNewsReleaseSection
+                        translationLanguageOptions={
+                          lookups.translationLanguages
+                        }
+                        newsReleaseDistributionOptions={
+                          lookups.newsReleaseDistributions
+                        }
+                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-6">

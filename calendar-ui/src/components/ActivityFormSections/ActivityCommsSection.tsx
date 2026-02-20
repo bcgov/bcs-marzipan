@@ -59,7 +59,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   // activityStatusOptions is now received as a prop
   return (
-    <ActivityFormSection title="Comms">
+    <ActivityFormSection title="Comms" variant="top">
       {/* Activity Status Input */}
       <FormField
         control={form.control}

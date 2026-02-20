@@ -54,7 +54,7 @@ export const ActivityNewsReleaseSection: React.FC<
   const [translationsOpen, setTranslationsOpen] = useState(false);
 
   return (
-    <ActivityFormSection title="News release">
+    <ActivityFormSection title="News release" variant="bottom-no-divider">
       <FormField
         control={form.control}
         name="newsReleaseOriginId"

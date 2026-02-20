@@ -284,6 +284,8 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
+      <div className="my-6 border-t border-gray-300"></div>
+
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Pitch</h3>
 
@@ -335,6 +337,8 @@ export const ActivityOverviewSection: React.FC<
           )}
         />
       </div>
+
+      <div className="my-6 border-t border-gray-300"></div>
 
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Translations</h3>

@@ -193,6 +193,10 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         }}
       />
 
+      <div className="my-6 border-t border-gray-300"></div>
+
+      <h2 className="text-xl font-semibold">Venue</h2>
+
       {/* Venue TBD Toggle */}
       <div className="mb-4 flex items-center space-x-3">
         <Switch

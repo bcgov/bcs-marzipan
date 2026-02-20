@@ -77,7 +77,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
   const quickPickTags = [...fixedQuickPicks, ...lastUsedDisplay];
 
   return (
-    <ActivityFormSection title="Venue">
+    <ActivityFormSection title="Venue" variant="bottom-no-divider">
       {/* Venue TBD Toggle */}
       <div className="mb-4 flex items-center space-x-3">
         <Switch
