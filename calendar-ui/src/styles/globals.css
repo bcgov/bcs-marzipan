@@ -89,6 +89,7 @@
     --inverted-background: oklch(0.145 0 0);
     --inverted-foreground: oklch(1 0 0);
 
+    /* Sidebar pinned border (#0F6CBD equivalent) */
     /* BC Government Brand Colors */
     --bc-blue: #013366;
     --bc-blue-light: #1a4b82;
@@ -164,9 +165,13 @@
     --bcsds-black-opacity-100-10: #00000010;
 
     /* BCSDS semantic tokens */
+    --sidebar-foreground-active: var(--bc-blue-light);
     --bcsds-button-primary-background: var(--bcsds-bc-blue-95);
     --bcsds-button-primary-foreground: var(--bcsds-white-00);
     --bcsds-button-primary-hover-background: var(--bcsds-bc-blue-90);
+
+    /* Tabs underline (#0F6CBD equivalent) */
+    --tabs-underline: oklch(0.5263 0.1493 251.63);
 
     /* Tabs underline (#0F6CBD equivalent) */
     --tabs-underline: oklch(0.5263 0.1493 251.63);
@@ -207,6 +212,7 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.439 0 0);
+    --sidebar-foreground-active: oklch(0.626 0.2 252);
     --inverted-background: oklch(0.985 0 0);
     --inverted-foreground: oklch(0.145 0 0);
 
@@ -381,6 +387,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-foreground-active: oklch(0.626 0.2 252);
   --tabs-underline: oklch(0.5263 0.1493 251.63);
   --link: oklch(0.5263 0.1493 251.63);
 }

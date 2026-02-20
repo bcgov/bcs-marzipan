@@ -40,12 +40,16 @@ const Header = () => {
 
   return (
     <header className="box-border flex h-14 w-full items-center border-b-2 border-[#f4f4f4] px-4 py-2 md:px-20">
-      <SidebarTrigger className="md:mr-2" />
-      <Link to="/">
-        <img src={logo} alt="Logo" className="mr-4 h-10" />
+      <Link to="/" className="shrink-0">
+        <img
+          src={logo}
+          alt="Logo"
+          className="mr-4 h-8 w-auto object-contain sm:h-9 md:h-10"
+        />
       </Link>
 
       <div className="ml-auto flex items-center gap-4">
+        <SidebarTrigger className="md:hidden" />
         {isAuthenticated && user && (
           <>
             {/* Dev mode user switcher */}

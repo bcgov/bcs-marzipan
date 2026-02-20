@@ -2,8 +2,8 @@ import {
   CalendarDays,
   History,
   NotebookText,
-  Pin,
-  PinOff,
+  PanelLeft,
+  PanelLeftDashed,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -93,7 +93,7 @@ function AppSidebarContent() {
                       aria-label={label}
                     >
                       <Link to={to} onClick={closeMobileSidebar}>
-                        <Icon className="size-4 shrink-0" />
+                        <Icon className="size-6 shrink-0" />
                         <span>{label}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -112,22 +112,13 @@ function AppSidebarContent() {
 }
 
 function SidebarPinButton() {
-  const { setOpen, isMobile } = useSidebar();
-  const [pinned, setPinnedState] = useState(getInitialPinned);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_PINNED_KEY, String(pinned));
-    } catch {
-      // ignore
-    }
-  }, [pinned]);
+  const { pinned, setPinned, setOpen, isMobile } = useSidebar();
 
   const handleClick = useCallback(() => {
     const next = !pinned;
-    setPinnedState(next);
+    setPinned(next);
     setOpen(next);
-  }, [pinned, setOpen]);
+  }, [pinned, setPinned, setOpen]);
 
   if (isMobile) return null;
 
@@ -144,7 +135,11 @@ function SidebarPinButton() {
           onClick={handleClick}
           aria-label={label}
         >
-          {pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+          {pinned ? (
+            <PanelLeft className="size-4" />
+          ) : (
+            <PanelLeftDashed className="size-4" />
+          )}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
@@ -172,6 +167,14 @@ export function Sidebar({ children }: { children?: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_PINNED_KEY, String(pinned));
+    } catch {
+      // ignore
+    }
+  }, [pinned]);
+
+  useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === SIDEBAR_PINNED_KEY && e.newValue !== null) {
         const next = e.newValue === 'true';
@@ -187,6 +190,11 @@ export function Sidebar({ children }: { children?: ReactNode }) {
     setControlledOpen(open);
   }, []);
 
+  const handlePinnedChange = useCallback((next: boolean) => {
+    setPinned(next);
+    setControlledOpen(next);
+  }, []);
+
   const childArray = Array.isArray(children)
     ? children
     : children != null
@@ -200,6 +208,8 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       defaultOpen={defaultOpen}
       open={controlledOpen}
       onOpenChange={handleOpenChange}
+      pinned={pinned}
+      onPinnedChange={handlePinnedChange}
       style={
         {
           '--header-height': HEADER_HEIGHT,
