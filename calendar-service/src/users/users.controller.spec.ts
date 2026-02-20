@@ -69,7 +69,7 @@ describe('UsersController', () => {
       const result = await controller.findAll(undefined);
 
       expect(result).toEqual({ success: true, data: users });
-      expect(mockUsersService.findAll).toHaveBeenCalledWith(undefined);
+      expect(mockUsersService.findAll).toHaveBeenCalledWith(undefined, [], []);
       expect(mockUsersService.findAll).toHaveBeenCalledTimes(1);
     });
 
@@ -79,7 +79,7 @@ describe('UsersController', () => {
 
       await controller.findAll('john');
 
-      expect(mockUsersService.findAll).toHaveBeenCalledWith('john');
+      expect(mockUsersService.findAll).toHaveBeenCalledWith('john', [], []);
     });
   });
 

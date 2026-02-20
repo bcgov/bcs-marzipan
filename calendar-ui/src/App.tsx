@@ -51,7 +51,7 @@ const Settings = lazyWithRetry(() =>
   import('./pages/Settings').then((m) => ({ default: m.Settings }))
 );
 const Users = lazyWithRetry(() =>
-  import('./pages/Users').then((m) => ({ default: m.Users }))
+  import('./pages/UserManagement').then((m) => ({ default: m.Users }))
 );
 
 function App() {

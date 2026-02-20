@@ -74,7 +74,7 @@ WHERE r.name = 'Admin' AND p.key IN (
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','reports.create_custom',
   'lookups.view','lookups.manage',
-  'users.view','users.edit','users.transfer_activities',
+  'users.view','users.create','users.edit','users.transfer_activities',
   'teams.view','teams.create','teams.edit','teams.delete',
   'settings.view','settings.manage'
 )
