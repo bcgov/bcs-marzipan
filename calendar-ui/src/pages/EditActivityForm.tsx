@@ -3,6 +3,7 @@ import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -288,6 +289,11 @@ export function EditActivityForm(): React.ReactElement {
       };
 
       await updateActivity(Number(id), submitData);
+      // Show success toast
+      toast.success('Activity updated', {
+        description: `${loadedActivity?.displayId || `ACT-${id}`}: ${data.title || ''}`,
+        duration: 5000,
+      });
       // Navigate back to the entries list view
       void navigate('/');
     } catch (err) {
