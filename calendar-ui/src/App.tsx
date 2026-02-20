@@ -44,6 +44,11 @@ const LookAheadReport = lazyWithRetry(() =>
     default: m.LookAheadReport,
   }))
 );
+const GlobalHistory = lazyWithRetry(() =>
+  import('./pages/GlobalHistory').then((m) => ({
+    default: m.GlobalHistory,
+  }))
+);
 const NotFound = lazyWithRetry(() =>
   import('./pages/NotFound').then((m) => ({ default: m.NotFound }))
 );
@@ -131,6 +136,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="global-history" element={<GlobalHistory />} />
               </Route>
 
               {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}

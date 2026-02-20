@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { SidebarTrigger } from '../ui/sidebar';
 import { UserSwitcher } from '../UserSwitcher';
 
 /**
@@ -38,7 +39,8 @@ const Header = () => {
   };
 
   return (
-    <header className="box-border flex h-14 w-full items-center border-b-2 border-[#f4f4f4] px-20 py-2">
+    <header className="box-border flex h-14 w-full items-center border-b-2 border-[#f4f4f4] px-4 py-2 md:px-20">
+      <SidebarTrigger className="md:mr-2" />
       <Link to="/">
         <img src={logo} alt="Logo" className="mr-4 h-10" />
       </Link>
