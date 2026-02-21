@@ -12,16 +12,23 @@ import { ZodError, ZodTypeAny } from 'zod';
  * A NestJS pipe that validates incoming request data against a Zod schema.
  * This ensures that request DTOs are automatically validated and typed correctly.
  *
- * Usage:
+ * Apply the pipe on the specific parameter (e.g. @Body or @Query), not with
+ * @UsePipes at method level. Method-level @UsePipes runs the pipe for every
+ * parameter (including @CurrentUser()), causing validation to run against
+ * the wrong value and fail.
+ *
+ * Usage (body):
  * ```typescript
  * @Post()
- * @UsePipes(new ZodValidationPipe(createActivityRequestSchema))
- * async create(@Body() body: CreateActivityRequest) {
- *   // body is now validated and typed
+ * async create(
+ *   @Body(new ZodValidationPipe(createActivityRequestSchema)) body: CreateActivityRequest,
+ *   @CurrentUser() user: AuthUser
+ * ) {
+ *   // body is validated and typed
  * }
  * ```
  *
- * Or for query parameters:
+ * Usage (query):
  * ```typescript
  * @Get()
  * async findAll(
