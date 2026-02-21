@@ -52,7 +52,6 @@ const Header = () => {
       </Link>
 
       <div className="ml-auto flex items-center gap-4">
-        <SidebarTrigger className="md:hidden" />
         {isAuthenticated && user && (
           <>
             <Button variant="ghost" size="icon" className="text-slate-600">
