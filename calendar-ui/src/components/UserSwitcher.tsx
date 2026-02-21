@@ -24,9 +24,10 @@ import {
 const logger = createLogger('UserSwitcher');
 
 /**
- * Mock users from seed data, one representative per role
+ * Mock users from seed data, one representative per role.
+ * Exported for use in Header profile dropdown (dev-only switch user submenu).
  */
-const MOCK_USERS = [
+export const MOCK_USERS = [
   // View (role_id: 1)
   { username: 'jane.smith', displayName: 'Jane Smith', role: 'View Only' },
   // Editor (role_id: 2)

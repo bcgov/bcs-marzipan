@@ -19,23 +19,24 @@ import {
 import { PERMISSIONS } from '@corpcal/shared';
 
 import { useAuth } from '../hooks/useAuth';
-import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   Sidebar as SidebarPrimitive,
   SidebarProvider,
+  SidebarSeparator,
   useSidebar,
 } from './ui/sidebar';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 const SIDEBAR_PINNED_KEY = 'sidebar_pinned';
+
+type NavItem = { to: string; label: string; icon: typeof CalendarDays };
 
 function getInitialPinned(): boolean {
   if (typeof window === 'undefined') return false;
@@ -60,52 +61,65 @@ function AppSidebarContent() {
     if (isMobile) setOpenMobile(false);
   }, [isMobile, setOpenMobile]);
 
-  const navItems = [
+  const mainNavItems = [
     { to: '/', label: 'Activities', icon: CalendarDays },
     ...(canViewReports
       ? [{ to: '/reports/look-ahead', label: 'Reports', icon: NotebookText }]
       : []),
     { to: '/global-history', label: 'History', icon: History },
+  ];
+
+  const belowSeparatorItems: NavItem[] = [
     ...(canViewUsers ? [{ to: '/users', label: 'Users', icon: Users }] : []),
     ...(canViewSettings
       ? [{ to: '/settings', label: 'Admin', icon: SlidersHorizontal }]
       : []),
   ];
 
+  const renderNavItem = ({ to, label, icon: Icon }: NavItem) => {
+    const isActive =
+      to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+    return (
+      <SidebarMenuItem key={to}>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={label}
+          aria-label={label}
+        >
+          <Link to={to} onClick={closeMobileSidebar}>
+            <Icon className="size-6 shrink-0" />
+            <span>{label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
   return (
     <>
-      <SidebarHeader className="border-sidebar-border border-b" />
-      <SidebarContent>
+      {/* <SidebarHeader className="border-sidebar-border border-b" /> */}
+      <SidebarContent className="pt-2">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map(({ to, label, icon: Icon }) => {
-                const isActive =
-                  to === '/'
-                    ? location.pathname === '/'
-                    : location.pathname.startsWith(to);
-                return (
-                  <SidebarMenuItem key={to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={label}
-                      aria-label={label}
-                    >
-                      <Link to={to} onClick={closeMobileSidebar}>
-                        <Icon className="size-6 shrink-0" />
-                        <span>{label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {mainNavItems.map(renderNavItem)}
+              {belowSeparatorItems.length > 0 && (
+                <>
+                  <li aria-hidden className="-mx-2 list-none">
+                    <SidebarSeparator className="mx-0 my-2 w-full" />
+                  </li>
+                  {belowSeparatorItems.map(renderNavItem)}
+                </>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-sidebar-border border-t">
-        <SidebarPinButton />
+        <SidebarMenu>
+          <SidebarPinButton />
+        </SidebarMenu>
       </SidebarFooter>
     </>
   );
@@ -122,28 +136,31 @@ function SidebarPinButton() {
 
   if (isMobile) return null;
 
-  const label = pinned
-    ? 'Unpin sidebar (collapse on leave)'
-    : 'Pin sidebar open';
+  const tooltipLabel = pinned ? 'Unpin sidebar' : 'Pin sidebar open';
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        tooltip={tooltipLabel}
+        aria-label={tooltipLabel}
+      >
+        <button
+          type="button"
           onClick={handleClick}
-          aria-label={label}
+          className="flex items-center gap-2"
         >
           {pinned ? (
-            <PanelLeft className="size-4" />
+            <PanelLeft className="size-6 shrink-0" />
           ) : (
-            <PanelLeftDashed className="size-4" />
+            <PanelLeftDashed className="size-6 shrink-0" />
           )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
+          <span>Sidebar</span>
+          <Badge variant="secondary" className="px-1.5 py-0 font-normal">
+            {pinned ? 'Unpin' : 'Pin'}
+          </Badge>
+        </button>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
 
@@ -210,6 +227,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       onOpenChange={handleOpenChange}
       pinned={pinned}
       onPinnedChange={handlePinnedChange}
+      className="h-svh"
       style={
         {
           '--header-height': HEADER_HEIGHT,

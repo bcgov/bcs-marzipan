@@ -9,14 +9,7 @@ export const Layout = () => {
   return (
     <Sidebar>
       <Header />
-      <SidebarInset
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+      <SidebarInset className="overflow-auto">
         <Suspense
           fallback={
             <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">

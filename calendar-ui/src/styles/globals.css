@@ -78,7 +78,7 @@
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.985 0 0);
+    --sidebar: oklch(0.995 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -164,8 +164,10 @@
     --bcsds-black-opacity-100-05: #00000005;
     --bcsds-black-opacity-100-10: #00000010;
 
+    /* Fluent primative colours */
+    --fluent-primary: #0f6cbd;
     /* BCSDS semantic tokens */
-    --sidebar-foreground-active: var(--bc-blue-light);
+    --sidebar-foreground-active: var(--fluent-primary);
     --bcsds-button-primary-background: var(--bcsds-bc-blue-95);
     --bcsds-button-primary-foreground: var(--bcsds-white-00);
     --bcsds-button-primary-hover-background: var(--bcsds-bc-blue-90);
@@ -204,7 +206,7 @@
     --chart-3: oklch(0.769 0.188 70.08);
     --chart-4: oklch(0.627 0.265 303.9);
     --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
+    --sidebar: oklch(0.26 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.488 0.243 264.376);
     --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -343,7 +345,7 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: oklch(0.995 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -379,7 +381,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.26 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -399,4 +401,13 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Sidebar glass: translucent background + blur so content behind shows through.
+   Target by data attribute so styles apply regardless of class ordering. */
+[data-sidebar='sidebar'][data-slot='sidebar-inner'],
+[data-sidebar='sidebar'][data-mobile='true'] {
+  background-color: color-mix(in oklch, var(--sidebar) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
