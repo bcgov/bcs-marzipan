@@ -514,7 +514,7 @@ export function EditActivityForm(): React.ReactElement {
                         activityStatusOptions={lookups.activityStatuses}
                       />
 
-                      <div className="mx-6 border-t border-gray-300"></div>
+                      <div className="my-6 border-t border-gray-300"></div>
 
                       <ActivityNewsReleaseSection
                         translationLanguageOptions={
