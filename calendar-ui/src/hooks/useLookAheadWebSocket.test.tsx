@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLookAheadWebSocket } from './useLookAheadWebSocket';
 
-const { mockToast, getFakeSocket } = vi.hoisted(() => {
+const { getFakeSocket } = vi.hoisted(() => {
   const listeners = new Map<string, (data: unknown) => void>();
   const socket = {
     on: vi.fn((event: string, cb: (data: unknown) => void) => {
@@ -18,13 +18,8 @@ const { mockToast, getFakeSocket } = vi.hoisted(() => {
       if (cb) cb(data);
     },
   };
-  return {
-    mockToast: { success: vi.fn(), info: vi.fn() },
-    getFakeSocket: () => socket,
-  };
+  return { getFakeSocket: () => socket };
 });
-
-vi.mock('sonner', () => ({ toast: mockToast }));
 
 vi.mock('socket.io-client', () => ({
   io: vi.fn(() => getFakeSocket()),
@@ -41,37 +36,6 @@ describe('useLookAheadWebSocket', () => {
   });
 
   describe('activityCreated', () => {
-    it('calls toast.success with id activity-created-{id} and description', () => {
-      render(<TestWrapper />);
-      getFakeSocket().emitEvent('activityCreated', {
-        id: 1,
-        displayId: 'ACT-1',
-        title: 'Test Activity',
-      });
-
-      expect(mockToast.success).toHaveBeenCalledTimes(1);
-      expect(mockToast.success).toHaveBeenCalledWith('New activity created', {
-        id: 'activity-created-1',
-        description: 'ACT-1: Test Activity',
-        duration: 5000,
-      });
-      expect(mockToast.info).not.toHaveBeenCalled();
-    });
-
-    it('uses title only when displayId is missing', () => {
-      render(<TestWrapper />);
-      getFakeSocket().emitEvent('activityCreated', {
-        id: 42,
-        title: 'Only Title',
-      });
-
-      expect(mockToast.success).toHaveBeenCalledWith('New activity created', {
-        id: 'activity-created-42',
-        description: 'Only Title',
-        duration: 5000,
-      });
-    });
-
     it('calls onActivityUpdate when activityCreated fires', () => {
       const onActivityUpdate = vi.fn();
       render(<TestWrapper onActivityUpdate={onActivityUpdate} />);
@@ -82,37 +46,6 @@ describe('useLookAheadWebSocket', () => {
   });
 
   describe('activityUpdated', () => {
-    it('calls toast.info with id activity-updated-{id} and description', () => {
-      render(<TestWrapper />);
-      getFakeSocket().emitEvent('activityUpdated', {
-        id: 1,
-        displayId: 'ACT-1',
-        title: 'Updated Title',
-      });
-
-      expect(mockToast.info).toHaveBeenCalledTimes(1);
-      expect(mockToast.info).toHaveBeenCalledWith('Activity updated', {
-        id: 'activity-updated-1',
-        description: 'ACT-1: Updated Title',
-        duration: 5000,
-      });
-      expect(mockToast.success).not.toHaveBeenCalled();
-    });
-
-    it('uses ACT-{id} prefix when displayId is missing (shared utility format)', () => {
-      render(<TestWrapper />);
-      getFakeSocket().emitEvent('activityUpdated', {
-        id: 99,
-        title: 'No displayId',
-      });
-
-      expect(mockToast.info).toHaveBeenCalledWith('Activity updated', {
-        id: 'activity-updated-99',
-        description: 'ACT-99: No displayId',
-        duration: 5000,
-      });
-    });
-
     it('calls onActivityUpdate when activityUpdated fires', () => {
       const onActivityUpdate = vi.fn();
       render(<TestWrapper onActivityUpdate={onActivityUpdate} />);

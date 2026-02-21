@@ -1,6 +1,6 @@
 /**
- * Builds toast options for activity-updated toasts so the same id is used
- * by EditActivityForm and useLookAheadWebSocket (Sonner deduplication).
+ * Builds toast options for activity-updated toasts (e.g. used by EditActivityForm
+ * for consistent id and description; stable ids enable Sonner deduplication).
  */
 export interface ActivityUpdatedToastParams {
   id: string;
