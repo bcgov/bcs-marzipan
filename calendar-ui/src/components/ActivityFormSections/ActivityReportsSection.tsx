@@ -114,6 +114,8 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
         }}
       />
 
+      <div className="my-6 border-t border-gray-300"></div>
+
       {/* Look Ahead Section Title */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Look ahead</h2>

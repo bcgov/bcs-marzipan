@@ -3,6 +3,7 @@ import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -288,6 +289,11 @@ export function EditActivityForm(): React.ReactElement {
       };
 
       await updateActivity(Number(id), submitData);
+      // Show success toast
+      toast.success('Activity updated', {
+        description: `${loadedActivity?.displayId || `ACT-${id}`}: ${data.title || ''}`,
+        duration: 5000,
+      });
       // Navigate back to the entries list view
       void navigate('/');
     } catch (err) {
@@ -501,19 +507,25 @@ export function EditActivityForm(): React.ReactElement {
                       tags={lookups.tags}
                     />
 
-                    <ActivityCommsSection
-                      commsMaterialOptions={lookups.commsMaterials}
-                      commsLeadOptions={lookups.users}
-                      activityStatusOptions={lookups.activityStatuses}
-                    />
+                    <div>
+                      <ActivityCommsSection
+                        commsMaterialOptions={lookups.commsMaterials}
+                        commsLeadOptions={lookups.users}
+                        activityStatusOptions={lookups.activityStatuses}
+                      />
 
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
+                      <div className="my-6 border-t border-gray-300"></div>
+
+                      <ActivityNewsReleaseSection
+                        translationLanguageOptions={
+                          lookups.translationLanguages
+                        }
+                        newsReleaseDistributionOptions={
+                          lookups.newsReleaseDistributions
+                        }
+                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-6">
