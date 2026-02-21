@@ -496,7 +496,7 @@ export const CreateActivityForm: FC = () => {
                       activityStatusOptions={lookups.activityStatuses}
                     />
 
-                    <div className="mx-6 border-t border-gray-300"></div>
+                    <div className="my-6 border-t border-gray-300"></div>
 
                     {/* News Release Section */}
                     <ActivityNewsReleaseSection

@@ -26,7 +26,7 @@ export const ActivityFormSection: React.FC<ActivityFormSectionProps> = ({
   const borderClasses = {
     full: 'rounded-md border border-gray-300',
     top: 'rounded-t-md border border-b-0 border-gray-300',
-    bottom: 'rounded-b-md border border-t border-gray-300',
+    bottom: 'rounded-b-md border border-gray-300',
     'bottom-no-divider':
       'rounded-b-md border-b border-l border-r border-gray-300',
   };
