@@ -139,11 +139,21 @@ export function TransferActivitiesDialog({
       }),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success(`Transferred ${data.transferredCount} assignment(s)`);
+      const toastId =
+        targetUserId != null
+          ? `activities-transferred-${sourceUser.id}-${targetUserId}`
+          : 'activities-transferred';
+      toast.success(`Transferred ${data.transferredCount} assignment(s)`, {
+        id: toastId,
+      });
       onTransferred();
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Transfer failed');
+      const toastId =
+        targetUserId != null
+          ? `activities-transferred-${sourceUser.id}-${targetUserId}`
+          : 'activities-transferred';
+      toast.error(err.message || 'Transfer failed', { id: toastId });
     },
   });
 

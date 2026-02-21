@@ -26,6 +26,7 @@ export function useLookAheadWebSocket({
       (data: { id: number; title?: string; displayId?: string }) => {
         onActivityUpdate?.();
         toast.success('New activity created', {
+          id: `activity-created-${data.id}`,
           description: data.displayId
             ? `${data.displayId}: ${data.title ?? ''}`
             : data.title,
@@ -39,6 +40,7 @@ export function useLookAheadWebSocket({
       (data: { id: number; title?: string; displayId?: string }) => {
         onActivityUpdate?.();
         toast.info('Activity updated', {
+          id: `activity-updated-${data.id}`,
           description: data.displayId
             ? `${data.displayId}: ${data.title ?? ''}`
             : data.title,

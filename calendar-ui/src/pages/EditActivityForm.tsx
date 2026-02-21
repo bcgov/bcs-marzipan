@@ -291,6 +291,7 @@ export function EditActivityForm(): React.ReactElement {
       await updateActivity(Number(id), submitData);
       // Show success toast
       toast.success('Activity updated', {
+        id: `activity-updated-${id}`,
         description: `${loadedActivity?.displayId || `ACT-${id}`}: ${data.title || ''}`,
         duration: 5000,
       });
