@@ -85,11 +85,13 @@ export function UserEditModal({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User updated');
+      toast.success('User updated', { id: `user-updated-${user.id}` });
       onSaved();
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Update failed');
+      toast.error(err.message || 'Update failed', {
+        id: `user-updated-${user.id}`,
+      });
     },
   });
 
@@ -100,15 +102,22 @@ export function UserEditModal({
         role: addTeamRole,
         ...(addTeamNotes.trim() && { notes: addTeamNotes.trim() }),
       }),
-    onSuccess: () => {
+    onSuccess: (_data, teamId) => {
       void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User added to team');
+      toast.success('User added to team', {
+        id: `user-added-to-team-${user.id}-${teamId}`,
+      });
       setAddTeamId('');
       setAddTeamNotes('');
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Add to team failed');
+    onError: (err: Error, teamId) => {
+      toast.error(err.message || 'Add to team failed', {
+        id:
+          typeof teamId === 'number'
+            ? `user-added-to-team-${user.id}-${teamId}`
+            : undefined,
+      });
     },
   });
 

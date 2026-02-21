@@ -9,6 +9,26 @@ import { ApiError, NetworkError } from '../api/errors';
  * that don't require full-page error displays.
  *
  * Uses Sonner for toast notifications - no dispatch function needed.
+ *
+ * ---
+ * Toast usage across the app
+ *
+ * When to use helpers vs direct toast:
+ * - Use showErrorToast() for API/network errors so messaging and correlation IDs
+ *   stay consistent. Use showSuccessToast / showInfoToast when you want the
+ *   same default duration and shape as other app toasts.
+ * - Use direct toast.success(), toast.info(), toast.error() from 'sonner' when
+ *   you need custom copy, description, or duration (e.g. "Activity updated" with
+ *   activity details).
+ *
+ * Toast IDs (deduplication):
+ * - When the same logical event can trigger toasts from more than one place
+ *   (e.g. form submit + WebSocket), pass the same `id` in the options so Sonner
+ *   updates one toast instead of showing two. Example: form and WebSocket both
+ *   use id: `activity-updated-${id}`.
+ * - ID convention: `{domain}-{action}-{entityId?}` (e.g. activity-updated-42,
+ *   user-updated-5, team-created). Use a stable id so the same event always
+ *   uses the same string.
  */
 
 /**

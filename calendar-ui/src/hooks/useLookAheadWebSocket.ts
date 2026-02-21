@@ -1,5 +1,4 @@
 import { io } from 'socket.io-client';
-import { toast } from 'sonner';
 import { useEffect } from 'react';
 
 interface UseLookAheadWebSocketOptions {
@@ -7,8 +6,9 @@ interface UseLookAheadWebSocketOptions {
 }
 
 /**
- * Subscribes to activity table WebSocket events and refetches Look Ahead data
- * when any activity is created or updated (relevant activities are filtered server-side).
+ * Subscribes to activity table WebSocket events and invokes the callback when
+ * any activity is created or updated, so Look Ahead (or other consumers) can
+ * refetch.
  */
 export function useLookAheadWebSocket({
   onActivityUpdate,
@@ -21,31 +21,13 @@ export function useLookAheadWebSocket({
       socket.emit('subscribeToActivities');
     });
 
-    socket.on(
-      'activityCreated',
-      (data: { id: number; title?: string; displayId?: string }) => {
-        onActivityUpdate?.();
-        toast.success('New activity created', {
-          description: data.displayId
-            ? `${data.displayId}: ${data.title ?? ''}`
-            : data.title,
-          duration: 5000,
-        });
-      }
-    );
+    socket.on('activityCreated', () => {
+      onActivityUpdate?.();
+    });
 
-    socket.on(
-      'activityUpdated',
-      (data: { id: number; title?: string; displayId?: string }) => {
-        onActivityUpdate?.();
-        toast.info('Activity updated', {
-          description: data.displayId
-            ? `${data.displayId}: ${data.title ?? ''}`
-            : data.title,
-          duration: 5000,
-        });
-      }
-    );
+    socket.on('activityUpdated', () => {
+      onActivityUpdate?.();
+    });
 
     return () => {
       socket.emit('unsubscribeFromActivities');
