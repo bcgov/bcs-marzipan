@@ -33,6 +33,7 @@ import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups, type FormLookupData } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
+import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import {
   ERROR_DETAILS_LABEL,
   LOAD_ACTIVITY_NO_ID,
@@ -289,12 +290,14 @@ export function EditActivityForm(): React.ReactElement {
       };
 
       await updateActivity(Number(id), submitData);
-      // Show success toast
-      toast.success('Activity updated', {
-        id: `activity-updated-${id}`,
-        description: `${loadedActivity?.displayId || `ACT-${id}`}: ${data.title || ''}`,
-        duration: 5000,
-      });
+      toast.success(
+        'Activity updated',
+        getActivityUpdatedToastOptions({
+          id,
+          title: data.title ?? '',
+          displayId: loadedActivity?.displayId ?? undefined,
+        })
+      );
       // Navigate back to the entries list view
       void navigate('/');
     } catch (err) {

@@ -2,6 +2,8 @@ import { io } from 'socket.io-client';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
 
+import { getActivityUpdatedToastOptions } from '@/lib/activity-toast-options';
+
 interface UseLookAheadWebSocketOptions {
   onActivityUpdate?: () => void;
 }
@@ -39,13 +41,14 @@ export function useLookAheadWebSocket({
       'activityUpdated',
       (data: { id: number; title?: string; displayId?: string }) => {
         onActivityUpdate?.();
-        toast.info('Activity updated', {
-          id: `activity-updated-${data.id}`,
-          description: data.displayId
-            ? `${data.displayId}: ${data.title ?? ''}`
-            : data.title,
-          duration: 5000,
-        });
+        toast.info(
+          'Activity updated',
+          getActivityUpdatedToastOptions({
+            id: String(data.id),
+            title: data.title,
+            displayId: data.displayId,
+          })
+        );
       }
     );
 
