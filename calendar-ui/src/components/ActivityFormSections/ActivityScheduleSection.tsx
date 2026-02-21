@@ -17,9 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from '../ui/form';
-import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Textarea } from '../ui/textarea';
+import { TimeRangePicker } from '../ui/time-range-picker';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityScheduleSectionProps = {
@@ -50,6 +50,8 @@ export const ActivityScheduleSection: React.FC<
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
   const startDateValue = useWatch({ control: form.control, name: 'startDate' });
   const endDateValue = useWatch({ control: form.control, name: 'endDate' });
+  const startTimeValue = useWatch({ control: form.control, name: 'startTime' });
+  const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
 
   // Find "confirmed" status by name
   const confirmedDateStatus = findStatusByName(
@@ -181,34 +183,30 @@ export const ActivityScheduleSection: React.FC<
         <FormField
           control={form.control}
           name="startTime"
-          render={({ field: startTimeField }) => (
+          render={() => (
             <FormItem>
               <FormLabel className="flex items-center gap-1">
                 Time <span className="text-destructive">*</span>
               </FormLabel>
               <div className="flex items-center gap-4">
                 <FormControl>
-                  <div className="flex w-full max-w-[18rem] items-center gap-2">
-                    <Input
-                      type="time"
-                      {...startTimeField}
-                      value={startTimeField.value || ''}
-                      className="min-w-0 flex-1"
-                    />
-                    <span className="text-muted-foreground">—</span>
-                    <FormField
-                      control={form.control}
-                      name="endTime"
-                      render={({ field: endTimeField }) => (
-                        <Input
-                          type="time"
-                          {...endTimeField}
-                          value={endTimeField.value || ''}
-                          className="min-w-0 flex-1"
-                        />
-                      )}
-                    />
-                  </div>
+                  <TimeRangePicker
+                    startTime={String(startTimeValue || '')}
+                    endTime={String(endTimeValue || '')}
+                    onStartTimeChange={(time) => {
+                      form.setValue('startTime', time, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onEndTimeChange={(time) => {
+                      form.setValue('endTime', time, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    placeholder="Pick a time range"
+                  />
                 </FormControl>
                 <div className="flex items-center space-x-2">
                   <Checkbox
