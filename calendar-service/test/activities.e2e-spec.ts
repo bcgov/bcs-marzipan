@@ -97,21 +97,18 @@ describe('ActivitiesController (API integration)', () => {
 
       const res = await createAuthRequest(app, accessToken)
         .post('/activities')
-        .send(createActivityDto);
+        .send(createActivityDto)
+        .expect(201);
 
-      expect([201, 400]).toContain(res.status);
-      if (res.status === 201) {
-        expect(res.body).toHaveProperty('success', true);
-        expect(res.body).toHaveProperty('data');
-        expect(res.body.data).toHaveProperty('id');
-        expect(res.body.data).toHaveProperty('title', createActivityDto.title);
-        expect(res.body.data).toHaveProperty(
-          'summary',
-          createActivityDto.summary
-        );
-        createdActivityId = res.body.data.id;
-      }
-      // When 400, validation failed (e.g. schema/env); get/update tests use ID from list in beforeAll
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id');
+      expect(res.body.data).toHaveProperty('title', createActivityDto.title);
+      expect(res.body.data).toHaveProperty(
+        'summary',
+        createActivityDto.summary
+      );
+      createdActivityId = res.body.data.id;
     });
 
     it('should return 400 for invalid activity data', () => {
