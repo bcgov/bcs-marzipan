@@ -11,6 +11,7 @@ import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -160,6 +161,11 @@ export function TeamEditModal({
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isCreate ? 'Create team' : 'Edit team'}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {isCreate
+              ? 'Enter details to create a new team.'
+              : 'Edit team name, display name, description, and settings.'}
+          </DialogDescription>
         </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">
