@@ -34,6 +34,7 @@ type ActivityNewsReleaseSectionProps = {
   }>;
   newsReleaseDistributionOptions: Array<{ value: string; label: string }>;
   newsReleaseOriginOptions: Array<{ value: string; label: string }>;
+  readOnly?: boolean;
 };
 
 export const ActivityNewsReleaseSection: React.FC<
@@ -42,6 +43,7 @@ export const ActivityNewsReleaseSection: React.FC<
   translationLanguageOptions,
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
+  readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
 
@@ -62,6 +64,7 @@ export const ActivityNewsReleaseSection: React.FC<
           <FormItem>
             <FormLabel>News Release Origin</FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -92,6 +95,7 @@ export const ActivityNewsReleaseSection: React.FC<
           <FormItem>
             <FormLabel>News Release Distribution</FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -117,9 +121,13 @@ export const ActivityNewsReleaseSection: React.FC<
 
       <div>
         <Label className="mb-3 block">Translations Required</Label>
-        <Popover open={translationsOpen} onOpenChange={setTranslationsOpen}>
+        <Popover
+          open={readOnly ? false : translationsOpen}
+          onOpenChange={readOnly ? () => {} : setTranslationsOpen}
+        >
           <PopoverTrigger asChild>
             <Button
+              disabled={readOnly}
               variant="outline"
               role="combobox"
               className="w-full justify-between"
@@ -143,6 +151,7 @@ export const ActivityNewsReleaseSection: React.FC<
                       checked={selectedTranslationLanguages.includes(
                         language.id
                       )}
+                      disabled={readOnly}
                       onCheckedChange={() =>
                         toggleTranslationLanguage(language.id)
                       }

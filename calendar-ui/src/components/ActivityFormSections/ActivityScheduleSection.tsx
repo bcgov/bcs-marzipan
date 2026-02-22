@@ -24,11 +24,12 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityScheduleSectionProps = {
   form: UseFormReturn<ActivityFormData>;
+  readOnly?: boolean;
 };
 
 export const ActivityScheduleSection: React.FC<
   ActivityScheduleSectionProps
-> = ({ form }) => {
+> = ({ form, readOnly = false }) => {
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
@@ -132,6 +133,7 @@ export const ActivityScheduleSection: React.FC<
             <div className="flex items-center gap-4">
               <FormControl>
                 <DateRangePicker
+                  disabled={readOnly}
                   startDate={String(startDateValue || '')}
                   endDate={String(endDateValue || '')}
                   onStartDateChange={(date) => {
@@ -152,6 +154,7 @@ export const ActivityScheduleSection: React.FC<
               <div className="flex items-center space-x-2">
                 <Checkbox
                   checked={isDateConfirmed}
+                  disabled={readOnly}
                   onCheckedChange={toggleDateConfirmation}
                 />
                 <FormLabel className="mt-0">Confirmed</FormLabel>
@@ -172,7 +175,11 @@ export const ActivityScheduleSection: React.FC<
               <FormLabel>All day</FormLabel>
             </div>
             <FormControl>
-              <Switch checked={field.value} onCheckedChange={field.onChange} />
+              <Switch
+                checked={field.value}
+                disabled={readOnly}
+                onCheckedChange={field.onChange}
+              />
             </FormControl>
           </FormItem>
         )}
@@ -191,6 +198,7 @@ export const ActivityScheduleSection: React.FC<
               <div className="flex items-center gap-4">
                 <FormControl>
                   <TimeRangePicker
+                    disabled={readOnly}
                     startTime={String(startTimeValue || '')}
                     endTime={String(endTimeValue || '')}
                     onStartTimeChange={(time) => {
@@ -211,6 +219,7 @@ export const ActivityScheduleSection: React.FC<
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={isTimeConfirmed}
+                    disabled={readOnly}
                     onCheckedChange={toggleTimeConfirmation}
                   />
                   <FormLabel className="mt-0">Confirmed</FormLabel>
@@ -258,6 +267,7 @@ export const ActivityScheduleSection: React.FC<
             <FormControl>
               <Textarea
                 placeholder="Enter scheduling considerations"
+                readOnly={readOnly}
                 rows={4}
                 {...field}
                 value={field.value || ''}

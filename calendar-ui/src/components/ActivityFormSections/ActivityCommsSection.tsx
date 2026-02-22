@@ -39,12 +39,14 @@ type ActivityCommsSectionProps = {
     name: string;
     displayName?: string;
   }>;
+  readOnly?: boolean;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
   activityStatusOptions,
+  readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
 
@@ -70,6 +72,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               Activity Status <span className="text-destructive">*</span>
             </FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -101,6 +104,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               Comms Lead <span className="text-destructive">*</span>
             </FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -133,6 +137,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormControl>
               <Textarea
                 placeholder="Enter strategy"
+                readOnly={readOnly}
                 rows={4}
                 {...field}
                 value={field.value || ''}
@@ -145,9 +150,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
       <div>
         <Label className="mb-3 block">Comms Materials</Label>
-        <Popover open={commsMaterialsOpen} onOpenChange={setCommsMaterialsOpen}>
+        <Popover
+          open={readOnly ? false : commsMaterialsOpen}
+          onOpenChange={readOnly ? () => {} : setCommsMaterialsOpen}
+        >
           <PopoverTrigger asChild>
             <Button
+              disabled={readOnly}
               variant="outline"
               role="combobox"
               className="w-full justify-between"
@@ -169,6 +178,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     <Checkbox
                       id={`comms-material-${material.id}`}
                       checked={selectedCommsMaterials.includes(material.id)}
+                      disabled={readOnly}
                       onCheckedChange={() => toggleCommsMaterial(material.id)}
                     />
                     <label

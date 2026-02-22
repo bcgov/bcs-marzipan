@@ -25,10 +25,12 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityReportsSectionProps = {
   form: UseFormReturn<ActivityFormData>;
+  readOnly?: boolean;
 };
 
 export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
   form,
+  readOnly = false,
 }) => {
   const { data: reports, isLoading: reportsLoading } = useReports();
 
@@ -91,6 +93,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                       <Checkbox
                         id="thirty-sixty-ninety"
                         checked={!thirtySixtyNinetyOmitted}
+                        disabled={readOnly}
                         onCheckedChange={(checked) => {
                           updateReportSetting(
                             thirtySixtyNinetyReport.id,
@@ -132,6 +135,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                   {...field}
                   value={field.value || ''}
                   placeholder="Enter executive summary"
+                  readOnly={readOnly}
                   rows={4}
                 />
               </FormControl>
@@ -149,6 +153,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
               <FormLabel>Report Status</FormLabel>
               <FormControl>
                 <RadioGroup
+                  disabled={readOnly}
                   onValueChange={field.onChange}
                   value={field.value || ''}
                   className="flex flex-row space-x-4"
@@ -191,12 +196,15 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                   <Badge
                     key={option.value}
                     variant={isSelected ? 'default' : 'outline'}
-                    className="cursor-pointer px-4 py-2 text-sm"
-                    onClick={() => {
-                      // Toggle: if already selected, set to null; otherwise set to the option value
-                      const newValue = isSelected ? null : option.value;
-                      field.onChange(newValue);
-                    }}
+                    className={readOnly ? 'px-4 py-2 text-sm' : 'cursor-pointer px-4 py-2 text-sm'}
+                    onClick={
+                      readOnly
+                        ? undefined
+                        : () => {
+                            const newValue = isSelected ? null : option.value;
+                            field.onChange(newValue);
+                          }
+                    }
                   >
                     {option.label}
                   </Badge>

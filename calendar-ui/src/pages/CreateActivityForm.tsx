@@ -11,16 +11,10 @@ import {
 } from '@corpcal/shared/schemas';
 
 import { createActivity } from '../api/activitiesApi';
-import {
-  ActivityCommsSection,
-  ActivityEventSection,
-  ActivityNewsReleaseSection,
-  ActivityOverviewSection,
-  ActivityReportsSection,
-  ActivityScheduleSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
+import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
+import { ActivityFormBody } from '../components/ActivityFormBody';
 import { AutosaveIndicator } from '../components/AutosaveIndicator';
+import { FormErrorFallback } from '../components/FormErrorFallback';
 import { PageHeader } from '../components/PageHeader';
 import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
@@ -43,40 +37,18 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
+  DEFAULT_FORM_VALUES,
+  getDefaultFormValues,
+} from '../lib/activity-form-defaults';
+import { getActivityFieldLabel } from '../lib/activity-form-labels';
+import { buildPayloadForCreate } from '../lib/activity-form-payload';
+import {
   ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
   ACCESS_DENIED_TITLE,
-  ERROR_DETAILS_LABEL,
-  RENDER_FORM_ERROR_TITLE,
-  TRY_AGAIN_LABEL,
 } from '../lib/error-messages';
-import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
-
-/**
- * Default form values that match the FormData type.
- * Used for both form initialization and reset operations.
- */
-const getDefaultFormValues = (): Partial<ActivityFormData> => ({
-  isAllDay: false,
-  isIssue: false,
-  isConfidential: false,
-  categoryIds: [],
-  tagIds: [],
-  commsMaterialIds: [],
-  translationLanguageIds: [],
-  representatives: [],
-  sharedWithTeamIds: [],
-  reportSettings: [],
-  // Set these to match what the effects set on mount
-  dateStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
-  timeStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
-  pitchRequiredStatusId: undefined,
-  translationsRequiredStatusId: undefined,
-});
-
-/** Stable default values for autosave comparison and reset (e.g. start fresh). */
-const DEFAULT_FORM_VALUES = getDefaultFormValues();
 
 // Key used to store draft dialog session state in sessionStorage
 const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
@@ -267,44 +239,10 @@ export const CreateActivityForm: FC = () => {
   const onSubmit = async (data: ActivityFormData) => {
     setIsSubmitting(true);
     try {
-      // Prepare submit data with junction table arrays
       const formValues = form.getValues();
-      const submitData = {
-        ...data,
-        activityStatusId: data.activityStatusId,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        categoryIds:
-          formValues.categoryIds && formValues.categoryIds.length > 0
-            ? formValues.categoryIds
-            : undefined,
-        tagIds:
-          formValues.tagIds && formValues.tagIds.length > 0
-            ? formValues.tagIds
-            : undefined,
-        commsMaterialIds:
-          formValues.commsMaterialIds && formValues.commsMaterialIds.length > 0
-            ? formValues.commsMaterialIds
-            : undefined,
-        translationLanguageIds:
-          formValues.translationLanguageIds &&
-          formValues.translationLanguageIds.length > 0
-            ? formValues.translationLanguageIds
-            : undefined,
-        representatives:
-          formValues.representatives && formValues.representatives.length > 0
-            ? formValues.representatives
-            : undefined,
-        sharedWithTeamIds:
-          formValues.sharedWithTeamIds &&
-          formValues.sharedWithTeamIds.length > 0
-            ? formValues.sharedWithTeamIds
-            : undefined,
-      };
+      const submitData = buildPayloadForCreate(data, formValues);
 
-      await createActivity(submitData);
+      await createActivity(submitData as Parameters<typeof createActivity>[0]);
 
       // Delete draft after successful creation
       if (existingDraft) {
@@ -325,31 +263,11 @@ export const CreateActivityForm: FC = () => {
     logger.error('Form validation failed');
   };
 
-  // Map field names to user-friendly labels
-  const getFieldLabel = (fieldName: string): string => {
-    const fieldLabelMap: Record<string, string> = {
-      title: 'Title',
-      categoryIds: 'Category',
-      startDate: 'Start Date',
-      endDate: 'End Date',
-      startTime: 'Start Time',
-      endTime: 'End Time',
-      leadOrgId: 'Lead Organization',
-      commsContactLeadId: 'Comms Contact',
-      eventPlannerLeadId: 'Event Planner',
-      activityStatusId: 'Activity Status',
-      leadMinistryId: 'Lead Ministry',
-      venueAddress: 'Venue Address',
-      street: 'Street Address',
-      city: 'City',
-      provinceOrState: 'Province/State',
-      country: 'Country',
-    };
-    return fieldLabelMap[fieldName] || fieldName;
-  };
-  // Check if form is valid - trigger validation if needed
   const isFormValid = form.formState.isValid;
-  const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
+  const missingFields = getMissingRequiredFields(
+    form.formState,
+    getActivityFieldLabel
+  );
 
   // Show loading state while checking auth
   if (isAuthLoading) {
@@ -391,43 +309,8 @@ export const CreateActivityForm: FC = () => {
     );
   }
 
-  // Transform data for form sections
-  const commsLeadOptions = lookups.users;
-
-  const ErrorFallback = ({
-    error,
-    resetErrorBoundary,
-  }: {
-    error: unknown;
-    resetErrorBoundary: () => void;
-  }) => {
-    const friendlyMessage = getFriendlyErrorMessage(error);
-    const rawMessage = error instanceof Error ? error.message : String(error);
-    return (
-      <div className="mx-auto max-w-200 px-4 py-8" role="alert">
-        <div className="mb-8">
-          <h1 className="text-destructive mb-2 text-3xl font-bold">
-            {RENDER_FORM_ERROR_TITLE}
-          </h1>
-          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
-          <details className="mb-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              {ERROR_DETAILS_LABEL}
-            </summary>
-            <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {rawMessage}
-            </pre>
-          </details>
-          <Button onClick={resetErrorBoundary} variant="default">
-            {TRY_AGAIN_LABEL}
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <ErrorBoundary FallbackComponent={FormErrorFallback}>
       <div className="mx-auto max-w-full px-4 py-8">
         {/* Draft Recovery Dialog */}
         <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
@@ -455,6 +338,7 @@ export const CreateActivityForm: FC = () => {
         </ResumeDialog>
 
         <div className="mx-auto max-w-7xl px-4 py-8">
+          <ActivityBreadcrumb currentLabel="New activity" />
           <PageHeader
             title="Create New Activity"
             description="Fill in the activity details below"
@@ -475,61 +359,11 @@ export const CreateActivityForm: FC = () => {
                 void form.handleSubmit(onSubmit, onError)(e);
               }}
             >
-              {/* Two Column Layout */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Overview Section */}
-                  <ActivityOverviewSection
-                    categories={lookups.categories}
-                    ministries={lookups.ministries}
-                    organizations={lookups.organizations}
-                    tags={lookups.tags}
-                  />
-
-                  {/* Comms and News Release Sections */}
-                  <div>
-                    {/* Comms Section */}
-                    <ActivityCommsSection
-                      commsMaterialOptions={lookups.commsMaterials}
-                      commsLeadOptions={commsLeadOptions}
-                      activityStatusOptions={lookups.activityStatuses}
-                    />
-
-                    <div className="my-6 border-t border-gray-300"></div>
-
-                    {/* News Release Section */}
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Reports Section */}
-                  <ActivityReportsSection form={form} />
-
-                  {/* Schedule Section */}
-                  <ActivityScheduleSection form={form} />
-
-                  {/* Event Section */}
-                  <ActivityEventSection
-                    representativeOptions={lookups.governmentRepresentatives}
-                    premierRequestedOptions={lookups.premierRequested}
-                    eventPlannerOptions={lookups.eventPlanners}
-                  />
-
-                  {/* Sharing Section */}
-                  <ActivitySharingSection
-                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                  />
-                </div>
-              </div>
+              <ActivityFormBody
+                form={form}
+                lookups={lookups}
+                readOnly={false}
+              />
 
               {/* Form Actions */}
               <div className="flex justify-end gap-4 pt-6">

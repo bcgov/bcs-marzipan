@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -35,6 +37,7 @@ import type {
 } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
+import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { DataScope } from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
@@ -54,7 +57,8 @@ export class ActivitiesService {
     private readonly junctionService: ActivityJunctionService,
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
-    private readonly utilsService: ActivityUtilsService
+    private readonly utilsService: ActivityUtilsService,
+    private readonly locksService: LocksService
   ) {}
 
   /**
@@ -777,6 +781,24 @@ export class ActivitiesService {
     dto: UpdateActivityRequest,
     userId: number
   ): Promise<ActivityResponse> {
+    const existingLock = await this.locksService.getLockForEntity('activity', id);
+    if (existingLock && existingLock.userId !== userId) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message: 'This activity is being edited by another user.',
+          locked: true,
+          lockedBy: {
+            userId: existingLock.userId,
+            username: existingLock.username,
+            acquiredAt: existingLock.acquiredAt,
+            expiresAt: existingLock.expiresAt,
+          },
+        },
+        HttpStatus.LOCKED
+      );
+    }
+
     // Get current activity state to track changes
     const [oldActivity] = await this.databaseService.db
       .select()
@@ -1026,6 +1048,10 @@ export class ActivitiesService {
 
       return updatedActivity;
     });
+
+    if (existingLock && existingLock.userId === userId) {
+      await this.locksService.releaseLock(existingLock.id, userId);
+    }
 
     // Fetch related data for the updated activity
     const [

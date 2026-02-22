@@ -85,12 +85,14 @@ type ActivityEventSectionProps = {
   }>;
   premierRequestedOptions: Array<{ value: string; label: string }>;
   eventPlannerOptions: Array<{ value: string; label: string }>;
+  readOnly?: boolean;
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   representativeOptions,
   premierRequestedOptions,
   eventPlannerOptions,
+  readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
@@ -123,6 +125,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           <FormItem>
             <FormLabel>Premier</FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) => {
                 const parsed = value ? parseInt(value, 10) : null;
                 field.onChange(isNaN(parsed as number) ? null : parsed);
@@ -161,6 +164,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               <FormLabel>Representatives</FormLabel>
               <FormControl>
                 <Combobox
+                  disabled={readOnly}
                   options={representativeComboboxOptions}
                   selectedValues={selectedValues}
                   onSelect={(value) => {
@@ -202,6 +206,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         <Switch
           id="venue-tbd"
           checked={isVenueTbd}
+          disabled={readOnly}
           onCheckedChange={setIsVenueTbd}
         />
         <label
@@ -246,6 +251,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormControl>
                   <Input
                     value={currentVenue.venueName ?? ''}
+                    readOnly={readOnly}
                     onChange={(e) =>
                       field.onChange({
                         ...currentVenue,
@@ -268,8 +274,8 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                         <Badge
                           key={item.id}
                           variant={isSelected ? 'selected' : 'outline'}
-                          className="cursor-pointer gap-1 font-normal"
-                          onClick={() => handleQuickPickSelect(item)}
+                          className={readOnly ? 'gap-1 font-normal' : 'cursor-pointer gap-1 font-normal'}
+                          onClick={readOnly ? undefined : () => handleQuickPickSelect(item)}
                         >
                           <Plus className="h-3.5 w-3.5" />
                           {venueTagLabel(item)}
@@ -289,7 +295,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   value={currentVenue.street ?? ''}
                   onAddressSelect={handleAddressSelect}
                   required={!isVenueTbd}
-                  disabled={isVenueTbd}
+                  disabled={readOnly || isVenueTbd}
                 />
                 <FormMessage />
               </FormItem>
@@ -299,6 +305,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormControl>
                   <Input
                     value={currentVenue.city ?? ''}
+                    readOnly={readOnly}
                     onChange={(e) =>
                       field.onChange({
                         ...currentVenue,
@@ -317,6 +324,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormControl>
                   <Input
                     value={currentVenue.provinceOrState ?? ''}
+                    readOnly={readOnly}
                     onChange={(e) =>
                       field.onChange({
                         ...currentVenue,
@@ -335,6 +343,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormControl>
                   <Input
                     value={currentVenue.country ?? ''}
+                    readOnly={readOnly}
                     onChange={(e) =>
                       field.onChange({
                         ...currentVenue,
@@ -385,6 +394,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               <FormLabel>Event Planner</FormLabel>
               <FormControl>
                 <FreeformCombobox
+                  disabled={readOnly}
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}

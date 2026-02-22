@@ -17,7 +17,6 @@ import { Languages, NotebookText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared';
 import type {
   ActivityResponse,
   UserLookupItem,
@@ -26,7 +25,6 @@ import type {
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import { ErrorState } from '../components/ErrorState';
-import { useAuth } from '../hooks/useAuth';
 import { createLogger } from '../lib/logger';
 import { Avatar, AvatarFallback } from './ui/avatar';
 
@@ -493,9 +491,6 @@ const logger = createLogger('EventTable');
 export const EventTable: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
-  const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
-
   const [sorting, setSorting] = useState<SortingState>([]);
   const [activities, setActivities] = useState<ActivityResponse[]>([]);
   const [users, setUsers] = useState<UserLookupItem[]>([]);
@@ -548,12 +543,10 @@ export const EventTable: React.FC = () => {
         cell: ({ row }) => (
           <div
             onClick={() => {
-              if (canEditActivity) {
-                void navigate(`/activities/${row.original.id}/edit`);
-              }
+              void navigate(`/activity/${row.original.id}`);
             }}
             style={{
-              cursor: canEditActivity ? 'pointer' : 'default',
+              cursor: 'pointer',
             }}
           >
             <div
@@ -763,7 +756,7 @@ export const EventTable: React.FC = () => {
         },
       }),
     ],
-    [columnHelper, userMap, navigate, canEditActivity]
+    [columnHelper, userMap, navigate]
   );
 
   const table = useReactTable({

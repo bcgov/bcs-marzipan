@@ -27,10 +27,12 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivitySharingSectionProps = {
   sharedWithTeamOptions: Array<{ value: string; label: string }>;
+  readOnly?: boolean;
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   sharedWithTeamOptions,
+  readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
   return (
@@ -42,6 +44,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
           <FormItem>
             <FormLabel>Visibility</FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) => {
                 const visibility: Visibility = (
                   VISIBILITY as readonly string[]
@@ -85,6 +88,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
               <FormLabel>Shared With Teams</FormLabel>
               <FormControl>
                 <Combobox
+                  disabled={readOnly}
                   options={sharedWithTeamOptions}
                   selectedValues={currentValues}
                   onSelect={(value) => {

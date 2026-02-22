@@ -15,6 +15,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
 import { DatabaseModule } from './database/database.module';
 import { DraftsModule } from './drafts/drafts.module';
 import { LookAheadModule } from './look-ahead/look-ahead.module';
+import { LocksModule } from './locks/locks.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
 import { RolesGuard } from './policy/guards/roles.guard';
@@ -48,6 +49,7 @@ function resolveRootEnvPath(): string {
     PolicyModule,
     AuthModule,
     ActivitiesModule,
+    LocksModule,
     LookupsModule,
     DraftsModule,
     ReportsModule,
