@@ -311,116 +311,102 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <div className="mx-auto max-w-full px-4 py-8">
-        {/* Draft Recovery Dialog */}
-        <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Continue where you left off?</DialogTitle>
-              <DialogDescription>
-                You have a saved draft for this activity form. Would you like to
-                continue editing it, or start with a fresh form?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleStartFresh}
-                type="button"
-              >
-                Start Fresh
-              </Button>
-              <Button onClick={handleContinueDraft} type="button">
-                Continue Draft
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </ResumeDialog>
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
 
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <ActivityBreadcrumb currentLabel="New activity" />
-          <PageHeader
-            title="Create New Activity"
-            description="Fill in the activity details below"
-            action={
-              <AutosaveIndicator
-                isAuthenticated={isAuthenticated}
-                isSaving={isSaving}
-                lastSaved={lastSaved}
-                isLoading={isDraftLoading}
-              />
-            }
+      <ActivityBreadcrumb currentLabel="New activity" />
+      <PageHeader
+        title="Create New Activity"
+        description="Fill in the activity details below"
+        action={
+          <AutosaveIndicator
+            isAuthenticated={isAuthenticated}
+            isSaving={isSaving}
+            lastSaved={lastSaved}
+            isLoading={isDraftLoading}
           />
+        }
+      />
 
-          <Form {...form}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void form.handleSubmit(onSubmit, onError)(e);
+      <Form {...form}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit(onSubmit, onError)(e);
+          }}
+        >
+          <ActivityFormBody form={form} lookups={lookups} readOnly={false} />
+
+          <div className="flex justify-end gap-4 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void handleCancel();
               }}
+              disabled={isSubmitting}
+              title="This will discard any draft data and close the page"
             >
-              <ActivityFormBody
-                form={form}
-                lookups={lookups}
-                readOnly={false}
-              />
-
-              {/* Form Actions */}
-              <div className="flex justify-end gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    void handleCancel();
-                  }}
-                  disabled={isSubmitting}
-                  title="This will discard any draft data and close the page"
-                >
-                  Cancel
-                </Button>
-                {!isFormValid && missingFields.length > 0 ? (
-                  <Popover open={showMissingFieldsPopover}>
-                    <PopoverTrigger asChild>
-                      <div
-                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                      >
-                        <Button
-                          type="submit"
-                          disabled={true}
-                          className="cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Submitting...' : 'Submit'}
-                        </Button>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80"
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
+              Cancel
+            </Button>
+            {!isFormValid && missingFields.length > 0 ? (
+              <Popover open={showMissingFieldsPopover}>
+                <PopoverTrigger asChild>
+                  <div
+                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                  >
+                    <Button
+                      type="submit"
+                      disabled={true}
+                      className="cursor-not-allowed"
                     >
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">
-                          Required fields missing:
-                        </h4>
-                        <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                          {missingFields.map((field) => (
-                            <li key={field}>{field}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
-                  </Button>
-                )}
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-80"
+                  onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                  onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                >
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">
+                      Required fields missing:
+                    </h4>
+                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                      {missingFields.map((field) => (
+                        <li key={field}>{field}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
     </ErrorBoundary>
   );
 };

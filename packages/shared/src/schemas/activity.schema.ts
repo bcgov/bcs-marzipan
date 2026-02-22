@@ -39,6 +39,12 @@ export const venueAddressFieldsSchema = venueAddressSchema
   .optional();
 
 /**
+ * Base venue address object shape (all fields string | null).
+ * Use this for normalization and when the value is known to be present.
+ */
+export type VenueAddressBase = z.infer<typeof venueAddressSchema>;
+
+/**
  * Venue Address type inferred from schema
  */
 export type VenueAddress = z.infer<typeof venueAddressFieldsSchema>;

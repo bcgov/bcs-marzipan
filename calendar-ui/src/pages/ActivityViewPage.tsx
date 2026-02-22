@@ -1,9 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
-import { useNavigate, useOutletContext } from 'react-router-dom';
-
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Resolver } from 'react-hook-form';
+import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import {
@@ -17,8 +15,8 @@ import { ActivityPageHeader } from '../components/ActivityPageHeader';
 import { Form } from '../components/ui/form';
 import { useAuth } from '../hooks/useAuth';
 import { useFormLookups } from '../hooks/useFormLookups';
-import { activityToFormData } from '../lib/activity-form-mapper';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
+import { activityToFormData } from '../lib/activity-form-mapper';
 import type { ActivityLayoutContext } from './ActivityLayout';
 
 /**
@@ -42,26 +40,29 @@ export function ActivityViewPage(): React.ReactElement {
   });
 
   useEffect(() => {
-    if (lookups.governmentRepresentatives?.length && lookups.categories?.length) {
+    if (
+      lookups.governmentRepresentatives?.length &&
+      lookups.categories?.length
+    ) {
       readyRef.current = false;
       form.reset(activityToFormData(activity, lookups));
       requestAnimationFrame(() => {
         readyRef.current = true;
       });
     }
-  }, [activity, lookups.governmentRepresentatives, lookups.categories, lookups.commsMaterials, lookups.translationLanguages, form]);
+  }, [activity, lookups, form]);
 
   const handleEnterEdit = () => {
     if (!canEdit || !readyRef.current || hasNavigatedRef.current) return;
     hasNavigatedRef.current = true;
-    navigate('edit', { replace: true });
+    void navigate('edit', { replace: true });
   };
 
   const displayId = activity.displayId ?? `ACT-${activity.id}`;
   const categories = activity.category ?? [];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <>
       <ActivityBreadcrumb currentLabel={displayId} />
       <ActivityPageHeader
         displayId={displayId}
@@ -80,14 +81,10 @@ export function ActivityViewPage(): React.ReactElement {
             onFocus={() => handleEnterEdit()}
             onClick={() => handleEnterEdit()}
           >
-            <ActivityFormBody
-              form={form}
-              lookups={lookups}
-              readOnly={true}
-            />
+            <ActivityFormBody form={form} lookups={lookups} readOnly={true} />
           </form>
         </Form>
       </FormProvider>
-    </div>
+    </>
   );
 }

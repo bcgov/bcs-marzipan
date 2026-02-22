@@ -196,7 +196,11 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                   <Badge
                     key={option.value}
                     variant={isSelected ? 'default' : 'outline'}
-                    className={readOnly ? 'px-4 py-2 text-sm' : 'cursor-pointer px-4 py-2 text-sm'}
+                    className={
+                      readOnly
+                        ? 'px-4 py-2 text-sm'
+                        : 'cursor-pointer px-4 py-2 text-sm'
+                    }
                     onClick={
                       readOnly
                         ? undefined

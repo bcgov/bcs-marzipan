@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import { FormProvider, useForm } from 'react-hook-form';
-import { useNavigate, useOutletContext } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Resolver } from 'react-hook-form';
+import { ErrorBoundary } from 'react-error-boundary';
+import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 
 import {
   createActivityRequestSchema,
@@ -28,13 +27,13 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Form } from '../components/ui/form';
-import { useFormLookups } from '../hooks/useFormLookups';
 import { useActivityLock } from '../hooks/useActivityLock';
+import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses } from '../hooks/useLookups';
-import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
-import { activityToFormData } from '../lib/activity-form-mapper';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
+import { activityToFormData } from '../lib/activity-form-mapper';
 import { buildPayloadForUpdate } from '../lib/activity-form-payload';
+import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
 import type { ActivityLayoutContext } from './ActivityLayout';
@@ -54,8 +53,8 @@ export function ActivityEditPage(): React.ReactElement {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const {
-    lock,
-    isOwnLock,
+    lock: _lock,
+    isOwnLock: _isOwnLock,
     lockedByOther,
     lockedByUsername,
     isLoading: lockLoading,
@@ -73,10 +72,13 @@ export function ActivityEditPage(): React.ReactElement {
   const isDirty = form.formState.isDirty;
 
   useEffect(() => {
-    if (lookups.governmentRepresentatives?.length && lookups.categories?.length) {
+    if (
+      lookups.governmentRepresentatives?.length &&
+      lookups.categories?.length
+    ) {
       form.reset(activityToFormData(activity, lookups));
     }
-  }, [activity, lookups.governmentRepresentatives, lookups.categories, lookups.commsMaterials, lookups.translationLanguages, form]);
+  }, [activity, lookups, form]);
 
   // Warn on tab close/refresh when there are unsaved changes (in-app navigation is guarded by Cancel dialog; full back/link blocking would require createBrowserRouter + useBlocker)
   useEffect(() => {
@@ -97,13 +99,13 @@ export function ActivityEditPage(): React.ReactElement {
       return;
     }
     await release();
-    navigate(viewPath);
+    void navigate(viewPath);
   };
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
     await release();
-    navigate(viewPath);
+    void navigate(viewPath);
   };
 
   const onSubmit = async (data: ActivityFormData) => {
@@ -123,7 +125,7 @@ export function ActivityEditPage(): React.ReactElement {
         })
       );
       await release();
-      navigate('/');
+      void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
       showErrorToast(err);
@@ -142,49 +144,47 @@ export function ActivityEditPage(): React.ReactElement {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <ActivityBreadcrumb currentLabel={displayId} />
-        <ActivityPageHeader
-          displayId={displayId}
-          title={activity.title ?? ''}
-          categories={categories}
-          leadOrg={activity.leadOrg ?? null}
-          activityStatus={activity.activityStatus ?? null}
-          lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
-          createdDateTime={activity.createdDateTime ?? null}
-          onHistoryClick={() => setHistoryOpen(true)}
-        />
-        {lockedByOther && <LockBanner lockedByUsername={lockedByUsername} />}
-        <FormProvider {...form}>
-          <Form {...form}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void form.handleSubmit(onSubmit, onError)(e);
-              }}
-            >
-              <ActivityFormBody
-                form={form}
-                lookups={lookups}
-                readOnly={readOnly}
-              />
-              <div className="flex justify-end gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void handleCancel()}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting || readOnly}>
-                  {isSubmitting ? 'Updating...' : 'Update'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </FormProvider>
-      </div>
+      <ActivityBreadcrumb currentLabel={displayId} />
+      <ActivityPageHeader
+        displayId={displayId}
+        title={activity.title ?? ''}
+        categories={categories}
+        leadOrg={activity.leadOrg ?? null}
+        activityStatus={activity.activityStatus ?? null}
+        lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
+        createdDateTime={activity.createdDateTime ?? null}
+        onHistoryClick={() => setHistoryOpen(true)}
+      />
+      {lockedByOther && <LockBanner lockedByUsername={lockedByUsername} />}
+      <FormProvider {...form}>
+        <Form {...form}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void form.handleSubmit(onSubmit, onError)(e);
+            }}
+          >
+            <ActivityFormBody
+              form={form}
+              lookups={lookups}
+              readOnly={readOnly}
+            />
+            <div className="flex justify-end gap-4 pt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleCancel()}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting || readOnly}>
+                {isSubmitting ? 'Updating...' : 'Update'}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </FormProvider>
       <ActivityHistory
         activityId={id}
         open={historyOpen}

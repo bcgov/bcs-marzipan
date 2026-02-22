@@ -16,10 +16,11 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     representatives: [],
     sharedWithTeamIds: [],
     reportSettings: [],
+    activityStatusId: 1,
     dateStatusId: 1,
     timeStatusId: 1,
-    pitchRequiredStatusId: undefined,
-    translationsRequiredStatusId: undefined,
+    pitchRequiredStatusId: 1,
+    translationsRequiredStatusId: 1,
   };
 }
 

@@ -1,15 +1,11 @@
 import { History } from 'lucide-react';
 import type { ReactElement } from 'react';
 
+import { formatDisplayValue } from '../lib/formatDisplayValue';
+import { formatLongDate, formatTime, isSameDay, timeAgo } from '../lib/utils';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { formatDisplayValue } from '../lib/formatDisplayValue';
-import {
-  formatLongDate,
-  formatTime,
-  isSameDay,
-  timeAgo,
-} from '../lib/utils';
+import { CopyableText } from './ui/copyable-text';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -38,9 +34,13 @@ export function ActivityPageHeader({
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0 flex-1">
-        <div className="text-muted-foreground mb-1.5 text-sm">
+        <CopyableText
+          text={displayId}
+          copyLabel="Copy display ID"
+          className="text-md text-muted-foreground hover:text-foreground mb-1.5 -ml-2 px-2 py-1"
+        >
           {displayId}
-        </div>
+        </CopyableText>
         <h1 className="text-lg font-bold">{title}</h1>
         {categories.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -57,30 +57,25 @@ export function ActivityPageHeader({
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-        {activityStatus && (
+        {activityStatus != null && activityStatus !== '' ? (
           <Badge variant="secondary">
             {formatDisplayValue(activityStatus)}
           </Badge>
-        )}
+        ) : null}
         <div className="text-muted-foreground text-xs sm:text-sm">
           {lastUpdatedDateTime &&
           createdDateTime &&
           lastUpdatedDateTime !== createdDateTime ? (
             <div>
               Updated{' '}
-              {isSameDay(
-                new Date(lastUpdatedDateTime),
-                new Date()
-              )
+              {isSameDay(new Date(lastUpdatedDateTime), new Date())
                 ? `today at ${formatTime(new Date(lastUpdatedDateTime))}`
                 : `${timeAgo(new Date(lastUpdatedDateTime))} ago`}
             </div>
           ) : null}
           <div>
             Created{' '}
-            {createdDateTime
-              ? formatLongDate(new Date(createdDateTime))
-              : ''}
+            {createdDateTime ? formatLongDate(new Date(createdDateTime)) : ''}
           </div>
         </div>
         {onHistoryClick && (

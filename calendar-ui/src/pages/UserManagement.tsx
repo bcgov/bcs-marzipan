@@ -114,7 +114,7 @@ export function Users() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-6">
+    <>
       <PageHeader
         title="User & Team Management"
         description="Manage user accounts, teams, and roles"
@@ -226,6 +226,6 @@ export function Users() {
         open={!!teamHistoryTeam}
         onClose={() => setTeamHistoryTeam(null)}
       />
-    </div>
+    </>
   );
 }

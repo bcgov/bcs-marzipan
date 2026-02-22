@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 
 import { fetchActivity } from '../api/activitiesApi';
 import { ErrorState } from '../components/ErrorState';
 import { StatusMessage } from '../components/StatusMessage';
-import { Button } from '../components/ui/button';
 import {
   LOAD_ACTIVITY_NO_ID,
   LOAD_ACTIVITY_TITLE,
@@ -56,13 +55,11 @@ export function ActivityLayout(): React.ReactElement {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <StatusMessage
-          title="Activity"
-          message="Loading activity..."
-          variant="loading"
-        />
-      </div>
+      <StatusMessage
+        title="Activity"
+        message="Loading activity..."
+        variant="loading"
+      />
     );
   }
 
@@ -80,13 +77,11 @@ export function ActivityLayout(): React.ReactElement {
         .finally(() => setLoading(false));
     };
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <ErrorState
-          title={LOAD_ACTIVITY_TITLE}
-          message={error ?? 'Activity not found'}
-          onRetry={handleRetry}
-        />
-      </div>
+      <ErrorState
+        title={LOAD_ACTIVITY_TITLE}
+        message={error ?? 'Activity not found'}
+        onRetry={handleRetry}
+      />
     );
   }
 

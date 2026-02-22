@@ -34,6 +34,8 @@ import type {
   CreateActivityRequest,
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
+  VenueAddress,
+  VenueAddressBase,
 } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
@@ -109,8 +111,8 @@ export class ActivitiesService {
    * @returns Normalized venue address with trimmed strings and empty strings as null
    */
   private normalizeVenueAddress(
-    venue: Record<string, unknown> | null | undefined
-  ): Record<string, unknown> | null {
+    venue: VenueAddressBase | null | undefined
+  ): VenueAddressBase | null {
     if (!venue) {
       return null;
     }
@@ -308,14 +310,12 @@ export class ActivitiesService {
 
       // Insert venue address if provided
       if (venueAddress) {
-        const normalizedVenue = this.normalizeVenueAddress(
-          venueAddress as Record<string, unknown>
-        );
+        const normalizedVenue = this.normalizeVenueAddress(venueAddress);
         if (normalizedVenue) {
           await this.junctionService.insertVenueAddress(
             tx,
             activityId,
-            normalizedVenue as any
+            normalizedVenue as VenueAddress
           );
         }
       }
@@ -781,7 +781,10 @@ export class ActivitiesService {
     dto: UpdateActivityRequest,
     userId: number
   ): Promise<ActivityResponse> {
-    const existingLock = await this.locksService.getLockForEntity('activity', id);
+    const existingLock = await this.locksService.getLockForEntity(
+      'activity',
+      id
+    );
     if (existingLock && existingLock.userId !== userId) {
       throw new HttpException(
         {
@@ -827,7 +830,7 @@ export class ActivitiesService {
     // Normalize venue address to prevent false change detection from whitespace differences
     const normalizedVenueAddress =
       venueAddress !== undefined
-        ? this.normalizeVenueAddress(venueAddress as Record<string, unknown>)
+        ? this.normalizeVenueAddress(venueAddress)
         : undefined;
 
     const updateData: Partial<Activity> = {
@@ -927,7 +930,7 @@ export class ActivitiesService {
         await this.junctionService.upsertVenueAddress(
           tx,
           id,
-          normalizedVenueAddress as any
+          normalizedVenueAddress as VenueAddress | null
         );
       }
 

@@ -56,9 +56,7 @@ export function ActivityFormBody({
 
           <ActivityNewsReleaseSection
             translationLanguageOptions={lookups.translationLanguages}
-            newsReleaseDistributionOptions={
-              lookups.newsReleaseDistributions
-            }
+            newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
             newsReleaseOriginOptions={lookups.newsReleaseOrigins}
             readOnly={readOnly}
           />

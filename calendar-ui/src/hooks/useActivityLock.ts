@@ -1,12 +1,12 @@
+import type { AxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
   acquireLock,
-  releaseLock,
   LOCKED_STATUS,
+  releaseLock,
   type LockInfo,
 } from '../api/locksApi';
-import type { AxiosError } from 'axios';
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
@@ -24,7 +24,9 @@ type UseActivityLockResult = {
  * On mount (or when activityId changes), call acquire(); if 423, form is read-only.
  * Release on unmount, cancel, or save.
  */
-export function useActivityLock(activityId: number | null): UseActivityLockResult {
+export function useActivityLock(
+  activityId: number | null
+): UseActivityLockResult {
   const [lock, setLock] = useState<LockInfo | null>(null);
   const [lockedByOther, setLockedByOther] = useState(false);
   const [lockedByUsername, setLockedByUsername] = useState<string | null>(null);
@@ -46,11 +48,17 @@ export function useActivityLock(activityId: number | null): UseActivityLockResul
       const axiosError = err as AxiosError<{ lockedBy?: { username: string } }>;
       if (axiosError.response?.status === LOCKED_STATUS) {
         setLockedByOther(true);
-        const data = axiosError.response?.data as { lockedBy?: { username: string } } | undefined;
+        const data = axiosError.response?.data as
+          | { lockedBy?: { username: string } }
+          | undefined;
         setLockedByUsername(data?.lockedBy?.username ?? null);
         return false;
       }
-      setError(axiosError instanceof Error ? axiosError.message : 'Failed to acquire lock');
+      setError(
+        axiosError instanceof Error
+          ? axiosError.message
+          : 'Failed to acquire lock'
+      );
       return false;
     } finally {
       setIsLoading(false);

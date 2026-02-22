@@ -1,23 +1,27 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
-  Body,
   UseGuards,
-  HttpCode,
-  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+
+import type { AuthUser } from '@corpcal/shared';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { AuthUser } from '@corpcal/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { LocksService } from './locks.service';
-import { acquireLockBodySchema, type AcquireLockBody } from './dto/acquire-lock.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  acquireLockBodySchema,
+  type AcquireLockBody,
+} from './dto/acquire-lock.dto';
+import { LocksService } from './locks.service';
 
 @ApiTags('locks')
 @Controller('locks')
@@ -62,7 +66,10 @@ export class LocksController {
     @Param('activityId', ParseIntPipe) activityId: number,
     @CurrentUser() user: AuthUser
   ) {
-    const lock = await this.locksService.getLockForEntity('activity', activityId);
+    const lock = await this.locksService.getLockForEntity(
+      'activity',
+      activityId
+    );
     if (!lock) {
       return { locked: false };
     }

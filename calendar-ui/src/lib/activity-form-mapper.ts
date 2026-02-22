@@ -1,4 +1,7 @@
-import type { ActivityFormData, ActivityResponse } from '@corpcal/shared/schemas';
+import type {
+  ActivityFormData,
+  ActivityResponse,
+} from '@corpcal/shared/schemas';
 import { mapResponseToFormData } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';

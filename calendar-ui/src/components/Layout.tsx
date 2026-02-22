@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { Suspense } from 'react';
 
 import Header from './Header/Header';
+import { PageContainer } from './PageContainer';
 import { Sidebar } from './Sidebar';
 import { SidebarInset } from './ui/sidebar';
 
@@ -17,7 +18,9 @@ export const Layout = () => {
             </div>
           }
         >
-          <Outlet />
+          <PageContainer>
+            <Outlet />
+          </PageContainer>
         </Suspense>
       </SidebarInset>
     </Sidebar>

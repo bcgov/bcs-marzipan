@@ -118,10 +118,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route
-                    index
-                    element={<ActivityViewPage />}
-                  />
+                  <Route index element={<ActivityViewPage />} />
                   <Route
                     path="edit"
                     element={

@@ -1,10 +1,24 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { and, eq, gt, lt } from 'drizzle-orm';
 
-import { recordLocks } from '@corpcal/database/schema';
-import type { RecordLock } from '@corpcal/database/schema';
+import { editLocks } from '@corpcal/database/schema';
 
 import { DatabaseService } from '../database/database.service';
+
+type EditLockRow = typeof editLocks.$inferSelect;
+
+/** Explicit lock row shape for return types to avoid schema inference issues in consumers */
+export interface LockForEntity {
+  id: number;
+  entityType: string;
+  entityId: number;
+  userId: number;
+  username: string;
+  sessionId: string | null;
+  acquiredAt: Date;
+  expiresAt: Date;
+  lastRenewedAt: Date;
+}
 
 const LOCK_TTL_MINUTES = 5;
 
@@ -24,23 +38,27 @@ export class LocksService {
     userId: number,
     username: string,
     sessionId?: string
-  ): Promise<RecordLock> {
+  ): Promise<EditLockRow> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
 
-    const existing = await this.databaseService.db.query.recordLocks.findFirst({
+    const existing = await this.databaseService.db.query.editLocks.findFirst({
       where: and(
-        eq(recordLocks.entityType, entityType),
-        eq(recordLocks.entityId, entityId)
+        eq(editLocks.entityType, entityType),
+        eq(editLocks.entityId, entityId)
       ),
     });
 
     if (existing) {
-      const expired = new Date(existing.expiresAt) < now;
+      const expiresAtDate =
+        existing.expiresAt instanceof Date
+          ? existing.expiresAt
+          : new Date(existing.expiresAt as string | number);
+      const expired = expiresAtDate < now;
       if (expired) {
         await this.databaseService.db
-          .delete(recordLocks)
-          .where(eq(recordLocks.id, existing.id));
+          .delete(editLocks)
+          .where(eq(editLocks.id, existing.id));
       } else if (existing.userId !== userId) {
         throw new HttpException(
           {
@@ -58,20 +76,20 @@ export class LocksService {
         );
       } else {
         const [updated] = await this.databaseService.db
-          .update(recordLocks)
+          .update(editLocks)
           .set({
             expiresAt,
             lastRenewedAt: now,
             sessionId: sessionId ?? existing.sessionId,
           })
-          .where(eq(recordLocks.id, existing.id))
+          .where(eq(editLocks.id, existing.id))
           .returning();
-        return updated as RecordLock;
+        return updated;
       }
     }
 
     const [inserted] = await this.databaseService.db
-      .insert(recordLocks)
+      .insert(editLocks)
       .values({
         entityType,
         entityId,
@@ -85,40 +103,46 @@ export class LocksService {
       .returning();
 
     if (!inserted) {
-      throw new Error('Failed to insert lock');
+      this.logger.error(
+        `Lock insert returned no row for ${entityType} id=${entityId} userId=${userId}`
+      );
+      throw new HttpException(
+        `Failed to insert lock for ${entityType} ${entityId}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
-    return inserted as RecordLock;
+    return inserted;
   }
 
   async getLockForEntity(
     entityType: string,
     entityId: number
-  ): Promise<RecordLock | null> {
+  ): Promise<LockForEntity | null> {
     const now = new Date();
-    const row = await this.databaseService.db.query.recordLocks.findFirst({
+    const row = await this.databaseService.db.query.editLocks.findFirst({
       where: and(
-        eq(recordLocks.entityType, entityType),
-        eq(recordLocks.entityId, entityId),
-        gt(recordLocks.expiresAt, now)
+        eq(editLocks.entityType, entityType),
+        eq(editLocks.entityId, entityId),
+        gt(editLocks.expiresAt, now)
       ),
     });
-    return row as RecordLock | null;
+    return (row ?? null) as LockForEntity | null;
   }
 
   async releaseLock(lockId: number, userId: number): Promise<boolean> {
     const result = await this.databaseService.db
-      .delete(recordLocks)
-      .where(and(eq(recordLocks.id, lockId), eq(recordLocks.userId, userId)))
-      .returning({ id: recordLocks.id });
+      .delete(editLocks)
+      .where(and(eq(editLocks.id, lockId), eq(editLocks.userId, userId)))
+      .returning({ id: editLocks.id });
     return result.length > 0;
   }
 
   async cleanupExpiredLocks(): Promise<number> {
     const now = new Date();
     const result = await this.databaseService.db
-      .delete(recordLocks)
-      .where(lt(recordLocks.expiresAt, now))
-      .returning({ id: recordLocks.id });
+      .delete(editLocks)
+      .where(lt(editLocks.expiresAt, now))
+      .returning({ id: editLocks.id });
     this.logger.debug(`Cleaned up ${result.length} expired lock(s)`);
     return result.length;
   }

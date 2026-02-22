@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
+import type { ReactElement } from 'react';
 
 import {
   ERROR_DETAILS_LABEL,
@@ -20,7 +20,7 @@ export function FormErrorFallback({
   const friendlyMessage = getFriendlyErrorMessage(error);
   const rawMessage = error instanceof Error ? error.message : String(error);
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8" role="alert">
+    <div role="alert">
       <div className="mb-8">
         <h1 className="text-destructive mb-2 text-3xl font-bold">
           {RENDER_FORM_ERROR_TITLE}

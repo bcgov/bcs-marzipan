@@ -274,8 +274,16 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                         <Badge
                           key={item.id}
                           variant={isSelected ? 'selected' : 'outline'}
-                          className={readOnly ? 'gap-1 font-normal' : 'cursor-pointer gap-1 font-normal'}
-                          onClick={readOnly ? undefined : () => handleQuickPickSelect(item)}
+                          className={
+                            readOnly
+                              ? 'gap-1 font-normal'
+                              : 'cursor-pointer gap-1 font-normal'
+                          }
+                          onClick={
+                            readOnly
+                              ? undefined
+                              : () => handleQuickPickSelect(item)
+                          }
                         >
                           <Plus className="h-3.5 w-3.5" />
                           {venueTagLabel(item)}

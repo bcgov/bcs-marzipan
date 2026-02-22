@@ -1,19 +1,26 @@
-const FIELD_LABEL_MAP: Record<string, string> = {
+import type { ActivityFormData, VenueAddress } from '@corpcal/shared/schemas';
+
+/** Top-level form keys plus nested venue address field names (for label lookup). */
+type ActivityFieldLabelKey =
+  | keyof ActivityFormData
+  | keyof NonNullable<VenueAddress>;
+
+const FIELD_LABEL_MAP: Partial<Record<ActivityFieldLabelKey, string>> = {
   title: 'Title',
   categoryIds: 'Category',
-  startDate: 'Start Date',
-  endDate: 'End Date',
-  startTime: 'Start Time',
-  endTime: 'End Time',
-  leadOrgId: 'Lead Organization',
-  commsContactLeadId: 'Comms Contact',
-  eventPlannerLeadId: 'Event Planner',
-  activityStatusId: 'Activity Status',
-  leadMinistryId: 'Lead Ministry',
-  venueAddress: 'Venue Address',
-  street: 'Street Address',
+  startDate: 'Start date',
+  endDate: 'End date',
+  startTime: 'Start time',
+  endTime: 'End time',
+  leadOrgId: 'Lead organization',
+  commsContactLeadId: 'Comms contact',
+  eventPlannerLeadId: 'Event planner',
+  activityStatusId: 'Activity status',
+  leadMinistryId: 'Lead ministry',
+  venueAddress: 'Venue address',
+  street: 'Street address',
   city: 'City',
-  provinceOrState: 'Province/State',
+  provinceOrState: 'Province/state',
   country: 'Country',
 };
 
@@ -21,5 +28,5 @@ const FIELD_LABEL_MAP: Record<string, string> = {
  * Maps activity form field names to user-friendly labels (e.g. for missing-required-fields display).
  */
 export function getActivityFieldLabel(fieldName: string): string {
-  return FIELD_LABEL_MAP[fieldName] ?? fieldName;
+  return FIELD_LABEL_MAP[fieldName as ActivityFieldLabelKey] ?? fieldName;
 }
