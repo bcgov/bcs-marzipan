@@ -7,6 +7,7 @@ import type { VenueQuickPickItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { fetchLastUsedAddresses, fetchVenueQuickPicks } from '@/api/lookupsApi';
 
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import {
   AddressAutocomplete,
   type AddressData,
@@ -117,7 +118,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
     label: rep.displayName || rep.name,
   }));
   return (
-    <ActivityFormSection title="Event">
+    <ActivityFormSection title={getActivityFormSectionLabel('event')}>
       <FormField
         control={form.control}
         name="premierRequestedId"

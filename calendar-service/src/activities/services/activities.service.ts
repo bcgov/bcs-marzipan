@@ -37,6 +37,7 @@ import type {
   VenueAddress,
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
+import { isDeepEqual } from '@corpcal/shared/utils';
 
 import { DatabaseService } from '../../database/database.service';
 import { LocksService } from '../../locks/locks.service';
@@ -62,46 +63,6 @@ export class ActivitiesService {
     private readonly utilsService: ActivityUtilsService,
     private readonly locksService: LocksService
   ) {}
-
-  /**
-   * Deep equality comparison for any two values
-   * Handles primitives, arrays, and objects recursively
-   */
-  private isDeepEqual(a: unknown, b: unknown): boolean {
-    // Handle null/undefined
-    if (a === null || a === undefined) {
-      return b === null || b === undefined;
-    }
-    if (b === null || b === undefined) {
-      return a === null || a === undefined;
-    }
-
-    // Handle primitives
-    if (typeof a !== 'object' || typeof b !== 'object') {
-      return a === b;
-    }
-
-    // Handle arrays
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) return false;
-      return a.every((val, idx) => this.isDeepEqual(val, b[idx]));
-    }
-
-    // Handle objects
-    if (Array.isArray(a) !== Array.isArray(b)) return false;
-
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-
-    if (keysA.length !== keysB.length) return false;
-
-    return keysA.every((key) =>
-      this.isDeepEqual(
-        (a as Record<string, unknown>)[key],
-        (b as Record<string, unknown>)[key]
-      )
-    );
-  }
 
   /**
    * Normalize venue address data by trimming whitespace and converting empty strings to null.
@@ -231,6 +192,7 @@ export class ActivitiesService {
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
+      activityHistoryNotes,
       ...activityData
     } = dto;
 
@@ -424,8 +386,8 @@ export class ActivitiesService {
       result.id,
       userId,
       'created',
-      undefined, // No changes for creation
-      'Activity created'
+      undefined,
+      activityHistoryNotes || 'Activity created'
     );
 
     // Broadcast to all clients that a new activity was created
@@ -824,6 +786,7 @@ export class ActivitiesService {
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
+      activityHistoryNotes,
       ...activityUpdateData
     } = dto;
 
@@ -1140,7 +1103,7 @@ export class ActivitiesService {
     const normalizedExistingVenue = this.normalizeVenueAddress(existingVenue);
     if (
       normalizedVenueAddress !== undefined &&
-      !this.isDeepEqual(normalizedExistingVenue, normalizedVenueAddress)
+      !isDeepEqual(normalizedExistingVenue, normalizedVenueAddress)
     ) {
       allChanges.push({
         field: 'venueAddress',
@@ -1151,7 +1114,7 @@ export class ActivitiesService {
 
     if (
       commsContactsArray !== undefined &&
-      !this.isDeepEqual(existingComms, commsContactsArray)
+      !isDeepEqual(existingComms, commsContactsArray)
     ) {
       allChanges.push({
         field: 'commsContacts',
@@ -1162,7 +1125,7 @@ export class ActivitiesService {
 
     if (
       representatives !== undefined &&
-      !this.isDeepEqual(
+      !isDeepEqual(
         this.normalizeRepresentatives(existingRepresentatives),
         this.normalizeRepresentatives(representatives)
       )
@@ -1177,7 +1140,7 @@ export class ActivitiesService {
     if (
       reportSettingsArray !== undefined &&
       reportSettingsArray.length > 0 &&
-      !this.isDeepEqual(existingReportSettings, reportSettingsArray)
+      !isDeepEqual(existingReportSettings, reportSettingsArray)
     ) {
       allChanges.push({
         field: 'reportSettings',
@@ -1201,7 +1164,7 @@ export class ActivitiesService {
       userId,
       'updated',
       allChanges.length > 0 ? allChanges : undefined,
-      'Activity updated'
+      activityHistoryNotes || 'Activity updated'
     );
 
     // Notify connected clients viewing this activity
@@ -1464,7 +1427,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if categories actually changed
-    if (!this.isDeepEqual(existingCategoryIds, categoryIds)) {
+    if (!isDeepEqual(existingCategoryIds, categoryIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1518,7 +1481,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if themes actually changed
-    if (!this.isDeepEqual(existingThemeIds, themeIds)) {
+    if (!isDeepEqual(existingThemeIds, themeIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1567,7 +1530,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if tags actually changed
-    if (!this.isDeepEqual(existingTagIds, tagIds)) {
+    if (!isDeepEqual(existingTagIds, tagIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1615,7 +1578,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if shared-with teams actually changed
-    if (!this.isDeepEqual(existingTeamIds, teamIds)) {
+    if (!isDeepEqual(existingTeamIds, teamIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,

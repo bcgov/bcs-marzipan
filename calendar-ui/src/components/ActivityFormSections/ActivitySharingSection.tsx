@@ -7,6 +7,7 @@ import {
 } from '@corpcal/shared/constants/constants';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Combobox } from '../ui/combobox';
 import {
   FormControl,
@@ -36,7 +37,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
 }) => {
   const form = useFormContext<ActivityFormData>();
   return (
-    <ActivityFormSection title="Sharing">
+    <ActivityFormSection title={getActivityFormSectionLabel('sharing')}>
       <FormField
         control={form.control}
         name="visibility"

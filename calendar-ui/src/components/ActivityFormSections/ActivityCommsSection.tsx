@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -61,7 +62,10 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   // activityStatusOptions is now received as a prop
   return (
-    <ActivityFormSection title="Comms" variant="top">
+    <ActivityFormSection
+      title={getActivityFormSectionLabel('comms')}
+      variant="top"
+    >
       {/* Activity Status Input */}
       <FormField
         control={form.control}

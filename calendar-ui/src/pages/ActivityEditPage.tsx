@@ -3,7 +3,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   createActivityRequestSchema,
@@ -12,6 +12,7 @@ import {
 
 import { updateActivity } from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
+import { EditActivityConfirmModal } from '../components/activities/EditActivityConfirmModal';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { ActivityPageHeader } from '../components/ActivityPageHeader';
@@ -33,6 +34,7 @@ import { useDateStatuses } from '../hooks/useLookups';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { activityToFormData } from '../lib/activity-form-mapper';
 import { buildPayloadForUpdate } from '../lib/activity-form-payload';
+import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
@@ -51,6 +53,11 @@ export function ActivityEditPage(): React.ReactElement {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
+    null
+  );
+  const initialFormDataRef = useRef<ActivityFormData | null>(null);
 
   const {
     lock: _lock,
@@ -76,7 +83,9 @@ export function ActivityEditPage(): React.ReactElement {
       lookups.governmentRepresentatives?.length &&
       lookups.categories?.length
     ) {
-      form.reset(activityToFormData(activity, lookups));
+      const mapped = activityToFormData(activity, lookups);
+      form.reset(mapped);
+      initialFormDataRef.current = mapped;
     }
   }, [activity, lookups, form]);
 
@@ -108,19 +117,26 @@ export function ActivityEditPage(): React.ReactElement {
     void navigate(viewPath);
   };
 
-  const onSubmit = async (data: ActivityFormData) => {
+  const onSubmit = (data: ActivityFormData) => {
+    setValidatedData(data);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmedSubmit = async (notes?: string) => {
+    if (!validatedData) return;
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
-      const submitData = buildPayloadForUpdate(data, formValues) as Parameters<
-        typeof updateActivity
-      >[1];
+      const submitData = {
+        ...buildPayloadForUpdate(validatedData, formValues),
+        ...(notes ? { activityHistoryNotes: notes } : {}),
+      } as Parameters<typeof updateActivity>[1];
       await updateActivity(id, submitData);
       toast.success(
         'Activity updated',
         getActivityUpdatedToastOptions({
           id: String(id),
-          title: data.title ?? '',
+          title: validatedData.title ?? '',
           displayId: activity.displayId ?? undefined,
         })
       );
@@ -131,12 +147,19 @@ export function ActivityEditPage(): React.ReactElement {
       showErrorToast(err);
     } finally {
       setIsSubmitting(false);
+      setShowConfirmModal(false);
+      setValidatedData(null);
     }
   };
 
   const onError = () => {
     logger.error('Form validation failed');
   };
+
+  const confirmModalChanges =
+    showConfirmModal && initialFormDataRef.current
+      ? computeFormChanges(initialFormDataRef.current, form.getValues())
+      : [];
 
   const displayId = activity.displayId ?? `ACT-${activity.id}`;
   const categories = activity.category ?? [];
@@ -211,6 +234,17 @@ export function ActivityEditPage(): React.ReactElement {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <EditActivityConfirmModal
+        open={showConfirmModal}
+        onOpenChange={(open) => {
+          setShowConfirmModal(open);
+          if (!open) setValidatedData(null);
+        }}
+        changes={confirmModalChanges}
+        dateStatuses={dateStatuses}
+        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        isSubmitting={isSubmitting}
+      />
     </ErrorBoundary>
   );
 }

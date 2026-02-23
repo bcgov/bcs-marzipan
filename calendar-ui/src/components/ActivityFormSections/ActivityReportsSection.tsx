@@ -8,6 +8,7 @@ import {
   lookAheadStatusOptions,
 } from '../../constants/form-options';
 import { useReports } from '../../hooks/useLookups';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -46,7 +47,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
   );
 
   return (
-    <ActivityFormSection title="Reports">
+    <ActivityFormSection title={getActivityFormSectionLabel('reports')}>
       <FormField
         control={form.control}
         name="reportSettings"

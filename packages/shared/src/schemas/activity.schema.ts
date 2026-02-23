@@ -216,6 +216,7 @@ export const createActivityRequestSchema = activityCoreFieldsSchema
   .merge(junctionTableIdsSchema)
   .extend({
     venueAddress: venueAddressFieldsSchema,
+    activityHistoryNotes: z.string().max(1000).optional(),
   });
 
 /**

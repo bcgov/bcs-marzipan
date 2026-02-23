@@ -11,6 +11,7 @@ import {
 } from '@corpcal/shared/schemas';
 
 import { createActivity } from '../api/activitiesApi';
+import { CreateActivityConfirmModal } from '../components/activities/CreateActivityConfirmModal';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { AutosaveIndicator } from '../components/AutosaveIndicator';
@@ -59,6 +60,10 @@ export const CreateActivityForm: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
+    null
+  );
   const draftCheckedRef = useRef(false);
 
   // Check permissions and auth state (userId is used internally by useAutoSave)
@@ -236,26 +241,36 @@ export const CreateActivityForm: FC = () => {
     window.close();
   };
 
-  const onSubmit = async (data: ActivityFormData) => {
+  const onSubmit = (data: ActivityFormData) => {
+    setValidatedData(data);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmedSubmit = async (notes?: string) => {
+    if (!validatedData) return;
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
-      const submitData = buildPayloadForCreate(data, formValues);
+      const submitData = buildPayloadForCreate(validatedData, formValues);
+      const payload = {
+        ...submitData,
+        ...(notes ? { activityHistoryNotes: notes } : {}),
+      } as Parameters<typeof createActivity>[0];
 
-      await createActivity(submitData as Parameters<typeof createActivity>[0]);
+      await createActivity(payload);
 
-      // Delete draft after successful creation
       if (existingDraft) {
         deleteDraft();
       }
 
-      // Close the window after successful creation
       window.close();
     } catch (error) {
       logger.error('Failed to create activity', error);
       showErrorToast(error);
     } finally {
       setIsSubmitting(false);
+      setShowConfirmModal(false);
+      setValidatedData(null);
     }
   };
 
@@ -407,6 +422,20 @@ export const CreateActivityForm: FC = () => {
           </div>
         </form>
       </Form>
+
+      <CreateActivityConfirmModal
+        open={showConfirmModal}
+        onOpenChange={(open) => {
+          setShowConfirmModal(open);
+          if (!open) setValidatedData(null);
+        }}
+        formData={form.getValues()}
+        lookups={lookups}
+        dateStatuses={dateStatuses}
+        timeStatuses={timeStatuses}
+        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        isSubmitting={isSubmitting}
+      />
     </ErrorBoundary>
   );
 };

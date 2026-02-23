@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -56,7 +57,10 @@ export const ActivityNewsReleaseSection: React.FC<
   const [translationsOpen, setTranslationsOpen] = useState(false);
 
   return (
-    <ActivityFormSection title="News release" variant="bottom-no-divider">
+    <ActivityFormSection
+      title={getActivityFormSectionLabel('newsRelease')}
+      variant="bottom-no-divider"
+    >
       <FormField
         control={form.control}
         name="newsReleaseOriginId"

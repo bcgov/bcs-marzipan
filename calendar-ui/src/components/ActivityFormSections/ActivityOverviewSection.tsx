@@ -8,6 +8,7 @@ import {
   useTranslationRequiredStatuses,
 } from '../../hooks/useLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -72,7 +73,10 @@ export const ActivityOverviewSection: React.FC<
   const titleChanged = 'title' in dirtyFields && Boolean(dirtyFields.title);
 
   return (
-    <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
+    <ActivityFormSection
+      title={getActivityFormSectionLabel('overview')}
+      fieldsClassName="space-y-6"
+    >
       <div>
         <Label className="block">
           Category <span className="text-destructive">*</span>

@@ -3,6 +3,7 @@ import { UseFormReturn, useWatch } from 'react-hook-form';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { useDateStatuses, useTimeStatuses } from '../../hooks/useLookups';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import {
   CONFIRMED_STATUS_NAMES,
   findStatusByName,
@@ -120,7 +121,7 @@ export const ActivityScheduleSection: React.FC<
   };
 
   return (
-    <ActivityFormSection title="Date">
+    <ActivityFormSection title={getActivityFormSectionLabel('date')}>
       {/* Date Range Input with Confirmation Checkbox */}
       <FormField
         control={form.control}
