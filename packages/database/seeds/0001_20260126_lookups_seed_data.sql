@@ -43,17 +43,18 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- ACTIVITY STATUSES
 -- Used for both activity entry status and field review statuses
--- Values: 'new', 'queued', 'reviewed', 'changed', 'paused', 'deleted'
+-- Values: 'new', 'reviewed', 'changed', 'deleted', 'delete_requested', 'completed', 'on_hold'
 -- ============================================================================
 
 INSERT INTO activity_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('new', 'New', 1, true, 'Newly created entry', 1, 1),
-  ('queued', 'Queued', 2, true, 'Entry is queued for review', 1, 1),
-  ('reviewed', 'Reviewed', 3, true, 'Entry has been reviewed', 1, 1),
-  ('changed', 'Changed', 4, true, 'Entry has been changed', 1, 1),
-  ('paused', 'Paused', 5, true, 'Entry is paused', 1, 1),
-  ('deleted', 'Deleted', 6, true, 'Entry is deleted', 1, 1)
+  ('reviewed', 'Reviewed', 2, true, 'Entry has been reviewed', 1, 1),
+  ('changed', 'Changed', 3, true, 'Entry has been changed', 1, 1),
+  ('deleted', 'Deleted', 4, true, 'Entry is deleted', 1, 1),
+  ('delete_requested', 'Delete requested', 5, true, 'Delete has been requested by comms contact', 1, 1),
+  ('completed', 'Completed', 6, true, 'Activity has ended (set by scheduler)', 1, 1),
+  ('on_hold', 'On hold', 7, true, 'Activity is on hold (deferred)', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM activity_statuses WHERE activity_statuses.name = v.name);
 

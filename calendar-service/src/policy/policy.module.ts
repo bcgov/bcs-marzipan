@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
 import { CanDeleteActivityGuard } from './guards/can-delete-activity.guard';
+import { CanRequestDeleteActivityGuard } from './guards/can-request-delete-activity.guard';
+import { CanRestoreActivityGuard } from './guards/can-restore-activity.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { DataScopeInterceptor } from './interceptors/data-scope.interceptor';
@@ -14,6 +16,8 @@ import { PolicyService } from './policy.service';
     PermissionsGuard,
     RolesGuard,
     CanDeleteActivityGuard,
+    CanRequestDeleteActivityGuard,
+    CanRestoreActivityGuard,
     DataScopeInterceptor,
   ],
   exports: [
@@ -21,6 +25,8 @@ import { PolicyService } from './policy.service';
     PermissionsGuard,
     RolesGuard,
     CanDeleteActivityGuard,
+    CanRequestDeleteActivityGuard,
+    CanRestoreActivityGuard,
     DataScopeInterceptor,
   ],
 })

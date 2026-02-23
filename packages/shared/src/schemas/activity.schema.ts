@@ -73,9 +73,10 @@ const activityCoreFieldsSchema = z.object({
   // Status IDs (required, numbers for database)
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
+  // activityStatusId is optional on create; backend sets it from markAsReviewed + role (new or reviewed).
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
-  activityStatusId: z.number().int(),
+  activityStatusId: z.number().int().optional(),
 
   // Boolean flags
   isIssue: z.boolean().default(false),
@@ -217,6 +218,8 @@ export const createActivityRequestSchema = activityCoreFieldsSchema
   .extend({
     venueAddress: venueAddressFieldsSchema,
     activityHistoryNotes: z.string().max(1000).optional(),
+    /** When true and user is admin/sysAdmin, backend sets initial status to reviewed; otherwise new. Ignored for non-admin. */
+    markAsReviewed: z.boolean().optional(),
   });
 
 /**
@@ -243,6 +246,25 @@ export const softDeleteRequestSchema = z.object({
     .trim(),
 });
 
+/**
+ * Schema for requesting delete (comms contacts)
+ * Same validation as soft delete: reason required for audit.
+ */
+export const requestDeleteRequestSchema = z.object({
+  reason: z
+    .string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(1000, 'Reason must not exceed 1000 characters')
+    .trim(),
+});
+
+/**
+ * Schema for restoring an activity from delete_requested or deleted
+ */
+export const restoreRequestSchema = z.object({
+  note: z.string().max(1000).optional(),
+});
+
 // ============================================================================
 // TypeScript Types
 // ============================================================================
@@ -257,6 +279,8 @@ export const softDeleteRequestSchema = z.object({
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
+export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
+export type RestoreRequest = z.infer<typeof restoreRequestSchema>;
 
 /**
  * Form data type for create/edit activity forms.

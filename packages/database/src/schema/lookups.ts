@@ -19,7 +19,7 @@ import { users } from './user';
  * ActivityStatus lookup table - Activity statuses
  * Used for both activity entry status and field review statuses
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Status.cs
- * Values: 'new', 'queued', 'reviewed', 'changed', 'paused', 'deleted'
+ * Values: 'new', 'reviewed', 'changed', 'deleted', 'delete_requested', 'completed', 'on_hold'
  */
 export const activityStatuses = pgTable('activity_statuses', {
   id: serial('id').primaryKey(),

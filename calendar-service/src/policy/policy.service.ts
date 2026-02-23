@@ -121,4 +121,27 @@ export class PolicyService {
 
     return !!row;
   }
+
+  /**
+   * Check if the user is any comms contact (lead or not) for the given activity.
+   * Used for request-delete and restore: only comms contacts can request delete or restore.
+   */
+  async isCommsContactForActivity(
+    activityId: number,
+    userId: number
+  ): Promise<boolean> {
+    const [row] = await this.databaseService.db
+      .select({ userId: activityCommsContacts.userId })
+      .from(activityCommsContacts)
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, activityId),
+          eq(activityCommsContacts.userId, userId),
+          eq(activityCommsContacts.isActive, true)
+        )
+      )
+      .limit(1);
+
+    return !!row;
+  }
 }

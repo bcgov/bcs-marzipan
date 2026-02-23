@@ -9,6 +9,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import { isDeepEqual } from '@corpcal/shared/utils';
 
+import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
 /**
@@ -25,15 +26,18 @@ export class ActivityHistoryService {
    * @param actionType - Type of action: 'created', 'updated', 'deleted', 'published', 'draft_saved', etc.
    * @param changes - Array of field-level changes (optional)
    * @param notes - Optional notes about the change
+   * @param tx - Optional transaction client; when provided, insert runs inside that transaction
    */
   async recordChange(
     activityId: number,
     userId: number,
     actionType: string,
     changes?: HistoryChange[],
-    notes?: string
+    notes?: string,
+    tx?: Database
   ): Promise<ActivityHistory> {
-    const [historyEntry] = await this.databaseService.db
+    const db = tx ?? this.databaseService.db;
+    const [historyEntry] = await db
       .insert(activityHistory)
       .values({
         activityId,
@@ -95,6 +99,46 @@ export class ActivityHistoryService {
           : String(entry.timestamp),
       userName: userMap.get(entry.userId) ?? `User ${entry.userId}`,
     }));
+  }
+
+  /**
+   * Get the activity status ID that was set immediately before the activity
+   * was marked delete_requested or soft_deleted. Used for restore.
+   * Returns null if no such history entry or no activityStatusId change is found.
+   */
+  async getPreviousStatusIdBeforeDelete(
+    activityId: number
+  ): Promise<number | null> {
+    const [entry] = await this.databaseService.db
+      .select({ changes: activityHistory.changes })
+      .from(activityHistory)
+      .where(
+        and(
+          eq(activityHistory.activityId, activityId),
+          inArray(activityHistory.actionType, [
+            'delete_requested',
+            'soft_deleted',
+          ])
+        )
+      )
+      .orderBy(desc(activityHistory.timestamp))
+      .limit(1);
+
+    if (!entry?.changes || !Array.isArray(entry.changes)) {
+      return null;
+    }
+
+    const statusChange = (entry.changes as HistoryChange[]).find(
+      (c) => c.field === 'activityStatusId'
+    );
+    if (
+      statusChange?.oldValue !== undefined &&
+      statusChange.oldValue !== null &&
+      typeof statusChange.oldValue === 'number'
+    ) {
+      return statusChange.oldValue;
+    }
+    return null;
   }
 
   /**
