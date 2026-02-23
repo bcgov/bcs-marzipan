@@ -32,6 +32,31 @@ export class DataScopeInterceptor implements NestInterceptor {
         teamIds: bypass ? [] : (user.teamIds ?? []),
         bypass,
       } satisfies DataScope;
+      // #region agent log
+      fetch(
+        'http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Debug-Session-Id': 'caffe0',
+          },
+          body: JSON.stringify({
+            sessionId: 'caffe0',
+            location: 'data-scope.interceptor.ts:intercept',
+            message: 'DataScopeInterceptor set dataScope',
+            data: {
+              roleName: user.roleName,
+              roleId: user.roleId,
+              bypass,
+              teamIds: request.dataScope.teamIds,
+            },
+            timestamp: Date.now(),
+            hypothesisId: 'H1',
+          }),
+        }
+      ).catch(() => {});
+      // #endregion
     } else {
       request.dataScope = { teamIds: [], bypass: false } satisfies DataScope;
     }

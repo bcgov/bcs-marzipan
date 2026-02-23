@@ -19,7 +19,7 @@ const logger = createLogger('ActivitiesAPI');
 // NOTE: previous client-side normalization was removed — backend now provides canonical shape
 
 export async function fetchActivities(
-  filters?: FilterActivitiesQueryParams
+  filters?: Partial<FilterActivitiesQueryParams>
 ): Promise<ActivityResponse[]> {
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',

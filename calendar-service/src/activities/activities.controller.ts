@@ -131,7 +131,6 @@ export class ActivitiesController {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
     // Check if there are any actual filter fields (excluding pagination defaults)
-    // TODO: refine to only use necessary filters (filtering will happen on the frontend)
     const hasFilters =
       query.title !== undefined ||
       query.startDateFrom !== undefined ||
@@ -142,12 +141,32 @@ export class ActivitiesController {
       query.leadMinistryId !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
-      query.isIssue !== undefined;
+      query.isIssue !== undefined ||
+      query.excludeCompleted !== undefined ||
+      query.includeDeleted !== undefined;
     const filters = hasFilters ? query : undefined;
-    const results = await this.activitiesService.findAll(
-      filters,
-      ctx.dataScope
-    );
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'caffe0',
+      },
+      body: JSON.stringify({
+        sessionId: 'caffe0',
+        location: 'activities.controller.ts:findAll',
+        message: 'Controller passing ctx to findAll',
+        data: {
+          dataScope: ctx?.dataScope,
+          bypass: ctx?.dataScope?.bypass,
+          teamIdsLength: ctx?.dataScope?.teamIds?.length,
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'H2',
+      }),
+    }).catch(() => {});
+    // #endregion
+    const results = await this.activitiesService.findAll(filters, ctx);
     return {
       success: true,
       data: results,

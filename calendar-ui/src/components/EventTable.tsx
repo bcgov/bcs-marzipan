@@ -31,12 +31,15 @@ import type {
   ActivityResponse,
   UserLookupItem,
 } from '@corpcal/shared/api/types';
+import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 
 import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import { ErrorState } from '../components/ErrorState';
+import { useAuth } from '../hooks/useAuth';
 import { createLogger } from '../lib/logger';
 import {
+  EVENT_TABLE_COLUMN_WIDTHS,
   tableBodyRow,
   tableTable,
   tableTd,
@@ -408,6 +411,11 @@ const logger = createLogger('EventTable');
 
 export const EventTable: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canSeeDeleted =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({
@@ -417,6 +425,8 @@ export const EventTable: React.FC = () => {
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     left: ['id'],
   });
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [activities, setActivities] = useState<ActivityResponse[]>([]);
   const [users, setUsers] = useState<UserLookupItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -445,11 +455,19 @@ export const EventTable: React.FC = () => {
     []
   );
 
+  const activityFilters = useMemo(
+    () => ({
+      excludeCompleted: !showCompleted,
+      includeDeleted: showDeleted && canSeeDeleted,
+    }),
+    [showCompleted, showDeleted, canSeeDeleted]
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
         const [activitiesData, usersData] = await Promise.all([
-          fetchActivities(),
+          fetchActivities(activityFilters),
           fetchUsers(),
         ]);
         setActivities(activitiesData);
@@ -464,7 +482,7 @@ export const EventTable: React.FC = () => {
     };
 
     void loadData();
-  }, []);
+  }, [activityFilters]);
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
@@ -487,7 +505,7 @@ export const EventTable: React.FC = () => {
     () => [
       columnHelper.accessor('id', {
         header: 'Overview',
-        size: 220,
+        size: EVENT_TABLE_COLUMN_WIDTHS.overview,
         cell: ({ row }) => (
           <div
             onClick={() => {
@@ -527,7 +545,7 @@ export const EventTable: React.FC = () => {
 
       columnHelper.accessor('summary', {
         header: 'Summary',
-        size: 300,
+        size: EVENT_TABLE_COLUMN_WIDTHS.summary,
         cell: ({ row }) => (
           <SummaryCell
             summary={row.original.summary}
@@ -538,7 +556,7 @@ export const EventTable: React.FC = () => {
 
       columnHelper.accessor('startDate', {
         header: 'Scheduling',
-        size: 280,
+        size: EVENT_TABLE_COLUMN_WIDTHS.scheduling,
         cell: ({ row }) => (
           <ScheduleCell
             startDate={row.original.startDate}
@@ -556,7 +574,7 @@ export const EventTable: React.FC = () => {
 
       columnHelper.accessor('leads', {
         header: 'Leads',
-        size: 180,
+        size: EVENT_TABLE_COLUMN_WIDTHS.leads,
         cell: ({ row }) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {row.original.leads?.map((lead) => {
@@ -578,7 +596,7 @@ export const EventTable: React.FC = () => {
 
       columnHelper.accessor('commsMaterials', {
         header: 'Materials',
-        size: 200,
+        size: EVENT_TABLE_COLUMN_WIDTHS.materials,
         cell: ({ row }) => {
           const hasMaterials =
             row.original.commsMaterials &&
@@ -639,7 +657,7 @@ export const EventTable: React.FC = () => {
 
       columnHelper.accessor('status', {
         header: 'Status',
-        size: 150,
+        size: EVENT_TABLE_COLUMN_WIDTHS.status,
         cell: ({ row }) => {
           const lastUpdatedUser = userMap.get(
             String(row.original.lastUpdatedBy)
@@ -721,6 +739,26 @@ export const EventTable: React.FC = () => {
     },
   });
 
+  const eventTableFilters = useMemo(() => {
+    const filters = [
+      {
+        id: 'show-completed',
+        label: 'Show completed',
+        checked: showCompleted,
+        onCheckedChange: setShowCompleted,
+      },
+    ];
+    if (canSeeDeleted) {
+      filters.push({
+        id: 'show-deleted',
+        label: 'Show deleted',
+        checked: showDeleted,
+        onCheckedChange: setShowDeleted,
+      });
+    }
+    return filters;
+  }, [showCompleted, showDeleted, canSeeDeleted]);
+
   if (loading) {
     return (
       <div className="min-w-0 space-y-4">
@@ -728,6 +766,7 @@ export const EventTable: React.FC = () => {
           count={0}
           singularLabel="entry"
           pluralLabel="entries"
+          filters={eventTableFilters}
         />
         <TableScrollContainer ref={tableScrollRef}>
           <div className="flex flex-col items-center justify-center gap-3 py-12">
@@ -750,7 +789,7 @@ export const EventTable: React.FC = () => {
           onRetry={() => {
             setLoading(true);
             setError(null);
-            fetchActivities()
+            fetchActivities(activityFilters)
               .then((activitiesData) => {
                 setActivities(activitiesData);
                 return fetchUsers();
@@ -776,6 +815,7 @@ export const EventTable: React.FC = () => {
           count={0}
           singularLabel="entry"
           pluralLabel="entries"
+          filters={eventTableFilters}
         />
         <TableScrollContainer ref={tableScrollRef}>
           <div className="py-12 text-center text-sm text-slate-600">
@@ -797,6 +837,7 @@ export const EventTable: React.FC = () => {
         count={data.length}
         singularLabel="entry"
         pluralLabel="entries"
+        filters={eventTableFilters}
       />
       <TableScrollContainer ref={tableScrollRef}>
         <table

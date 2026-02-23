@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, ne, or, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -43,7 +43,10 @@ import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type { DataScope } from '../../policy/dto/user-context.dto';
+import type {
+  DataScope,
+  RequestContext as RequestContextType,
+} from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -503,22 +506,79 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
-   * @param _dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
+   * @param ctx - Request context (user + dataScope). Used to enforce includeDeleted only for Admin/System Admin.
    */
   async findAll(
     filters?: FilterActivitiesQueryParams,
-    _dataScope?: DataScope
+    ctx?: RequestContextType
   ): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
-    // Get deleted status ID to exclude deleted activities by default
+    // Resolve status IDs for default exclusions
     const [deletedStatus] = await this.databaseService.db
       .select({ id: activityStatuses.id })
       .from(activityStatuses)
       .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
+    const [completedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(
+        eq(activityStatuses.name, 'completed' satisfies ActivityStatusName)
+      )
+      .limit(1);
 
     const deletedStatusId = deletedStatus?.id;
+    const completedStatusId = completedStatus?.id;
+
+    // #region agent log
+    const totalInDb = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities);
+    const completedOrDeletedConditions: SQL[] = [];
+    if (completedStatusId !== undefined)
+      completedOrDeletedConditions.push(
+        eq(activities.activityStatusId, completedStatusId)
+      );
+    if (deletedStatusId !== undefined)
+      completedOrDeletedConditions.push(
+        eq(activities.activityStatusId, deletedStatusId)
+      );
+    const withCompletedOrDeleted =
+      completedOrDeletedConditions.length > 0
+        ? await this.databaseService.db
+            .select({ id: activities.id })
+            .from(activities)
+            .where(or(...completedOrDeletedConditions))
+        : [];
+    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'caffe0',
+      },
+      body: JSON.stringify({
+        sessionId: 'caffe0',
+        location: 'activities.service.ts:findAll',
+        message: 'Status filter setup',
+        data: {
+          excludeCompleted: filters?.excludeCompleted,
+          includeDeleted: filters?.includeDeleted,
+          deletedStatusId,
+          completedStatusId,
+          totalActivitiesInDb: totalInDb.length,
+          countWithCompletedOrDeleted: withCompletedOrDeleted.length,
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'H5',
+      }),
+    }).catch(() => {});
+    // #endregion
+
+    const allowIncludeDeleted =
+      filters?.includeDeleted === true &&
+      (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
+        ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
 
     if (filters) {
       const conditions: SQL[] = [];
@@ -529,9 +589,16 @@ export class ActivitiesService {
         conditions.push(
           eq(activities.activityStatusId, filters.activityStatusId)
         );
-      } else if (deletedStatusId !== undefined) {
-        // Exclude deleted activities by default if activityStatusId is not specified
-        conditions.push(ne(activities.activityStatusId, deletedStatusId));
+      } else {
+        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
+          conditions.push(ne(activities.activityStatusId, deletedStatusId));
+        }
+        if (
+          filters.excludeCompleted === true &&
+          completedStatusId !== undefined
+        ) {
+          conditions.push(ne(activities.activityStatusId, completedStatusId));
+        }
       }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
@@ -564,12 +631,26 @@ export class ActivitiesService {
           .from(activities)
           .where(and(...conditions));
       } else {
-        // If no conditions but deletedStatusId exists, still exclude deleted
-        if (deletedStatusId !== undefined) {
+        // No other conditions: apply default status exclusions
+        const statusConditions: SQL[] = [];
+        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
+          statusConditions.push(
+            ne(activities.activityStatusId, deletedStatusId)
+          );
+        }
+        if (
+          filters.excludeCompleted === true &&
+          completedStatusId !== undefined
+        ) {
+          statusConditions.push(
+            ne(activities.activityStatusId, completedStatusId)
+          );
+        }
+        if (statusConditions.length > 0) {
           activityResults = await this.databaseService.db
             .select()
             .from(activities)
-            .where(ne(activities.activityStatusId, deletedStatusId));
+            .where(and(...statusConditions));
         } else {
           activityResults = await this.databaseService.db
             .select()
@@ -577,7 +658,7 @@ export class ActivitiesService {
         }
       }
     } else {
-      // No filters: exclude deleted activities by default
+      // No filters: exclude deleted only (other callers e.g. calendar may want completed)
       if (deletedStatusId !== undefined) {
         activityResults = await this.databaseService.db
           .select()
@@ -589,6 +670,24 @@ export class ActivitiesService {
           .from(activities);
       }
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'caffe0',
+      },
+      body: JSON.stringify({
+        sessionId: 'caffe0',
+        location: 'activities.service.ts:findAll',
+        message: 'After DB query, before city filter',
+        data: { activityCountAfterDb: activityResults.length },
+        timestamp: Date.now(),
+        hypothesisId: 'H4',
+      }),
+    }).catch(() => {});
+    // #endregion
 
     // Handle city filter with proper join if needed
     if (filters && filters.city !== undefined) {
@@ -607,18 +706,60 @@ export class ActivitiesService {
 
     // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
     // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
-    if (_dataScope && !_dataScope.bypass && _dataScope.teamIds.length > 0) {
+    const dataScope = ctx?.dataScope;
+    // #region agent log
+    const countBeforeScope = activityResults.length;
+    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'caffe0',
+      },
+      body: JSON.stringify({
+        sessionId: 'caffe0',
+        location: 'activities.service.ts:findAll',
+        message: 'Before data-scope filter',
+        data: {
+          countBeforeScope,
+          hasDataScope: !!dataScope,
+          bypass: dataScope?.bypass,
+          teamIdsLength: dataScope?.teamIds?.length ?? -1,
+          teamIds: dataScope?.teamIds,
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'H3',
+      }),
+    }).catch(() => {});
+    // #endregion
+    if (dataScope && !dataScope.bypass && dataScope.teamIds.length > 0) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
-        _dataScope.teamIds
+        dataScope.teamIds
       );
       activityResults = activityResults.filter((a) => visibleIds.has(a.id));
     } else if (
-      _dataScope &&
-      !_dataScope.bypass &&
-      _dataScope.teamIds.length === 0
+      dataScope &&
+      !dataScope.bypass &&
+      dataScope.teamIds.length === 0
     ) {
       activityResults = [];
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'caffe0',
+      },
+      body: JSON.stringify({
+        sessionId: 'caffe0',
+        location: 'activities.service.ts:findAll',
+        message: 'After data-scope filter',
+        data: { countAfterScope: activityResults.length },
+        timestamp: Date.now(),
+        hypothesisId: 'H3',
+      }),
+    }).catch(() => {});
+    // #endregion
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);

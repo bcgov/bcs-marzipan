@@ -119,10 +119,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        undefined,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined, {});
     });
 
     it('should return filtered activities', async () => {
@@ -139,10 +136,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        filters,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters, {});
     });
   });
 

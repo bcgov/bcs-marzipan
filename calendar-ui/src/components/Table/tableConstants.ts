@@ -29,3 +29,13 @@ export const tableBodyRow = 'border-b border-slate-100 hover:bg-slate-50/50';
 
 /** Body cell */
 export const tableTd = 'px-4 py-3';
+
+/** EventTable (Calendar Entries) column widths in pixels. Update here to change all at once. */
+export const EVENT_TABLE_COLUMN_WIDTHS = {
+  overview: 300,
+  summary: 300,
+  scheduling: 280,
+  leads: 180,
+  materials: 200,
+  status: 150,
+} as const;
