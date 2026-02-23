@@ -1618,7 +1618,7 @@ export class ActivitiesService {
     id: number,
     userId: number,
     note: string | undefined,
-    context?: { roleName: string }
+    _context?: { roleName: string }
   ): Promise<ActivityResponse> {
     const [existing] = await this.databaseService.db
       .select()

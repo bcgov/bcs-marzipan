@@ -261,7 +261,7 @@ export function ActivityEditPage(): React.ReactElement {
     }
   };
 
-  const handleHardDelete = async (reason: string) => {
+  const handleHardDelete = async (_reason: string) => {
     setIsDeleteSubmitting(true);
     try {
       await deleteActivity(id);
@@ -392,10 +392,7 @@ export function ActivityEditPage(): React.ReactElement {
                     </PopoverContent>
                   </Popover>
                 ) : (
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || readOnly}
-                  >
+                  <Button type="submit" disabled={isSubmitting || readOnly}>
                     {isSubmitting ? 'Updating...' : 'Update'}
                   </Button>
                 )}

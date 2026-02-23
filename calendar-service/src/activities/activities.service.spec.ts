@@ -599,12 +599,12 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
       mockDatabaseService.db.transaction = vi.fn();
-      let withObjCallCount = 0;
+      let _withObjCallCount = 0;
       mockDatabaseService.db.select = vi.fn((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
-        withObjCallCount++;
+        _withObjCallCount++;
         return {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),

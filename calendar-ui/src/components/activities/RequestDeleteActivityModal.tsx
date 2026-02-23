@@ -32,7 +32,8 @@ export function RequestDeleteActivityModal({
   const [touched, setTouched] = useState(false);
 
   const trimmed = reason.trim();
-  const valid = trimmed.length >= MIN_REASON_LENGTH && trimmed.length <= MAX_REASON_LENGTH;
+  const valid =
+    trimmed.length >= MIN_REASON_LENGTH && trimmed.length <= MAX_REASON_LENGTH;
   const showError = touched && !valid && trimmed.length > 0;
 
   const handleConfirm = () => {

@@ -13,7 +13,7 @@ describe('ActivityHistoryService', () => {
     limit: ReturnType<typeof vi.fn>;
   };
 
-  const createMockQueryChain = (finalValue: unknown) => {
+  const _createMockQueryChain = (finalValue: unknown) => {
     const chain = {
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
