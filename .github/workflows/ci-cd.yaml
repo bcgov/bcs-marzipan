@@ -21,9 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        # 2026-02-23: updated to npm install from npm ci to fix build errors
-        # run: npm ci
-        run: npm install
+        run: npm ci
 
       - name: Check formatting
         run: npm run format:check
