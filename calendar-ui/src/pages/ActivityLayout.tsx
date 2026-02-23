@@ -1,5 +1,5 @@
 import { Outlet, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 
@@ -17,6 +17,8 @@ const logger = createLogger('ActivityLayout');
 
 export type ActivityLayoutContext = {
   activity: ActivityResponse;
+  /** Refetch activity (e.g. after restore). */
+  refreshActivity: () => Promise<void>;
 };
 
 export function ActivityLayout(): React.ReactElement {
@@ -24,6 +26,13 @@ export function ActivityLayout(): React.ReactElement {
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshActivity = useCallback(async () => {
+    if (!id) return;
+    const data = await fetchActivity(Number(id));
+    setActivity(data);
+    setError(null);
+  }, [id]);
 
   useEffect(() => {
     if (!id) {
@@ -85,5 +94,5 @@ export function ActivityLayout(): React.ReactElement {
     );
   }
 
-  return <Outlet context={{ activity }} />;
+  return <Outlet context={{ activity, refreshActivity }} />;
 }

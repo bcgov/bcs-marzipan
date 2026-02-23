@@ -42,12 +42,17 @@ export class LocksService {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
 
-    const existing = await this.databaseService.db.query.editLocks.findFirst({
-      where: and(
-        eq(editLocks.entityType, entityType),
-        eq(editLocks.entityId, entityId)
-      ),
-    });
+    let existing: EditLockRow | undefined;
+    try {
+      existing = await this.databaseService.db.query.editLocks.findFirst({
+        where: and(
+          eq(editLocks.entityType, entityType),
+          eq(editLocks.entityId, entityId)
+        ),
+      });
+    } catch (err: unknown) {
+      throw err;
+    }
 
     if (existing) {
       const expiresAtDate =
@@ -119,13 +124,18 @@ export class LocksService {
     entityId: number
   ): Promise<LockForEntity | null> {
     const now = new Date();
-    const row = await this.databaseService.db.query.editLocks.findFirst({
-      where: and(
-        eq(editLocks.entityType, entityType),
-        eq(editLocks.entityId, entityId),
-        gt(editLocks.expiresAt, now)
-      ),
-    });
+    let row: EditLockRow | undefined;
+    try {
+      row = await this.databaseService.db.query.editLocks.findFirst({
+        where: and(
+          eq(editLocks.entityType, entityType),
+          eq(editLocks.entityId, entityId),
+          gt(editLocks.expiresAt, now)
+        ),
+      });
+    } catch (err: unknown) {
+      throw err;
+    }
     return (row ?? null) as LockForEntity | null;
   }
 

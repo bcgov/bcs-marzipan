@@ -8,6 +8,7 @@ import {
   type StatusLookupMap,
 } from '../../lib/activity-history-format';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -26,8 +27,10 @@ interface EditActivityConfirmModalProps {
   onOpenChange: (open: boolean) => void;
   changes: HistoryChange[];
   dateStatuses?: Array<{ id: string | number; label: string }>;
-  onConfirm: (notes?: string) => void;
+  onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
+  /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
+  showMarkAsReviewed?: boolean;
 }
 
 export function EditActivityConfirmModal({
@@ -37,8 +40,10 @@ export function EditActivityConfirmModal({
   dateStatuses,
   onConfirm,
   isSubmitting,
+  showMarkAsReviewed = false,
 }: EditActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
+  const [markAsReviewed, setMarkAsReviewed] = useState(true);
   const [showAllChanges, setShowAllChanges] = useState(false);
 
   const dateStatusMap: StatusLookupMap = useMemo(() => {
@@ -57,12 +62,16 @@ export function EditActivityConfirmModal({
   const hiddenCount = changes.length - INITIAL_VISIBLE_CHANGES;
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm(
+      notes.trim() || undefined,
+      showMarkAsReviewed ? markAsReviewed : undefined
+    );
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setNotes('');
+      setMarkAsReviewed(true);
       setShowAllChanges(false);
     }
     onOpenChange(value);
@@ -128,6 +137,24 @@ export function EditActivityConfirmModal({
                   Show less
                 </button>
               )}
+            </div>
+          )}
+
+          {showMarkAsReviewed && (
+            <div className="mt-4 flex items-center space-x-2">
+              <Checkbox
+                id="edit-confirm-mark-reviewed"
+                checked={markAsReviewed}
+                onCheckedChange={(checked) =>
+                  setMarkAsReviewed(checked === true)
+                }
+              />
+              <Label
+                htmlFor="edit-confirm-mark-reviewed"
+                className="cursor-pointer text-sm font-normal"
+              >
+                Mark as reviewed
+              </Label>
             </div>
           )}
 

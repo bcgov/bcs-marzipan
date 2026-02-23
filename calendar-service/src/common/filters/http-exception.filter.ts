@@ -134,20 +134,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
         };
       }
 
-      // Handle other Error instances
+      // Handle other Error instances (e.g. wrapped DB errors with no code on outer error)
+      const err = exception as Error & { cause?: Error };
+      let detail: string;
+      if (process.env.NODE_ENV === 'production') {
+        detail = 'An unexpected error occurred';
+      } else {
+        detail = err.cause?.message ?? err.message;
+      }
       return {
         type: 'https://api.example.com/errors/internal-server-error',
         title: 'Internal Server Error',
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        detail:
-          process.env.NODE_ENV === 'production'
-            ? 'An unexpected error occurred'
-            : exception.message,
+        detail,
         instance: path,
         correlationId,
         ...(process.env.NODE_ENV !== 'production' && {
-          // Include stack trace in development only
-          stack: exception.stack,
+          stack: exception instanceof Error ? exception.stack : undefined,
         }),
         timestamp: new Date().toISOString(),
       };

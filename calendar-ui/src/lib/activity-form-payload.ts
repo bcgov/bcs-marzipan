@@ -6,16 +6,23 @@ function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   return arr;
 }
 
+export type CreatePayloadOptions = {
+  markAsReviewed?: boolean;
+};
+
 /**
  * Builds the request payload for creating an activity from form values.
+ * Backend sets activityStatusId from markAsReviewed + role; do not send activityStatusId.
  */
 export function buildPayloadForCreate(
   data: ActivityFormData,
-  formValues: ActivityFormData
+  formValues: ActivityFormData,
+  options?: CreatePayloadOptions
 ): Record<string, unknown> {
-  return {
-    ...data,
-    activityStatusId: data.activityStatusId,
+  const { markAsReviewed } = options ?? {};
+  const { activityStatusId: _omit, ...rest } = data;
+  const payload: Record<string, unknown> = {
+    ...rest,
     startDate: data.startDate ?? null,
     endDate: data.endDate ?? null,
     startTime: data.startTime ?? null,
@@ -29,20 +36,31 @@ export function buildPayloadForCreate(
     representatives: toUndefinedIfEmpty(formValues.representatives),
     sharedWithTeamIds: toUndefinedIfEmpty(formValues.sharedWithTeamIds),
   };
+  if (markAsReviewed !== undefined) {
+    payload.markAsReviewed = markAsReviewed;
+  }
+  return payload;
 }
+
+export type UpdatePayloadOptions = {
+  markAsReviewed?: boolean;
+};
 
 /**
  * Builds the request payload for updating an activity from form values.
  * Includes commsContacts (from commsContactLeadId) and normalized reportSettings.
+ * Backend computes activityStatusId from markAsReviewed + role; do not send activityStatusId.
  */
 export function buildPayloadForUpdate(
   data: ActivityFormData,
-  formValues: ActivityFormData
+  formValues: ActivityFormData,
+  options?: UpdatePayloadOptions
 ): Record<string, unknown> {
   const normalizedReportSettings = normalizeReportSettings(
     formValues.reportSettings
   );
-  return {
+  const { markAsReviewed } = options ?? {};
+  const payload: Record<string, unknown> = {
     ...buildPayloadForCreate(data, formValues),
     commsContacts: formValues.commsContactLeadId
       ? [
@@ -54,4 +72,8 @@ export function buildPayloadForUpdate(
       : undefined,
     reportSettings: normalizedReportSettings,
   };
+  if (markAsReviewed !== undefined) {
+    payload.markAsReviewed = markAsReviewed;
+  }
+  return payload;
 }

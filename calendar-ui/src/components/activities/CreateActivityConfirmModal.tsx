@@ -5,6 +5,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import type { FormLookupData } from '../../hooks/useFormLookups';
 import { getHistoryFieldLabel } from '../../lib/activity-history-format';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -23,8 +24,10 @@ interface CreateActivityConfirmModalProps {
   lookups: FormLookupData;
   dateStatuses?: Array<{ id: number; name: string; label?: string }>;
   timeStatuses?: Array<{ id: number; name: string; label?: string }>;
-  onConfirm: (notes?: string) => void;
+  onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
+  /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
+  showMarkAsReviewed?: boolean;
 }
 
 const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
@@ -177,19 +180,25 @@ export function CreateActivityConfirmModal({
   timeStatuses,
   onConfirm,
   isSubmitting,
+  showMarkAsReviewed = false,
 }: CreateActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
+  const [markAsReviewed, setMarkAsReviewed] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   const fieldsToShow = showAll ? ALL_DISPLAY_FIELDS : PRIMARY_FIELDS;
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm(
+      notes.trim() || undefined,
+      showMarkAsReviewed ? markAsReviewed : undefined
+    );
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setNotes('');
+      setMarkAsReviewed(true);
       setShowAll(false);
     }
     onOpenChange(value);
@@ -249,6 +258,24 @@ export function CreateActivityConfirmModal({
             >
               Show less
             </button>
+          )}
+
+          {showMarkAsReviewed && (
+            <div className="mt-4 flex items-center space-x-2">
+              <Checkbox
+                id="create-confirm-mark-reviewed"
+                checked={markAsReviewed}
+                onCheckedChange={(checked) =>
+                  setMarkAsReviewed(checked === true)
+                }
+              />
+              <Label
+                htmlFor="create-confirm-mark-reviewed"
+                className="cursor-pointer text-sm font-normal"
+              >
+                Mark as reviewed
+              </Label>
+            </div>
           )}
 
           <div className="mt-4 space-y-2">

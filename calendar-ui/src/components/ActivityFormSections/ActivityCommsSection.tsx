@@ -35,23 +35,16 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: Array<{ value: string; label: string }>;
-  activityStatusOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
   readOnly?: boolean;
 };
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
-  activityStatusOptions,
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
 
-  // Move useMultiSelect hooks into the component
   const [selectedCommsMaterials, toggleCommsMaterial] = useMultiSelect<
     ActivityFormData,
     'commsMaterialIds',
@@ -60,45 +53,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   const [commsMaterialsOpen, setCommsMaterialsOpen] = useState(false);
 
-  // activityStatusOptions is now received as a prop
   return (
     <ActivityFormSection
       title={getActivityFormSectionLabel('comms')}
       variant="top"
     >
-      {/* Activity Status Input */}
-      <FormField
-        control={form.control}
-        name="activityStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Activity Status <span className="text-destructive">*</span>
-            </FormLabel>
-            <Select
-              disabled={readOnly}
-              onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
-              }
-              value={field.value != null ? String(field.value) : ''}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {activityStatusOptions.map((option) => (
-                  <SelectItem key={option.id} value={String(option.id)}>
-                    {option.displayName || option.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
       <FormField
         control={form.control}
         name="commsContactLeadId"

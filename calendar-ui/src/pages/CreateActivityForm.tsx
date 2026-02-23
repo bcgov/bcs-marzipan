@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared/auth';
+import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import {
   createActivityRequestSchema,
@@ -67,13 +67,16 @@ export const CreateActivityForm: FC = () => {
   );
   const draftCheckedRef = useRef(false);
 
-  // Check permissions and auth state (userId is used internally by useAutoSave)
   const {
     hasPermission,
     isLoading: isAuthLoading,
     isAuthenticated,
+    user,
   } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const isAdminOrSysAdmin =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -247,12 +250,17 @@ export const CreateActivityForm: FC = () => {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmedSubmit = async (notes?: string) => {
+  const handleConfirmedSubmit = async (
+    notes?: string,
+    markAsReviewed?: boolean
+  ) => {
     if (!validatedData) return;
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
-      const submitData = buildPayloadForCreate(validatedData, formValues);
+      const submitData = buildPayloadForCreate(validatedData, formValues, {
+        markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
+      });
       const payload = {
         ...submitData,
         ...(notes ? { activityHistoryNotes: notes } : {}),
@@ -276,7 +284,7 @@ export const CreateActivityForm: FC = () => {
       window.close();
     } catch (error) {
       logger.error('Failed to create activity', error);
-      showErrorToast(error);
+      showErrorToast(error, 'Your activity could not be created.');
       // User remains on the form so they can correct and retry; do not close/navigate
     } finally {
       setIsSubmitting(false);
@@ -287,6 +295,18 @@ export const CreateActivityForm: FC = () => {
 
   const onError = () => {
     logger.error('Form validation failed');
+    const missing = getMissingRequiredFields(
+      form.formState,
+      getActivityFieldLabel
+    );
+    const detail =
+      missing.length > 0
+        ? `Required fields missing: ${missing.join(', ')}`
+        : 'Please fix the validation errors and try again.';
+    toast.error('Submission failed', {
+      description: detail,
+      duration: 6000,
+    });
   };
 
   const isFormValid = form.formState.isValid;
@@ -444,7 +464,10 @@ export const CreateActivityForm: FC = () => {
         lookups={lookups}
         dateStatuses={dateStatuses}
         timeStatuses={timeStatuses}
-        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        onConfirm={(notes, markAsReviewed) =>
+          void handleConfirmedSubmit(notes, markAsReviewed)
+        }
+        showMarkAsReviewed={isAdminOrSysAdmin}
         isSubmitting={isSubmitting}
       />
     </ErrorBoundary>

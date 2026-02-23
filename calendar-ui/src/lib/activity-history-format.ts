@@ -129,7 +129,7 @@ export function formatHistoryFieldValue(
  * activityHistoryNotes is edit metadata (the "reason for change" note),
  * not a user-editable data field.
  */
-type ExcludedFromCompare = 'activityHistoryNotes';
+type ExcludedFromCompare = 'activityHistoryNotes' | 'markAsReviewed';
 
 const FIELDS_TO_COMPARE = [
   'title',

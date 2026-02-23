@@ -1,35 +1,69 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 
+import { restoreActivity } from '../api/activitiesApi';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { ActivityPageHeader } from '../components/ActivityPageHeader';
+import { ActivityStatusBanner } from '../components/ActivityStatusBanner';
 import { Form } from '../components/ui/form';
 import { useAuth } from '../hooks/useAuth';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { activityToFormData } from '../lib/activity-form-mapper';
+import { showErrorToast } from '../lib/error-toast';
+import { createLogger } from '../lib/logger';
 import type { ActivityLayoutContext } from './ActivityLayout';
+
+const logger = createLogger('ActivityViewPage');
 
 /**
  * View-only activity page. Clicking/focusing any field navigates to edit (replace) so back goes to list.
  */
 export function ActivityViewPage(): React.ReactElement {
-  const { activity } = useOutletContext<ActivityLayoutContext>();
+  const { activity, refreshActivity } =
+    useOutletContext<ActivityLayoutContext>();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canEdit = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
   const lookups = useFormLookups();
   const hasNavigatedRef = useRef(false);
   const readyRef = useRef(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const isAdminOrSysAdmin =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const isCommsContact =
+    activity.commsContacts?.some((c) => c.userId === user?.id) ?? false;
+  const activityStatusName = activity.activityStatus ?? '';
+  const isBlockedStatus =
+    activityStatusName === 'delete_requested' ||
+    activityStatusName === 'deleted';
+  const canRestore = isCommsContact || isAdminOrSysAdmin;
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    try {
+      await restoreActivity(activity.id);
+      await refreshActivity();
+      toast.success('Activity restored');
+    } catch (err) {
+      logger.error('Failed to restore activity', err);
+      showErrorToast(err);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -74,6 +108,14 @@ export function ActivityViewPage(): React.ReactElement {
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={undefined}
       />
+      {isBlockedStatus && (
+        <ActivityStatusBanner
+          status={activityStatusName}
+          canRestore={canRestore}
+          onRestore={handleRestore}
+          isRestoring={isRestoring}
+        />
+      )}
       <FormProvider {...form}>
         <Form {...form}>
           <form

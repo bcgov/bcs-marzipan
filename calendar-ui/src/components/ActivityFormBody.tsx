@@ -48,7 +48,6 @@ export function ActivityFormBody({
           <ActivityCommsSection
             commsMaterialOptions={lookups.commsMaterials}
             commsLeadOptions={commsLeadOptions}
-            activityStatusOptions={lookups.activityStatuses}
             readOnly={readOnly}
           />
 
