@@ -1,21 +1,31 @@
-import { Badge, makeStyles, Spinner } from '@fluentui/react-components';
-import {
-  Calendar24Regular,
-  Clock24Regular,
-  LocationRegular,
-} from '@fluentui/react-icons';
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
+  type Column,
+  type ColumnPinningState,
 } from '@tanstack/react-table';
-import { Languages, NotebookText } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  Languages,
+  Loader2,
+  MapPin,
+  NotebookText,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import type {
   ActivityResponse,
@@ -26,54 +36,47 @@ import { fetchActivities } from '../api/activitiesApi';
 import { fetchUsers } from '../api/lookupsApi';
 import { ErrorState } from '../components/ErrorState';
 import { createLogger } from '../lib/logger';
+import {
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from './Table/tableConstants';
+import { TablePagination } from './Table/TablePagination';
+import { TableScrollContainer } from './Table/TableScrollContainer';
+import { TableSummaryBar } from './Table/TableSummaryBar';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { Badge } from './ui/badge';
 
-const useStyles = makeStyles({
-  container: {
-    width: '100%',
-  },
-  table: {
-    borderCollapse: 'collapse',
-    width: '100%',
-  },
-  headerCell: {
-    padding: '12px',
-    fontWeight: '600',
-    fontSize: '14px',
-    borderBottom: '1px solid #e0e0e0',
-    backgroundColor: '#f5f5f5',
-    textAlign: 'left',
-  },
-  bodyRow: {
-    borderBottom: '1px solid #e0e0e0',
-    '&:hover': {
-      backgroundColor: '#fafafa',
-    },
-  },
-  bodyCell: {
-    padding: '12px',
-    fontSize: '14px',
-  },
-  overviewCell: {
-    minWidth: '200px',
-  },
-  summaryCell: {
-    minWidth: '300px',
-    maxWidth: '350px',
-  },
-  scheduleCell: {
-    minWidth: '250px',
-  },
-  staticCell: {
-    minWidth: '150px',
-  },
-  expandableCell: {
-    minWidth: '200px',
-  },
-  statusCell: {
-    minWidth: '120px',
-  },
-});
+const DEFAULT_PAGE_SIZE = 10;
+
+/** Sticky column pinning styles for th/td (see TanStack Table column pinning sticky example) */
+function getCommonPinningStyles<T>(
+  column: Column<T, unknown>
+): React.CSSProperties {
+  const isPinned = column.getIsPinned();
+  const isLastLeftPinnedColumn =
+    isPinned === 'left' && column.getIsLastColumn('left');
+  const isFirstRightPinnedColumn =
+    isPinned === 'right' && column.getIsFirstColumn('right');
+
+  return {
+    boxShadow: isLastLeftPinnedColumn
+      ? '4px 0 4px -4px rgba(0,0,0,0.1)'
+      : isFirstRightPinnedColumn
+        ? '-4px 0 4px -4px rgba(0,0,0,0.1)'
+        : undefined,
+    left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
+    opacity: isPinned ? 0.95 : 1,
+    position: (isPinned
+      ? 'sticky'
+      : 'relative') as React.CSSProperties['position'],
+    zIndex: isPinned ? 1 : 0,
+    backgroundColor: isPinned ? 'var(--sticky-bg, #fff)' : undefined,
+  };
+}
 
 type Report = {
   id: string;
@@ -252,7 +255,7 @@ const SummaryCell = ({
     }
   }, [summary]);
 
-  if (!summary) return <div style={{ color: '#999' }}>—</div>;
+  if (!summary) return <div className="text-slate-400">—</div>;
 
   return (
     <div>
@@ -271,41 +274,20 @@ const SummaryCell = ({
       </div>
       {needsTruncation && (
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#0078d4',
-            cursor: 'pointer',
-            padding: '4px 0',
-            marginTop: '4px',
-            fontSize: '13px',
-            fontWeight: '400',
-          }}
+          className="text-primary mt-1 cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal"
         >
           {expanded ? 'show less' : 'show more'}
         </button>
       )}
       {tags && tags.length > 0 && (
-        <div
-          style={{
-            marginTop: '8px',
-            display: 'flex',
-            gap: '4px',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div className="mt-2 flex flex-wrap gap-1">
           {tags.map((tag) => (
             <Badge
               key={tag.id}
-              appearance="outline"
-              style={{
-                color: '#616161',
-                whiteSpace: 'normal',
-                height: 'auto',
-                minHeight: '20px',
-                fontSize: '12px',
-              }}
+              variant="outline"
+              className="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
             >
               {tag.text}
             </Badge>
@@ -342,44 +324,23 @@ const ScheduleCell = ({
     date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
-    <div style={{ fontSize: '13px' }}>
-      <div
-        style={{
-          marginBottom: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-        }}
-      >
-        <Calendar24Regular style={{ fontSize: '16px' }} />
+    <div className="text-[13px]">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
         <span>
           {formatDate(startDate)}
           {endDate ? ` – ${formatDate(endDate)}` : ''}
         </span>
         <Badge
-          appearance="outline"
-          style={{
-            fontSize: '11px',
-            padding: '2px 6px',
-            height: '20px',
-            color: '#616161',
-            borderColor: '#d1d1d1',
-            whiteSpace: 'nowrap',
-          }}
+          variant="outline"
+          className="h-5 border-slate-200 text-xs text-slate-600"
         >
           {dateConfirmed ? 'Confirmed' : 'Not confirmed'}
         </Badge>
       </div>
       {(startTime || timeConfirmed !== undefined) && (
-        <div
-          style={{
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <Clock24Regular style={{ fontSize: '16px' }} />
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <Clock className="h-4 w-4 shrink-0 text-slate-500" />
           <span>
             {startTime && (
               <>
@@ -390,55 +351,24 @@ const ScheduleCell = ({
             {!startTime && '--:-- – --:--'}
           </span>
           <Badge
-            appearance="outline"
-            style={{
-              fontSize: '11px',
-              padding: '2px 6px',
-              height: '20px',
-              color: '#616161',
-              borderColor: '#d1d1d1',
-              whiteSpace: 'nowrap',
-            }}
+            variant="outline"
+            className="h-5 border-slate-200 text-xs text-slate-600"
           >
             {timeConfirmed ? 'Confirmed' : 'Not confirmed'}
           </Badge>
         </div>
       )}
       {location && (
-        <div
-          style={{
-            marginBottom: '6px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '4px',
-            fontSize: '12px',
-            color: '#666',
-          }}
-        >
-          <LocationRegular
-            style={{ fontSize: '16px', marginTop: '2px', flexShrink: 0 }}
-          />
+        <div className="mb-1.5 flex items-start gap-1 text-xs text-slate-600">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{location}</span>
         </div>
       )}
-      <div
-        style={{
-          marginTop: '8px',
-          display: 'flex',
-          gap: '6px',
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {premierStatus && premierStatus !== 'No' && (
           <Badge
-            appearance="outline"
-            style={{
-              whiteSpace: 'normal',
-              height: 'auto',
-              minHeight: '20px',
-              fontSize: '12px',
-              color: '#616161',
-            }}
+            variant="outline"
+            className="h-auto min-h-5 text-xs text-slate-600"
           >
             Premier Eby: {premierStatus}
           </Badge>
@@ -446,27 +376,15 @@ const ScheduleCell = ({
         {representatives && representatives.length > 0 && (
           <>
             <Badge
-              appearance="outline"
-              style={{
-                whiteSpace: 'normal',
-                height: 'auto',
-                minHeight: '20px',
-                fontSize: '12px',
-                color: '#616161',
-              }}
+              variant="outline"
+              className="h-auto min-h-5 text-xs text-slate-600"
             >
               {representatives[0]}
             </Badge>
             {representatives.length > 1 && (
               <Badge
-                appearance="outline"
-                style={{
-                  whiteSpace: 'normal',
-                  height: 'auto',
-                  minHeight: '20px',
-                  fontSize: '12px',
-                  color: '#616161',
-                }}
+                variant="outline"
+                className="h-auto min-h-5 text-xs text-slate-600"
               >
                 +{representatives.length - 1} other
                 {representatives.length - 1 !== 1 ? 's' : ''}
@@ -479,23 +397,53 @@ const ScheduleCell = ({
   );
 };
 
-const statusColor = {
-  New: 'informative',
-  Reviewed: 'success',
-  Changed: 'warning',
-  Deleted: 'danger',
-} as const;
+const statusVariant = {
+  New: 'info' as const,
+  Reviewed: 'success' as const,
+  Changed: 'warning' as const,
+  Deleted: 'destructive' as const,
+};
 
 const logger = createLogger('EventTable');
 
 export const EventTable: React.FC = () => {
-  const styles = useStyles();
   const navigate = useNavigate();
+  const tableScrollRef = useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+    left: ['id'],
+  });
   const [activities, setActivities] = useState<ActivityResponse[]>([]);
   const [users, setUsers] = useState<UserLookupItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const onPaginationChangeStable = useCallback(
+    (
+      updaterOrValue:
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
+    ) => {
+      setPagination((prev) => {
+        const next =
+          typeof updaterOrValue === 'function'
+            ? updaterOrValue(prev)
+            : updaterOrValue;
+        if (
+          next.pageIndex === prev.pageIndex &&
+          next.pageSize === prev.pageSize
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const loadData = async () => {
@@ -566,14 +514,8 @@ export const EventTable: React.FC = () => {
             {row.original.categories.map((cat, idx) => (
               <Badge
                 key={idx}
-                appearance="filled"
-                style={{
-                  whiteSpace: 'normal',
-                  height: 'auto',
-                  minHeight: '20px',
-                  marginRight: '4px',
-                  marginBottom: '4px',
-                }}
+                variant="secondary"
+                className="mr-1 mb-1 h-auto min-h-5 whitespace-normal"
               >
                 {cat.name}
                 {cat.isApproved && ' ✓'}
@@ -629,7 +571,7 @@ export const EventTable: React.FC = () => {
                   </div>
                 </div>
               );
-            }) || <span style={{ color: '#999' }}>—</span>}
+            }) || <span className="text-slate-400">—</span>}
           </div>
         ),
       }),
@@ -646,7 +588,7 @@ export const EventTable: React.FC = () => {
             row.original.translationsRequired.length > 0;
 
           if (!hasMaterials && !hasTranslations) {
-            return <span style={{ color: '#999' }}>—</span>;
+            return <span className="text-slate-400">—</span>;
           }
 
           return (
@@ -714,11 +656,7 @@ export const EventTable: React.FC = () => {
 
           return (
             <div>
-              <Badge
-                appearance="filled"
-                color={statusColor[row.original.status]}
-                shape="circular"
-              >
+              <Badge variant={statusVariant[row.original.status]}>
                 {row.original.status}
               </Badge>
               <div
@@ -764,11 +702,20 @@ export const EventTable: React.FC = () => {
     columns,
     state: {
       sorting,
+      pagination,
+      columnPinning,
     },
     onSortingChange: setSorting,
+    onPaginationChange: onPaginationChangeStable,
+    onColumnPinningChange: (updater) =>
+      setColumnPinning((prev) =>
+        typeof updater === 'function' ? updater(prev) : updater
+      ),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetPageIndex: true,
     meta: {
       userMap,
     },
@@ -776,8 +723,20 @@ export const EventTable: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <Spinner label="Loading activities..." />
+      <div className="min-w-0 space-y-4">
+        <TableSummaryBar
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+        />
+        <TableScrollContainer ref={tableScrollRef}>
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <span className="text-sm text-slate-600">
+              Loading activities...
+            </span>
+          </div>
+        </TableScrollContainer>
       </div>
     );
   }
@@ -810,71 +769,126 @@ export const EventTable: React.FC = () => {
     );
   }
 
-  // TODO: placeholder for no activities found UI
-  if (data.length === 0)
+  if (data.length === 0) {
     return (
-      <div
-        style={{
-          padding: '40px',
-          textAlign: 'center',
-          color: '#666',
-          fontSize: '14px',
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: '8px' }}>
-          No activities found
-        </div>
-        <div>Create a new entry or adjust filters to see activities here.</div>
+      <div className="min-w-0 space-y-4">
+        <TableSummaryBar
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+        />
+        <TableScrollContainer ref={tableScrollRef}>
+          <div className="py-12 text-center text-sm text-slate-600">
+            <div className="mb-2 font-semibold">No activities found</div>
+            <div>
+              Create a new entry or adjust filters to see activities here.
+            </div>
+          </div>
+        </TableScrollContainer>
       </div>
     );
+  }
+
+  const pageRows = table.getRowModel().rows;
 
   return (
-    <div className={styles.container}>
-      <table className={styles.table}>
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className={styles.headerCell}
-                  style={{
-                    width: header.getSize(),
-                    cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                  }}
-                  onClick={
-                    header.column.getCanSort()
-                      ? header.column.getToggleSortingHandler()
-                      : undefined
-                  }
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
+    <div className="min-w-0 space-y-4">
+      <TableSummaryBar
+        count={data.length}
+        singularLabel="entry"
+        pluralLabel="entries"
+      />
+      <TableScrollContainer ref={tableScrollRef}>
+        <table
+          className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+          role="grid"
+          aria-colcount={columns.length}
+        >
+          <thead className={tableThead}>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const pinStyles = getCommonPinningStyles(header.column);
+                  return (
+                    <th
+                      key={header.id}
+                      className={tableTh}
+                      style={{
+                        width: header.getSize(),
+                        minWidth: header.getSize(),
+                        maxWidth: header.getSize(),
+                        cursor: header.column.getCanSort()
+                          ? 'pointer'
+                          : 'default',
+                        ...pinStyles,
+                        ...(pinStyles.position === 'sticky'
+                          ? { backgroundColor: 'rgb(248 250 252)' }
+                          : {}),
+                      }}
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {pageRows.map((row) => (
+              <tr key={row.id} className={`${tableBodyRow} bg-white`}>
+                {row.getVisibleCells().map((cell) => {
+                  const pinStyles = getCommonPinningStyles(cell.column);
+                  const isSticky = pinStyles.position === 'sticky';
+                  return (
+                    <td
+                      key={cell.id}
+                      className={`${tableTd} text-sm text-slate-600`}
+                      style={{
+                        width: cell.column.getSize(),
+                        minWidth: cell.column.getSize(),
+                        maxWidth: cell.column.getSize(),
+                        ...pinStyles,
+                        ...(isSticky ? { backgroundColor: 'white' } : {}),
+                      }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
                       )}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className={styles.bodyRow}>
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className={styles.bodyCell}
-                  style={{ width: cell.column.columnDef.size }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScrollContainer>
+      {data.length > 0 && (
+        <TablePagination
+          totalItems={data.length}
+          page={pagination.pageIndex + 1}
+          pageSize={pagination.pageSize}
+          onPageChange={(p) => {
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }));
+            tableScrollRef.current?.scrollTo({ top: 0 });
+          }}
+          onPageSizeChange={(ps) => {
+            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }));
+            tableScrollRef.current?.scrollTo({ top: 0 });
+          }}
+          aria-label="Calendar entries table pagination"
+        />
+      )}
     </div>
   );
 };

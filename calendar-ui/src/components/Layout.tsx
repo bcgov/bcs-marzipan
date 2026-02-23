@@ -10,7 +10,7 @@ export const Layout = () => {
   return (
     <Sidebar>
       <Header />
-      <SidebarInset className="overflow-auto">
+      <SidebarInset className="min-w-0 overflow-auto">
         <Suspense
           fallback={
             <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
