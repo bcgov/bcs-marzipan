@@ -51,36 +51,45 @@ export function Users() {
       id: number;
       body: Parameters<typeof updateUser>[1];
     }) => updateUser(id, body),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User updated');
+      toast.success('User updated', { id: `user-updated-${variables.id}` });
       setEditUser(null);
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Update failed');
+    onError: (err: Error, variables) => {
+      toast.error(err.message || 'Update failed', {
+        id: variables ? `user-updated-${variables.id}` : undefined,
+      });
     },
   });
 
   const removeTeamMutation = useMutation({
     mutationFn: ({ userId, teamId }: { userId: number; teamId: number }) =>
       removeUserFromTeam(userId, teamId),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User removed from team');
+      toast.success('User removed from team', {
+        id: `user-removed-from-team-${variables.userId}-${variables.teamId}`,
+      });
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Remove from team failed');
+    onError: (err: Error, variables) => {
+      toast.error(err.message || 'Remove from team failed', {
+        id: `user-removed-from-team-${variables.userId}-${variables.teamId}`,
+      });
     },
   });
 
   const deactivateTeamMutation = useMutation({
     mutationFn: (teamId: number) => updateTeam(teamId, { isActive: false }),
-    onSuccess: () => {
+    onSuccess: (_data, teamId) => {
       void queryClient.invalidateQueries({ queryKey: ['teams'] });
-      toast.success('Team deactivated');
+      toast.success('Team deactivated', { id: `team-deactivated-${teamId}` });
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Deactivate failed');
+    onError: (err: Error, teamId) => {
+      toast.error(err.message || 'Deactivate failed', {
+        id:
+          typeof teamId === 'number' ? `team-deactivated-${teamId}` : undefined,
+      });
     },
   });
 

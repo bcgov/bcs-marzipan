@@ -98,6 +98,115 @@ export class ActivitiesService {
   }
 
   /**
+   * Normalize venue address data by trimming whitespace and converting empty strings to null.
+   * This prevents false change detection due to whitespace differences.
+   *
+   * @param venue - Venue address data to normalize
+   * @returns Normalized venue address with trimmed strings and empty strings as null
+   */
+  private normalizeVenueAddress(
+    venue: Record<string, unknown> | null | undefined
+  ): Record<string, unknown> | null {
+    if (!venue) {
+      return null;
+    }
+
+    return {
+      venueName:
+        typeof venue.venueName === 'string'
+          ? venue.venueName.trim() || null
+          : (venue.venueName ?? null),
+      street:
+        typeof venue.street === 'string'
+          ? venue.street.trim() || null
+          : (venue.street ?? null),
+      city:
+        typeof venue.city === 'string'
+          ? venue.city.trim() || null
+          : (venue.city ?? null),
+      provinceOrState:
+        typeof venue.provinceOrState === 'string'
+          ? venue.provinceOrState.trim() || null
+          : (venue.provinceOrState ?? null),
+      country:
+        typeof venue.country === 'string'
+          ? venue.country.trim() || null
+          : (venue.country ?? null),
+    };
+  }
+
+  /**
+   * Normalize representatives array by filtering valid entries and sorting consistently.
+   * For comparison purposes, we normalize based on the unique identifier:
+   * - If representativeId is present, we use that (ignore representativeName for lookup entries)
+   * - If only representativeName is present, we use that (freeform entry)
+   * This prevents false change detection from representativeName lookups.
+   *
+   * @param reps - Array of representatives to normalize
+   * @returns Normalized array with sorted, canonical representatives for comparison
+   */
+  private normalizeRepresentatives(
+    reps:
+      | Array<{
+          representativeId?: number | null;
+          representativeName?: string | null;
+        }>
+      | undefined
+  ): Array<{
+    representativeId: number | null;
+    representativeName: string | null;
+  }> | null {
+    if (!reps || !Array.isArray(reps) || reps.length === 0) {
+      return null;
+    }
+
+    // Filter to only valid entries (must have at least one identifier)
+    const validReps = reps
+      .filter(
+        (r) =>
+          (typeof r.representativeId === 'number' && r.representativeId > 0) ||
+          (typeof r.representativeName === 'string' &&
+            r.representativeName.trim().length > 0)
+      )
+      .map((r) => {
+        const repId =
+          typeof r.representativeId === 'number' && r.representativeId > 0
+            ? r.representativeId
+            : null;
+        const repName =
+          typeof r.representativeName === 'string'
+            ? r.representativeName.trim() || null
+            : null;
+
+        // For comparison: if we have a representativeId (lookup table entry),
+        // set representativeName to null so that looked-up names don't cause false change detection.
+        // Only keep representativeName for freeform entries (where representativeId is null).
+        return {
+          representativeId: repId,
+          representativeName: repId ? null : repName,
+        };
+      });
+
+    if (validReps.length === 0) {
+      return null;
+    }
+
+    // Sort for consistent comparison: by representativeId first, then by name
+    validReps.sort((a, b) => {
+      if (a.representativeId && b.representativeId) {
+        return a.representativeId - b.representativeId;
+      }
+      if (a.representativeId) return -1;
+      if (b.representativeId) return 1;
+      return (a.representativeName || '').localeCompare(
+        b.representativeName || ''
+      );
+    });
+
+    return validReps;
+  }
+
+  /**
    * Create a new activity with related junction table records
    */
   async create(
@@ -195,11 +304,16 @@ export class ActivitiesService {
 
       // Insert venue address if provided
       if (venueAddress) {
-        await this.junctionService.insertVenueAddress(
-          tx,
-          activityId,
-          venueAddress
+        const normalizedVenue = this.normalizeVenueAddress(
+          venueAddress as Record<string, unknown>
         );
+        if (normalizedVenue) {
+          await this.junctionService.insertVenueAddress(
+            tx,
+            activityId,
+            normalizedVenue as any
+          );
+        }
       }
 
       // Insert junction table records in parallel
@@ -688,6 +802,12 @@ export class ActivitiesService {
       ...activityUpdateData
     } = dto;
 
+    // Normalize venue address to prevent false change detection from whitespace differences
+    const normalizedVenueAddress =
+      venueAddress !== undefined
+        ? this.normalizeVenueAddress(venueAddress as Record<string, unknown>)
+        : undefined;
+
     const updateData: Partial<Activity> = {
       ...(activityUpdateData as Partial<Activity>),
       lastUpdatedDateTime: new Date(),
@@ -711,7 +831,12 @@ export class ActivitiesService {
         isLead: activityCommsContacts.isLead,
       })
       .from(activityCommsContacts)
-      .where(eq(activityCommsContacts.activityId, id));
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, id),
+          eq(activityCommsContacts.isActive, true)
+        )
+      );
 
     const existingRepresentatives = await this.databaseService.db
       .select({
@@ -719,7 +844,12 @@ export class ActivitiesService {
         representativeName: activityRepresentatives.representativeName,
       })
       .from(activityRepresentatives)
-      .where(eq(activityRepresentatives.activityId, id));
+      .where(
+        and(
+          eq(activityRepresentatives.activityId, id),
+          eq(activityRepresentatives.isActive, true)
+        )
+      );
 
     const existingReportSettings = await this.databaseService.db
       .select({
@@ -771,8 +901,12 @@ export class ActivitiesService {
       }
 
       // Handle venue address update
-      if (venueAddress !== undefined) {
-        await this.junctionService.upsertVenueAddress(tx, id, venueAddress);
+      if (normalizedVenueAddress !== undefined) {
+        await this.junctionService.upsertVenueAddress(
+          tx,
+          id,
+          normalizedVenueAddress as any
+        );
       }
 
       // Handle junction table updates if provided
@@ -973,14 +1107,16 @@ export class ActivitiesService {
 
     // Add junction table changes to the same history entry
     // Only add if the values have actually changed (using deep equality)
+    // Normalize existing venue address for comparison
+    const normalizedExistingVenue = this.normalizeVenueAddress(existingVenue);
     if (
-      venueAddress !== undefined &&
-      !this.isDeepEqual(existingVenue, venueAddress)
+      normalizedVenueAddress !== undefined &&
+      !this.isDeepEqual(normalizedExistingVenue, normalizedVenueAddress)
     ) {
       allChanges.push({
         field: 'venueAddress',
-        oldValue: existingVenue ?? null,
-        newValue: venueAddress,
+        oldValue: normalizedExistingVenue ?? null,
+        newValue: normalizedVenueAddress ?? null,
       });
     }
 
@@ -997,12 +1133,15 @@ export class ActivitiesService {
 
     if (
       representatives !== undefined &&
-      !this.isDeepEqual(existingRepresentatives, representatives)
+      !this.isDeepEqual(
+        this.normalizeRepresentatives(existingRepresentatives),
+        this.normalizeRepresentatives(representatives)
+      )
     ) {
       allChanges.push({
         field: 'representatives',
-        oldValue: existingRepresentatives,
-        newValue: representatives,
+        oldValue: this.normalizeRepresentatives(existingRepresentatives),
+        newValue: this.normalizeRepresentatives(representatives),
       });
     }
 

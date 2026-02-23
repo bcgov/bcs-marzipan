@@ -3,6 +3,7 @@ import { History } from 'lucide-react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useForm, type Resolver } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import React, { useEffect, useState } from 'react';
 
 import {
@@ -32,6 +33,7 @@ import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useFormLookups, type FormLookupData } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
+import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import {
   ERROR_DETAILS_LABEL,
   LOAD_ACTIVITY_NO_ID,
@@ -288,6 +290,14 @@ export function EditActivityForm(): React.ReactElement {
       };
 
       await updateActivity(Number(id), submitData);
+      toast.success(
+        'Activity updated',
+        getActivityUpdatedToastOptions({
+          id,
+          title: data.title ?? '',
+          displayId: loadedActivity?.displayId ?? undefined,
+        })
+      );
       // Navigate back to the entries list view
       void navigate('/');
     } catch (err) {
@@ -501,19 +511,25 @@ export function EditActivityForm(): React.ReactElement {
                       tags={lookups.tags}
                     />
 
-                    <ActivityCommsSection
-                      commsMaterialOptions={lookups.commsMaterials}
-                      commsLeadOptions={lookups.users}
-                      activityStatusOptions={lookups.activityStatuses}
-                    />
+                    <div>
+                      <ActivityCommsSection
+                        commsMaterialOptions={lookups.commsMaterials}
+                        commsLeadOptions={lookups.users}
+                        activityStatusOptions={lookups.activityStatuses}
+                      />
 
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
+                      <div className="my-6 border-t border-gray-300"></div>
+
+                      <ActivityNewsReleaseSection
+                        translationLanguageOptions={
+                          lookups.translationLanguages
+                        }
+                        newsReleaseDistributionOptions={
+                          lookups.newsReleaseDistributions
+                        }
+                        newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-6">

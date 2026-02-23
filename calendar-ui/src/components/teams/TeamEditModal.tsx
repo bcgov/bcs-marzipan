@@ -11,6 +11,7 @@ import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -85,12 +86,14 @@ export function TeamEditModal({
     mutationFn: createTeam,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['teams'] });
-      toast.success('Team created');
+      toast.success('Team created', { id: 'team-created' });
       onSaved();
       onClose();
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create team');
+      toast.error(err.message || 'Failed to create team', {
+        id: 'team-created',
+      });
     },
   });
 
@@ -102,14 +105,16 @@ export function TeamEditModal({
       id: number;
       body: Parameters<typeof updateTeam>[1];
     }) => updateTeam(id, body),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['teams'] });
-      toast.success('Team updated');
+      toast.success('Team updated', { id: `team-updated-${variables.id}` });
       onSaved();
       onClose();
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to update team');
+    onError: (err: Error, variables) => {
+      toast.error(err.message || 'Failed to update team', {
+        id: variables ? `team-updated-${variables.id}` : undefined,
+      });
     },
   });
 
@@ -117,7 +122,7 @@ export function TeamEditModal({
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toast.error('Name is required');
+      toast.error('Name is required', { id: 'team-edit-validation-name' });
       return;
     }
     if (isCreate) {
@@ -156,6 +161,11 @@ export function TeamEditModal({
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isCreate ? 'Create team' : 'Edit team'}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {isCreate
+              ? 'Enter details to create a new team.'
+              : 'Edit team name, display name, description, and settings.'}
+          </DialogDescription>
         </DialogHeader>
         {isLoading ? (
           <div className="flex justify-center py-8">

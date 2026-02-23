@@ -10,7 +10,6 @@ import {
   Put,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -82,9 +81,9 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.create')
   @Post()
-  @UsePipes(new ZodValidationPipe(createActivityRequestSchema))
   async create(
-    @Body() body: CreateActivityRequest,
+    @Body(new ZodValidationPipe(createActivityRequestSchema))
+    body: CreateActivityRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     this.logger.debug(

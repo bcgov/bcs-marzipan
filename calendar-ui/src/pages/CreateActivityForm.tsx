@@ -487,21 +487,26 @@ export const CreateActivityForm: FC = () => {
                     tags={lookups.tags}
                   />
 
-                  {/* Comms Section */}
-                  <ActivityCommsSection
-                    commsMaterialOptions={lookups.commsMaterials}
-                    commsLeadOptions={commsLeadOptions}
-                    activityStatusOptions={lookups.activityStatuses}
-                  />
+                  {/* Comms and News Release Sections */}
+                  <div>
+                    {/* Comms Section */}
+                    <ActivityCommsSection
+                      commsMaterialOptions={lookups.commsMaterials}
+                      commsLeadOptions={commsLeadOptions}
+                      activityStatusOptions={lookups.activityStatuses}
+                    />
 
-                  {/* News Release Section */}
-                  <ActivityNewsReleaseSection
-                    translationLanguageOptions={lookups.translationLanguages}
-                    newsReleaseDistributionOptions={
-                      lookups.newsReleaseDistributions
-                    }
-                    newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                  />
+                    <div className="my-6 border-t border-gray-300"></div>
+
+                    {/* News Release Section */}
+                    <ActivityNewsReleaseSection
+                      translationLanguageOptions={lookups.translationLanguages}
+                      newsReleaseDistributionOptions={
+                        lookups.newsReleaseDistributions
+                      }
+                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                    />
+                  </div>
                 </div>
 
                 {/* Right Column */}

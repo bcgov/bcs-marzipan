@@ -1,34 +1,25 @@
 import { Outlet } from 'react-router-dom';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 
 import Header from './Header/Header';
 import { Sidebar } from './Sidebar';
+import { SidebarInset } from './ui/sidebar';
 
 export const Layout = () => {
-  const [isOpen, setIsOpen] = useState(true);
-
   return (
-    <div>
+    <Sidebar>
       <Header />
-      <div style={{ display: 'flex' }}>
-        <Sidebar isOpen={isOpen} onToggle={() => setIsOpen((v) => !v)} />
-        <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-          }}
+      <SidebarInset className="overflow-auto">
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
+              Loading…
+            </div>
+          }
         >
-          <Suspense
-            fallback={
-              <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
-                Loading…
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
-        </main>
-      </div>
-    </div>
+          <Outlet />
+        </Suspense>
+      </SidebarInset>
+    </Sidebar>
   );
 };
