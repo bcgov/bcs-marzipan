@@ -10,6 +10,7 @@ import {
   createMockUpdateRequest,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { LocksService } from '../locks/locks.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
@@ -163,6 +164,13 @@ describe('ActivitiesService', () => {
     validateCategoryIds: vi.fn().mockResolvedValue(undefined),
   };
 
+  // Mock locks service (added when ActivitiesService started using LocksService)
+  const mockLocksService = {
+    getLockForEntity: vi.fn().mockResolvedValue(null),
+    releaseLock: vi.fn().mockResolvedValue(undefined),
+    tryAcquireLock: vi.fn().mockResolvedValue({}),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -191,6 +199,10 @@ describe('ActivitiesService', () => {
         {
           provide: ActivityUtilsService,
           useValue: mockUtilsService,
+        },
+        {
+          provide: LocksService,
+          useValue: mockLocksService,
         },
       ],
     }).compile();
