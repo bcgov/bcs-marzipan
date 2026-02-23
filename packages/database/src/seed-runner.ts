@@ -31,6 +31,7 @@ export interface SeedableDatabase {
  * - Escaped single quotes ('') in SQL strings
  * - Line comments (--)
  * - Block comments (including PostgreSQL-style nested comments)
+ * - Dollar-quoted strings ($$ ... $$) so DO blocks and other PL/pgSQL are not split
  *
  * @param sqlContent - The SQL content to parse
  * @returns Array of SQL statements (trimmed, non-empty)
@@ -39,6 +40,7 @@ export function parseSqlStatements(sqlContent: string): string[] {
   const statements: string[] = [];
   let currentStatement = '';
   let inString = false;
+  let inDollarQuote = false;
   let inLineComment = false;
   let blockCommentDepth = 0;
   let i = 0;
@@ -47,8 +49,16 @@ export function parseSqlStatements(sqlContent: string): string[] {
     const char = sqlContent[i];
     const nextChar = sqlContent[i + 1];
 
-    // Handle block comments (can nest, but not inside strings or line comments)
-    if (!inString && !inLineComment) {
+    // Handle dollar-quoted strings ($$ ... $$) - do not split on semicolons inside
+    if (!inString && char === '$' && nextChar === '$') {
+      inDollarQuote = !inDollarQuote;
+      currentStatement += '$$';
+      i += 2;
+      continue;
+    }
+
+    // Handle block comments (can nest, but not inside strings, dollar quotes, or line comments)
+    if (!inString && !inDollarQuote && !inLineComment) {
       if (char === '/' && nextChar === '*') {
         blockCommentDepth++;
         i += 2;
@@ -67,8 +77,8 @@ export function parseSqlStatements(sqlContent: string): string[] {
       continue;
     }
 
-    // Handle line comments (not inside strings)
-    if (!inString && char === '-' && nextChar === '-') {
+    // Handle line comments (not inside strings or dollar quotes)
+    if (!inString && !inDollarQuote && char === '-' && nextChar === '-') {
       inLineComment = true;
       i += 2;
       continue;
@@ -84,8 +94,8 @@ export function parseSqlStatements(sqlContent: string): string[] {
       continue;
     }
 
-    // Handle string literals (single quotes in SQL)
-    if (char === "'") {
+    // Handle string literals (single quotes in SQL) - not inside dollar quotes
+    if (!inDollarQuote && char === "'") {
       if (inString) {
         // Check for escaped quote ('')
         if (nextChar === "'") {
@@ -106,8 +116,8 @@ export function parseSqlStatements(sqlContent: string): string[] {
       continue;
     }
 
-    // Handle statement terminator (semicolon)
-    if (char === ';' && !inString) {
+    // Handle statement terminator (semicolon) - not inside string or dollar quote
+    if (char === ';' && !inString && !inDollarQuote) {
       // End of statement
       const trimmed = currentStatement.trim();
       if (trimmed.length > 0) {

@@ -47,8 +47,9 @@ ON CONFLICT (id) DO NOTHING;
 --   1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold
 -- ============================================================================
 
+-- Upsert by id so we always enforce canonical (id, name) even when rows already exist (e.g. re-seed or prior migration).
 INSERT INTO activity_statuses (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-SELECT * FROM (VALUES
+VALUES
   (1, 'new', 'New', 1, true, 'Newly created entry', 1, 1),
   (2, 'reviewed', 'Reviewed', 2, true, 'Entry has been reviewed', 1, 1),
   (3, 'changed', 'Changed', 3, true, 'Entry has been changed', 1, 1),
@@ -56,8 +57,14 @@ SELECT * FROM (VALUES
   (5, 'delete_requested', 'Delete requested', 5, true, 'Delete has been requested by comms contact', 1, 1),
   (6, 'completed', 'Completed', 6, true, 'Activity has ended (set by scheduler)', 1, 1),
   (7, 'on_hold', 'On hold', 7, true, 'Activity is on hold (deferred)', 1, 1)
-) AS v(id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-WHERE NOT EXISTS (SELECT 1 FROM activity_statuses WHERE activity_statuses.name = v.name);
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  description = EXCLUDED.description,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
 
 -- Safeguard: fail if (id, name) pairs are out of sync with the canonical mapping above.
 DO $$
