@@ -11,9 +11,13 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { UserSwitcher } from '../UserSwitcher';
+import { SidebarTrigger } from '../ui/sidebar';
+import { MOCK_USERS } from '../UserSwitcher';
 
 /**
  * Get initials from display name
@@ -29,7 +33,7 @@ function getInitials(name: string): string {
 
 const Header = () => {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, login, isAuthenticated } = useAuth();
 
   const handleLogout = () => {
     void logout().then(() => {
@@ -38,17 +42,18 @@ const Header = () => {
   };
 
   return (
-    <header className="box-border flex h-14 w-full items-center border-b-2 border-[#f4f4f4] px-20 py-2">
-      <Link to="/">
-        <img src={logo} alt="Logo" className="mr-4 h-10" />
+    <header className="bg-background box-border flex h-14 w-full shrink-0 items-center border-b-2 border-[#f4f4f4] px-4 py-2 md:px-20">
+      <Link to="/" className="shrink-0">
+        <img
+          src={logo}
+          alt="Logo"
+          className="mr-4 h-8 w-auto object-contain sm:h-9 md:h-10"
+        />
       </Link>
 
       <div className="ml-auto flex items-center gap-4">
         {isAuthenticated && user && (
           <>
-            {/* Dev mode user switcher */}
-            <UserSwitcher />
-
             <Button variant="ghost" size="icon" className="text-slate-600">
               <Bell className="h-5 w-5" />
               <span className="sr-only">Notifications</span>
@@ -80,11 +85,35 @@ const Header = () => {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {import.meta.env.DEV && (
+                  <>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Switch user
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-56">
+                        {MOCK_USERS.map((mockUser) => (
+                          <DropdownMenuItem
+                            key={mockUser.username}
+                            className="cursor-pointer"
+                            onClick={() => void login(mockUser.username, 'dev')}
+                          >
+                            <div className="flex flex-col space-y-0.5">
+                              <p className="text-sm font-medium">
+                                {mockUser.displayName}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {mockUser.role}
+                              </p>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   className="cursor-pointer text-red-600 focus:text-red-600"
                   onClick={handleLogout}
@@ -96,6 +125,7 @@ const Header = () => {
             </DropdownMenu>
           </>
         )}
+        <SidebarTrigger className="md:hidden" />
       </div>
     </header>
   );

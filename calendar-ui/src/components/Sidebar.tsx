@@ -1,209 +1,286 @@
 import {
-  DrawerProps,
-  Hamburger,
-  makeStyles,
-  NavCategory,
-  NavCategoryItem,
-  NavDrawer,
-  NavDrawerBody,
-  NavDrawerHeader,
-  NavItem,
-  NavSectionHeader,
-  NavSubItem,
-  NavSubItemGroup,
-  tokens,
-  Tooltip,
-  useRestoreFocusTarget,
-} from '@fluentui/react-components';
+  CalendarDays,
+  History,
+  NotebookText,
+  PanelLeft,
+  PanelLeftDashed,
+  SlidersHorizontal,
+  Users,
+} from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import {
-  Board20Filled,
-  Board20Regular,
-  bundleIcon,
-  Calendar20Filled,
-  Calendar20Regular,
-  HeartPulse20Filled,
-  HeartPulse20Regular,
-  NotePin20Filled,
-  NotePin20Regular,
-  PersonLightbulb20Filled,
-  PersonLightbulb20Regular,
-  PersonSearch20Filled,
-  PersonSearch20Regular,
-  Settings20Filled,
-  Settings20Regular,
-} from '@fluentui/react-icons';
-import { useLocation } from 'react-router-dom';
-import * as React from 'react';
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 
 import { useAuth } from '../hooks/useAuth';
+import { Badge } from './ui/badge';
+import {
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  Sidebar as SidebarPrimitive,
+  SidebarProvider,
+  SidebarSeparator,
+  useSidebar,
+} from './ui/sidebar';
 
-const useStyles = makeStyles({
-  root: {
-    overflow: 'visible',
-    display: 'flex',
-    height: '100vh',
-    position: 'relative',
-    zIndex: 2000,
-  },
-  nav: {
-    minWidth: '260px',
-    position: 'relative',
-    zIndex: 2000,
-  },
-  content: {
-    flex: '1',
-    padding: '2px',
-    display: 'grid',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  field: {
-    display: 'flex',
-    marginTop: '4px',
-    marginLeft: '8px',
-    flexDirection: 'column',
-    gridRowGap: tokens.spacingVerticalS,
-  },
-});
+const SIDEBAR_PINNED_KEY = 'sidebar_pinned';
 
-const Settings = bundleIcon(Settings20Filled, Settings20Regular);
-const Dashboard = bundleIcon(Board20Filled, Board20Regular);
-const Calendar = bundleIcon(Calendar20Filled, Calendar20Regular);
-// const Announcements = bundleIcon(MegaphoneLoud20Filled, MegaphoneLoud20Regular);
-const EmployeeSpotlight = bundleIcon(
-  PersonLightbulb20Filled,
-  PersonLightbulb20Regular
-);
-const Search = bundleIcon(PersonSearch20Filled, PersonSearch20Regular);
-// const PerformanceReviews = bundleIcon(
-//   PreviewLink20Filled,
-//   PreviewLink20Regular
-// );
-const JobPostings = bundleIcon(NotePin20Filled, NotePin20Regular);
-const HealthPlans = bundleIcon(HeartPulse20Filled, HeartPulse20Regular);
+type NavItem = { to: string; label: string; icon: typeof CalendarDays };
 
-type DrawerType = Required<DrawerProps>['type'];
+function getInitialPinned(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const stored = localStorage.getItem(SIDEBAR_PINNED_KEY);
+    return stored === 'true';
+  } catch {
+    return false;
+  }
+}
 
-type SidebarProps = {
-  isOpen: boolean;
-  onToggle: () => void;
-};
-
-export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
-  const styles = useStyles();
-  const [enabledLinks] = React.useState(true);
-  const [type] = React.useState<DrawerType>('inline');
-  const [isMultiple] = React.useState(true);
+function AppSidebarContent() {
   const location = useLocation();
   const { hasPermission } = useAuth();
+  const { setOpenMobile, isMobile } = useSidebar();
 
-  // Check if user has permission to view settings (admin-level access)
-  const canManageSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
+  const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+  const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW);
+  const canViewSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
 
-  // Tabster prop used to restore focus to the navigation trigger for overlay nav drawers
-  const restoreFocusTargetAttributes = useRestoreFocusTarget();
+  const closeMobileSidebar = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [isMobile, setOpenMobile]);
 
-  const linkDestination = enabledLinks ? 'https://www.bing.com' : '';
+  const mainNavItems = [
+    { to: '/', label: 'Activities', icon: CalendarDays },
+    ...(canViewReports
+      ? [{ to: '/reports/look-ahead', label: 'Reports', icon: NotebookText }]
+      : []),
+    { to: '/global-history', label: 'History', icon: History },
+  ];
 
-  // Map paths to NavItem values
-  const pathToValue: Record<string, string> = {
-    '/dashboard': '1',
-    '/': '2',
-    '/drafts': '3',
-    '/pitch': '4',
-    '/reports/look-ahead': '7',
-    // Add more mappings as needed
+  const belowSeparatorItems: NavItem[] = [
+    ...(canViewUsers ? [{ to: '/users', label: 'Users', icon: Users }] : []),
+    ...(canViewSettings
+      ? [{ to: '/settings', label: 'Admin', icon: SlidersHorizontal }]
+      : []),
+  ];
+
+  const renderNavItem = ({ to, label, icon: Icon }: NavItem) => {
+    const isActive =
+      to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+    return (
+      <SidebarMenuItem key={to}>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={label}
+          aria-label={label}
+        >
+          <Link to={to} onClick={closeMobileSidebar}>
+            <Icon className="size-6 shrink-0" />
+            <span>{label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
   };
 
-  const selectedValue = pathToValue[location.pathname] || '2';
+  return (
+    <>
+      {/* <SidebarHeader className="border-sidebar-border border-b" /> */}
+      <SidebarContent className="pt-2">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {mainNavItems.map(renderNavItem)}
+              {belowSeparatorItems.length > 0 && (
+                <>
+                  <li aria-hidden className="-mx-2 list-none">
+                    <SidebarSeparator className="mx-0 my-2 w-full" />
+                  </li>
+                  {belowSeparatorItems.map(renderNavItem)}
+                </>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-sidebar-border border-t">
+        <SidebarMenu>
+          <SidebarPinButton />
+        </SidebarMenu>
+      </SidebarFooter>
+    </>
+  );
+}
+
+function SidebarPinButton() {
+  const { pinned, setPinned, setOpen, isMobile } = useSidebar();
+
+  const handleClick = useCallback(() => {
+    const next = !pinned;
+    setPinned(next);
+    setOpen(next);
+  }, [pinned, setPinned, setOpen]);
+
+  if (isMobile) return null;
+
+  const tooltipLabel = pinned ? 'Unpin sidebar' : 'Pin sidebar open';
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        tooltip={tooltipLabel}
+        aria-label={tooltipLabel}
+      >
+        <button
+          type="button"
+          onClick={handleClick}
+          className="flex items-center gap-2"
+        >
+          {pinned ? (
+            <PanelLeft className="size-6 shrink-0" />
+          ) : (
+            <PanelLeftDashed className="size-6 shrink-0" />
+          )}
+          <span>Sidebar</span>
+          <Badge variant="secondary" className="px-1.5 py-0 font-normal">
+            {pinned ? 'Unpin' : 'Pin'}
+          </Badge>
+        </button>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+const HEADER_HEIGHT = '3.5rem'; // h-14
+
+/**
+ * Desktop: hover over sidebar to expand (icons + labels); collapses when mouse leaves unless pinned.
+ * Sidebar sits below the top nav (out of flow, fixed), full width header above.
+ * Mobile: sheet overlay triggered by SidebarTrigger in header.
+ */
+export function Sidebar({ children }: { children?: ReactNode }) {
+  const [pinned, setPinned] = useState(getInitialPinned);
+  const defaultOpen = pinned;
+
+  const [controlledOpen, setControlledOpen] = useState(defaultOpen);
+
+  const syncPinnedFromStorage = useCallback(() => {
+    const next = getInitialPinned();
+    setPinned(next);
+    setControlledOpen(next);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_PINNED_KEY, String(pinned));
+    } catch {
+      // ignore
+    }
+  }, [pinned]);
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === SIDEBAR_PINNED_KEY && e.newValue !== null) {
+        const next = e.newValue === 'true';
+        setPinned(next);
+        setControlledOpen(next);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    setControlledOpen(open);
+  }, []);
+
+  const handlePinnedChange = useCallback((next: boolean) => {
+    setPinned(next);
+    setControlledOpen(next);
+  }, []);
+
+  const childArray = Array.isArray(children)
+    ? children
+    : children != null
+      ? [children]
+      : [];
+  const header = childArray[0];
+  const main = childArray.slice(1);
 
   return (
-    <div className={styles.root}>
-      <NavDrawer
-        selectedValue={selectedValue}
-        open={isOpen}
-        type={type}
-        multiple={isMultiple}
-        className={styles.nav}
-      >
-        <NavDrawerHeader>
-          <Tooltip content="Close Navigation" relationship="label">
-            <Hamburger onClick={() => onToggle()} />
-          </Tooltip>
-        </NavDrawerHeader>
-
-        <NavDrawerBody>
-          {/* <AppItem
-            icon={<PersonCircle32Regular />}
-            as="a"
-            href={linkDestination}
-          > I kept this in case we want something here with the cool Person Icon -Alex C
-            Marzipan HR
-          </AppItem> */}
-          <NavItem icon={<Dashboard />} as="a" href="/dashboard" value="1">
-            Dashboard
-          </NavItem>
-          <NavItem icon={<Calendar />} as="a" href="/" value="2">
-            Calendar
-          </NavItem>
-          <NavItem as="a" href="/drafts" icon={<EmployeeSpotlight />} value="3">
-            Drafts
-          </NavItem>
-          <NavItem icon={<Search />} as="a" href="/pitch" value="4">
-            Pitch
-          </NavItem>
-          <NavSectionHeader>Reporting</NavSectionHeader>
-          <NavCategory value="6">
-            <NavCategoryItem icon={<JobPostings />}>Reports</NavCategoryItem>
-            <NavSubItemGroup>
-              <NavSubItem href="/reports/look-ahead" value="7">
-                Look Ahead
-              </NavSubItem>
-              <NavSubItem href={linkDestination} value="8">
-                Analytics
-              </NavSubItem>
-              <NavSubItem href={linkDestination} value="9">
-                Submissions
-              </NavSubItem>
-            </NavSubItemGroup>
-          </NavCategory>
-
-          {canManageSettings && (
-            <>
-              <NavSectionHeader>Manage</NavSectionHeader>
-              <NavItem icon={<HealthPlans />} href="/users" value="10">
-                Users
-              </NavItem>
-              <NavCategory value="11">
-                <NavItem icon={<Settings />} href="/settings" value="12">
-                  Settings
-                </NavItem>
-                <NavSubItemGroup>
-                  <NavSubItem href={linkDestination} value="13">
-                    Form Templates
-                  </NavSubItem>
-                  <NavSubItem href={linkDestination} value="14">
-                    Data Retention
-                  </NavSubItem>
-                </NavSubItemGroup>
-              </NavCategory>
-            </>
-          )}
-        </NavDrawerBody>
-      </NavDrawer>
-      <div className={styles.content}>
-        {!isOpen && (
-          <Tooltip content="Toggle navigation pane" relationship="label">
-            <Hamburger
-              onClick={() => onToggle()}
-              {...restoreFocusTargetAttributes}
-              aria-expanded={isOpen}
-            />
-          </Tooltip>
-        )}
+    <SidebarProvider
+      defaultOpen={defaultOpen}
+      open={controlledOpen}
+      onOpenChange={handleOpenChange}
+      pinned={pinned}
+      onPinnedChange={handlePinnedChange}
+      className="h-svh"
+      style={
+        {
+          '--header-height': HEADER_HEIGHT,
+        } as CSSProperties
+      }
+    >
+      {header}
+      <div className="flex min-h-0 flex-1">
+        <SidebarHoverWrapper pinned={pinned} syncPinned={syncPinnedFromStorage}>
+          <SidebarPrimitive collapsible="icon">
+            <AppSidebarContent />
+          </SidebarPrimitive>
+        </SidebarHoverWrapper>
+        {main}
       </div>
+    </SidebarProvider>
+  );
+}
+
+function SidebarHoverWrapper({
+  children,
+  pinned,
+  syncPinned,
+}: {
+  children: React.ReactNode;
+  pinned: boolean;
+  syncPinned: () => void;
+}) {
+  const { setOpen, isMobile } = useSidebar();
+
+  useEffect(() => {
+    syncPinned();
+  }, [syncPinned]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (isMobile) return;
+    setOpen(true);
+  }, [isMobile, setOpen]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isMobile) return;
+    if (!pinned) {
+      setOpen(false);
+    }
+  }, [isMobile, pinned, setOpen]);
+
+  return (
+    <div
+      className="flex h-full"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
     </div>
   );
-};
+}
