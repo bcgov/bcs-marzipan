@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { ActivityStatusName } from '@corpcal/shared/constants/constants';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
@@ -113,24 +112,6 @@ export const CreateActivityForm: FC = () => {
       }
     }
   }, [timeStatuses, form]);
-
-  // Set default activityStatusId to "new" when lookups are loaded
-  useEffect(() => {
-    if (lookups.activityStatuses.length > 0) {
-      const currentValue = form.getValues('activityStatusId');
-      // Only set if not already set (undefined, null, or 0 are considered unset)
-      if (currentValue === undefined || currentValue === null) {
-        const newStatus = lookups.activityStatuses.find(
-          (status) => status.name === ('new' satisfies ActivityStatusName)
-        );
-        if (newStatus) {
-          form.setValue('activityStatusId', newStatus.id, {
-            shouldValidate: true,
-          });
-        }
-      }
-    }
-  }, [lookups.activityStatuses, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
