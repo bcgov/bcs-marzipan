@@ -47,23 +47,21 @@ export function LookAheadReport() {
 
   if (error) {
     return (
-      <div className="p-8">
-        <StatusMessage
-          title="Error loading report"
-          message={
-            error instanceof Error
-              ? error.message
-              : 'Failed to load Look Ahead data'
-          }
-          variant="error"
-        />
-      </div>
+      <StatusMessage
+        title="Error loading report"
+        message={
+          error instanceof Error
+            ? error.message
+            : 'Failed to load Look Ahead data'
+        }
+        variant="error"
+      />
     );
   }
 
   if (isLoading || !data) {
     return (
-      <div className="flex items-center justify-center p-16">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <p className="text-muted-foreground">Loading Look Ahead report...</p>
       </div>
     );
@@ -72,7 +70,7 @@ export function LookAheadReport() {
   const sections = data.sections;
 
   return (
-    <div className="p-8">
+    <>
       <PageHeader
         title="Look Ahead"
         description={data.report?.displayName ?? undefined}
@@ -104,6 +102,6 @@ export function LookAheadReport() {
           </TabsContent>
         ))}
       </Tabs>
-    </div>
+    </>
   );
 }

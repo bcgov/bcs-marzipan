@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 const variants = {
-  default: 'min-w-0 w-full mx-auto max-w-7xl px-6 py-8',
+  default: 'min-w-0 w-full mx-auto max-w-[96rem] px-12 py-8',
   narrow: 'min-w-0 mx-auto max-w-4xl',
 } as const;
 

@@ -3,6 +3,7 @@
  * Use these to keep table layout and styling consistent and avoid drift.
  */
 
+/** Scroll area height for data tables. Used by TableScrollContainer so Users table and EventTable (Calendar Entries) share the same height and behavior. */
 export const TABLE_SCROLL_HEIGHT =
   'max(240px, min(600px, 60vh, 100vh - 400px))';
 

@@ -18,7 +18,7 @@ export const CalendarEntriesList = () => {
   return (
     <>
       <PageHeader
-        title="Calendar Entries"
+        title="Calendar activities"
         description="View and manage calendar activities"
         action={
           <Button
@@ -32,7 +32,7 @@ export const CalendarEntriesList = () => {
             className="bg-(--bcsds-button-primary-background) text-white hover:bg-(--bcsds-button-primary-background)/95"
           >
             <Plus className="h-4 w-4" />
-            New Entry
+            New activity
           </Button>
         }
       />
