@@ -93,11 +93,7 @@ export const ActivityOverviewSection: React.FC<
                   ? 'selected'
                   : 'outline'
               }
-              className={
-                readOnly
-                  ? 'px-4 py-2 text-sm'
-                  : 'cursor-pointer px-4 py-2 text-sm'
-              }
+              className="cursor-pointer px-4 py-2 text-sm"
               onClick={readOnly ? undefined : () => toggleCategory(category.id)}
             >
               {category.displayName || category.name}
@@ -431,11 +427,7 @@ export const ActivityOverviewSection: React.FC<
             <Badge
               key={tag.id}
               variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
-              className={
-                readOnly
-                  ? 'px-4 py-2 text-sm'
-                  : 'cursor-pointer px-4 py-2 text-sm'
-              }
+              className="cursor-pointer px-4 py-2 text-sm"
               onClick={readOnly ? undefined : () => toggleTag(tag.id)}
             >
               {tag.text}

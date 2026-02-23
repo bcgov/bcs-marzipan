@@ -77,6 +77,7 @@ export function ActivityViewPage(): React.ReactElement {
       <FormProvider {...form}>
         <Form {...form}>
           <form
+            className="cursor-pointer"
             onSubmit={(e) => e.preventDefault()}
             onFocus={() => handleEnterEdit()}
             onClick={() => handleEnterEdit()}

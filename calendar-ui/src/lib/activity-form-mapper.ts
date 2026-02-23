@@ -6,6 +6,10 @@ import { mapResponseToFormData } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
 
+function normalizeForMatch(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function buildFormLookups(
   lookups: Pick<
     FormLookupData,
@@ -13,17 +17,30 @@ function buildFormLookups(
   >
 ): Parameters<typeof mapResponseToFormData>[1] {
   return {
-    categoryNameToId: (name: string) =>
-      lookups.categories.find((c) => c.name === name || c.displayName === name)
-        ?.id,
-    commsMaterialNameToId: (name: string) =>
-      lookups.commsMaterials.find(
-        (m) => m.name === name || m.displayName === name
-      )?.id,
-    translationLanguageNameToId: (name: string) =>
-      lookups.translationLanguages.find(
-        (l) => l.name === name || l.displayName === name
-      )?.id,
+    categoryNameToId: (name: string) => {
+      const key = normalizeForMatch(name);
+      return lookups.categories.find(
+        (c) =>
+          normalizeForMatch(c.name) === key ||
+          (c.displayName != null && normalizeForMatch(c.displayName) === key)
+      )?.id;
+    },
+    commsMaterialNameToId: (name: string) => {
+      const key = normalizeForMatch(name);
+      return lookups.commsMaterials.find(
+        (m) =>
+          normalizeForMatch(m.name) === key ||
+          (m.displayName != null && normalizeForMatch(m.displayName) === key)
+      )?.id;
+    },
+    translationLanguageNameToId: (name: string) => {
+      const key = normalizeForMatch(name);
+      return lookups.translationLanguages.find(
+        (l) =>
+          normalizeForMatch(l.name) === key ||
+          (l.displayName != null && normalizeForMatch(l.displayName) === key)
+      )?.id;
+    },
   };
 }
 

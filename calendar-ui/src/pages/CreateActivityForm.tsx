@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useForm, type Resolver } from 'react-hook-form';
+import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
@@ -263,10 +264,20 @@ export const CreateActivityForm: FC = () => {
         deleteDraft();
       }
 
+      toast.success('Activity created', {
+        id: 'activity-created',
+        description: validatedData.title
+          ? `${validatedData.title}`
+          : 'Your activity has been created.',
+        duration: 2500,
+      });
+      // Brief delay so the success toast is visible before the popup closes
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       window.close();
     } catch (error) {
       logger.error('Failed to create activity', error);
       showErrorToast(error);
+      // User remains on the form so they can correct and retry; do not close/navigate
     } finally {
       setIsSubmitting(false);
       setShowConfirmModal(false);
