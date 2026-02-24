@@ -33,10 +33,11 @@ function buildFormLookups(
           (m.displayName != null && normalizeForMatch(m.displayName) === key)
       )?.id;
     },
-    translationLanguageNameToId: (name: string) => {
-      const key = normalizeForMatch(name);
+    translationLanguageNameToId: (value: string) => {
+      const key = normalizeForMatch(value);
       return lookups.translationLanguages.find(
         (l) =>
+          (l.shortcode != null && normalizeForMatch(l.shortcode) === key) ||
           normalizeForMatch(l.name) === key ||
           (l.displayName != null && normalizeForMatch(l.displayName) === key)
       )?.id;

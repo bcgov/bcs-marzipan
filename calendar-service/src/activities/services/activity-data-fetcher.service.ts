@@ -585,7 +585,8 @@ export class ActivityDataFetcherService {
     const results = await this.databaseService.db
       .select({
         activityId: activityTranslationsRequired.activityId,
-        languageDisplayName: translatedLanguages.displayName,
+        shortcode: translatedLanguages.shortcode,
+        displayName: translatedLanguages.displayName,
       })
       .from(activityTranslationsRequired)
       .innerJoin(
@@ -603,7 +604,8 @@ export class ActivityDataFetcherService {
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      if (row.languageDisplayName) existing.push(row.languageDisplayName);
+      const code = row.shortcode ?? row.displayName;
+      if (code) existing.push(code);
       map.set(row.activityId, existing);
     }
     return map;

@@ -14,7 +14,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Premier requested            | `premier_requested.displayName`                            | Scheduling – premier badge         |
 | Pitch required status        | `pitch_required_statuses.displayName`                      | (Overview – pitch label when used) |
 | Translations required status | `translation_required_statuses.displayName`                | Materials – when no language list  |
-| Translations required (list) | `translated_languages.displayName`                         | Materials – language list          |
+| Translations required (list) | `translated_languages.shortcode` (fallback `displayName`)  | Materials – language list          |
 | Comms materials              | `comms_materials.displayName`                              | Materials – materials list         |
 | Lead ministry                | `ministries.displayName`                                   | Leads – lead ministry              |
 | Lead org                     | From lead org lookup / name                                | Leads – lead org                   |
