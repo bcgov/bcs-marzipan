@@ -7,7 +7,9 @@ import type {
   ActivityHistoryEntry,
   HistoryChange,
 } from '@corpcal/shared/api/types';
+import { isDeepEqual } from '@corpcal/shared/utils';
 
+import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
 /**
@@ -18,61 +20,24 @@ export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
-   * Deep equality comparison for any two values
-   * Handles primitives, arrays, and objects recursively
-   */
-  private isDeepEqual(a: unknown, b: unknown): boolean {
-    // Handle null/undefined
-    if (a === null || a === undefined) {
-      return b === null || b === undefined;
-    }
-    if (b === null || b === undefined) {
-      return a === null || a === undefined;
-    }
-
-    // Handle primitives
-    if (typeof a !== 'object' || typeof b !== 'object') {
-      return a === b;
-    }
-
-    // Handle arrays
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) return false;
-      return a.every((val, idx) => this.isDeepEqual(val, b[idx]));
-    }
-
-    // Handle objects
-    if (Array.isArray(a) !== Array.isArray(b)) return false;
-
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-
-    if (keysA.length !== keysB.length) return false;
-
-    return keysA.every((key) =>
-      this.isDeepEqual(
-        (a as Record<string, unknown>)[key],
-        (b as Record<string, unknown>)[key]
-      )
-    );
-  }
-
-  /**
    * Record a change to an activity
    * @param activityId - ID of the activity being changed
    * @param userId - ID of the user making the change
    * @param actionType - Type of action: 'created', 'updated', 'deleted', 'published', 'draft_saved', etc.
    * @param changes - Array of field-level changes (optional)
    * @param notes - Optional notes about the change
+   * @param tx - Optional transaction client; when provided, insert runs inside that transaction
    */
   async recordChange(
     activityId: number,
     userId: number,
     actionType: string,
     changes?: HistoryChange[],
-    notes?: string
+    notes?: string,
+    tx?: Database
   ): Promise<ActivityHistory> {
-    const [historyEntry] = await this.databaseService.db
+    const db = tx ?? this.databaseService.db;
+    const [historyEntry] = await db
       .insert(activityHistory)
       .values({
         activityId,
@@ -137,6 +102,46 @@ export class ActivityHistoryService {
   }
 
   /**
+   * Get the activity status ID that was set immediately before the activity
+   * was marked delete_requested or soft_deleted. Used for restore.
+   * Returns null if no such history entry or no activityStatusId change is found.
+   */
+  async getPreviousStatusIdBeforeDelete(
+    activityId: number
+  ): Promise<number | null> {
+    const [entry] = await this.databaseService.db
+      .select({ changes: activityHistory.changes })
+      .from(activityHistory)
+      .where(
+        and(
+          eq(activityHistory.activityId, activityId),
+          inArray(activityHistory.actionType, [
+            'delete_requested',
+            'soft_deleted',
+          ])
+        )
+      )
+      .orderBy(desc(activityHistory.timestamp))
+      .limit(1);
+
+    if (!entry?.changes || !Array.isArray(entry.changes)) {
+      return null;
+    }
+
+    const statusChange = (entry.changes as HistoryChange[]).find(
+      (c) => c.field === 'activityStatusId'
+    );
+    if (
+      statusChange?.oldValue !== undefined &&
+      statusChange.oldValue !== null &&
+      typeof statusChange.oldValue === 'number'
+    ) {
+      return statusChange.oldValue;
+    }
+    return null;
+  }
+
+  /**
    * Get the most recent published state of an activity
    * Returns the activity state at the time of the last 'published' action
    */
@@ -192,7 +197,7 @@ export class ActivityHistoryService {
       }
 
       // Compare values using deep equality (handles objects and arrays)
-      if (!this.isDeepEqual(oldValue, newValue)) {
+      if (!isDeepEqual(oldValue, newValue)) {
         changes.push({
           field: key,
           oldValue: oldValue ?? null,

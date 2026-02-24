@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { RefObject } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +27,8 @@ export interface TablePaginationProps {
   onPageSizeChange: (pageSize: number) => void;
   /** Options for "results per page" dropdown. Defaults to [10, 25, 50, 100] */
   pageSizeOptions?: readonly number[];
+  /** When provided, scrolls this container to top after page or page-size change */
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
   /** Accessible label for the pagination region */
   'aria-label'?: string;
   className?: string;
@@ -75,6 +78,7 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
+  scrollContainerRef,
   'aria-label': ariaLabel = 'Table pagination',
   className,
 }: TablePaginationProps) {
@@ -84,12 +88,22 @@ export function TablePagination({
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
+  const scrollToTop = () => {
+    scrollContainerRef?.current?.scrollTo({ top: 0 });
+  };
+
   const handlePrev = () => {
-    if (hasPrev) onPageChange(currentPage - 1);
+    if (hasPrev) {
+      onPageChange(currentPage - 1);
+      scrollToTop();
+    }
   };
 
   const handleNext = () => {
-    if (hasNext) onPageChange(currentPage + 1);
+    if (hasNext) {
+      onPageChange(currentPage + 1);
+      scrollToTop();
+    }
   };
 
   return (
@@ -128,7 +142,10 @@ export function TablePagination({
                 key={item}
                 variant="ghost"
                 size="sm"
-                onClick={() => onPageChange(item)}
+                onClick={() => {
+                  onPageChange(item);
+                  scrollToTop();
+                }}
                 aria-label={`Page ${item}`}
                 aria-current={item === currentPage ? 'page' : undefined}
                 className={cn(
@@ -165,7 +182,10 @@ export function TablePagination({
         <span>Show</span>
         <Select
           value={String(pageSize)}
-          onValueChange={(v) => onPageSizeChange(Number(v))}
+          onValueChange={(v) => {
+            onPageSizeChange(Number(v));
+            scrollToTop();
+          }}
         >
           <SelectTrigger className="h-9 w-18" aria-label="Results per page">
             <SelectValue />

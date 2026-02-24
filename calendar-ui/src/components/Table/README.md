@@ -40,23 +40,23 @@ const TABLE_SCROLL_HEIGHT = 'min(480px, 60vh)';
 
 ### 3. Scroll-to-top on explicit page/size changes
 
-When the user changes page or page size, scroll the table body back to the top so they see the new page from the start.
+When the user changes page or page size, scroll the table body back to the top so they see the new page from the start. The preferred approach is to pass the scroll container ref to `TablePagination`; it will scroll that container to top after each page or page-size change.
 
 ```tsx
 const tableScrollRef = useRef<HTMLDivElement>(null);
 
+<TableScrollContainer ref={tableScrollRef}>
+  ...
+</TableScrollContainer>
 <TablePagination
-  onPageChange={(p) => {
-    setPagination((prev) => ({ ...prev, pageIndex: p - 1 }));
-    tableScrollRef.current?.scrollTo({ top: 0 });
-  }}
-  onPageSizeChange={(ps) => {
-    setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }));
-    tableScrollRef.current?.scrollTo({ top: 0 });
-  }}
+  onPageChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+  onPageSizeChange={(ps) => setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }))}
+  scrollContainerRef={tableScrollRef}
   ...
 />
 ```
+
+If you do not pass `scrollContainerRef`, you can still scroll in your `onPageChange` / `onPageSizeChange` callbacks (e.g. `tableScrollRef.current?.scrollTo({ top: 0 })`).
 
 ### 4. Skeleton rows while loading
 
@@ -106,7 +106,7 @@ Set `TABLE_COLUMN_COUNT` to the number of columns and use it for empty-state `co
 1. **Filters** – e.g. `UserManagementFilters` / `TeamManagementFilters`: keyword, dropdowns, sort.
 2. **TableSummaryBar** – “Showing N users” and optional checkboxes (e.g. “Show inactive”).
 3. **Table container** – fixed height, scroll div, table with sticky header and percentage cols.
-4. **TablePagination** – only when there is at least one item; wire `onPageChange` / `onPageSizeChange` and scroll ref as above.
+4. **TablePagination** – only when there is at least one item; wire `onPageChange` / `onPageSizeChange` and pass `scrollContainerRef={tableScrollRef}` for scroll-to-top on page/size change.
 
 ### 7. Sort
 
@@ -122,9 +122,9 @@ Set `TABLE_COLUMN_COUNT` to the number of columns and use it for empty-state `co
 
 ## Related components
 
-| Component         | Purpose                                       |
-| ----------------- | --------------------------------------------- |
-| `TablePagination` | Page nav, page-size selector, scroll callback |
-| `TableSummaryBar` | “Showing N items” + optional boolean filters  |
-| `SortIndicator`   | Arrow in header for active sort column        |
-| `SortDropdown`    | Used inside filter bars for sort selection    |
+| Component         | Purpose                                                                       |
+| ----------------- | ----------------------------------------------------------------------------- |
+| `TablePagination` | Page nav, page-size selector, optional `scrollContainerRef` for scroll-to-top |
+| `TableSummaryBar` | “Showing N items” + optional boolean filters                                  |
+| `SortIndicator`   | Arrow in header for active sort column                                        |
+| `SortDropdown`    | Used inside filter bars for sort selection                                    |

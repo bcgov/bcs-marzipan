@@ -17,6 +17,10 @@
       "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
-  "include": ["src", "../.local/draft_components/Administration.tsx"],
+  "include": [
+    "src",
+    "../.local/draft_components/Administration.tsx",
+    "../.local/draft_components/EventTable.legacy.tsx"
+  ],
   "exclude": ["node_modules"]
 }

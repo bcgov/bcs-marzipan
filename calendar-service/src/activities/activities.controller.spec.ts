@@ -44,6 +44,8 @@ describe('ActivitiesController', () => {
     update: vi.fn(),
     remove: vi.fn(),
     softDelete: vi.fn(),
+    requestDelete: vi.fn(),
+    restore: vi.fn(),
     cancelChanges: vi.fn(),
     updateCategories: vi.fn(),
     updateThemes: vi.fn(),
@@ -96,7 +98,8 @@ describe('ActivitiesController', () => {
       });
       expect(mockActivitiesService.create).toHaveBeenCalledWith(
         createDto,
-        mockUser.id
+        mockUser.id,
+        { roleName: mockUser.roleName }
       );
       expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
     });
@@ -108,7 +111,12 @@ describe('ActivitiesController', () => {
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
       const result = await controller.findAll(
-        { page: 1, limit: 10 },
+        {
+          page: 1,
+          limit: 10,
+          excludeCompleted: undefined,
+          includeDeleted: undefined,
+        },
         {} as Parameters<ActivitiesController['findAll']>[1]
       );
 
@@ -116,15 +124,18 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        undefined,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined, {});
     });
 
     it('should return filtered activities', async () => {
       const activities = [mockActivityResponse];
-      const filters = { page: 1, limit: 10, title: 'Test' };
+      const filters = {
+        page: 1,
+        limit: 10,
+        title: 'Test',
+        excludeCompleted: undefined,
+        includeDeleted: undefined,
+      };
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
       const result = await controller.findAll(
@@ -136,10 +147,7 @@ describe('ActivitiesController', () => {
         success: true,
         data: activities,
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
-        filters,
-        undefined
-      );
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters, {});
     });
   });
 
@@ -240,7 +248,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.update).toHaveBeenCalledWith(
         1,
         updateDto,
-        mockUser.id
+        mockUser.id,
+        { roleName: mockUser.roleName }
       );
       expect(mockActivitiesService.update).toHaveBeenCalledTimes(1);
     });
@@ -260,7 +269,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.update).toHaveBeenCalledWith(
         999,
         updateDto,
-        mockUser.id
+        mockUser.id,
+        { roleName: mockUser.roleName }
       );
     });
   });
@@ -322,6 +332,79 @@ describe('ActivitiesController', () => {
         999,
         body.reason,
         mockUser.id
+      );
+    });
+  });
+
+  describe('requestDelete', () => {
+    it('should request delete and return activity', async () => {
+      const body = { reason: 'Requesting removal as comms contact' };
+      mockActivitiesService.requestDelete.mockResolvedValue(
+        mockActivityResponse
+      );
+
+      const result = await controller.requestDelete(1, body, mockUser);
+
+      expect(result).toEqual({
+        success: true,
+        data: mockActivityResponse,
+      });
+      expect(mockActivitiesService.requestDelete).toHaveBeenCalledWith(
+        1,
+        body.reason,
+        mockUser.id
+      );
+      expect(mockActivitiesService.requestDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw when requestDelete fails', async () => {
+      const body = { reason: 'Duplicate or obsolete' };
+      mockActivitiesService.requestDelete.mockRejectedValue(
+        new Error('Activity not found')
+      );
+
+      await expect(
+        controller.requestDelete(999, body, mockUser)
+      ).rejects.toThrow();
+      expect(mockActivitiesService.requestDelete).toHaveBeenCalledWith(
+        999,
+        body.reason,
+        mockUser.id
+      );
+    });
+  });
+
+  describe('restore', () => {
+    it('should restore activity and return updated activity', async () => {
+      const body = { note: 'Restored after review' };
+      mockActivitiesService.restore.mockResolvedValue(mockActivityResponse);
+
+      const result = await controller.restore(1, body, mockUser);
+
+      expect(result).toEqual({
+        success: true,
+        data: mockActivityResponse,
+      });
+      expect(mockActivitiesService.restore).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        body.note,
+        { roleName: mockUser.roleName }
+      );
+      expect(mockActivitiesService.restore).toHaveBeenCalledTimes(1);
+    });
+
+    it('should restore with no note', async () => {
+      const body = {};
+      mockActivitiesService.restore.mockResolvedValue(mockActivityResponse);
+
+      await controller.restore(1, body, mockUser);
+
+      expect(mockActivitiesService.restore).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        undefined,
+        { roleName: mockUser.roleName }
       );
     });
   });

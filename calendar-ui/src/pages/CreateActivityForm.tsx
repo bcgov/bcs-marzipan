@@ -1,26 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useForm, type Resolver } from 'react-hook-form';
+import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared/auth';
-import { ActivityStatusName } from '@corpcal/shared/constants/constants';
+import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 
 import { createActivity } from '../api/activitiesApi';
-import {
-  ActivityCommsSection,
-  ActivityEventSection,
-  ActivityNewsReleaseSection,
-  ActivityOverviewSection,
-  ActivityReportsSection,
-  ActivityScheduleSection,
-  ActivitySharingSection,
-} from '../components/ActivityFormSections';
+import { CreateActivityConfirmModal } from '../components/activities/CreateActivityConfirmModal';
+import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
+import { ActivityFormBody } from '../components/ActivityFormBody';
 import { AutosaveIndicator } from '../components/AutosaveIndicator';
+import { FormErrorFallback } from '../components/FormErrorFallback';
 import { PageHeader } from '../components/PageHeader';
 import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
@@ -43,40 +38,18 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
+  DEFAULT_FORM_VALUES,
+  getDefaultFormValues,
+} from '../lib/activity-form-defaults';
+import { getActivityFieldLabel } from '../lib/activity-form-labels';
+import { buildPayloadForCreate } from '../lib/activity-form-payload';
+import {
   ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
   ACCESS_DENIED_TITLE,
-  ERROR_DETAILS_LABEL,
-  RENDER_FORM_ERROR_TITLE,
-  TRY_AGAIN_LABEL,
 } from '../lib/error-messages';
-import { getFriendlyErrorMessage, showErrorToast } from '../lib/error-toast';
+import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
-
-/**
- * Default form values that match the FormData type.
- * Used for both form initialization and reset operations.
- */
-const getDefaultFormValues = (): Partial<ActivityFormData> => ({
-  isAllDay: false,
-  isIssue: false,
-  isConfidential: false,
-  categoryIds: [],
-  tagIds: [],
-  commsMaterialIds: [],
-  translationLanguageIds: [],
-  representatives: [],
-  sharedWithTeamIds: [],
-  reportSettings: [],
-  // Set these to match what the effects set on mount
-  dateStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
-  timeStatusId: 1, // Default to 1, or whatever the 'unknown' status id is
-  pitchRequiredStatusId: undefined,
-  translationsRequiredStatusId: undefined,
-});
-
-/** Stable default values for autosave comparison and reset (e.g. start fresh). */
-const DEFAULT_FORM_VALUES = getDefaultFormValues();
 
 // Key used to store draft dialog session state in sessionStorage
 const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
@@ -87,15 +60,22 @@ export const CreateActivityForm: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
+    null
+  );
   const draftCheckedRef = useRef(false);
 
-  // Check permissions and auth state (userId is used internally by useAutoSave)
   const {
     hasPermission,
     isLoading: isAuthLoading,
     isAuthenticated,
+    user,
   } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const isAdminOrSysAdmin =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -132,24 +112,6 @@ export const CreateActivityForm: FC = () => {
       }
     }
   }, [timeStatuses, form]);
-
-  // Set default activityStatusId to "new" when lookups are loaded
-  useEffect(() => {
-    if (lookups.activityStatuses.length > 0) {
-      const currentValue = form.getValues('activityStatusId');
-      // Only set if not already set (undefined, null, or 0 are considered unset)
-      if (currentValue === undefined || currentValue === null) {
-        const newStatus = lookups.activityStatuses.find(
-          (status) => status.name === ('new' satisfies ActivityStatusName)
-        );
-        if (newStatus) {
-          form.setValue('activityStatusId', newStatus.id, {
-            shouldValidate: true,
-          });
-        }
-      }
-    }
-  }, [lookups.activityStatuses, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
@@ -264,92 +226,75 @@ export const CreateActivityForm: FC = () => {
     window.close();
   };
 
-  const onSubmit = async (data: ActivityFormData) => {
+  const onSubmit = (data: ActivityFormData) => {
+    setValidatedData(data);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmedSubmit = async (
+    notes?: string,
+    markAsReviewed?: boolean
+  ) => {
+    if (!validatedData) return;
     setIsSubmitting(true);
     try {
-      // Prepare submit data with junction table arrays
       const formValues = form.getValues();
-      const submitData = {
-        ...data,
-        activityStatusId: data.activityStatusId,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        categoryIds:
-          formValues.categoryIds && formValues.categoryIds.length > 0
-            ? formValues.categoryIds
-            : undefined,
-        tagIds:
-          formValues.tagIds && formValues.tagIds.length > 0
-            ? formValues.tagIds
-            : undefined,
-        commsMaterialIds:
-          formValues.commsMaterialIds && formValues.commsMaterialIds.length > 0
-            ? formValues.commsMaterialIds
-            : undefined,
-        translationLanguageIds:
-          formValues.translationLanguageIds &&
-          formValues.translationLanguageIds.length > 0
-            ? formValues.translationLanguageIds
-            : undefined,
-        representatives:
-          formValues.representatives && formValues.representatives.length > 0
-            ? formValues.representatives
-            : undefined,
-        sharedWithTeamIds:
-          formValues.sharedWithTeamIds &&
-          formValues.sharedWithTeamIds.length > 0
-            ? formValues.sharedWithTeamIds
-            : undefined,
-      };
+      const submitData = buildPayloadForCreate(validatedData, formValues, {
+        markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
+      });
+      const payload = {
+        ...submitData,
+        ...(notes ? { activityHistoryNotes: notes } : {}),
+      } as Parameters<typeof createActivity>[0];
 
-      await createActivity(submitData);
+      await createActivity(payload);
 
-      // Delete draft after successful creation
       if (existingDraft) {
         deleteDraft();
       }
 
-      // Close the window after successful creation
+      toast.success('Activity created', {
+        id: 'activity-created',
+        description: validatedData.title
+          ? `${validatedData.title}`
+          : 'Your activity has been created.',
+        duration: 2500,
+      });
+      // Brief delay so the success toast is visible before the popup closes
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       window.close();
     } catch (error) {
       logger.error('Failed to create activity', error);
-      showErrorToast(error);
+      showErrorToast(error, 'Your activity could not be created.');
+      // User remains on the form so they can correct and retry; do not close/navigate
     } finally {
       setIsSubmitting(false);
+      setShowConfirmModal(false);
+      setValidatedData(null);
     }
   };
 
   const onError = () => {
     logger.error('Form validation failed');
+    const missing = getMissingRequiredFields(
+      form.formState,
+      getActivityFieldLabel
+    );
+    const detail =
+      missing.length > 0
+        ? `Required fields missing: ${missing.join(', ')}`
+        : 'Please fix the validation errors and try again.';
+    toast.error('Submission failed', {
+      description: detail,
+      duration: 6000,
+    });
   };
 
-  // Map field names to user-friendly labels
-  const getFieldLabel = (fieldName: string): string => {
-    const fieldLabelMap: Record<string, string> = {
-      title: 'Title',
-      categoryIds: 'Category',
-      startDate: 'Start Date',
-      endDate: 'End Date',
-      startTime: 'Start Time',
-      endTime: 'End Time',
-      leadOrgId: 'Lead Organization',
-      commsContactLeadId: 'Comms Contact',
-      eventPlannerLeadId: 'Event Planner',
-      activityStatusId: 'Activity Status',
-      leadMinistryId: 'Lead Ministry',
-      venueAddress: 'Venue Address',
-      street: 'Street Address',
-      city: 'City',
-      provinceOrState: 'Province/State',
-      country: 'Country',
-    };
-    return fieldLabelMap[fieldName] || fieldName;
-  };
-  // Check if form is valid - trigger validation if needed
   const isFormValid = form.formState.isValid;
-  const missingFields = getMissingRequiredFields(form.formState, getFieldLabel);
+  const missingFields = getMissingRequiredFields(
+    form.formState,
+    getActivityFieldLabel
+  );
 
   // Show loading state while checking auth
   if (isAuthLoading) {
@@ -391,202 +336,121 @@ export const CreateActivityForm: FC = () => {
     );
   }
 
-  // Transform data for form sections
-  const commsLeadOptions = lookups.users;
-
-  const ErrorFallback = ({
-    error,
-    resetErrorBoundary,
-  }: {
-    error: unknown;
-    resetErrorBoundary: () => void;
-  }) => {
-    const friendlyMessage = getFriendlyErrorMessage(error);
-    const rawMessage = error instanceof Error ? error.message : String(error);
-    return (
-      <div className="mx-auto max-w-200 px-4 py-8" role="alert">
-        <div className="mb-8">
-          <h1 className="text-destructive mb-2 text-3xl font-bold">
-            {RENDER_FORM_ERROR_TITLE}
-          </h1>
-          <p className="text-muted-foreground mb-4">{friendlyMessage}</p>
-          <details className="mb-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              {ERROR_DETAILS_LABEL}
-            </summary>
-            <pre className="bg-muted mt-2 overflow-auto rounded p-4 text-sm">
-              {rawMessage}
-            </pre>
-          </details>
-          <Button onClick={resetErrorBoundary} variant="default">
-            {TRY_AGAIN_LABEL}
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <div className="mx-auto max-w-full px-4 py-8">
-        {/* Draft Recovery Dialog */}
-        <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Continue where you left off?</DialogTitle>
-              <DialogDescription>
-                You have a saved draft for this activity form. Would you like to
-                continue editing it, or start with a fresh form?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleStartFresh}
-                type="button"
-              >
-                Start Fresh
-              </Button>
-              <Button onClick={handleContinueDraft} type="button">
-                Continue Draft
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </ResumeDialog>
+    <ErrorBoundary FallbackComponent={FormErrorFallback}>
+      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Continue where you left off?</DialogTitle>
+            <DialogDescription>
+              You have a saved draft for this activity form. Would you like to
+              continue editing it, or start with a fresh form?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleStartFresh} type="button">
+              Start Fresh
+            </Button>
+            <Button onClick={handleContinueDraft} type="button">
+              Continue Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </ResumeDialog>
 
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <PageHeader
-            title="Create New Activity"
-            description="Fill in the activity details below"
-            action={
-              <AutosaveIndicator
-                isAuthenticated={isAuthenticated}
-                isSaving={isSaving}
-                lastSaved={lastSaved}
-                isLoading={isDraftLoading}
-              />
-            }
+      <ActivityBreadcrumb currentLabel="New activity" />
+      <PageHeader
+        title="Create New Activity"
+        description="Fill in the activity details below"
+        action={
+          <AutosaveIndicator
+            isAuthenticated={isAuthenticated}
+            isSaving={isSaving}
+            lastSaved={lastSaved}
+            isLoading={isDraftLoading}
           />
+        }
+      />
 
-          <Form {...form}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void form.handleSubmit(onSubmit, onError)(e);
+      <Form {...form}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit(onSubmit, onError)(e);
+          }}
+        >
+          <ActivityFormBody form={form} lookups={lookups} readOnly={false} />
+
+          <div className="flex justify-end gap-4 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void handleCancel();
               }}
+              disabled={isSubmitting}
+              title="This will discard any draft data and close the page"
             >
-              {/* Two Column Layout */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Overview Section */}
-                  <ActivityOverviewSection
-                    categories={lookups.categories}
-                    ministries={lookups.ministries}
-                    organizations={lookups.organizations}
-                    tags={lookups.tags}
-                  />
-
-                  {/* Comms and News Release Sections */}
-                  <div>
-                    {/* Comms Section */}
-                    <ActivityCommsSection
-                      commsMaterialOptions={lookups.commsMaterials}
-                      commsLeadOptions={commsLeadOptions}
-                      activityStatusOptions={lookups.activityStatuses}
-                    />
-
-                    <div className="my-6 border-t border-gray-300"></div>
-
-                    {/* News Release Section */}
-                    <ActivityNewsReleaseSection
-                      translationLanguageOptions={lookups.translationLanguages}
-                      newsReleaseDistributionOptions={
-                        lookups.newsReleaseDistributions
-                      }
-                      newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                    />
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Reports Section */}
-                  <ActivityReportsSection form={form} />
-
-                  {/* Schedule Section */}
-                  <ActivityScheduleSection form={form} />
-
-                  {/* Event Section */}
-                  <ActivityEventSection
-                    representativeOptions={lookups.governmentRepresentatives}
-                    premierRequestedOptions={lookups.premierRequested}
-                    eventPlannerOptions={lookups.eventPlanners}
-                  />
-
-                  {/* Sharing Section */}
-                  <ActivitySharingSection
-                    sharedWithTeamOptions={[]} // TODO: Fetch teams from API when available
-                  />
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex justify-end gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    void handleCancel();
-                  }}
-                  disabled={isSubmitting}
-                  title="This will discard any draft data and close the page"
-                >
-                  Cancel
-                </Button>
-                {!isFormValid && missingFields.length > 0 ? (
-                  <Popover open={showMissingFieldsPopover}>
-                    <PopoverTrigger asChild>
-                      <div
-                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                      >
-                        <Button
-                          type="submit"
-                          disabled={true}
-                          className="cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Submitting...' : 'Submit'}
-                        </Button>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80"
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
+              Cancel
+            </Button>
+            {!isFormValid && missingFields.length > 0 ? (
+              <Popover open={showMissingFieldsPopover}>
+                <PopoverTrigger asChild>
+                  <div
+                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                  >
+                    <Button
+                      type="submit"
+                      disabled={true}
+                      className="cursor-not-allowed"
                     >
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">
-                          Required fields missing:
-                        </h4>
-                        <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                          {missingFields.map((field) => (
-                            <li key={field}>{field}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
-                  </Button>
-                )}
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </Button>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-80"
+                  onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                  onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                >
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">
+                      Required fields missing:
+                    </h4>
+                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                      {missingFields.map((field) => (
+                        <li key={field}>{field}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
+
+      <CreateActivityConfirmModal
+        open={showConfirmModal}
+        onOpenChange={(open) => {
+          setShowConfirmModal(open);
+          if (!open) setValidatedData(null);
+        }}
+        formData={form.getValues()}
+        lookups={lookups}
+        dateStatuses={dateStatuses}
+        timeStatuses={timeStatuses}
+        onConfirm={(notes, markAsReviewed) =>
+          void handleConfirmedSubmit(notes, markAsReviewed)
+        }
+        showMarkAsReviewed={isAdminOrSysAdmin}
+        isSubmitting={isSubmitting}
+      />
     </ErrorBoundary>
   );
 };

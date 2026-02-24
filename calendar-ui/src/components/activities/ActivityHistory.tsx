@@ -2,9 +2,15 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
+import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { formatLongDate, formatTime } from '@/lib/utils';
 
 import { fetchActivityHistory } from '../../api/activitiesApi';
+import {
+  formatHistoryFieldValue,
+  getActionText,
+  getHistoryFieldLabel,
+} from '../../lib/activity-history-format';
 import {
   LOAD_HISTORY_MESSAGE,
   LOAD_HISTORY_TITLE,
@@ -13,162 +19,7 @@ import { showErrorToast } from '../../lib/error-toast';
 import { createLogger } from '../../lib/logger';
 import { ErrorState } from '../ErrorState';
 
-type HistoryEntry = {
-  id: number;
-  activityId: number;
-  userId: number;
-  actionType: string;
-  changes: Array<{
-    field: string;
-    oldValue: unknown;
-    newValue: unknown;
-  }> | null;
-  notes: string | null;
-  timestamp: string;
-  userName?: string;
-};
-
-// convert actionType values to readable labels
-function getActionText(actionType: string): string {
-  if (!actionType) return '';
-  const raw = String(actionType);
-  const lower = raw.toLowerCase();
-
-  const map: Record<string, string> = {
-    created: 'Created',
-    updated: 'Updated',
-    deleted: 'Deleted',
-    note_added: 'Note added',
-    'note added': 'Note added',
-    comment_added: 'Comment added',
-    assigned: 'Assigned',
-    unassigned: 'Unassigned',
-    status_changed: 'Status changed',
-  };
-
-  if (map[lower]) return map[lower];
-
-  // fallback: convert camelCase or snake_case to spaced Title Case
-  const spaced = raw
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-// Convert field names from camelCase to readable Title Case
-function getFieldLabel(field: string): string {
-  if (!field) return '';
-
-  // Special cases with custom labels
-  const specialLabels: Record<string, string> = {
-    dateStatusId: 'Date Status',
-  };
-
-  if (specialLabels[field]) {
-    return specialLabels[field];
-  }
-
-  // Convert camelCase to spaced words, then capitalize each word
-  const spaced = field
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .trim();
-  // Capitalize first letter of each word
-  return spaced
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
 const logger = createLogger('ActivityHistory');
-
-// Format complex field changes for display
-function formatFieldValue(
-  field: string,
-  value: unknown,
-  dateStatusMap?: Map<number | string, string>
-): string {
-  if (value === null || value === undefined) {
-    return '(empty)';
-  }
-
-  // Handle dateStatusId - look up the display name
-  if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {
-    return dateStatusMap.get(value) || String(value);
-  }
-
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  ) {
-    return String(value);
-  }
-
-  if (typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-
-  // Handle venueAddress
-  if (field === 'venueAddress') {
-    const addr = value as Record<string, unknown>;
-    const parts = [];
-    if (typeof addr.venueName === 'string') parts.push(addr.venueName);
-    if (typeof addr.street === 'string') parts.push(addr.street);
-    if (typeof addr.city === 'string') parts.push(addr.city);
-    if (typeof addr.provinceOrState === 'string')
-      parts.push(addr.provinceOrState);
-    if (typeof addr.country === 'string') parts.push(addr.country);
-    return parts.length > 0 ? parts.join(', ') : '(address)';
-  }
-
-  // Handle representatives array
-  if (field === 'representatives') {
-    if (Array.isArray(value)) {
-      const reps = value as Array<{
-        representativeId?: number;
-        representativeName?: string;
-      }>;
-      const names = reps
-        .map((r) => r.representativeName || `Rep ${r.representativeId}`)
-        .join(', ');
-      return names || '(no representatives)';
-    }
-  }
-
-  // Handle commsContacts array
-  if (field === 'commsContacts') {
-    if (Array.isArray(value)) {
-      const contacts = value as Array<{ userId?: number; isLead?: boolean }>;
-      if (contacts.length === 0) return '(no contacts)';
-      const leadCount = contacts.filter((c) => c.isLead).length;
-      return `${contacts.length} contact(s)${leadCount > 0 ? ` (${leadCount} lead)` : ''}`;
-    }
-  }
-
-  // Handle reportSettings array
-  if (field === 'reportSettings') {
-    if (Array.isArray(value)) {
-      const settings = value as Array<{
-        reportId?: number;
-        omitted?: boolean;
-      }>;
-      if (settings.length === 0) return '(no reports)';
-      const omitted = settings.filter((s) => s.omitted).length;
-      const active = settings.length - omitted;
-      return `${active} active, ${omitted} omitted`;
-    }
-  }
-
-  // Handle other arrays - show count
-  if (Array.isArray(value)) {
-    return `${value.length} item(s)`;
-  }
-
-  // Default: JSON stringify
-  return JSON.stringify(value);
-}
 
 export interface DateStatusLookupItem {
   id: string | number;
@@ -187,7 +38,7 @@ export default function ActivityHistory({
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
 }) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
@@ -241,7 +92,7 @@ export default function ActivityHistory({
   // group by local date string
   // Categorize into Today / This week / Earlier
   const groupsOrder = ['Today', 'This week', 'Earlier'];
-  const groups: Record<string, HistoryEntry[]> = {
+  const groups: Record<string, ActivityHistoryEntry[]> = {
     Today: [],
     'This week': [],
     Earlier: [],
@@ -369,10 +220,10 @@ export default function ActivityHistory({
                                 ).map((c, idx) => (
                                   <div key={idx} className="mb-1 text-sm">
                                     <strong className="font-medium">
-                                      {getFieldLabel(c.field)}:
+                                      {getHistoryFieldLabel(c.field)}:
                                     </strong>{' '}
                                     <span className="text-muted-foreground">
-                                      {formatFieldValue(
+                                      {formatHistoryFieldValue(
                                         c.field,
                                         c.oldValue,
                                         dateStatusMap
@@ -380,7 +231,7 @@ export default function ActivityHistory({
                                     </span>{' '}
                                     →{' '}
                                     <span>
-                                      {formatFieldValue(
+                                      {formatHistoryFieldValue(
                                         c.field,
                                         c.newValue,
                                         dateStatusMap

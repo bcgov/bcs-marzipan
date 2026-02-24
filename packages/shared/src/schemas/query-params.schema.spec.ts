@@ -140,4 +140,29 @@ describe('filterActivitiesQuerySchema', () => {
     expect(filterActivitiesQuerySchema.parse({ limit: '1' }).limit).toBe(1);
     expect(filterActivitiesQuerySchema.parse({ limit: '100' }).limit).toBe(100);
   });
+
+  it('omits excludeCompleted and includeDeleted when not sent', () => {
+    const result = filterActivitiesQuerySchema.parse({});
+    expect(result.excludeCompleted).toBeUndefined();
+    expect(result.includeDeleted).toBeUndefined();
+  });
+
+  it('parses excludeCompleted and includeDeleted from query strings', () => {
+    expect(
+      filterActivitiesQuerySchema.parse({ excludeCompleted: 'true' })
+        .excludeCompleted
+    ).toBe(true);
+    expect(
+      filterActivitiesQuerySchema.parse({ excludeCompleted: 'false' })
+        .excludeCompleted
+    ).toBe(false);
+    expect(
+      filterActivitiesQuerySchema.parse({ includeDeleted: 'true' })
+        .includeDeleted
+    ).toBe(true);
+    expect(
+      filterActivitiesQuerySchema.parse({ includeDeleted: 'false' })
+        .includeDeleted
+    ).toBe(false);
+  });
 });

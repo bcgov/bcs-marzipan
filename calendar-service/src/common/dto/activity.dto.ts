@@ -3,6 +3,8 @@ import { createZodDto } from 'nestjs-zod';
 import {
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  requestDeleteRequestSchema,
+  restoreRequestSchema,
   softDeleteRequestSchema,
   updateActivityRequestSchema,
 } from '@corpcal/shared/schemas';
@@ -36,3 +38,17 @@ export class FilterActivitiesDto extends createZodDto(
  * Generated from softDeleteRequestSchema using nestjs-zod
  */
 export class SoftDeleteDto extends createZodDto(softDeleteRequestSchema) {}
+
+/**
+ * DTO for requesting delete (comms contacts)
+ * Generated from requestDeleteRequestSchema using nestjs-zod
+ */
+export class RequestDeleteDto extends createZodDto(
+  requestDeleteRequestSchema
+) {}
+
+/**
+ * DTO for restoring an activity from delete_requested or deleted
+ * Generated from restoreRequestSchema using nestjs-zod
+ */
+export class RestoreDto extends createZodDto(restoreRequestSchema) {}

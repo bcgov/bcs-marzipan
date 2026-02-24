@@ -1,0 +1,811 @@
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+  type Column,
+  type ColumnPinningState,
+} from '@tanstack/react-table';
+import {
+  Calendar,
+  Clock,
+  Languages,
+  Loader2,
+  MapPin,
+  NotebookText,
+  Users,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import type {
+  ActivityResponse,
+  UserLookupItem,
+} from '@corpcal/shared/api/types';
+import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { fetchActivities } from '@/api/activitiesApi';
+import { fetchUsers } from '@/api/lookupsApi';
+import { ErrorState } from '@/components/ErrorState';
+import {
+  EVENT_TABLE_COLUMN_WIDTHS,
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from '@/components/Table/tableConstants';
+import { TablePagination } from '@/components/Table/TablePagination';
+import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
+import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
+import { CopyableText } from '@/components/ui/copyable-text';
+import {
+  getLookAheadSectionLabel,
+  getLookAheadStatusLabel,
+} from '@/constants/form-options';
+import { useAuth } from '@/hooks/useAuth';
+import { createLogger } from '@/lib/logger';
+
+import {
+  mapActivityResponseToTableRow,
+  type ActivityTableRow,
+} from './activityTableRow';
+
+/**
+ * Table width: The table uses table-fixed layout; its width is the sum of column
+ * sizes. To increase max width, adjust EVENT_TABLE_COLUMN_WIDTHS in tableConstants.ts
+ * (column widths only—there is no separate table max-width). min-w-[640px] on the
+ * table enforces a minimum width and more horizontal scroll when the container is narrow.
+ * The page is wrapped by Layout > PageContainer (max-w-[96rem], px-12), so content width
+ * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
+ */
+
+const DEFAULT_PAGE_SIZE = 10;
+const logger = createLogger('ActivityTable');
+
+function getCommonPinningStyles<T>(
+  column: Column<T, unknown>
+): React.CSSProperties {
+  const isPinned = column.getIsPinned();
+  const isLastLeftPinnedColumn =
+    isPinned === 'left' && column.getIsLastColumn('left');
+  const isFirstRightPinnedColumn =
+    isPinned === 'right' && column.getIsFirstColumn('right');
+
+  return {
+    boxShadow: isLastLeftPinnedColumn
+      ? '4px 0 4px -4px rgba(0,0,0,0.1)'
+      : isFirstRightPinnedColumn
+        ? '-4px 0 4px -4px rgba(0,0,0,0.1)'
+        : undefined,
+    left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
+    opacity: isPinned ? 0.95 : 1,
+    position: (isPinned
+      ? 'sticky'
+      : 'relative') as React.CSSProperties['position'],
+    zIndex: isPinned ? 1 : 0,
+    backgroundColor: isPinned ? 'var(--sticky-bg, #fff)' : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Format representative name for badge: ministers show as "Minister &lt;LastName&gt;", others as-is.
+ */
+function formatRepresentativeBadgeText(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return name;
+  const isMinister = /minister/i.test(trimmed) || /^hon\.?\s/i.test(trimmed);
+  if (isMinister) {
+    const parts = trimmed.split(/\s+/);
+    const lastName = parts[parts.length - 1];
+    return lastName ? `Minister ${lastName}` : name;
+  }
+  return name;
+}
+
+/** Sentence case for lookup display values: first letter upper, rest lower. */
+function toSentenceCase(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Cell sub-components
+// ---------------------------------------------------------------------------
+
+function OverviewCell({ row }: { row: ActivityTableRow }) {
+  const pitchLabel = row.pitchRequiredStatus ?? row.pitchDate;
+  const displayIdText = row.displayId ?? String(row.id);
+
+  return (
+    <div>
+      <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        <span
+          data-no-row-nav
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex"
+        >
+          <CopyableText
+            text={displayIdText}
+            copyLabel="Copy display ID"
+            variant="minimal"
+          >
+            {displayIdText}
+          </CopyableText>
+        </span>
+        {row.isConfidential && (
+          <span className="font-bold text-red-600 uppercase">CONFIDENTIAL</span>
+        )}
+        {row.isIssue && (
+          <span className="font-bold text-red-600 uppercase">ISSUE</span>
+        )}
+      </div>
+      <div className="mb-1 text-[16px] font-semibold text-slate-900">
+        {row.title}
+      </div>
+      {pitchLabel && (
+        <div className="mb-2 text-sm text-slate-600">
+          Pitch: {toSentenceCase(pitchLabel)}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-1">
+        {row.activityCategories.map((cat) => (
+          <Badge
+            key={cat}
+            variant="primary"
+            className="h-auto min-h-5 whitespace-normal"
+          >
+            {toSentenceCase(cat)}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SummaryCell({ row }: { row: ActivityTableRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const [needsTruncation, setNeedsTruncation] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      const lineHeight = 20;
+      const maxLines = 5;
+      setNeedsTruncation(
+        contentRef.current.scrollHeight > lineHeight * maxLines
+      );
+    }
+  }, [row.summary]);
+
+  const status = row.lookAheadStatus;
+  const section = row.lookAheadSection;
+  const lookAheadLabel =
+    status && status !== 'none'
+      ? section
+        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabel(section)}`
+        : `LA ${getLookAheadStatusLabel(status)}`
+      : null;
+
+  return (
+    <div>
+      <div
+        ref={contentRef}
+        className="text-[13px] leading-[1.4]"
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: expanded ? 'unset' : 5,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {row.summary}
+      </div>
+
+      {needsTruncation && (
+        <button
+          type="button"
+          data-no-row-nav
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+          className="mt-1 cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal text-(--bcsds-link-blue-60)"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+
+      {(row.tags.length > 0 || lookAheadLabel) && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {lookAheadLabel && (
+            <Badge variant="primary" className="h-auto min-h-5 text-xs">
+              {lookAheadLabel}
+            </Badge>
+          )}
+          {row.tags.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="outline"
+              className="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
+            >
+              {tag.text}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SchedulingCell({ row }: { row: ActivityTableRow }) {
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+
+  return (
+    <div className="text-[13px]">
+      {row.startDate && (
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
+          <span>
+            {formatDate(row.startDate)}
+            {row.endDate && row.endDate !== row.startDate
+              ? ` \u2013 ${formatDate(row.endDate)}`
+              : ''}
+          </span>
+          <Badge
+            variant="outline"
+            className="h-5 border-slate-200 text-xs text-slate-600"
+          >
+            {toSentenceCase(row.dateStatus)}
+          </Badge>
+        </div>
+      )}
+
+      {(row.allDay || row.startTime || row.timeStatus) && (
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <Clock className="h-4 w-4 shrink-0 text-slate-500" />
+          <span>
+            {row.allDay
+              ? 'allDay'
+              : row.startTime
+                ? `${row.startTime}${row.endTime ? ` \u2013 ${row.endTime}` : ''}`
+                : '--:-- \u2013 --:--'}
+          </span>
+          <Badge
+            variant="outline"
+            className="h-5 border-slate-200 text-xs text-slate-600"
+          >
+            {toSentenceCase(row.timeStatus)}
+          </Badge>
+        </div>
+      )}
+
+      {row.venue && (
+        <div className="mb-1.5 flex items-start gap-1 text-slate-600">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{row.venue}</span>
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {row.premierRequested &&
+          row.premierRequested.toLowerCase() !== 'no' && (
+            <Badge variant="primary" className="h-auto min-h-5 text-xs">
+              Premier: {row.premierRequested}
+            </Badge>
+          )}
+        {row.activityRepresentatives.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Users className="h-4 w-4 shrink-0 text-slate-500" />
+            {row.activityRepresentatives.map((name) => (
+              <Badge
+                key={name}
+                variant="outline"
+                className="h-auto min-h-5 text-xs text-slate-600"
+              >
+                {formatRepresentativeBadgeText(name)}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LeadsCell({ row }: { row: ActivityTableRow }) {
+  const lines: Array<{ label: string; value: string }> = [];
+
+  if (row.leadOrg) lines.push({ label: 'Lead org', value: row.leadOrg });
+  if (row.leadMinistry)
+    lines.push({ label: 'Lead ministry', value: row.leadMinistry });
+  if (row.commsLeadName)
+    lines.push({ label: 'Comms lead', value: row.commsLeadName });
+  if (row.eventLead) lines.push({ label: 'Event lead', value: row.eventLead });
+
+  if (lines.length === 0) {
+    return <span className="text-slate-400">&mdash;</span>;
+  }
+
+  const additionalComms = row.commsContactsCount - 1;
+
+  return (
+    <div className="flex flex-col gap-1.5 text-[13px]">
+      {lines.map(({ label, value }) => (
+        <div key={label}>
+          <span className="text-slate-500">{label}: </span>
+          <span className="font-medium">{value}</span>
+          {label === 'Comms lead' && additionalComms > 0 && (
+            <Badge
+              variant="outline"
+              className="ml-1 h-auto min-h-5 text-xs text-slate-600"
+            >
+              +{additionalComms}
+            </Badge>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MaterialsCell({ row }: { row: ActivityTableRow }) {
+  const hasTranslations = row.translationsRequired.length > 0;
+  const translationBadgeText = hasTranslations
+    ? row.translationsRequired.map((s) => s.toUpperCase()).join(', ')
+    : row.translationsRequiredStatus
+      ? toSentenceCase(row.translationsRequiredStatus)
+      : null;
+  const hasMaterials = row.commsMaterials.length > 0;
+
+  if (!translationBadgeText && !hasMaterials) {
+    return <span className="text-slate-400">&mdash;</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-2 text-[13px]">
+      {translationBadgeText && (
+        <div className="flex items-start gap-1.5">
+          <Languages
+            size={16}
+            strokeWidth={1.5}
+            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
+          />
+          <span>{translationBadgeText}</span>
+        </div>
+      )}
+      {hasMaterials && (
+        <div className="flex items-center gap-1.5">
+          <NotebookText
+            size={16}
+            strokeWidth={1.5}
+            className="shrink-0 text-slate-500"
+          />
+          <span>
+            {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusCell({
+  row,
+  userMap,
+}: {
+  row: ActivityTableRow;
+  userMap: Map<string, { name: string; jobTitle?: string | null }>;
+}) {
+  const lastUpdatedUser = userMap.get(String(row.lastUpdatedBy));
+  const userName = lastUpdatedUser?.name || 'Unknown';
+  const initials = userName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const updatedDate = new Date(row.lastUpdatedDateTime).toLocaleDateString();
+  const createdDate = new Date(row.createdDateTime).toLocaleDateString();
+
+  return (
+    <div>
+      <Badge
+        variant={getActivityStatusBadgeVariant(row.activityStatus)}
+        className="capitalize"
+      >
+        {row.activityStatus}
+      </Badge>
+      <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+        <Avatar size="sm" title={userName}>
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+        <span>Updated {updatedDate}</span>
+      </div>
+      <div className="mt-1 text-xs text-slate-500">Created {createdDate}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main table component
+// ---------------------------------------------------------------------------
+
+export function ActivityTable() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const canSeeDeleted =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+    left: ['overview'],
+  });
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [activities, setActivities] = useState<ActivityResponse[]>([]);
+  const [users, setUsers] = useState<UserLookupItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const onPaginationChangeStable = useCallback(
+    (
+      updaterOrValue:
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
+    ) => {
+      setPagination((prev) => {
+        const next =
+          typeof updaterOrValue === 'function'
+            ? updaterOrValue(prev)
+            : updaterOrValue;
+        if (
+          next.pageIndex === prev.pageIndex &&
+          next.pageSize === prev.pageSize
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const activityFilters = useMemo(
+    () => ({
+      excludeCompleted: !showCompleted,
+      includeDeleted: showDeleted && canSeeDeleted,
+    }),
+    [showCompleted, showDeleted, canSeeDeleted]
+  );
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [activitiesData, usersData] = await Promise.all([
+          fetchActivities(activityFilters),
+          fetchUsers(),
+        ]);
+        setActivities(activitiesData);
+        setUsers(usersData);
+        setError(null);
+      } catch (err) {
+        logger.error('Error loading data:', err);
+        setError('Failed to load activities. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadData();
+  }, [activityFilters]);
+
+  const userMap = useMemo(() => {
+    const map = new Map<string, { name: string; jobTitle?: string | null }>();
+    users.forEach((u) => {
+      const displayName = u.name || u.email || String(u.id);
+      map.set(String(u.id), {
+        name: displayName,
+        jobTitle: u.jobTitle ?? null,
+      });
+    });
+    return map;
+  }, [users]);
+
+  const data = useMemo(
+    () => activities.map(mapActivityResponseToTableRow),
+    [activities]
+  );
+
+  const columnHelper = createColumnHelper<ActivityTableRow>();
+
+  const columns = useMemo(
+    () => [
+      columnHelper.display({
+        id: 'overview',
+        header: 'Overview',
+        size: EVENT_TABLE_COLUMN_WIDTHS.overview,
+        cell: ({ row }) => <OverviewCell row={row.original} />,
+      }),
+
+      columnHelper.accessor('summary', {
+        header: 'Summary',
+        size: EVENT_TABLE_COLUMN_WIDTHS.summary,
+        cell: ({ row }) => <SummaryCell row={row.original} />,
+      }),
+
+      columnHelper.accessor('startDate', {
+        header: 'Scheduling',
+        size: EVENT_TABLE_COLUMN_WIDTHS.scheduling,
+        cell: ({ row }) => <SchedulingCell row={row.original} />,
+      }),
+
+      columnHelper.display({
+        id: 'leads',
+        header: 'Leads',
+        size: EVENT_TABLE_COLUMN_WIDTHS.leads,
+        cell: ({ row }) => <LeadsCell row={row.original} />,
+      }),
+
+      columnHelper.display({
+        id: 'materials',
+        header: 'Materials',
+        size: EVENT_TABLE_COLUMN_WIDTHS.materials,
+        cell: ({ row }) => <MaterialsCell row={row.original} />,
+      }),
+
+      columnHelper.accessor('activityStatus', {
+        header: 'Status',
+        size: EVENT_TABLE_COLUMN_WIDTHS.status,
+        cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
+      }),
+    ],
+    [columnHelper, userMap]
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnPinning },
+    onSortingChange: setSorting,
+    onPaginationChange: onPaginationChangeStable,
+    onColumnPinningChange: (updater) =>
+      setColumnPinning((prev) =>
+        typeof updater === 'function' ? updater(prev) : updater
+      ),
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetPageIndex: true,
+    meta: { userMap },
+  });
+
+  const eventTableFilters = useMemo(() => {
+    const filters = [
+      {
+        id: 'show-completed',
+        label: 'Show completed',
+        checked: showCompleted,
+        onCheckedChange: setShowCompleted,
+      },
+    ];
+    if (canSeeDeleted) {
+      filters.push({
+        id: 'show-deleted',
+        label: 'Show deleted',
+        checked: showDeleted,
+        onCheckedChange: setShowDeleted,
+      });
+    }
+    return filters;
+  }, [showCompleted, showDeleted, canSeeDeleted]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-w-0 space-y-4">
+        <TableSummaryBar
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        />
+        <TableScrollContainer ref={tableScrollRef}>
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <span className="text-sm text-slate-600">
+              Loading activities...
+            </span>
+          </div>
+        </TableScrollContainer>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-10">
+        <ErrorState
+          title="Failed to load activities"
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setError(null);
+            fetchActivities(activityFilters)
+              .then((activitiesData) => {
+                setActivities(activitiesData);
+                return fetchUsers();
+              })
+              .then((usersData) => setUsers(usersData))
+              .catch((err) => {
+                logger.error('Error loading data:', err);
+                setError('Failed to load activities. Please try again.');
+              })
+              .finally(() => setLoading(false));
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Empty state
+  if (data.length === 0) {
+    return (
+      <div className="min-w-0 space-y-4">
+        <TableSummaryBar
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        />
+        <TableScrollContainer ref={tableScrollRef}>
+          <div className="py-12 text-center text-sm text-slate-600">
+            <div className="mb-2 font-semibold">No activities found</div>
+            <div>
+              Create a new entry or adjust filters to see activities here.
+            </div>
+          </div>
+        </TableScrollContainer>
+      </div>
+    );
+  }
+
+  const pageRows = table.getRowModel().rows;
+
+  return (
+    <div className="min-w-0 space-y-4">
+      <TableSummaryBar
+        count={data.length}
+        singularLabel="entry"
+        pluralLabel="entries"
+        filters={eventTableFilters}
+      />
+      <TableScrollContainer ref={tableScrollRef}>
+        <table
+          className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+          role="grid"
+          aria-colcount={columns.length}
+        >
+          <thead className={tableThead}>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const pinStyles = getCommonPinningStyles(header.column);
+                  return (
+                    <th
+                      key={header.id}
+                      className={tableTh}
+                      style={{
+                        width: header.getSize(),
+                        minWidth: header.getSize(),
+                        maxWidth: header.getSize(),
+                        cursor: header.column.getCanSort()
+                          ? 'pointer'
+                          : 'default',
+                        ...pinStyles,
+                        ...(pinStyles.position === 'sticky'
+                          ? { backgroundColor: 'rgb(248 250 252)' }
+                          : {}),
+                      }}
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {pageRows.map((row) => (
+              <tr
+                key={row.id}
+                className={`${tableBodyRow} cursor-pointer`}
+                tabIndex={0}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                    return;
+                  if (window.getSelection()?.toString().trim()) return;
+                  void navigate(`/activity/${row.original.id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                    return;
+                  e.preventDefault();
+                  void navigate(`/activity/${row.original.id}`);
+                }}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const pinStyles = getCommonPinningStyles(cell.column);
+                  return (
+                    <td
+                      key={cell.id}
+                      className={tableTd}
+                      style={{
+                        width: cell.column.getSize(),
+                        minWidth: cell.column.getSize(),
+                        maxWidth: cell.column.getSize(),
+                        ...pinStyles,
+                      }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableScrollContainer>
+
+      <TablePagination
+        totalItems={table.getFilteredRowModel().rows.length}
+        page={pagination.pageIndex + 1}
+        pageSize={pagination.pageSize}
+        onPageChange={(page) =>
+          setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+        }
+        onPageSizeChange={(pageSize) =>
+          setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+        }
+        scrollContainerRef={tableScrollRef}
+      />
+    </div>
+  );
+}

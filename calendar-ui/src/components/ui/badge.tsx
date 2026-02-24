@@ -15,6 +15,8 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
         outline: 'text-foreground',
+        primary:
+          'border-transparent bg-[var(--fluent-primary)] text-white hover:opacity-90',
         selected:
           'border-transparent bg-inverted-background text-inverted-foreground hover:bg-inverted-background/80',
         success:
@@ -22,6 +24,21 @@ const badgeVariants = cva(
         warning:
           'border-transparent bg-bc-gold text-slate-900 hover:bg-bc-gold-dark',
         info: 'border-transparent bg-bc-blue text-white hover:bg-bc-blue/90',
+        /* Activity status badge variants (use getActivityStatusBadgeVariant for mapping) */
+        'status-blue':
+          'border-transparent bg-status-blue text-slate-900 hover:bg-status-blue/90',
+        'status-yellow':
+          'border-transparent bg-status-yellow text-slate-900 hover:bg-status-yellow/90',
+        'status-green':
+          'border-transparent bg-status-green text-slate-900 hover:bg-status-green/90',
+        'status-red':
+          'border-transparent bg-status-red text-slate-900 hover:bg-status-red/90',
+        'status-grey':
+          'border-transparent bg-status-grey text-slate-700 hover:bg-status-grey/90',
+        'status-dark':
+          'border-transparent bg-status-dark text-white hover:bg-status-dark/90',
+        'status-purple':
+          'border-transparent bg-status-purple text-slate-900 hover:bg-status-purple/90',
       },
     },
     defaultVariants: {
@@ -29,6 +46,51 @@ const badgeVariants = cva(
     },
   }
 );
+
+export type ActivityStatusBadgeVariant =
+  | 'status-blue'
+  | 'status-yellow'
+  | 'status-green'
+  | 'status-red'
+  | 'status-grey'
+  | 'status-dark'
+  | 'status-purple';
+
+/**
+ * Map activity status name (from API) to badge variant for consistent status badges.
+ * Used in ActivityTable Status column, ActivityPageHeader, and anywhere status is shown.
+ */
+/**
+ * Normalize activity status for variant lookup or comparison. Accepts either
+ * lookup name (e.g. "delete_requested") or displayName (e.g. "Delete requested").
+ */
+export function normalizeActivityStatus(status: string): string {
+  return status.toLowerCase().trim().replace(/\s+/g, '_');
+}
+
+export function getActivityStatusBadgeVariant(
+  status: string | null | undefined
+): ActivityStatusBadgeVariant {
+  if (status == null || status === '') return 'status-purple';
+  const normalized = normalizeActivityStatus(status);
+  switch (normalized) {
+    case 'new':
+      return 'status-blue';
+    case 'changed':
+      return 'status-yellow';
+    case 'reviewed':
+      return 'status-green';
+    case 'delete_requested':
+    case 'deleted':
+      return 'status-red';
+    case 'on_hold':
+      return 'status-grey';
+    case 'completed':
+      return 'status-dark';
+    default:
+      return 'status-purple';
+  }
+}
 
 export interface BadgeProps
   extends

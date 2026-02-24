@@ -25,6 +25,8 @@ import type { ActivityResponse } from '@corpcal/shared/api';
 import {
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  requestDeleteRequestSchema,
+  restoreRequestSchema,
   softDeleteRequestSchema,
   updateActivityRequestSchema,
   updateCategoriesSchema,
@@ -33,6 +35,8 @@ import {
   updateThemesSchema,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
+  type RequestDeleteRequest,
+  type RestoreRequest,
   type SoftDeleteRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
@@ -42,6 +46,8 @@ import {
   ActivityArrayResponseWrapperDto,
   ActivityResponseWrapperDto,
   CreateActivityDto,
+  RequestDeleteDto,
+  RestoreDto,
   SoftDeleteDto,
   UpdateActivityDto,
   UpdateCategoriesDto,
@@ -55,6 +61,8 @@ import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
+import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
 import { ActivitiesService } from './services/activities.service';
 
 @ApiTags('activities')
@@ -90,7 +98,9 @@ export class ActivitiesController {
       `Create activity request received: ${JSON.stringify(body)}`
     );
 
-    const result = await this.activitiesService.create(body, user.id);
+    const result = await this.activitiesService.create(body, user.id, {
+      roleName: user.roleName,
+    });
     return {
       success: true,
       data: result,
@@ -121,7 +131,6 @@ export class ActivitiesController {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
     // Check if there are any actual filter fields (excluding pagination defaults)
-    // TODO: refine to only use necessary filters (filtering will happen on the frontend)
     const hasFilters =
       query.title !== undefined ||
       query.startDateFrom !== undefined ||
@@ -132,12 +141,11 @@ export class ActivitiesController {
       query.leadMinistryId !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
-      query.isIssue !== undefined;
+      query.isIssue !== undefined ||
+      query.excludeCompleted !== undefined ||
+      query.includeDeleted !== undefined;
     const filters = hasFilters ? query : undefined;
-    const results = await this.activitiesService.findAll(
-      filters,
-      ctx.dataScope
-    );
+    const results = await this.activitiesService.findAll(filters, ctx);
     return {
       success: true,
       data: results,
@@ -235,7 +243,9 @@ export class ActivitiesController {
     body: UpdateActivityRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.update(id, body, user.id);
+    const result = await this.activitiesService.update(id, body, user.id, {
+      roleName: user.roleName,
+    });
     return {
       success: true,
       data: result,
@@ -276,7 +286,9 @@ export class ActivitiesController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     // PUT uses createActivityRequestSchema (all fields) but calls update
-    const result = await this.activitiesService.update(id, body, user.id);
+    const result = await this.activitiesService.update(id, body, user.id, {
+      roleName: user.roleName,
+    });
     return {
       success: true,
       data: result,
@@ -320,6 +332,98 @@ export class ActivitiesController {
       id,
       body.reason,
       user.id
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Request delete (comms contacts)',
+    description:
+      'Sets activity status to delete_requested. Only comms contacts on the activity may call this. Not allowed when status is already delete_requested or deleted.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Activity ID',
+    example: 1,
+  })
+  @ApiBody({ type: RequestDeleteDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity status set to delete requested',
+    type: ActivityResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed - reason too short or missing',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Activity not found',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Activity is already delete_requested or deleted',
+  })
+  @UseGuards(CanRequestDeleteActivityGuard)
+  @Post(':id/request-delete')
+  async requestDelete(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(requestDeleteRequestSchema))
+    body: RequestDeleteRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    const result = await this.activitiesService.requestDelete(
+      id,
+      body.reason,
+      user.id
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Restore activity',
+    description:
+      'Restores an activity from delete_requested or deleted to its previous status. Allowed for comms contacts on the activity or admin/sysAdmin.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Activity ID',
+    example: 1,
+  })
+  @ApiBody({ type: RestoreDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity restored',
+    type: ActivityResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Activity is not in delete_requested or deleted status',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Activity not found',
+  })
+  @UseGuards(CanRestoreActivityGuard)
+  @Post(':id/restore')
+  async restore(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(restoreRequestSchema)) body: RestoreRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    const result = await this.activitiesService.restore(
+      id,
+      user.id,
+      body.note,
+      { roleName: user.roleName }
     );
     return {
       success: true,

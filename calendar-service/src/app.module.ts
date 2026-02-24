@@ -14,6 +14,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { DatabaseModule } from './database/database.module';
 import { DraftsModule } from './drafts/drafts.module';
+import { LocksModule } from './locks/locks.module';
 import { LookAheadModule } from './look-ahead/look-ahead.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
@@ -48,6 +49,7 @@ function resolveRootEnvPath(): string {
     PolicyModule,
     AuthModule,
     ActivitiesModule,
+    LocksModule,
     LookupsModule,
     DraftsModule,
     ReportsModule,

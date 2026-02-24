@@ -32,8 +32,13 @@ api.interceptors.response.use(
   (response) => {
     // Store correlation ID from response header for debugging
     const correlationId = response.headers['x-correlation-id'];
-    if (correlationId && import.meta.env.DEV) {
-      // Store in response data for potential use in components
+    if (
+      correlationId &&
+      import.meta.env.DEV &&
+      response.data != null &&
+      typeof response.data === 'object' &&
+      !Array.isArray(response.data)
+    ) {
       response.data._correlationId = correlationId;
     }
     return response;

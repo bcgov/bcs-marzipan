@@ -31,9 +31,19 @@ const CreateActivityForm = lazyWithRetry(() =>
 const DraftsPage = lazyWithRetry(() =>
   import('./pages/Drafts').then((m) => ({ default: m.DraftsPage }))
 );
-const EditActivityForm = lazyWithRetry(() =>
-  import('./pages/EditActivityForm').then((m) => ({
-    default: m.EditActivityForm,
+const ActivityLayout = lazyWithRetry(() =>
+  import('./pages/ActivityLayout').then((m) => ({
+    default: m.ActivityLayout,
+  }))
+);
+const ActivityViewPage = lazyWithRetry(() =>
+  import('./pages/ActivityViewPage').then((m) => ({
+    default: m.ActivityViewPage,
+  }))
+);
+const ActivityEditPage = lazyWithRetry(() =>
+  import('./pages/ActivityEditPage').then((m) => ({
+    default: m.ActivityEditPage,
   }))
 );
 const Login = lazyWithRetry(() =>
@@ -99,15 +109,27 @@ function App() {
                   }
                 />
                 <Route
-                  path="activities/:id/edit"
+                  path="activity/:id"
                   element={
                     <ProtectedRoute
-                      requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                      requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
                     >
-                      <EditActivityForm />
+                      <ActivityLayout />
                     </ProtectedRoute>
                   }
-                />
+                >
+                  <Route index element={<ActivityViewPage />} />
+                  <Route
+                    path="edit"
+                    element={
+                      <ProtectedRoute
+                        requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                      >
+                        <ActivityEditPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
                 <Route
                   path="settings"
                   element={

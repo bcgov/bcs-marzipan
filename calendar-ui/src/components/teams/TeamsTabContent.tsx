@@ -11,7 +11,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
 import { SortIndicator } from '@/components/Table/SortIndicator';
+import {
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from '@/components/Table/tableConstants';
 import { TablePagination } from '@/components/Table/TablePagination';
+import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { TeamManagementFilters } from '@/components/teams/TeamManagementFilters';
 import { Button } from '@/components/ui/button';
@@ -23,7 +31,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const TABLE_SCROLL_HEIGHT = 'max(240px, min(600px, 60vh, 100vh - 400px))';
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
 const TABLE_COLUMN_COUNT = 6;
@@ -208,182 +215,163 @@ export function TeamsTabContent({
           },
         ]}
       />
-      <div
-        className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white"
-        style={{ height: TABLE_SCROLL_HEIGHT }}
-      >
-        <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-auto">
-          <table
-            className="w-full min-w-[640px] table-fixed border-collapse"
-            role="grid"
-            aria-colcount={TABLE_COLUMN_COUNT}
-          >
-            <colgroup>
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '30%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-            </colgroup>
-            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  <span className="inline-flex items-center gap-1">
-                    Display name
-                    <SortIndicator
-                      columnId="displayName"
-                      sortKey={sortKey}
-                      sortDirection={
-                        sortKey !== null
-                          ? sortDirection
-                          : DEFAULT_SORT_DIRECTION
-                      }
-                      className="h-4 w-4"
-                    />
-                  </span>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  Description
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  <span className="inline-flex items-center gap-1">
-                    Members
-                    <SortIndicator
-                      columnId="members"
-                      sortKey={sortKey}
-                      sortDirection={
-                        sortKey !== null
-                          ? sortDirection
-                          : DEFAULT_SORT_DIRECTION
-                      }
-                      className="h-4 w-4"
-                    />
-                  </span>
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  Ministries
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading && showSkeleton ? (
-                Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
-                  <tr key={i} className="border-b border-slate-100" aria-hidden>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-5 w-32" />
-                    </td>
-                    <td className="max-w-[200px] px-4 py-3">
-                      <Skeleton className="h-5 w-full max-w-[180px]" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-5 w-16" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-5 w-20" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-5 w-14" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-8 w-8 rounded" />
-                    </td>
-                  </tr>
-                ))
-              ) : sortedTeams.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={TABLE_COLUMN_COUNT}
-                    className="px-4 py-12 text-center text-slate-500"
-                  >
-                    {keyword.trim()
-                      ? 'No teams match your search'
-                      : showInactive
-                        ? 'No teams found'
-                        : 'No active teams. Show inactive to see all.'}
+      <TableScrollContainer ref={tableScrollRef}>
+        <table
+          className={`${tableTable} min-w-[640px]`}
+          role="grid"
+          aria-colcount={TABLE_COLUMN_COUNT}
+        >
+          <colgroup>
+            <col style={{ width: '22%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} />
+          </colgroup>
+          <thead className={tableThead}>
+            <tr>
+              <th className={tableTh}>
+                <span className="inline-flex items-center gap-1">
+                  Display name
+                  <SortIndicator
+                    columnId="displayName"
+                    sortKey={sortKey}
+                    sortDirection={
+                      sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION
+                    }
+                    className="h-4 w-4"
+                  />
+                </span>
+              </th>
+              <th className={tableTh}>Description</th>
+              <th className={tableTh}>
+                <span className="inline-flex items-center gap-1">
+                  Members
+                  <SortIndicator
+                    columnId="members"
+                    sortKey={sortKey}
+                    sortDirection={
+                      sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION
+                    }
+                    className="h-4 w-4"
+                  />
+                </span>
+              </th>
+              <th className={tableTh}>Ministries</th>
+              <th className={tableTh}>Status</th>
+              <th className={tableTh}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && showSkeleton ? (
+              Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
+                <tr key={i} className={tableBodyRow} aria-hidden>
+                  <td className={tableTd}>
+                    <Skeleton className="h-5 w-32" />
+                  </td>
+                  <td className={`${tableTd} max-w-[200px]`}>
+                    <Skeleton className="h-5 w-full max-w-[180px]" />
+                  </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-5 w-16" />
+                  </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-5 w-20" />
+                  </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-5 w-14" />
+                  </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-8 w-8 rounded" />
                   </td>
                 </tr>
-              ) : (
-                pageRows.map((team) => (
-                  <tr
-                    key={team.id}
-                    className="border-b border-slate-100 hover:bg-slate-50/50"
+              ))
+            ) : sortedTeams.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={TABLE_COLUMN_COUNT}
+                  className={`${tableTd} py-12 text-center text-slate-500`}
+                >
+                  {keyword.trim()
+                    ? 'No teams match your search'
+                    : showInactive
+                      ? 'No teams found'
+                      : 'No active teams. Show inactive to see all.'}
+                </td>
+              </tr>
+            ) : (
+              pageRows.map((team) => (
+                <tr key={team.id} className={tableBodyRow}>
+                  <td className={`${tableTd} font-medium text-slate-900`}>
+                    {team.displayName ?? team.name ?? '-'}
+                  </td>
+                  <td
+                    className={`${tableTd} max-w-[200px] truncate text-slate-600`}
                   >
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {team.displayName ?? team.name ?? '-'}
-                    </td>
-                    <td className="max-w-[200px] truncate px-4 py-3 text-slate-600">
-                      {team.description ?? '-'}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {team.memberCount}{' '}
-                      {team.memberCount === 1 ? 'member' : 'members'}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {team.ministryCount}{' '}
-                      {team.ministryCount === 1 ? 'ministry' : 'ministries'}
-                    </td>
-                    <td className="px-4 py-3">{statusBadge(team.isActive)}</td>
-                    <td className="px-4 py-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            aria-label="Actions"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {canEdit && (
-                            <DropdownMenuItem onClick={() => onEditTeam(team)}>
-                              <Pencil className="h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => onViewHistory(team)}>
-                            <History className="h-4 w-4" />
-                            View history
+                    {team.description ?? '-'}
+                  </td>
+                  <td className={`${tableTd} text-slate-600`}>
+                    {team.memberCount}{' '}
+                    {team.memberCount === 1 ? 'member' : 'members'}
+                  </td>
+                  <td className={`${tableTd} text-slate-600`}>
+                    {team.ministryCount}{' '}
+                    {team.ministryCount === 1 ? 'ministry' : 'ministries'}
+                  </td>
+                  <td className={tableTd}>{statusBadge(team.isActive)}</td>
+                  <td className={tableTd}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Actions"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEditTeam(team)}>
+                            <Pencil className="h-4 w-4" />
+                            Edit
                           </DropdownMenuItem>
-                          {canDelete && team.isActive && onDeactivate && (
-                            <DropdownMenuItem
-                              onClick={() => onDeactivate(team)}
-                              variant="destructive"
-                            >
-                              Deactivate
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                        )}
+                        <DropdownMenuItem onClick={() => onViewHistory(team)}>
+                          <History className="h-4 w-4" />
+                          View history
+                        </DropdownMenuItem>
+                        {canDelete && team.isActive && onDeactivate && (
+                          <DropdownMenuItem
+                            onClick={() => onDeactivate(team)}
+                            variant="destructive"
+                          >
+                            Deactivate
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </TableScrollContainer>
       {sortedTeams.length > 0 && (
         <TablePagination
           totalItems={sortedTeams.length}
           page={pagination.pageIndex + 1}
           pageSize={pagination.pageSize}
-          onPageChange={(p) => {
-            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }));
-            tableScrollRef.current?.scrollTo({ top: 0 });
-          }}
-          onPageSizeChange={(ps) => {
-            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }));
-            tableScrollRef.current?.scrollTo({ top: 0 });
-          }}
+          onPageChange={(p) =>
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+          }
+          onPageSizeChange={(ps) =>
+            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }))
+          }
+          scrollContainerRef={tableScrollRef}
           aria-label="Teams table pagination"
         />
       )}

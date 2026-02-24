@@ -56,6 +56,8 @@ export class LookAheadService {
         lookAheadSection: sectionId,
         page: 1,
         limit: 500,
+        excludeCompleted: undefined,
+        includeDeleted: undefined,
       };
       if (options?.startDate) {
         filters.startDateFrom = options.startDate;

@@ -73,6 +73,24 @@ export const filterActivitiesQuerySchema = z.object({
     .transform((val) => val === 'true')
     .pipe(z.boolean())
     .optional(),
+  /**
+   * When true, exclude activities with status 'completed'. Omit to include completed (e.g. calendar). Set to true for list views to reduce payload.
+   */
+  excludeCompleted: z
+    .string()
+    .optional()
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
+    ),
+  /**
+   * When true, include soft-deleted activities. Only effective for Admin/System Admin; ignored otherwise.
+   */
+  includeDeleted: z
+    .string()
+    .optional()
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
+    ),
   page: z
     .string()
     .default('1')

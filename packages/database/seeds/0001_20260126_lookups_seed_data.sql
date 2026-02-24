@@ -42,20 +42,45 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- ACTIVITY STATUSES
--- Used for both activity entry status and field review statuses
--- Values: 'new', 'queued', 'reviewed', 'changed', 'paused', 'deleted'
+-- Used for both activity entry status and field review statuses.
+-- Canonical (id, name) mapping - code and activities seed depend on these ids:
+--   1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold
 -- ============================================================================
 
-INSERT INTO activity_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-SELECT * FROM (VALUES
-  ('new', 'New', 1, true, 'Newly created entry', 1, 1),
-  ('queued', 'Queued', 2, true, 'Entry is queued for review', 1, 1),
-  ('reviewed', 'Reviewed', 3, true, 'Entry has been reviewed', 1, 1),
-  ('changed', 'Changed', 4, true, 'Entry has been changed', 1, 1),
-  ('paused', 'Paused', 5, true, 'Entry is paused', 1, 1),
-  ('deleted', 'Deleted', 6, true, 'Entry is deleted', 1, 1)
-) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-WHERE NOT EXISTS (SELECT 1 FROM activity_statuses WHERE activity_statuses.name = v.name);
+-- Upsert by id so we always enforce canonical (id, name) even when rows already exist (e.g. re-seed or prior migration).
+INSERT INTO activity_statuses (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
+VALUES
+  (1, 'new', 'New', 1, true, 'Newly created entry', 1, 1),
+  (2, 'reviewed', 'Reviewed', 2, true, 'Entry has been reviewed', 1, 1),
+  (3, 'changed', 'Changed', 3, true, 'Entry has been changed', 1, 1),
+  (4, 'deleted', 'Deleted', 4, true, 'Entry is deleted', 1, 1),
+  (5, 'delete_requested', 'Delete requested', 5, true, 'Delete has been requested by comms contact', 1, 1),
+  (6, 'completed', 'Completed', 6, true, 'Activity has ended (set by scheduler)', 1, 1),
+  (7, 'on_hold', 'On hold', 7, true, 'Activity is on hold (deferred)', 1, 1)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  description = EXCLUDED.description,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
+
+-- Safeguard: fail if (id, name) pairs are out of sync with the canonical mapping above.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM (VALUES
+      (1, 'new'), (2, 'reviewed'), (3, 'changed'), (4, 'deleted'),
+      (5, 'delete_requested'), (6, 'completed'), (7, 'on_hold')
+    ) AS v(id, name)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM activity_statuses a WHERE a.id = v.id AND a.name = v.name
+    )
+  ) THEN
+    RAISE EXCEPTION 'activity_statuses seed alignment failed: expected (id,name) 1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold. Code and activities seed depend on these ids.';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- PITCH STATUSES
