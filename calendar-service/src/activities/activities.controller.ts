@@ -145,27 +145,6 @@ export class ActivitiesController {
       query.excludeCompleted !== undefined ||
       query.includeDeleted !== undefined;
     const filters = hasFilters ? query : undefined;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'caffe0',
-      },
-      body: JSON.stringify({
-        sessionId: 'caffe0',
-        location: 'activities.controller.ts:findAll',
-        message: 'Controller passing ctx to findAll',
-        data: {
-          dataScope: ctx?.dataScope,
-          bypass: ctx?.dataScope?.bypass,
-          teamIdsLength: ctx?.dataScope?.teamIds?.length,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H2',
-      }),
-    }).catch(() => {});
-    // #endregion
     const results = await this.activitiesService.findAll(filters, ctx);
     return {
       success: true,

@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, lte, ne, or, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -531,50 +531,6 @@ export class ActivitiesService {
     const deletedStatusId = deletedStatus?.id;
     const completedStatusId = completedStatus?.id;
 
-    // #region agent log
-    const totalInDb = await this.databaseService.db
-      .select({ id: activities.id })
-      .from(activities);
-    const completedOrDeletedConditions: SQL[] = [];
-    if (completedStatusId !== undefined)
-      completedOrDeletedConditions.push(
-        eq(activities.activityStatusId, completedStatusId)
-      );
-    if (deletedStatusId !== undefined)
-      completedOrDeletedConditions.push(
-        eq(activities.activityStatusId, deletedStatusId)
-      );
-    const withCompletedOrDeleted =
-      completedOrDeletedConditions.length > 0
-        ? await this.databaseService.db
-            .select({ id: activities.id })
-            .from(activities)
-            .where(or(...completedOrDeletedConditions))
-        : [];
-    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'caffe0',
-      },
-      body: JSON.stringify({
-        sessionId: 'caffe0',
-        location: 'activities.service.ts:findAll',
-        message: 'Status filter setup',
-        data: {
-          excludeCompleted: filters?.excludeCompleted,
-          includeDeleted: filters?.includeDeleted,
-          deletedStatusId,
-          completedStatusId,
-          totalActivitiesInDb: totalInDb.length,
-          countWithCompletedOrDeleted: withCompletedOrDeleted.length,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H5',
-      }),
-    }).catch(() => {});
-    // #endregion
-
     const allowIncludeDeleted =
       filters?.includeDeleted === true &&
       (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -671,24 +627,6 @@ export class ActivitiesService {
       }
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'caffe0',
-      },
-      body: JSON.stringify({
-        sessionId: 'caffe0',
-        location: 'activities.service.ts:findAll',
-        message: 'After DB query, before city filter',
-        data: { activityCountAfterDb: activityResults.length },
-        timestamp: Date.now(),
-        hypothesisId: 'H4',
-      }),
-    }).catch(() => {});
-    // #endregion
-
     // Handle city filter with proper join if needed
     if (filters && filters.city !== undefined) {
       const activitiesWithCity = await this.databaseService.db
@@ -707,30 +645,6 @@ export class ActivitiesService {
     // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
     // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
     const dataScope = ctx?.dataScope;
-    // #region agent log
-    const countBeforeScope = activityResults.length;
-    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'caffe0',
-      },
-      body: JSON.stringify({
-        sessionId: 'caffe0',
-        location: 'activities.service.ts:findAll',
-        message: 'Before data-scope filter',
-        data: {
-          countBeforeScope,
-          hasDataScope: !!dataScope,
-          bypass: dataScope?.bypass,
-          teamIdsLength: dataScope?.teamIds?.length ?? -1,
-          teamIds: dataScope?.teamIds,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H3',
-      }),
-    }).catch(() => {});
-    // #endregion
     if (dataScope && !dataScope.bypass && dataScope.teamIds.length > 0) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
@@ -743,23 +657,6 @@ export class ActivitiesService {
     ) {
       activityResults = [];
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/d7babf38-8e48-44d1-9cb2-88c37682cecb', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': 'caffe0',
-      },
-      body: JSON.stringify({
-        sessionId: 'caffe0',
-        location: 'activities.service.ts:findAll',
-        message: 'After data-scope filter',
-        data: { countAfterScope: activityResults.length },
-        timestamp: Date.now(),
-        hypothesisId: 'H3',
-      }),
-    }).catch(() => {});
-    // #endregion
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
@@ -782,6 +679,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatusMap,
+      translationsRequiredStatusMap,
+      leadMinistryNamesMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities(activityIds),
       this.dataFetcherService.fetchTagsForActivities(activityIds),
@@ -808,6 +708,13 @@ export class ActivitiesService {
       ),
       this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
       this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
     ]);
 
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
@@ -835,6 +742,10 @@ export class ActivitiesService {
           newsReleaseDistributionsMap.get(activity.id) ?? null,
         premierRequested: premierRequestedMap.get(activity.id) ?? null,
         reportSettings: reportSettingsMap.get(activity.id) ?? [],
+        pitchRequiredStatus: pitchRequiredStatusMap.get(activity.id) ?? null,
+        translationsRequiredStatus:
+          translationsRequiredStatusMap.get(activity.id) ?? null,
+        leadMinistry: leadMinistryNamesMap.get(activity.id) ?? null,
       })
     );
   }
@@ -884,6 +795,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -902,6 +816,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -926,6 +845,9 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
     });
   }
 
@@ -1260,6 +1182,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1278,6 +1203,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1302,6 +1232,9 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1554,6 +1487,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1572,6 +1508,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1596,6 +1537,9 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
     });
   }
 
@@ -1705,6 +1649,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1723,6 +1670,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1747,6 +1699,9 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
     });
   }
 
@@ -1838,6 +1793,9 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1856,6 +1814,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1880,6 +1843,9 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
     });
   }
 

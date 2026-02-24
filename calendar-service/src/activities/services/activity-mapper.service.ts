@@ -62,6 +62,9 @@ export class ActivityMapperService {
         displayName: string;
         omitted: boolean;
       }>;
+      pitchRequiredStatus?: string | null;
+      translationsRequiredStatus?: string | null;
+      leadMinistry?: string | null;
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -168,6 +171,10 @@ export class ActivityMapperService {
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       premierRequested: relatedData?.premierRequested ?? null,
+      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
+      translationsRequiredStatus:
+        relatedData?.translationsRequiredStatus ?? null,
+      leadMinistry: relatedData?.leadMinistry ?? null,
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],
