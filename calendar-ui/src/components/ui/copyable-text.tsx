@@ -12,6 +12,9 @@ import {
 
 const COPIED_FEEDBACK_DURATION_MS = 1500;
 
+const minimalVariantClasses =
+  'justify-start text-left p-0 min-h-0 h-auto gap-1.5 hover:bg-transparent active:bg-transparent';
+
 type CopyableTextProps = {
   /** Text to copy to the clipboard. */
   text: string;
@@ -23,6 +26,11 @@ type CopyableTextProps = {
   className?: string;
   /** Show copy icon always instead of only on hover. */
   showIconAlways?: boolean;
+  /**
+   * - default: standard button look with hover highlight and padding.
+   * - minimal: left-aligned, no hover highlight, no extra padding (e.g. for inline use in tables).
+   */
+  variant?: 'default' | 'minimal';
 };
 
 /**
@@ -35,6 +43,7 @@ export function CopyableText({
   children,
   className,
   showIconAlways = false,
+  variant = 'default',
 }: CopyableTextProps) {
   const [showCopied, setShowCopied] = useState(false);
 
@@ -43,6 +52,8 @@ export function CopyableText({
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), COPIED_FEEDBACK_DURATION_MS);
   }, [text]);
+
+  const isMinimal = variant === 'minimal';
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -58,7 +69,11 @@ export function CopyableText({
             variant="ghost"
             size="sm"
             onClick={() => void copy()}
-            className={cn('group h-auto gap-1.5 font-normal', className)}
+            className={cn(
+              'group cursor-pointer font-normal',
+              isMinimal ? minimalVariantClasses : 'h-auto gap-1.5',
+              className
+            )}
             title={copyLabel}
             aria-label={copyLabel}
           >

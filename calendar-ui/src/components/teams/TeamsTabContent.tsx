@@ -365,14 +365,13 @@ export function TeamsTabContent({
           totalItems={sortedTeams.length}
           page={pagination.pageIndex + 1}
           pageSize={pagination.pageSize}
-          onPageChange={(p) => {
-            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }));
-            tableScrollRef.current?.scrollTo({ top: 0 });
-          }}
-          onPageSizeChange={(ps) => {
-            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }));
-            tableScrollRef.current?.scrollTo({ top: 0 });
-          }}
+          onPageChange={(p) =>
+            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+          }
+          onPageSizeChange={(ps) =>
+            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }))
+          }
+          scrollContainerRef={tableScrollRef}
           aria-label="Teams table pagination"
         />
       )}

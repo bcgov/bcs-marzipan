@@ -15,6 +15,7 @@ import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { ActivityPageHeader } from '../components/ActivityPageHeader';
 import { ActivityStatusBanner } from '../components/ActivityStatusBanner';
+import { normalizeActivityStatus } from '../components/ui/badge';
 import { Form } from '../components/ui/form';
 import { useAuth } from '../hooks/useAuth';
 import { useFormLookups } from '../hooks/useFormLookups';
@@ -46,9 +47,9 @@ export function ActivityViewPage(): React.ReactElement {
   const isCommsContact =
     activity.commsContacts?.some((c) => c.userId === user?.id) ?? false;
   const activityStatusName = activity.activityStatus ?? '';
+  const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
-    activityStatusName === 'delete_requested' ||
-    activityStatusName === 'deleted';
+    normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canRestore = isCommsContact || isAdminOrSysAdmin;
 
   const handleRestore = async () => {

@@ -1,11 +1,10 @@
 import { Plus } from 'lucide-react';
 
 import { PERMISSIONS } from '@corpcal/shared';
+import { ActivityTable } from '@/components/ActivityTable';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-
-import { EventTable } from '../components/EventTable';
 
 /**
  * Calendar Entries list. Rendered inside Layout, which wraps content with
@@ -37,7 +36,7 @@ export const CalendarEntriesList = () => {
         }
       />
       <div className="min-w-0">
-        <EventTable />
+        <ActivityTable />
       </div>
     </>
   );

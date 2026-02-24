@@ -28,6 +28,7 @@ import { ActivityPageHeader } from '../components/ActivityPageHeader';
 import { ActivityStatusBanner } from '../components/ActivityStatusBanner';
 import { FormErrorFallback } from '../components/FormErrorFallback';
 import { LockBanner } from '../components/LockBanner';
+import { normalizeActivityStatus } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {
   Dialog,
@@ -75,9 +76,9 @@ export function ActivityEditPage(): React.ReactElement {
   const isCommsContact =
     activity.commsContacts?.some((c) => c.userId === user?.id) ?? false;
   const activityStatusName = activity.activityStatus ?? '';
+  const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
-    activityStatusName === 'delete_requested' ||
-    activityStatusName === 'deleted';
+    normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canRestore = isCommsContact || isAdminOrSysAdmin;
 
   const { data: dateStatuses } = useDateStatuses();

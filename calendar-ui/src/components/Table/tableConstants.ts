@@ -22,14 +22,15 @@ export const tableTable = 'w-full table-fixed border-collapse';
 export const tableThead =
   'sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]';
 
-/** Header cell */
-export const tableTh = 'px-4 py-3 text-left text-sm font-medium text-slate-700';
+/** Header cell: 12px vertical / 16px horizontal padding (py-3 px-4), content aligned top */
+export const tableTh =
+  'px-4 py-3 text-left text-sm font-medium text-slate-700 align-top';
 
 /** Body row */
 export const tableBodyRow = 'border-b border-slate-100 hover:bg-slate-50/50';
 
-/** Body cell */
-export const tableTd = 'px-4 py-3';
+/** Body cell: 12px vertical / 16px horizontal padding (py-3 px-4), content aligned top. Matches Users table. */
+export const tableTd = 'px-4 py-3 align-top';
 
 /** EventTable (Calendar Entries) column widths in pixels. Update here to change all at once. */
 export const EVENT_TABLE_COLUMN_WIDTHS = {
@@ -38,5 +39,5 @@ export const EVENT_TABLE_COLUMN_WIDTHS = {
   scheduling: 280,
   leads: 180,
   materials: 200,
-  status: 150,
+  status: 160,
 } as const;
