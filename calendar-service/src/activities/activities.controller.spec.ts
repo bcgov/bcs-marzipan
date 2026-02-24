@@ -111,7 +111,12 @@ describe('ActivitiesController', () => {
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
       const result = await controller.findAll(
-        { page: 1, limit: 10 },
+        {
+          page: 1,
+          limit: 10,
+          excludeCompleted: undefined,
+          includeDeleted: undefined,
+        },
         {} as Parameters<ActivitiesController['findAll']>[1]
       );
 
@@ -124,7 +129,13 @@ describe('ActivitiesController', () => {
 
     it('should return filtered activities', async () => {
       const activities = [mockActivityResponse];
-      const filters = { page: 1, limit: 10, title: 'Test' };
+      const filters = {
+        page: 1,
+        limit: 10,
+        title: 'Test',
+        excludeCompleted: undefined,
+        includeDeleted: undefined,
+      };
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
       const result = await controller.findAll(

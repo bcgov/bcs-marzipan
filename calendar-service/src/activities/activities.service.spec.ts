@@ -18,6 +18,7 @@ import { LocksService } from '../locks/locks.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
+import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
 import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
@@ -128,37 +129,8 @@ describe('ActivitiesService', () => {
     updateCommsContacts: vi.fn().mockResolvedValue(undefined),
   };
 
-  // Mock data fetcher service
-  const mockDataFetcherService = {
-    fetchCategoriesForActivities: vi
-      .fn()
-      .mockResolvedValue({ namesMap: new Map(), idsMap: new Map() }),
-    fetchTagsForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchActivityStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchPitchStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchDateStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchTimeStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchVenueStatusesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchVenueAddressesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchCommsMaterialsForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchTranslationsRequiredForActivities: vi
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchRepresentativesAttendingForActivities: vi
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchSharedWithTeamsForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchCommsContactsForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchLeadOrgNamesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchEventLeadOrgNamesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchEventPlannerNamesForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchNewsReleaseOriginsForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchNewsReleaseDistributionsForActivities: vi
-      .fn()
-      .mockResolvedValue(new Map()),
-    fetchPremierRequestedForActivities: vi.fn().mockResolvedValue(new Map()),
-    fetchReportSettingsForActivities: vi.fn().mockResolvedValue(new Map()),
-  };
+  // Mock data fetcher service (from shared factory to stay in sync with ActivityDataFetcherService)
+  const mockDataFetcherService = createMockActivityDataFetcherService();
 
   // Mock utils service
   const mockUtilsService = {
