@@ -8,9 +8,9 @@ import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
+  type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 
-import { createActivity } from '../api/activitiesApi';
 import { CreateActivityConfirmModal } from '../components/activities/CreateActivityConfirmModal';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
@@ -35,6 +35,7 @@ import {
 } from '../components/ui/resumeDraftDialog';
 import { useAuth } from '../hooks/useAuth';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useCreateActivity } from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
@@ -66,6 +67,7 @@ export const CreateActivityForm: FC = () => {
   );
   const draftCheckedRef = useRef(false);
 
+  const createMutation = useCreateActivity();
   const {
     hasPermission,
     isLoading: isAuthLoading,
@@ -245,9 +247,9 @@ export const CreateActivityForm: FC = () => {
       const payload = {
         ...submitData,
         ...(notes ? { activityHistoryNotes: notes } : {}),
-      } as Parameters<typeof createActivity>[0];
+      } as CreateActivityRequest;
 
-      await createActivity(payload);
+      await createMutation.mutateAsync(payload);
 
       if (existingDraft) {
         deleteDraft();

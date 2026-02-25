@@ -29,13 +29,7 @@ import {
   type CSSProperties,
 } from 'react';
 
-import type {
-  ActivityResponse,
-  UserLookupItem,
-} from '@corpcal/shared/api/types';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { fetchActivities } from '@/api/activitiesApi';
-import { fetchUsers } from '@/api/lookupsApi';
 import { ErrorState } from '@/components/ErrorState';
 import {
   ACTIVITY_TABLE_COLUMN_WIDTHS,
@@ -56,13 +50,15 @@ import {
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
 import { useAuth } from '@/hooks/useAuth';
+import { useActivityList } from '@/hooks/useCalendar';
+import { useUsers } from '@/hooks/useLookups';
 import {
   formatDateRange,
   formatExactDate,
   formatRelativeTime,
   formatTime12h,
 } from '@/lib/datetime-utils';
-import { createLogger } from '@/lib/logger';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
 
 import {
   mapActivityResponseToTableRow,
@@ -79,7 +75,6 @@ import {
  */
 
 const DEFAULT_PAGE_SIZE = 10;
-const logger = createLogger('ActivityTable');
 
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
@@ -533,10 +528,34 @@ export function ActivityTable() {
   });
   const [showCompleted, setShowCompleted] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
-  const [activities, setActivities] = useState<ActivityResponse[]>([]);
-  const [users, setUsers] = useState<UserLookupItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const activityFilters = useMemo(
+    () => ({
+      excludeCompleted: !showCompleted,
+      includeDeleted: showDeleted && canSeeDeleted,
+    }),
+    [showCompleted, showDeleted, canSeeDeleted]
+  );
+
+  // Reset to first page when user changes filters so results match expectations
+  const prevFiltersRef = useRef(activityFilters);
+  useEffect(() => {
+    const prev = prevFiltersRef.current;
+    const same =
+      prev.excludeCompleted === activityFilters.excludeCompleted &&
+      prev.includeDeleted === activityFilters.includeDeleted;
+    if (!same) {
+      prevFiltersRef.current = activityFilters;
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    }
+  }, [activityFilters]);
+
+  const activitiesQuery = useActivityList(activityFilters);
+  const usersQuery = useUsers();
+  const activities = activitiesQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const loading = activitiesQuery.isPending && !activitiesQuery.data;
+  const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
   const onPaginationChangeStable = useCallback(
     (
@@ -561,35 +580,6 @@ export function ActivityTable() {
     []
   );
 
-  const activityFilters = useMemo(
-    () => ({
-      excludeCompleted: !showCompleted,
-      includeDeleted: showDeleted && canSeeDeleted,
-    }),
-    [showCompleted, showDeleted, canSeeDeleted]
-  );
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [activitiesData, usersData] = await Promise.all([
-          fetchActivities(activityFilters),
-          fetchUsers(),
-        ]);
-        setActivities(activitiesData);
-        setUsers(usersData);
-        setError(null);
-      } catch (err) {
-        logger.error('Error loading data:', err);
-        setError('Failed to load activities. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadData();
-  }, [activityFilters]);
-
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
     users.forEach((u) => {
@@ -606,6 +596,28 @@ export function ActivityTable() {
     () => activities.map(mapActivityResponseToTableRow),
     [activities]
   );
+
+  // Track which row ids we have seen so we can animate only newly arrived rows on refetch
+  const seenIdsRef = useRef<Set<number>>(new Set());
+  const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const currentIds = data.map((r) => r.id);
+    const currentSet = new Set(currentIds);
+    const newlyAdded = currentIds.filter((id) => !seenIdsRef.current.has(id));
+    seenIdsRef.current = currentSet;
+    if (newlyAdded.length > 0) {
+      setNewRowIds((prev) => new Set([...prev, ...newlyAdded]));
+      const timeout = window.setTimeout(() => {
+        setNewRowIds((prev) => {
+          const next = new Set(prev);
+          newlyAdded.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 400);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [data]);
 
   const columnHelper = createColumnHelper<ActivityTableRow>();
 
@@ -679,7 +691,8 @@ export function ActivityTable() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    autoResetPageIndex: true,
+    autoResetPageIndex: false,
+    getRowId: (row) => String(row.id),
     meta: { userMap },
   });
 
@@ -731,22 +744,8 @@ export function ActivityTable() {
       <div className="p-10">
         <ErrorState
           title="Failed to load activities"
-          message={error}
-          onRetry={() => {
-            setLoading(true);
-            setError(null);
-            fetchActivities(activityFilters)
-              .then((activitiesData) => {
-                setActivities(activitiesData);
-                return fetchUsers();
-              })
-              .then((usersData) => setUsers(usersData))
-              .catch((err) => {
-                logger.error('Error loading data:', err);
-                setError('Failed to load activities. Please try again.');
-              })
-              .finally(() => setLoading(false));
-          }}
+          message={getFriendlyErrorMessage(error)}
+          onRetry={() => void activitiesQuery.refetch()}
         />
       </div>
     );
@@ -832,56 +831,61 @@ export function ActivityTable() {
             ))}
           </thead>
           <tbody>
-            {pageRows.map((row) => (
-              <tr
-                key={row.id}
-                className={`group/row ${tableBodyRow} cursor-pointer`}
-                tabIndex={0}
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                    return;
-                  if (window.getSelection()?.toString().trim()) return;
-                  void navigate(`/activity/${row.original.id}`);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return;
-                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                    return;
-                  e.preventDefault();
-                  void navigate(`/activity/${row.original.id}`);
-                }}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const pinStyles = getCommonPinningStyles(cell.column);
-                  const isOverview = cell.column.id === 'overview';
-                  return (
-                    <td
-                      key={cell.id}
-                      className={`${tableTd} border-b border-slate-100 ${
-                        isOverview
-                          ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                          : ''
-                      }`}
-                      style={{
-                        width: cell.column.getSize(),
-                        minWidth:
-                          cell.column.columnDef.minSize ??
-                          cell.column.getSize(),
-                        maxWidth:
-                          cell.column.columnDef.maxSize ??
-                          cell.column.getSize(),
-                        ...pinStyles,
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {pageRows.map((row) => {
+              const isNewRow = newRowIds.has(row.original.id);
+              return (
+                <tr
+                  key={row.id}
+                  className={`group/row ${tableBodyRow} cursor-pointer ${
+                    isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                  }`}
+                  tabIndex={0}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                      return;
+                    if (window.getSelection()?.toString().trim()) return;
+                    void navigate(`/activity/${row.original.id}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                      return;
+                    e.preventDefault();
+                    void navigate(`/activity/${row.original.id}`);
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const pinStyles = getCommonPinningStyles(cell.column);
+                    const isOverview = cell.column.id === 'overview';
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`${tableTd} border-b border-slate-100 ${
+                          isOverview
+                            ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                            : ''
+                        }`}
+                        style={{
+                          width: cell.column.getSize(),
+                          minWidth:
+                            cell.column.columnDef.minSize ??
+                            cell.column.getSize(),
+                          maxWidth:
+                            cell.column.columnDef.maxSize ??
+                            cell.column.getSize(),
+                          ...pinStyles,
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </TableScrollContainer>
