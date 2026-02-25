@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
-import { formatLongDate, formatTime } from '@/lib/utils';
+import { formatLongDate, formatTime } from '@/lib/datetime-utils';
 
 import { fetchActivityHistory } from '../../api/activitiesApi';
 import {

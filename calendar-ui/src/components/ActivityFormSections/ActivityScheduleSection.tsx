@@ -8,7 +8,7 @@ import {
   CONFIRMED_STATUS_NAMES,
   findStatusByName,
   UNCONFIRMED_STATUS_NAMES,
-} from '../../lib/utils';
+} from '../../lib/datetime-utils';
 import { Checkbox } from '../ui/checkbox';
 import { DateRangePicker } from '../ui/date-range-picker';
 import {

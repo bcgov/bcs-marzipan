@@ -1,8 +1,13 @@
 import { History } from 'lucide-react';
 import type { ReactElement } from 'react';
 
+import {
+  formatLongDate,
+  formatRelativeTime,
+  formatTime,
+  isSameDay,
+} from '../lib/datetime-utils';
 import { formatDisplayValue } from '../lib/formatDisplayValue';
-import { formatLongDate, formatTime, isSameDay, timeAgo } from '../lib/utils';
 import { Badge, getActivityStatusBadgeVariant } from './ui/badge';
 import { Button } from './ui/button';
 import { CopyableText } from './ui/copyable-text';
@@ -32,6 +37,17 @@ export function ActivityPageHeader({
   onHistoryClick,
 }: ActivityPageHeaderProps): ReactElement {
   const statusDisplay = formatDisplayValue(activityStatus);
+  let updatedLabel: string | null = null;
+  if (
+    lastUpdatedDateTime &&
+    createdDateTime &&
+    lastUpdatedDateTime !== createdDateTime
+  ) {
+    const d = new Date(lastUpdatedDateTime);
+    updatedLabel = isSameDay(d, new Date())
+      ? `today at ${formatTime(d)}`
+      : formatRelativeTime(d);
+  }
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0 flex-1">
@@ -67,16 +83,7 @@ export function ActivityPageHeader({
           </Badge>
         ) : null}
         <div className="text-muted-foreground text-xs sm:text-sm">
-          {lastUpdatedDateTime &&
-          createdDateTime &&
-          lastUpdatedDateTime !== createdDateTime ? (
-            <div>
-              Updated{' '}
-              {isSameDay(new Date(lastUpdatedDateTime), new Date())
-                ? `today at ${formatTime(new Date(lastUpdatedDateTime))}`
-                : `${timeAgo(new Date(lastUpdatedDateTime))} ago`}
-            </div>
-          ) : null}
+          {updatedLabel ? <div>Updated {updatedLabel}</div> : null}
           <div>
             Created{' '}
             {createdDateTime ? formatLongDate(new Date(createdDateTime)) : ''}

@@ -49,6 +49,12 @@ import {
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  formatDateRange,
+  formatExactDate,
+  formatRelativeTime,
+  formatTime12h,
+} from '@/lib/datetime-utils';
 import { createLogger } from '@/lib/logger';
 
 import {
@@ -249,23 +255,19 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
 }
 
 function SchedulingCell({ row }: { row: ActivityTableRow }) {
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+  const dateRangeText =
+    row.startDate && row.endDate && row.endDate !== row.startDate
+      ? formatDateRange(row.startDate, row.endDate)
+      : row.startDate
+        ? formatExactDate(new Date(row.startDate), { includeYear: 'auto' })
+        : '';
 
   return (
     <div className="text-[13px]">
       {row.startDate && (
         <div className="mb-1.5 flex items-center gap-1.5">
           <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
-          <span>
-            {formatDate(row.startDate)}
-            {row.endDate && row.endDate !== row.startDate
-              ? ` \u2013 ${formatDate(row.endDate)}`
-              : ''}
-          </span>
+          <span>{dateRangeText}</span>
           <Badge
             variant="outline"
             className="h-5 border-slate-200 text-xs text-slate-600"
@@ -280,9 +282,9 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <Clock className="h-4 w-4 shrink-0 text-slate-500" />
           <span>
             {row.allDay
-              ? 'allDay'
+              ? 'All day'
               : row.startTime
-                ? `${row.startTime}${row.endTime ? ` \u2013 ${row.endTime}` : ''}`
+                ? `${formatTime12h(row.startTime)}${row.endTime ? ` \u2013 ${formatTime12h(row.endTime)}` : ''}`
                 : '--:-- \u2013 --:--'}
           </span>
           <Badge
@@ -295,8 +297,8 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
       )}
 
       {row.venue && (
-        <div className="mb-1.5 flex items-start gap-1 text-slate-600">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="mb-1.5 flex items-start gap-1">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
           <span>{row.venue}</span>
         </div>
       )}
@@ -389,11 +391,11 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
         </div>
       )}
       {hasMaterials && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-start gap-1.5">
           <NotebookText
             size={16}
             strokeWidth={1.5}
-            className="shrink-0 text-slate-500"
+            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
           <span>
             {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
@@ -420,8 +422,12 @@ function StatusCell({
     .toUpperCase()
     .slice(0, 2);
 
-  const updatedDate = new Date(row.lastUpdatedDateTime).toLocaleDateString();
-  const createdDate = new Date(row.createdDateTime).toLocaleDateString();
+  const updatedDate = formatRelativeTime(new Date(row.lastUpdatedDateTime), {
+    short: true,
+  });
+  const createdDate = formatExactDate(new Date(row.createdDateTime), {
+    includeYear: true,
+  });
 
   return (
     <div>
