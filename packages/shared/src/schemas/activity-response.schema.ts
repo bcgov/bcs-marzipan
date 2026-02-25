@@ -171,6 +171,7 @@ export const activityComputedFieldsSchema = z.object({
   pitchRequiredStatus: z.string().nullable(),
   translationsRequiredStatus: z.string().nullable(),
   leadMinistry: z.string().nullable(),
+  leadMinistryAbbreviation: z.string().nullable(),
 
   // Venue address (from venue_addresses table join)
   venueAddress: venueAddressSchema,

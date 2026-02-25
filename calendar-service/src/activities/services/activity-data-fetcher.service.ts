@@ -1132,4 +1132,62 @@ export class ActivityDataFetcherService {
     }
     return resultMap;
   }
+
+  /**
+   * Fetch lead ministry abbreviations (acronyms) for multiple activities
+   */
+  async fetchLeadMinistryAbbreviationsForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        leadMinistryId: activities.leadMinistryId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const ministryIds = activityResults
+      .map((a) => a.leadMinistryId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (ministryIds.length === 0) {
+      const resultMap = new Map<number, string | null>();
+      for (const activity of activityResults) {
+        resultMap.set(activity.id, null);
+      }
+      return resultMap;
+    }
+
+    const ministryResults = await this.databaseService.db
+      .select({
+        id: ministries.id,
+        abbreviation: ministries.abbreviation,
+      })
+      .from(ministries)
+      .where(
+        and(inArray(ministries.id, ministryIds), eq(ministries.isActive, true))
+      );
+
+    const ministryMap = new Map<number, string>(
+      ministryResults.map((m) => [m.id, m.abbreviation])
+    );
+
+    const resultMap = new Map<number, string | null>();
+    for (const activity of activityResults) {
+      if (activity.leadMinistryId) {
+        resultMap.set(
+          activity.id,
+          ministryMap.get(activity.leadMinistryId) ?? null
+        );
+      } else {
+        resultMap.set(activity.id, null);
+      }
+    }
+    return resultMap;
+  }
 }

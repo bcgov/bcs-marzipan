@@ -333,8 +333,10 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
   const lines: Array<{ label: string; value: string }> = [];
 
   if (row.leadOrg) lines.push({ label: 'Lead org', value: row.leadOrg });
-  if (row.leadMinistry)
-    lines.push({ label: 'Lead ministry', value: row.leadMinistry });
+  const leadMinistryDisplay =
+    row.leadMinistryAbbreviation ?? row.leadMinistry ?? null;
+  if (leadMinistryDisplay)
+    lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
   if (row.commsLeadName)
     lines.push({ label: 'Comms lead', value: row.commsLeadName });
   if (row.eventLead) lines.push({ label: 'Event lead', value: row.eventLead });

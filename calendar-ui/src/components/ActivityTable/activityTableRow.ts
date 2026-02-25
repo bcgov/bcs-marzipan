@@ -40,6 +40,8 @@ export interface ActivityTableRow {
   // Leads column
   leadOrg: string | null;
   leadMinistry: string | null;
+  /** Ministry acronym for table display; falls back to leadMinistry when absent */
+  leadMinistryAbbreviation: string | null;
   commsLeadName: string | null;
   commsContactsCount: number;
   eventLead: string | null;
@@ -121,6 +123,7 @@ export function mapActivityResponseToTableRow(
     // Leads
     leadOrg: activity.leadOrg,
     leadMinistry: activity.leadMinistry,
+    leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     commsLeadName: commsLead?.name ?? null,
     commsContactsCount: activity.commsContacts.length,
     eventLead: activity.eventLead,

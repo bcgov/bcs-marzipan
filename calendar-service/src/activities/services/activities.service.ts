@@ -682,6 +682,7 @@ export class ActivitiesService {
       pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
+      leadMinistryAbbreviationsMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities(activityIds),
       this.dataFetcherService.fetchTagsForActivities(activityIds),
@@ -715,6 +716,9 @@ export class ActivitiesService {
         activityIds
       ),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
+        activityIds
+      ),
     ]);
 
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
@@ -746,6 +750,8 @@ export class ActivitiesService {
         translationsRequiredStatus:
           translationsRequiredStatusMap.get(activity.id) ?? null,
         leadMinistry: leadMinistryNamesMap.get(activity.id) ?? null,
+        leadMinistryAbbreviation:
+          leadMinistryAbbreviationsMap.get(activity.id) ?? null,
       })
     );
   }
@@ -798,6 +804,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -821,6 +828,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -848,6 +856,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
   }
 
@@ -1185,6 +1194,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1208,6 +1218,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1235,6 +1246,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1490,6 +1502,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1513,6 +1526,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1540,6 +1554,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
   }
 
@@ -1652,6 +1667,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1675,6 +1691,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1702,6 +1719,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
   }
 
@@ -1796,6 +1814,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1819,6 +1838,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1846,6 +1866,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
   }
 

@@ -65,6 +65,7 @@ export class ActivityMapperService {
       pitchRequiredStatus?: string | null;
       translationsRequiredStatus?: string | null;
       leadMinistry?: string | null;
+      leadMinistryAbbreviation?: string | null;
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -175,6 +176,7 @@ export class ActivityMapperService {
       translationsRequiredStatus:
         relatedData?.translationsRequiredStatus ?? null,
       leadMinistry: relatedData?.leadMinistry ?? null,
+      leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],
