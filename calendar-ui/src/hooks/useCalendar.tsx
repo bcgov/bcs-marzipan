@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
-  FilterActivitiesQueryParams,
   RequestDeleteRequest,
   RestoreRequest,
   SoftDeleteRequest,
@@ -20,60 +19,19 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
+import {
+  buildOptimisticActivity,
+  normalizeListParams,
+  type ActivityListQueryParams,
+} from '../lib/activity-query-utils';
 
-/** Params for activity list query; extend with sort, search, etc. later. */
-export type ActivityListQueryParams = Partial<
-  Pick<FilterActivitiesQueryParams, 'excludeCompleted' | 'includeDeleted'>
->;
-
-/** Normalize filters so the same logical view produces a stable query key. */
-function normalizeListParams(
-  params: ActivityListQueryParams = {}
-): ActivityListQueryParams {
-  const { excludeCompleted, includeDeleted } = params;
-  const out: ActivityListQueryParams = {};
-  if (excludeCompleted !== undefined) out.excludeCompleted = excludeCompleted;
-  if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
-  return out;
-}
+export type { ActivityListQueryParams };
 
 /** ActivityList stale time in milliseconds. */
 const ACTIVITY_LIST_STALE_TIME = 0;
 
 /** Poll activity list this often so other clients' creates/updates appear without refresh. */
 const ACTIVITY_LIST_REFETCH_INTERVAL = 15_000;
-
-/** Fields safe to optimistically merge from UpdateActivityRequest into ActivityResponse (table-displayed, same shape on both types). */
-const OPTIMISTIC_MERGEABLE_KEYS = [
-  'title',
-  'summary',
-  'isConfidential',
-  'isIssue',
-  'isAllDay',
-  'startDate',
-  'endDate',
-  'startTime',
-  'endTime',
-  'lookAheadStatus',
-  'lookAheadSection',
-  'pitchDate',
-] as const satisfies readonly (keyof ActivityResponse &
-  keyof UpdateActivityRequest)[];
-
-function buildOptimisticActivity(
-  existing: ActivityResponse,
-  update: UpdateActivityRequest
-): ActivityResponse {
-  const merged = { ...existing };
-  for (const key of OPTIMISTIC_MERGEABLE_KEYS) {
-    if (key in update) {
-      (merged as Record<string, unknown>)[key] = (
-        update as Record<string, unknown>
-      )[key];
-    }
-  }
-  return merged;
-}
 
 // List (10s stale; poll so other clients' changes appear without refresh)
 export function useActivityList(filters: ActivityListQueryParams = {}) {
