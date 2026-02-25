@@ -203,6 +203,31 @@ describe('ActivitiesService', () => {
       expect(result.title).toBe('Test Activity');
     });
 
+    it('should include leadMinistryAbbreviation from data fetcher in ActivityResponse', async () => {
+      const mockActivity = createMockActivity();
+      mockDatabaseService.db.select = createMockSelect([mockActivity]);
+      mockDataFetcherService.fetchLeadMinistryAbbreviationsForActivities.mockResolvedValue(
+        new Map([[1, 'ABC']])
+      );
+
+      const result = await service.findOne(1);
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.leadMinistryAbbreviation).toBe('ABC');
+    });
+
+    it('should have null leadMinistryAbbreviation when fetcher returns empty Map', async () => {
+      const mockActivity = createMockActivity();
+      mockDatabaseService.db.select = createMockSelect([mockActivity]);
+      mockDataFetcherService.fetchLeadMinistryAbbreviationsForActivities.mockResolvedValue(
+        new Map()
+      );
+
+      const result = await service.findOne(1);
+
+      expect(result.leadMinistryAbbreviation).toBeNull();
+    });
+
     it('should map an activity with all optional fields to a valid ActivityResponse', async () => {
       const mockActivity = createMockActivity({
         displayId: 'MIN-000123',

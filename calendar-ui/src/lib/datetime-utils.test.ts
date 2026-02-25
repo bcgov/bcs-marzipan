@@ -241,4 +241,27 @@ describe('formatTime12h', () => {
   it('handles single-digit hour input (e.g. 9:00)', () => {
     expect(formatTime12h('9:00')).toBe('9:00 am');
   });
+
+  it('clamps out-of-range hour to 0-23', () => {
+    expect(formatTime12h('25:00')).toBe('11:00 pm');
+    expect(formatTime12h('24:00')).toBe('11:00 pm');
+  });
+
+  it('clamps out-of-range minute to 0-59', () => {
+    expect(formatTime12h('12:60')).toBe('12:59 pm');
+    expect(formatTime12h('12:99')).toBe('12:59 pm');
+  });
+
+  it('handles negative hour by clamping to 0', () => {
+    expect(formatTime12h('-1:30')).toBe('12:30 am');
+  });
+
+  it('handles negative minute by clamping to 0', () => {
+    expect(formatTime12h('14:-15')).toBe('2:00 pm');
+  });
+
+  it('handles NaN from non-numeric parts by clamping to 0', () => {
+    expect(formatTime12h('ab:00')).toBe('12:00 am');
+    expect(formatTime12h('12:xx')).toBe('12:00 pm');
+  });
 });

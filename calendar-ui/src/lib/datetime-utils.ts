@@ -71,16 +71,25 @@ export function formatTime(date: Date): string {
 }
 
 /**
- * Format a 24h time string (HH:mm) as "hh:mm am" / "hh:mm pm".
+ * Format a 24h time string (e.g. HH:mm or H:mm) as "hh:mm am" / "hh:mm pm".
+ * Invalid or out-of-range values (e.g. hour > 23, minute > 59) are clamped for
+ * display rather than rejected; the function does not throw.
  */
 export function formatTime12h(timeStr: string | null): string {
   if (!timeStr) return '';
   const [h, m] = timeStr.split(':');
-  const hour = parseInt(h ?? '0', 10);
-  const minute = (m ?? '00').padStart(2, '0');
+  const hourParsed = parseInt(h ?? '0', 10);
+  const minuteParsed = parseInt((m ?? '00').padStart(2, '0'), 10);
+  const hour = Number.isFinite(hourParsed)
+    ? Math.min(23, Math.max(0, hourParsed))
+    : 0;
+  const minute = Number.isFinite(minuteParsed)
+    ? Math.min(59, Math.max(0, minuteParsed))
+    : 0;
+  const minuteStr = String(minute).padStart(2, '0');
   const ampm = hour >= 12 ? 'pm' : 'am';
   const h12 = hour % 12 || 12;
-  return `${h12}:${minute} ${ampm}`;
+  return `${h12}:${minuteStr} ${ampm}`;
 }
 
 export type FormatExactDateOptions = {

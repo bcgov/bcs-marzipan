@@ -20,7 +20,14 @@ import {
   Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import type {
   ActivityResponse,
@@ -67,36 +74,23 @@ import {
  * sizes. To increase max width, adjust ACTIVITY_TABLE_COLUMN_WIDTHS in tableConstants.ts
  * (size, minSize, maxSize per column). min-w-[640px] on the
  * table enforces a minimum width and more horizontal scroll when the container is narrow.
- * The page is wrapped by Layout > PageContainer (max-w-[96rem], px-12), so content width
+ * The page is wrapped by Layout > PageContainer (max-w-[104rem], px-12), so content width
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
 
 const DEFAULT_PAGE_SIZE = 10;
 const logger = createLogger('ActivityTable');
 
-function getCommonPinningStyles<T>(
-  column: Column<T, unknown>
-): React.CSSProperties {
+function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
-  // const isLastLeftPinnedColumn =
-  //   isPinned === 'left' && column.getIsLastColumn('left');
-  // const isFirstRightPinnedColumn =
-  //   isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
-    // boxShadow: isLastLeftPinnedColumn
-    //   ? '8px 0 8px -8px rgba(0,0,0,0.05)'
-    //   : isFirstRightPinnedColumn
-    //     ? '-8px 0 8px -8px rgba(0,0,0,0.05)'
-    //     : undefined,
     left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
     right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
     opacity: isPinned ? 0.99 : 1,
     backdropFilter: isPinned ? 'blur(8px)' : undefined,
     WebkitBackdropFilter: isPinned ? 'blur(8px)' : undefined,
-    position: (isPinned
-      ? 'sticky'
-      : 'relative') as React.CSSProperties['position'],
+    position: (isPinned ? 'sticky' : 'relative') as CSSProperties['position'],
     zIndex: isPinned ? 1 : 0,
     backgroundColor:
       isPinned && column.id !== 'overview'
@@ -402,6 +396,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
   const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
 
+  const statusDisplay = status ? toSentenceCase(status) : '';
   const statusLower = status?.toLowerCase();
   const isPendingReview = statusLower === 'pending review';
   const isRequired = statusLower === 'required';
@@ -411,7 +406,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
   let translationLine2: string | null = null;
 
   if (isPendingReview) {
-    translationLine1 = toSentenceCase(status!);
+    translationLine1 = statusDisplay || null;
     if (hasLanguages) {
       translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
     }
@@ -419,10 +414,10 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
     if (hasLanguages) {
       translationLine1 = languages.map((s) => s.toUpperCase()).join(', ');
     } else {
-      translationLine1 = toSentenceCase(status!);
+      translationLine1 = statusDisplay || null;
     }
   } else if (isNotRequired) {
-    translationLine1 = toSentenceCase(status!);
+    translationLine1 = statusDisplay || null;
     if (hasLanguages) {
       translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
     }

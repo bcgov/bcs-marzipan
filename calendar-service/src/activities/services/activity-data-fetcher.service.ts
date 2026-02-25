@@ -1121,7 +1121,7 @@ export class ActivityDataFetcherService {
 
     const resultMap = new Map<number, string | null>();
     for (const activity of activityResults) {
-      if (activity.leadMinistryId) {
+      if (activity.leadMinistryId != null) {
         resultMap.set(
           activity.id,
           ministryMap.get(activity.leadMinistryId) ?? null
@@ -1179,7 +1179,7 @@ export class ActivityDataFetcherService {
 
     const resultMap = new Map<number, string | null>();
     for (const activity of activityResults) {
-      if (activity.leadMinistryId) {
+      if (activity.leadMinistryId != null) {
         resultMap.set(
           activity.id,
           ministryMap.get(activity.leadMinistryId) ?? null
