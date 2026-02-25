@@ -20,7 +20,8 @@
   "include": [
     "src",
     "../.local/draft_components/Administration.tsx",
-    "../.local/draft_components/EventTable.legacy.tsx"
+    "../.local/draft_components/EventTable.legacy.tsx",
+    "../.local/draft_components/Drafts.tsx"
   ],
   "exclude": ["node_modules"]
 }

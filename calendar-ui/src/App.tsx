@@ -28,9 +28,6 @@ const CreateActivityForm = lazyWithRetry(() =>
     default: m.CreateActivityForm,
   }))
 );
-const DraftsPage = lazyWithRetry(() =>
-  import('./pages/Drafts').then((m) => ({ default: m.DraftsPage }))
-);
 const ActivityLayout = lazyWithRetry(() =>
   import('./pages/ActivityLayout').then((m) => ({
     default: m.ActivityLayout,
@@ -97,7 +94,6 @@ function App() {
               >
                 <Route index element={<ActivityListPage />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="drafts" element={<DraftsPage />} />
                 <Route
                   path="create-activity"
                   element={
