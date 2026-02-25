@@ -84,19 +84,24 @@ function getCommonPinningStyles<T>(
     isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
-    boxShadow: isLastLeftPinnedColumn
-      ? '4px 0 4px -4px rgba(0,0,0,0.1)'
-      : isFirstRightPinnedColumn
-        ? '-4px 0 4px -4px rgba(0,0,0,0.1)'
-        : undefined,
+    // boxShadow: isLastLeftPinnedColumn
+    //   ? '8px 0 8px -8px rgba(0,0,0,0.05)'
+    //   : isFirstRightPinnedColumn
+    //     ? '-8px 0 8px -8px rgba(0,0,0,0.05)'
+    //     : undefined,
     left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
     right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
-    opacity: isPinned ? 0.95 : 1,
+    opacity: isPinned ? 0.99 : 1,
+    backdropFilter: isPinned ? 'blur(8px)' : undefined,
+    WebkitBackdropFilter: isPinned ? 'blur(8px)' : undefined,
     position: (isPinned
       ? 'sticky'
       : 'relative') as React.CSSProperties['position'],
     zIndex: isPinned ? 1 : 0,
-    backgroundColor: isPinned ? 'var(--sticky-bg, #fff)' : undefined,
+    backgroundColor:
+      isPinned && column.id !== 'overview'
+        ? 'var(--sticky-bg, #fff)'
+        : undefined,
   };
 }
 
@@ -203,33 +208,57 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
 
+  const showMoreLessButton = (
+    <button
+      type="button"
+      data-no-row-nav
+      aria-expanded={expanded}
+      onClick={(e) => {
+        e.stopPropagation();
+        setExpanded(!expanded);
+      }}
+      className="cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal text-(--bcsds-link-blue-60)"
+    >
+      {expanded ? 'Show less' : 'Show more'}
+    </button>
+  );
+
+  const isCollapsedWithTruncation = needsTruncation && !expanded;
+
   return (
     <div>
       <div
-        ref={contentRef}
-        className="text-[13px] leading-[1.4]"
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: expanded ? 'unset' : 5,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
+        className={
+          isCollapsedWithTruncation ? 'relative min-h-[1.4em]' : undefined
+        }
       >
-        {row.summary}
+        <div
+          ref={contentRef}
+          className="text-[13px] leading-[1.4]"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: expanded ? 'unset' : 5,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {row.summary}
+        </div>
+
+        {isCollapsedWithTruncation && (
+          <span
+            className="absolute right-0 bottom-0 w-28 group-hover:bg-slate-50/50"
+            aria-hidden
+          >
+            <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
+              {showMoreLessButton}
+            </span>
+          </span>
+        )}
       </div>
 
-      {needsTruncation && (
-        <button
-          type="button"
-          data-no-row-nav
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-          className="mt-1 cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal text-(--bcsds-link-blue-60)"
-        >
-          {expanded ? 'Show less' : 'Show more'}
-        </button>
+      {needsTruncation && expanded && (
+        <div className="mt-1">{showMoreLessButton}</div>
       )}
 
       {(row.tags.length > 0 || lookAheadLabel) && (
@@ -760,7 +789,7 @@ export function ActivityTable() {
             {pageRows.map((row) => (
               <tr
                 key={row.id}
-                className={`${tableBodyRow} cursor-pointer`}
+                className={`group ${tableBodyRow} cursor-pointer`}
                 tabIndex={0}
                 onClick={(e) => {
                   if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
@@ -778,10 +807,15 @@ export function ActivityTable() {
               >
                 {row.getVisibleCells().map((cell) => {
                   const pinStyles = getCommonPinningStyles(cell.column);
+                  const isOverview = cell.column.id === 'overview';
                   return (
                     <td
                       key={cell.id}
-                      className={tableTd}
+                      className={`${tableTd} border-b border-slate-100 ${
+                        isOverview
+                          ? 'bg-white/95 group-hover:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                          : ''
+                      }`}
                       style={{
                         width: cell.column.getSize(),
                         minWidth: cell.column.getSize(),
