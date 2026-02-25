@@ -15,9 +15,9 @@ import './styles/App.css';
 
 // Route-based code splitting: each page is loaded only when its route is visited.
 // lazyWithRetry adds a single retry on chunk-load failure (stale deploys).
-const CalendarEntriesList = lazyWithRetry(() =>
-  import('./pages/CalendarEntriesList').then((m) => ({
-    default: m.CalendarEntriesList,
+const ActivityListPage = lazyWithRetry(() =>
+  import('./pages/ActivityListPage').then((m) => ({
+    default: m.ActivityListPage,
   }))
 );
 const Dashboard = lazyWithRetry(() =>
@@ -95,7 +95,7 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<CalendarEntriesList />} />
+                <Route index element={<ActivityListPage />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="drafts" element={<DraftsPage />} />
                 <Route

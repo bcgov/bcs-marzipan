@@ -70,7 +70,7 @@ export function CopyableText({
             size="sm"
             onClick={() => void copy()}
             className={cn(
-              'group cursor-pointer font-normal',
+              'group/copyable cursor-pointer font-normal',
               isMinimal ? minimalVariantClasses : 'h-auto gap-1.5',
               className
             )}
@@ -83,7 +83,7 @@ export function CopyableText({
                 'h-3.5 w-3.5 shrink-0 transition-opacity',
                 showIconAlways
                   ? 'opacity-100'
-                  : 'opacity-0 group-hover:opacity-100'
+                  : 'opacity-0 group-hover/copyable:opacity-100'
               )}
               aria-hidden
             />

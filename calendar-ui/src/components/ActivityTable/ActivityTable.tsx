@@ -31,7 +31,7 @@ import { fetchActivities } from '@/api/activitiesApi';
 import { fetchUsers } from '@/api/lookupsApi';
 import { ErrorState } from '@/components/ErrorState';
 import {
-  EVENT_TABLE_COLUMN_WIDTHS,
+  ACTIVITY_TABLE_COLUMN_WIDTHS,
   tableBodyRow,
   tableTable,
   tableTd,
@@ -64,8 +64,8 @@ import {
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
- * sizes. To increase max width, adjust EVENT_TABLE_COLUMN_WIDTHS in tableConstants.ts
- * (column widths only—there is no separate table max-width). min-w-[640px] on the
+ * sizes. To increase max width, adjust ACTIVITY_TABLE_COLUMN_WIDTHS in tableConstants.ts
+ * (size, minSize, maxSize per column). min-w-[640px] on the
  * table enforces a minimum width and more horizontal scroll when the container is narrow.
  * The page is wrapped by Layout > PageContainer (max-w-[96rem], px-12), so content width
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
@@ -78,10 +78,10 @@ function getCommonPinningStyles<T>(
   column: Column<T, unknown>
 ): React.CSSProperties {
   const isPinned = column.getIsPinned();
-  const isLastLeftPinnedColumn =
-    isPinned === 'left' && column.getIsLastColumn('left');
-  const isFirstRightPinnedColumn =
-    isPinned === 'right' && column.getIsFirstColumn('right');
+  // const isLastLeftPinnedColumn =
+  //   isPinned === 'left' && column.getIsLastColumn('left');
+  // const isFirstRightPinnedColumn =
+  //   isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
     // boxShadow: isLastLeftPinnedColumn
@@ -148,7 +148,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
         >
           <CopyableText
             text={displayIdText}
-            copyLabel="Copy display ID"
+            copyLabel="Copy activity ID"
             variant="minimal"
           >
             {displayIdText}
@@ -165,7 +165,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
         {row.title}
       </div>
       {pitchLabel && (
-        <div className="mb-2 text-sm text-slate-600">
+        <div className="mb-2 text-[13px] text-slate-600">
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
@@ -217,7 +217,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
         e.stopPropagation();
         setExpanded(!expanded);
       }}
-      className="cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal text-(--bcsds-link-blue-60)"
+      className="-m-2 cursor-pointer border-none bg-transparent p-2 text-[12px] font-normal text-(--fluent-primary)"
     >
       {expanded ? 'Show less' : 'Show more'}
     </button>
@@ -234,7 +234,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       >
         <div
           ref={contentRef}
-          className="text-[13px] leading-[1.4]"
+          className="text-[14px] leading-[1.4]"
           style={{
             display: '-webkit-box',
             WebkitLineClamp: expanded ? 'unset' : 5,
@@ -247,7 +247,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
 
         {isCollapsedWithTruncation && (
           <span
-            className="absolute right-0 bottom-0 w-28 group-hover:bg-slate-50/50"
+            className="group-hover/bg-[linear-gradient(to_right,transparent_0%,slate-50_35%,slate-50_100%)] absolute right-0 bottom-0 w-28"
             aria-hidden
           >
             <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
@@ -299,7 +299,7 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
-            className="h-5 border-slate-200 text-xs text-slate-600"
+            className="h-auto min-h-5 border-slate-200 text-xs text-slate-600"
           >
             {toSentenceCase(row.dateStatus)}
           </Badge>
@@ -397,28 +397,65 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
 }
 
 function MaterialsCell({ row }: { row: ActivityTableRow }) {
-  const hasTranslations = row.translationsRequired.length > 0;
-  const translationBadgeText = hasTranslations
-    ? row.translationsRequired.map((s) => s.toUpperCase()).join(', ')
-    : row.translationsRequiredStatus
-      ? toSentenceCase(row.translationsRequiredStatus)
-      : null;
+  const status = row.translationsRequiredStatus;
+  const languages = row.translationsRequired;
+  const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
 
-  if (!translationBadgeText && !hasMaterials) {
+  const statusLower = status?.toLowerCase();
+  const isPendingReview = statusLower === 'pending review';
+  const isRequired = statusLower === 'required';
+  const isNotRequired = statusLower === 'not required';
+
+  let translationLine1: string | null = null;
+  let translationLine2: string | null = null;
+
+  if (isPendingReview) {
+    translationLine1 = toSentenceCase(status!);
+    if (hasLanguages) {
+      translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
+    }
+  } else if (isRequired) {
+    if (hasLanguages) {
+      translationLine1 = languages.map((s) => s.toUpperCase()).join(', ');
+    } else {
+      translationLine1 = toSentenceCase(status!);
+    }
+  } else if (isNotRequired) {
+    translationLine1 = toSentenceCase(status!);
+    if (hasLanguages) {
+      translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
+    }
+  } else if (status) {
+    translationLine1 = hasLanguages
+      ? languages.map((s) => s.toUpperCase()).join(', ')
+      : toSentenceCase(status);
+  } else if (hasLanguages) {
+    translationLine1 = languages.map((s) => s.toUpperCase()).join(', ');
+  }
+
+  const showTranslationBlock =
+    translationLine1 != null || translationLine2 != null;
+
+  if (!showTranslationBlock && !hasMaterials) {
     return <span className="text-slate-400">&mdash;</span>;
   }
 
   return (
     <div className="flex flex-col gap-2 text-[13px]">
-      {translationBadgeText && (
+      {showTranslationBlock && (
         <div className="flex items-start gap-1.5">
           <Languages
             size={16}
             strokeWidth={1.5}
             className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
-          <span>{translationBadgeText}</span>
+          <div className="flex flex-col gap-0.5">
+            {translationLine1 && <span>{translationLine1}</span>}
+            {translationLine2 && (
+              <span className="text-slate-600">{translationLine2}</span>
+            )}
+          </div>
         </div>
       )}
       {hasMaterials && (
@@ -469,10 +506,10 @@ function StatusCell({
         {row.activityStatus}
       </Badge>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+        <span>Updated {updatedDate}</span>
         <Avatar size="sm" title={userName}>
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
-        <span>Updated {updatedDate}</span>
       </div>
       <div className="mt-1 text-xs text-slate-500">Created {createdDate}</div>
     </div>
@@ -582,39 +619,51 @@ export function ActivityTable() {
       columnHelper.display({
         id: 'overview',
         header: 'Overview',
-        size: EVENT_TABLE_COLUMN_WIDTHS.overview,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.maxSize,
         cell: ({ row }) => <OverviewCell row={row.original} />,
       }),
 
       columnHelper.accessor('summary', {
         header: 'Summary',
-        size: EVENT_TABLE_COLUMN_WIDTHS.summary,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.maxSize,
         cell: ({ row }) => <SummaryCell row={row.original} />,
       }),
 
       columnHelper.accessor('startDate', {
         header: 'Scheduling',
-        size: EVENT_TABLE_COLUMN_WIDTHS.scheduling,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.maxSize,
         cell: ({ row }) => <SchedulingCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'leads',
         header: 'Leads',
-        size: EVENT_TABLE_COLUMN_WIDTHS.leads,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.maxSize,
         cell: ({ row }) => <LeadsCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'materials',
         header: 'Materials',
-        size: EVENT_TABLE_COLUMN_WIDTHS.materials,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.maxSize,
         cell: ({ row }) => <MaterialsCell row={row.original} />,
       }),
 
       columnHelper.accessor('activityStatus', {
         header: 'Status',
-        size: EVENT_TABLE_COLUMN_WIDTHS.status,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.status.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.maxSize,
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
@@ -757,8 +806,10 @@ export function ActivityTable() {
                       className={tableTh}
                       style={{
                         width: header.getSize(),
-                        minWidth: header.getSize(),
-                        maxWidth: header.getSize(),
+                        minWidth:
+                          header.column.columnDef.minSize ?? header.getSize(),
+                        maxWidth:
+                          header.column.columnDef.maxSize ?? header.getSize(),
                         cursor: header.column.getCanSort()
                           ? 'pointer'
                           : 'default',
@@ -789,7 +840,7 @@ export function ActivityTable() {
             {pageRows.map((row) => (
               <tr
                 key={row.id}
-                className={`group ${tableBodyRow} cursor-pointer`}
+                className={`group/row ${tableBodyRow} cursor-pointer`}
                 tabIndex={0}
                 onClick={(e) => {
                   if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
@@ -813,13 +864,17 @@ export function ActivityTable() {
                       key={cell.id}
                       className={`${tableTd} border-b border-slate-100 ${
                         isOverview
-                          ? 'bg-white/95 group-hover:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                          ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
                           : ''
                       }`}
                       style={{
                         width: cell.column.getSize(),
-                        minWidth: cell.column.getSize(),
-                        maxWidth: cell.column.getSize(),
+                        minWidth:
+                          cell.column.columnDef.minSize ??
+                          cell.column.getSize(),
+                        maxWidth:
+                          cell.column.columnDef.maxSize ??
+                          cell.column.getSize(),
                         ...pinStyles,
                       }}
                     >
