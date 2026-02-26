@@ -108,6 +108,10 @@ export function createMockActivityResponse(
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,
     premierRequested: null,
+    pitchRequiredStatus: null,
+    translationsRequiredStatus: null,
+    leadMinistry: null,
+    leadMinistryAbbreviation: null,
     venueAddress: null,
     reportSettings: [],
 

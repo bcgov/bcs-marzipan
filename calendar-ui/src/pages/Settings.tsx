@@ -67,18 +67,15 @@ export function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="mx-auto max-w-7xl px-6 py-6">
-        <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-          Settings & Configuration
-        </h1>
-        <p className="text-sm text-slate-600 sm:text-base">
-          Manage lookup data and system configuration
-        </p>
-      </div>
+    <>
+      <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+        Settings & Configuration
+      </h1>
+      <p className="mb-8 text-sm text-slate-600 sm:text-base">
+        Manage lookup data and system configuration
+      </p>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div>
         {/* Quick Navigation */}
         <div
           id="quick-navigation"
@@ -152,6 +149,6 @@ export function Settings() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

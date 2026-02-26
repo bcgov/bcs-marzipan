@@ -5,6 +5,9 @@ import type {
 import type {
   CreateActivityRequest,
   FilterActivitiesQueryParams,
+  RequestDeleteRequest,
+  RestoreRequest,
+  SoftDeleteRequest,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
@@ -16,7 +19,7 @@ const logger = createLogger('ActivitiesAPI');
 // NOTE: previous client-side normalization was removed — backend now provides canonical shape
 
 export async function fetchActivities(
-  filters?: FilterActivitiesQueryParams
+  filters?: Partial<FilterActivitiesQueryParams>
 ): Promise<ActivityResponse[]> {
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',
@@ -77,6 +80,39 @@ export async function updateActivity(
 
 export async function deleteActivity(id: number): Promise<void> {
   await api.delete(`/activities/${id}`);
+}
+
+export async function requestDeleteActivity(
+  id: number,
+  body: RequestDeleteRequest
+): Promise<ActivityResponse> {
+  const res = await api.post<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${id}/request-delete`,
+    body
+  );
+  return res.data.data;
+}
+
+export async function restoreActivity(
+  id: number,
+  body?: RestoreRequest
+): Promise<ActivityResponse> {
+  const res = await api.post<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${id}/restore`,
+    body ?? {}
+  );
+  return res.data.data;
+}
+
+export async function softDeleteActivity(
+  id: number,
+  body: SoftDeleteRequest
+): Promise<ActivityResponse> {
+  const res = await api.delete<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${id}/soft-delete`,
+    { data: body }
+  );
+  return res.data.data;
 }
 
 export async function fetchActivityHistory(

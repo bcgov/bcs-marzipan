@@ -8,6 +8,7 @@ import {
   useTranslationRequiredStatuses,
 } from '../../hooks/useLookups';
 import { useMultiSelect } from '../../hooks/useMultiSelect';
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -43,11 +44,12 @@ type ActivityOverviewSectionProps = {
   ministries: Array<{ id: number; name: string; displayName?: string }>;
   organizations: Array<{ value: number; label: string }>;
   tags: Array<{ id: number; text: string }>;
+  readOnly?: boolean;
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ categories, ministries, organizations, tags }) => {
+> = ({ categories, ministries, organizations, tags, readOnly = false }) => {
   const form = useFormContext<ActivityFormData>();
 
   const [selectedCategories, toggleCategory] = useMultiSelect<
@@ -71,7 +73,10 @@ export const ActivityOverviewSection: React.FC<
   const titleChanged = 'title' in dirtyFields && Boolean(dirtyFields.title);
 
   return (
-    <ActivityFormSection title="Overview" fieldsClassName="space-y-6">
+    <ActivityFormSection
+      title={getActivityFormSectionLabel('overview')}
+      fieldsClassName="space-y-6"
+    >
       <div>
         <Label className="block">
           Category <span className="text-destructive">*</span>
@@ -89,7 +94,7 @@ export const ActivityOverviewSection: React.FC<
                   : 'outline'
               }
               className="cursor-pointer px-4 py-2 text-sm"
-              onClick={() => toggleCategory(category.id)}
+              onClick={readOnly ? undefined : () => toggleCategory(category.id)}
             >
               {category.displayName || category.name}
             </Badge>
@@ -114,6 +119,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Input
                 placeholder="Enter activity title"
+                readOnly={readOnly}
                 {...field}
                 value={field.value ?? ''}
               />
@@ -132,6 +138,7 @@ export const ActivityOverviewSection: React.FC<
               Lead Ministry <span className="text-destructive">*</span>
             </FormLabel>
             <Select
+              disabled={readOnly}
               onValueChange={(value) =>
                 field.onChange(value === '' ? undefined : Number(value))
               }
@@ -188,6 +195,7 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>Lead Organization</FormLabel>
               <FormControl>
                 <FreeformCombobox
+                  disabled={readOnly}
                   options={organizations.map((o) => ({
                     value: String(o.value),
                     label: o.label,
@@ -219,6 +227,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Textarea
                 placeholder="Enter activity summary"
+                readOnly={readOnly}
                 rows={4}
                 {...field}
                 value={field.value || ''}
@@ -237,6 +246,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Checkbox
                 checked={field.value}
+                disabled={readOnly}
                 onCheckedChange={field.onChange}
               />
             </FormControl>
@@ -255,6 +265,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Checkbox
                 checked={field.value}
+                disabled={readOnly}
                 onCheckedChange={field.onChange}
               />
             </FormControl>
@@ -274,6 +285,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Textarea
                 placeholder="Enter significance"
+                readOnly={readOnly}
                 rows={4}
                 {...field}
                 value={field.value || ''}
@@ -296,6 +308,7 @@ export const ActivityOverviewSection: React.FC<
             <FormItem>
               <FormLabel>Pitch required status</FormLabel>
               <Select
+                disabled={readOnly}
                 value={
                   field.value !== undefined && field.value !== null
                     ? String(field.value)
@@ -330,7 +343,12 @@ export const ActivityOverviewSection: React.FC<
             <FormItem>
               <FormLabel>Pitch Date</FormLabel>
               <FormControl>
-                <Input type="date" {...field} value={field.value || ''} />
+                <Input
+                  readOnly={readOnly}
+                  type="date"
+                  {...field}
+                  value={field.value || ''}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -350,6 +368,7 @@ export const ActivityOverviewSection: React.FC<
             <FormItem>
               <FormLabel>Translations required status</FormLabel>
               <Select
+                disabled={readOnly}
                 value={
                   field.value !== undefined && field.value !== null
                     ? String(field.value)
@@ -387,6 +406,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl>
               <Textarea
                 placeholder="Enter notes"
+                readOnly={readOnly}
                 rows={4}
                 {...field}
                 value={field.value || ''}
@@ -408,7 +428,7 @@ export const ActivityOverviewSection: React.FC<
               key={tag.id}
               variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
               className="cursor-pointer px-4 py-2 text-sm"
-              onClick={() => toggleTag(tag.id)}
+              onClick={readOnly ? undefined : () => toggleTag(tag.id)}
             >
               {tag.text}
               {selectedTags.includes(tag.id) && <X className="ml-2 h-3 w-3" />}

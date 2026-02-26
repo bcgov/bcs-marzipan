@@ -15,9 +15,9 @@ import './styles/App.css';
 
 // Route-based code splitting: each page is loaded only when its route is visited.
 // lazyWithRetry adds a single retry on chunk-load failure (stale deploys).
-const CalendarEntriesList = lazyWithRetry(() =>
-  import('./pages/CalendarEntriesList').then((m) => ({
-    default: m.CalendarEntriesList,
+const ActivityListPage = lazyWithRetry(() =>
+  import('./pages/ActivityListPage').then((m) => ({
+    default: m.ActivityListPage,
   }))
 );
 const Dashboard = lazyWithRetry(() =>
@@ -28,12 +28,19 @@ const CreateActivityForm = lazyWithRetry(() =>
     default: m.CreateActivityForm,
   }))
 );
-const DraftsPage = lazyWithRetry(() =>
-  import('./pages/Drafts').then((m) => ({ default: m.DraftsPage }))
+const ActivityLayout = lazyWithRetry(() =>
+  import('./pages/ActivityLayout').then((m) => ({
+    default: m.ActivityLayout,
+  }))
 );
-const EditActivityForm = lazyWithRetry(() =>
-  import('./pages/EditActivityForm').then((m) => ({
-    default: m.EditActivityForm,
+const ActivityViewPage = lazyWithRetry(() =>
+  import('./pages/ActivityViewPage').then((m) => ({
+    default: m.ActivityViewPage,
+  }))
+);
+const ActivityEditPage = lazyWithRetry(() =>
+  import('./pages/ActivityEditPage').then((m) => ({
+    default: m.ActivityEditPage,
   }))
 );
 const Login = lazyWithRetry(() =>
@@ -85,9 +92,8 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<CalendarEntriesList />} />
+                <Route index element={<ActivityListPage />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="drafts" element={<DraftsPage />} />
                 <Route
                   path="create-activity"
                   element={
@@ -99,15 +105,27 @@ function App() {
                   }
                 />
                 <Route
-                  path="activities/:id/edit"
+                  path="activity/:id"
                   element={
                     <ProtectedRoute
-                      requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                      requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
                     >
-                      <EditActivityForm />
+                      <ActivityLayout />
                     </ProtectedRoute>
                   }
-                />
+                >
+                  <Route index element={<ActivityViewPage />} />
+                  <Route
+                    path="edit"
+                    element={
+                      <ProtectedRoute
+                        requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
+                      >
+                        <ActivityEditPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
                 <Route
                   path="settings"
                   element={

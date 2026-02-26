@@ -14,19 +14,39 @@ export interface DatabaseErrorMapping {
   detail: string;
 }
 
+/** Postgres/driver errors may nest the real error in cause */
+function getSqlState(
+  error: Error & { code?: string; cause?: unknown }
+): string | undefined {
+  if (error.code) return error.code;
+  const cause = error.cause as (Error & { code?: string }) | undefined;
+  return cause?.code;
+}
+
 /**
- * Maps PostgreSQL SQLSTATE codes to HTTP error responses
+ * Maps PostgreSQL SQLSTATE codes to HTTP error responses.
+ * Checks both the error and error.cause so wrapped driver errors are mapped.
  */
 export function mapDatabaseError(
-  error: Error & { code?: string }
+  error: Error & { code?: string; cause?: unknown }
 ): DatabaseErrorMapping | null {
-  const sqlState = error.code;
+  const sqlState = getSqlState(error);
 
   if (!sqlState) {
     return null;
   }
 
   switch (sqlState) {
+    // Undefined table (42P01) - e.g. migration not applied
+    case '42P01':
+      return {
+        httpStatus: 500,
+        type: 'https://api.example.com/errors/internal-server-error',
+        title: 'Database Schema Error',
+        detail:
+          'A required database table is missing. Ensure migrations have been applied.',
+      };
+
     // Unique constraint violation (23505)
     case '23505':
       return {

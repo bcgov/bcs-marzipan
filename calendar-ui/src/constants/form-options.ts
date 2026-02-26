@@ -6,7 +6,7 @@ import {
 /**
  * Get display label for Look Ahead Status value
  */
-function getLookAheadStatusLabel(value: string): string {
+export function getLookAheadStatusLabel(value: string): string {
   switch (value) {
     case 'none':
       return 'None';
@@ -22,12 +22,12 @@ function getLookAheadStatusLabel(value: string): string {
 /**
  * Get display label for Look Ahead Section value
  */
-function getLookAheadSectionLabel(value: string): string {
+export function getLookAheadSectionLabel(value: string): string {
   switch (value) {
     case 'events':
       return 'Events';
     case 'issues':
-      return 'Issues and reports';
+      return 'Issues';
     case 'news':
       return 'In the news';
     case 'awareness':

@@ -63,11 +63,12 @@ export type RepresentativeType = (typeof REPRESENTATIVE_TYPE)[number];
  */
 export const ACTIVITY_STATUS = [
   'new',
-  'queued',
   'reviewed',
   'changed',
-  'paused',
   'deleted',
+  'delete_requested',
+  'completed',
+  'on_hold',
 ] as const;
 export type ActivityStatusName = (typeof ACTIVITY_STATUS)[number];
 
@@ -75,6 +76,11 @@ export type ActivityStatusName = (typeof ACTIVITY_STATUS)[number];
  * Default activity status for new entries
  */
 export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
+
+/**
+ * Delay in minutes after activity end before status is set to completed (scheduler job).
+ */
+export const ACTIVITY_COMPLETED_DELAY_MINUTES = 15;
 
 /**
  * Helper type for nullable enum values

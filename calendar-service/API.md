@@ -219,7 +219,7 @@ Soft deletes an activity by setting `activityStatusId` to 'deleted'. Requires a 
   "data": {
     "id": 1,
     "title": "Example Activity",
-    "activityStatusId": 6,
+    "activityStatusId": 4,
     "activityStatus": "Deleted"
   }
 }

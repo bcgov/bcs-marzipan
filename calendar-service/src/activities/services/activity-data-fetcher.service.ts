@@ -16,15 +16,18 @@ import {
   commsMaterials,
   dateStatuses,
   eventPlanners,
+  ministries,
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
+  pitchRequiredStatuses,
   premierRequested,
   reports,
   tags,
   teams,
   timeStatuses,
   translatedLanguages,
+  translationRequiredStatuses,
   users,
   venueAddresses,
 } from '@corpcal/database/schema';
@@ -56,7 +59,7 @@ export class ActivityDataFetcherService {
       .select({
         activityId: activityCategories.activityId,
         categoryId: activityCategories.categoryId,
-        categoryName: categories.name,
+        categoryName: categories.displayName,
       })
       .from(activityCategories)
       .innerJoin(categories, eq(activityCategories.categoryId, categories.id))
@@ -279,7 +282,7 @@ export class ActivityDataFetcherService {
     const premierRequestedResults = await this.databaseService.db
       .select({
         id: premierRequested.id,
-        name: premierRequested.name,
+        displayName: premierRequested.displayName,
       })
       .from(premierRequested)
       .where(
@@ -290,7 +293,7 @@ export class ActivityDataFetcherService {
       );
 
     const premierRequestedMap = new Map<number, string>(
-      premierRequestedResults.map((p) => [p.id, p.name])
+      premierRequestedResults.map((p) => [p.id, p.displayName])
     );
 
     const resultMap = new Map<number, string | null>();
@@ -336,7 +339,7 @@ export class ActivityDataFetcherService {
     const dateStatusResults = await this.databaseService.db
       .select({
         id: dateStatuses.id,
-        name: dateStatuses.name,
+        name: dateStatuses.displayName,
       })
       .from(dateStatuses)
       .where(
@@ -391,7 +394,7 @@ export class ActivityDataFetcherService {
     const timeStatusResults = await this.databaseService.db
       .select({
         id: timeStatuses.id,
-        name: timeStatuses.name,
+        name: timeStatuses.displayName,
       })
       .from(timeStatuses)
       .where(
@@ -507,7 +510,7 @@ export class ActivityDataFetcherService {
     const activityStatusResults = await this.databaseService.db
       .select({
         id: activityStatuses.id,
-        name: activityStatuses.name,
+        displayName: activityStatuses.displayName,
       })
       .from(activityStatuses)
       .where(
@@ -518,15 +521,15 @@ export class ActivityDataFetcherService {
       );
 
     const statusMap = new Map<number, string>(
-      activityStatusResults.map((s) => [s.id, s.name])
+      activityStatusResults.map((s) => [s.id, s.displayName])
     );
 
     const resultMap = new Map<number, string>();
     for (const activity of activityResults) {
       if (activity.activityStatusId) {
-        const statusName = statusMap.get(activity.activityStatusId);
-        if (statusName) {
-          resultMap.set(activity.id, statusName);
+        const statusDisplayName = statusMap.get(activity.activityStatusId);
+        if (statusDisplayName) {
+          resultMap.set(activity.id, statusDisplayName);
         }
       }
     }
@@ -545,7 +548,7 @@ export class ActivityDataFetcherService {
     const results = await this.databaseService.db
       .select({
         activityId: activityCommsMaterials.activityId,
-        commsMaterialName: commsMaterials.name,
+        commsMaterialName: commsMaterials.displayName,
       })
       .from(activityCommsMaterials)
       .innerJoin(
@@ -582,7 +585,8 @@ export class ActivityDataFetcherService {
     const results = await this.databaseService.db
       .select({
         activityId: activityTranslationsRequired.activityId,
-        languageName: translatedLanguages.name,
+        shortcode: translatedLanguages.shortcode,
+        displayName: translatedLanguages.displayName,
       })
       .from(activityTranslationsRequired)
       .innerJoin(
@@ -600,7 +604,8 @@ export class ActivityDataFetcherService {
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      existing.push(row.languageName);
+      const code = row.shortcode ?? row.displayName;
+      if (code) existing.push(code);
       map.set(row.activityId, existing);
     }
     return map;
@@ -787,17 +792,18 @@ export class ActivityDataFetcherService {
       }
     }
 
-    // Bulk lookup organization names
+    // Bulk lookup organization display: use ministry abbreviation when org links to ministry, else display name
     if (orgIdsToLookup.size > 0) {
       const results = await this.databaseService.db
         .select({
           orgId: organizations.id,
           orgName:
-            sql<string>`COALESCE(${organizations.displayName}, ${organizations.name})`.as(
+            sql<string>`COALESCE(${ministries.abbreviation}, ${organizations.displayName}, ${organizations.name})`.as(
               'orgName'
             ),
         })
         .from(organizations)
+        .leftJoin(ministries, eq(organizations.ministryId, ministries.id))
         .where(
           and(
             inArray(organizations.id, Array.from(orgIdsToLookup)),
@@ -945,5 +951,243 @@ export class ActivityDataFetcherService {
     }
 
     return map;
+  }
+
+  /**
+   * Fetch pitch required status display names for multiple activities
+   */
+  async fetchPitchRequiredStatusForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        pitchRequiredStatusId: activities.pitchRequiredStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const statusIds = activityResults
+      .map((a) => a.pitchRequiredStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (statusIds.length === 0) {
+      const resultMap = new Map<number, string | null>();
+      for (const activity of activityResults) {
+        resultMap.set(activity.id, null);
+      }
+      return resultMap;
+    }
+
+    const statusResults = await this.databaseService.db
+      .select({
+        id: pitchRequiredStatuses.id,
+        name: pitchRequiredStatuses.displayName,
+      })
+      .from(pitchRequiredStatuses)
+      .where(
+        and(
+          inArray(pitchRequiredStatuses.id, statusIds),
+          eq(pitchRequiredStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      statusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string | null>();
+    for (const activity of activityResults) {
+      if (activity.pitchRequiredStatusId) {
+        resultMap.set(
+          activity.id,
+          statusMap.get(activity.pitchRequiredStatusId) ?? null
+        );
+      } else {
+        resultMap.set(activity.id, null);
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch translations required status display names for multiple activities
+   */
+  async fetchTranslationsRequiredStatusForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        translationsRequiredStatusId: activities.translationsRequiredStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const statusIds = activityResults
+      .map((a) => a.translationsRequiredStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (statusIds.length === 0) {
+      const resultMap = new Map<number, string | null>();
+      for (const activity of activityResults) {
+        resultMap.set(activity.id, null);
+      }
+      return resultMap;
+    }
+
+    const statusResults = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.displayName,
+      })
+      .from(translationRequiredStatuses)
+      .where(
+        and(
+          inArray(translationRequiredStatuses.id, statusIds),
+          eq(translationRequiredStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      statusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string | null>();
+    for (const activity of activityResults) {
+      if (activity.translationsRequiredStatusId) {
+        resultMap.set(
+          activity.id,
+          statusMap.get(activity.translationsRequiredStatusId) ?? null
+        );
+      } else {
+        resultMap.set(activity.id, null);
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch lead ministry display names for multiple activities
+   */
+  async fetchLeadMinistryNamesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        leadMinistryId: activities.leadMinistryId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const ministryIds = activityResults
+      .map((a) => a.leadMinistryId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (ministryIds.length === 0) {
+      const resultMap = new Map<number, string | null>();
+      for (const activity of activityResults) {
+        resultMap.set(activity.id, null);
+      }
+      return resultMap;
+    }
+
+    const ministryResults = await this.databaseService.db
+      .select({
+        id: ministries.id,
+        displayName: ministries.displayName,
+      })
+      .from(ministries)
+      .where(
+        and(inArray(ministries.id, ministryIds), eq(ministries.isActive, true))
+      );
+
+    const ministryMap = new Map<number, string>(
+      ministryResults.map((m) => [m.id, m.displayName])
+    );
+
+    const resultMap = new Map<number, string | null>();
+    for (const activity of activityResults) {
+      if (activity.leadMinistryId != null) {
+        resultMap.set(
+          activity.id,
+          ministryMap.get(activity.leadMinistryId) ?? null
+        );
+      } else {
+        resultMap.set(activity.id, null);
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch lead ministry abbreviations (acronyms) for multiple activities
+   */
+  async fetchLeadMinistryAbbreviationsForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string | null>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        leadMinistryId: activities.leadMinistryId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const ministryIds = activityResults
+      .map((a) => a.leadMinistryId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (ministryIds.length === 0) {
+      const resultMap = new Map<number, string | null>();
+      for (const activity of activityResults) {
+        resultMap.set(activity.id, null);
+      }
+      return resultMap;
+    }
+
+    const ministryResults = await this.databaseService.db
+      .select({
+        id: ministries.id,
+        abbreviation: ministries.abbreviation,
+      })
+      .from(ministries)
+      .where(
+        and(inArray(ministries.id, ministryIds), eq(ministries.isActive, true))
+      );
+
+    const ministryMap = new Map<number, string>(
+      ministryResults.map((m) => [m.id, m.abbreviation])
+    );
+
+    const resultMap = new Map<number, string | null>();
+    for (const activity of activityResults) {
+      if (activity.leadMinistryId != null) {
+        resultMap.set(
+          activity.id,
+          ministryMap.get(activity.leadMinistryId) ?? null
+        );
+      } else {
+        resultMap.set(activity.id, null);
+      }
+    }
+    return resultMap;
   }
 }

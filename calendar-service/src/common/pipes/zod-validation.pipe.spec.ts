@@ -1,4 +1,5 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
+import { vi } from 'vitest';
 import { z } from 'zod';
 
 import { ZodValidationPipe } from './zod-validation.pipe';
@@ -73,6 +74,9 @@ describe('ZodValidationPipe', () => {
   });
 
   it('includes details in development', () => {
+    const warnSpy = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
     const env = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
     try {
@@ -90,6 +94,34 @@ describe('ZodValidationPipe', () => {
       }
     } finally {
       process.env.NODE_ENV = env;
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('logs received keys in development when validation fails', () => {
+    const warnSpy = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
+    const env = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    try {
+      try {
+        pipe.transform(
+          { name: 1, count: 1 },
+          { type: 'body', data: undefined }
+        );
+      } catch {
+        // expected to throw
+      }
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const message = warnSpy.mock.calls[0][0];
+      expect(message).toContain('Zod validation failed');
+      expect(message).toContain('keys:');
+      expect(message).toContain('name');
+      expect(message).toContain('count');
+    } finally {
+      process.env.NODE_ENV = env;
+      warnSpy.mockRestore();
     }
   });
 });

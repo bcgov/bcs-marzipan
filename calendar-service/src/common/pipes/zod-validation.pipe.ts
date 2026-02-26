@@ -2,6 +2,7 @@ import {
   ArgumentMetadata,
   BadRequestException,
   Injectable,
+  Logger,
   PipeTransform,
 } from '@nestjs/common';
 import { ZodError, ZodTypeAny } from 'zod';
@@ -40,6 +41,8 @@ import { ZodError, ZodTypeAny } from 'zod';
  */
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
+  private readonly logger = new Logger(ZodValidationPipe.name);
+
   constructor(private schema: ZodTypeAny) {}
 
   transform(value: unknown, _metadata: ArgumentMetadata) {
@@ -49,6 +52,14 @@ export class ZodValidationPipe implements PipeTransform {
       return this.schema.parse(value);
     } catch (error) {
       if (error instanceof ZodError) {
+        if (process.env.NODE_ENV === 'development') {
+          const summary =
+            value !== null && typeof value === 'object' && !Array.isArray(value)
+              ? `keys: ${Object.keys(value).slice(0, 20).join(', ')}`
+              : `type: ${Array.isArray(value) ? 'array' : typeof value}`;
+          this.logger.warn(`Zod validation failed; received ${summary}`);
+        }
+
         // Format Zod validation errors into a user-friendly format
         // ZodError uses 'issues' property, not 'errors'
         const formattedErrors = error.issues.map((issue) => ({

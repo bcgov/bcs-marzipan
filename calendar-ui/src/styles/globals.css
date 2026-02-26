@@ -180,6 +180,23 @@
 
     /* Link / interactive blue (#0F6CBD equivalent) */
     --link: oklch(0.5263 0.1493 251.63);
+
+    /* Activity status badge colours */
+    --status-blue: #b7e8ea;
+    --status-yellow: #ffddb3;
+    --status-green: #d0f1c8;
+    --status-red: #ff978d;
+    --status-grey: #ebebeb;
+    --status-dark: #292929;
+    --status-purple: #d8caff;
+
+    /* Activity status badge semantic aliases */
+    --activity-status-new: var(--status-blue);
+    --activity-status-changed: var(--status-yellow);
+    --activity-status-reviewed: var(--status-green);
+    --activity-status-deleted: var(--status-red);
+    --activity-status-on-hold: var(--status-grey);
+    --activity-status-completed: var(--status-dark);
   }
 
   .dark {
@@ -247,6 +264,13 @@
   --color-inverted-foreground: var(--inverted-foreground);
   --color-tabs-underline: var(--tabs-underline);
   --color-link: var(--link);
+  --color-status-blue: var(--status-blue);
+  --color-status-yellow: var(--status-yellow);
+  --color-status-green: var(--status-green);
+  --color-status-red: var(--status-red);
+  --color-status-grey: var(--status-grey);
+  --color-status-dark: var(--status-dark);
+  --color-status-purple: var(--status-purple);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -318,6 +342,13 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-tabs-underline: var(--tabs-underline);
   --color-link: var(--link);
+  --color-status-blue: var(--status-blue);
+  --color-status-yellow: var(--status-yellow);
+  --color-status-green: var(--status-green);
+  --color-status-red: var(--status-red);
+  --color-status-grey: var(--status-grey);
+  --color-status-dark: var(--status-dark);
+  --color-status-purple: var(--status-purple);
 }
 
 :root {
@@ -355,6 +386,23 @@
   --sidebar-ring: oklch(0.708 0 0);
   --tabs-underline: oklch(0.5263 0.1493 251.63);
   --link: oklch(0.5263 0.1493 251.63);
+
+  /* Activity status badge colours */
+  --status-blue: #b7e8ea;
+  --status-yellow: #ffddb3;
+  --status-green: #d0f1c8;
+  --status-red: #ff978d;
+  --status-grey: #ebebeb;
+  --status-dark: #292929;
+  --status-purple: #d8caff;
+
+  /* Activity status badge semantic aliases */
+  --activity-status-new: var(--status-blue);
+  --activity-status-changed: var(--status-yellow);
+  --activity-status-reviewed: var(--status-green);
+  --activity-status-deleted: var(--status-red);
+  --activity-status-on-hold: var(--status-grey);
+  --activity-status-completed: var(--status-dark);
 }
 
 .dark {

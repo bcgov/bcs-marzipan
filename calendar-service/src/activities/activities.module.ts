@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
+import { LocksModule } from '../locks/locks.module';
 import { PolicyModule } from '../policy/policy.module';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesGateway } from './activities.gateway';
@@ -12,7 +13,7 @@ import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
 @Module({
-  imports: [DatabaseModule, PolicyModule],
+  imports: [DatabaseModule, LocksModule, PolicyModule],
   providers: [
     ActivitiesService,
     ActivitiesGateway,

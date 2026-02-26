@@ -12,4 +12,5 @@ export * from './teams';
 export * from './venue-address';
 export * from './venue-quick-picks';
 export * from './rbac';
+export * from './editLocks';
 export * from './sessions';

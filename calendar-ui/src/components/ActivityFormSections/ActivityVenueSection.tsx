@@ -6,6 +6,7 @@ import type { VenueQuickPickItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { fetchLastUsedAddresses, fetchVenueQuickPicks } from '@/api/lookupsApi';
 
+import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
 import {
   AddressAutocomplete,
   type AddressData,
@@ -77,7 +78,10 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
   const quickPickTags = [...fixedQuickPicks, ...lastUsedDisplay];
 
   return (
-    <ActivityFormSection title="Venue" variant="bottom-no-divider">
+    <ActivityFormSection
+      title={getActivityFormSectionLabel('venue')}
+      variant="bottom-no-divider"
+    >
       {/* Venue TBD Toggle */}
       <div className="mb-4 flex items-center space-x-3">
         <Switch

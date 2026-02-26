@@ -270,5 +270,25 @@ INSERT INTO bar VALUES ('another ''value''');`;
         "INSERT INTO bar VALUES ('another ''value''')",
       ]);
     });
+
+    it('keeps DO $$ ... END $$; as a single statement (dollar-quoted)', () => {
+      const sql = `INSERT INTO activity_statuses (id, name) VALUES (1, 'new');
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM activity_statuses WHERE id = 1) THEN
+    RAISE NOTICE 'ok';
+  END IF;
+END $$;
+INSERT INTO other (x) VALUES (2);`;
+      const result = parseSqlStatements(sql);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toBe(
+        "INSERT INTO activity_statuses (id, name) VALUES (1, 'new')"
+      );
+      expect(result[1]).toContain('DO $$');
+      expect(result[1]).toContain('END $$');
+      expect(result[1]).not.toContain('INSERT INTO other');
+      expect(result[2]).toContain('INSERT INTO other');
+    });
   });
 });

@@ -1,5 +1,8 @@
 import {
   BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -11,7 +14,6 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
-  activityHistory,
   activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
@@ -26,17 +28,25 @@ import {
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
-import type { ActivityStatusName } from '@corpcal/shared';
+import { SYSTEM_ROLES, type ActivityStatusName } from '@corpcal/shared';
 import type {
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
+  VenueAddress,
+  VenueAddressBase,
 } from '@corpcal/shared/schemas';
+import { isDeepEqual } from '@corpcal/shared/utils';
 
+import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
+import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type { DataScope } from '../../policy/dto/user-context.dto';
+import type {
+  DataScope,
+  RequestContext as RequestContextType,
+} from '../../policy/dto/user-context.dto';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -54,48 +64,9 @@ export class ActivitiesService {
     private readonly junctionService: ActivityJunctionService,
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
-    private readonly utilsService: ActivityUtilsService
+    private readonly utilsService: ActivityUtilsService,
+    private readonly locksService: LocksService
   ) {}
-
-  /**
-   * Deep equality comparison for any two values
-   * Handles primitives, arrays, and objects recursively
-   */
-  private isDeepEqual(a: unknown, b: unknown): boolean {
-    // Handle null/undefined
-    if (a === null || a === undefined) {
-      return b === null || b === undefined;
-    }
-    if (b === null || b === undefined) {
-      return a === null || a === undefined;
-    }
-
-    // Handle primitives
-    if (typeof a !== 'object' || typeof b !== 'object') {
-      return a === b;
-    }
-
-    // Handle arrays
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) return false;
-      return a.every((val, idx) => this.isDeepEqual(val, b[idx]));
-    }
-
-    // Handle objects
-    if (Array.isArray(a) !== Array.isArray(b)) return false;
-
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-
-    if (keysA.length !== keysB.length) return false;
-
-    return keysA.every((key) =>
-      this.isDeepEqual(
-        (a as Record<string, unknown>)[key],
-        (b as Record<string, unknown>)[key]
-      )
-    );
-  }
 
   /**
    * Normalize venue address data by trimming whitespace and converting empty strings to null.
@@ -105,8 +76,8 @@ export class ActivitiesService {
    * @returns Normalized venue address with trimmed strings and empty strings as null
    */
   private normalizeVenueAddress(
-    venue: Record<string, unknown> | null | undefined
-  ): Record<string, unknown> | null {
+    venue: VenueAddressBase | null | undefined
+  ): VenueAddressBase | null {
     if (!venue) {
       return null;
     }
@@ -132,6 +103,96 @@ export class ActivitiesService {
         typeof venue.country === 'string'
           ? venue.country.trim() || null
           : (venue.country ?? null),
+    };
+  }
+
+  /**
+   * Fetch all related data (categories, tags, statuses, etc.) for the given activity IDs.
+   * Used by mapToResponseDto (bulk), findOne, update, requestDelete, and restore.
+   */
+  private async fetchRelatedForActivityIds(
+    activityIds: number[],
+    activityRows: Activity[]
+  ) {
+    const [
+      categoriesResult,
+      tagsMap,
+      activityStatusesMap,
+      dateStatusesMap,
+      timeStatusesMap,
+      venueAddressesMap,
+      commsMaterialsMap,
+      translationsRequiredMap,
+      representativesAttendingMap,
+      sharedWithMap,
+      commsContactsMap,
+      leadOrgNamesMap,
+      eventPlannerNamesMap,
+      newsReleaseOriginsMap,
+      newsReleaseDistributionsMap,
+      premierRequestedMap,
+      reportSettingsMap,
+      pitchRequiredStatusMap,
+      translationsRequiredStatusMap,
+      leadMinistryNamesMap,
+      leadMinistryAbbreviationsMap,
+    ] = await Promise.all([
+      this.dataFetcherService.fetchCategoriesForActivities(activityIds),
+      this.dataFetcherService.fetchTagsForActivities(activityIds),
+      this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
+      this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
+      this.dataFetcherService.fetchTranslationsRequiredForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchRepresentativesAttendingForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
+      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
+      this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows),
+      this.dataFetcherService.fetchEventPlannerNamesForActivities(activityRows),
+      this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
+      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
+      this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
+        activityIds
+      ),
+    ]);
+    return {
+      categoriesResult,
+      tagsMap,
+      activityStatusesMap,
+      dateStatusesMap,
+      timeStatusesMap,
+      venueAddressesMap,
+      commsMaterialsMap,
+      translationsRequiredMap,
+      representativesAttendingMap,
+      sharedWithMap,
+      commsContactsMap,
+      leadOrgNamesMap,
+      eventPlannerNamesMap,
+      newsReleaseOriginsMap,
+      newsReleaseDistributionsMap,
+      premierRequestedMap,
+      reportSettingsMap,
+      pitchRequiredStatusMap,
+      translationsRequiredStatusMap,
+      leadMinistryNamesMap,
+      leadMinistryAbbreviationsMap,
     };
   }
 
@@ -207,14 +268,48 @@ export class ActivitiesService {
   }
 
   /**
-   * Create a new activity with related junction table records
+   * Resolve activity status ID by status name (e.g. 'new', 'reviewed', 'changed').
+   */
+  private async getActivityStatusIdByName(
+    name: ActivityStatusName
+  ): Promise<number> {
+    const [row] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, name))
+      .limit(1);
+    if (!row) {
+      throw new BadRequestException(
+        `Activity status '${name}' not found in database`
+      );
+    }
+    return row.id;
+  }
+
+  /**
+   * Resolve activity status name by ID (for checking delete_requested/deleted).
+   */
+  private async getActivityStatusNameById(id: number): Promise<string | null> {
+    const [row] = await this.databaseService.db
+      .select({ name: activityStatuses.name })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.id, id))
+      .limit(1);
+    return row?.name ?? null;
+  }
+
+  /**
+   * Create a new activity with related junction table records.
+   * Initial activityStatusId is set by backend: 'reviewed' if admin/sysAdmin and markAsReviewed, else 'new'.
+   * Client activityStatusId is ignored.
    */
   async create(
     dto: CreateActivityRequest,
-    userId: number
+    userId: number,
+    context?: { roleName: string }
   ): Promise<ActivityResponse> {
-    // Extract junction table IDs and venue address from the DTO
-    // These fields are defined in createActivityRequestSchema but not in the base activity schema
+    // Extract junction table IDs, venue address, and status/options from the DTO
+    // activityStatusId is ignored (backend sets from markAsReviewed + role)
     const {
       categoryIds,
       tagIds,
@@ -225,8 +320,19 @@ export class ActivitiesService {
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
+      activityHistoryNotes,
+      activityStatusId: _activityStatusIdIgnored,
+      markAsReviewed,
       ...activityData
     } = dto;
+
+    const isAdmin =
+      context?.roleName === SYSTEM_ROLES.ADMIN ||
+      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const initialStatusName: ActivityStatusName =
+      isAdmin && markAsReviewed === true ? 'reviewed' : 'new';
+    const initialStatusId =
+      await this.getActivityStatusIdByName(initialStatusName);
 
     // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
@@ -239,6 +345,7 @@ export class ActivitiesService {
     const result = await this.databaseService.db.transaction(async (tx) => {
       // Insert activity with displayId: null (will be updated after getting activity ID)
       // activityData contains only core activity fields (junction table fields were destructured out)
+      // activityStatusId is set by backend from initialStatusId (client value ignored)
       const newActivity: Omit<
         typeof activities.$inferInsert,
         | 'id'
@@ -256,6 +363,7 @@ export class ActivitiesService {
         lastUpdatedDateTime: Date;
       } = {
         ...activityData,
+        activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
         lastUpdatedBy: userId,
@@ -304,14 +412,12 @@ export class ActivitiesService {
 
       // Insert venue address if provided
       if (venueAddress) {
-        const normalizedVenue = this.normalizeVenueAddress(
-          venueAddress as Record<string, unknown>
-        );
+        const normalizedVenue = this.normalizeVenueAddress(venueAddress);
         if (normalizedVenue) {
           await this.junctionService.insertVenueAddress(
             tx,
             activityId,
-            normalizedVenue as any
+            normalizedVenue as VenueAddress
           );
         }
       }
@@ -415,13 +521,19 @@ export class ActivitiesService {
     // Fetch the created activity with all related data
     const createdActivity = await this.findOne(result.id);
 
-    // Record activity creation in history
+    // Record activity creation in history (include initial status)
     await this.activityHistoryService.recordChange(
       result.id,
       userId,
       'created',
-      undefined, // No changes for creation
-      'Activity created'
+      [
+        {
+          field: 'activityStatusId',
+          oldValue: null,
+          newValue: initialStatusId,
+        },
+      ],
+      activityHistoryNotes || 'Activity created'
     );
 
     // Broadcast to all clients that a new activity was created
@@ -484,22 +596,35 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
-   * @param _dataScope - Optional team-based data scope (from request.dataScope). When bypass is false, results should be restricted to activities visible to teamIds
+   * @param ctx - Request context (user + dataScope). Used to enforce includeDeleted only for Admin/System Admin.
    */
   async findAll(
     filters?: FilterActivitiesQueryParams,
-    _dataScope?: DataScope
+    ctx?: RequestContextType
   ): Promise<ActivityResponse[]> {
     let activityResults: Activity[];
 
-    // Get deleted status ID to exclude deleted activities by default
+    // Resolve status IDs for default exclusions
     const [deletedStatus] = await this.databaseService.db
       .select({ id: activityStatuses.id })
       .from(activityStatuses)
       .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
+    const [completedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(
+        eq(activityStatuses.name, 'completed' satisfies ActivityStatusName)
+      )
+      .limit(1);
 
     const deletedStatusId = deletedStatus?.id;
+    const completedStatusId = completedStatus?.id;
+
+    const allowIncludeDeleted =
+      filters?.includeDeleted === true &&
+      (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
+        ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
 
     if (filters) {
       const conditions: SQL[] = [];
@@ -510,9 +635,16 @@ export class ActivitiesService {
         conditions.push(
           eq(activities.activityStatusId, filters.activityStatusId)
         );
-      } else if (deletedStatusId !== undefined) {
-        // Exclude deleted activities by default if activityStatusId is not specified
-        conditions.push(ne(activities.activityStatusId, deletedStatusId));
+      } else {
+        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
+          conditions.push(ne(activities.activityStatusId, deletedStatusId));
+        }
+        if (
+          filters.excludeCompleted === true &&
+          completedStatusId !== undefined
+        ) {
+          conditions.push(ne(activities.activityStatusId, completedStatusId));
+        }
       }
       if (filters.isIssue !== undefined) {
         conditions.push(eq(activities.isIssue, filters.isIssue));
@@ -545,12 +677,26 @@ export class ActivitiesService {
           .from(activities)
           .where(and(...conditions));
       } else {
-        // If no conditions but deletedStatusId exists, still exclude deleted
-        if (deletedStatusId !== undefined) {
+        // No other conditions: apply default status exclusions
+        const statusConditions: SQL[] = [];
+        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
+          statusConditions.push(
+            ne(activities.activityStatusId, deletedStatusId)
+          );
+        }
+        if (
+          filters.excludeCompleted === true &&
+          completedStatusId !== undefined
+        ) {
+          statusConditions.push(
+            ne(activities.activityStatusId, completedStatusId)
+          );
+        }
+        if (statusConditions.length > 0) {
           activityResults = await this.databaseService.db
             .select()
             .from(activities)
-            .where(ne(activities.activityStatusId, deletedStatusId));
+            .where(and(...statusConditions));
         } else {
           activityResults = await this.databaseService.db
             .select()
@@ -558,7 +704,7 @@ export class ActivitiesService {
         }
       }
     } else {
-      // No filters: exclude deleted activities by default
+      // No filters: exclude deleted only (other callers e.g. calendar may want completed)
       if (deletedStatusId !== undefined) {
         activityResults = await this.databaseService.db
           .select()
@@ -588,93 +734,60 @@ export class ActivitiesService {
 
     // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
     // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
-    if (_dataScope && !_dataScope.bypass && _dataScope.teamIds.length > 0) {
+    const dataScope = ctx?.dataScope;
+    if (dataScope && !dataScope.bypass && dataScope.teamIds.length > 0) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
-        _dataScope.teamIds
+        dataScope.teamIds
       );
       activityResults = activityResults.filter((a) => visibleIds.has(a.id));
     } else if (
-      _dataScope &&
-      !_dataScope.bypass &&
-      _dataScope.teamIds.length === 0
+      dataScope &&
+      !dataScope.bypass &&
+      dataScope.teamIds.length === 0
     ) {
       activityResults = [];
     }
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
-
-    const [
-      categoriesResult,
-      tagsMap,
-      activityStatusesMap,
-      dateStatusesMap,
-      timeStatusesMap,
-      venueAddressesMap,
-      commsMaterialsMap,
-      translationsRequiredMap,
-      representativesAttendingMap,
-      sharedWithMap,
-      commsContactsMap,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities(activityIds),
-      this.dataFetcherService.fetchTagsForActivities(activityIds),
-      this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
-      this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
-      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities(activityResults),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities(
-        activityResults
-      ),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
-      this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds(
+      activityIds,
+      activityResults
+    );
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
-      categoriesResult;
+      related.categoriesResult;
 
     return activityResults.map((activity) =>
       this.mapperService.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
         categoryIds: categoryIdsMap.get(activity.id) ?? [],
-        tags: tagsMap.get(activity.id) ?? [],
-        activityStatus: activityStatusesMap.get(activity.id),
-        dateStatus: dateStatusesMap.get(activity.id),
-        timeStatus: timeStatusesMap.get(activity.id),
-        venueAddress: venueAddressesMap.get(activity.id) ?? null,
-        commsMaterials: commsMaterialsMap.get(activity.id) ?? [],
-        translationsRequired: translationsRequiredMap.get(activity.id) ?? [],
+        tags: related.tagsMap.get(activity.id) ?? [],
+        activityStatus: related.activityStatusesMap.get(activity.id),
+        dateStatus: related.dateStatusesMap.get(activity.id),
+        timeStatus: related.timeStatusesMap.get(activity.id),
+        venueAddress: related.venueAddressesMap.get(activity.id) ?? null,
+        commsMaterials: related.commsMaterialsMap.get(activity.id) ?? [],
+        translationsRequired:
+          related.translationsRequiredMap.get(activity.id) ?? [],
         representativesAttending:
-          representativesAttendingMap.get(activity.id) ?? [],
-        sharedWith: sharedWithMap.get(activity.id) ?? [],
-        commsContacts: commsContactsMap.get(activity.id) ?? [],
-        eventLeadName: eventPlannerNamesMap.get(activity.id) ?? null,
-        leadOrgName: leadOrgNamesMap.get(activity.id) ?? null,
-        newsReleaseOrigin: newsReleaseOriginsMap.get(activity.id) ?? null,
+          related.representativesAttendingMap.get(activity.id) ?? [],
+        sharedWith: related.sharedWithMap.get(activity.id) ?? [],
+        commsContacts: related.commsContactsMap.get(activity.id) ?? [],
+        eventLeadName: related.eventPlannerNamesMap.get(activity.id) ?? null,
+        leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
+        newsReleaseOrigin:
+          related.newsReleaseOriginsMap.get(activity.id) ?? null,
         newsReleaseDistribution:
-          newsReleaseDistributionsMap.get(activity.id) ?? null,
-        premierRequested: premierRequestedMap.get(activity.id) ?? null,
-        reportSettings: reportSettingsMap.get(activity.id) ?? [],
+          related.newsReleaseDistributionsMap.get(activity.id) ?? null,
+        premierRequested: related.premierRequestedMap.get(activity.id) ?? null,
+        reportSettings: related.reportSettingsMap.get(activity.id) ?? [],
+        pitchRequiredStatus:
+          related.pitchRequiredStatusMap.get(activity.id) ?? null,
+        translationsRequiredStatus:
+          related.translationsRequiredStatusMap.get(activity.id) ?? null,
+        leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
+        leadMinistryAbbreviation:
+          related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
       })
     );
   }
@@ -706,66 +819,37 @@ export class ActivitiesService {
     }
 
     // Fetch related data
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([activity]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([activity]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds([id], [activity]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 
@@ -775,8 +859,30 @@ export class ActivitiesService {
   async update(
     id: number,
     dto: UpdateActivityRequest,
-    userId: number
+    userId: number,
+    context?: { roleName: string }
   ): Promise<ActivityResponse> {
+    const existingLock = await this.locksService.getLockForEntity(
+      'activity',
+      id
+    );
+    if (existingLock && existingLock.userId !== userId) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message: 'This activity is being edited by another user.',
+          locked: true,
+          lockedBy: {
+            userId: existingLock.userId,
+            username: existingLock.username,
+            acquiredAt: existingLock.acquiredAt,
+            expiresAt: existingLock.expiresAt,
+          },
+        },
+        HttpStatus.LOCKED
+      );
+    }
+
     // Get current activity state to track changes
     const [oldActivity] = await this.databaseService.db
       .select()
@@ -788,7 +894,20 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    // Extract junction table IDs and venue address from DTO
+    // Reject update when activity is delete_requested or deleted
+    const currentStatusName = await this.getActivityStatusNameById(
+      oldActivity.activityStatusId
+    );
+    if (
+      currentStatusName === 'delete_requested' ||
+      currentStatusName === 'deleted'
+    ) {
+      throw new ConflictException(
+        `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
+      );
+    }
+
+    // Extract junction table IDs and venue address from DTO; omit activityStatusId and markAsReviewed (backend sets status)
     const {
       categoryIds,
       tagIds,
@@ -799,17 +918,32 @@ export class ActivitiesService {
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
+      activityHistoryNotes,
+      activityStatusId: _activityStatusIdIgnored,
+      markAsReviewed: _markAsReviewedIgnored,
       ...activityUpdateData
     } = dto;
+
+    // Compute new status: admin/sysAdmin with markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
+    const isAdmin =
+      context?.roleName === SYSTEM_ROLES.ADMIN ||
+      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const newStatusName: ActivityStatusName =
+      isAdmin && dto.markAsReviewed === true ? 'reviewed' : 'changed';
+    const computedStatusId =
+      await this.getActivityStatusIdByName(newStatusName);
 
     // Normalize venue address to prevent false change detection from whitespace differences
     const normalizedVenueAddress =
       venueAddress !== undefined
-        ? this.normalizeVenueAddress(venueAddress as Record<string, unknown>)
+        ? this.normalizeVenueAddress(venueAddress)
         : undefined;
 
+    // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
+    // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
     const updateData: Partial<Activity> = {
       ...(activityUpdateData as Partial<Activity>),
+      activityStatusId: computedStatusId,
       lastUpdatedDateTime: new Date(),
     };
 
@@ -905,7 +1039,7 @@ export class ActivitiesService {
         await this.junctionService.upsertVenueAddress(
           tx,
           id,
-          normalizedVenueAddress as any
+          normalizedVenueAddress as VenueAddress | null
         );
       }
 
@@ -1027,6 +1161,10 @@ export class ActivitiesService {
       return updatedActivity;
     });
 
+    if (existingLock && existingLock.userId === userId) {
+      await this.locksService.releaseLock(existingLock.id, userId);
+    }
+
     // Fetch related data for the updated activity
     const [
       categoriesResult,
@@ -1046,6 +1184,10 @@ export class ActivitiesService {
       newsReleaseDistributionsMap,
       premierRequestedMap,
       reportSettingsMap,
+      pitchRequiredStatus,
+      translationsRequiredStatus,
+      leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1064,6 +1206,12 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
       this.dataFetcherService.fetchReportSettingsForActivities([id]),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
+        id,
+      ]),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1088,6 +1236,10 @@ export class ActivitiesService {
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
       reportSettings: reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
+      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
+      leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1111,7 +1263,7 @@ export class ActivitiesService {
     const normalizedExistingVenue = this.normalizeVenueAddress(existingVenue);
     if (
       normalizedVenueAddress !== undefined &&
-      !this.isDeepEqual(normalizedExistingVenue, normalizedVenueAddress)
+      !isDeepEqual(normalizedExistingVenue, normalizedVenueAddress)
     ) {
       allChanges.push({
         field: 'venueAddress',
@@ -1122,7 +1274,7 @@ export class ActivitiesService {
 
     if (
       commsContactsArray !== undefined &&
-      !this.isDeepEqual(existingComms, commsContactsArray)
+      !isDeepEqual(existingComms, commsContactsArray)
     ) {
       allChanges.push({
         field: 'commsContacts',
@@ -1133,7 +1285,7 @@ export class ActivitiesService {
 
     if (
       representatives !== undefined &&
-      !this.isDeepEqual(
+      !isDeepEqual(
         this.normalizeRepresentatives(existingRepresentatives),
         this.normalizeRepresentatives(representatives)
       )
@@ -1148,7 +1300,7 @@ export class ActivitiesService {
     if (
       reportSettingsArray !== undefined &&
       reportSettingsArray.length > 0 &&
-      !this.isDeepEqual(existingReportSettings, reportSettingsArray)
+      !isDeepEqual(existingReportSettings, reportSettingsArray)
     ) {
       allChanges.push({
         field: 'reportSettings',
@@ -1172,7 +1324,7 @@ export class ActivitiesService {
       userId,
       'updated',
       allChanges.length > 0 ? allChanges : undefined,
-      'Activity updated'
+      activityHistoryNotes || 'Activity updated'
     );
 
     // Notify connected clients viewing this activity
@@ -1288,93 +1440,297 @@ export class ActivitiesService {
       );
     }
 
-    // Update activity to soft delete by setting activityStatusId to 'deleted'
-    const [updated] = await this.databaseService.db
-      .update(activities)
-      .set({
-        activityStatusId: deletedStatus.id,
-        lastUpdatedDateTime: new Date(),
-        lastUpdatedBy: userId,
-      })
-      .where(eq(activities.id, id))
-      .returning();
+    const updated = await this.databaseService.db.transaction(async (tx) => {
+      const [updatedActivity] = await tx
+        .update(activities)
+        .set({
+          activityStatusId: deletedStatus.id,
+          lastUpdatedDateTime: new Date(),
+          lastUpdatedBy: userId,
+        })
+        .where(eq(activities.id, id))
+        .returning();
 
-    // Create activity history entry with the reason
-    await this.databaseService.db.insert(activityHistory).values({
-      activityId: id,
-      userId: userId,
-      actionType: 'soft_deleted',
-      notes: reason.trim(),
-      changes: [
-        {
-          field: 'activityStatusId',
-          oldValue: existing.activityStatusId,
-          newValue: deletedStatus.id,
-        },
-      ],
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'soft_deleted',
+        [
+          {
+            field: 'activityStatusId',
+            oldValue: existing.activityStatusId,
+            newValue: deletedStatus.id,
+          },
+        ],
+        reason.trim(),
+        tx as unknown as Database
+      );
+
+      return updatedActivity;
     });
 
-    // Fetch related data for the soft-deleted activity
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-    ]);
+    if (!updated) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
 
+    // Fetch related data for the soft-deleted activity
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
+    });
+  }
+
+  /**
+   * Request delete (comms contacts only). Sets activity status to delete_requested.
+   * Allowed only when current status is not already delete_requested or deleted.
+   * Authorization (comms contact) is enforced by guard.
+   */
+  async requestDelete(
+    id: number,
+    reason: string,
+    userId: number
+  ): Promise<ActivityResponse> {
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException(
+        'A reason is required when requesting delete'
+      );
+    }
+
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const currentStatusName = await this.getActivityStatusNameById(
+      existing.activityStatusId
+    );
+    if (
+      currentStatusName === 'delete_requested' ||
+      currentStatusName === 'deleted'
+    ) {
+      throw new ConflictException(
+        `Activity cannot be set to delete requested when status is already '${currentStatusName}'.`
+      );
+    }
+
+    const [deleteRequestedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(
+        eq(
+          activityStatuses.name,
+          'delete_requested' satisfies ActivityStatusName
+        )
+      )
+      .limit(1);
+
+    if (!deleteRequestedStatus) {
+      throw new BadRequestException(
+        'Delete requested activity status not found in database'
+      );
+    }
+
+    const updated = await this.databaseService.db.transaction(async (tx) => {
+      const [updatedActivity] = await tx
+        .update(activities)
+        .set({
+          activityStatusId: deleteRequestedStatus.id,
+          lastUpdatedDateTime: new Date(),
+          lastUpdatedBy: userId,
+        })
+        .where(eq(activities.id, id))
+        .returning();
+
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'delete_requested',
+        [
+          {
+            field: 'activityStatusId',
+            oldValue: existing.activityStatusId,
+            newValue: deleteRequestedStatus.id,
+          },
+        ],
+        reason.trim(),
+        tx as unknown as Database
+      );
+
+      return updatedActivity;
+    });
+
+    if (!updated) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      related.categoriesResult;
+
+    return this.mapperService.mapToResponseDto(updated, {
+      categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
+    });
+  }
+
+  /**
+   * Restore activity from delete_requested or deleted to the previous status.
+   * Allowed only when current status is delete_requested or deleted.
+   * Authorization (comms contact or admin/sysAdmin) is enforced by guard.
+   */
+  async restore(
+    id: number,
+    userId: number,
+    note: string | undefined,
+    _context?: { roleName: string }
+  ): Promise<ActivityResponse> {
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const currentStatusName = await this.getActivityStatusNameById(
+      existing.activityStatusId
+    );
+    if (
+      currentStatusName !== 'delete_requested' &&
+      currentStatusName !== 'deleted'
+    ) {
+      throw new BadRequestException(
+        `Activity can only be restored when status is delete_requested or deleted (current: ${currentStatusName}).`
+      );
+    }
+
+    const previousStatusId =
+      (await this.activityHistoryService.getPreviousStatusIdBeforeDelete(id)) ??
+      (await this.getActivityStatusIdByName('changed'));
+
+    const updated = await this.databaseService.db.transaction(async (tx) => {
+      const [updatedActivity] = await tx
+        .update(activities)
+        .set({
+          activityStatusId: previousStatusId,
+          lastUpdatedDateTime: new Date(),
+          lastUpdatedBy: userId,
+        })
+        .where(eq(activities.id, id))
+        .returning();
+
+      await this.activityHistoryService.recordChange(
+        id,
+        userId,
+        'restored',
+        [
+          {
+            field: 'activityStatusId',
+            oldValue: existing.activityStatusId,
+            newValue: previousStatusId,
+          },
+        ],
+        note?.trim() || 'Activity restored',
+        tx as unknown as Database
+      );
+
+      return updatedActivity;
+    });
+
+    if (!updated) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      related.categoriesResult;
+
+    return this.mapperService.mapToResponseDto(updated, {
+      categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 
@@ -1435,7 +1791,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if categories actually changed
-    if (!this.isDeepEqual(existingCategoryIds, categoryIds)) {
+    if (!isDeepEqual(existingCategoryIds, categoryIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1489,7 +1845,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if themes actually changed
-    if (!this.isDeepEqual(existingThemeIds, themeIds)) {
+    if (!isDeepEqual(existingThemeIds, themeIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1538,7 +1894,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if tags actually changed
-    if (!this.isDeepEqual(existingTagIds, tagIds)) {
+    if (!isDeepEqual(existingTagIds, tagIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
@@ -1586,7 +1942,7 @@ export class ActivitiesService {
     });
 
     // Record change in history only if shared-with teams actually changed
-    if (!this.isDeepEqual(existingTeamIds, teamIds)) {
+    if (!isDeepEqual(existingTeamIds, teamIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
