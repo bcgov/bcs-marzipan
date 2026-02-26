@@ -140,6 +140,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
             text={displayIdText}
             copyLabel="Copy activity ID"
             variant="minimal"
+            copiedTooltipContent="Activity ID copied"
           >
             {displayIdText}
           </CopyableText>
