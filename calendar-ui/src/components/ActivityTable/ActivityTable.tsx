@@ -59,6 +59,7 @@ import {
   getLookAheadSectionLabel,
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
+import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
 import { useUsers } from '@/hooks/useLookups';
@@ -591,19 +592,20 @@ export function ActivityTable() {
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const [sortKey, setSortKey] = useState<string | null>(DEFAULT_SORT_KEY);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
-    DEFAULT_SORT_DIRECTION
+  const { preferences, setPreferences } =
+    useActivityTablePreferences(canSeeDeleted);
+  const sortKey = preferences.sortKey;
+  const sortDirection = preferences.sortDirection;
+  const showCompleted = preferences.showCompleted;
+  const showDeleted = preferences.showDeleted;
+  const [pageIndex, setPageIndex] = useState(0);
+  const pagination = useMemo(
+    () => ({ pageIndex, pageSize: preferences.pageSize }),
+    [pageIndex, preferences.pageSize]
   );
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: DEFAULT_PAGE_SIZE,
-  });
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     left: ['overview'],
   });
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showDeleted, setShowDeleted] = useState(false);
 
   const activityFilters = useMemo(
     () => ({
@@ -622,7 +624,7 @@ export function ActivityTable() {
       prev.includeDeleted === activityFilters.includeDeleted;
     if (!same) {
       prevFiltersRef.current = activityFilters;
-      setPagination((p) => ({ ...p, pageIndex: 0 }));
+      setPageIndex(0);
     }
   }, [activityFilters]);
 
@@ -639,22 +641,21 @@ export function ActivityTable() {
         | ((prev: typeof pagination) => typeof pagination)
         | typeof pagination
     ) => {
-      setPagination((prev) => {
-        const next =
-          typeof updaterOrValue === 'function'
-            ? updaterOrValue(prev)
-            : updaterOrValue;
-        if (
-          next.pageIndex === prev.pageIndex &&
-          next.pageSize === prev.pageSize
-        ) {
-          return prev;
-        }
-        return next;
-      });
+      const prev = pagination;
+      const next =
+        typeof updaterOrValue === 'function'
+          ? updaterOrValue(prev)
+          : updaterOrValue;
+      if (next.pageSize !== prev.pageSize) {
+        setPreferences({ pageSize: next.pageSize });
+        setPageIndex(0);
+      } else {
+        setPageIndex(next.pageIndex);
+      }
     },
-    []
+    [pagination, setPreferences]
   );
+  const setPagination = onPaginationChangeStable;
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
@@ -706,10 +707,12 @@ export function ActivityTable() {
 
   const handleSortChange = useCallback(
     (key: string | null, direction: 'asc' | 'desc') => {
-      setSortKey(key);
-      setSortDirection(direction);
+      setPreferences({
+        sortKey: key ?? DEFAULT_SORT_KEY,
+        sortDirection: direction,
+      });
     },
-    []
+    [setPreferences]
   );
 
   const handleHeaderSort = useCallback(
@@ -871,7 +874,8 @@ export function ActivityTable() {
         id: 'show-completed',
         label: 'Show completed',
         checked: showCompleted,
-        onCheckedChange: setShowCompleted,
+        onCheckedChange: (checked: boolean) =>
+          setPreferences({ showCompleted: checked }),
       },
     ];
     if (canSeeDeleted) {
@@ -879,11 +883,12 @@ export function ActivityTable() {
         id: 'show-deleted',
         label: 'Show deleted',
         checked: showDeleted,
-        onCheckedChange: setShowDeleted,
+        onCheckedChange: (checked: boolean) =>
+          setPreferences({ showDeleted: checked }),
       });
     }
     return filters;
-  }, [showCompleted, showDeleted, canSeeDeleted]);
+  }, [showCompleted, showDeleted, canSeeDeleted, setPreferences]);
 
   // Loading state
   if (loading) {
