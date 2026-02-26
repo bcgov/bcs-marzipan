@@ -44,6 +44,7 @@ import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
+import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
   getLookAheadSectionLabel,
@@ -158,17 +159,23 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
-      <div className="flex flex-wrap gap-1">
-        {row.activityCategories.map((cat) => (
-          <Badge
-            key={cat}
-            variant="primary"
-            className="h-auto min-h-5 whitespace-normal"
-          >
-            {toSentenceCase(cat)}
-          </Badge>
-        ))}
-      </div>
+      {row.activityCategories.length > 0 && (
+        <BadgeGroup
+          items={row.activityCategories.map(
+            (cat): BadgeGroupItem => ({
+              key: cat,
+              label: toSentenceCase(cat),
+              variant: 'primary',
+              className: 'h-auto min-h-5 whitespace-normal text-white',
+            })
+          )}
+          maxLines={1}
+          lineHeight={28}
+          badgeVariant="primary"
+          badgeClassName="h-auto min-h-5 whitespace-normal text-white"
+          containerClassName="gap-1"
+        />
+      )}
     </div>
   );
 }
@@ -196,6 +203,24 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
         ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabel(section)}`
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
+
+  const summaryBadgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const lookAheadItem: BadgeGroupItem | null = lookAheadLabel
+      ? {
+          key: 'look-ahead',
+          label: lookAheadLabel,
+          variant: 'primary',
+          className: 'h-auto min-h-5 text-xs text-white',
+        }
+      : null;
+    const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
+      key: tag.id,
+      label: tag.text,
+      variant: 'outline',
+      className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
+    }));
+    return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
+  }, [lookAheadLabel, row.tags]);
 
   const showMoreLessButton = (
     <button
@@ -250,22 +275,16 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
         <div className="mt-1">{showMoreLessButton}</div>
       )}
 
-      {(row.tags.length > 0 || lookAheadLabel) && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {lookAheadLabel && (
-            <Badge variant="primary" className="h-auto min-h-5 text-xs">
-              {lookAheadLabel}
-            </Badge>
-          )}
-          {row.tags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant="outline"
-              className="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
-            >
-              {tag.text}
-            </Badge>
-          ))}
+      {summaryBadgeGroupItems.length > 0 && (
+        <div className="mt-2">
+          <BadgeGroup
+            items={summaryBadgeGroupItems}
+            maxLines={2}
+            lineHeight={28}
+            badgeVariant="outline"
+            badgeClassName="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
+            containerClassName="gap-1"
+          />
         </div>
       )}
     </div>
@@ -273,6 +292,32 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
 }
 
 function SchedulingCell({ row }: { row: ActivityTableRow }) {
+  const representativeBadgeItems = useMemo(
+    () =>
+      row.activityRepresentatives.map(
+        (name): BadgeGroupItem => ({
+          key: name,
+          label: formatRepresentativeBadgeText(name),
+        })
+      ),
+    [row.activityRepresentatives]
+  );
+  const badgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const premier =
+      row.premierRequested && row.premierRequested.toLowerCase() !== 'no';
+    if (premier) {
+      return [
+        {
+          key: 'premier',
+          label: `Premier: ${row.premierRequested}`,
+          variant: 'primary' as const,
+          className: 'h-auto min-h-5 text-xs text-white',
+        },
+        ...representativeBadgeItems,
+      ];
+    }
+    return representativeBadgeItems;
+  }, [row.premierRequested, representativeBadgeItems]);
   const dateRangeText =
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
@@ -321,28 +366,21 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {row.premierRequested &&
-          row.premierRequested.toLowerCase() !== 'no' && (
-            <Badge variant="primary" className="h-auto min-h-5 text-xs">
-              Premier: {row.premierRequested}
-            </Badge>
-          )}
-        {row.activityRepresentatives.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Users className="h-4 w-4 shrink-0 text-slate-500" />
-            {row.activityRepresentatives.map((name) => (
-              <Badge
-                key={name}
-                variant="outline"
-                className="h-auto min-h-5 text-xs text-slate-600"
-              >
-                {formatRepresentativeBadgeText(name)}
-              </Badge>
-            ))}
+      {badgeGroupItems.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="flex items-start gap-1.5">
+            <Users className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <BadgeGroup
+              items={badgeGroupItems}
+              maxLines={2}
+              lineHeight={28}
+              badgeVariant="outline"
+              badgeClassName="h-auto min-h-5 text-xs text-slate-600"
+              containerClassName="min-w-0 flex-1 gap-1.5"
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
