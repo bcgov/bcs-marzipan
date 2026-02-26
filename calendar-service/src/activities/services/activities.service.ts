@@ -107,6 +107,96 @@ export class ActivitiesService {
   }
 
   /**
+   * Fetch all related data (categories, tags, statuses, etc.) for the given activity IDs.
+   * Used by mapToResponseDto (bulk), findOne, update, requestDelete, and restore.
+   */
+  private async fetchRelatedForActivityIds(
+    activityIds: number[],
+    activityRows: Activity[]
+  ) {
+    const [
+      categoriesResult,
+      tagsMap,
+      activityStatusesMap,
+      dateStatusesMap,
+      timeStatusesMap,
+      venueAddressesMap,
+      commsMaterialsMap,
+      translationsRequiredMap,
+      representativesAttendingMap,
+      sharedWithMap,
+      commsContactsMap,
+      leadOrgNamesMap,
+      eventPlannerNamesMap,
+      newsReleaseOriginsMap,
+      newsReleaseDistributionsMap,
+      premierRequestedMap,
+      reportSettingsMap,
+      pitchRequiredStatusMap,
+      translationsRequiredStatusMap,
+      leadMinistryNamesMap,
+      leadMinistryAbbreviationsMap,
+    ] = await Promise.all([
+      this.dataFetcherService.fetchCategoriesForActivities(activityIds),
+      this.dataFetcherService.fetchTagsForActivities(activityIds),
+      this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
+      this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
+      this.dataFetcherService.fetchTranslationsRequiredForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchRepresentativesAttendingForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
+      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
+      this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows),
+      this.dataFetcherService.fetchEventPlannerNamesForActivities(activityRows),
+      this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
+      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
+      this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
+      this.dataFetcherService.fetchPitchRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
+        activityIds
+      ),
+      this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
+        activityIds
+      ),
+    ]);
+    return {
+      categoriesResult,
+      tagsMap,
+      activityStatusesMap,
+      dateStatusesMap,
+      timeStatusesMap,
+      venueAddressesMap,
+      commsMaterialsMap,
+      translationsRequiredMap,
+      representativesAttendingMap,
+      sharedWithMap,
+      commsContactsMap,
+      leadOrgNamesMap,
+      eventPlannerNamesMap,
+      newsReleaseOriginsMap,
+      newsReleaseDistributionsMap,
+      premierRequestedMap,
+      reportSettingsMap,
+      pitchRequiredStatusMap,
+      translationsRequiredStatusMap,
+      leadMinistryNamesMap,
+      leadMinistryAbbreviationsMap,
+    };
+  }
+
+  /**
    * Normalize representatives array by filtering valid entries and sorting consistently.
    * For comparison purposes, we normalize based on the unique identifier:
    * - If representativeId is present, we use that (ignore representativeName for lookup entries)
@@ -660,92 +750,44 @@ export class ActivitiesService {
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
-
-    const [
-      categoriesResult,
-      tagsMap,
-      activityStatusesMap,
-      dateStatusesMap,
-      timeStatusesMap,
-      venueAddressesMap,
-      commsMaterialsMap,
-      translationsRequiredMap,
-      representativesAttendingMap,
-      sharedWithMap,
-      commsContactsMap,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatusMap,
-      translationsRequiredStatusMap,
-      leadMinistryNamesMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities(activityIds),
-      this.dataFetcherService.fetchTagsForActivities(activityIds),
-      this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
-      this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
-      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities(activityResults),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities(
-        activityResults
-      ),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
-      this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds(
+      activityIds,
+      activityResults
+    );
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
-      categoriesResult;
+      related.categoriesResult;
 
     return activityResults.map((activity) =>
       this.mapperService.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
         categoryIds: categoryIdsMap.get(activity.id) ?? [],
-        tags: tagsMap.get(activity.id) ?? [],
-        activityStatus: activityStatusesMap.get(activity.id),
-        dateStatus: dateStatusesMap.get(activity.id),
-        timeStatus: timeStatusesMap.get(activity.id),
-        venueAddress: venueAddressesMap.get(activity.id) ?? null,
-        commsMaterials: commsMaterialsMap.get(activity.id) ?? [],
-        translationsRequired: translationsRequiredMap.get(activity.id) ?? [],
+        tags: related.tagsMap.get(activity.id) ?? [],
+        activityStatus: related.activityStatusesMap.get(activity.id),
+        dateStatus: related.dateStatusesMap.get(activity.id),
+        timeStatus: related.timeStatusesMap.get(activity.id),
+        venueAddress: related.venueAddressesMap.get(activity.id) ?? null,
+        commsMaterials: related.commsMaterialsMap.get(activity.id) ?? [],
+        translationsRequired:
+          related.translationsRequiredMap.get(activity.id) ?? [],
         representativesAttending:
-          representativesAttendingMap.get(activity.id) ?? [],
-        sharedWith: sharedWithMap.get(activity.id) ?? [],
-        commsContacts: commsContactsMap.get(activity.id) ?? [],
-        eventLeadName: eventPlannerNamesMap.get(activity.id) ?? null,
-        leadOrgName: leadOrgNamesMap.get(activity.id) ?? null,
-        newsReleaseOrigin: newsReleaseOriginsMap.get(activity.id) ?? null,
+          related.representativesAttendingMap.get(activity.id) ?? [],
+        sharedWith: related.sharedWithMap.get(activity.id) ?? [],
+        commsContacts: related.commsContactsMap.get(activity.id) ?? [],
+        eventLeadName: related.eventPlannerNamesMap.get(activity.id) ?? null,
+        leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
+        newsReleaseOrigin:
+          related.newsReleaseOriginsMap.get(activity.id) ?? null,
         newsReleaseDistribution:
-          newsReleaseDistributionsMap.get(activity.id) ?? null,
-        premierRequested: premierRequestedMap.get(activity.id) ?? null,
-        reportSettings: reportSettingsMap.get(activity.id) ?? [],
-        pitchRequiredStatus: pitchRequiredStatusMap.get(activity.id) ?? null,
+          related.newsReleaseDistributionsMap.get(activity.id) ?? null,
+        premierRequested: related.premierRequestedMap.get(activity.id) ?? null,
+        reportSettings: related.reportSettingsMap.get(activity.id) ?? [],
+        pitchRequiredStatus:
+          related.pitchRequiredStatusMap.get(activity.id) ?? null,
         translationsRequiredStatus:
-          translationsRequiredStatusMap.get(activity.id) ?? null,
-        leadMinistry: leadMinistryNamesMap.get(activity.id) ?? null,
+          related.translationsRequiredStatusMap.get(activity.id) ?? null,
+        leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
+        leadMinistryAbbreviation:
+          related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
       })
     );
   }
@@ -777,77 +819,37 @@ export class ActivitiesService {
     }
 
     // Fetch related data
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatus,
-      translationsRequiredStatus,
-      leadMinistryName,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([activity]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([activity]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds([id], [activity]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 
@@ -1185,6 +1187,7 @@ export class ActivitiesService {
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
+      leadMinistryAbbreviation,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1208,6 +1211,7 @@ export class ActivitiesService {
         id,
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
+      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -1235,6 +1239,7 @@ export class ActivitiesService {
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
+      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1469,77 +1474,37 @@ export class ActivitiesService {
     }
 
     // Fetch related data for the soft-deleted activity
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatus,
-      translationsRequiredStatus,
-      leadMinistryName,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 
@@ -1631,77 +1596,37 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatus,
-      translationsRequiredStatus,
-      leadMinistryName,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 
@@ -1775,77 +1700,37 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWith,
-      commsContacts,
-      leadOrgNamesMap,
-      eventPlannerNamesMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatus,
-      translationsRequiredStatus,
-      leadMinistryName,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-    ]);
-
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
+      related.categoriesResult;
 
     return this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
     });
   }
 

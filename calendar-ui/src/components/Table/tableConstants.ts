@@ -5,7 +5,7 @@
 
 /** Scroll area height for data tables. Used by TableScrollContainer so Users table and EventTable (Calendar Entries) share the same height and behavior. */
 export const TABLE_SCROLL_HEIGHT =
-  'max(240px, min(600px, 60vh, 100vh - 400px))';
+  'max(240px, min(720px, 60vh, 100vh - 400px))';
 
 /** Outer wrapper: rounded border, fixed height, flex column. Constrained so table scrolls inside, not page. */
 export const tableContainer =
@@ -32,12 +32,12 @@ export const tableBodyRow = 'border-b border-slate-100 hover:bg-slate-50/50';
 /** Body cell: 12px vertical / 16px horizontal padding (py-3 px-4), content aligned top. Matches Users table. */
 export const tableTd = 'px-4 py-3 align-top';
 
-/** EventTable (Calendar Entries) column widths in pixels. Update here to change all at once. */
-export const EVENT_TABLE_COLUMN_WIDTHS = {
-  overview: 300,
-  summary: 300,
-  scheduling: 280,
-  leads: 180,
-  materials: 200,
-  status: 160,
+/** ActivityTable (Activities) column widths in pixels. minSize/maxSize used for layout bounds. */
+export const ACTIVITY_TABLE_COLUMN_WIDTHS = {
+  overview: { size: 300, minSize: 300, maxSize: 440 },
+  summary: { size: 300, minSize: 300, maxSize: 440 },
+  scheduling: { size: 280, minSize: 280, maxSize: 360 },
+  leads: { size: 180, minSize: 180, maxSize: 240 },
+  materials: { size: 200, minSize: 200, maxSize: 240 },
+  status: { size: 160, minSize: 160, maxSize: 240 },
 } as const;

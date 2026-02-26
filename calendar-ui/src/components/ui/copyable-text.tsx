@@ -31,6 +31,8 @@ type CopyableTextProps = {
    * - minimal: left-aligned, no hover highlight, no extra padding (e.g. for inline use in tables).
    */
   variant?: 'default' | 'minimal';
+  /** Content shown in the tooltip after copying. Defaults to "Copied". */
+  copiedTooltipContent?: ReactNode;
 };
 
 /**
@@ -44,6 +46,7 @@ export function CopyableText({
   className,
   showIconAlways = false,
   variant = 'default',
+  copiedTooltipContent = 'Copied',
 }: CopyableTextProps) {
   const [showCopied, setShowCopied] = useState(false);
 
@@ -70,7 +73,7 @@ export function CopyableText({
             size="sm"
             onClick={() => void copy()}
             className={cn(
-              'group cursor-pointer font-normal',
+              'group/copyable cursor-pointer font-normal',
               isMinimal ? minimalVariantClasses : 'h-auto gap-1.5',
               className
             )}
@@ -83,14 +86,14 @@ export function CopyableText({
                 'h-3.5 w-3.5 shrink-0 transition-opacity',
                 showIconAlways
                   ? 'opacity-100'
-                  : 'opacity-0 group-hover:opacity-100'
+                  : 'opacity-0 group-hover/copyable:opacity-100'
               )}
               aria-hidden
             />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={6}>
-          Copied
+          {copiedTooltipContent}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -20,18 +20,19 @@ import {
   Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
-import type {
-  ActivityResponse,
-  UserLookupItem,
-} from '@corpcal/shared/api/types';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { fetchActivities } from '@/api/activitiesApi';
-import { fetchUsers } from '@/api/lookupsApi';
 import { ErrorState } from '@/components/ErrorState';
 import {
-  EVENT_TABLE_COLUMN_WIDTHS,
+  ACTIVITY_TABLE_COLUMN_WIDTHS,
   tableBodyRow,
   tableTable,
   tableTd,
@@ -43,13 +44,22 @@ import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
+import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
   getLookAheadSectionLabel,
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
 import { useAuth } from '@/hooks/useAuth';
-import { createLogger } from '@/lib/logger';
+import { useActivityList } from '@/hooks/useCalendar';
+import { useUsers } from '@/hooks/useLookups';
+import {
+  formatDateRange,
+  formatExactDate,
+  formatRelativeTime,
+  formatTime12h,
+} from '@/lib/datetime-utils';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
 
 import {
   mapActivityResponseToTableRow,
@@ -58,39 +68,30 @@ import {
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
- * sizes. To increase max width, adjust EVENT_TABLE_COLUMN_WIDTHS in tableConstants.ts
- * (column widths only—there is no separate table max-width). min-w-[640px] on the
+ * sizes. To increase max width, adjust ACTIVITY_TABLE_COLUMN_WIDTHS in tableConstants.ts
+ * (size, minSize, maxSize per column). min-w-[640px] on the
  * table enforces a minimum width and more horizontal scroll when the container is narrow.
- * The page is wrapped by Layout > PageContainer (max-w-[96rem], px-12), so content width
+ * The page is wrapped by Layout > PageContainer (max-w-[104rem], px-12), so content width
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
 
 const DEFAULT_PAGE_SIZE = 10;
-const logger = createLogger('ActivityTable');
 
-function getCommonPinningStyles<T>(
-  column: Column<T, unknown>
-): React.CSSProperties {
+function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
-  const isLastLeftPinnedColumn =
-    isPinned === 'left' && column.getIsLastColumn('left');
-  const isFirstRightPinnedColumn =
-    isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
-    boxShadow: isLastLeftPinnedColumn
-      ? '4px 0 4px -4px rgba(0,0,0,0.1)'
-      : isFirstRightPinnedColumn
-        ? '-4px 0 4px -4px rgba(0,0,0,0.1)'
-        : undefined,
     left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
     right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
-    opacity: isPinned ? 0.95 : 1,
-    position: (isPinned
-      ? 'sticky'
-      : 'relative') as React.CSSProperties['position'],
+    opacity: isPinned ? 0.99 : 1,
+    backdropFilter: isPinned ? 'blur(8px)' : undefined,
+    WebkitBackdropFilter: isPinned ? 'blur(8px)' : undefined,
+    position: (isPinned ? 'sticky' : 'relative') as CSSProperties['position'],
     zIndex: isPinned ? 1 : 0,
-    backgroundColor: isPinned ? 'var(--sticky-bg, #fff)' : undefined,
+    backgroundColor:
+      isPinned && column.id !== 'overview'
+        ? 'var(--sticky-bg, #fff)'
+        : undefined,
   };
 }
 
@@ -137,8 +138,9 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
         >
           <CopyableText
             text={displayIdText}
-            copyLabel="Copy display ID"
+            copyLabel="Copy activity ID"
             variant="minimal"
+            copiedTooltipContent="Activity ID copied"
           >
             {displayIdText}
           </CopyableText>
@@ -154,21 +156,27 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
         {row.title}
       </div>
       {pitchLabel && (
-        <div className="mb-2 text-sm text-slate-600">
+        <div className="mb-2 text-[13px] text-slate-600">
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
-      <div className="flex flex-wrap gap-1">
-        {row.activityCategories.map((cat) => (
-          <Badge
-            key={cat}
-            variant="primary"
-            className="h-auto min-h-5 whitespace-normal"
-          >
-            {toSentenceCase(cat)}
-          </Badge>
-        ))}
-      </div>
+      {row.activityCategories.length > 0 && (
+        <BadgeGroup
+          items={row.activityCategories.map(
+            (cat): BadgeGroupItem => ({
+              key: cat,
+              label: toSentenceCase(cat),
+              variant: 'primary',
+              className: 'h-auto min-h-5 whitespace-normal text-white',
+            })
+          )}
+          maxLines={1}
+          lineHeight={28}
+          badgeVariant="primary"
+          badgeClassName="h-auto min-h-5 whitespace-normal text-white"
+          containerClassName="gap-1"
+        />
+      )}
     </div>
   );
 }
@@ -197,51 +205,87 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
 
+  const summaryBadgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const lookAheadItem: BadgeGroupItem | null = lookAheadLabel
+      ? {
+          key: 'look-ahead',
+          label: lookAheadLabel,
+          variant: 'primary',
+          className: 'h-auto min-h-5 text-xs text-white',
+        }
+      : null;
+    const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
+      key: tag.id,
+      label: tag.text,
+      variant: 'outline',
+      className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
+    }));
+    return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
+  }, [lookAheadLabel, row.tags]);
+
+  const showMoreLessButton = (
+    <button
+      type="button"
+      data-no-row-nav
+      aria-expanded={expanded}
+      onClick={(e) => {
+        e.stopPropagation();
+        setExpanded(!expanded);
+      }}
+      className="-m-2 cursor-pointer border-none bg-transparent p-2 text-[12px] font-normal text-(--fluent-primary)"
+    >
+      {expanded ? 'Show less' : 'Show more'}
+    </button>
+  );
+
+  const isCollapsedWithTruncation = needsTruncation && !expanded;
+
   return (
     <div>
       <div
-        ref={contentRef}
-        className="text-[13px] leading-[1.4]"
-        style={{
-          display: '-webkit-box',
-          WebkitLineClamp: expanded ? 'unset' : 5,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}
+        className={
+          isCollapsedWithTruncation ? 'relative min-h-[1.4em]' : undefined
+        }
       >
-        {row.summary}
+        <div
+          ref={contentRef}
+          className="text-[14px] leading-[1.4]"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: expanded ? 'unset' : 5,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {row.summary}
+        </div>
+
+        {isCollapsedWithTruncation && (
+          <span
+            className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]"
+            aria-hidden
+          >
+            <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
+              {showMoreLessButton}
+            </span>
+          </span>
+        )}
       </div>
 
-      {needsTruncation && (
-        <button
-          type="button"
-          data-no-row-nav
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-          className="mt-1 cursor-pointer border-none bg-transparent p-0 text-[13px] font-normal text-(--bcsds-link-blue-60)"
-        >
-          {expanded ? 'Show less' : 'Show more'}
-        </button>
+      {needsTruncation && expanded && (
+        <div className="mt-1">{showMoreLessButton}</div>
       )}
 
-      {(row.tags.length > 0 || lookAheadLabel) && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {lookAheadLabel && (
-            <Badge variant="primary" className="h-auto min-h-5 text-xs">
-              {lookAheadLabel}
-            </Badge>
-          )}
-          {row.tags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant="outline"
-              className="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
-            >
-              {tag.text}
-            </Badge>
-          ))}
+      {summaryBadgeGroupItems.length > 0 && (
+        <div className="mt-2">
+          <BadgeGroup
+            items={summaryBadgeGroupItems}
+            maxLines={2}
+            lineHeight={28}
+            badgeVariant="outline"
+            badgeClassName="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
+            containerClassName="gap-1"
+          />
         </div>
       )}
     </div>
@@ -249,26 +293,48 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
 }
 
 function SchedulingCell({ row }: { row: ActivityTableRow }) {
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+  const representativeBadgeItems = useMemo(
+    () =>
+      row.activityRepresentatives.map(
+        (name): BadgeGroupItem => ({
+          key: name,
+          label: formatRepresentativeBadgeText(name),
+        })
+      ),
+    [row.activityRepresentatives]
+  );
+  const badgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const premier =
+      row.premierRequested && row.premierRequested.toLowerCase() !== 'no';
+    if (premier) {
+      return [
+        {
+          key: 'premier',
+          label: `Premier: ${row.premierRequested}`,
+          variant: 'primary' as const,
+          className: 'h-auto min-h-5 text-xs text-white',
+        },
+        ...representativeBadgeItems,
+      ];
+    }
+    return representativeBadgeItems;
+  }, [row.premierRequested, representativeBadgeItems]);
+  const dateRangeText =
+    row.startDate && row.endDate && row.endDate !== row.startDate
+      ? formatDateRange(row.startDate, row.endDate)
+      : row.startDate
+        ? formatExactDate(new Date(row.startDate), { includeYear: 'auto' })
+        : '';
 
   return (
     <div className="text-[13px]">
       {row.startDate && (
         <div className="mb-1.5 flex items-center gap-1.5">
           <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
-          <span>
-            {formatDate(row.startDate)}
-            {row.endDate && row.endDate !== row.startDate
-              ? ` \u2013 ${formatDate(row.endDate)}`
-              : ''}
-          </span>
+          <span>{dateRangeText}</span>
           <Badge
             variant="outline"
-            className="h-5 border-slate-200 text-xs text-slate-600"
+            className="h-auto min-h-5 border-slate-200 text-xs text-slate-600"
           >
             {toSentenceCase(row.dateStatus)}
           </Badge>
@@ -280,9 +346,9 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <Clock className="h-4 w-4 shrink-0 text-slate-500" />
           <span>
             {row.allDay
-              ? 'allDay'
+              ? 'All day'
               : row.startTime
-                ? `${row.startTime}${row.endTime ? ` \u2013 ${row.endTime}` : ''}`
+                ? `${formatTime12h(row.startTime)}${row.endTime ? ` \u2013 ${formatTime12h(row.endTime)}` : ''}`
                 : '--:-- \u2013 --:--'}
           </span>
           <Badge
@@ -295,34 +361,27 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
       )}
 
       {row.venue && (
-        <div className="mb-1.5 flex items-start gap-1 text-slate-600">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="mb-1.5 flex items-start gap-1">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
           <span>{row.venue}</span>
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {row.premierRequested &&
-          row.premierRequested.toLowerCase() !== 'no' && (
-            <Badge variant="primary" className="h-auto min-h-5 text-xs">
-              Premier: {row.premierRequested}
-            </Badge>
-          )}
-        {row.activityRepresentatives.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Users className="h-4 w-4 shrink-0 text-slate-500" />
-            {row.activityRepresentatives.map((name) => (
-              <Badge
-                key={name}
-                variant="outline"
-                className="h-auto min-h-5 text-xs text-slate-600"
-              >
-                {formatRepresentativeBadgeText(name)}
-              </Badge>
-            ))}
+      {badgeGroupItems.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <div className="flex items-start gap-1.5">
+            <Users className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <BadgeGroup
+              items={badgeGroupItems}
+              maxLines={2}
+              lineHeight={28}
+              badgeVariant="outline"
+              badgeClassName="h-auto min-h-5 text-xs text-slate-600"
+              containerClassName="min-w-0 flex-1 gap-1.5"
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -331,8 +390,10 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
   const lines: Array<{ label: string; value: string }> = [];
 
   if (row.leadOrg) lines.push({ label: 'Lead org', value: row.leadOrg });
-  if (row.leadMinistry)
-    lines.push({ label: 'Lead ministry', value: row.leadMinistry });
+  const leadMinistryDisplay =
+    row.leadMinistryAbbreviation ?? row.leadMinistry ?? null;
+  if (leadMinistryDisplay)
+    lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
   if (row.commsLeadName)
     lines.push({ label: 'Comms lead', value: row.commsLeadName });
   if (row.eventLead) lines.push({ label: 'Event lead', value: row.eventLead });
@@ -364,36 +425,74 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
 }
 
 function MaterialsCell({ row }: { row: ActivityTableRow }) {
-  const hasTranslations = row.translationsRequired.length > 0;
-  const translationBadgeText = hasTranslations
-    ? row.translationsRequired.map((s) => s.toUpperCase()).join(', ')
-    : row.translationsRequiredStatus
-      ? toSentenceCase(row.translationsRequiredStatus)
-      : null;
+  const status = row.translationsRequiredStatus;
+  const languages = row.translationsRequired;
+  const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
 
-  if (!translationBadgeText && !hasMaterials) {
+  const statusDisplay = status ? toSentenceCase(status) : '';
+  const statusLower = status?.toLowerCase();
+  const isPendingReview = statusLower === 'pending review';
+  const isRequired = statusLower === 'required';
+  const isNotRequired = statusLower === 'not required';
+
+  let translationLine1: string | null = null;
+  let translationLine2: string | null = null;
+
+  if (isPendingReview) {
+    translationLine1 = statusDisplay || null;
+    if (hasLanguages) {
+      translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
+    }
+  } else if (isRequired) {
+    if (hasLanguages) {
+      translationLine1 = languages.map((s) => s.toUpperCase()).join(', ');
+    } else {
+      translationLine1 = statusDisplay || null;
+    }
+  } else if (isNotRequired) {
+    translationLine1 = statusDisplay || null;
+    if (hasLanguages) {
+      translationLine2 = languages.map((s) => s.toUpperCase()).join(', ');
+    }
+  } else if (status) {
+    translationLine1 = hasLanguages
+      ? languages.map((s) => s.toUpperCase()).join(', ')
+      : toSentenceCase(status);
+  } else if (hasLanguages) {
+    translationLine1 = languages.map((s) => s.toUpperCase()).join(', ');
+  }
+
+  const showTranslationBlock =
+    translationLine1 != null || translationLine2 != null;
+
+  if (!showTranslationBlock && !hasMaterials) {
     return <span className="text-slate-400">&mdash;</span>;
   }
 
   return (
     <div className="flex flex-col gap-2 text-[13px]">
-      {translationBadgeText && (
+      {showTranslationBlock && (
         <div className="flex items-start gap-1.5">
           <Languages
             size={16}
             strokeWidth={1.5}
             className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
-          <span>{translationBadgeText}</span>
+          <div className="flex flex-col gap-0.5">
+            {translationLine1 && <span>{translationLine1}</span>}
+            {translationLine2 && (
+              <span className="text-slate-600">{translationLine2}</span>
+            )}
+          </div>
         </div>
       )}
       {hasMaterials && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-start gap-1.5">
           <NotebookText
             size={16}
             strokeWidth={1.5}
-            className="shrink-0 text-slate-500"
+            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
           <span>
             {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
@@ -420,8 +519,12 @@ function StatusCell({
     .toUpperCase()
     .slice(0, 2);
 
-  const updatedDate = new Date(row.lastUpdatedDateTime).toLocaleDateString();
-  const createdDate = new Date(row.createdDateTime).toLocaleDateString();
+  const updatedDate = formatRelativeTime(new Date(row.lastUpdatedDateTime), {
+    short: true,
+  });
+  const createdDate = formatExactDate(new Date(row.createdDateTime), {
+    includeYear: true,
+  });
 
   return (
     <div>
@@ -432,10 +535,10 @@ function StatusCell({
         {row.activityStatus}
       </Badge>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+        <span>Updated {updatedDate}</span>
         <Avatar size="sm" title={userName}>
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
-        <span>Updated {updatedDate}</span>
       </div>
       <div className="mt-1 text-xs text-slate-500">Created {createdDate}</div>
     </div>
@@ -464,10 +567,34 @@ export function ActivityTable() {
   });
   const [showCompleted, setShowCompleted] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
-  const [activities, setActivities] = useState<ActivityResponse[]>([]);
-  const [users, setUsers] = useState<UserLookupItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const activityFilters = useMemo(
+    () => ({
+      excludeCompleted: !showCompleted,
+      includeDeleted: showDeleted && canSeeDeleted,
+    }),
+    [showCompleted, showDeleted, canSeeDeleted]
+  );
+
+  // Reset to first page when user changes filters so results match expectations
+  const prevFiltersRef = useRef(activityFilters);
+  useEffect(() => {
+    const prev = prevFiltersRef.current;
+    const same =
+      prev.excludeCompleted === activityFilters.excludeCompleted &&
+      prev.includeDeleted === activityFilters.includeDeleted;
+    if (!same) {
+      prevFiltersRef.current = activityFilters;
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    }
+  }, [activityFilters]);
+
+  const activitiesQuery = useActivityList(activityFilters);
+  const usersQuery = useUsers();
+  const activities = activitiesQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const loading = activitiesQuery.isPending && !activitiesQuery.data;
+  const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
   const onPaginationChangeStable = useCallback(
     (
@@ -492,35 +619,6 @@ export function ActivityTable() {
     []
   );
 
-  const activityFilters = useMemo(
-    () => ({
-      excludeCompleted: !showCompleted,
-      includeDeleted: showDeleted && canSeeDeleted,
-    }),
-    [showCompleted, showDeleted, canSeeDeleted]
-  );
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [activitiesData, usersData] = await Promise.all([
-          fetchActivities(activityFilters),
-          fetchUsers(),
-        ]);
-        setActivities(activitiesData);
-        setUsers(usersData);
-        setError(null);
-      } catch (err) {
-        logger.error('Error loading data:', err);
-        setError('Failed to load activities. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadData();
-  }, [activityFilters]);
-
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
     users.forEach((u) => {
@@ -538,6 +636,28 @@ export function ActivityTable() {
     [activities]
   );
 
+  // Track which row ids we have seen so we can animate only newly arrived rows on refetch
+  const seenIdsRef = useRef<Set<number>>(new Set());
+  const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const currentIds = data.map((r) => r.id);
+    const currentSet = new Set(currentIds);
+    const newlyAdded = currentIds.filter((id) => !seenIdsRef.current.has(id));
+    seenIdsRef.current = currentSet;
+    if (newlyAdded.length > 0) {
+      setNewRowIds((prev) => new Set([...prev, ...newlyAdded]));
+      const timeout = window.setTimeout(() => {
+        setNewRowIds((prev) => {
+          const next = new Set(prev);
+          newlyAdded.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 400);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [data]);
+
   const columnHelper = createColumnHelper<ActivityTableRow>();
 
   const columns = useMemo(
@@ -545,39 +665,51 @@ export function ActivityTable() {
       columnHelper.display({
         id: 'overview',
         header: 'Overview',
-        size: EVENT_TABLE_COLUMN_WIDTHS.overview,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.maxSize,
         cell: ({ row }) => <OverviewCell row={row.original} />,
       }),
 
       columnHelper.accessor('summary', {
         header: 'Summary',
-        size: EVENT_TABLE_COLUMN_WIDTHS.summary,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.maxSize,
         cell: ({ row }) => <SummaryCell row={row.original} />,
       }),
 
       columnHelper.accessor('startDate', {
         header: 'Scheduling',
-        size: EVENT_TABLE_COLUMN_WIDTHS.scheduling,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.maxSize,
         cell: ({ row }) => <SchedulingCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'leads',
         header: 'Leads',
-        size: EVENT_TABLE_COLUMN_WIDTHS.leads,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.maxSize,
         cell: ({ row }) => <LeadsCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'materials',
         header: 'Materials',
-        size: EVENT_TABLE_COLUMN_WIDTHS.materials,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.maxSize,
         cell: ({ row }) => <MaterialsCell row={row.original} />,
       }),
 
       columnHelper.accessor('activityStatus', {
         header: 'Status',
-        size: EVENT_TABLE_COLUMN_WIDTHS.status,
+        size: ACTIVITY_TABLE_COLUMN_WIDTHS.status.size,
+        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.minSize,
+        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.maxSize,
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
@@ -598,7 +730,8 @@ export function ActivityTable() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    autoResetPageIndex: true,
+    autoResetPageIndex: false,
+    getRowId: (row) => String(row.id),
     meta: { userMap },
   });
 
@@ -650,22 +783,8 @@ export function ActivityTable() {
       <div className="p-10">
         <ErrorState
           title="Failed to load activities"
-          message={error}
-          onRetry={() => {
-            setLoading(true);
-            setError(null);
-            fetchActivities(activityFilters)
-              .then((activitiesData) => {
-                setActivities(activitiesData);
-                return fetchUsers();
-              })
-              .then((usersData) => setUsers(usersData))
-              .catch((err) => {
-                logger.error('Error loading data:', err);
-                setError('Failed to load activities. Please try again.');
-              })
-              .finally(() => setLoading(false));
-          }}
+          message={getFriendlyErrorMessage(error)}
+          onRetry={() => void activitiesQuery.refetch()}
         />
       </div>
     );
@@ -720,8 +839,10 @@ export function ActivityTable() {
                       className={tableTh}
                       style={{
                         width: header.getSize(),
-                        minWidth: header.getSize(),
-                        maxWidth: header.getSize(),
+                        minWidth:
+                          header.column.columnDef.minSize ?? header.getSize(),
+                        maxWidth:
+                          header.column.columnDef.maxSize ?? header.getSize(),
                         cursor: header.column.getCanSort()
                           ? 'pointer'
                           : 'default',
@@ -749,47 +870,61 @@ export function ActivityTable() {
             ))}
           </thead>
           <tbody>
-            {pageRows.map((row) => (
-              <tr
-                key={row.id}
-                className={`${tableBodyRow} cursor-pointer`}
-                tabIndex={0}
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                    return;
-                  if (window.getSelection()?.toString().trim()) return;
-                  void navigate(`/activity/${row.original.id}`);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return;
-                  if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                    return;
-                  e.preventDefault();
-                  void navigate(`/activity/${row.original.id}`);
-                }}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const pinStyles = getCommonPinningStyles(cell.column);
-                  return (
-                    <td
-                      key={cell.id}
-                      className={tableTd}
-                      style={{
-                        width: cell.column.getSize(),
-                        minWidth: cell.column.getSize(),
-                        maxWidth: cell.column.getSize(),
-                        ...pinStyles,
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {pageRows.map((row) => {
+              const isNewRow = newRowIds.has(row.original.id);
+              return (
+                <tr
+                  key={row.id}
+                  className={`group/row ${tableBodyRow} cursor-pointer ${
+                    isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                  }`}
+                  tabIndex={0}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                      return;
+                    if (window.getSelection()?.toString().trim()) return;
+                    void navigate(`/activity/${row.original.id}`);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
+                      return;
+                    e.preventDefault();
+                    void navigate(`/activity/${row.original.id}`);
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const pinStyles = getCommonPinningStyles(cell.column);
+                    const isOverview = cell.column.id === 'overview';
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`${tableTd} border-b border-slate-100 ${
+                          isOverview
+                            ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                            : ''
+                        }`}
+                        style={{
+                          width: cell.column.getSize(),
+                          minWidth:
+                            cell.column.columnDef.minSize ??
+                            cell.column.getSize(),
+                          maxWidth:
+                            cell.column.columnDef.maxSize ??
+                            cell.column.getSize(),
+                          ...pinStyles,
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </TableScrollContainer>

@@ -10,7 +10,6 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 
-import { restoreActivity } from '../api/activitiesApi';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { ActivityPageHeader } from '../components/ActivityPageHeader';
@@ -18,6 +17,7 @@ import { ActivityStatusBanner } from '../components/ActivityStatusBanner';
 import { normalizeActivityStatus } from '../components/ui/badge';
 import { Form } from '../components/ui/form';
 import { useAuth } from '../hooks/useAuth';
+import { useRestoreActivity } from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { activityToFormData } from '../lib/activity-form-mapper';
@@ -51,11 +51,12 @@ export function ActivityViewPage(): React.ReactElement {
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canRestore = isCommsContact || isAdminOrSysAdmin;
+  const restoreMutation = useRestoreActivity();
 
   const handleRestore = async () => {
     setIsRestoring(true);
     try {
-      await restoreActivity(activity.id);
+      await restoreMutation.mutateAsync({ id: activity.id });
       await refreshActivity();
       toast.success('Activity restored');
     } catch (err) {

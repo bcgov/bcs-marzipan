@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * Calendar Entries list. Rendered inside Layout, which wraps content with
+ * Activity list. Rendered inside Layout, which wraps content with
  * the shared PageContainer (max-width, padding) so this page fits viewport width.
  */
-export const CalendarEntriesList = () => {
+export const ActivityListPage = () => {
   const { hasPermission } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 

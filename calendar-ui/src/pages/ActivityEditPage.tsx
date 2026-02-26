@@ -9,15 +9,9 @@ import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
+  type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
-import {
-  deleteActivity,
-  requestDeleteActivity,
-  restoreActivity,
-  softDeleteActivity,
-  updateActivity,
-} from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
 import { DeleteActivityModal } from '../components/activities/DeleteActivityModal';
 import { EditActivityConfirmModal } from '../components/activities/EditActivityConfirmModal';
@@ -46,6 +40,13 @@ import {
 } from '../components/ui/popover';
 import { useActivityLock } from '../hooks/useActivityLock';
 import { useAuth } from '../hooks/useAuth';
+import {
+  useDeleteActivity,
+  useRequestDeleteActivity,
+  useRestoreActivity,
+  useSoftDeleteActivity,
+  useUpdateActivity,
+} from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useDateStatuses } from '../hooks/useLookups';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
@@ -81,6 +82,11 @@ export function ActivityEditPage(): React.ReactElement {
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canRestore = isCommsContact || isAdminOrSysAdmin;
 
+  const updateMutation = useUpdateActivity();
+  const deleteMutation = useDeleteActivity();
+  const restoreMutation = useRestoreActivity();
+  const softDeleteMutation = useSoftDeleteActivity();
+  const requestDeleteMutation = useRequestDeleteActivity();
   const { data: dateStatuses } = useDateStatuses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -180,8 +186,8 @@ export function ActivityEditPage(): React.ReactElement {
           markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
         }),
         ...(notes ? { activityHistoryNotes: notes } : {}),
-      } as Parameters<typeof updateActivity>[1];
-      await updateActivity(id, submitData);
+      } as UpdateActivityRequest;
+      await updateMutation.mutateAsync({ id, data: submitData });
       toast.success(
         'Activity updated',
         getActivityUpdatedToastOptions({
@@ -221,7 +227,7 @@ export function ActivityEditPage(): React.ReactElement {
   const handleRestore = async () => {
     setIsRestoring(true);
     try {
-      await restoreActivity(id);
+      await restoreMutation.mutateAsync({ id });
       await refreshActivity();
       toast.success('Activity restored');
     } catch (err) {
@@ -235,7 +241,7 @@ export function ActivityEditPage(): React.ReactElement {
   const handleRequestDeleteConfirm = async (reason: string) => {
     setIsRequestDeleteSubmitting(true);
     try {
-      await requestDeleteActivity(id, { reason });
+      await requestDeleteMutation.mutateAsync({ id, body: { reason } });
       await refreshActivity();
       setShowRequestDeleteModal(false);
       toast.success('Delete requested');
@@ -250,7 +256,7 @@ export function ActivityEditPage(): React.ReactElement {
   const handleSoftDelete = async (reason: string) => {
     setIsDeleteSubmitting(true);
     try {
-      await softDeleteActivity(id, { reason });
+      await softDeleteMutation.mutateAsync({ id, body: { reason } });
       await refreshActivity();
       setShowDeleteModal(false);
       toast.success('Activity soft deleted');
@@ -265,7 +271,7 @@ export function ActivityEditPage(): React.ReactElement {
   const handleHardDelete = async (_reason: string) => {
     setIsDeleteSubmitting(true);
     try {
-      await deleteActivity(id);
+      await deleteMutation.mutateAsync(id);
       setShowDeleteModal(false);
       toast.success('Activity permanently deleted');
       void navigate('/');

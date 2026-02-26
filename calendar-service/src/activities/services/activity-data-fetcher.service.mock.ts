@@ -35,6 +35,10 @@ const DEFAULTS = {
     string | null
   >,
   fetchLeadMinistryNamesForActivities: new Map(),
+  fetchLeadMinistryAbbreviationsForActivities: new Map() as Map<
+    number,
+    string | null
+  >,
 } as const;
 
 type MockDataFetcher = {
