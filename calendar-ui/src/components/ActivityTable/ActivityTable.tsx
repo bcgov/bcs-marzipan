@@ -1027,6 +1027,7 @@ export function ActivityTable() {
       <div className="min-w-0 space-y-4">
         <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
           <SortDropdown
+            hideDirectionLabel
             columns={ACTIVITY_SORT_COLUMNS}
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -1073,6 +1074,7 @@ export function ActivityTable() {
       <div className="min-w-0 space-y-4">
         <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
           <SortDropdown
+            hideDirectionLabel
             columns={ACTIVITY_SORT_COLUMNS}
             sortKey={sortKey}
             sortDirection={sortDirection}
@@ -1107,6 +1109,7 @@ export function ActivityTable() {
       <div className="min-w-0 space-y-4">
         <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
           <SortDropdown
+            hideDirectionLabel
             columns={ACTIVITY_SORT_COLUMNS}
             sortKey={sortKey}
             sortDirection={sortDirection}

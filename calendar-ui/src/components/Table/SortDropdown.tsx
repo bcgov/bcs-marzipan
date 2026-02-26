@@ -23,6 +23,10 @@ interface SortDropdownProps {
   /** Default sort when none selected (used for initial display). */
   defaultSortKey: string;
   defaultSortDirection: 'asc' | 'desc';
+  /** When set, use this string as the trigger button label instead of the dynamic column + direction. */
+  triggerLabel?: string;
+  /** When true, do not append direction (e.g. "Newest", "A–Z") to the trigger label. */
+  hideDirectionLabel?: boolean;
   triggerClassName?: string;
   ariaLabel?: string;
 }
@@ -45,6 +49,8 @@ export function SortDropdown({
   onSortChange,
   defaultSortKey,
   defaultSortDirection,
+  triggerLabel: triggerLabelProp,
+  hideDirectionLabel = false,
   triggerClassName,
   ariaLabel = 'Sort by',
 }: SortDropdownProps) {
@@ -52,9 +58,14 @@ export function SortDropdown({
   const effectiveDirection =
     sortKey !== null ? sortDirection : defaultSortDirection;
   const activeColumn = columns.find((c) => c.id === effectiveKey);
-  const triggerLabel = activeColumn
-    ? `${activeColumn.label} ${directionLabel(activeColumn, effectiveDirection)}`
-    : 'Sort by';
+  const triggerLabel =
+    triggerLabelProp != null
+      ? triggerLabelProp
+      : activeColumn
+        ? hideDirectionLabel
+          ? activeColumn.label
+          : `${activeColumn.label} ${directionLabel(activeColumn, effectiveDirection)}`
+        : 'Sort by';
 
   const handleSelect = (col: SortColumnConfig) => {
     const isActive = effectiveKey === col.id;
