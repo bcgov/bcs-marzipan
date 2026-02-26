@@ -4,8 +4,6 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
   useReactTable,
   type Column,
   type ColumnPinningState,
@@ -32,7 +30,14 @@ import {
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/ErrorState';
 import {
-  ACTIVITY_TABLE_COLUMN_WIDTHS,
+  COLUMN_SORT_DROPDOWN_DATA_ATTR,
+  ColumnSortDropdown,
+} from '@/components/Table/ColumnSortDropdown';
+import { SortableColumnHeader } from '@/components/Table/SortableColumnHeader';
+import type { SortColumnConfig } from '@/components/Table/SortDropdown';
+import { SortIndicator } from '@/components/Table/SortIndicator';
+import {
+  getActivityColumnSizes,
   tableBodyRow,
   tableTable,
   tableTd,
@@ -40,16 +45,21 @@ import {
   tableThead,
 } from '@/components/Table/tableConstants';
 import { TablePagination } from '@/components/Table/TablePagination';
-import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
-import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   getLookAheadSectionLabel,
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
+import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
 import { useUsers } from '@/hooks/useLookups';
@@ -60,11 +70,14 @@ import {
   formatTime12h,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { cn } from '@/lib/utils';
 
+import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
+import { compareActivityRows } from './activityTableSort';
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
@@ -76,6 +89,28 @@ import {
  */
 
 const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_SORT_KEY = 'startDate';
+const DEFAULT_SORT_DIRECTION = 'desc' as const;
+
+const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
+  { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
+  { id: 'activityStatus', label: 'Status', defaultDirection: 'asc' },
+  {
+    id: 'lookAheadStatus',
+    label: 'Look Ahead Status',
+    defaultDirection: 'asc',
+  },
+  { id: 'startDate', label: 'Scheduled date', defaultDirection: 'desc' },
+  { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
+  { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
+];
+
+/** Status column can be sorted by activity status, last updated, or date created. */
+const STATUS_COLUMN_SORT_KEYS = [
+  'activityStatus',
+  'lastUpdated',
+  'createdDateTime',
+] as const;
 
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
@@ -557,16 +592,20 @@ export function ActivityTable() {
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: DEFAULT_PAGE_SIZE,
-  });
+  const { preferences, setPreferences } =
+    useActivityTablePreferences(canSeeDeleted);
+  const sortKey = preferences.sortKey;
+  const sortDirection = preferences.sortDirection;
+  const showCompleted = preferences.showCompleted;
+  const showDeleted = preferences.showDeleted;
+  const [pageIndex, setPageIndex] = useState(0);
+  const pagination = useMemo(
+    () => ({ pageIndex, pageSize: preferences.pageSize }),
+    [pageIndex, preferences.pageSize]
+  );
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     left: ['overview'],
   });
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showDeleted, setShowDeleted] = useState(false);
 
   const activityFilters = useMemo(
     () => ({
@@ -585,7 +624,7 @@ export function ActivityTable() {
       prev.includeDeleted === activityFilters.includeDeleted;
     if (!same) {
       prevFiltersRef.current = activityFilters;
-      setPagination((p) => ({ ...p, pageIndex: 0 }));
+      setPageIndex(0);
     }
   }, [activityFilters]);
 
@@ -602,22 +641,21 @@ export function ActivityTable() {
         | ((prev: typeof pagination) => typeof pagination)
         | typeof pagination
     ) => {
-      setPagination((prev) => {
-        const next =
-          typeof updaterOrValue === 'function'
-            ? updaterOrValue(prev)
-            : updaterOrValue;
-        if (
-          next.pageIndex === prev.pageIndex &&
-          next.pageSize === prev.pageSize
-        ) {
-          return prev;
-        }
-        return next;
-      });
+      const prev = pagination;
+      const next =
+        typeof updaterOrValue === 'function'
+          ? updaterOrValue(prev)
+          : updaterOrValue;
+      if (next.pageSize !== prev.pageSize) {
+        setPreferences({ pageSize: next.pageSize });
+        setPageIndex(0);
+      } else {
+        setPageIndex(next.pageIndex);
+      }
     },
-    []
+    [pagination, setPreferences]
   );
+  const setPagination = onPaginationChangeStable;
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
@@ -635,6 +673,15 @@ export function ActivityTable() {
     () => activities.map(mapActivityResponseToTableRow),
     [activities]
   );
+
+  const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
+  const effectiveSortDirection =
+    sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
+  const sortedData = useMemo(() => {
+    return [...data].sort((a, b) =>
+      compareActivityRows(a, b, effectiveSortKey, effectiveSortDirection)
+    );
+  }, [data, effectiveSortKey, effectiveSortDirection]);
 
   // Track which row ids we have seen so we can animate only newly arrived rows on refetch
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -658,81 +705,167 @@ export function ActivityTable() {
     }
   }, [data]);
 
+  const handleSortChange = useCallback(
+    (key: string | null, direction: 'asc' | 'desc') => {
+      setPreferences({
+        sortKey: key ?? DEFAULT_SORT_KEY,
+        sortDirection: direction,
+      });
+    },
+    [setPreferences]
+  );
+
+  const handleHeaderSort = useCallback(
+    (columnSortKeyOrKeys: string | string[]) => {
+      const keys = Array.isArray(columnSortKeyOrKeys)
+        ? columnSortKeyOrKeys
+        : [columnSortKeyOrKeys];
+      const isActive = keys.includes(effectiveSortKey);
+      if (isActive) {
+        handleSortChange(
+          effectiveSortKey,
+          effectiveSortDirection === 'asc' ? 'desc' : 'asc'
+        );
+      } else {
+        const primaryKey = keys[0];
+        const col = ACTIVITY_SORT_COLUMNS.find((c) => c.id === primaryKey);
+        handleSortChange(primaryKey, col?.defaultDirection ?? 'asc');
+      }
+    },
+    [effectiveSortKey, effectiveSortDirection, handleSortChange]
+  );
+
   const columnHelper = createColumnHelper<ActivityTableRow>();
 
   const columns = useMemo(
     () => [
       columnHelper.display({
         id: 'overview',
-        header: 'Overview',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.maxSize,
+        header: () => (
+          <SortableColumnHeader
+            title="Overview"
+            sortColumnId="activityId"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
+        meta: { sortKey: 'activityId' as const },
+        ...getActivityColumnSizes('overview'),
         cell: ({ row }) => <OverviewCell row={row.original} />,
       }),
 
       columnHelper.accessor('summary', {
-        header: 'Summary',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.maxSize,
+        header: () => (
+          <SortableColumnHeader
+            title="Summary"
+            sortColumnId="lookAheadStatus"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
+        meta: { sortKey: 'lookAheadStatus' as const },
+        ...getActivityColumnSizes('summary'),
         cell: ({ row }) => <SummaryCell row={row.original} />,
       }),
 
       columnHelper.accessor('startDate', {
-        header: 'Scheduling',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.maxSize,
+        header: () => (
+          <SortableColumnHeader
+            title="Scheduling"
+            sortColumnId="startDate"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
+        meta: { sortKey: 'startDate' as const },
+        ...getActivityColumnSizes('scheduling'),
         cell: ({ row }) => <SchedulingCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'leads',
         header: 'Leads',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.maxSize,
+        ...getActivityColumnSizes('leads'),
         cell: ({ row }) => <LeadsCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'materials',
         header: 'Materials',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.maxSize,
+        ...getActivityColumnSizes('materials'),
         cell: ({ row }) => <MaterialsCell row={row.original} />,
       }),
 
       columnHelper.accessor('activityStatus', {
-        header: 'Status',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.status.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.maxSize,
+        header: () => {
+          const statusSortKeys: string[] = [...STATUS_COLUMN_SORT_KEYS];
+          const isStatusSortActive = statusSortKeys.includes(effectiveSortKey);
+          const statusLabel = isStatusSortActive
+            ? (ACTIVITY_SORT_COLUMNS.find((c) => c.id === effectiveSortKey)
+                ?.label ?? effectiveSortKey)
+            : null;
+          const sortIndicator = (
+            <SortIndicator
+              columnId={statusSortKeys}
+              sortKey={effectiveSortKey}
+              sortDirection={effectiveSortDirection}
+              className="h-4 w-4"
+            />
+          );
+          return (
+            <span className="inline-flex items-center gap-1">
+              Status
+              <span className="inline-flex items-center gap-0.5">
+                {isStatusSortActive && statusLabel ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">{sortIndicator}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>Sorted by {statusLabel}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  sortIndicator
+                )}
+                <ColumnSortDropdown
+                  sortKeys={statusSortKeys}
+                  columns={ACTIVITY_SORT_COLUMNS}
+                  effectiveSortKey={effectiveSortKey}
+                  effectiveSortDirection={effectiveSortDirection}
+                  onSortChange={handleSortChange}
+                  triggerClassName="opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
+                  iconClassName="text-slate-400"
+                  ariaLabel="Sort Status column by"
+                />
+              </span>
+            </span>
+          );
+        },
+        meta: { sortKeys: [...STATUS_COLUMN_SORT_KEYS] },
+        ...getActivityColumnSizes('status'),
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
-    [columnHelper, userMap]
+    [columnHelper, userMap, effectiveSortKey, effectiveSortDirection]
   );
 
   const table = useReactTable({
-    data,
+    data: sortedData,
     columns,
-    state: { sorting, pagination, columnPinning },
-    onSortingChange: setSorting,
+    state: { pagination, columnPinning },
     onPaginationChange: onPaginationChangeStable,
     onColumnPinningChange: (updater) =>
       setColumnPinning((prev) =>
         typeof updater === 'function' ? updater(prev) : updater
       ),
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     autoResetPageIndex: false,
     getRowId: (row) => String(row.id),
-    meta: { userMap },
+    meta: { userMap, handleHeaderSort },
   });
 
   const eventTableFilters = useMemo(() => {
@@ -741,7 +874,8 @@ export function ActivityTable() {
         id: 'show-completed',
         label: 'Show completed',
         checked: showCompleted,
-        onCheckedChange: setShowCompleted,
+        onCheckedChange: (checked: boolean) =>
+          setPreferences({ showCompleted: checked }),
       },
     ];
     if (canSeeDeleted) {
@@ -749,31 +883,34 @@ export function ActivityTable() {
         id: 'show-deleted',
         label: 'Show deleted',
         checked: showDeleted,
-        onCheckedChange: setShowDeleted,
+        onCheckedChange: (checked: boolean) =>
+          setPreferences({ showDeleted: checked }),
       });
     }
     return filters;
-  }, [showCompleted, showDeleted, canSeeDeleted]);
+  }, [showCompleted, showDeleted, canSeeDeleted, setPreferences]);
 
   // Loading state
   if (loading) {
     return (
-      <div className="min-w-0 space-y-4">
-        <TableSummaryBar
-          count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
-          filters={eventTableFilters}
-        />
-        <TableScrollContainer ref={tableScrollRef}>
-          <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            <span className="text-sm text-slate-600">
-              Loading activities...
-            </span>
-          </div>
-        </TableScrollContainer>
-      </div>
+      <ActivityTableLayout
+        scrollRef={tableScrollRef}
+        sortColumns={ACTIVITY_SORT_COLUMNS}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSortChange={handleSortChange}
+        defaultSortKey={DEFAULT_SORT_KEY}
+        defaultSortDirection={DEFAULT_SORT_DIRECTION}
+        count={0}
+        singularLabel="entry"
+        pluralLabel="entries"
+        filters={eventTableFilters}
+      >
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <span className="text-sm text-slate-600">Loading activities...</span>
+        </div>
+      </ActivityTableLayout>
     );
   }
 
@@ -793,154 +930,191 @@ export function ActivityTable() {
   // Empty state
   if (data.length === 0) {
     return (
-      <div className="min-w-0 space-y-4">
-        <TableSummaryBar
-          count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
-          filters={eventTableFilters}
-        />
-        <TableScrollContainer ref={tableScrollRef}>
-          <div className="py-12 text-center text-sm text-slate-600">
-            <div className="mb-2 font-semibold">No activities found</div>
-            <div>
-              Create a new entry or adjust filters to see activities here.
-            </div>
+      <ActivityTableLayout
+        scrollRef={tableScrollRef}
+        sortColumns={ACTIVITY_SORT_COLUMNS}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSortChange={handleSortChange}
+        defaultSortKey={DEFAULT_SORT_KEY}
+        defaultSortDirection={DEFAULT_SORT_DIRECTION}
+        count={0}
+        singularLabel="entry"
+        pluralLabel="entries"
+        filters={eventTableFilters}
+      >
+        <div className="py-12 text-center text-sm text-slate-600">
+          <div className="mb-2 font-semibold">No activities found</div>
+          <div>
+            Create a new entry or adjust filters to see activities here.
           </div>
-        </TableScrollContainer>
-      </div>
+        </div>
+      </ActivityTableLayout>
     );
   }
 
   const pageRows = table.getRowModel().rows;
 
   return (
-    <div className="min-w-0 space-y-4">
-      <TableSummaryBar
-        count={data.length}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-      />
-      <TableScrollContainer ref={tableScrollRef}>
-        <table
-          className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-          role="grid"
-          aria-colcount={columns.length}
+    <TooltipProvider delayDuration={400}>
+      <div className="min-w-0 space-y-4">
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          sortColumns={ACTIVITY_SORT_COLUMNS}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+          defaultSortKey={DEFAULT_SORT_KEY}
+          defaultSortDirection={DEFAULT_SORT_DIRECTION}
+          count={sortedData.length}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
         >
-          <thead className={tableThead}>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const pinStyles = getCommonPinningStyles(header.column);
-                  return (
-                    <th
-                      key={header.id}
-                      className={tableTh}
-                      style={{
-                        width: header.getSize(),
-                        minWidth:
-                          header.column.columnDef.minSize ?? header.getSize(),
-                        maxWidth:
-                          header.column.columnDef.maxSize ?? header.getSize(),
-                        cursor: header.column.getCanSort()
-                          ? 'pointer'
-                          : 'default',
-                        ...pinStyles,
-                        ...(pinStyles.position === 'sticky'
-                          ? { backgroundColor: 'rgb(248 250 252)' }
-                          : {}),
-                      }}
-                      onClick={
-                        header.column.getCanSort()
-                          ? header.column.getToggleSortingHandler()
-                          : undefined
-                      }
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {pageRows.map((row) => {
-              const isNewRow = newRowIds.has(row.original.id);
-              return (
-                <tr
-                  key={row.id}
-                  className={`group/row ${tableBodyRow} cursor-pointer ${
-                    isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                  }`}
-                  tabIndex={0}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                      return;
-                    if (window.getSelection()?.toString().trim()) return;
-                    void navigate(`/activity/${row.original.id}`);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                      return;
-                    e.preventDefault();
-                    void navigate(`/activity/${row.original.id}`);
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const pinStyles = getCommonPinningStyles(cell.column);
-                    const isOverview = cell.column.id === 'overview';
+          <table
+            className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+            role="grid"
+            aria-colcount={columns.length}
+          >
+            <thead className={tableThead}>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const pinStyles = getCommonPinningStyles(header.column);
+                    const meta = header.column.columnDef.meta as
+                      | { sortKey?: string; sortKeys?: string[] }
+                      | undefined;
+                    const isSortable =
+                      meta?.sortKey != null ||
+                      (meta?.sortKeys?.length ?? 0) > 0;
+                    const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                    const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
                     return (
-                      <td
-                        key={cell.id}
-                        className={`${tableTd} border-b border-slate-100 ${
-                          isOverview
-                            ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                            : ''
-                        }`}
+                      <th
+                        key={header.id}
+                        className={cn(tableTh, hasMultiSort && 'group')}
                         style={{
-                          width: cell.column.getSize(),
+                          width: header.getSize(),
                           minWidth:
-                            cell.column.columnDef.minSize ??
-                            cell.column.getSize(),
+                            header.column.columnDef.minSize ?? header.getSize(),
                           maxWidth:
-                            cell.column.columnDef.maxSize ??
-                            cell.column.getSize(),
+                            header.column.columnDef.maxSize ?? header.getSize(),
+                          cursor: isSortable ? 'pointer' : 'default',
                           ...pinStyles,
+                          ...(pinStyles.position === 'sticky'
+                            ? { backgroundColor: 'rgb(248 250 252)' }
+                            : {}),
+                        }}
+                        onClick={(e) => {
+                          if (
+                            (e.target as HTMLElement).closest(
+                              `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                            )
+                          ) {
+                            return;
+                          }
+                          const onHeaderSort = (
+                            table.options.meta as
+                              | {
+                                  handleHeaderSort?: (
+                                    key: string | string[]
+                                  ) => void;
+                                }
+                              | undefined
+                          )?.handleHeaderSort;
+                          if (sortPayload != null && onHeaderSort)
+                            onHeaderSort(sortPayload);
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
                     );
                   })}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </TableScrollContainer>
+              ))}
+            </thead>
+            <tbody>
+              {pageRows.map((row) => {
+                const isNewRow = newRowIds.has(row.original.id);
+                return (
+                  <tr
+                    key={row.id}
+                    className={`group/row ${tableBodyRow} cursor-pointer ${
+                      isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                    }`}
+                    tabIndex={0}
+                    onClick={(e) => {
+                      if (
+                        (e.target as HTMLElement).closest('[data-no-row-nav]')
+                      )
+                        return;
+                      if (window.getSelection()?.toString().trim()) return;
+                      void navigate(`/activity/${row.original.id}`);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      if (
+                        (e.target as HTMLElement).closest('[data-no-row-nav]')
+                      )
+                        return;
+                      e.preventDefault();
+                      void navigate(`/activity/${row.original.id}`);
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const pinStyles = getCommonPinningStyles(cell.column);
+                      const isOverview = cell.column.id === 'overview';
+                      return (
+                        <td
+                          key={cell.id}
+                          className={`${tableTd} border-b border-slate-100 ${
+                            isOverview
+                              ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                              : ''
+                          }`}
+                          style={{
+                            width: cell.column.getSize(),
+                            minWidth:
+                              cell.column.columnDef.minSize ??
+                              cell.column.getSize(),
+                            maxWidth:
+                              cell.column.columnDef.maxSize ??
+                              cell.column.getSize(),
+                            ...pinStyles,
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </ActivityTableLayout>
 
-      <TablePagination
-        totalItems={table.getFilteredRowModel().rows.length}
-        page={pagination.pageIndex + 1}
-        pageSize={pagination.pageSize}
-        onPageChange={(page) =>
-          setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-        }
-        onPageSizeChange={(pageSize) =>
-          setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-        }
-        scrollContainerRef={tableScrollRef}
-      />
-    </div>
+        <TablePagination
+          totalItems={sortedData.length}
+          page={pagination.pageIndex + 1}
+          pageSize={pagination.pageSize}
+          onPageChange={(page) =>
+            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+          }
+          onPageSizeChange={(pageSize) =>
+            setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+          }
+          scrollContainerRef={tableScrollRef}
+        />
+      </div>
+    </TooltipProvider>
   );
 }
