@@ -1,16 +1,14 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEventHandler,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
 import { Badge, type BadgeProps } from './badge';
-import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './tooltip';
 
 export interface BadgeGroupItem {
   key: string | number;
@@ -54,12 +52,10 @@ export function BadgeGroup({
   visibleCountOverride,
 }: BadgeGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<number | null>(null);
   const prevContainerWidthRef = useRef(0);
   const prevContentSignatureRef = useRef<string>(null);
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
 
   const finalVisibleCount =
     visibleCountOverride != null
@@ -76,31 +72,6 @@ export function BadgeGroup({
     [items, finalVisibleCount]
   );
   const overflowCount = overflowItems.length;
-
-  const clearCloseTimer = () => {
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  };
-
-  const openOverflow = () => {
-    clearCloseTimer();
-    setIsOpen(true);
-  };
-
-  const scheduleCloseOverflow = () => {
-    clearCloseTimer();
-    closeTimerRef.current = window.setTimeout(() => {
-      setIsOpen(false);
-    }, 120);
-  };
-
-  useEffect(() => {
-    return () => {
-      clearCloseTimer();
-    };
-  }, []);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -132,7 +103,6 @@ export function BadgeGroup({
 
     if (signatureChanged) {
       setVisibleCount(null);
-      setIsOpen(false);
     }
   }, [layoutSignature, visibleCountOverride]);
 
@@ -145,7 +115,6 @@ export function BadgeGroup({
       prevContainerWidthRef.current = containerWidth;
       if (prev > 0 && containerWidth > 0) {
         setVisibleCount(null);
-        setIsOpen(false);
       }
     }
   }, [containerWidth, visibleCountOverride]);
@@ -206,14 +175,6 @@ export function BadgeGroup({
     visibleCountOverride,
   ]);
 
-  const onOverflowMouseEnter: MouseEventHandler<HTMLElement> = () => {
-    openOverflow();
-  };
-
-  const onOverflowMouseLeave: MouseEventHandler<HTMLElement> = () => {
-    scheduleCloseOverflow();
-  };
-
   return (
     <div
       ref={containerRef}
@@ -237,52 +198,42 @@ export function BadgeGroup({
       ))}
 
       {overflowCount > 0 && (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              data-no-row-nav
-              aria-label={`Show ${overflowCount} more badges`}
-              data-badge-group-measure="true"
-              className="focus-visible:ring-ring shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              onMouseEnter={onOverflowMouseEnter}
-              onMouseLeave={onOverflowMouseLeave}
-              onFocus={openOverflow}
-              onBlur={scheduleCloseOverflow}
-            >
-              <Badge
-                variant="outline"
-                className={cn(
-                  'h-auto min-h-5 text-xs text-slate-600',
-                  overflowBadgeClassName
-                )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                data-no-row-nav
+                aria-label={`Show ${overflowCount} more badges`}
+                data-badge-group-measure="true"
+                className="focus-visible:ring-ring shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
-                +{overflowCount}
-              </Badge>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            data-no-row-nav
-            side="top"
-            align="start"
-            className="w-72"
-            onOpenAutoFocus={(event) => event.preventDefault()}
-            onMouseEnter={onOverflowMouseEnter}
-            onMouseLeave={onOverflowMouseLeave}
-          >
-            <div className="flex flex-wrap gap-1.5">
-              {overflowItems.map((item) => (
                 <Badge
-                  key={`overflow-${item.key}`}
-                  variant={item.variant ?? badgeVariant}
-                  className={cn(badgeClassName, item.className)}
+                  variant="outline"
+                  className={cn(
+                    'h-auto min-h-5 text-xs text-slate-600',
+                    overflowBadgeClassName
+                  )}
                 >
-                  {item.label}
+                  +{overflowCount}
                 </Badge>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              data-no-row-nav
+              side="top"
+              align="start"
+              variant="light"
+              className="max-w-xs text-sm text-slate-600"
+            >
+              <ul className="list-inside list-none space-y-0.5 text-left">
+                {overflowItems.map((item) => (
+                  <li key={item.key}>{item.label}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,7 +46,7 @@ describe('BadgeGroup', () => {
     expect(screen.queryByText('Delta')).not.toBeInTheDocument();
   });
 
-  it('opens overflow popover from trigger hover and reveals hidden badges', async () => {
+  it('opens overflow tooltip from trigger hover and reveals hidden badges', async () => {
     const user = userEvent.setup();
     render(
       <BadgeGroup items={baseItems} maxLines={1} visibleCountOverride={2} />
@@ -58,8 +58,9 @@ describe('BadgeGroup', () => {
     await user.hover(trigger);
 
     await waitFor(() => {
-      expect(screen.getByText('Gamma')).toBeInTheDocument();
-      expect(screen.getByText('Delta')).toBeInTheDocument();
+      const tooltip = screen.getByRole('tooltip');
+      expect(within(tooltip).getByText('Gamma')).toBeInTheDocument();
+      expect(within(tooltip).getByText('Delta')).toBeInTheDocument();
     });
   });
 
