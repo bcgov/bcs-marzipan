@@ -30,6 +30,10 @@ import {
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/ErrorState';
 import {
+  COLUMN_SORT_DROPDOWN_DATA_ATTR,
+  ColumnSortDropdown,
+} from '@/components/Table/ColumnSortDropdown';
+import {
   SortDropdown,
   type SortColumnConfig,
 } from '@/components/Table/SortDropdown';
@@ -50,6 +54,12 @@ import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   getLookAheadSectionLabel,
   getLookAheadStatusLabel,
 } from '@/constants/form-options';
@@ -63,6 +73,7 @@ import {
   formatTime12h,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { cn } from '@/lib/utils';
 
 import {
   mapActivityResponseToTableRow,
@@ -108,6 +119,13 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
   { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
 ];
+
+/** Status column can be sorted by activity status, last updated, or date created. */
+const STATUS_COLUMN_SORT_KEYS = [
+  'activityStatus',
+  'lastUpdated',
+  'createdDateTime',
+] as const;
 
 function indexOfOrder<T extends string>(
   order: readonly T[],
@@ -762,16 +780,20 @@ export function ActivityTable() {
   );
 
   const handleHeaderSort = useCallback(
-    (columnSortKey: string) => {
-      const isActive = effectiveSortKey === columnSortKey;
+    (columnSortKeyOrKeys: string | string[]) => {
+      const keys = Array.isArray(columnSortKeyOrKeys)
+        ? columnSortKeyOrKeys
+        : [columnSortKeyOrKeys];
+      const isActive = keys.includes(effectiveSortKey);
       if (isActive) {
         handleSortChange(
-          columnSortKey,
+          effectiveSortKey,
           effectiveSortDirection === 'asc' ? 'desc' : 'asc'
         );
       } else {
-        const col = ACTIVITY_SORT_COLUMNS.find((c) => c.id === columnSortKey);
-        handleSortChange(columnSortKey, col?.defaultDirection ?? 'asc');
+        const primaryKey = keys[0];
+        const col = ACTIVITY_SORT_COLUMNS.find((c) => c.id === primaryKey);
+        handleSortChange(primaryKey, col?.defaultDirection ?? 'asc');
       }
     },
     [effectiveSortKey, effectiveSortDirection, handleSortChange]
@@ -783,17 +805,34 @@ export function ActivityTable() {
     () => [
       columnHelper.display({
         id: 'overview',
-        header: () => (
-          <span className="inline-flex items-center gap-1">
-            Overview
+        header: () => {
+          const label =
+            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'activityId')?.label ??
+            'Activity ID';
+          const indicator = (
             <SortIndicator
               columnId="activityId"
               sortKey={effectiveSortKey}
               sortDirection={effectiveSortDirection}
               className="h-4 w-4"
             />
-          </span>
-        ),
+          );
+          return (
+            <span className="inline-flex items-center gap-1">
+              Overview
+              {effectiveSortKey === 'activityId' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{indicator}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>Sorted by {label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                indicator
+              )}
+            </span>
+          );
+        },
         meta: { sortKey: 'activityId' as const },
         size: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.size,
         minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.minSize,
@@ -802,17 +841,34 @@ export function ActivityTable() {
       }),
 
       columnHelper.accessor('summary', {
-        header: () => (
-          <span className="inline-flex items-center gap-1">
-            Summary
+        header: () => {
+          const label =
+            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'lookAheadStatus')
+              ?.label ?? 'Look Ahead Status';
+          const indicator = (
             <SortIndicator
               columnId="lookAheadStatus"
               sortKey={effectiveSortKey}
               sortDirection={effectiveSortDirection}
               className="h-4 w-4"
             />
-          </span>
-        ),
+          );
+          return (
+            <span className="inline-flex items-center gap-1">
+              Summary
+              {effectiveSortKey === 'lookAheadStatus' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{indicator}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>Sorted by {label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                indicator
+              )}
+            </span>
+          );
+        },
         meta: { sortKey: 'lookAheadStatus' as const },
         size: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.size,
         minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.minSize,
@@ -821,17 +877,34 @@ export function ActivityTable() {
       }),
 
       columnHelper.accessor('startDate', {
-        header: () => (
-          <span className="inline-flex items-center gap-1">
-            Scheduling
+        header: () => {
+          const label =
+            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'startDate')?.label ??
+            'Scheduled date';
+          const indicator = (
             <SortIndicator
               columnId="startDate"
               sortKey={effectiveSortKey}
               sortDirection={effectiveSortDirection}
               className="h-4 w-4"
             />
-          </span>
-        ),
+          );
+          return (
+            <span className="inline-flex items-center gap-1">
+              Scheduling
+              {effectiveSortKey === 'startDate' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">{indicator}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>Sorted by {label}</TooltipContent>
+                </Tooltip>
+              ) : (
+                indicator
+              )}
+            </span>
+          );
+        },
         meta: { sortKey: 'startDate' as const },
         size: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.size,
         minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.minSize,
@@ -858,18 +931,50 @@ export function ActivityTable() {
       }),
 
       columnHelper.accessor('activityStatus', {
-        header: () => (
-          <span className="inline-flex items-center gap-1">
-            Status
+        header: () => {
+          const statusSortKeys: string[] = [...STATUS_COLUMN_SORT_KEYS];
+          const isStatusSortActive = statusSortKeys.includes(effectiveSortKey);
+          const statusLabel = isStatusSortActive
+            ? (ACTIVITY_SORT_COLUMNS.find((c) => c.id === effectiveSortKey)
+                ?.label ?? effectiveSortKey)
+            : null;
+          const sortIndicator = (
             <SortIndicator
-              columnId="activityStatus"
+              columnId={statusSortKeys}
               sortKey={effectiveSortKey}
               sortDirection={effectiveSortDirection}
               className="h-4 w-4"
             />
-          </span>
-        ),
-        meta: { sortKey: 'activityStatus' as const },
+          );
+          return (
+            <span className="inline-flex items-center gap-1">
+              Status
+              <span className="inline-flex items-center gap-0.5">
+                {isStatusSortActive && statusLabel ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">{sortIndicator}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>Sorted by {statusLabel}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  sortIndicator
+                )}
+                <ColumnSortDropdown
+                  sortKeys={statusSortKeys}
+                  columns={ACTIVITY_SORT_COLUMNS}
+                  effectiveSortKey={effectiveSortKey}
+                  effectiveSortDirection={effectiveSortDirection}
+                  onSortChange={handleSortChange}
+                  triggerClassName="opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
+                  iconClassName="text-slate-400"
+                  ariaLabel="Sort Status column by"
+                />
+              </span>
+            </span>
+          );
+        },
+        meta: { sortKeys: [...STATUS_COLUMN_SORT_KEYS] },
         size: ACTIVITY_TABLE_COLUMN_WIDTHS.status.size,
         minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.minSize,
         maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.maxSize,
@@ -998,156 +1103,170 @@ export function ActivityTable() {
   const pageRows = table.getRowModel().rows;
 
   return (
-    <div className="min-w-0 space-y-4">
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
-        <SortDropdown
-          columns={ACTIVITY_SORT_COLUMNS}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortChange={handleSortChange}
-          defaultSortKey={DEFAULT_SORT_KEY}
-          defaultSortDirection={DEFAULT_SORT_DIRECTION}
-          ariaLabel="Sort by"
+    <TooltipProvider delayDuration={400}>
+      <div className="min-w-0 space-y-4">
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
+          <SortDropdown
+            columns={ACTIVITY_SORT_COLUMNS}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+            defaultSortKey={DEFAULT_SORT_KEY}
+            defaultSortDirection={DEFAULT_SORT_DIRECTION}
+            ariaLabel="Sort by"
+          />
+        </div>
+        <TableSummaryBar
+          count={sortedData.length}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
         />
-      </div>
-      <TableSummaryBar
-        count={sortedData.length}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-      />
-      <TableScrollContainer ref={tableScrollRef}>
-        <table
-          className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-          role="grid"
-          aria-colcount={columns.length}
-        >
-          <thead className={tableThead}>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const pinStyles = getCommonPinningStyles(header.column);
-                  return (
-                    <th
-                      key={header.id}
-                      className={tableTh}
-                      style={{
-                        width: header.getSize(),
-                        minWidth:
-                          header.column.columnDef.minSize ?? header.getSize(),
-                        maxWidth:
-                          header.column.columnDef.maxSize ?? header.getSize(),
-                        cursor: (
-                          header.column.columnDef.meta as
-                            | { sortKey?: string }
-                            | undefined
-                        )?.sortKey
-                          ? 'pointer'
-                          : 'default',
-                        ...pinStyles,
-                        ...(pinStyles.position === 'sticky'
-                          ? { backgroundColor: 'rgb(248 250 252)' }
-                          : {}),
-                      }}
-                      onClick={() => {
-                        const sortKeyMeta = (
-                          header.column.columnDef.meta as
-                            | { sortKey?: string }
-                            | undefined
-                        )?.sortKey;
-                        const onHeaderSort = (
-                          table.options.meta as
-                            | { handleHeaderSort?: (key: string) => void }
-                            | undefined
-                        )?.handleHeaderSort;
-                        if (sortKeyMeta && onHeaderSort)
-                          onHeaderSort(sortKeyMeta);
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {pageRows.map((row) => {
-              const isNewRow = newRowIds.has(row.original.id);
-              return (
-                <tr
-                  key={row.id}
-                  className={`group/row ${tableBodyRow} cursor-pointer ${
-                    isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                  }`}
-                  tabIndex={0}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                      return;
-                    if (window.getSelection()?.toString().trim()) return;
-                    void navigate(`/activity/${row.original.id}`);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if ((e.target as HTMLElement).closest('[data-no-row-nav]'))
-                      return;
-                    e.preventDefault();
-                    void navigate(`/activity/${row.original.id}`);
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const pinStyles = getCommonPinningStyles(cell.column);
-                    const isOverview = cell.column.id === 'overview';
+        <TableScrollContainer ref={tableScrollRef}>
+          <table
+            className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+            role="grid"
+            aria-colcount={columns.length}
+          >
+            <thead className={tableThead}>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const pinStyles = getCommonPinningStyles(header.column);
+                    const meta = header.column.columnDef.meta as
+                      | { sortKey?: string; sortKeys?: string[] }
+                      | undefined;
+                    const isSortable =
+                      meta?.sortKey != null ||
+                      (meta?.sortKeys?.length ?? 0) > 0;
+                    const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                    const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
                     return (
-                      <td
-                        key={cell.id}
-                        className={`${tableTd} border-b border-slate-100 ${
-                          isOverview
-                            ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                            : ''
-                        }`}
+                      <th
+                        key={header.id}
+                        className={cn(tableTh, hasMultiSort && 'group')}
                         style={{
-                          width: cell.column.getSize(),
+                          width: header.getSize(),
                           minWidth:
-                            cell.column.columnDef.minSize ??
-                            cell.column.getSize(),
+                            header.column.columnDef.minSize ?? header.getSize(),
                           maxWidth:
-                            cell.column.columnDef.maxSize ??
-                            cell.column.getSize(),
+                            header.column.columnDef.maxSize ?? header.getSize(),
+                          cursor: isSortable ? 'pointer' : 'default',
                           ...pinStyles,
+                          ...(pinStyles.position === 'sticky'
+                            ? { backgroundColor: 'rgb(248 250 252)' }
+                            : {}),
+                        }}
+                        onClick={(e) => {
+                          if (
+                            (e.target as HTMLElement).closest(
+                              `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                            )
+                          ) {
+                            return;
+                          }
+                          const onHeaderSort = (
+                            table.options.meta as
+                              | {
+                                  handleHeaderSort?: (
+                                    key: string | string[]
+                                  ) => void;
+                                }
+                              | undefined
+                          )?.handleHeaderSort;
+                          if (sortPayload != null && onHeaderSort)
+                            onHeaderSort(sortPayload);
                         }}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
                     );
                   })}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </TableScrollContainer>
+              ))}
+            </thead>
+            <tbody>
+              {pageRows.map((row) => {
+                const isNewRow = newRowIds.has(row.original.id);
+                return (
+                  <tr
+                    key={row.id}
+                    className={`group/row ${tableBodyRow} cursor-pointer ${
+                      isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                    }`}
+                    tabIndex={0}
+                    onClick={(e) => {
+                      if (
+                        (e.target as HTMLElement).closest('[data-no-row-nav]')
+                      )
+                        return;
+                      if (window.getSelection()?.toString().trim()) return;
+                      void navigate(`/activity/${row.original.id}`);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      if (
+                        (e.target as HTMLElement).closest('[data-no-row-nav]')
+                      )
+                        return;
+                      e.preventDefault();
+                      void navigate(`/activity/${row.original.id}`);
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const pinStyles = getCommonPinningStyles(cell.column);
+                      const isOverview = cell.column.id === 'overview';
+                      return (
+                        <td
+                          key={cell.id}
+                          className={`${tableTd} border-b border-slate-100 ${
+                            isOverview
+                              ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                              : ''
+                          }`}
+                          style={{
+                            width: cell.column.getSize(),
+                            minWidth:
+                              cell.column.columnDef.minSize ??
+                              cell.column.getSize(),
+                            maxWidth:
+                              cell.column.columnDef.maxSize ??
+                              cell.column.getSize(),
+                            ...pinStyles,
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScrollContainer>
 
-      <TablePagination
-        totalItems={sortedData.length}
-        page={pagination.pageIndex + 1}
-        pageSize={pagination.pageSize}
-        onPageChange={(page) =>
-          setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-        }
-        onPageSizeChange={(pageSize) =>
-          setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-        }
-        scrollContainerRef={tableScrollRef}
-      />
-    </div>
+        <TablePagination
+          totalItems={sortedData.length}
+          page={pagination.pageIndex + 1}
+          pageSize={pagination.pageSize}
+          onPageChange={(page) =>
+            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+          }
+          onPageSizeChange={(pageSize) =>
+            setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+          }
+          scrollContainerRef={tableScrollRef}
+        />
+      </div>
+    </TooltipProvider>
   );
 }
