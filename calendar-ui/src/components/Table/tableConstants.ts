@@ -41,3 +41,15 @@ export const ACTIVITY_TABLE_COLUMN_WIDTHS = {
   materials: { size: 200, minSize: 200, maxSize: 240 },
   status: { size: 160, minSize: 160, maxSize: 240 },
 } as const;
+
+export type ActivityTableColumnKey = keyof typeof ACTIVITY_TABLE_COLUMN_WIDTHS;
+
+/** Returns size, minSize, maxSize for a given ActivityTable column (for spreading into column defs). */
+export function getActivityColumnSizes(key: ActivityTableColumnKey): {
+  size: number;
+  minSize: number;
+  maxSize: number;
+} {
+  const w = ACTIVITY_TABLE_COLUMN_WIDTHS[key];
+  return { size: w.size, minSize: w.minSize, maxSize: w.maxSize };
+}

@@ -33,13 +33,11 @@ import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
 } from '@/components/Table/ColumnSortDropdown';
-import {
-  SortDropdown,
-  type SortColumnConfig,
-} from '@/components/Table/SortDropdown';
+import { SortableColumnHeader } from '@/components/Table/SortableColumnHeader';
+import type { SortColumnConfig } from '@/components/Table/SortDropdown';
 import { SortIndicator } from '@/components/Table/SortIndicator';
 import {
-  ACTIVITY_TABLE_COLUMN_WIDTHS,
+  getActivityColumnSizes,
   tableBodyRow,
   tableTable,
   tableTd,
@@ -47,8 +45,6 @@ import {
   tableThead,
 } from '@/components/Table/tableConstants';
 import { TablePagination } from '@/components/Table/TablePagination';
-import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
-import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
@@ -75,10 +71,12 @@ import {
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { cn } from '@/lib/utils';
 
+import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
+import { compareActivityRows } from './activityTableSort';
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
@@ -92,20 +90,6 @@ import {
 const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;
-
-/** Plan order: New, Changed, Delete requested, Reviewed, Completed, Deleted (on_hold last). */
-const ACTIVITY_STATUS_SORT_ORDER = [
-  'new',
-  'changed',
-  'delete_requested',
-  'reviewed',
-  'completed',
-  'deleted',
-  'on_hold',
-] as const;
-
-/** Plan order: New, Changed, None. */
-const LOOK_AHEAD_SORT_ORDER = ['new', 'changed', 'none'] as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
@@ -126,57 +110,6 @@ const STATUS_COLUMN_SORT_KEYS = [
   'lastUpdated',
   'createdDateTime',
 ] as const;
-
-function indexOfOrder<T extends string>(
-  order: readonly T[],
-  value: string | null
-): number {
-  if (!value) return order.length;
-  const i = order.indexOf(value.toLowerCase() as T);
-  return i === -1 ? order.length : i;
-}
-
-function compareActivityRows(
-  a: ActivityTableRow,
-  b: ActivityTableRow,
-  sortKey: string,
-  direction: 'asc' | 'desc'
-): number {
-  const mult = direction === 'asc' ? 1 : -1;
-  switch (sortKey) {
-    case 'activityId':
-      return mult * (a.id - b.id);
-    case 'activityStatus': {
-      const ia = indexOfOrder(ACTIVITY_STATUS_SORT_ORDER, a.activityStatus);
-      const ib = indexOfOrder(ACTIVITY_STATUS_SORT_ORDER, b.activityStatus);
-      return mult * (ia - ib);
-    }
-    case 'lookAheadStatus': {
-      const ia = indexOfOrder(LOOK_AHEAD_SORT_ORDER, a.lookAheadStatus);
-      const ib = indexOfOrder(LOOK_AHEAD_SORT_ORDER, b.lookAheadStatus);
-      return mult * (ia - ib);
-    }
-    case 'startDate': {
-      const ta = a.startDate ? new Date(a.startDate).getTime() : 0;
-      const tb = b.startDate ? new Date(b.startDate).getTime() : 0;
-      return mult * (ta - tb);
-    }
-    case 'lastUpdated':
-      return (
-        mult *
-        (new Date(a.lastUpdatedDateTime).getTime() -
-          new Date(b.lastUpdatedDateTime).getTime())
-      );
-    case 'createdDateTime':
-      return (
-        mult *
-        (new Date(a.createdDateTime).getTime() -
-          new Date(b.createdDateTime).getTime())
-      );
-    default:
-      return 0;
-  }
-}
 
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
@@ -805,128 +738,61 @@ export function ActivityTable() {
     () => [
       columnHelper.display({
         id: 'overview',
-        header: () => {
-          const label =
-            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'activityId')?.label ??
-            'Activity ID';
-          const indicator = (
-            <SortIndicator
-              columnId="activityId"
-              sortKey={effectiveSortKey}
-              sortDirection={effectiveSortDirection}
-              className="h-4 w-4"
-            />
-          );
-          return (
-            <span className="inline-flex items-center gap-1">
-              Overview
-              {effectiveSortKey === 'activityId' ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">{indicator}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>Sorted by {label}</TooltipContent>
-                </Tooltip>
-              ) : (
-                indicator
-              )}
-            </span>
-          );
-        },
+        header: () => (
+          <SortableColumnHeader
+            title="Overview"
+            sortColumnId="activityId"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
         meta: { sortKey: 'activityId' as const },
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.overview.maxSize,
+        ...getActivityColumnSizes('overview'),
         cell: ({ row }) => <OverviewCell row={row.original} />,
       }),
 
       columnHelper.accessor('summary', {
-        header: () => {
-          const label =
-            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'lookAheadStatus')
-              ?.label ?? 'Look Ahead Status';
-          const indicator = (
-            <SortIndicator
-              columnId="lookAheadStatus"
-              sortKey={effectiveSortKey}
-              sortDirection={effectiveSortDirection}
-              className="h-4 w-4"
-            />
-          );
-          return (
-            <span className="inline-flex items-center gap-1">
-              Summary
-              {effectiveSortKey === 'lookAheadStatus' ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">{indicator}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>Sorted by {label}</TooltipContent>
-                </Tooltip>
-              ) : (
-                indicator
-              )}
-            </span>
-          );
-        },
+        header: () => (
+          <SortableColumnHeader
+            title="Summary"
+            sortColumnId="lookAheadStatus"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
         meta: { sortKey: 'lookAheadStatus' as const },
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.summary.maxSize,
+        ...getActivityColumnSizes('summary'),
         cell: ({ row }) => <SummaryCell row={row.original} />,
       }),
 
       columnHelper.accessor('startDate', {
-        header: () => {
-          const label =
-            ACTIVITY_SORT_COLUMNS.find((c) => c.id === 'startDate')?.label ??
-            'Scheduled date';
-          const indicator = (
-            <SortIndicator
-              columnId="startDate"
-              sortKey={effectiveSortKey}
-              sortDirection={effectiveSortDirection}
-              className="h-4 w-4"
-            />
-          );
-          return (
-            <span className="inline-flex items-center gap-1">
-              Scheduling
-              {effectiveSortKey === 'startDate' ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">{indicator}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>Sorted by {label}</TooltipContent>
-                </Tooltip>
-              ) : (
-                indicator
-              )}
-            </span>
-          );
-        },
+        header: () => (
+          <SortableColumnHeader
+            title="Scheduling"
+            sortColumnId="startDate"
+            sortColumns={ACTIVITY_SORT_COLUMNS}
+            effectiveSortKey={effectiveSortKey}
+            effectiveSortDirection={effectiveSortDirection}
+          />
+        ),
         meta: { sortKey: 'startDate' as const },
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.scheduling.maxSize,
+        ...getActivityColumnSizes('scheduling'),
         cell: ({ row }) => <SchedulingCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'leads',
         header: 'Leads',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.leads.maxSize,
+        ...getActivityColumnSizes('leads'),
         cell: ({ row }) => <LeadsCell row={row.original} />,
       }),
 
       columnHelper.display({
         id: 'materials',
         header: 'Materials',
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.materials.maxSize,
+        ...getActivityColumnSizes('materials'),
         cell: ({ row }) => <MaterialsCell row={row.original} />,
       }),
 
@@ -975,9 +841,7 @@ export function ActivityTable() {
           );
         },
         meta: { sortKeys: [...STATUS_COLUMN_SORT_KEYS] },
-        size: ACTIVITY_TABLE_COLUMN_WIDTHS.status.size,
-        minSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.minSize,
-        maxSize: ACTIVITY_TABLE_COLUMN_WIDTHS.status.maxSize,
+        ...getActivityColumnSizes('status'),
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
@@ -1024,34 +888,24 @@ export function ActivityTable() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-w-0 space-y-4">
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
-          <SortDropdown
-            hideDirectionLabel
-            columns={ACTIVITY_SORT_COLUMNS}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSortChange={handleSortChange}
-            defaultSortKey={DEFAULT_SORT_KEY}
-            defaultSortDirection={DEFAULT_SORT_DIRECTION}
-            ariaLabel="Sort by"
-          />
+      <ActivityTableLayout
+        scrollRef={tableScrollRef}
+        sortColumns={ACTIVITY_SORT_COLUMNS}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSortChange={handleSortChange}
+        defaultSortKey={DEFAULT_SORT_KEY}
+        defaultSortDirection={DEFAULT_SORT_DIRECTION}
+        count={0}
+        singularLabel="entry"
+        pluralLabel="entries"
+        filters={eventTableFilters}
+      >
+        <div className="flex flex-col items-center justify-center gap-3 py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <span className="text-sm text-slate-600">Loading activities...</span>
         </div>
-        <TableSummaryBar
-          count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
-          filters={eventTableFilters}
-        />
-        <TableScrollContainer ref={tableScrollRef}>
-          <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            <span className="text-sm text-slate-600">
-              Loading activities...
-            </span>
-          </div>
-        </TableScrollContainer>
-      </div>
+      </ActivityTableLayout>
     );
   }
 
@@ -1071,34 +925,26 @@ export function ActivityTable() {
   // Empty state
   if (data.length === 0) {
     return (
-      <div className="min-w-0 space-y-4">
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
-          <SortDropdown
-            hideDirectionLabel
-            columns={ACTIVITY_SORT_COLUMNS}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSortChange={handleSortChange}
-            defaultSortKey={DEFAULT_SORT_KEY}
-            defaultSortDirection={DEFAULT_SORT_DIRECTION}
-            ariaLabel="Sort by"
-          />
-        </div>
-        <TableSummaryBar
-          count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
-          filters={eventTableFilters}
-        />
-        <TableScrollContainer ref={tableScrollRef}>
-          <div className="py-12 text-center text-sm text-slate-600">
-            <div className="mb-2 font-semibold">No activities found</div>
-            <div>
-              Create a new entry or adjust filters to see activities here.
-            </div>
+      <ActivityTableLayout
+        scrollRef={tableScrollRef}
+        sortColumns={ACTIVITY_SORT_COLUMNS}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSortChange={handleSortChange}
+        defaultSortKey={DEFAULT_SORT_KEY}
+        defaultSortDirection={DEFAULT_SORT_DIRECTION}
+        count={0}
+        singularLabel="entry"
+        pluralLabel="entries"
+        filters={eventTableFilters}
+      >
+        <div className="py-12 text-center text-sm text-slate-600">
+          <div className="mb-2 font-semibold">No activities found</div>
+          <div>
+            Create a new entry or adjust filters to see activities here.
           </div>
-        </TableScrollContainer>
-      </div>
+        </div>
+      </ActivityTableLayout>
     );
   }
 
@@ -1107,25 +953,19 @@ export function ActivityTable() {
   return (
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
-          <SortDropdown
-            hideDirectionLabel
-            columns={ACTIVITY_SORT_COLUMNS}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSortChange={handleSortChange}
-            defaultSortKey={DEFAULT_SORT_KEY}
-            defaultSortDirection={DEFAULT_SORT_DIRECTION}
-            ariaLabel="Sort by"
-          />
-        </div>
-        <TableSummaryBar
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          sortColumns={ACTIVITY_SORT_COLUMNS}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+          defaultSortKey={DEFAULT_SORT_KEY}
+          defaultSortDirection={DEFAULT_SORT_DIRECTION}
           count={sortedData.length}
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
-        />
-        <TableScrollContainer ref={tableScrollRef}>
+        >
           <table
             className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
             role="grid"
@@ -1255,7 +1095,7 @@ export function ActivityTable() {
               })}
             </tbody>
           </table>
-        </TableScrollContainer>
+        </ActivityTableLayout>
 
         <TablePagination
           totalItems={sortedData.length}
