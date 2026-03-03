@@ -38,16 +38,24 @@ describe('PolicyService', () => {
       expect(service.bypassesDataScoping(SYSTEM_ROLES.SYSTEM_ADMIN)).toBe(true);
     });
 
-    it('should return true for Advanced role', () => {
-      expect(service.bypassesDataScoping(SYSTEM_ROLES.ADVANCED)).toBe(true);
+    it('should return true for Advanced Editor role', () => {
+      expect(service.bypassesDataScoping(SYSTEM_ROLES.ADVANCED_EDITOR)).toBe(
+        true
+      );
+    });
+
+    it('should return true for Advanced Viewer role', () => {
+      expect(service.bypassesDataScoping(SYSTEM_ROLES.ADVANCED_VIEWER)).toBe(
+        true
+      );
     });
 
     it('should return false for Editor role', () => {
       expect(service.bypassesDataScoping(SYSTEM_ROLES.EDITOR)).toBe(false);
     });
 
-    it('should return false for View Only role', () => {
-      expect(service.bypassesDataScoping(SYSTEM_ROLES.VIEW_ONLY)).toBe(false);
+    it('should return false for Viewer role', () => {
+      expect(service.bypassesDataScoping(SYSTEM_ROLES.VIEWER)).toBe(false);
     });
 
     it('should return false for unknown role name', () => {

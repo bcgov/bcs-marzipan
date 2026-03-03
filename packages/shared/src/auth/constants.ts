@@ -9,14 +9,14 @@ export const ACCESS_TOKEN_COOKIE = 'access_token';
 /**
  * Single source of truth for system role configuration.
  * Role IDs must match the database seed data.
- * @see packages/database/seeds/0000_20260127_roles_seed.sql
  */
 export const SYSTEM_ROLES_CONFIG = {
-  VIEW_ONLY: { id: 1, name: 'View Only' },
+  VIEWER: { id: 1, name: 'Viewer' },
   EDITOR: { id: 2, name: 'Editor' },
-  ADVANCED: { id: 3, name: 'Advanced' },
-  ADMIN: { id: 4, name: 'Admin' },
-  SYSTEM_ADMIN: { id: 5, name: 'System Admin' },
+  ADVANCED_VIEWER: { id: 3, name: 'Advanced Viewer' },
+  ADVANCED_EDITOR: { id: 4, name: 'Advanced Editor' },
+  ADMIN: { id: 5, name: 'Admin' },
+  SYSTEM_ADMIN: { id: 6, name: 'System Admin' },
 } as const;
 
 export type SystemRoleKey = keyof typeof SYSTEM_ROLES_CONFIG;
@@ -25,9 +25,10 @@ export type SystemRoleKey = keyof typeof SYSTEM_ROLES_CONFIG;
  * System role names mapped by key (derived from SYSTEM_ROLES_CONFIG)
  */
 export const SYSTEM_ROLES = {
-  VIEW_ONLY: SYSTEM_ROLES_CONFIG.VIEW_ONLY.name,
+  VIEWER: SYSTEM_ROLES_CONFIG.VIEWER.name,
   EDITOR: SYSTEM_ROLES_CONFIG.EDITOR.name,
-  ADVANCED: SYSTEM_ROLES_CONFIG.ADVANCED.name,
+  ADVANCED_VIEWER: SYSTEM_ROLES_CONFIG.ADVANCED_VIEWER.name,
+  ADVANCED_EDITOR: SYSTEM_ROLES_CONFIG.ADVANCED_EDITOR.name,
   ADMIN: SYSTEM_ROLES_CONFIG.ADMIN.name,
   SYSTEM_ADMIN: SYSTEM_ROLES_CONFIG.SYSTEM_ADMIN.name,
 } as const;
@@ -36,12 +37,24 @@ export const SYSTEM_ROLES = {
  * System role IDs mapped by key (derived from SYSTEM_ROLES_CONFIG)
  */
 export const SYSTEM_ROLE_IDS = {
-  VIEW_ONLY: SYSTEM_ROLES_CONFIG.VIEW_ONLY.id,
+  VIEWER: SYSTEM_ROLES_CONFIG.VIEWER.id,
   EDITOR: SYSTEM_ROLES_CONFIG.EDITOR.id,
-  ADVANCED: SYSTEM_ROLES_CONFIG.ADVANCED.id,
+  ADVANCED_VIEWER: SYSTEM_ROLES_CONFIG.ADVANCED_VIEWER.id,
+  ADVANCED_EDITOR: SYSTEM_ROLES_CONFIG.ADVANCED_EDITOR.id,
   ADMIN: SYSTEM_ROLES_CONFIG.ADMIN.id,
   SYSTEM_ADMIN: SYSTEM_ROLES_CONFIG.SYSTEM_ADMIN.id,
 } as const;
+
+/**
+ * Role names that bypass team-based data scoping (see all activities).
+ * Used when computing effective bypass from user + team roles.
+ */
+export const ROLES_BYPASS_DATA_SCOPING: readonly string[] = [
+  SYSTEM_ROLES.ADVANCED_VIEWER,
+  SYSTEM_ROLES.ADVANCED_EDITOR,
+  SYSTEM_ROLES.ADMIN,
+  SYSTEM_ROLES.SYSTEM_ADMIN,
+] as const;
 
 export type SystemRoleName = (typeof SYSTEM_ROLES)[keyof typeof SYSTEM_ROLES];
 export type SystemRoleId =
@@ -63,6 +76,8 @@ export const PERMISSIONS = {
     CREATE: 'activities.create',
     EDIT: 'activities.edit',
     DELETE: 'activities.delete',
+    CREATE_ANY: 'activities.create.any',
+    DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',

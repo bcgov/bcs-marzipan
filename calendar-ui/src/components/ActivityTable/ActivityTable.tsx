@@ -88,7 +88,6 @@ import { compareActivityRows } from './activityTableSort';
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
 
-const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;
 
@@ -630,8 +629,6 @@ export function ActivityTable() {
 
   const activitiesQuery = useActivityList(activityFilters);
   const usersQuery = useUsers();
-  const activities = activitiesQuery.data ?? [];
-  const users = usersQuery.data ?? [];
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
@@ -659,6 +656,7 @@ export function ActivityTable() {
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
+    const users = usersQuery.data ?? [];
     users.forEach((u) => {
       const displayName = u.name || u.email || String(u.id);
       map.set(String(u.id), {
@@ -667,11 +665,11 @@ export function ActivityTable() {
       });
     });
     return map;
-  }, [users]);
+  }, [usersQuery.data]);
 
   const data = useMemo(
-    () => activities.map(mapActivityResponseToTableRow),
-    [activities]
+    () => (activitiesQuery.data ?? []).map(mapActivityResponseToTableRow),
+    [activitiesQuery.data]
   );
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
@@ -848,7 +846,13 @@ export function ActivityTable() {
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
-    [columnHelper, userMap, effectiveSortKey, effectiveSortDirection]
+    [
+      columnHelper,
+      userMap,
+      effectiveSortKey,
+      effectiveSortDirection,
+      handleSortChange,
+    ]
   );
 
   const table = useReactTable({

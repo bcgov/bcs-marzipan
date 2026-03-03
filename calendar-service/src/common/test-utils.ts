@@ -121,6 +121,7 @@ export const createMockTeamListItem = (
   description: 'Test description',
   sortOrder: 0,
   isActive: true,
+  roleId: null,
   memberCount: 2,
   ministryCount: 1,
   ...overrides,

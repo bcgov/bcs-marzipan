@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   activityCommsContacts,
   permissions,
   rolePermissions,
   roles,
+  teamPermissions,
+  teams,
+  users,
   userTeams,
 } from '@corpcal/database/schema';
-import { SYSTEM_ROLES } from '@corpcal/shared';
+import { ROLES_BYPASS_DATA_SCOPING } from '@corpcal/shared';
 
 import { DatabaseService } from '../database/database.service';
 
@@ -32,6 +35,42 @@ export class PolicyService {
       );
 
     return rows.map((r) => r.key);
+  }
+
+  /**
+   * Load permission keys granted by the given teams (each team's role + team_permissions).
+   */
+  async getPermissionsForTeams(teamIds: number[]): Promise<string[]> {
+    if (teamIds.length === 0) return [];
+
+    const teamRows = await this.databaseService.db
+      .select({ id: teams.id, roleId: teams.roleId })
+      .from(teams)
+      .where(inArray(teams.id, teamIds));
+
+    const roleIds = [
+      ...new Set(
+        teamRows.map((t) => t.roleId).filter((id): id is number => id != null)
+      ),
+    ];
+
+    const teamPermRows = await this.databaseService.db
+      .select({ key: permissions.key })
+      .from(teamPermissions)
+      .innerJoin(permissions, eq(teamPermissions.permissionId, permissions.id))
+      .where(
+        and(
+          inArray(teamPermissions.teamId, teamIds),
+          eq(teamPermissions.isActive, true)
+        )
+      );
+
+    const rolePermKeys = await Promise.all(
+      roleIds.map((roleId) => this.getPermissionsForRole(roleId))
+    );
+    const flatRoleKeys = rolePermKeys.flat();
+    const teamPermKeys = teamPermRows.map((r) => r.key);
+    return [...new Set([...flatRoleKeys, ...teamPermKeys])];
   }
 
   /**
@@ -60,14 +99,60 @@ export class PolicyService {
   }
 
   /**
-   * Check if a role bypasses team-based data scoping (Advanced, Admin, System Admin)
+   * Effective permissions and bypass for a user (user role + all team roles + team_permissions).
+   */
+  async getEffectivePermissionsForUser(
+    userId: number
+  ): Promise<{ permissions: string[]; bypass: boolean }> {
+    const [userRow, teamIds] = await Promise.all([
+      this.databaseService.db
+        .select({ roleId: roles.id })
+        .from(roles)
+        .innerJoin(users, eq(users.roleId, roles.id))
+        .where(eq(users.id, userId))
+        .limit(1)
+        .then((rows) => rows[0]),
+      this.getTeamIdsForUser(userId),
+    ]);
+
+    if (!userRow) {
+      return { permissions: [], bypass: false };
+    }
+
+    const userRoleId = userRow.roleId;
+    const [userPerms, teamPerms, userRoleName] = await Promise.all([
+      this.getPermissionsForRole(userRoleId),
+      this.getPermissionsForTeams(teamIds),
+      this.getRoleName(userRoleId),
+    ]);
+
+    const permissions = [...new Set<string>([...userPerms, ...teamPerms])];
+
+    let bypass = this.bypassesDataScoping(userRoleName ?? '');
+
+    if (!bypass && teamIds.length > 0) {
+      const teamRows = await this.databaseService.db
+        .select({ roleId: teams.roleId })
+        .from(teams)
+        .where(inArray(teams.id, teamIds));
+      for (const t of teamRows) {
+        if (t.roleId == null) continue;
+        const teamRoleName = await this.getRoleName(t.roleId);
+        if (teamRoleName && this.bypassesDataScoping(teamRoleName)) {
+          bypass = true;
+          break;
+        }
+      }
+    }
+
+    return { permissions, bypass };
+  }
+
+  /**
+   * Check if a role bypasses team-based data scoping (Advanced Viewer, Advanced Editor, Admin, System Admin)
    */
   bypassesDataScoping(roleName: string): boolean {
-    return (
-      roleName === SYSTEM_ROLES.ADVANCED ||
-      roleName === SYSTEM_ROLES.ADMIN ||
-      roleName === SYSTEM_ROLES.SYSTEM_ADMIN
-    );
+    return ROLES_BYPASS_DATA_SCOPING.includes(roleName);
   }
 
   /**

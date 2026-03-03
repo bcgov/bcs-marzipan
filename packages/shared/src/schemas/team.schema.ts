@@ -22,6 +22,7 @@ export const teamListItemSchema = z.object({
   description: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  roleId: z.number().int().nullable(),
   memberCount: z.number().int(),
   ministryCount: z.number().int(),
 });
@@ -74,6 +75,7 @@ export const createTeamBodySchema = z.object({
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  roleId: z.number().int().nullable().optional(),
   ministryIds: z.array(z.string()).optional(),
   notes: z.string().optional(),
 });
@@ -89,6 +91,7 @@ export const updateTeamBodySchema = z.object({
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  roleId: z.number().int().nullable().optional(),
   ministryIds: z.array(z.string()).optional(),
   notes: z.string().optional(),
 });

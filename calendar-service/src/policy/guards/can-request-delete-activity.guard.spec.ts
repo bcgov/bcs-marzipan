@@ -114,7 +114,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       displayName: 'U',
       email: 'u@e.com',
       roleId: 1,
-      roleName: 'View Only',
+      roleName: 'Viewer',
       permissions: [],
       teamIds: [],
     };
@@ -134,7 +134,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       displayName: 'U',
       email: 'u@e.com',
       roleId: 1,
-      roleName: 'View Only',
+      roleName: 'Viewer',
       permissions: [],
       teamIds: [],
     };
@@ -152,7 +152,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       displayName: 'U',
       email: 'u@e.com',
       roleId: 1,
-      roleName: 'View Only',
+      roleName: 'Viewer',
       permissions: [],
       teamIds: [],
     };

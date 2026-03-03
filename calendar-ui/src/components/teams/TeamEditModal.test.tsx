@@ -66,6 +66,7 @@ const mockTeamListItem: TeamListItem = {
   description: 'Team description',
   sortOrder: 0,
   isActive: true,
+  roleId: null,
   memberCount: 0,
   ministryCount: 0,
 };

@@ -551,7 +551,7 @@ This table replaces the legacy boolean flags on the Activity table:
 
 1. **AD Fields**: User profile fields have been prefixed with `ad` to clearly indicate they come from Active Directory integration. This allows for separate local overrides if needed.
 
-2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 5 system roles and extensible custom roles.
+2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 6 system roles and extensible custom roles.
 
 3. **Removed UI Preferences**: `FilterDisplayValue` and `HiddenColumns` have been removed as UI preferences will be handled separately.
 
@@ -572,7 +572,7 @@ This table replaces the legacy boolean flags on the Activity table:
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[Role]`  
 **New Table Name:** `roles`
 
-**Description:** System and custom roles for RBAC. Defines the 5 system roles (View Only, Editor, Advanced, Admin, System Admin) plus support for custom roles.
+**Description:** System and custom roles for RBAC. Defines the 6 system roles (Viewer, Editor, Advanced Viewer, Advanced Editor, Admin, System Admin) plus support for custom roles.
 
 ### Field Mappings
 
@@ -596,27 +596,29 @@ This table replaces the legacy boolean flags on the Activity table:
 
 ### System Roles
 
-The new schema includes 5 predefined system roles with `isSystem=true`:
+The new schema includes 6 predefined system roles with `isSystem=true`:
 
-| ID  | Name         | Description                                                     |
-| --- | ------------ | --------------------------------------------------------------- |
-| 1   | View Only    | Read-only access to view data                                   |
-| 2   | Editor       | Can create and edit activities and drafts                       |
-| 3   | Advanced     | Editor plus approve and export                                  |
-| 4   | Admin        | Full admin access including delete, publish, users, teams       |
-| 5   | System Admin | Complete system access including role and permission management |
+| ID  | Name            | Description                                                      |
+| --- | --------------- | ---------------------------------------------------------------- |
+| 1   | Viewer          | Read-only access to view data                                    |
+| 2   | Editor          | Can create and edit activities and drafts                        |
+| 3   | Advanced Viewer | View any team's activities; no create, edit, or delete           |
+| 4   | Advanced Editor | Editor plus approve and export; create/delete scoped to own team |
+| 5   | Admin           | Full admin access including delete, publish, users, teams        |
+| 6   | System Admin    | Complete system access including role and permission management  |
 
 ### Legacy Role Mapping
 
-| Legacy Role Value | New Role Name |
-| ----------------- | ------------- |
-| ReadOnly          | View Only     |
-| ViewOnly          | View Only     |
-| Editor            | Editor        |
-| Advanced          | Advanced      |
-| Admin             | Admin         |
-| SystemAdmin       | System Admin  |
-| System Admin      | System Admin  |
+| Legacy Role Value | New Role Name   |
+| ----------------- | --------------- |
+| ReadOnly          | Viewer          |
+| ViewOnly          | Viewer          |
+| View Only         | Viewer          |
+| Editor            | Editor          |
+| Advanced          | Advanced Editor |
+| Admin             | Admin           |
+| SystemAdmin       | System Admin    |
+| System Admin      | System Admin    |
 
 ### Related Tables
 
@@ -703,13 +705,14 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 
 ### Default Role-Permission Mappings
 
-| Role         | Permissions                                                                                          |
-| ------------ | ---------------------------------------------------------------------------------------------------- |
-| View Only    | activities.view, drafts.view, reports.view, lookups.view                                             |
-| Editor       | View Only + activities.create/edit, drafts.create/edit/delete                                        |
-| Advanced     | Editor + activities.approve, reports.export, drafts.recover                                          |
-| Admin        | Advanced + activities.delete/publish/unpublish, users.view/edit, teams._, lookups.manage, settings._ |
-| System Admin | All permissions                                                                                      |
+| Role            | Permissions                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| Viewer          | activities.view, drafts.view, reports.view, lookups.view                                                    |
+| Editor          | Viewer + activities.create/edit, drafts.create/edit/delete                                                  |
+| Advanced Viewer | Same as Viewer (view only; bypasses team scoping)                                                           |
+| Advanced Editor | Editor + activities.approve, reports.export, drafts.recover                                                 |
+| Admin           | Advanced Editor + activities.delete/publish/unpublish, users.view/edit, teams._, lookups.manage, settings._ |
+| System Admin    | All permissions                                                                                             |
 
 ### Related Tables
 
@@ -756,7 +759,7 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[SystemUserMinistry]` (partial mapping)  
 **New Table Name:** `user_teams`
 
-**Description:** Junction table defining user membership in teams. Used for data scoping (what data a user can see). Advanced, Admin, and System Admin roles bypass team scoping.
+**Description:** Junction table defining user membership in teams. Used for data scoping (what data a user can see). Advanced Viewer, Advanced Editor, Admin, and System Admin roles bypass team scoping.
 
 ### Field Mappings
 
@@ -780,7 +783,7 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 
 ### Data Scoping Behavior
 
-- Users with `Advanced`, `Admin`, or `System Admin` roles bypass team-based data scoping and can see all data
+- Users with `Advanced Viewer`, `Advanced Editor`, `Admin`, or `System Admin` roles bypass team-based data scoping and can see all data
 - Other users can only see data associated with their team memberships
 - The `DataScopeInterceptor` in the backend sets `request.dataScope` based on user's team memberships and role
 

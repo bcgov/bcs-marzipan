@@ -49,6 +49,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        roleId: teams.roleId,
       })
       .from(teams)
       .where(activeOnly ? eq(teams.isActive, true) : undefined)
@@ -102,6 +103,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        roleId: teams.roleId,
       })
       .from(teams)
       .where(eq(teams.id, id))
@@ -185,6 +187,7 @@ export class TeamsService {
         description: dto.description ?? null,
         sortOrder: dto.sortOrder ?? 0,
         isActive: dto.isActive ?? true,
+        roleId: dto.roleId ?? null,
         createdBy,
         lastUpdatedBy: createdBy,
       })
@@ -238,6 +241,7 @@ export class TeamsService {
     if (dto.description !== undefined) updates.description = dto.description;
     if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
+    if (dto.roleId !== undefined) updates.roleId = dto.roleId;
 
     const previousMinistryIds = existing.ministries
       .map((m) => m.ministryId)
@@ -312,6 +316,17 @@ export class TeamsService {
         field: 'isActive',
         oldValue: existing.isActive,
         newValue: dto.isActive,
+      });
+    }
+    if (
+      dto.roleId !== undefined &&
+      dto.roleId !== existing.roleId &&
+      (dto.roleId ?? null) !== (existing.roleId ?? null)
+    ) {
+      changes.push({
+        field: 'roleId',
+        oldValue: existing.roleId ?? null,
+        newValue: dto.roleId ?? null,
       });
     }
     if (newMinistryIds !== null) {

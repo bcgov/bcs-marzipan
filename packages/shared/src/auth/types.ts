@@ -12,6 +12,8 @@ export interface AuthUser {
   roleName: string;
   permissions: string[];
   teamIds: number[];
+  /** When true, user sees all activities (from user role or any team role). Set at login. */
+  bypassDataScoping?: boolean;
 }
 
 export interface Permission {

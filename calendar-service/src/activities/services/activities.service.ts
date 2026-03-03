@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -28,7 +29,11 @@ import {
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
-import { SYSTEM_ROLES, type ActivityStatusName } from '@corpcal/shared';
+import {
+  PERMISSIONS,
+  SYSTEM_ROLES,
+  type ActivityStatusName,
+} from '@corpcal/shared';
 import type {
   ActivityResponse,
   CreateActivityRequest,
@@ -302,11 +307,16 @@ export class ActivitiesService {
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if admin/sysAdmin and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
+   * When context.permissions does not include activities.create.any, leadMinistryId must be in a ministry linked to context.teamIds.
    */
   async create(
     dto: CreateActivityRequest,
     userId: number,
-    context?: { roleName: string }
+    context?: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
   ): Promise<ActivityResponse> {
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + role)
@@ -333,6 +343,32 @@ export class ActivitiesService {
       isAdmin && markAsReviewed === true ? 'reviewed' : 'new';
     const initialStatusId =
       await this.getActivityStatusIdByName(initialStatusName);
+
+    // Scope: without activities.create.any, leadMinistryId must be in a ministry linked to user's teams
+    const canCreateAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ??
+      false;
+    if (
+      !canCreateAny &&
+      context?.teamIds?.length &&
+      activityData.leadMinistryId != null
+    ) {
+      const allowedMinistryIds = await this.databaseService.db
+        .select({ ministryId: teamMinistries.ministryId })
+        .from(teamMinistries)
+        .where(
+          and(
+            inArray(teamMinistries.teamId, context.teamIds),
+            eq(teamMinistries.isActive, true)
+          )
+        )
+        .then((rows) => new Set(rows.map((r) => r.ministryId)));
+      if (!allowedMinistryIds.has(activityData.leadMinistryId)) {
+        throw new ForbiddenException(
+          'You may only create activities for ministries in your teams.'
+        );
+      }
+    }
 
     // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
@@ -1334,9 +1370,29 @@ export class ActivitiesService {
   }
 
   /**
-   * Remove an activity (hard delete)
+   * Remove an activity (hard delete).
+   * When context.permissions does not include activities.delete.any, activity must be in visible set for context.teamIds.
    */
-  async remove(id: number, userId: number): Promise<{ message: string }> {
+  async remove(
+    id: number,
+    userId: number,
+    context?: { permissions?: string[]; teamIds?: number[] }
+  ): Promise<{ message: string }> {
+    // Scope: without activities.delete.any, activity must be visible to user's teams
+    const canDeleteAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+    if (!canDeleteAny && context?.teamIds?.length) {
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        context.teamIds
+      );
+      if (!visibleIds.has(id)) {
+        throw new ForbiddenException(
+          'You may only delete activities that belong to your teams.'
+        );
+      }
+    }
+
     // Verify activity exists so we return 404 for non-existent IDs
     await this.findOne(id);
 
@@ -1403,12 +1459,14 @@ export class ActivitiesService {
   }
 
   /**
-   * Soft delete (set activityStatusId to 'deleted')
+   * Soft delete (set activityStatusId to 'deleted').
+   * When context.permissions does not include activities.delete.any, activity must be in visible set for context.teamIds.
    */
   async softDelete(
     id: number,
     reason: string,
-    userId: number
+    userId: number,
+    context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
@@ -1425,6 +1483,21 @@ export class ActivitiesService {
 
     if (!existing) {
       throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    // Scope: without activities.delete.any, activity must be visible to user's teams
+    const canDeleteAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+    if (!canDeleteAny && context?.teamIds?.length) {
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        context.teamIds
+      );
+      if (!visibleIds.has(id)) {
+        throw new ForbiddenException(
+          'You may only delete activities that belong to your teams.'
+        );
+      }
     }
 
     // Get deleted status ID

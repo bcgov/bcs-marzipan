@@ -8,17 +8,13 @@ import {
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
-import { PolicyService } from '../policy.service';
-
 /**
  * Guard for activity delete (hard and soft).
- * Allows the request if the user has activities.delete permission OR is the comms lead for the activity.
+ * Only users with activities.delete permission (e.g. Admin, System Admin) may delete.
  */
 @Injectable()
 export class CanDeleteActivityGuard implements CanActivate {
-  constructor(private readonly policyService: PolicyService) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const user = request.user as AuthUser | undefined;
 
@@ -43,21 +39,8 @@ export class CanDeleteActivityGuard implements CanActivate {
       return true;
     }
 
-    const isCommsLead = await this.policyService.isCommsLeadForActivity(
-      activityId,
-      user.id
+    throw new ForbiddenException(
+      'Only admin can delete activities. You do not have the required permission.'
     );
-
-    if (isCommsLead) {
-      return true;
-    }
-
-    throw new ForbiddenException({
-      message: 'Permission denied',
-      required: [
-        PERMISSIONS.ACTIVITIES.DELETE,
-        'or be the comms lead for this activity',
-      ],
-    });
   }
 }

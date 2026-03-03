@@ -100,6 +100,8 @@ export class ActivitiesController {
 
     const result = await this.activitiesService.create(body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,
@@ -331,7 +333,8 @@ export class ActivitiesController {
     const result = await this.activitiesService.softDelete(
       id,
       body.reason,
-      user.id
+      user.id,
+      { permissions: user.permissions, teamIds: user.teamIds }
     );
     return {
       success: true,
@@ -522,7 +525,10 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser
   ): Promise<{ message: string }> {
-    return this.activitiesService.remove(id, user.id);
+    return this.activitiesService.remove(id, user.id, {
+      permissions: user.permissions,
+      teamIds: user.teamIds,
+    });
   }
 
   @ApiOperation({

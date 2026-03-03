@@ -99,7 +99,11 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.create).toHaveBeenCalledWith(
         createDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
       expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
     });
@@ -283,7 +287,14 @@ describe('ActivitiesController', () => {
       const result = await controller.remove(1, mockUser);
 
       expect(result).toEqual(deleteResponse);
-      expect(mockActivitiesService.remove).toHaveBeenCalledWith(1, mockUser.id);
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
+      );
       expect(mockActivitiesService.remove).toHaveBeenCalledTimes(1);
     });
 
@@ -295,7 +306,11 @@ describe('ActivitiesController', () => {
       await expect(controller.remove(999, mockUser)).rejects.toThrow();
       expect(mockActivitiesService.remove).toHaveBeenCalledWith(
         999,
-        mockUser.id
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
     });
   });
@@ -314,7 +329,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
         1,
         body.reason,
-        mockUser.id
+        mockUser.id,
+        { permissions: mockUser.permissions, teamIds: mockUser.teamIds }
       );
       expect(mockActivitiesService.softDelete).toHaveBeenCalledTimes(1);
     });
@@ -331,7 +347,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
         999,
         body.reason,
-        mockUser.id
+        mockUser.id,
+        { permissions: mockUser.permissions, teamIds: mockUser.teamIds }
       );
     });
   });
