@@ -12,6 +12,7 @@ import {
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
+import { fetchActivityHistory } from '../api/activitiesApi';
 import ActivityHistory from '../components/activities/ActivityHistory';
 import { DeleteActivityModal } from '../components/activities/DeleteActivityModal';
 import { EditActivityConfirmModal } from '../components/activities/EditActivityConfirmModal';
@@ -94,6 +95,9 @@ export function ActivityEditPage(): React.ReactElement {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRequestDeleteModal, setShowRequestDeleteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
+    string | undefined
+  >(undefined);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -292,6 +296,29 @@ export function ActivityEditPage(): React.ReactElement {
   const categories = activity.category ?? [];
   const readOnly = lockedByOther || lockLoading || isBlockedStatus;
 
+  const handleOpenDeleteModal = async () => {
+    if (normalizedStatus === 'delete_requested') {
+      try {
+        const history = await fetchActivityHistory(id);
+        const deleteRequestedEntry = history.find(
+          (e) => e.actionType === 'delete_requested'
+        );
+        const note =
+          deleteRequestedEntry?.notes?.trim() &&
+          deleteRequestedEntry.notes.trim().length > 0
+            ? deleteRequestedEntry.notes.trim()
+            : undefined;
+        setDeleteModalInitialNotes(note);
+      } catch (err) {
+        logger.error('Failed to load activity history for delete modal', err);
+        setDeleteModalInitialNotes(undefined);
+      }
+    } else {
+      setDeleteModalInitialNotes(undefined);
+    }
+    setShowDeleteModal(true);
+  };
+
   const showRequestDeleteButton =
     !isBlockedStatus && isCommsContact && !isAdminOrSysAdmin;
   const showDeleteButton = !isBlockedStatus && isAdminOrSysAdmin;
@@ -349,7 +376,7 @@ export function ActivityEditPage(): React.ReactElement {
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={() => setShowDeleteModal(true)}
+                    onClick={() => void handleOpenDeleteModal()}
                     disabled={isSubmitting}
                   >
                     Delete
@@ -456,10 +483,16 @@ export function ActivityEditPage(): React.ReactElement {
       />
       <DeleteActivityModal
         open={showDeleteModal}
-        onOpenChange={setShowDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open);
+          if (!open) setDeleteModalInitialNotes(undefined);
+        }}
+        activityId={id}
+        displayId={displayId}
         onSoftDelete={handleSoftDelete}
         onHardDelete={handleHardDelete}
         isSubmitting={isDeleteSubmitting}
+        initialNotes={deleteModalInitialNotes}
       />
     </ErrorBoundary>
   );
