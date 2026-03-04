@@ -20,6 +20,15 @@ The workflow `.github/workflows/pr-deploy-dev.yaml` is triggered on pushes to th
 5. **Applies deploy resources** using kustomize overlay for the target environment (dev/staging/prod).
 6. **Rolls out** the updated deployments.
 
+### Image versioning (APP_VERSION)
+ 
+Builds and deployments use a versioned image tag instead of `latest` so the cluster pulls the correct image and avoids stale deploys (updated March 3, 2026). The tag is controlled by the GitHub repository variable **`APP_VERSION`** (e.g. `0.0.1`).
+ 
+- **BuildConfigs** output to `calendar-service:${APP_VERSION}`, `calendar-ui:${APP_VERSION}`, and `calendar-db-seed:${APP_VERSION}`.
+- **Workflows** pass `vars.APP_VERSION` into the job env and use it when tagging images and applying kustomize; `envsubst` substitutes `${APP_VERSION}` (and namespace vars) in the manifests before `oc apply`.
+ 
+In GitHub set `APP_VERSION` under **Settings → Secrets and variables → Actions → Variables**. Bump it (e.g. `0.0.1` → `0.0.2`) for each release or deploy so each deployment has a distinct tag; this improves traceability and avoids registry caching issues.
+
 ### Required GitHub Secrets
 
 Set these secrets in the repo settings for the workflow to run:

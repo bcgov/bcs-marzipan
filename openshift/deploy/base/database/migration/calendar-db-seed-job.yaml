@@ -19,7 +19,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: seed
-          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-db-seed:latest
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-db-seed:${APP_VERSION}
           env:
             - name: DATABASE_URL
               valueFrom:
