@@ -74,7 +74,10 @@ export function ActivityEditPage(): React.ReactElement {
   const id = activity.id;
   const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(canCreateActivity);
+  const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
+  const { data: leadTeamOptions = [] } = useLeadTeamOptions(
+    canCreateActivity || canEditActivity
+  );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||

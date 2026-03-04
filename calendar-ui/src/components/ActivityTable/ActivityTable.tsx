@@ -528,9 +528,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
             strokeWidth={1.5}
             className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
-          <span>
-            {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
-          </span>
+          <span>{row.commsMaterials.join(', ')}</span>
         </div>
       )}
     </div>

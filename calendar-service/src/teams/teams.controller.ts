@@ -30,7 +30,10 @@ import {
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../policy/decorators/require-permission.decorator';
 import {
   CreateTeamDto,
   TeamDetailResponseWrapperDto,
@@ -80,7 +83,10 @@ export class TeamsController {
     description: 'List of teams for lead team select',
     type: TeamListResponseWrapperDto,
   })
-  @RequirePermission('activities.create')
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.CREATE,
+    PERMISSIONS.ACTIVITIES.EDIT
+  )
   @Get('lead-options')
   async getLeadOptions(
     @CurrentUser() user: AuthUser
