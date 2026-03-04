@@ -15,7 +15,7 @@ metadata:
         {
           "from": {
             "kind": "ImageStreamTag",
-            "name": "calendar-service:latest"
+            "name": "calendar-service:${APP_VERSION}"
           },
           "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-service')].image"
         }
@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: calendar-service
-          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-service:latest
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-service:${APP_VERSION}
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
