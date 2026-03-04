@@ -112,6 +112,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | activities.delete                     |        | x      |            | x           | x           | x         |
 | activities.delete.any                 |        |        |            |             | x           | x         |
 | activities.approve                    |        |        |            | x           | x           | x         |
+| activities.review                     |        |        |            |             | x           | x         |
 | activities.publish                    |        |        |            |             | x           | x         |
 | activities.unpublish                  |        |        |            |             | x           | x         |
 | drafts.\*                             | view   | all    | view       | all+recover | all         | all       |
@@ -126,6 +127,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 
 - **activities.create.any**: may choose any team that has create permission as lead team when creating (otherwise only the user's teams).
 - **activities.delete.any**: may delete any activity (otherwise only activities visible to user's teams).
+- **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
 ## Database Schema
@@ -492,6 +494,7 @@ export const PERMISSIONS = {
     EDIT: 'activities.edit',
     DELETE: 'activities.delete',
     APPROVE: 'activities.approve',
+    REVIEW: 'activities.review',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
   },

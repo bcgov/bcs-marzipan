@@ -75,6 +75,7 @@ export function ActivityEditPage(): React.ReactElement {
   const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(canCreateActivity);
+  const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -190,7 +191,7 @@ export function ActivityEditPage(): React.ReactElement {
       const formValues = form.getValues();
       const submitData = {
         ...buildPayloadForUpdate(validatedData, formValues, {
-          markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
+          markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
         }),
         ...(notes ? { activityHistoryNotes: notes } : {}),
       } as UpdateActivityRequest;
@@ -477,7 +478,7 @@ export function ActivityEditPage(): React.ReactElement {
           void handleConfirmedSubmit(notes, markAsReviewed)
         }
         isSubmitting={isSubmitting}
-        showMarkAsReviewed={isAdminOrSysAdmin}
+        showMarkAsReviewed={canReviewActivities}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}

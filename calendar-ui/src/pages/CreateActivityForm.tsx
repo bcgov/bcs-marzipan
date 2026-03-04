@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
@@ -76,9 +76,7 @@ export const CreateActivityForm: FC = () => {
     user,
   } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
-  const isAdminOrSysAdmin =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -260,7 +258,7 @@ export const CreateActivityForm: FC = () => {
     try {
       const formValues = form.getValues();
       const submitData = buildPayloadForCreate(validatedData, formValues, {
-        markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
+        markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
       });
       const payload = {
         ...submitData,
@@ -474,7 +472,7 @@ export const CreateActivityForm: FC = () => {
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }
-        showMarkAsReviewed={isAdminOrSysAdmin}
+        showMarkAsReviewed={canReviewActivities}
         isSubmitting={isSubmitting}
       />
     </ErrorBoundary>

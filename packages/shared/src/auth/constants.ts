@@ -79,6 +79,7 @@ export const PERMISSIONS = {
     CREATE_ANY: 'activities.create.any',
     DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',
+    REVIEW: 'activities.review',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
   },

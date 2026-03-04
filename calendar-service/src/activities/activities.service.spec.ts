@@ -527,6 +527,176 @@ describe('ActivitiesService', () => {
       expect(result.id).toBe(2);
       expect(result.title).toBe('New Activity');
     });
+
+    it('should set initial status to reviewed when user has activities.review and markAsReviewed is true', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        isIssue: false,
+        isAllDay: false,
+        reportSettings: [],
+        markAsReviewed: true,
+      });
+
+      const createdActivity = createMockActivity({
+        id: 2,
+        title: 'New Activity',
+        isIssue: false,
+        isAllDay: false,
+        activityStatusId: 2,
+      });
+
+      const mockInsert = {
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([createdActivity]),
+      };
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const ministryQuery = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
+        };
+        const tx = {
+          insert: vi.fn().mockReturnValue(mockInsert),
+          select: vi.fn((...args) => {
+            if (args.length > 0 && typeof args[0] === 'object') {
+              return ministryQuery;
+            }
+            return createMockQueryChain([createdActivity]);
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([createdActivity]),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0) {
+          const selectArg = args[0];
+          if (
+            selectArg &&
+            typeof selectArg === 'object' &&
+            'ministryId' in selectArg &&
+            'name' in selectArg
+          ) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 2 }]),
+          };
+        }
+        return createMockQueryChain([createdActivity]);
+      });
+
+      const result = await service.create(createDto, 1, {
+        roleName: 'Editor',
+        permissions: ['activities.create', 'activities.review'],
+        teamIds: [1],
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(2);
+    });
+
+    it('should set initial status to new when user lacks activities.review even if markAsReviewed is true', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        isIssue: false,
+        isAllDay: false,
+        reportSettings: [],
+        markAsReviewed: true,
+      });
+
+      const createdActivity = createMockActivity({
+        id: 2,
+        title: 'New Activity',
+        isIssue: false,
+        isAllDay: false,
+        activityStatusId: 1,
+      });
+
+      const mockInsert = {
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([createdActivity]),
+      };
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const ministryQuery = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
+        };
+        const tx = {
+          insert: vi.fn().mockReturnValue(mockInsert),
+          select: vi.fn((...args) => {
+            if (args.length > 0 && typeof args[0] === 'object') {
+              return ministryQuery;
+            }
+            return createMockQueryChain([createdActivity]);
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([createdActivity]),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0) {
+          const selectArg = args[0];
+          if (
+            selectArg &&
+            typeof selectArg === 'object' &&
+            'ministryId' in selectArg &&
+            'name' in selectArg
+          ) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([createdActivity]);
+      });
+
+      const result = await service.create(createDto, 1, {
+        roleName: 'Editor',
+        permissions: ['activities.create'],
+        teamIds: [1],
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(1);
+    });
   });
 
   describe('update', () => {
@@ -617,6 +787,124 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.title).toBe('Updated Activity');
+    });
+
+    it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+        activityStatusId: 2,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'changed' }] : [{ id: 2 }]
+            ),
+        };
+      });
+
+      const updateDto = createMockUpdateRequest({
+        title: 'Updated Activity',
+        markAsReviewed: true,
+      });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: ['activities.review'],
+        roleName: 'Admin',
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(2);
+    });
+
+    it('should set status to changed on update when user lacks activities.review even if markAsReviewed is true', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+        activityStatusId: 1,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'changed' }] : [{ id: 1 }]
+            ),
+        };
+      });
+
+      const updateDto = createMockUpdateRequest({
+        title: 'Updated Activity',
+        markAsReviewed: true,
+      });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: ['activities.edit'],
+        roleName: 'Editor',
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(1);
     });
 
     it('should throw ConflictException when activity status is delete_requested', async () => {

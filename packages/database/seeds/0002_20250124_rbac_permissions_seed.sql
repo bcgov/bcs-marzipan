@@ -9,10 +9,11 @@ INSERT INTO permissions (key, display_name, category, subcategory, resource, act
   ('activities.edit', 'Edit activities', 'Activities', 'Basic', 'activities', 'edit', 3),
   ('activities.delete', 'Delete activities', 'Activities', 'Basic', 'activities', 'delete', 4),
   ('activities.approve', 'Approve activities', 'Activities', 'Basic', 'activities', 'approve', 5),
-  ('activities.publish', 'Publish activities', 'Activities', 'Basic', 'activities', 'publish', 6),
-  ('activities.unpublish', 'Unpublish activities', 'Activities', 'Basic', 'activities', 'unpublish', 7),
-  ('activities.create.any', 'Create activities for any team', 'Activities', 'Admin', 'activities', 'create', 8),
-  ('activities.delete.any', 'Delete any team''s activities', 'Activities', 'Admin', 'activities', 'delete', 9),
+  ('activities.review', 'Review activities', 'Activities', 'Basic', 'activities', 'review', 6),
+  ('activities.publish', 'Publish activities', 'Activities', 'Basic', 'activities', 'publish', 7),
+  ('activities.unpublish', 'Unpublish activities', 'Activities', 'Basic', 'activities', 'unpublish', 8),
+  ('activities.create.any', 'Create activities for any team', 'Activities', 'Admin', 'activities', 'create', 9),
+  ('activities.delete.any', 'Delete any team''s activities', 'Activities', 'Admin', 'activities', 'delete', 10),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', 'drafts', 'view', 10),
   ('drafts.create', 'Create drafts', 'Drafts', 'Basic', 'drafts', 'create', 11),
   ('drafts.edit', 'Edit drafts', 'Drafts', 'Basic', 'drafts', 'edit', 12),
@@ -80,7 +81,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Admin' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.delete','activities.create.any','activities.delete.any','activities.approve','activities.publish','activities.unpublish',
+  'activities.view','activities.create','activities.edit','activities.delete','activities.create.any','activities.delete.any','activities.approve','activities.review','activities.publish','activities.unpublish',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','reports.create_custom',
   'lookups.view','lookups.manage',

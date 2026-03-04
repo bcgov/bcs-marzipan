@@ -305,7 +305,7 @@ export class ActivitiesService {
 
   /**
    * Create a new activity with related junction table records.
-   * Initial activityStatusId is set by backend: 'reviewed' if admin/sysAdmin and markAsReviewed, else 'new'.
+   * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
    * When context.permissions does not include activities.create.any, leadMinistryId must be in a ministry linked to context.teamIds.
    */
@@ -319,7 +319,7 @@ export class ActivitiesService {
     }
   ): Promise<ActivityResponse> {
     // Extract junction table IDs, venue address, and status/options from the DTO
-    // activityStatusId is ignored (backend sets from markAsReviewed + role)
+    // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
       categoryIds,
       tagIds,
@@ -336,11 +336,10 @@ export class ActivitiesService {
       ...activityData
     } = dto;
 
-    const isAdmin =
-      context?.roleName === SYSTEM_ROLES.ADMIN ||
-      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const canReview =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
     const initialStatusName: ActivityStatusName =
-      isAdmin && markAsReviewed === true ? 'reviewed' : 'new';
+      canReview && markAsReviewed === true ? 'reviewed' : 'new';
     const initialStatusId =
       await this.getActivityStatusIdByName(initialStatusName);
 
@@ -982,12 +981,11 @@ export class ActivitiesService {
       ...activityUpdateData
     } = dto;
 
-    // Compute new status: admin/sysAdmin with markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
-    const isAdmin =
-      context?.roleName === SYSTEM_ROLES.ADMIN ||
-      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    // Compute new status: user with activities.review and markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
+    const canReview =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
     const newStatusName: ActivityStatusName =
-      isAdmin && dto.markAsReviewed === true ? 'reviewed' : 'changed';
+      canReview && dto.markAsReviewed === true ? 'reviewed' : 'changed';
     const computedStatusId =
       await this.getActivityStatusIdByName(newStatusName);
 
