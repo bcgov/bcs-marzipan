@@ -1,7 +1,8 @@
 -- ============================================================================
--- TEAMS, TEAM MINISTRIES, AND USER-TEAM ASSIGNMENTS
+-- TEAMS AND USER-TEAM ASSIGNMENTS
 -- Seeds teams for datascoping; run after lookups (users, ministries) and
 -- optionally after activities seed. Idempotent: ON CONFLICT DO NOTHING.
+-- Team ministry (teams.ministry_id) is set below for scoping.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -55,42 +56,38 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ----------------------------------------------------------------------------
--- TEAM_MINISTRIES
--- Ministry Comms teams (8-32): one ministry per team (PREM=1, AGRI=2, ... WLRS=25).
--- Crown teams: BC Wildfire->FOR(11), BC Coroners->PSSG(21), IGRS->IGRS(16), EAO->ENV(9).
+-- TEAM MINISTRY (teams.ministry_id)
+-- CCHQ (2) and IGRS (35): Premier's Office (1).
+-- Ministry Comms (8-32): PREM=1, AGRI=2, ... WLRS=25.
+-- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->ENV(9).
 -- ----------------------------------------------------------------------------
 
-INSERT INTO team_ministries (team_id, ministry_id, is_active) VALUES
-  (8, 1, true),
-  (9, 2, true),
-  (10, 3, true),
-  (11, 4, true),
-  (12, 5, true),
-  (13, 6, true),
-  (14, 7, true),
-  (15, 8, true),
-  (16, 9, true),
-  (17, 10, true),
-  (18, 11, true),
-  (19, 12, true),
-  (20, 13, true),
-  (21, 14, true),
-  (22, 15, true),
-  (23, 16, true),
-  (24, 17, true),
-  (25, 18, true),
-  (26, 19, true),
-  (27, 20, true),
-  (28, 21, true),
-  (29, 22, true),
-  (30, 23, true),
-  (31, 24, true),
-  (32, 25, true),
-  (33, 11, true),
-  (34, 21, true),
-  (35, 16, true),
-  (36, 9, true)
-ON CONFLICT (team_id, ministry_id) DO NOTHING;
+UPDATE teams SET ministry_id = 1 WHERE id IN (2, 8, 35);
+UPDATE teams SET ministry_id = 2 WHERE id = 9;
+UPDATE teams SET ministry_id = 3 WHERE id = 10;
+UPDATE teams SET ministry_id = 4 WHERE id = 11;
+UPDATE teams SET ministry_id = 5 WHERE id = 12;
+UPDATE teams SET ministry_id = 6 WHERE id = 13;
+UPDATE teams SET ministry_id = 7 WHERE id = 14;
+UPDATE teams SET ministry_id = 8 WHERE id = 15;
+UPDATE teams SET ministry_id = 9 WHERE id = 16;
+UPDATE teams SET ministry_id = 10 WHERE id = 17;
+UPDATE teams SET ministry_id = 11 WHERE id IN (18, 33);
+UPDATE teams SET ministry_id = 12 WHERE id = 19;
+UPDATE teams SET ministry_id = 13 WHERE id = 20;
+UPDATE teams SET ministry_id = 14 WHERE id = 21;
+UPDATE teams SET ministry_id = 15 WHERE id = 22;
+UPDATE teams SET ministry_id = 16 WHERE id = 23;
+UPDATE teams SET ministry_id = 17 WHERE id = 24;
+UPDATE teams SET ministry_id = 18 WHERE id = 25;
+UPDATE teams SET ministry_id = 19 WHERE id = 26;
+UPDATE teams SET ministry_id = 20 WHERE id = 27;
+UPDATE teams SET ministry_id = 21 WHERE id IN (28, 34);
+UPDATE teams SET ministry_id = 22 WHERE id = 29;
+UPDATE teams SET ministry_id = 23 WHERE id = 30;
+UPDATE teams SET ministry_id = 24 WHERE id = 31;
+UPDATE teams SET ministry_id = 25 WHERE id = 32;
+UPDATE teams SET ministry_id = 9 WHERE id = 36;
 
 -- ----------------------------------------------------------------------------
 -- USER_TEAMS

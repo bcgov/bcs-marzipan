@@ -15,16 +15,19 @@ describe('teamListItemSchema', () => {
       description: 'Description',
       sortOrder: 0,
       isActive: true,
+      roleId: null,
       memberCount: 2,
-      ministryCount: 1,
+      ministryId: 1,
+      ministryName: 'Ministry One',
     });
     expect(result.id).toBe(1);
     expect(result.name).toBe('Team A');
     expect(result.memberCount).toBe(2);
-    expect(result.ministryCount).toBe(1);
+    expect(result.ministryId).toBe(1);
+    expect(result.ministryName).toBe('Ministry One');
   });
 
-  it('accepts null displayName and description', () => {
+  it('accepts null displayName, description, and ministry', () => {
     const result = teamListItemSchema.parse({
       id: 2,
       name: 'Team B',
@@ -32,11 +35,14 @@ describe('teamListItemSchema', () => {
       description: null,
       sortOrder: 1,
       isActive: true,
+      roleId: null,
       memberCount: 0,
-      ministryCount: 0,
+      ministryId: null,
+      ministryName: null,
     });
     expect(result.displayName).toBeNull();
     expect(result.description).toBeNull();
+    expect(result.ministryId).toBeNull();
   });
 });
 
@@ -55,10 +61,10 @@ describe('createTeamBodySchema', () => {
       description: 'Desc',
       sortOrder: 1,
       isActive: true,
-      ministryIds: ['1', '2'],
+      ministryId: 1,
       notes: 'Note',
     });
-    expect(result.ministryIds).toEqual(['1', '2']);
+    expect(result.ministryId).toBe(1);
   });
 
   it('rejects empty name', () => {

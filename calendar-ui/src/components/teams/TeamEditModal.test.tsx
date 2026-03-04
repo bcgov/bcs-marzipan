@@ -68,12 +68,12 @@ const mockTeamListItem: TeamListItem = {
   isActive: true,
   roleId: null,
   memberCount: 0,
-  ministryCount: 0,
+  ministryId: null,
+  ministryName: null,
 };
 
 const mockTeamDetail: TeamDetail = {
   ...mockTeamListItem,
-  ministries: [],
   members: [],
 };
 

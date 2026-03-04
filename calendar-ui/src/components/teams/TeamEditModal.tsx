@@ -41,7 +41,7 @@ export function TeamEditModal({
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [ministryIds, setMinistryIds] = useState<string[]>([]);
+  const [ministryId, setMinistryId] = useState<string | null>(null);
 
   const { data: detail, isLoading: isLoadingDetail } =
     useQuery<TeamDetail | null>({
@@ -72,13 +72,15 @@ export function TeamEditModal({
       setDisplayName('');
       setDescription('');
       setIsActive(true);
-      setMinistryIds([]);
+      setMinistryId(null);
     } else if (detail) {
       setName(detail.name);
       setDisplayName(detail.displayName ?? '');
       setDescription(detail.description ?? '');
       setIsActive(detail.isActive);
-      setMinistryIds(detail.ministries.map((m) => String(m.ministryId)));
+      setMinistryId(
+        detail.ministryId != null ? String(detail.ministryId) : null
+      );
     }
   }, [open, isCreate, detail]);
 
@@ -131,7 +133,7 @@ export function TeamEditModal({
         displayName: displayName.trim() || undefined,
         description: description.trim() || undefined,
         isActive,
-        ministryIds: ministryIds.length ? ministryIds : undefined,
+        ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
       });
     } else if (team) {
       updateMutation.mutate({
@@ -141,16 +143,14 @@ export function TeamEditModal({
           displayName: displayName.trim() || undefined,
           description: description.trim() || undefined,
           isActive,
-          ministryIds: ministryIds.length ? ministryIds : undefined,
+          ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
         },
       });
     }
   };
 
-  const handleMinistryToggle = (value: string) => {
-    setMinistryIds((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
+  const handleMinistrySelect = (value: string) => {
+    setMinistryId((prev) => (prev === value ? null : value));
   };
 
   const isLoading = !isCreate && isLoadingDetail;
@@ -211,12 +211,12 @@ export function TeamEditModal({
               <Label htmlFor="team-active">Active</Label>
             </div>
             <div className="space-y-2">
-              <Label>Ministries</Label>
+              <Label>Ministry</Label>
               <Combobox
                 options={ministryOptions}
-                selectedValues={ministryIds}
-                onSelect={handleMinistryToggle}
-                placeholder="Select ministries..."
+                selectedValues={ministryId ? [ministryId] : []}
+                onSelect={handleMinistrySelect}
+                placeholder="Select ministry..."
                 searchPlaceholder="Search ministries..."
                 emptyMessage="No ministries found."
               />

@@ -68,7 +68,7 @@ describe('TeamsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return list with memberCount and ministryCount', async () => {
+    it('should return list with memberCount and ministryId/ministryName', async () => {
       const teamRows = [
         {
           id: 1,
@@ -77,16 +77,18 @@ describe('TeamsService', () => {
           description: 'Desc',
           sortOrder: 0,
           isActive: true,
+          roleId: null,
+          ministryId: 1,
         },
       ];
       const memberCounts = [{ teamId: 1, count: 2 }];
-      const ministryCounts = [{ teamId: 1, count: 1 }];
+      const ministryNameRows = [{ id: 1, displayName: 'Ministry One' }];
 
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain(teamRows, 'orderBy'))
         .mockReturnValueOnce(createChain(memberCounts, 'groupBy'))
-        .mockReturnValueOnce(createChain(ministryCounts, 'groupBy'));
+        .mockReturnValueOnce(createChain(ministryNameRows, 'where'));
 
       const result = await service.findAll(true);
 
@@ -95,7 +97,8 @@ describe('TeamsService', () => {
         id: 1,
         name: 'Team A',
         memberCount: 2,
-        ministryCount: 1,
+        ministryId: 1,
+        ministryName: 'Ministry One',
       });
     });
 
@@ -121,7 +124,7 @@ describe('TeamsService', () => {
       expect(result).toBeNull();
     });
 
-    it('should return TeamDetail with members and ministries when team exists', async () => {
+    it('should return TeamDetail with members and ministry when team exists', async () => {
       const teamRow = {
         id: 1,
         name: 'Team One',
@@ -129,21 +132,21 @@ describe('TeamsService', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        roleId: null,
+        ministryId: 1,
       };
       const memberRows = [{ userId: 10, role: 'owner' }];
-      const ministryRows = [{ ministryId: 1 }];
       const userRows = [
         { id: 10, adDisplayName: 'User Ten', adUsername: 'user10' },
       ];
-      const ministryNameRows = [{ id: 1, displayName: 'Premier' }];
+      const ministryNameRows = [{ displayName: 'Premier' }];
 
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'))
-        .mockReturnValueOnce(createChain(ministryRows, 'where'))
         .mockReturnValueOnce(createChain(userRows, 'where'))
-        .mockReturnValueOnce(createChain(ministryNameRows, 'where'));
+        .mockReturnValueOnce(createChain(ministryNameRows, 'limit'));
 
       const result = await service.findOne(1);
 
@@ -151,8 +154,9 @@ describe('TeamsService', () => {
       expect(result).toMatchObject({
         id: 1,
         name: 'Team One',
+        ministryId: 1,
+        ministryName: 'Premier',
         memberCount: 1,
-        ministryCount: 1,
       });
       expect(result!.members).toHaveLength(1);
       expect(result!.members[0]).toMatchObject({
@@ -160,19 +164,14 @@ describe('TeamsService', () => {
         userName: 'User Ten',
         role: 'owner',
       });
-      expect(result!.ministries).toHaveLength(1);
-      expect(result!.ministries[0]).toMatchObject({
-        ministryId: 1,
-        ministryName: 'Premier',
-      });
     });
   });
 
   describe('create', () => {
-    it('should insert team, optional team_ministries, record history, and return detail', async () => {
+    it('should insert team with ministryId, record history, and return detail', async () => {
       const dto = createMockCreateTeamBody({
         name: 'New Team',
-        ministryIds: ['1', '2'],
+        ministryId: 1,
       });
       const insertedTeam = {
         id: 5,
@@ -181,6 +180,8 @@ describe('TeamsService', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        roleId: null,
+        ministryId: 1,
       };
       const insertValues = vi.fn().mockReturnThis();
       const insertReturning = vi.fn().mockResolvedValue([insertedTeam]);
@@ -190,27 +191,24 @@ describe('TeamsService', () => {
         returning: insertReturning,
       });
 
-      const ministryNameRows = [
-        { id: 1, displayName: 'M1' },
-        { id: 2, displayName: 'M2' },
-      ];
+      const ministryNameRows = [{ displayName: 'Ministry One' }];
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain([insertedTeam], 'limit'))
         .mockReturnValueOnce(createChain([], 'where'))
-        .mockReturnValueOnce(
-          createChain([{ ministryId: 1 }, { ministryId: 2 }], 'where')
-        )
-        .mockReturnValueOnce(createChain(ministryNameRows, 'where'));
+        .mockReturnValueOnce(createChain(ministryNameRows, 'limit'));
 
       const result = await service.create(dto, 1);
 
       expect(result).not.toBeNull();
       expect(result.id).toBe(5);
       expect(result.name).toBe('New Team');
-      expect(result.ministryCount).toBe(2);
+      expect(result.ministryId).toBe(1);
+      expect(result.ministryName).toBe('Ministry One');
       expect(mockDatabaseService.db.insert).toHaveBeenCalled();
-      expect(insertValues).toHaveBeenCalled();
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ ministryId: 1 })
+      );
     });
   });
 
@@ -233,19 +231,18 @@ describe('TeamsService', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        roleId: null,
+        ministryId: null,
       };
       const updatedTeamRow = { ...teamRow, name: 'Updated Name' };
       const memberRows: { userId: number; role: string }[] = [];
-      const ministryRows: { ministryId: number }[] = [];
 
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'))
-        .mockReturnValueOnce(createChain(ministryRows, 'where'))
         .mockReturnValueOnce(createChain([updatedTeamRow], 'limit'))
-        .mockReturnValueOnce(createChain(memberRows, 'where'))
-        .mockReturnValueOnce(createChain(ministryRows, 'where'));
+        .mockReturnValueOnce(createChain(memberRows, 'where'));
 
       mockDatabaseService.db.update = vi.fn().mockReturnValue({
         set: vi.fn().mockReturnThis(),
@@ -282,6 +279,8 @@ describe('TeamsService', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        roleId: null,
+        ministryId: null,
       };
       const historyRows = [
         {
@@ -299,7 +298,6 @@ describe('TeamsService', () => {
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
-        .mockReturnValueOnce(createChain([], 'where'))
         .mockReturnValueOnce(createChain([], 'where'))
         .mockReturnValueOnce(createChain(historyRows, 'orderBy'))
         .mockReturnValueOnce(createChain(userRows, 'where'));

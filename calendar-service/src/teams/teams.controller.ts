@@ -48,7 +48,7 @@ export class TeamsController {
 
   @ApiOperation({
     summary: 'List teams',
-    description: 'Returns all teams with member and ministry counts.',
+    description: 'Returns all teams with member count and optional ministry.',
   })
   @ApiQuery({
     name: 'activeOnly',

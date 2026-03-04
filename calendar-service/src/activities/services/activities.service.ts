@@ -8,7 +8,16 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
+import {
+  and,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  lte,
+  ne,
+  type SQL,
+} from 'drizzle-orm';
 
 import {
   activities,
@@ -24,7 +33,7 @@ import {
   activityTranslationsRequired,
   categories,
   ministries,
-  teamMinistries,
+  teams,
   userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
@@ -344,7 +353,7 @@ export class ActivitiesService {
     const initialStatusId =
       await this.getActivityStatusIdByName(initialStatusName);
 
-    // Scope: without activities.create.any, leadMinistryId must be in a ministry linked to user's teams
+    // Scope: without activities.create.any, leadMinistryId must equal a team's ministry_id
     const canCreateAny =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ??
       false;
@@ -354,15 +363,19 @@ export class ActivitiesService {
       activityData.leadMinistryId != null
     ) {
       const allowedMinistryIds = await this.databaseService.db
-        .select({ ministryId: teamMinistries.ministryId })
-        .from(teamMinistries)
+        .select({ ministryId: teams.ministryId })
+        .from(teams)
         .where(
-          and(
-            inArray(teamMinistries.teamId, context.teamIds),
-            eq(teamMinistries.isActive, true)
-          )
+          and(inArray(teams.id, context.teamIds), isNotNull(teams.ministryId))
         )
-        .then((rows) => new Set(rows.map((r) => r.ministryId)));
+        .then(
+          (rows) =>
+            new Set(
+              rows
+                .map((r) => r.ministryId)
+                .filter((id): id is number => id != null)
+            )
+        );
       if (!allowedMinistryIds.has(activityData.leadMinistryId)) {
         throw new ForbiddenException(
           'You may only create activities for ministries in your teams.'
@@ -609,16 +622,8 @@ export class ActivitiesService {
       this.databaseService.db
         .select({ id: activities.id })
         .from(activities)
-        .innerJoin(
-          teamMinistries,
-          eq(activities.leadMinistryId, teamMinistries.ministryId)
-        )
-        .where(
-          and(
-            eq(teamMinistries.isActive, true),
-            inArray(teamMinistries.teamId, teamIds)
-          )
-        )
+        .innerJoin(teams, eq(activities.leadMinistryId, teams.ministryId))
+        .where(inArray(teams.id, teamIds))
         .then((rows) => new Set(rows.map((r) => r.id))),
     ]);
 

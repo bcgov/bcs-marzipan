@@ -296,28 +296,31 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ### Field Mappings
 
-| New Field Name        | New Type                   | New Constraints            | Description                                                        |
-| --------------------- | -------------------------- | -------------------------- | ------------------------------------------------------------------ |
-| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                        |
-| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                               |
-| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                               |
-| `description`         | `text`                     | nullable                   | Team description (nullable)                                        |
-| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                         |
-| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)      |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                |
-| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now) |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)           |
+| New Field Name        | New Type                   | New Constraints            | Description                                                           |
+| --------------------- | -------------------------- | -------------------------- | --------------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                           |
+| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                                  |
+| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                                  |
+| `description`         | `text`                     | nullable                   | Team description (nullable)                                           |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Sort order for display                                                |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                            |
+| `roleId`              | `integer`                  | nullable, FK               | FK to Role - default role for team members                            |
+| `ministryId`          | `integer`                  | nullable, FK               | FK to Ministry - team's ministry for data scoping (create/visibility) |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)         |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                   |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now)    |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)              |
 
 ### Notes
 
-- **Placeholder Table**: This table is marked as a placeholder with TODO comments. Full implementation is pending.
-- **Purpose**: Used for team-based access control, particularly for controlling which teams can view specific categories via the `teamCategories` junction table.
-- **Future Implementation**: A `teamUsers` junction table will be added when teams are fully implemented to link teams to users.
+- **Purpose**: Used for team-based access control and data scoping. Activity create and visibility use `teams.ministry_id` (the team's single ministry) for scoping; users see activities whose lead ministry matches one of their teams' ministry.
+- **Data scoping**: Only `teams.ministry_id` is used for activity scoping (not a junction table). The former `team_ministries` junction table has been removed.
 
 ### Related Tables
 
 - **Junction Tables**:
   - `teamCategories`: Many-to-many relationship between Teams and Categories for access control
+  - `userTeams`: Many-to-many relationship between Users and Teams (membership)
 
 ---
 

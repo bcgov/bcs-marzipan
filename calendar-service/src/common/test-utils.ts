@@ -123,7 +123,8 @@ export const createMockTeamListItem = (
   isActive: true,
   roleId: null,
   memberCount: 2,
-  ministryCount: 1,
+  ministryId: 1,
+  ministryName: 'Office of the Premier',
   ...overrides,
 });
 
@@ -135,7 +136,6 @@ export const createMockTeamDetail = (
     { userId: 1, userName: 'User One', role: 'owner' },
     { userId: 2, userName: 'User Two', role: 'member' },
   ],
-  ministries: [{ ministryId: 1, ministryName: 'Office of the Premier' }],
   ...overrides,
 });
 
@@ -161,7 +161,7 @@ export const createMockCreateTeamBody = (
   description: undefined,
   sortOrder: 0,
   isActive: true,
-  ministryIds: ['1'],
+  ministryId: 1,
   notes: undefined,
   ...overrides,
 });
