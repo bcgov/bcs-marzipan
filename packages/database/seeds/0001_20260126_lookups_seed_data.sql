@@ -132,7 +132,7 @@ WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name)
 
 INSERT INTO venue_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('unknown', 'Unknown', 1, true, 'Venue status is unknown', 1, 1),
+  ('tbd', 'TBD', 1, true, 'Venue is to be determined', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Venue is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Venue is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -196,7 +196,7 @@ VALUES
   (9, 'media advisory', 'Media Advisory', 9, true, 'Media advisory materials', 1, 1),
   (10, 'ministers message', 'Minister''s Message', 10, true, 'Minister''s message materials', 1, 1),
   (11, 'news release', 'News Release', 11, true, 'News release materials', 1, 1),
-  (12, 'nycu news you can use', 'NYCU (News You Can Use)', 12, true, 'NYCU materials', 1, 1),
+  (12, 'nycu news you can use', 'NYCU', 12, true, 'NYCU (News You Can Use) materials', 1, 1),
   (13, 'opinion editorial', 'Opinion Editorial', 13, true, 'Opinion editorial materials', 1, 1),
   (14, 'press conference', 'Press Conference', 14, true, 'Press conference materials', 1, 1),
   (15, 'q and a', 'Q&As', 15, true, 'Question and answer materials', 1, 1),
@@ -305,31 +305,31 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 
 INSERT INTO organizations (id, name, display_name, organization_type, ministry_id, is_active, sort_order, created_by, last_updated_by) VALUES
-  (1, 'Office of the Premier', 'Office of the Premier', 'bcgov', 1, true, 1, 1, 1),
-  (2, 'Agriculture and Food', 'Agriculture and Food', 'bcgov', 2, true, 2, 1, 1),
-  (3, 'Attorney General', 'Attorney General', 'bcgov', 3, true, 3, 1, 1),
-  (4, 'Children and Family Development', 'Children and Family Development', 'bcgov', 4, true, 4, 1, 1),
-  (5, 'Citizens'' Services', 'Citizens'' Services', 'bcgov', 5, true, 5, 1, 1),
-  (6, 'Education and Child Care', 'Education and Child Care', 'bcgov', 6, true, 6, 1, 1),
-  (7, 'Emergency Management and Climate Readiness', 'Emergency Management and Climate Readiness', 'bcgov', 7, true, 7, 1, 1),
-  (8, 'Energy and Climate Solutions', 'Energy and Climate Solutions', 'bcgov', 8, true, 8, 1, 1),
-  (9, 'Environment and Parks', 'Environment and Parks', 'bcgov', 9, true, 9, 1, 1),
-  (10, 'Finance', 'Finance', 'bcgov', 10, true, 10, 1, 1),
-  (11, 'Forests', 'Forests', 'bcgov', 11, true, 11, 1, 1),
-  (12, 'Health', 'Health', 'bcgov', 12, true, 12, 1, 1),
-  (13, 'Housing and Municipal Affairs', 'Housing and Municipal Affairs', 'bcgov', 13, true, 13, 1, 1),
-  (14, 'Indigenous Relations and Reconciliation', 'Indigenous Relations and Reconciliation', 'bcgov', 14, true, 14, 1, 1),
-  (15, 'Infrastructure', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
-  (16, 'Intergovernmental Relations Secretariat', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
-  (17, 'Jobs and Economic Growth', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
-  (18, 'Labour', 'Labour', 'bcgov', 18, true, 18, 1, 1),
-  (19, 'Mining and Critical Minerals', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
-  (20, 'Post-Secondary Education and Future Skills', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
-  (21, 'Public Safety and Solicitor General', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
-  (22, 'Social Development and Poverty Reduction', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),
-  (23, 'Tourism, Arts, Culture and Sport', 'Tourism, Arts, Culture and Sport', 'bcgov', 23, true, 23, 1, 1),
-  (24, 'Transportation and Transit', 'Transportation and Transit', 'bcgov', 24, true, 24, 1, 1),
-  (25, 'Water, Land and Resource Stewardship', 'Water, Land and Resource Stewardship', 'bcgov', 25, true, 25, 1, 1)
+  (1, 'PREM', 'Office of the Premier', 'bcgov', 1, true, 1, 1, 1),
+  (2, 'AF', 'Agriculture and Food', 'bcgov', 2, true, 2, 1, 1),
+  (3, 'AG', 'Attorney General', 'bcgov', 3, true, 3, 1, 1),
+  (4, 'MCFD', 'Children and Family Development', 'bcgov', 4, true, 4, 1, 1),
+  (5, 'CITZ', 'Citizens'' Services', 'bcgov', 5, true, 5, 1, 1),
+  (6, 'ECC', 'Education and Child Care', 'bcgov', 6, true, 6, 1, 1),
+  (7, 'EMCR', 'Emergency Management and Climate Readiness', 'bcgov', 7, true, 7, 1, 1),
+  (8, 'ECS', 'Energy and Climate Solutions', 'bcgov', 8, true, 8, 1, 1),
+  (9, 'EP', 'Environment and Parks', 'bcgov', 9, true, 9, 1, 1),
+  (10, 'FIN', 'Finance', 'bcgov', 10, true, 10, 1, 1),
+  (11, 'FOR', 'Forests', 'bcgov', 11, true, 11, 1, 1),
+  (12, 'HLTH', 'Health', 'bcgov', 12, true, 12, 1, 1),
+  (13, 'HMA', 'Housing and Municipal Affairs', 'bcgov', 13, true, 13, 1, 1),
+  (14, 'IRR', 'Indigenous Relations and Reconciliation', 'bcgov', 14, true, 14, 1, 1),
+  (15, 'INF', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
+  (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
+  (17, 'JEG', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
+  (18, 'LBR', 'Labour', 'bcgov', 18, true, 18, 1, 1),
+  (19, 'MCM', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
+  (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
+  (21, 'PSSG', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
+  (22, 'SDPR', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),
+  (23, 'TACS', 'Tourism, Arts, Culture and Sport', 'bcgov', 23, true, 23, 1, 1),
+  (24, 'MOTT', 'Transportation and Transit', 'bcgov', 24, true, 24, 1, 1),
+  (25, 'WLRS', 'Water, Land and Resource Stewardship', 'bcgov', 25, true, 25, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
