@@ -25,6 +25,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   dateStatusId: 'Date status',
   timeStatusId: 'Time status',
   activityStatusId: 'Activity status',
+  leadTeamId: 'Lead team',
   leadMinistryId: 'Lead ministry',
   leadOrgId: 'Lead organization',
   commsContactLeadId: 'Comms lead',

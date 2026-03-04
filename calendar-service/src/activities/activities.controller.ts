@@ -141,6 +141,7 @@ export class ActivitiesController {
       query.endDateTo !== undefined ||
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
+      query.leadTeamId !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
       query.isIssue !== undefined ||
@@ -247,6 +248,8 @@ export class ActivitiesController {
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.update(id, body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,
@@ -290,6 +293,8 @@ export class ActivitiesController {
     // PUT uses createActivityRequestSchema (all fields) but calls update
     const result = await this.activitiesService.update(id, body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,

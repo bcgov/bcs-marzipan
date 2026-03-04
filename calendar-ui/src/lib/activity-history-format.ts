@@ -157,6 +157,7 @@ const FIELDS_TO_COMPARE = [
   'lookAheadSection',
   'leadOrgId',
   'leadOrgName',
+  'leadTeamId',
   'leadMinistryId',
   'eventPlannerLeadId',
   'eventPlannerLeadName',

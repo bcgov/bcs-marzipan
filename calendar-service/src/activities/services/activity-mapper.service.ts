@@ -164,7 +164,8 @@ export class ActivityMapperService {
         (DEFAULT_VISIBILITY satisfies Visibility),
 
       // Sharing
-      leadMinistryId: activity.leadMinistryId,
+      leadTeamId: activity.leadTeamId,
+      leadMinistryId: activity.leadMinistryId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       commsContacts: relatedData?.commsContacts ?? [],
 

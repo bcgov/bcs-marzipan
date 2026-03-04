@@ -37,7 +37,7 @@ This document audits where each table value comes from (API/backend) and any ext
 
 | Element                    | Source value                             | Additional formatting                                                                              |
 | -------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Category badges            | Category displayName                     | `toSentenceCase(cat)`                                                                              |
+| Category badges            | Category displayName                     | Raw `cat` (no transform; displayName is already correct, e.g. FYI)                                 |
 | Pitch label                | Pitch required displayName (when used)   | `toSentenceCase(pitchLabel)`                                                                       |
 | Look ahead badge           | Look ahead status + section (enum)       | `getLookAheadStatusLabel` / `getLookAheadSectionLabel` + `"LA …"` template                         |
 | Date status badge          | Date status displayName                  | `toSentenceCase(row.dateStatus)`                                                                   |

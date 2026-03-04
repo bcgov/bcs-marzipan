@@ -39,6 +39,20 @@ describe('ActivityUtilsService', () => {
     });
   });
 
+  describe('getDisplayIdPrefixFromTeamName', () => {
+    it('returns first 4 letters uppercased, no spaces', () => {
+      expect(service.getDisplayIdPrefixFromTeamName('My Team')).toBe('MYTE');
+    });
+    it('pads with X when name is shorter than 4 chars', () => {
+      expect(service.getDisplayIdPrefixFromTeamName('Hi')).toBe('HIXX');
+    });
+    it('pads to 4 characters when team name has fewer than 4 letters', () => {
+      const result = service.getDisplayIdPrefixFromTeamName('Hi');
+      expect(result.length).toBe(4);
+      expect(result).toBe('HIXX');
+    });
+  });
+
   describe('validateCategoryIds', () => {
     it('does not throw for empty array', async () => {
       await expect(service.validateCategoryIds([])).resolves.toBeUndefined();

@@ -104,7 +104,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.nam
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('unknown', 'Unknown', 1, true, 'Date status is unknown', 1, 1),
+  ('not_confirmed', 'Not Confirmed', 1, true, 'Date is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -118,7 +118,7 @@ WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name)
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('unknown', 'Unknown', 1, true, 'Time status is unknown', 1, 1),
+  ('not_confirmed', 'Not Confirmed', 1, true, 'Time is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -271,29 +271,29 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviation, created_by, last_updated_by) VALUES
   (1, 1, true, 'PREM', 'Office of the Premier', 'PREM', 1, 1),
-  (2, 2, true, 'AGRI', 'Agriculture and Food', 'AGRI', 1, 1),
+  (2, 2, true, 'AF', 'Agriculture and Food', 'AF', 1, 1),
   (3, 3, true, 'AG', 'Attorney General', 'AG', 1, 1),
-  (4, 4, true, 'CFD', 'Children and Family Development', 'CFD', 1, 1),
+  (4, 4, true, 'MCFD', 'Children and Family Development', 'MCFD', 1, 1),
   (5, 5, true, 'CITZ', 'Citizens'' Services', 'CITZ', 1, 1),
-  (6, 6, true, 'EDUC', 'Education and Child Care', 'EDUC', 1, 1),
+  (6, 6, true, 'ECC', 'Education and Child Care', 'ECC', 1, 1),
   (7, 7, true, 'EMCR', 'Emergency Management and Climate Readiness', 'EMCR', 1, 1),
-  (8, 8, true, 'ENER', 'Energy and Climate Solutions', 'ENER', 1, 1),
-  (9, 9, true, 'ENV', 'Environment and Parks', 'ENV', 1, 1),
+  (8, 8, true, 'ECS', 'Energy and Climate Solutions', 'ECS', 1, 1),
+  (9, 9, true, 'EP', 'Environment and Parks', 'EP', 1, 1),
   (10, 10, true, 'FIN', 'Finance', 'FIN', 1, 1),
   (11, 11, true, 'FOR', 'Forests', 'FOR', 1, 1),
   (12, 12, true, 'HLTH', 'Health', 'HLTH', 1, 1),
-  (13, 13, true, 'HOUS', 'Housing and Municipal Affairs', 'HOUS', 1, 1),
+  (13, 13, true, 'HMA', 'Housing and Municipal Affairs', 'HMA', 1, 1),
   (14, 14, true, 'IRR', 'Indigenous Relations and Reconciliation', 'IRR', 1, 1),
-  (15, 15, true, 'INFRA', 'Infrastructure', 'INFRA', 1, 1),
+  (15, 15, true, 'INF', 'Infrastructure', 'INF', 1, 1),
   (16, 16, true, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
   (17, 17, true, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 1),
-  (18, 18, true, 'LAB', 'Labour', 'LAB', 1, 1),
-  (19, 19, true, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 1),
+  (18, 18, true, 'LBR', 'Labour', 'LBR', 1, 1),
+  (19, 19, true, 'MCM', 'Mining and Critical Minerals', 'MCM', 1, 1),
   (20, 20, true, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
   (21, 21, true, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 1),
   (22, 22, true, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
   (23, 23, true, 'TACS', 'Tourism, Arts, Culture and Sport', 'TACS', 1, 1),
-  (24, 24, true, 'TRAN', 'Transportation and Transit', 'TRAN', 1, 1),
+  (24, 24, true, 'MOTT', 'Transportation and Transit', 'MOTT', 1, 1),
   (25, 25, true, 'WLRS', 'Water, Land and Resource Stewardship', 'WLRS', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 

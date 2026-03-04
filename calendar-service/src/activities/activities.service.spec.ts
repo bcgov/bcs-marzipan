@@ -136,7 +136,15 @@ describe('ActivitiesService', () => {
   const mockUtilsService = {
     generateDisplayId: vi.fn(
       (abbrev, id) =>
-        `${abbrev.toUpperCase()}-${id.toString().slice(-6).padStart(6, '0')}`
+        `${String(abbrev).toUpperCase().trim()}-${id.toString().slice(-6).padStart(6, '0')}`
+    ),
+    getDisplayIdPrefixFromTeamName: vi.fn((name: string) =>
+      (name ?? '')
+        .trim()
+        .replace(/\s+/g, '')
+        .slice(0, 4)
+        .toUpperCase()
+        .padEnd(4, 'X')
     ),
     validateCategoryIds: vi.fn().mockResolvedValue(undefined),
   };
@@ -480,9 +488,26 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
 
-      // Mock select: status lookup (with object) returns status id; findOne (no args) returns created activity
+      // Mock select: team lookup returns team row; status lookup returns status id; findOne returns created activity
       mockDatabaseService.db.select = vi.fn((...args) => {
         if (args.length > 0) {
+          const selectArg = args[0];
+          if (
+            selectArg &&
+            typeof selectArg === 'object' &&
+            'ministryId' in selectArg &&
+            'name' in selectArg
+          ) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
@@ -492,7 +517,11 @@ describe('ActivitiesService', () => {
         return createMockQueryChain([createdActivity]);
       });
 
-      const result = await service.create(createDto, 1);
+      const result = await service.create(createDto, 1, {
+        roleName: 'Editor',
+        permissions: ['activities.create'],
+        teamIds: [1],
+      });
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.id).toBe(2);

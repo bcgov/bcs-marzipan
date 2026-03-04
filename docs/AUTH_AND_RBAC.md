@@ -86,7 +86,7 @@ This document does not describe refresh or revocation implementation; the above 
 
 ### Effective permissions and team roles
 
-At login, the backend computes **effective permissions** as the union of (1) the user's role permissions, (2) the permissions of each team the user belongs to (via `teams.role_id`), and (3) any permissions granted directly to those teams via `team_permissions`. The JWT stores this effective list and a **bypassDataScoping** flag. Bypass is true if the user's role or any of the user's team roles are Advanced Viewer, Advanced Editor, Admin, or System Admin (relaxed: one bypass role grants see-all). The DataScopeInterceptor uses `user.bypassDataScoping` to set `request.dataScope.bypass`. Create and delete are scoped when the user lacks `activities.create.any` or `activities.delete.any`: create requires the activity's lead ministry to be in the user's teams; delete requires the activity to be in the visible set for the user's teams.
+At login, the backend computes **effective permissions** as the union of (1) the user's role permissions, (2) the permissions of each team the user belongs to (via `teams.role_id`), and (3) any permissions granted directly to those teams via `team_permissions`. The JWT stores this effective list and a **bypassDataScoping** flag. Bypass is true if the user's role or any of the user's team roles are Advanced Viewer, Advanced Editor, Admin, or System Admin (relaxed: one bypass role grants see-all). The DataScopeInterceptor uses `user.bypassDataScoping` to set `request.dataScope.bypass`. Create and delete are scoped when the user lacks `activities.create.any` or `activities.delete.any`: create requires the activity's lead team to be one of the user's teams (or, with `activities.create.any`, any team whose role has `activities.create`); delete requires the activity to be in the visible set for the user's teams.
 
 ## System Roles
 
@@ -124,7 +124,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | settings.\*                           |        |        |            |             | x           | x         |
 | system.\*                             |        |        |            |             |             | x         |
 
-- **activities.create.any**: may set any lead ministry when creating (otherwise only ministries linked to user's teams).
+- **activities.create.any**: may choose any team that has create permission as lead team when creating (otherwise only the user's teams).
 - **activities.delete.any**: may delete any activity (otherwise only activities visible to user's teams).
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 

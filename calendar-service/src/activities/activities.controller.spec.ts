@@ -253,7 +253,11 @@ describe('ActivitiesController', () => {
         1,
         updateDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
       expect(mockActivitiesService.update).toHaveBeenCalledTimes(1);
     });
@@ -274,7 +278,11 @@ describe('ActivitiesController', () => {
         999,
         updateDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
     });
   });

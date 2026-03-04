@@ -199,7 +199,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
           items={row.activityCategories.map(
             (cat): BadgeGroupItem => ({
               key: cat,
-              label: toSentenceCase(cat),
+              label: cat,
               variant: 'primary',
               className: 'h-auto min-h-5 whitespace-normal text-white',
             })

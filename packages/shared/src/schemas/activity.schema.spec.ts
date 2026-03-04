@@ -11,6 +11,7 @@ import {
   venueAddressFieldsSchema,
 } from './activity.schema';
 
+const validLeadTeamId = 1;
 const validLeadMinistryId = 1;
 
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
@@ -21,6 +22,7 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
+    leadTeamId: validLeadTeamId,
     leadMinistryId: validLeadMinistryId,
     ...overrides,
   };
@@ -30,6 +32,7 @@ describe('createActivityRequestSchema', () => {
   it('accepts minimal valid request', () => {
     const result = createActivityRequestSchema.parse(minimalCreateRequest());
     expect(result.title).toBe('Test Activity');
+    expect(result.leadTeamId).toBe(validLeadTeamId);
     expect(result.leadMinistryId).toBe(validLeadMinistryId);
   });
 
@@ -105,12 +108,37 @@ describe('createActivityRequestSchema', () => {
     expect(result.leadOrgId).toBeNull();
   });
 
-  it('validates leadMinistryId as integer', () => {
+  it('requires leadTeamId', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ leadTeamId: undefined })
+      )
+    ).toThrow();
+  });
+
+  it('validates leadTeamId as integer', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ leadTeamId: 'not-a-number' })
+      )
+    ).toThrow();
+  });
+
+  it('validates leadMinistryId as integer when provided', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({ leadMinistryId: 'not-a-number' })
       )
     ).toThrow();
+  });
+
+  it('accepts leadMinistryId as null or undefined', () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ leadMinistryId: null })
+    );
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ leadMinistryId: undefined })
+    );
   });
 });
 

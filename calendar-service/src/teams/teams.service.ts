@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   ministries,
+  permissions,
+  rolePermissions,
   teamHistory,
   teams,
   users,
@@ -37,6 +39,97 @@ export class TeamsService {
       changes: changes ?? null,
       notes: notes ?? null,
     });
+  }
+
+  /**
+   * Teams the current user can choose as lead team when creating/editing an activity.
+   * Without activities.create.any: only the user's teams. With it: teams whose role has activities.create.
+   */
+  async findLeadOptions(
+    userTeamIds: number[],
+    hasCreateAny: boolean
+  ): Promise<TeamListItem[]> {
+    let teamIds: number[];
+    if (hasCreateAny) {
+      const rows = await this.databaseService.db
+        .selectDistinct({ teamId: teams.id })
+        .from(teams)
+        .innerJoin(rolePermissions, eq(teams.roleId, rolePermissions.roleId))
+        .innerJoin(
+          permissions,
+          eq(rolePermissions.permissionId, permissions.id)
+        )
+        .where(
+          and(
+            eq(teams.isActive, true),
+            eq(rolePermissions.isActive, true),
+            eq(permissions.key, 'activities.create')
+          )
+        );
+      teamIds = rows.map((r) => r.teamId);
+    } else {
+      if (userTeamIds.length === 0) return [];
+      teamIds = userTeamIds;
+    }
+    if (teamIds.length === 0) return [];
+    return this.findManyByIds(teamIds);
+  }
+
+  private async findManyByIds(teamIds: number[]): Promise<TeamListItem[]> {
+    const teamRows = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        displayName: teams.displayName,
+        description: teams.description,
+        sortOrder: teams.sortOrder,
+        isActive: teams.isActive,
+        roleId: teams.roleId,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(and(inArray(teams.id, teamIds), eq(teams.isActive, true)))
+      .orderBy(asc(teams.sortOrder), teams.name);
+
+    const memberCounts = await this.databaseService.db
+      .select({
+        teamId: userTeams.teamId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userTeams)
+      .where(
+        and(inArray(userTeams.teamId, teamIds), eq(userTeams.isActive, true))
+      )
+      .groupBy(userTeams.teamId);
+    const memberMap = new Map(memberCounts.map((m) => [m.teamId, m.count]));
+
+    const ministryIds = [
+      ...new Set(
+        teamRows
+          .map((t) => t.ministryId)
+          .filter((id): id is number => id != null)
+      ),
+    ];
+    const ministryNameRows =
+      ministryIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: ministries.id,
+              displayName: ministries.displayName,
+            })
+            .from(ministries)
+            .where(inArray(ministries.id, ministryIds))
+        : [];
+    const ministryMap = new Map(
+      ministryNameRows.map((m) => [m.id, m.displayName])
+    );
+
+    return teamRows.map((t) => ({
+      ...t,
+      memberCount: memberMap.get(t.id) ?? 0,
+      ministryName:
+        t.ministryId != null ? (ministryMap.get(t.ministryId) ?? null) : null,
+    }));
   }
 
   async findAll(activeOnly = true): Promise<TeamListItem[]> {

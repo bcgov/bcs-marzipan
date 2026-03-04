@@ -1,5 +1,5 @@
 {
-  "id": "416f5235-9bea-4cbb-9f02-5d9f53bc78c5",
+  "id": "bb685ee5-037e-41ce-9308-37d3c0dedcff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -210,17 +210,11 @@
           "notNull": true,
           "default": "'global'"
         },
-        "lead_team_id": {
-          "name": "lead_team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "lead_ministry_id": {
           "name": "lead_ministry_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "activity_status_id": {
           "name": "activity_status_id",
@@ -341,15 +335,6 @@
           "tableFrom": "activities",
           "tableTo": "premier_requested",
           "columnsFrom": ["premier_requested_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "activities_lead_team_id_teams_id_fk": {
-          "name": "activities_lead_team_id_teams_id_fk",
-          "tableFrom": "activities",
-          "tableTo": "teams",
-          "columnsFrom": ["lead_team_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -4685,6 +4670,69 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.team_ministries": {
+      "name": "team_ministries",
+      "schema": "",
+      "columns": {
+        "team_id": {
+          "name": "team_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ministry_id": {
+          "name": "ministry_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "team_ministries_team_id_teams_id_fk": {
+          "name": "team_ministries_team_id_teams_id_fk",
+          "tableFrom": "team_ministries",
+          "tableTo": "teams",
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_ministries_ministry_id_ministries_id_fk": {
+          "name": "team_ministries_ministry_id_ministries_id_fk",
+          "tableFrom": "team_ministries",
+          "tableTo": "ministries",
+          "columnsFrom": ["ministry_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "team_ministries_team_id_ministry_id_pk": {
+          "name": "team_ministries_team_id_ministry_id_pk",
+          "columns": ["team_id", "ministry_id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.user_teams": {
       "name": "user_teams",
       "schema": "",
@@ -4924,69 +4972,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.team_permissions": {
-      "name": "team_permissions",
-      "schema": "",
-      "columns": {
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "permission_id": {
-          "name": "permission_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "team_permissions_team_id_teams_id_fk": {
-          "name": "team_permissions_team_id_teams_id_fk",
-          "tableFrom": "team_permissions",
-          "tableTo": "teams",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "team_permissions_permission_id_permissions_id_fk": {
-          "name": "team_permissions_permission_id_permissions_id_fk",
-          "tableFrom": "team_permissions",
-          "tableTo": "permissions",
-          "columnsFrom": ["permission_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "team_permissions_team_id_permission_id_pk": {
-          "name": "team_permissions_team_id_permission_id_pk",
-          "columns": ["team_id", "permission_id"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.teams": {
       "name": "teams",
       "schema": "",
@@ -5029,18 +5014,6 @@
           "notNull": true,
           "default": true
         },
-        "role_id": {
-          "name": "role_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ministry_id": {
-          "name": "ministry_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_date_time": {
           "name": "created_date_time",
           "type": "timestamp with time zone",
@@ -5070,24 +5043,6 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "teams_role_id_roles_id_fk": {
-          "name": "teams_role_id_roles_id_fk",
-          "tableFrom": "teams",
-          "tableTo": "roles",
-          "columnsFrom": ["role_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "teams_ministry_id_ministries_id_fk": {
-          "name": "teams_ministry_id_ministries_id_fk",
-          "tableFrom": "teams",
-          "tableTo": "ministries",
-          "columnsFrom": ["ministry_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
         "teams_created_by_users_id_fk": {
           "name": "teams_created_by_users_id_fk",
           "tableFrom": "teams",

@@ -8,16 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  and,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  lte,
-  ne,
-  type SQL,
-} from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -353,35 +344,48 @@ export class ActivitiesService {
     const initialStatusId =
       await this.getActivityStatusIdByName(initialStatusName);
 
-    // Scope: without activities.create.any, leadMinistryId must equal a team's ministry_id
+    // leadTeamId is required
+    if (
+      activityData.leadTeamId == null ||
+      typeof activityData.leadTeamId !== 'number'
+    ) {
+      throw new BadRequestException('leadTeamId is required');
+    }
+
+    // Resolve lead team and derive leadMinistryId from team.ministryId
+    const [leadTeam] = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(eq(teams.id, activityData.leadTeamId))
+      .limit(1);
+    if (!leadTeam) {
+      throw new BadRequestException(
+        `Team with ID ${activityData.leadTeamId} not found`
+      );
+    }
+    const resolvedLeadMinistryId = leadTeam.ministryId ?? null;
+
+    // Scope: without activities.create.any, leadTeamId must be in user's teams
     const canCreateAny =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ??
       false;
-    if (
-      !canCreateAny &&
-      context?.teamIds?.length &&
-      activityData.leadMinistryId != null
-    ) {
-      const allowedMinistryIds = await this.databaseService.db
-        .select({ ministryId: teams.ministryId })
-        .from(teams)
-        .where(
-          and(inArray(teams.id, context.teamIds), isNotNull(teams.ministryId))
-        )
-        .then(
-          (rows) =>
-            new Set(
-              rows
-                .map((r) => r.ministryId)
-                .filter((id): id is number => id != null)
-            )
-        );
-      if (!allowedMinistryIds.has(activityData.leadMinistryId)) {
+    if (!canCreateAny && context?.teamIds?.length) {
+      if (!context.teamIds.includes(activityData.leadTeamId)) {
         throw new ForbiddenException(
-          'You may only create activities for ministries in your teams.'
+          'You may only create activities for teams you belong to.'
         );
       }
     }
+
+    // Override leadMinistryId with resolved value from team
+    const activityDataWithResolvedMinistry = {
+      ...activityData,
+      leadMinistryId: resolvedLeadMinistryId,
+    };
 
     // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
@@ -411,7 +415,7 @@ export class ActivitiesService {
         createdDateTime: Date;
         lastUpdatedDateTime: Date;
       } = {
-        ...activityData,
+        ...activityDataWithResolvedMinistry,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
@@ -428,30 +432,29 @@ export class ActivitiesService {
 
       const activityId = created.id;
 
-      // Fetch ministry abbreviation to generate displayId
-      // leadMinistryId is required, so it should always be present
-      // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
-      if (!activityData.leadMinistryId) {
-        throw new BadRequestException('leadMinistryId is required');
-      }
-
-      const [ministry] = await tx
-        .select({ abbreviation: ministries.abbreviation })
-        .from(ministries)
-        .where(eq(ministries.id, activityData.leadMinistryId))
-        .limit(1);
-
-      if (!ministry || !ministry.abbreviation) {
-        throw new BadRequestException(
-          `Ministry with ID ${activityData.leadMinistryId} not found or missing abbreviation`
+      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else first 4 chars of team name
+      let displayId: string;
+      if (resolvedLeadMinistryId != null) {
+        const [ministry] = await tx
+          .select({ abbreviation: ministries.abbreviation })
+          .from(ministries)
+          .where(eq(ministries.id, resolvedLeadMinistryId))
+          .limit(1);
+        if (!ministry?.abbreviation) {
+          throw new BadRequestException(
+            `Ministry with ID ${resolvedLeadMinistryId} not found or missing abbreviation`
+          );
+        }
+        displayId = this.utilsService.generateDisplayId(
+          ministry.abbreviation,
+          activityId
         );
+      } else {
+        const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+          leadTeam.name
+        );
+        displayId = this.utilsService.generateDisplayId(prefix, activityId);
       }
-
-      // Generate displayId using ministry abbreviation and activity ID
-      const displayId = this.utilsService.generateDisplayId(
-        ministry.abbreviation,
-        activityId
-      );
 
       // Update activity with generated displayId
       await tx
@@ -595,40 +598,47 @@ export class ActivitiesService {
   }
 
   /**
-   * Get activity IDs visible to the given teams via (1) comms lead user in team or (2) lead ministry in team
+   * Get activity IDs visible to the given teams via (1) comms lead user in team, (2) lead team in user's teams, or (3) lead ministry in team
    */
   private async getVisibleActivityIdsForTeams(
     teamIds: number[]
   ): Promise<Set<number>> {
     if (teamIds.length === 0) return new Set();
 
-    const [commsLeadActivityIds, leadMinistryActivityIds] = await Promise.all([
-      this.databaseService.db
-        .selectDistinct({ activityId: activityCommsContacts.activityId })
-        .from(activityCommsContacts)
-        .innerJoin(
-          userTeams,
-          eq(activityCommsContacts.userId, userTeams.userId)
-        )
-        .where(
-          and(
-            eq(activityCommsContacts.isLead, true),
-            eq(activityCommsContacts.isActive, true),
-            eq(userTeams.isActive, true),
-            inArray(userTeams.teamId, teamIds)
+    const [commsLeadActivityIds, leadTeamActivityIds, leadMinistryActivityIds] =
+      await Promise.all([
+        this.databaseService.db
+          .selectDistinct({ activityId: activityCommsContacts.activityId })
+          .from(activityCommsContacts)
+          .innerJoin(
+            userTeams,
+            eq(activityCommsContacts.userId, userTeams.userId)
           )
-        )
-        .then((rows) => new Set(rows.map((r) => r.activityId))),
-      this.databaseService.db
-        .select({ id: activities.id })
-        .from(activities)
-        .innerJoin(teams, eq(activities.leadMinistryId, teams.ministryId))
-        .where(inArray(teams.id, teamIds))
-        .then((rows) => new Set(rows.map((r) => r.id))),
-    ]);
+          .where(
+            and(
+              eq(activityCommsContacts.isLead, true),
+              eq(activityCommsContacts.isActive, true),
+              eq(userTeams.isActive, true),
+              inArray(userTeams.teamId, teamIds)
+            )
+          )
+          .then((rows) => new Set(rows.map((r) => r.activityId))),
+        this.databaseService.db
+          .select({ id: activities.id })
+          .from(activities)
+          .where(inArray(activities.leadTeamId, teamIds))
+          .then((rows) => new Set(rows.map((r) => r.id))),
+        this.databaseService.db
+          .select({ id: activities.id })
+          .from(activities)
+          .innerJoin(teams, eq(activities.leadMinistryId, teams.ministryId))
+          .where(inArray(teams.id, teamIds))
+          .then((rows) => new Set(rows.map((r) => r.id))),
+      ]);
 
     const visible = new Set<number>([
       ...commsLeadActivityIds,
+      ...leadTeamActivityIds,
       ...leadMinistryActivityIds,
     ]);
     return visible;
@@ -692,6 +702,9 @@ export class ActivitiesService {
       }
       if (filters.leadMinistryId !== undefined) {
         conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
+      }
+      if (filters.leadTeamId !== undefined) {
+        conditions.push(eq(activities.leadTeamId, filters.leadTeamId));
       }
       if (filters.lookAheadSection) {
         conditions.push(
@@ -901,7 +914,11 @@ export class ActivitiesService {
     id: number,
     dto: UpdateActivityRequest,
     userId: number,
-    context?: { roleName: string }
+    context?: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
   ): Promise<ActivityResponse> {
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
@@ -1034,30 +1051,105 @@ export class ActivitiesService {
       .from(activityReportSettings)
       .where(eq(activityReportSettings.activityId, id));
 
+    // When leadTeamId is being updated, validate scoping
+    if (
+      dto.leadTeamId !== undefined &&
+      context?.permissions &&
+      !context.permissions.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) &&
+      context.teamIds?.length
+    ) {
+      if (!context.teamIds.includes(dto.leadTeamId)) {
+        throw new ForbiddenException(
+          'You may only set lead team to a team you belong to.'
+        );
+      }
+    }
+
     // Use transaction to ensure atomicity of activity and junction table updates
     const updated = await this.databaseService.db.transaction(async (tx) => {
-      // If leadMinistryId is being updated, recalculate displayId
-      // TODO: consider if users still need to reference previous displayId.
-      if (dto.leadMinistryId !== undefined && dto.leadMinistryId !== null) {
-        // Fetch the new ministry abbreviation
-        const [ministry] = await tx
-          .select({ abbreviation: ministries.abbreviation })
-          .from(ministries)
-          .where(eq(ministries.id, dto.leadMinistryId))
-          .limit(1);
+      const effectiveLeadTeamId =
+        dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
+      const effectiveLeadMinistryId =
+        dto.leadMinistryId !== undefined
+          ? dto.leadMinistryId
+          : oldActivity.leadMinistryId;
 
-        if (!ministry || !ministry.abbreviation) {
-          throw new BadRequestException(
-            `Ministry with ID ${dto.leadMinistryId} not found or missing abbreviation`
-          );
+      // Recalculate displayId when lead team or ministry changes
+      const leadTeamOrMinistryChanged =
+        dto.leadTeamId !== undefined || dto.leadMinistryId !== undefined;
+      if (leadTeamOrMinistryChanged) {
+        if (dto.leadTeamId !== undefined) {
+          const [newTeam] = await tx
+            .select({ name: teams.name, ministryId: teams.ministryId })
+            .from(teams)
+            .where(eq(teams.id, dto.leadTeamId))
+            .limit(1);
+          if (!newTeam) {
+            throw new BadRequestException(
+              `Team with ID ${dto.leadTeamId} not found`
+            );
+          }
+          updateData.leadMinistryId = newTeam.ministryId ?? null;
+          if (newTeam.ministryId != null) {
+            const [ministry] = await tx
+              .select({ abbreviation: ministries.abbreviation })
+              .from(ministries)
+              .where(eq(ministries.id, newTeam.ministryId))
+              .limit(1);
+            if (ministry?.abbreviation) {
+              updateData.displayId = this.utilsService.generateDisplayId(
+                ministry.abbreviation,
+                id
+              );
+            } else {
+              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+                newTeam.name
+              );
+              updateData.displayId = this.utilsService.generateDisplayId(
+                prefix,
+                id
+              );
+            }
+          } else {
+            const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+              newTeam.name
+            );
+            updateData.displayId = this.utilsService.generateDisplayId(
+              prefix,
+              id
+            );
+          }
+        } else if (effectiveLeadMinistryId != null) {
+          const [ministry] = await tx
+            .select({ abbreviation: ministries.abbreviation })
+            .from(ministries)
+            .where(eq(ministries.id, effectiveLeadMinistryId))
+            .limit(1);
+          if (ministry?.abbreviation) {
+            updateData.displayId = this.utilsService.generateDisplayId(
+              ministry.abbreviation,
+              id
+            );
+          }
+        } else {
+          const teamId = effectiveLeadTeamId;
+          if (teamId != null) {
+            const [teamRow] = await tx
+              .select({ name: teams.name })
+              .from(teams)
+              .where(eq(teams.id, teamId))
+              .limit(1);
+            if (teamRow) {
+              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+                teamRow.name
+              );
+              updateData.displayId = this.utilsService.generateDisplayId(
+                prefix,
+                id
+              );
+            }
+          }
         }
-
-        // Generate new displayId using the new ministry abbreviation
-        const newDisplayId = this.utilsService.generateDisplayId(
-          ministry.abbreviation,
-          id
-        );
-        updateData.displayId = newDisplayId;
       }
 
       const [updatedActivity] = await tx

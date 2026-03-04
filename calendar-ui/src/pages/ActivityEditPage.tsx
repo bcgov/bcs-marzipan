@@ -5,7 +5,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useRef, useState } from 'react';
 
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
@@ -49,6 +49,7 @@ import {
   useUpdateActivity,
 } from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
+import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { useDateStatuses } from '../hooks/useLookups';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
@@ -69,9 +70,11 @@ export function ActivityEditPage(): React.ReactElement {
   const { activity, refreshActivity } =
     useOutletContext<ActivityLayoutContext>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const id = activity.id;
   const lookups = useFormLookups();
+  const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const { data: leadTeamOptions = [] } = useLeadTeamOptions(canCreateActivity);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -357,6 +360,7 @@ export function ActivityEditPage(): React.ReactElement {
               form={form}
               lookups={lookups}
               readOnly={readOnly}
+              leadTeamOptions={leadTeamOptions}
             />
             <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
               <div className="flex gap-2">

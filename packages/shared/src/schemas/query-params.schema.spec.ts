@@ -86,6 +86,7 @@ describe('filterActivitiesQuerySchema', () => {
       startDateTo: '2025-12-31',
       activityStatusId: '1',
       leadMinistryId: '2',
+      leadTeamId: '3',
       city: 'Victoria',
       isIssue: 'true',
     });
@@ -94,6 +95,7 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.startDateTo).toBe('2025-12-31');
     expect(result.activityStatusId).toBe(1);
     expect(result.leadMinistryId).toBe(2);
+    expect(result.leadTeamId).toBe(3);
     expect(result.city).toBe('Victoria');
     expect(result.isIssue).toBe(true);
   });
@@ -119,6 +121,12 @@ describe('filterActivitiesQuerySchema', () => {
   it('rejects invalid leadMinistryId (non-integer)', () => {
     expect(() =>
       filterActivitiesQuerySchema.parse({ leadMinistryId: 'not-a-number' })
+    ).toThrow();
+  });
+
+  it('rejects invalid leadTeamId (non-integer)', () => {
+    expect(() =>
+      filterActivitiesQuerySchema.parse({ leadTeamId: 'not-a-number' })
     ).toThrow();
   });
 

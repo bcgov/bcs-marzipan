@@ -17,7 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import type { AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import type {
   TeamDetail,
   TeamHistoryEntry,
@@ -67,6 +67,31 @@ export class TeamsController {
   ): Promise<{ success: boolean; data: TeamListItem[] }> {
     const active = activeOnly === undefined || activeOnly === 'true';
     const data = await this.teamsService.findAll(active);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'List teams for lead team dropdown',
+    description:
+      "Returns teams the current user may choose as activity lead team: user's teams, or (with activities.create.any) teams that have create permission.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of teams for lead team select',
+    type: TeamListResponseWrapperDto,
+  })
+  @RequirePermission('activities.create')
+  @Get('lead-options')
+  async getLeadOptions(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: TeamListItem[] }> {
+    const hasCreateAny = user.permissions?.includes(
+      PERMISSIONS.ACTIVITIES.CREATE_ANY
+    );
+    const data = await this.teamsService.findLeadOptions(
+      user.teamIds ?? [],
+      hasCreateAny ?? false
+    );
     return { success: true, data };
   }
 

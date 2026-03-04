@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useFormContext, useFormState } from 'react-hook-form';
 
+import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import {
@@ -45,11 +46,20 @@ type ActivityOverviewSectionProps = {
   organizations: Array<{ value: number; label: string }>;
   tags: Array<{ id: number; text: string }>;
   readOnly?: boolean;
+  /** When provided, show Lead team select (two-line: team + ministry). Otherwise show legacy lead ministry only. */
+  leadTeamOptions?: TeamListItem[];
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ categories, ministries, organizations, tags, readOnly = false }) => {
+> = ({
+  categories,
+  ministries,
+  organizations,
+  tags,
+  readOnly = false,
+  leadTeamOptions,
+}) => {
   const form = useFormContext<ActivityFormData>();
 
   const [selectedCategories, toggleCategory] = useMultiSelect<
@@ -129,38 +139,103 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="leadMinistryId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Lead Ministry <span className="text-destructive">*</span>
-            </FormLabel>
-            <Select
-              disabled={readOnly}
-              onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
-              }
-              value={field.value != null ? String(field.value) : ''}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lead ministry" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {ministries.map((ministry) => (
-                  <SelectItem key={ministry.id} value={String(ministry.id)}>
-                    {ministry.displayName || ministry.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {leadTeamOptions ? (
+        <FormField
+          control={form.control}
+          name="leadTeamId"
+          render={({ field }) => {
+            const selectedTeam =
+              leadTeamOptions.find((t) => t.id === field.value) ?? null;
+            return (
+              <FormItem>
+                <FormLabel>
+                  Lead team <span className="text-destructive">*</span>
+                </FormLabel>
+                <Select
+                  disabled={readOnly}
+                  onValueChange={(value) => {
+                    const teamId = value === '' ? undefined : Number(value);
+                    field.onChange(teamId);
+                    const team = leadTeamOptions.find((t) => t.id === teamId);
+                    form.setValue(
+                      'leadMinistryId',
+                      team?.ministryId ?? undefined
+                    );
+                  }}
+                  value={field.value != null ? String(field.value) : ''}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select lead team">
+                        {selectedTeam ? (
+                          <span className="flex flex-col items-start">
+                            <span>
+                              {selectedTeam.displayName || selectedTeam.name}
+                            </span>
+                            {selectedTeam.ministryName && (
+                              <span className="text-muted-foreground text-xs font-normal">
+                                {selectedTeam.ministryName}
+                              </span>
+                            )}
+                          </span>
+                        ) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {leadTeamOptions.map((team) => (
+                      <SelectItem key={team.id} value={String(team.id)}>
+                        <span className="flex flex-col items-start">
+                          <span>{team.displayName || team.name}</span>
+                          {team.ministryName ? (
+                            <span className="text-muted-foreground text-xs font-normal">
+                              {team.ministryName}
+                            </span>
+                          ) : null}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
+      ) : (
+        <FormField
+          control={form.control}
+          name="leadMinistryId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Lead Ministry <span className="text-destructive">*</span>
+              </FormLabel>
+              <Select
+                disabled={readOnly}
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+                value={field.value != null ? String(field.value) : ''}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lead ministry" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ministries.map((ministry) => (
+                    <SelectItem key={ministry.id} value={String(ministry.id)}>
+                      {ministry.displayName || ministry.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       <FormField
         control={form.control}

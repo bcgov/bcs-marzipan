@@ -113,6 +113,14 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('findLeadOptions', () => {
+    it('should return empty array when userTeamIds is empty and hasCreateAny is false', async () => {
+      const result = await service.findLeadOptions([], false);
+      expect(result).toEqual([]);
+      expect(mockDatabaseService.db.select).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findOne', () => {
     it('should return null when team does not exist', async () => {
       mockDatabaseService.db.select = vi

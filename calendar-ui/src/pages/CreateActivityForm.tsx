@@ -37,6 +37,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCreateActivity } from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
+import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
   DEFAULT_FORM_VALUES,
@@ -85,6 +86,7 @@ export const CreateActivityForm: FC = () => {
 
   // Fetch all lookup data
   const lookups = useFormLookups();
+  const { data: leadTeamOptions = [] } = useLeadTeamOptions(canCreateActivity);
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -114,6 +116,22 @@ export const CreateActivityForm: FC = () => {
       }
     }
   }, [timeStatuses, form]);
+
+  // Default lead team to user's first team when options load (only if form has no leadTeamId yet)
+  useEffect(() => {
+    if (leadTeamOptions.length === 0) return;
+    const currentLeadTeamId = form.getValues('leadTeamId');
+    if (currentLeadTeamId != null) return;
+    const firstUserTeamId = user?.teamIds?.[0];
+    const defaultTeam =
+      (firstUserTeamId != null &&
+        leadTeamOptions.find((t) => t.id === firstUserTeamId)) ||
+      leadTeamOptions[0];
+    if (defaultTeam) {
+      form.setValue('leadTeamId', defaultTeam.id);
+      form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
+    }
+  }, [leadTeamOptions, user?.teamIds, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
@@ -381,7 +399,12 @@ export const CreateActivityForm: FC = () => {
             void form.handleSubmit(onSubmit, onError)(e);
           }}
         >
-          <ActivityFormBody form={form} lookups={lookups} readOnly={false} />
+          <ActivityFormBody
+            form={form}
+            lookups={lookups}
+            readOnly={false}
+            leadTeamOptions={leadTeamOptions}
+          />
 
           <div className="flex justify-end gap-4 pt-6">
             <Button
@@ -447,6 +470,7 @@ export const CreateActivityForm: FC = () => {
         lookups={lookups}
         dateStatuses={dateStatuses}
         timeStatuses={timeStatuses}
+        leadTeamOptions={leadTeamOptions}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }
