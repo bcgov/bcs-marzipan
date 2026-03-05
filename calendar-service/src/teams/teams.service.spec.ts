@@ -119,6 +119,66 @@ describe('TeamsService', () => {
       expect(result).toEqual([]);
       expect(mockDatabaseService.db.select).not.toHaveBeenCalled();
     });
+
+    it('should return all active teams when hasCreateAny is true', async () => {
+      const activeTeamIds = [{ id: 1 }, { id: 2 }];
+      const teamRows = [
+        {
+          id: 1,
+          name: 'Team A',
+          displayName: 'Team A',
+          description: null,
+          sortOrder: 0,
+          isActive: true,
+          roleId: 1,
+          ministryId: 1,
+        },
+        {
+          id: 2,
+          name: 'Team B',
+          displayName: 'Team B',
+          description: null,
+          sortOrder: 1,
+          isActive: true,
+          roleId: 2,
+          ministryId: null,
+        },
+      ];
+      const memberCounts = [
+        { teamId: 1, count: 2 },
+        { teamId: 2, count: 1 },
+      ];
+      const ministryNameRows = [{ id: 1, displayName: 'Ministry One' }];
+
+      const chainWithWhere = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(activeTeamIds),
+      };
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(chainWithWhere)
+        .mockReturnValueOnce(createChain(teamRows, 'orderBy'))
+        .mockReturnValueOnce(createChain(memberCounts, 'groupBy'))
+        .mockReturnValueOnce(createChain(ministryNameRows, 'where'));
+
+      const result = await service.findLeadOptions([], true);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        id: 1,
+        name: 'Team A',
+        memberCount: 2,
+        ministryId: 1,
+        ministryName: 'Ministry One',
+      });
+      expect(result[1]).toMatchObject({
+        id: 2,
+        name: 'Team B',
+        memberCount: 1,
+        ministryId: null,
+        ministryName: null,
+      });
+    });
   });
 
   describe('findOne', () => {

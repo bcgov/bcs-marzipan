@@ -62,7 +62,7 @@ export async function fetchTeamHistory(
 
 /**
  * Teams the current user may choose as activity lead team (for create/edit).
- * Requires activities.create. Returns user's teams or (with create.any) teams that have create permission.
+ * Requires activities.create. Returns user's teams or (with create.any) all active teams.
  */
 export async function fetchLeadTeamOptions(): Promise<TeamListItem[]> {
   const response = await api.get<{

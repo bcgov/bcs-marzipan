@@ -209,7 +209,11 @@ export const CreateActivityForm: FC = () => {
   // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
-      form.reset(existingDraft.draftData as ActivityFormData);
+      const normalized = {
+        ...getDefaultFormValues(),
+        ...existingDraft.draftData,
+      } as ActivityFormData;
+      form.reset(normalized);
     }
     setShowDraftDialog(false);
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);

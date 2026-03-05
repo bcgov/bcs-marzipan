@@ -871,7 +871,6 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      let withObjCallCount = 0;
       mockDatabaseService.db.select = vi.fn((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
@@ -879,7 +878,6 @@ describe('ActivitiesService', () => {
             noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
           );
         }
-        withObjCallCount++;
         const selectArg = args[0];
         const isStatusNameQuery =
           selectArg && typeof selectArg === 'object' && 'name' in selectArg;

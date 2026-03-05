@@ -42,7 +42,6 @@ export function ActivityFormBody({
       <div className="space-y-6">
         <ActivityOverviewSection
           categories={lookups.categories}
-          ministries={lookups.ministries}
           organizations={lookups.organizations}
           tags={lookups.tags}
           readOnly={readOnly}
@@ -80,7 +79,10 @@ export function ActivityFormBody({
         />
 
         <ActivitySharingSection
-          sharedWithTeamOptions={[]}
+          sharedWithTeamOptions={lookups.sharedWithTeams.map((t) => ({
+            value: String(t.id),
+            label: t.displayName ?? t.name,
+          }))}
           readOnly={readOnly}
         />
       </div>

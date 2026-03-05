@@ -105,7 +105,7 @@ export function mapResponseToFormData(
     leadOrgName: response.leadOrgName ?? undefined,
     newsReleaseId: response.newsReleaseId ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
-    leadTeamId: response.leadTeamId,
+    leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
     eventPlannerLeadId: response.eventPlannerLeadId ?? undefined,
     eventPlannerLeadName: response.eventPlannerLeadName ?? undefined,

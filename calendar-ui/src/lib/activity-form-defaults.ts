@@ -9,6 +9,7 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     isAllDay: false,
     isIssue: false,
     isConfidential: false,
+    visibility: 'global',
     categoryIds: [],
     tagIds: [],
     commsMaterialIds: [],
@@ -21,6 +22,7 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     timeStatusId: 1,
     pitchRequiredStatusId: 1,
     translationsRequiredStatusId: 1,
+    leadTeamId: 0,
   };
 }
 

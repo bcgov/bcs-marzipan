@@ -90,16 +90,11 @@ export function ActivityViewPage(): React.ReactElement {
   });
 
   useEffect(() => {
-    if (
-      lookups.governmentRepresentatives?.length &&
-      lookups.categories?.length
-    ) {
-      readyRef.current = false;
-      form.reset(activityToFormData(activity, lookups));
-      requestAnimationFrame(() => {
-        readyRef.current = true;
-      });
-    }
+    readyRef.current = false;
+    form.reset(activityToFormData(activity, lookups));
+    requestAnimationFrame(() => {
+      readyRef.current = true;
+    });
   }, [activity, lookups, form]);
 
   const handleEnterEdit = () => {

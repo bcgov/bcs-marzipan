@@ -146,14 +146,9 @@ export function ActivityEditPage(): React.ReactElement {
   );
 
   useEffect(() => {
-    if (
-      lookups.governmentRepresentatives?.length &&
-      lookups.categories?.length
-    ) {
-      const mapped = activityToFormData(activity, lookups);
-      form.reset(mapped);
-      initialFormDataRef.current = mapped;
-    }
+    const mapped = activityToFormData(activity, lookups);
+    form.reset(mapped);
+    initialFormDataRef.current = mapped;
   }, [activity, lookups, form]);
 
   // When status is delete_requested or deleted, only admins may stay on edit page; redirect others to view

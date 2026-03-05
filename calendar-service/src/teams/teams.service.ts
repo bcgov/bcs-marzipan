@@ -3,8 +3,6 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   ministries,
-  permissions,
-  rolePermissions,
   teamHistory,
   teams,
   users,
@@ -43,7 +41,7 @@ export class TeamsService {
 
   /**
    * Teams the current user can choose as lead team when creating/editing an activity.
-   * Without activities.create.any: only the user's teams. With it: teams whose role has activities.create.
+   * Without activities.create.any: only the user's teams. With it: all active teams (so any activity's lead team can be displayed and selected).
    */
   async findLeadOptions(
     userTeamIds: number[],
@@ -52,21 +50,10 @@ export class TeamsService {
     let teamIds: number[];
     if (hasCreateAny) {
       const rows = await this.databaseService.db
-        .selectDistinct({ teamId: teams.id })
+        .select({ id: teams.id })
         .from(teams)
-        .innerJoin(rolePermissions, eq(teams.roleId, rolePermissions.roleId))
-        .innerJoin(
-          permissions,
-          eq(rolePermissions.permissionId, permissions.id)
-        )
-        .where(
-          and(
-            eq(teams.isActive, true),
-            eq(rolePermissions.isActive, true),
-            eq(permissions.key, 'activities.create')
-          )
-        );
-      teamIds = rows.map((r) => r.teamId);
+        .where(eq(teams.isActive, true));
+      teamIds = rows.map((r) => r.id);
     } else {
       if (userTeamIds.length === 0) return [];
       teamIds = userTeamIds;

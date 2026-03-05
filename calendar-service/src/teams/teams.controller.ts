@@ -76,7 +76,7 @@ export class TeamsController {
   @ApiOperation({
     summary: 'List teams for lead team dropdown',
     description:
-      "Returns teams the current user may choose as activity lead team: user's teams, or (with activities.create.any) teams that have create permission.",
+      "Returns teams the current user may choose as activity lead team: user's teams, or (with activities.create.any) all active teams so any activity's lead team can be displayed and selected.",
   })
   @ApiResponse({
     status: 200,
