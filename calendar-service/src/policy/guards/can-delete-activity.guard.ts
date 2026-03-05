@@ -10,7 +10,8 @@ import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
 /**
  * Guard for activity delete (hard and soft).
- * Only users with activities.delete permission (e.g. Admin, System Admin) may delete.
+ * Requires activities.delete permission; no context (e.g. comms lead) can bypass this.
+ * Viewers and others without the permission cannot delete, even if other context checks would pass.
  */
 @Injectable()
 export class CanDeleteActivityGuard implements CanActivate {
@@ -40,7 +41,7 @@ export class CanDeleteActivityGuard implements CanActivate {
     }
 
     throw new ForbiddenException(
-      'Only admin can delete activities. You do not have the required permission.'
+      'You do not have the required permission to delete activities.'
     );
   }
 }

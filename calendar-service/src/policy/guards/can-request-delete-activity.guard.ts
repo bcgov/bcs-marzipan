@@ -6,14 +6,14 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import type { AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
 import { PolicyService } from '../policy.service';
 
 /**
- * Guard for activity request-delete (comms contacts or lead-team members).
- * Allows the request if the user is a comms contact (lead or not) on the activity,
- * or a member of the activity's lead team (leadTeamId).
+ * Guard for activity request-delete.
+ * Requires (1) activities.requestDelete permission, and (2) user is a comms contact
+ * on the activity or a member of the activity's lead team.
  * Business rule validation (status not already delete_requested/deleted) is done in the service.
  */
 @Injectable()
@@ -26,6 +26,15 @@ export class CanRequestDeleteActivityGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('Authentication required');
+    }
+
+    const hasPermission =
+      user.permissions?.includes(PERMISSIONS.ACTIVITIES.REQUEST_DELETE) ??
+      false;
+    if (!hasPermission) {
+      throw new ForbiddenException(
+        'You do not have permission to request deletion of activities.'
+      );
     }
 
     const activityIdParam = request.params?.id;

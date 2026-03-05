@@ -78,8 +78,11 @@ export async function updateActivity(
   return res.data.data;
 }
 
-export async function deleteActivity(id: number): Promise<void> {
-  await api.delete(`/activities/${id}`);
+export async function deleteActivity(
+  id: number,
+  body?: { reason?: string }
+): Promise<void> {
+  await api.delete(`/activities/${id}`, body ? { data: body } : undefined);
 }
 
 export async function requestDeleteActivity(

@@ -62,7 +62,28 @@ describe('CanRequestDeleteActivityGuard', () => {
     expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
   });
 
-  it('should return true when user is comms contact for the activity', async () => {
+  it('should throw ForbiddenException when user lacks activities.requestDelete permission', async () => {
+    const user: AuthUser = {
+      id: 5,
+      username: 'viewer',
+      displayName: 'Viewer',
+      email: 'v@example.com',
+      roleId: 1,
+      roleName: 'Viewer',
+      permissions: ['activities.view'],
+      teamIds: [10],
+    };
+    const ctx = createMockContext(user, { id: '42' });
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      'You do not have permission to request deletion of activities.'
+    );
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
+    expect(policyService.getLeadTeamIdForActivity).not.toHaveBeenCalled();
+  });
+
+  it('should return true when user has requestDelete permission and is comms contact for the activity', async () => {
     const user: AuthUser = {
       id: 5,
       username: 'comms',
@@ -70,7 +91,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       email: 'comms@example.com',
       roleId: 2,
       roleName: 'Editor',
-      permissions: [],
+      permissions: ['activities.requestDelete'],
       teamIds: [],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(true);
@@ -83,7 +104,7 @@ describe('CanRequestDeleteActivityGuard', () => {
     expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 5);
   });
 
-  it('should return true when user is in activity lead team but not comms contact', async () => {
+  it('should return true when user has requestDelete permission and is in activity lead team but not comms contact', async () => {
     const user: AuthUser = {
       id: 7,
       username: 'teammate',
@@ -91,7 +112,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       email: 'team@example.com',
       roleId: 2,
       roleName: 'Editor',
-      permissions: [],
+      permissions: ['activities.requestDelete'],
       teamIds: [10, 20],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(false);
@@ -105,7 +126,7 @@ describe('CanRequestDeleteActivityGuard', () => {
     expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(42);
   });
 
-  it('should throw ForbiddenException when user is not comms contact or lead team member', async () => {
+  it('should throw ForbiddenException when user has requestDelete but is not comms contact or lead team member', async () => {
     const user: AuthUser = {
       id: 3,
       username: 'editor',
@@ -113,7 +134,11 @@ describe('CanRequestDeleteActivityGuard', () => {
       email: 'editor@example.com',
       roleId: 2,
       roleName: 'Editor',
-      permissions: ['activities.view', 'activities.edit'],
+      permissions: [
+        'activities.view',
+        'activities.edit',
+        'activities.requestDelete',
+      ],
       teamIds: [5, 6],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(false);
@@ -141,9 +166,9 @@ describe('CanRequestDeleteActivityGuard', () => {
       username: 'u',
       displayName: 'U',
       email: 'u@e.com',
-      roleId: 1,
-      roleName: 'Viewer',
-      permissions: [],
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: ['activities.requestDelete'],
       teamIds: [],
     };
     const ctx = createMockContext(user, {});
@@ -161,9 +186,9 @@ describe('CanRequestDeleteActivityGuard', () => {
       username: 'u',
       displayName: 'U',
       email: 'u@e.com',
-      roleId: 1,
-      roleName: 'Viewer',
-      permissions: [],
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: ['activities.requestDelete'],
       teamIds: [],
     };
     const ctx = createMockContext(user, { id: 'not-a-number' });
@@ -179,9 +204,9 @@ describe('CanRequestDeleteActivityGuard', () => {
       username: 'u',
       displayName: 'U',
       email: 'u@e.com',
-      roleId: 1,
-      roleName: 'Viewer',
-      permissions: [],
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: ['activities.requestDelete'],
       teamIds: [],
     };
     const ctx = createMockContext(user, { id: '1.5' });

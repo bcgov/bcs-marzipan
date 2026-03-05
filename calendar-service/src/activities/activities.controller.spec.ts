@@ -301,9 +301,29 @@ describe('ActivitiesController', () => {
         {
           permissions: mockUser.permissions,
           teamIds: mockUser.teamIds,
-        }
+        },
+        { reason: undefined }
       );
       expect(mockActivitiesService.remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass reason to service when body.reason is provided', async () => {
+      const deleteResponse = { message: 'Activity #1 deleted successfully' };
+      mockActivitiesService.remove.mockResolvedValue(deleteResponse);
+
+      await controller.remove(1, mockUser, {
+        reason: 'Duplicate and no longer needed',
+      });
+
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        },
+        { reason: 'Duplicate and no longer needed' }
+      );
     });
 
     it('should throw error when deleting non-existent activity', async () => {
@@ -318,7 +338,8 @@ describe('ActivitiesController', () => {
         {
           permissions: mockUser.permissions,
           teamIds: mockUser.teamIds,
-        }
+        },
+        { reason: undefined }
       );
     });
   });

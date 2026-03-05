@@ -10,6 +10,9 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 
+import { fetchActivityHistory } from '../api/activitiesApi';
+import { ApiError } from '../api/errors';
+import { DeleteActivityModal } from '../components/activities/DeleteActivityModal';
 import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
 import { ActivityFormBody } from '../components/ActivityFormBody';
 import { ActivityPageHeader } from '../components/ActivityPageHeader';
@@ -18,7 +21,11 @@ import { normalizeActivityStatus } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import { useAuth } from '../hooks/useAuth';
-import { useRestoreActivity } from '../hooks/useCalendar';
+import {
+  useDeleteActivity,
+  useRestoreActivity,
+  useSoftDeleteActivity,
+} from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
@@ -43,6 +50,11 @@ export function ActivityViewPage(): React.ReactElement {
   const hasNavigatedRef = useRef(false);
   const readyRef = useRef(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
+    string | undefined
+  >(undefined);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
 
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -60,12 +72,18 @@ export function ActivityViewPage(): React.ReactElement {
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canRestore = isCommsContact || isLeadTeamMember || isAdminOrSysAdmin;
 
+  // Delete button only for users with activities.delete (e.g. Admin, System Admin)
+  const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
+  const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
+  const showDeleteButton = canDelete;
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&
-    !isAdminOrSysAdmin;
-  const showDeleteButton = !isBlockedStatus && isAdminOrSysAdmin;
+    canRequestDelete &&
+    !canDelete;
   const restoreMutation = useRestoreActivity();
+  const deleteMutation = useDeleteActivity();
+  const softDeleteMutation = useSoftDeleteActivity();
 
   const handleRestore = async () => {
     setIsRestoring(true);
@@ -78,6 +96,73 @@ export function ActivityViewPage(): React.ReactElement {
       showErrorToast(err);
     } finally {
       setIsRestoring(false);
+    }
+  };
+
+  const handleOpenDeleteModal = async () => {
+    if (normalizedStatus === 'delete_requested') {
+      try {
+        const history = await fetchActivityHistory(activity.id);
+        const deleteRequestedEntry = history.find(
+          (e) => e.actionType === 'delete_requested'
+        );
+        const note =
+          deleteRequestedEntry?.notes?.trim() &&
+          deleteRequestedEntry.notes.trim().length > 0
+            ? deleteRequestedEntry.notes.trim()
+            : undefined;
+        setDeleteModalInitialNotes(note);
+      } catch (err) {
+        logger.error('Failed to load activity history for delete modal', err);
+        setDeleteModalInitialNotes(undefined);
+      }
+    } else {
+      setDeleteModalInitialNotes(undefined);
+    }
+    setShowDeleteModal(true);
+  };
+
+  const handleSoftDelete = async (reason: string) => {
+    setIsDeleteSubmitting(true);
+    try {
+      await softDeleteMutation.mutateAsync({
+        id: activity.id,
+        body: { reason },
+      });
+      await refreshActivity();
+      setShowDeleteModal(false);
+      toast.success('Activity soft deleted');
+    } catch (err) {
+      logger.error('Failed to soft delete activity', err);
+      const message =
+        err instanceof ApiError && err.status === 403
+          ? 'You do not have permission to delete this activity'
+          : undefined;
+      showErrorToast(err, message);
+    } finally {
+      setIsDeleteSubmitting(false);
+    }
+  };
+
+  const handleHardDelete = async (reason: string) => {
+    setIsDeleteSubmitting(true);
+    try {
+      await deleteMutation.mutateAsync({
+        id: activity.id,
+        body: reason.trim().length > 0 ? { reason: reason.trim() } : undefined,
+      });
+      setShowDeleteModal(false);
+      toast.success('Activity permanently deleted');
+      void navigate('/');
+    } catch (err) {
+      logger.error('Failed to delete activity', err);
+      const message =
+        err instanceof ApiError && err.status === 403
+          ? 'You do not have permission to delete this activity'
+          : undefined;
+      showErrorToast(err, message);
+    } finally {
+      setIsDeleteSubmitting(false);
     }
   };
 
@@ -159,6 +244,10 @@ export function ActivityViewPage(): React.ReactElement {
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleOpenDeleteModal();
+                    }}
                   >
                     Delete
                   </Button>
@@ -174,6 +263,19 @@ export function ActivityViewPage(): React.ReactElement {
           </form>
         </Form>
       </FormProvider>
+      <DeleteActivityModal
+        open={showDeleteModal}
+        onOpenChange={(open) => {
+          setShowDeleteModal(open);
+          if (!open) setDeleteModalInitialNotes(undefined);
+        }}
+        activityId={activity.id}
+        displayId={displayId}
+        onSoftDelete={handleSoftDelete}
+        onHardDelete={handleHardDelete}
+        isSubmitting={isDeleteSubmitting}
+        initialNotes={deleteModalInitialNotes}
+      />
     </>
   );
 }

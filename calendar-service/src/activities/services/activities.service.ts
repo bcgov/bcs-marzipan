@@ -15,14 +15,19 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityHistory,
   activityReportSettings,
   activityRepresentatives,
+  activitySectors,
   activitySharedWithTeams,
   activityStatuses,
+  activitySubscriptions,
   activityTags,
   activityThemes,
   activityTranslationsRequired,
   categories,
+  deletionAudit,
+  favoriteActivities,
   ministries,
   teams,
   userTeams,
@@ -1467,11 +1472,13 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete).
    * When context.permissions does not include activities.delete.any, activity must be in visible set for context.teamIds.
+   * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
    */
   async remove(
     id: number,
     userId: number,
-    context?: { permissions?: string[]; teamIds?: number[] }
+    context?: { permissions?: string[]; teamIds?: number[] },
+    options?: { reason?: string }
   ): Promise<{ message: string }> {
     // Scope: without activities.delete.any, activity must be visible to user's teams
     const canDeleteAny =
@@ -1491,18 +1498,57 @@ export class ActivitiesService {
     // Verify activity exists so we return 404 for non-existent IDs
     await this.findOne(id);
 
-    // Record deletion in history before deleting
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'deleted',
-      undefined,
-      'Activity permanently deleted'
-    );
+    const reason = options?.reason ?? undefined;
 
-    await this.databaseService.db
-      .delete(activities)
-      .where(eq(activities.id, id));
+    await this.databaseService.db.transaction(async (tx) => {
+      // Audit trail for permanent deletion (no FK to activities so record survives)
+      await tx.insert(deletionAudit).values({
+        activityId: id,
+        userId,
+        reason: reason ?? null,
+      });
+
+      // Delete all child rows that reference this activity (order does not matter for these tables)
+      await tx
+        .delete(activityHistory)
+        .where(eq(activityHistory.activityId, id));
+      await tx
+        .delete(activityCategories)
+        .where(eq(activityCategories.activityId, id));
+      await tx
+        .delete(activityCommsContacts)
+        .where(eq(activityCommsContacts.activityId, id));
+      await tx
+        .delete(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      await tx
+        .delete(activityReportSettings)
+        .where(eq(activityReportSettings.activityId, id));
+      await tx
+        .delete(activityRepresentatives)
+        .where(eq(activityRepresentatives.activityId, id));
+      await tx
+        .delete(activitySharedWithTeams)
+        .where(eq(activitySharedWithTeams.activityId, id));
+      await tx
+        .delete(activitySectors)
+        .where(eq(activitySectors.activityId, id));
+      await tx.delete(activityTags).where(eq(activityTags.activityId, id));
+      await tx.delete(activityThemes).where(eq(activityThemes.activityId, id));
+      await tx
+        .delete(activityTranslationsRequired)
+        .where(eq(activityTranslationsRequired.activityId, id));
+      await tx
+        .delete(favoriteActivities)
+        .where(eq(favoriteActivities.activityId, id));
+      await tx
+        .delete(activitySubscriptions)
+        .where(eq(activitySubscriptions.activityId, id));
+      await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
+
+      await tx.delete(activities).where(eq(activities.id, id));
+    });
+
     return { message: `Activity #${id} deleted successfully` };
   }
 

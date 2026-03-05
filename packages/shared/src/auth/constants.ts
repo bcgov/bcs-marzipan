@@ -76,6 +76,7 @@ export const PERMISSIONS = {
     CREATE: 'activities.create',
     EDIT: 'activities.edit',
     DELETE: 'activities.delete',
+    REQUEST_DELETE: 'activities.requestDelete',
     CREATE_ANY: 'activities.create.any',
     DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',

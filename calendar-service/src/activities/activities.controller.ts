@@ -25,6 +25,7 @@ import type { ActivityResponse } from '@corpcal/shared/api';
 import {
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  hardDeleteRequestBodySchema,
   requestDeleteRequestSchema,
   restoreRequestSchema,
   softDeleteRequestSchema,
@@ -35,6 +36,7 @@ import {
   updateThemesSchema,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
+  type HardDeleteRequest,
   type RequestDeleteRequest,
   type RestoreRequest,
   type SoftDeleteRequest,
@@ -524,16 +526,28 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @ApiBody({
+    required: false,
+    description: 'Optional reason for audit (stored in deletion_audit).',
+    schema: { type: 'object', properties: { reason: { type: 'string' } } },
+  })
   @UseGuards(CanDeleteActivityGuard)
   @Delete(':id')
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(hardDeleteRequestBodySchema))
+    body: HardDeleteRequest = {}
   ): Promise<{ message: string }> {
-    return this.activitiesService.remove(id, user.id, {
-      permissions: user.permissions,
-      teamIds: user.teamIds,
-    });
+    return this.activitiesService.remove(
+      id,
+      user.id,
+      {
+        permissions: user.permissions,
+        teamIds: user.teamIds,
+      },
+      { reason: body.reason }
+    );
   }
 
   @ApiOperation({

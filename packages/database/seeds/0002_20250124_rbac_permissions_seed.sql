@@ -8,12 +8,13 @@ INSERT INTO permissions (key, display_name, category, subcategory, resource, act
   ('activities.create', 'Create activities', 'Activities', 'Basic', 'activities', 'create', 2),
   ('activities.edit', 'Edit activities', 'Activities', 'Basic', 'activities', 'edit', 3),
   ('activities.delete', 'Delete activities', 'Activities', 'Basic', 'activities', 'delete', 4),
-  ('activities.approve', 'Approve activities', 'Activities', 'Basic', 'activities', 'approve', 5),
-  ('activities.review', 'Review activities', 'Activities', 'Basic', 'activities', 'review', 6),
-  ('activities.publish', 'Publish activities', 'Activities', 'Basic', 'activities', 'publish', 7),
-  ('activities.unpublish', 'Unpublish activities', 'Activities', 'Basic', 'activities', 'unpublish', 8),
-  ('activities.create.any', 'Create activities for any team', 'Activities', 'Admin', 'activities', 'create', 9),
-  ('activities.delete.any', 'Delete any team''s activities', 'Activities', 'Admin', 'activities', 'delete', 10),
+  ('activities.requestDelete', 'Request delete (activity)', 'Activities', 'Basic', 'activities', 'requestDelete', 5),
+  ('activities.approve', 'Approve activities', 'Activities', 'Basic', 'activities', 'approve', 6),
+  ('activities.review', 'Review activities', 'Activities', 'Basic', 'activities', 'review', 7),
+  ('activities.publish', 'Publish activities', 'Activities', 'Basic', 'activities', 'publish', 8),
+  ('activities.unpublish', 'Unpublish activities', 'Activities', 'Basic', 'activities', 'unpublish', 9),
+  ('activities.create.any', 'Create activities for any team', 'Activities', 'Admin', 'activities', 'create', 10),
+  ('activities.delete.any', 'Delete any team''s activities', 'Activities', 'Admin', 'activities', 'delete', 11),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', 'drafts', 'view', 10),
   ('drafts.create', 'Create drafts', 'Drafts', 'Basic', 'drafts', 'create', 11),
   ('drafts.edit', 'Edit drafts', 'Drafts', 'Basic', 'drafts', 'edit', 12),
@@ -52,7 +53,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.delete',
+  'activities.view','activities.create','activities.edit','activities.requestDelete',
   'drafts.view','drafts.create','drafts.edit','drafts.delete',
   'reports.view','lookups.view'
 )
@@ -70,7 +71,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Advanced Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.delete','activities.approve',
+  'activities.view','activities.create','activities.edit','activities.requestDelete','activities.approve',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','lookups.view'
 )
@@ -81,7 +82,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Admin' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.delete','activities.create.any','activities.delete.any','activities.approve','activities.review','activities.publish','activities.unpublish',
+  'activities.view','activities.create','activities.edit','activities.delete','activities.requestDelete','activities.create.any','activities.delete.any','activities.approve','activities.review','activities.publish','activities.unpublish',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','reports.create_custom',
   'lookups.view','lookups.manage',

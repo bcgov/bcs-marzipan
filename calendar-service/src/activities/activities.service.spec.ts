@@ -1214,4 +1214,88 @@ describe('ActivitiesService', () => {
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
   });
+
+  describe('remove', () => {
+    it('should write to deletion_audit, delete child rows, and delete activity in a transaction', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      const insertValues = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+      });
+      const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const mockTx = {
+        insert: vi.fn().mockReturnValue({ values: insertValues }),
+        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        return await callback(mockTx);
+      });
+
+      const result = await service.remove(
+        1,
+        10,
+        {
+          permissions: ['activities.delete', 'activities.delete.any'],
+          teamIds: [1],
+        },
+        { reason: 'Duplicate entry' }
+      );
+
+      expect(result).toEqual({ message: 'Activity #1 deleted successfully' });
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(mockTx.insert).toHaveBeenCalledTimes(1);
+      expect(insertValues).toHaveBeenCalledWith({
+        activityId: 1,
+        userId: 10,
+        reason: 'Duplicate entry',
+      });
+      expect(mockTx.delete).toHaveBeenCalled();
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+    });
+
+    it('should throw ForbiddenException when user lacks delete.any and activity not in visible set', async () => {
+      const emptySetThenable = {
+        then: (onFulfilled: (rows: unknown[]) => unknown) => {
+          Promise.resolve([]).then(onFulfilled);
+          return Promise.resolve(new Set<number>());
+        },
+      };
+      mockDatabaseService.db.selectDistinct = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnValue(emptySetThenable),
+        innerJoin: vi.fn().mockReturnThis(),
+      });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([createMockActivity({ id: 1 })]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnValue(emptySetThenable),
+          innerJoin: vi.fn().mockReturnThis(),
+        };
+      });
+
+      await expect(
+        service.remove(1, 10, {
+          permissions: ['activities.delete'],
+          teamIds: [99],
+        })
+      ).rejects.toThrow(
+        'You may only delete activities that belong to your teams.'
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+  });
 });

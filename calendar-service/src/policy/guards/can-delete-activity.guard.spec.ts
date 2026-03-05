@@ -73,7 +73,7 @@ describe('CanDeleteActivityGuard', () => {
 
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
     expect(() => guard.canActivate(ctx)).toThrow(
-      /Only admin can delete activities/
+      /You do not have the required permission to delete activities/
     );
   });
 
@@ -92,7 +92,7 @@ describe('CanDeleteActivityGuard', () => {
 
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
     expect(() => guard.canActivate(ctx)).toThrow(
-      /Only admin can delete activities/
+      /You do not have the required permission to delete activities/
     );
   });
 

@@ -13,6 +13,7 @@ import {
 } from '@corpcal/shared/schemas';
 
 import { fetchActivityHistory } from '../api/activitiesApi';
+import { ApiError } from '../api/errors';
 import ActivityHistory from '../components/activities/ActivityHistory';
 import { DeleteActivityModal } from '../components/activities/DeleteActivityModal';
 import { EditActivityConfirmModal } from '../components/activities/EditActivityConfirmModal';
@@ -280,22 +281,33 @@ export function ActivityEditPage(): React.ReactElement {
       toast.success('Activity soft deleted');
     } catch (err) {
       logger.error('Failed to soft delete activity', err);
-      showErrorToast(err);
+      const message =
+        err instanceof ApiError && err.status === 403
+          ? 'You do not have permission to delete this activity'
+          : undefined;
+      showErrorToast(err, message);
     } finally {
       setIsDeleteSubmitting(false);
     }
   };
 
-  const handleHardDelete = async (_reason: string) => {
+  const handleHardDelete = async (reason: string) => {
     setIsDeleteSubmitting(true);
     try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync({
+        id,
+        body: reason.trim().length > 0 ? { reason: reason.trim() } : undefined,
+      });
       setShowDeleteModal(false);
       toast.success('Activity permanently deleted');
       void navigate('/');
     } catch (err) {
       logger.error('Failed to delete activity', err);
-      showErrorToast(err);
+      const message =
+        err instanceof ApiError && err.status === 403
+          ? 'You do not have permission to delete this activity'
+          : undefined;
+      showErrorToast(err, message);
     } finally {
       setIsDeleteSubmitting(false);
     }
@@ -333,11 +345,15 @@ export function ActivityEditPage(): React.ReactElement {
     setShowDeleteModal(true);
   };
 
+  // Delete button only for users with activities.delete (e.g. Admin, System Admin)
+  const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
+  const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
+  const showDeleteButton = canDelete;
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&
-    !isAdminOrSysAdmin;
-  const showDeleteButton = !isBlockedStatus && isAdminOrSysAdmin;
+    canRequestDelete &&
+    !canDelete;
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
