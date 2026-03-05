@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { vi } from 'vitest';
 
 import { SYSTEM_ROLES } from '@corpcal/shared';
 
@@ -148,6 +149,66 @@ describe('PolicyService', () => {
 
     it('should return true when both arrays are empty', () => {
       expect(service.hasAllPermissions([], [])).toBe(true);
+    });
+  });
+
+  describe('getActivityStatusNameForActivity', () => {
+    it('should return status name when activity exists', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi
+                  .fn()
+                  .mockResolvedValue([{ name: 'delete_requested' }]),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      const result = await policyService.getActivityStatusNameForActivity(1);
+      expect(result).toBe('delete_requested');
+    });
+
+    it('should return null when activity not found', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      const result = await policyService.getActivityStatusNameForActivity(999);
+      expect(result).toBeNull();
     });
   });
 });

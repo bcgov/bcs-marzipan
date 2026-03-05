@@ -4,6 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import {
   activities,
   activityCommsContacts,
+  activityStatuses,
   permissions,
   rolePermissions,
   roles,
@@ -242,5 +243,25 @@ export class PolicyService {
       .limit(1);
 
     return row?.leadTeamId ?? null;
+  }
+
+  /**
+   * Get the activity status name for an activity (e.g. 'deleted', 'delete_requested').
+   * Used by CanRestoreActivityGuard to branch on status for permission checks.
+   */
+  async getActivityStatusNameForActivity(
+    activityId: number
+  ): Promise<string | null> {
+    const [row] = await this.databaseService.db
+      .select({ name: activityStatuses.name })
+      .from(activities)
+      .innerJoin(
+        activityStatuses,
+        eq(activities.activityStatusId, activityStatuses.id)
+      )
+      .where(eq(activities.id, activityId))
+      .limit(1);
+
+    return row?.name ?? null;
   }
 }

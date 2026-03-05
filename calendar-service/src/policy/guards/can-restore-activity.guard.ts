@@ -6,15 +6,16 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 
 import { PolicyService } from '../policy.service';
 
 /**
- * Guard for activity restore (comms contacts, lead-team members, or admin/sysAdmin).
- * Allows the request if the user is a comms contact on the activity, a member of the
- * activity's lead team, or has admin/systemAdmin role.
- * Business rule validation (status is delete_requested or deleted) is done in the service.
+ * Guard for activity restore. Status-aware:
+ * - Deleted: requires activities.delete.any (admin-only restore).
+ * - Delete requested: requires (activities.requestDelete OR activities.delete OR activities.delete.any)
+ *   AND (admin/sysAdmin OR comms contact OR lead-team member).
+ * Other statuses: allow (service returns 400).
  */
 @Injectable()
 export class CanRestoreActivityGuard implements CanActivate {
@@ -38,10 +39,39 @@ export class CanRestoreActivityGuard implements CanActivate {
       throw new BadRequestException('Invalid activity ID');
     }
 
+    const statusName =
+      await this.policyService.getActivityStatusNameForActivity(activityId);
+    const status = statusName?.toLowerCase() ?? '';
+
+    if (status !== 'delete_requested' && status !== 'deleted') {
+      return true;
+    }
+
+    if (status === 'deleted') {
+      const hasDeleteAny =
+        user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ?? false;
+      if (!hasDeleteAny) {
+        throw new ForbiddenException(
+          'Restore from deleted requires activities.delete.any'
+        );
+      }
+      return true;
+    }
+
+    const hasRestorePermission =
+      (user.permissions?.includes(PERMISSIONS.ACTIVITIES.REQUEST_DELETE) ||
+        user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE) ||
+        user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY)) ??
+      false;
+    if (!hasRestorePermission) {
+      throw new ForbiddenException(
+        'You do not have permission to restore this activity.'
+      );
+    }
+
     const isAdmin =
       user.roleName === SYSTEM_ROLES.ADMIN ||
       user.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-
     if (isAdmin) {
       return true;
     }
@@ -50,7 +80,6 @@ export class CanRestoreActivityGuard implements CanActivate {
       activityId,
       user.id
     );
-
     if (isCommsContact) {
       return true;
     }
@@ -61,7 +90,6 @@ export class CanRestoreActivityGuard implements CanActivate {
       leadTeamId != null &&
       Array.isArray(user.teamIds) &&
       user.teamIds.includes(leadTeamId);
-
     if (isLeadTeamMember) {
       return true;
     }

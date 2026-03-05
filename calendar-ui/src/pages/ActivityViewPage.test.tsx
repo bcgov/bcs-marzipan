@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, useOutletContext } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
 import type { ActivityLayoutContext } from './ActivityLayout';
@@ -52,16 +53,20 @@ vi.mock('react-router-dom', async (importOriginal) => {
   };
 });
 
+const mockUseAuth = vi.fn();
 vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({
-    hasPermission: () => true,
-    user: { id: 1, roleName: 'Editor', teamIds: [5] },
-  }),
+  useAuth: () => mockUseAuth(),
 }));
 
-vi.mock('../hooks/useCalendar', () => ({
-  useRestoreActivity: () => ({ mutateAsync: vi.fn() }),
-}));
+vi.mock('../hooks/useCalendar', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useCalendar')>();
+  return {
+    ...actual,
+    useRestoreActivity: () => ({ mutateAsync: vi.fn() }),
+    useDeleteActivity: () => ({ mutateAsync: vi.fn() }),
+    useSoftDeleteActivity: () => ({ mutateAsync: vi.fn() }),
+  };
+});
 
 const mockUseFormLookups = vi.fn();
 const mockUseLeadTeamOptions = vi.fn();
@@ -87,6 +92,10 @@ function renderWithProviders(ui: React.ReactElement) {
 
 describe('ActivityViewPage form readiness', () => {
   beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: () => true,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
     vi.mocked(useOutletContext).mockReturnValue({
       activity: mockActivityWithLeadTeam,
       refreshActivity: vi.fn().mockResolvedValue(undefined),
@@ -146,5 +155,85 @@ describe('ActivityViewPage form readiness', () => {
     renderWithProviders(<ActivityViewPage />);
 
     expect(screen.getByText(/Lead team/)).toBeInTheDocument();
+  });
+});
+
+describe('ActivityViewPage restore button visibility', () => {
+  beforeEach(() => {
+    mockUseFormLookups.mockReturnValue(mockLookupsReady);
+    mockUseLeadTeamOptions.mockReturnValue({
+      data: [
+        {
+          id: 5,
+          name: 'T',
+          displayName: 'Test',
+          ministryId: 1,
+          ministryName: 'M',
+          memberCount: 1,
+        },
+      ],
+      isFetched: true,
+    });
+  });
+
+  it('shows Restore when status is deleted and user has DELETE_ANY', () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.DELETE_ANY,
+      user: { id: 1, roleName: 'Admin', teamIds: [] },
+    });
+    vi.mocked(useOutletContext).mockReturnValue({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        activityStatus: 'Deleted',
+      },
+      refreshActivity: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderWithProviders(<ActivityViewPage />);
+
+    expect(
+      screen.getByRole('button', { name: /Restore/i })
+    ).toBeInTheDocument();
+  });
+
+  it('does not show Restore when status is deleted and user lacks DELETE_ANY', () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.DELETE_ANY,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
+    vi.mocked(useOutletContext).mockReturnValue({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        activityStatus: 'Deleted',
+      },
+      refreshActivity: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderWithProviders(<ActivityViewPage />);
+
+    expect(
+      screen.queryByRole('button', { name: /Restore/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows Restore when status is delete_requested and user has REQUEST_DELETE and is lead-team member', () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) =>
+        key === PERMISSIONS.ACTIVITIES.REQUEST_DELETE,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
+    vi.mocked(useOutletContext).mockReturnValue({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        activityStatus: 'Delete requested',
+      },
+      refreshActivity: vi.fn().mockResolvedValue(undefined),
+    });
+
+    renderWithProviders(<ActivityViewPage />);
+
+    expect(
+      screen.getByRole('button', { name: /Restore/i })
+    ).toBeInTheDocument();
   });
 });

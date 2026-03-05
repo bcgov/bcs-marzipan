@@ -57,6 +57,7 @@ import type {
   DataScope,
   RequestContext as RequestContextType,
 } from '../../policy/dto/user-context.dto';
+import { PolicyService } from '../../policy/policy.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -75,7 +76,8 @@ export class ActivitiesService {
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService,
-    private readonly locksService: LocksService
+    private readonly locksService: LocksService,
+    private readonly policyService: PolicyService
   ) {}
 
   /**
@@ -1471,7 +1473,7 @@ export class ActivitiesService {
 
   /**
    * Remove an activity (hard delete).
-   * When context.permissions does not include activities.delete.any, activity must be in visible set for context.teamIds.
+   * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
    * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
    */
   async remove(
@@ -1480,17 +1482,21 @@ export class ActivitiesService {
     context?: { permissions?: string[]; teamIds?: number[] },
     options?: { reason?: string }
   ): Promise<{ message: string }> {
-    // Scope: without activities.delete.any, activity must be visible to user's teams
     const canDeleteAny =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
       false;
-    if (!canDeleteAny && context?.teamIds?.length) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
-        context.teamIds
-      );
-      if (!visibleIds.has(id)) {
+    if (!canDeleteAny) {
+      const [isCommsContact, leadTeamId] = await Promise.all([
+        this.policyService.isCommsContactForActivity(id, userId),
+        this.policyService.getLeadTeamIdForActivity(id),
+      ]);
+      const isLeadTeamMember =
+        leadTeamId != null &&
+        Array.isArray(context?.teamIds) &&
+        context.teamIds.includes(leadTeamId);
+      if (!isCommsContact && !isLeadTeamMember) {
         throw new ForbiddenException(
-          'You may only delete activities that belong to your teams.'
+          'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
         );
       }
     }
@@ -1601,7 +1607,7 @@ export class ActivitiesService {
 
   /**
    * Soft delete (set activityStatusId to 'deleted').
-   * When context.permissions does not include activities.delete.any, activity must be in visible set for context.teamIds.
+   * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
    */
   async softDelete(
     id: number,
@@ -1626,17 +1632,21 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    // Scope: without activities.delete.any, activity must be visible to user's teams
     const canDeleteAny =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
       false;
-    if (!canDeleteAny && context?.teamIds?.length) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
-        context.teamIds
-      );
-      if (!visibleIds.has(id)) {
+    if (!canDeleteAny) {
+      const [isCommsContact, leadTeamId] = await Promise.all([
+        this.policyService.isCommsContactForActivity(id, userId),
+        this.policyService.getLeadTeamIdForActivity(id),
+      ]);
+      const isLeadTeamMember =
+        leadTeamId != null &&
+        Array.isArray(context?.teamIds) &&
+        context.teamIds.includes(leadTeamId);
+      if (!isCommsContact && !isLeadTeamMember) {
         throw new ForbiddenException(
-          'You may only delete activities that belong to your teams.'
+          'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
         );
       }
     }

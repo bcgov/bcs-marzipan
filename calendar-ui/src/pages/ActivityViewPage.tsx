@@ -70,12 +70,20 @@ export function ActivityViewPage(): React.ReactElement {
   const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
-  const canRestore = isCommsContact || isLeadTeamMember || isAdminOrSysAdmin;
-
-  // Delete button only for users with activities.delete (e.g. Admin, System Admin)
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
-  const showDeleteButton = canDelete;
+  const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
+  const canRestore =
+    normalizedStatus === 'deleted'
+      ? canDeleteAny
+      : normalizedStatus === 'delete_requested'
+        ? (canRequestDelete || canDelete || canDeleteAny) &&
+          (isAdminOrSysAdmin || isCommsContact || isLeadTeamMember)
+        : false;
+
+  // Delete button only for users with activities.delete (e.g. Admin, System Admin)
+  const showDeleteButton =
+    canDelete && (canDeleteAny || isCommsContact || isLeadTeamMember);
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&

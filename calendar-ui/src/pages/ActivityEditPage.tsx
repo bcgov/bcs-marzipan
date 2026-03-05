@@ -94,7 +94,23 @@ export function ActivityEditPage(): React.ReactElement {
   const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
-  const canRestore = isCommsContact || isLeadTeamMember || isAdminOrSysAdmin;
+  const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
+  const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
+  const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
+  const canRestore =
+    normalizedStatus === 'deleted'
+      ? canDeleteAny
+      : normalizedStatus === 'delete_requested'
+        ? (canRequestDelete || canDelete || canDeleteAny) &&
+          (isAdminOrSysAdmin || isCommsContact || isLeadTeamMember)
+        : false;
+  const showDeleteButton =
+    canDelete && (canDeleteAny || isCommsContact || isLeadTeamMember);
+  const showRequestDeleteButton =
+    !isBlockedStatus &&
+    (isCommsContact || isLeadTeamMember) &&
+    canRequestDelete &&
+    !canDelete;
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -344,16 +360,6 @@ export function ActivityEditPage(): React.ReactElement {
     }
     setShowDeleteModal(true);
   };
-
-  // Delete button only for users with activities.delete (e.g. Admin, System Admin)
-  const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
-  const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
-  const showDeleteButton = canDelete;
-  const showRequestDeleteButton =
-    !isBlockedStatus &&
-    (isCommsContact || isLeadTeamMember) &&
-    canRequestDelete &&
-    !canDelete;
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>

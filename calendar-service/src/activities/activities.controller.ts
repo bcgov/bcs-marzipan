@@ -400,7 +400,7 @@ export class ActivitiesController {
   @ApiOperation({
     summary: 'Restore activity',
     description:
-      'Restores an activity from delete_requested or deleted to its previous status. Allowed for comms contacts on the activity or admin/sysAdmin.',
+      'Restores an activity from delete_requested or deleted to its previous status. Deleted: requires activities.delete.any. Delete requested: requires activities.requestDelete, activities.delete, or activities.delete.any plus comms contact, lead-team member, or admin/sysAdmin.',
   })
   @ApiParam({
     name: 'id',

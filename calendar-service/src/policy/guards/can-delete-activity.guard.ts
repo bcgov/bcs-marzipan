@@ -8,14 +8,18 @@ import {
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
+import { PolicyService } from '../policy.service';
+
 /**
  * Guard for activity delete (hard and soft).
- * Requires activities.delete permission; no context (e.g. comms lead) can bypass this.
- * Viewers and others without the permission cannot delete, even if other context checks would pass.
+ * Requires activities.delete and (comms contact OR lead-team member OR activities.delete.any).
+ * Users without delete.any may only delete activities where they are a comms contact or lead-team member.
  */
 @Injectable()
 export class CanDeleteActivityGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(private readonly policyService: PolicyService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user as AuthUser | undefined;
 
@@ -33,15 +37,40 @@ export class CanDeleteActivityGuard implements CanActivate {
       throw new BadRequestException('Invalid activity ID');
     }
 
-    const hasPermission =
+    const hasDeletePermission =
       user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE) ?? false;
+    if (!hasDeletePermission) {
+      throw new ForbiddenException(
+        'You do not have the required permission to delete activities.'
+      );
+    }
 
-    if (hasPermission) {
+    const hasDeleteAny =
+      user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ?? false;
+    if (hasDeleteAny) {
+      return true;
+    }
+
+    const isCommsContact = await this.policyService.isCommsContactForActivity(
+      activityId,
+      user.id
+    );
+    if (isCommsContact) {
+      return true;
+    }
+
+    const leadTeamId =
+      await this.policyService.getLeadTeamIdForActivity(activityId);
+    const isLeadTeamMember =
+      leadTeamId != null &&
+      Array.isArray(user.teamIds) &&
+      user.teamIds.includes(leadTeamId);
+    if (isLeadTeamMember) {
       return true;
     }
 
     throw new ForbiddenException(
-      'You do not have the required permission to delete activities.'
+      'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
     );
   }
 }

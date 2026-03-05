@@ -15,6 +15,7 @@ import {
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
 import { LocksService } from '../locks/locks.service';
+import { PolicyService } from '../policy/policy.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
@@ -156,6 +157,12 @@ describe('ActivitiesService', () => {
     tryAcquireLock: vi.fn().mockResolvedValue({}),
   };
 
+  // Mock policy service (for delete context: comms/lead-team when no delete.any)
+  const mockPolicyService = {
+    isCommsContactForActivity: vi.fn().mockResolvedValue(false),
+    getLeadTeamIdForActivity: vi.fn().mockResolvedValue(null),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -188,6 +195,10 @@ describe('ActivitiesService', () => {
         {
           provide: LocksService,
           useValue: mockLocksService,
+        },
+        {
+          provide: PolicyService,
+          useValue: mockPolicyService,
         },
       ],
     }).compile();
@@ -1264,26 +1275,17 @@ describe('ActivitiesService', () => {
       expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
     });
 
-    it('should throw ForbiddenException when user lacks delete.any and activity not in visible set', async () => {
-      const emptySetThenable = {
-        then: (onFulfilled: (rows: unknown[]) => unknown) => {
-          Promise.resolve([]).then(onFulfilled);
-          return Promise.resolve(new Set<number>());
-        },
-      };
-      mockDatabaseService.db.selectDistinct = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnValue(emptySetThenable),
-        innerJoin: vi.fn().mockReturnThis(),
-      });
+    it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
       mockDatabaseService.db.select = vi.fn((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([createMockActivity({ id: 1 })]);
         }
         return {
           from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnValue(emptySetThenable),
-          innerJoin: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
         };
       });
 
@@ -1293,9 +1295,123 @@ describe('ActivitiesService', () => {
           teamIds: [99],
         })
       ).rejects.toThrow(
-        'You may only delete activities that belong to your teams.'
+        'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+      expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
+        1,
+        10
+      );
+      expect(mockPolicyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(
+        1
+      );
+    });
+
+    it('should allow remove when user lacks delete.any but is comms contact', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(true);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+      const insertValues = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+      });
+      const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const mockTx = {
+        insert: vi.fn().mockReturnValue({ values: insertValues }),
+        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        return await callback(mockTx);
+      });
+
+      const result = await service.remove(1, 10, {
+        permissions: ['activities.delete'],
+        teamIds: [5],
+      });
+
+      expect(result).toEqual({ message: 'Activity #1 deleted successfully' });
+      expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
+        1,
+        10
+      );
+    });
+
+    it('should allow remove when user lacks delete.any but is lead-team member', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+      const insertValues = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+      });
+      const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const mockTx = {
+        insert: vi.fn().mockReturnValue({ values: insertValues }),
+        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        return await callback(mockTx);
+      });
+
+      const result = await service.remove(1, 10, {
+        permissions: ['activities.delete'],
+        teamIds: [10, 20],
+      });
+
+      expect(result).toEqual({ message: 'Activity #1 deleted successfully' });
+      expect(mockPolicyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(
+        1
+      );
+    });
+  });
+
+  describe('softDelete', () => {
+    it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      await expect(
+        service.softDelete(1, 'Duplicate entry reason here', 10, {
+          permissions: ['activities.delete'],
+          teamIds: [99],
+        })
+      ).rejects.toThrow(
+        'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+      expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
+        1,
+        10
+      );
     });
   });
 });
