@@ -1,21 +1,21 @@
 /**
- * ActivityViewPage form and lead team field tests.
+ * ActivityPage form and lead team field tests (view mode), and edit-mode behavior.
  * Form always renders; Lead team uses a combobox (same as Lead Organization)
  * so the selected team label displays once options are available.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, useOutletContext } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
-import type { ActivityLayoutContext } from './ActivityLayout';
-import { ActivityViewPage } from './ActivityViewPage';
+import { ActivityPage, type ActivityPageProps } from './ActivityPage';
 
-const mockActivityWithLeadTeam: ActivityLayoutContext['activity'] =
+const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
   createMockActivityResponse({
     id: 1,
     displayId: 'ACT-1',
@@ -44,12 +44,15 @@ const mockLookupsReady = {
   sharedWithTeams: [],
 };
 
+const mockRelease = vi.fn().mockResolvedValue(undefined);
+const mockRefreshActivity = vi.fn().mockResolvedValue(undefined);
+
+const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
-    useOutletContext: vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -65,6 +68,25 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
     useRestoreActivity: () => ({ mutateAsync: vi.fn() }),
     useDeleteActivity: () => ({ mutateAsync: vi.fn() }),
     useSoftDeleteActivity: () => ({ mutateAsync: vi.fn() }),
+    useUpdateActivity: () => ({ mutateAsync: vi.fn() }),
+    useRequestDeleteActivity: () => ({ mutateAsync: vi.fn() }),
+  };
+});
+
+vi.mock('../hooks/useActivityLock', () => ({
+  useActivityLock: () => ({
+    lockedByOther: false,
+    lockedByUsername: null,
+    isLoading: false,
+    release: mockRelease,
+  }),
+}));
+
+vi.mock('../hooks/useLookups', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useLookups')>();
+  return {
+    ...actual,
+    useDateStatuses: () => ({ data: [] }),
   };
 });
 
@@ -79,26 +101,41 @@ vi.mock('../hooks/useLeadTeamOptions', () => ({
   useLeadTeamOptions: () => mockUseLeadTeamOptions(),
 }));
 
-function renderWithProviders(ui: React.ReactElement) {
+function renderWithProviders(
+  ui: React.ReactElement,
+  options?: { initialRoute?: string }
+) {
+  const initialRoute = options?.initialRoute ?? '/activity/1';
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialRoute]}>
       <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </MemoryRouter>
   );
 }
 
-describe('ActivityViewPage form readiness', () => {
+function renderActivityPage(overrides?: {
+  activity?: ActivityPageProps['activity'];
+  refreshActivity?: () => Promise<void>;
+  initialRoute?: string;
+}) {
+  const activity = overrides?.activity ?? mockActivityWithLeadTeam;
+  const refreshActivity = overrides?.refreshActivity ?? mockRefreshActivity;
+  return renderWithProviders(
+    <ActivityPage activity={activity} refreshActivity={refreshActivity} />,
+    { initialRoute: overrides?.initialRoute }
+  );
+}
+
+describe('ActivityPage form readiness (view mode)', () => {
   beforeEach(() => {
+    mockNavigate.mockClear();
+    mockRelease.mockClear();
     mockUseAuth.mockReturnValue({
       hasPermission: () => true,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
-    });
-    vi.mocked(useOutletContext).mockReturnValue({
-      activity: mockActivityWithLeadTeam,
-      refreshActivity: vi.fn().mockResolvedValue(undefined),
     });
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
   });
@@ -109,7 +146,7 @@ describe('ActivityViewPage form readiness', () => {
       isFetched: false,
     });
 
-    renderWithProviders(<ActivityViewPage />);
+    renderActivityPage();
 
     expect(screen.getByText(/Lead team/)).toBeInTheDocument();
     const comboboxes = screen.getAllByRole('combobox');
@@ -134,31 +171,29 @@ describe('ActivityViewPage form readiness', () => {
       isFetched: true,
     });
 
-    renderWithProviders(<ActivityViewPage />);
+    renderActivityPage();
 
     expect(screen.getByText(/Lead team/)).toBeInTheDocument();
   });
 
   it('renders form body when activity has no leadTeamId even if lead options not fetched', () => {
-    vi.mocked(useOutletContext).mockReturnValue({
-      activity: {
-        ...mockActivityWithLeadTeam,
-        leadTeamId: undefined as unknown as number,
-      },
-      refreshActivity: vi.fn().mockResolvedValue(undefined),
-    });
     mockUseLeadTeamOptions.mockReturnValue({
       data: [],
       isFetched: false,
     });
 
-    renderWithProviders(<ActivityViewPage />);
+    renderActivityPage({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        leadTeamId: undefined as unknown as number,
+      },
+    });
 
     expect(screen.getByText(/Lead team/)).toBeInTheDocument();
   });
 });
 
-describe('ActivityViewPage restore button visibility', () => {
+describe('ActivityPage restore button visibility (view mode)', () => {
   beforeEach(() => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
@@ -181,15 +216,13 @@ describe('ActivityViewPage restore button visibility', () => {
       hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.DELETE_ANY,
       user: { id: 1, roleName: 'Admin', teamIds: [] },
     });
-    vi.mocked(useOutletContext).mockReturnValue({
+
+    renderActivityPage({
       activity: {
         ...mockActivityWithLeadTeam,
         activityStatus: 'Deleted',
       },
-      refreshActivity: vi.fn().mockResolvedValue(undefined),
     });
-
-    renderWithProviders(<ActivityViewPage />);
 
     expect(
       screen.getByRole('button', { name: /Restore/i })
@@ -201,15 +234,13 @@ describe('ActivityViewPage restore button visibility', () => {
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.DELETE_ANY,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
     });
-    vi.mocked(useOutletContext).mockReturnValue({
+
+    renderActivityPage({
       activity: {
         ...mockActivityWithLeadTeam,
         activityStatus: 'Deleted',
       },
-      refreshActivity: vi.fn().mockResolvedValue(undefined),
     });
-
-    renderWithProviders(<ActivityViewPage />);
 
     expect(
       screen.queryByRole('button', { name: /Restore/i })
@@ -222,18 +253,69 @@ describe('ActivityViewPage restore button visibility', () => {
         key === PERMISSIONS.ACTIVITIES.REQUEST_DELETE,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
     });
-    vi.mocked(useOutletContext).mockReturnValue({
+
+    renderActivityPage({
       activity: {
         ...mockActivityWithLeadTeam,
         activityStatus: 'Delete requested',
       },
-      refreshActivity: vi.fn().mockResolvedValue(undefined),
     });
-
-    renderWithProviders(<ActivityViewPage />);
 
     expect(
       screen.getByRole('button', { name: /Restore/i })
     ).toBeInTheDocument();
+  });
+});
+
+describe('ActivityPage edit mode', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    mockRelease.mockClear();
+    mockUseFormLookups.mockReturnValue(mockLookupsReady);
+    mockUseLeadTeamOptions.mockReturnValue({
+      data: [
+        {
+          id: 5,
+          name: 'Test',
+          displayName: 'Test',
+          ministryId: 1,
+          ministryName: 'M',
+          memberCount: 1,
+        },
+      ],
+      isFetched: true,
+    });
+    mockUseAuth.mockReturnValue({
+      hasPermission: () => true,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
+  });
+
+  it('renders Update and Cancel when route is /activity/1/edit', () => {
+    renderActivityPage({ initialRoute: '/activity/1/edit' });
+
+    expect(screen.getByRole('button', { name: /Update/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
+  });
+
+  it('Cancel navigates to view and releases lock', async () => {
+    const user = userEvent.setup();
+    renderActivityPage({ initialRoute: '/activity/1/edit' });
+
+    await user.click(screen.getByRole('button', { name: /Cancel/i }));
+
+    expect(mockRelease).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
+  });
+
+  it('redirects to view when user lacks EDIT permission and route is edit', () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.EDIT,
+      user: { id: 1, roleName: 'Viewer', teamIds: [5] },
+    });
+
+    renderActivityPage({ initialRoute: '/activity/1/edit' });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
   });
 });

@@ -1,14 +1,15 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
+  type ActivityResponse,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
@@ -61,18 +62,38 @@ import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
-import type { ActivityLayoutContext } from './ActivityLayout';
 
-const logger = createLogger('ActivityEditPage');
+const logger = createLogger('ActivityPage');
 
 const UNSAVED_MESSAGE = 'You have unsaved changes. Leave anyway?';
 
-export function ActivityEditPage(): React.ReactElement {
-  const { activity, refreshActivity } =
-    useOutletContext<ActivityLayoutContext>();
+/**
+ * Grace period (ms) after entering view mode during which form focus/click do not trigger edit.
+ * Necessary because on load the browser or React often focuses the form, which would otherwise
+ * fire onFocus -> enterEdit and immediately redirect to the edit URL.
+ */
+const VIEW_MODE_GRACE_MS = 400;
+
+type PendingAction = 'delete' | 'requestDelete' | undefined;
+
+export type ActivityPageProps = {
+  activity: ActivityResponse;
+  refreshActivity: () => Promise<void>;
+};
+
+export function ActivityPage({
+  activity,
+  refreshActivity,
+}: ActivityPageProps): React.ReactElement {
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
+  const viewPath = `/activity/${id}`;
+  const editPath = `/activity/${id}/edit`;
+
+  const isEditMode = location.pathname.endsWith('/edit');
+
   const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
@@ -112,12 +133,13 @@ export function ActivityEditPage(): React.ReactElement {
     canRequestDelete &&
     !canDelete;
 
-  const updateMutation = useUpdateActivity();
-  const deleteMutation = useDeleteActivity();
-  const restoreMutation = useRestoreActivity();
-  const softDeleteMutation = useSoftDeleteActivity();
-  const requestDeleteMutation = useRequestDeleteActivity();
-  const { data: dateStatuses } = useDateStatuses();
+  const {
+    lockedByOther,
+    lockedByUsername,
+    isLoading: lockLoading,
+    release,
+  } = useActivityLock(isEditMode ? id : null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -136,16 +158,18 @@ export function ActivityEditPage(): React.ReactElement {
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
   );
+  const [pendingAction, setPendingAction] = useState<PendingAction>(undefined);
+  const pendingFocusFieldRef = useRef<string | undefined>(undefined);
   const initialFormDataRef = useRef<ActivityFormData | null>(null);
+  /** Timestamp when we last entered view mode; used to ignore spurious focus/click on load. */
+  const viewModeEnteredAtRef = useRef<number>(0);
 
-  const {
-    lock: _lock,
-    isOwnLock: _isOwnLock,
-    lockedByOther,
-    lockedByUsername,
-    isLoading: lockLoading,
-    release,
-  } = useActivityLock(id);
+  const { data: dateStatuses } = useDateStatuses();
+  const updateMutation = useUpdateActivity();
+  const deleteMutation = useDeleteActivity();
+  const restoreMutation = useRestoreActivity();
+  const softDeleteMutation = useSoftDeleteActivity();
+  const requestDeleteMutation = useRequestDeleteActivity();
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -168,14 +192,81 @@ export function ActivityEditPage(): React.ReactElement {
     initialFormDataRef.current = mapped;
   }, [activity, lookups, form]);
 
-  // When status is delete_requested or deleted, only admins may stay on edit page; redirect others to view
+  // Redirect: edit mode without EDIT permission -> view
   useEffect(() => {
-    if (isBlockedStatus && !isAdminOrSysAdmin) {
-      void navigate('..', { replace: true });
+    if (isEditMode && !canEditActivity) {
+      void navigate(viewPath, { replace: true });
     }
-  }, [isBlockedStatus, isAdminOrSysAdmin, navigate]);
+  }, [isEditMode, canEditActivity, navigate, viewPath]);
 
-  // Warn on tab close/refresh when there are unsaved changes (in-app navigation is guarded by Cancel dialog; full back/link blocking would require createBrowserRouter + useBlocker)
+  // Redirect: edit mode + blocked status and not admin -> view
+  useEffect(() => {
+    if (isEditMode && isBlockedStatus && !isAdminOrSysAdmin) {
+      void navigate(viewPath, { replace: true });
+    }
+  }, [isEditMode, isBlockedStatus, isAdminOrSysAdmin, navigate, viewPath]);
+
+  // When entering view mode, record time so handleFormInteraction can ignore events within grace period
+  useEffect(() => {
+    if (!isEditMode) {
+      viewModeEnteredAtRef.current = Date.now();
+    }
+  }, [isEditMode]);
+
+  // Release edit lock when leaving edit mode (e.g. Back button or URL change to view). Cancel/Save already call release() before navigating.
+  useEffect(() => {
+    if (!isEditMode) {
+      void release();
+    }
+  }, [isEditMode, release]);
+
+  const handleOpenDeleteModal = useCallback(async () => {
+    if (normalizedStatus === 'delete_requested') {
+      try {
+        const history = await fetchActivityHistory(id);
+        const deleteRequestedEntry = history.find(
+          (e) => e.actionType === 'delete_requested'
+        );
+        const note =
+          deleteRequestedEntry?.notes?.trim() &&
+          deleteRequestedEntry.notes.trim().length > 0
+            ? deleteRequestedEntry.notes.trim()
+            : undefined;
+        setDeleteModalInitialNotes(note);
+      } catch (err) {
+        logger.error('Failed to load activity history for delete modal', err);
+        setDeleteModalInitialNotes(undefined);
+      }
+    } else {
+      setDeleteModalInitialNotes(undefined);
+    }
+    setShowDeleteModal(true);
+  }, [id, normalizedStatus]);
+
+  // Pending action/focus after entering edit mode
+  useEffect(() => {
+    if (!isEditMode) return;
+    const field = pendingFocusFieldRef.current;
+    if (field) {
+      pendingFocusFieldRef.current = undefined;
+      requestAnimationFrame(() => {
+        try {
+          form.setFocus(field as keyof ActivityFormData);
+        } catch {
+          // ignore invalid field names
+        }
+      });
+    }
+    if (pendingAction === 'delete') {
+      setPendingAction(undefined);
+      void handleOpenDeleteModal();
+    } else if (pendingAction === 'requestDelete') {
+      setPendingAction(undefined);
+      setShowRequestDeleteModal(true);
+    }
+  }, [isEditMode, pendingAction, form, handleOpenDeleteModal]);
+
+  // Warn on tab close/refresh when there are unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -186,7 +277,41 @@ export function ActivityEditPage(): React.ReactElement {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  const viewPath = `/activity/${id}`;
+  const readOnly =
+    !isEditMode ||
+    lockedByOther ||
+    lockLoading ||
+    (isBlockedStatus && !isAdminOrSysAdmin);
+
+  const enterEdit = useCallback(
+    (focusField?: string, action?: PendingAction) => {
+      if (!canEditActivity) return;
+      if (isBlockedStatus && !isAdminOrSysAdmin) return;
+      if (focusField) pendingFocusFieldRef.current = focusField;
+      if (action) setPendingAction(action);
+      void navigate(editPath, { replace: true });
+    },
+    [canEditActivity, isBlockedStatus, isAdminOrSysAdmin, navigate, editPath]
+  );
+
+  const handleFormInteraction = useCallback(
+    (
+      e: React.FocusEvent<HTMLFormElement> | React.MouseEvent<HTMLFormElement>
+    ) => {
+      if (!isEditMode && canEditActivity && !isBlockedStatus) {
+        // Skip if still in grace period after entering view mode (avoids redirect on load)
+        if (Date.now() - viewModeEnteredAtRef.current < VIEW_MODE_GRACE_MS) {
+          return;
+        }
+        const target = e.target as HTMLElement;
+        const field = target
+          .closest('[data-field]')
+          ?.getAttribute('data-field');
+        enterEdit(field ?? undefined);
+      }
+    },
+    [isEditMode, canEditActivity, isBlockedStatus, enterEdit]
+  );
 
   const handleCancel = async () => {
     if (isDirty) {
@@ -194,13 +319,23 @@ export function ActivityEditPage(): React.ReactElement {
       return;
     }
     await release();
-    void navigate(viewPath);
+    void navigate(viewPath, { replace: true });
   };
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
     await release();
-    void navigate(viewPath);
+    void navigate(viewPath, { replace: true });
+  };
+
+  const handleDeleteFromView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    enterEdit(undefined, 'delete');
+  };
+
+  const handleRequestDeleteFromView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    enterEdit(undefined, 'requestDelete');
   };
 
   const onSubmit = (data: ActivityFormData) => {
@@ -336,30 +471,6 @@ export function ActivityEditPage(): React.ReactElement {
 
   const displayId = activity.displayId ?? `ACT-${activity.id}`;
   const categories = activity.category ?? [];
-  const readOnly = lockedByOther || lockLoading || isBlockedStatus;
-
-  const handleOpenDeleteModal = async () => {
-    if (normalizedStatus === 'delete_requested') {
-      try {
-        const history = await fetchActivityHistory(id);
-        const deleteRequestedEntry = history.find(
-          (e) => e.actionType === 'delete_requested'
-        );
-        const note =
-          deleteRequestedEntry?.notes?.trim() &&
-          deleteRequestedEntry.notes.trim().length > 0
-            ? deleteRequestedEntry.notes.trim()
-            : undefined;
-        setDeleteModalInitialNotes(note);
-      } catch (err) {
-        logger.error('Failed to load activity history for delete modal', err);
-        setDeleteModalInitialNotes(undefined);
-      }
-    } else {
-      setDeleteModalInitialNotes(undefined);
-    }
-    setShowDeleteModal(true);
-  };
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
@@ -372,9 +483,11 @@ export function ActivityEditPage(): React.ReactElement {
         activityStatus={activity.activityStatus ?? null}
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
-        onHistoryClick={() => setHistoryOpen(true)}
+        onHistoryClick={isEditMode ? () => setHistoryOpen(true) : undefined}
       />
-      {lockedByOther && <LockBanner lockedByUsername={lockedByUsername} />}
+      {isEditMode && lockedByOther && (
+        <LockBanner lockedByUsername={lockedByUsername} />
+      )}
       {isBlockedStatus && (
         <ActivityStatusBanner
           status={activityStatusName}
@@ -386,10 +499,15 @@ export function ActivityEditPage(): React.ReactElement {
       <FormProvider {...form}>
         <Form {...form}>
           <form
+            className={!isEditMode ? 'cursor-pointer' : undefined}
             onSubmit={(e) => {
               e.preventDefault();
-              void form.handleSubmit(onSubmit, onError)(e);
+              if (isEditMode) {
+                void form.handleSubmit(onSubmit, onError)(e);
+              }
             }}
+            onFocus={!isEditMode ? handleFormInteraction : undefined}
+            onClick={!isEditMode ? handleFormInteraction : undefined}
           >
             <ActivityFormBody
               form={form}
@@ -404,7 +522,11 @@ export function ActivityEditPage(): React.ReactElement {
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={() => setShowRequestDeleteModal(true)}
+                    onClick={
+                      isEditMode
+                        ? () => setShowRequestDeleteModal(true)
+                        : handleRequestDeleteFromView
+                    }
                     disabled={isSubmitting}
                   >
                     Request delete
@@ -415,7 +537,11 @@ export function ActivityEditPage(): React.ReactElement {
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={() => void handleOpenDeleteModal()}
+                    onClick={
+                      isEditMode
+                        ? () => void handleOpenDeleteModal()
+                        : handleDeleteFromView
+                    }
                     disabled={isSubmitting}
                   >
                     Delete
@@ -423,63 +549,88 @@ export function ActivityEditPage(): React.ReactElement {
                 )}
               </div>
               <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void handleCancel()}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                {!isFormValid && missingFields.length > 0 ? (
-                  <Popover open={showMissingFieldsPopover}>
-                    <PopoverTrigger asChild>
-                      <div
-                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                      >
-                        <Button
-                          type="submit"
-                          disabled={true}
-                          className="cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Updating...' : 'Update'}
-                        </Button>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80"
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                {isEditMode ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void handleCancel()}
+                      disabled={isSubmitting}
                     >
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">
-                          Required fields missing:
-                        </h4>
-                        <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                          {missingFields.map((field) => (
-                            <li key={field}>{field}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      Cancel
+                    </Button>
+                    {!isFormValid && missingFields.length > 0 ? (
+                      <Popover open={showMissingFieldsPopover}>
+                        <PopoverTrigger asChild>
+                          <div
+                            onMouseEnter={() =>
+                              setShowMissingFieldsPopover(true)
+                            }
+                            onMouseLeave={() =>
+                              setShowMissingFieldsPopover(false)
+                            }
+                          >
+                            <Button
+                              type="submit"
+                              disabled={true}
+                              className="cursor-not-allowed"
+                            >
+                              {isSubmitting ? 'Updating...' : 'Update'}
+                            </Button>
+                          </div>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-80"
+                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                          onMouseLeave={() =>
+                            setShowMissingFieldsPopover(false)
+                          }
+                        >
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium">
+                              Required fields missing:
+                            </h4>
+                            <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                              {missingFields.map((field) => (
+                                <li key={field}>{field}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Button type="submit" disabled={isSubmitting || readOnly}>
+                        {isSubmitting ? 'Updating...' : 'Update'}
+                      </Button>
+                    )}
+                  </>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting || readOnly}>
-                    {isSubmitting ? 'Updating...' : 'Update'}
-                  </Button>
+                  <>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => enterEdit()}
+                      disabled={!canEditActivity || isBlockedStatus}
+                    >
+                      Edit
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
           </form>
         </Form>
       </FormProvider>
-      <ActivityHistory
-        activityId={id}
-        open={historyOpen}
-        onOpenChange={(v) => setHistoryOpen(!!v)}
-        dateStatuses={dateStatuses}
-      />
+      {isEditMode && (
+        <ActivityHistory
+          activityId={id}
+          open={historyOpen}
+          onOpenChange={(v) => setHistoryOpen(!!v)}
+          dateStatuses={dateStatuses}
+        />
+      )}
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <DialogContent>
           <DialogHeader>

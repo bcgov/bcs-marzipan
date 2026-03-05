@@ -124,7 +124,7 @@ export const ActivityOverviewSection: React.FC<
                 </Badge>
               )}
             </FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Input
                 placeholder="Enter activity title"
                 readOnly={readOnly}
@@ -171,7 +171,7 @@ export const ActivityOverviewSection: React.FC<
                 <FormLabel>
                   Lead team <span className="text-destructive">*</span>
                 </FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <FreeformCombobox
                     disabled={readOnly}
                     options={options}
@@ -222,7 +222,7 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel>Lead Organization</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <FreeformCombobox
                   disabled={readOnly}
                   options={organizations.map((o) => ({
@@ -253,7 +253,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Summary</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter activity summary"
                 readOnly={readOnly}
@@ -272,7 +272,7 @@ export const ActivityOverviewSection: React.FC<
         name="isConfidential"
         render={({ field }) => (
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
                 disabled={readOnly}
@@ -291,7 +291,7 @@ export const ActivityOverviewSection: React.FC<
         name="isIssue"
         render={({ field }) => (
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
                 disabled={readOnly}
@@ -311,7 +311,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Significance</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter significance"
                 readOnly={readOnly}
@@ -347,7 +347,7 @@ export const ActivityOverviewSection: React.FC<
                   field.onChange(value === '' ? undefined : Number(value))
                 }
               >
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -371,7 +371,7 @@ export const ActivityOverviewSection: React.FC<
           render={({ field }) => (
             <FormItem>
               <FormLabel>Pitch Date</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <Input
                   readOnly={readOnly}
                   type="date"
@@ -407,7 +407,7 @@ export const ActivityOverviewSection: React.FC<
                   field.onChange(value === '' ? undefined : Number(value))
                 }
               >
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -432,7 +432,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Notes</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter notes"
                 readOnly={readOnly}

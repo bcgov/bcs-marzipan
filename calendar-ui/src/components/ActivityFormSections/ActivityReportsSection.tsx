@@ -90,7 +90,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
               {thirtySixtyNinetyReport && (
                 <FormItem>
                   <div className="flex items-center space-x-2">
-                    <FormControl>
+                    <FormControl data-field={field.name}>
                       <Checkbox
                         id="thirty-sixty-ninety"
                         checked={!thirtySixtyNinetyOmitted}
@@ -131,7 +131,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Executive summary</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <Textarea
                   {...field}
                   value={field.value || ''}
@@ -152,7 +152,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Report Status</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <RadioGroup
                   disabled={readOnly}
                   onValueChange={field.onChange}

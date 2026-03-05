@@ -56,7 +56,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
               }}
               value={field.value || DEFAULT_VISIBILITY}
             >
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select visibility" />
                 </SelectTrigger>
@@ -87,7 +87,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>Shared With Teams</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <Combobox
                   disabled={readOnly}
                   options={sharedWithTeamOptions}

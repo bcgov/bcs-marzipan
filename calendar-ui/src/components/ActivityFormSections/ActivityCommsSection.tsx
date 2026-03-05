@@ -73,7 +73,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               }
               value={field.value != null ? String(field.value) : ''}
             >
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select comms lead" />
                 </SelectTrigger>
@@ -97,7 +97,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Strategy</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter strategy"
                 readOnly={readOnly}

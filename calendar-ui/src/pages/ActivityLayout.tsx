@@ -1,4 +1,4 @@
-import { Outlet, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ActivityResponse } from '@corpcal/shared/schemas';
@@ -12,6 +12,7 @@ import {
 } from '../lib/error-messages';
 import { getFriendlyErrorMessage } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
+import { ActivityPage } from './ActivityPage';
 
 const logger = createLogger('ActivityLayout');
 
@@ -94,5 +95,5 @@ export function ActivityLayout(): React.ReactElement {
     );
   }
 
-  return <Outlet context={{ activity, refreshActivity }} />;
+  return <ActivityPage activity={activity} refreshActivity={refreshActivity} />;
 }

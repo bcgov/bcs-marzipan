@@ -33,16 +33,6 @@ const ActivityLayout = lazyWithRetry(() =>
     default: m.ActivityLayout,
   }))
 );
-const ActivityViewPage = lazyWithRetry(() =>
-  import('./pages/ActivityViewPage').then((m) => ({
-    default: m.ActivityViewPage,
-  }))
-);
-const ActivityEditPage = lazyWithRetry(() =>
-  import('./pages/ActivityEditPage').then((m) => ({
-    default: m.ActivityEditPage,
-  }))
-);
 const Login = lazyWithRetry(() =>
   import('./pages/Login').then((m) => ({ default: m.Login }))
 );
@@ -105,7 +95,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="activity/:id"
+                  path="activity/:id/*"
                   element={
                     <ProtectedRoute
                       requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
@@ -113,19 +103,7 @@ function App() {
                       <ActivityLayout />
                     </ProtectedRoute>
                   }
-                >
-                  <Route index element={<ActivityViewPage />} />
-                  <Route
-                    path="edit"
-                    element={
-                      <ProtectedRoute
-                        requiredPermission={PERMISSIONS.ACTIVITIES.EDIT}
-                      >
-                        <ActivityEditPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                </Route>
+                />
                 <Route
                   path="settings"
                   element={
