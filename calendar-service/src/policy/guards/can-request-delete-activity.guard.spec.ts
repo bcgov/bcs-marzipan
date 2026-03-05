@@ -15,11 +15,13 @@ describe('CanRequestDeleteActivityGuard', () => {
   let guard: CanRequestDeleteActivityGuard;
   let policyService: {
     isCommsContactForActivity: Mock;
+    getLeadTeamIdForActivity: Mock;
   };
 
   beforeEach(async () => {
     policyService = {
       isCommsContactForActivity: vi.fn(),
+      getLeadTeamIdForActivity: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -72,6 +74,7 @@ describe('CanRequestDeleteActivityGuard', () => {
       teamIds: [],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(true);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
     const ctx = createMockContext(user, { id: '42' });
 
     const result = await guard.canActivate(ctx);
@@ -80,7 +83,29 @@ describe('CanRequestDeleteActivityGuard', () => {
     expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 5);
   });
 
-  it('should throw ForbiddenException when user is not comms contact', async () => {
+  it('should return true when user is in activity lead team but not comms contact', async () => {
+    const user: AuthUser = {
+      id: 7,
+      username: 'teammate',
+      displayName: 'Team Member',
+      email: 'team@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [],
+      teamIds: [10, 20],
+    };
+    policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+    const ctx = createMockContext(user, { id: '42' });
+
+    const result = await guard.canActivate(ctx);
+
+    expect(result).toBe(true);
+    expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 7);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(42);
+  });
+
+  it('should throw ForbiddenException when user is not comms contact or lead team member', async () => {
     const user: AuthUser = {
       id: 3,
       username: 'editor',
@@ -89,9 +114,10 @@ describe('CanRequestDeleteActivityGuard', () => {
       roleId: 2,
       roleName: 'Editor',
       permissions: ['activities.view', 'activities.edit'],
-      teamIds: [],
+      teamIds: [5, 6],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
     const ctx = createMockContext(user, { id: '1' });
 
     let err: ForbiddenException | undefined;
@@ -102,9 +128,11 @@ describe('CanRequestDeleteActivityGuard', () => {
     expect(err).toBeInstanceOf(ForbiddenException);
     expect(err?.getResponse()).toMatchObject({
       message: 'Permission denied',
-      required: 'Be a comms contact on this activity to request delete',
+      required:
+        "Be a comms contact or a member of the activity's lead team to request delete",
     });
     expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(1, 3);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(1);
   });
 
   it('should throw BadRequestException when activity id param is missing', async () => {

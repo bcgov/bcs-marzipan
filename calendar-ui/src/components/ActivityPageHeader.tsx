@@ -75,10 +75,7 @@ export function ActivityPageHeader({
 
       <div className="flex shrink-0 flex-col items-end gap-2 text-right">
         {statusDisplay !== '' ? (
-          <Badge
-            variant={getActivityStatusBadgeVariant(statusDisplay)}
-            className="capitalize"
-          >
+          <Badge variant={getActivityStatusBadgeVariant(statusDisplay)}>
             {statusDisplay}
           </Badge>
         ) : null}

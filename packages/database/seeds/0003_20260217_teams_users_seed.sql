@@ -90,6 +90,17 @@ UPDATE teams SET ministry_id = 25 WHERE id = 32;
 UPDATE teams SET ministry_id = 9 WHERE id = 36;
 
 -- ----------------------------------------------------------------------------
+-- TEAM ROLE (teams.role_id)
+-- Role IDs: 1=Viewer, 2=Editor, 3=Advanced Viewer, 4=Advanced Editor, 5=Admin, 6=System Admin
+-- 2=Admin; 1,3-7=Advanced Viewer; 8-32,35=Editor; 33,34,36=Viewer
+-- ----------------------------------------------------------------------------
+
+UPDATE teams SET role_id = 5 WHERE id = 2;
+UPDATE teams SET role_id = 3 WHERE id IN (1, 3, 4, 5, 6, 7);
+UPDATE teams SET role_id = 2 WHERE id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 35);
+UPDATE teams SET role_id = 1 WHERE id IN (33, 34, 36);
+
+-- ----------------------------------------------------------------------------
 -- USER_TEAMS
 -- Editor (2-12): each in one Ministry Comms team; 2 Editors in 2 teams (2 and 3).
 -- View Only (1): one Ministry Comms team (any except PREM).

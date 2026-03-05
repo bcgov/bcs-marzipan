@@ -84,11 +84,16 @@ export function ActivityEditPage(): React.ReactElement {
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
   const isCommsContact =
     activity.commsContacts?.some((c) => c.userId === user?.id) ?? false;
+  const leadTeamId = activity.leadTeamId ?? null;
+  const isLeadTeamMember =
+    leadTeamId != null &&
+    Array.isArray(user?.teamIds) &&
+    user.teamIds.includes(leadTeamId);
   const activityStatusName = activity.activityStatus ?? '';
   const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
-  const canRestore = isCommsContact || isAdminOrSysAdmin;
+  const canRestore = isCommsContact || isLeadTeamMember || isAdminOrSysAdmin;
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -150,6 +155,13 @@ export function ActivityEditPage(): React.ReactElement {
       initialFormDataRef.current = mapped;
     }
   }, [activity, lookups, form]);
+
+  // When status is delete_requested or deleted, only admins may stay on edit page; redirect others to view
+  useEffect(() => {
+    if (isBlockedStatus && !isAdminOrSysAdmin) {
+      void navigate('..', { replace: true });
+    }
+  }, [isBlockedStatus, isAdminOrSysAdmin, navigate]);
 
   // Warn on tab close/refresh when there are unsaved changes (in-app navigation is guarded by Cancel dialog; full back/link blocking would require createBrowserRouter + useBlocker)
   useEffect(() => {
@@ -327,7 +339,9 @@ export function ActivityEditPage(): React.ReactElement {
   };
 
   const showRequestDeleteButton =
-    !isBlockedStatus && isCommsContact && !isAdminOrSysAdmin;
+    !isBlockedStatus &&
+    (isCommsContact || isLeadTeamMember) &&
+    !isAdminOrSysAdmin;
   const showDeleteButton = !isBlockedStatus && isAdminOrSysAdmin;
 
   return (

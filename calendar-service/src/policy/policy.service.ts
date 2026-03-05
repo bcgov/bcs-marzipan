@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 
 import {
+  activities,
   activityCommsContacts,
   permissions,
   rolePermissions,
@@ -228,5 +229,18 @@ export class PolicyService {
       .limit(1);
 
     return !!row;
+  }
+
+  /**
+   * Get the lead team ID for an activity. Used to allow lead-team members to request delete.
+   */
+  async getLeadTeamIdForActivity(activityId: number): Promise<number | null> {
+    const [row] = await this.databaseService.db
+      .select({ leadTeamId: activities.leadTeamId })
+      .from(activities)
+      .where(eq(activities.id, activityId))
+      .limit(1);
+
+    return row?.leadTeamId ?? null;
   }
 }

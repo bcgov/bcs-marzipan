@@ -11,8 +11,9 @@ import { SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 import { PolicyService } from '../policy.service';
 
 /**
- * Guard for activity restore (comms contacts or admin/sysAdmin).
- * Allows the request if the user is a comms contact on the activity OR has admin/systemAdmin role.
+ * Guard for activity restore (comms contacts, lead-team members, or admin/sysAdmin).
+ * Allows the request if the user is a comms contact on the activity, a member of the
+ * activity's lead team, or has admin/systemAdmin role.
  * Business rule validation (status is delete_requested or deleted) is done in the service.
  */
 @Injectable()
@@ -54,9 +55,21 @@ export class CanRestoreActivityGuard implements CanActivate {
       return true;
     }
 
+    const leadTeamId =
+      await this.policyService.getLeadTeamIdForActivity(activityId);
+    const isLeadTeamMember =
+      leadTeamId != null &&
+      Array.isArray(user.teamIds) &&
+      user.teamIds.includes(leadTeamId);
+
+    if (isLeadTeamMember) {
+      return true;
+    }
+
     throw new ForbiddenException({
       message: 'Permission denied',
-      required: 'Be a comms contact on this activity or an admin to restore',
+      required:
+        "Be a comms contact, a member of the activity's lead team, or an admin to restore",
     });
   }
 }

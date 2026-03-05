@@ -560,10 +560,7 @@ function StatusCell({
 
   return (
     <div>
-      <Badge
-        variant={getActivityStatusBadgeVariant(row.activityStatus)}
-        className="capitalize"
-      >
+      <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
         {row.activityStatus}
       </Badge>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">

@@ -1,11 +1,12 @@
 import type { ReactElement } from 'react';
 
+import { normalizeActivityStatus } from './ui/badge';
 import { Button } from './ui/button';
 
 type ActivityStatusBannerProps = {
-  /** Status name from activity (e.g. 'delete_requested', 'deleted'). */
+  /** Status name from activity (e.g. 'delete_requested', 'Delete requested', 'deleted'). */
   status: string;
-  /** Whether the current user can restore (comms contact or admin/sysAdmin). */
+  /** Whether the current user can restore (comms contact, lead-team member, or admin/sysAdmin). */
   canRestore: boolean;
   onRestore?: () => void | Promise<void>;
   /** When true, restore action is in progress. */
@@ -22,9 +23,10 @@ export function ActivityStatusBanner({
   onRestore,
   isRestoring = false,
 }: ActivityStatusBannerProps): ReactElement {
-  const isDeleteRequested = status === 'delete_requested';
+  const normalizedStatus = normalizeActivityStatus(status);
+  const isDeleteRequested = normalizedStatus === 'delete_requested';
   const message = isDeleteRequested
-    ? 'This activity has been marked for deletion. Edits are not allowed.'
+    ? 'This activity has been requested for deletion. Edits are not allowed.'
     : 'This activity has been deleted. Edits are not allowed.';
 
   return (

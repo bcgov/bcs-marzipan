@@ -15,11 +15,13 @@ describe('CanRestoreActivityGuard', () => {
   let guard: CanRestoreActivityGuard;
   let policyService: {
     isCommsContactForActivity: Mock;
+    getLeadTeamIdForActivity: Mock;
   };
 
   beforeEach(async () => {
     policyService = {
       isCommsContactForActivity: vi.fn(),
+      getLeadTeamIdForActivity: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -108,6 +110,7 @@ describe('CanRestoreActivityGuard', () => {
       teamIds: [],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(true);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
     const ctx = createMockContext(user, { id: '42' });
 
     const result = await guard.canActivate(ctx);
@@ -116,7 +119,29 @@ describe('CanRestoreActivityGuard', () => {
     expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 5);
   });
 
-  it('should throw ForbiddenException when user is not admin and not comms contact', async () => {
+  it('should return true when user is in activity lead team but not comms contact', async () => {
+    const user: AuthUser = {
+      id: 7,
+      username: 'teammate',
+      displayName: 'Team Member',
+      email: 'team@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [],
+      teamIds: [10, 20],
+    };
+    policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+    const ctx = createMockContext(user, { id: '42' });
+
+    const result = await guard.canActivate(ctx);
+
+    expect(result).toBe(true);
+    expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 7);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(42);
+  });
+
+  it('should throw ForbiddenException when user is not admin, not comms contact, and not in lead team', async () => {
     const user: AuthUser = {
       id: 3,
       username: 'editor',
@@ -125,9 +150,10 @@ describe('CanRestoreActivityGuard', () => {
       roleId: 2,
       roleName: 'Editor',
       permissions: ['activities.view', 'activities.edit'],
-      teamIds: [],
+      teamIds: [5, 6],
     };
     policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
     const ctx = createMockContext(user, { id: '1' });
 
     let err: ForbiddenException | undefined;
@@ -138,9 +164,11 @@ describe('CanRestoreActivityGuard', () => {
     expect(err).toBeInstanceOf(ForbiddenException);
     expect(err?.getResponse()).toMatchObject({
       message: 'Permission denied',
-      required: 'Be a comms contact on this activity or an admin to restore',
+      required:
+        "Be a comms contact, a member of the activity's lead team, or an admin to restore",
     });
     expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(1, 3);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(1);
   });
 
   it('should throw BadRequestException when activity id param is missing', async () => {

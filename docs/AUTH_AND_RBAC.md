@@ -127,6 +127,8 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 
 - **activities.create.any**: may choose any team that has create permission as lead team when creating (otherwise only the user's teams).
 - **activities.delete.any**: may delete any activity (otherwise only activities visible to user's teams).
+- **Activity request delete and restore**: Request delete and Restore can be performed by **comms contacts** on the activity, **members of the activity's lead team** (via `leadTeamId`), or **Admin/System Admin**. No separate permission is used; the backend guards enforce these rules.
+- **Edit page when Delete requested or Deleted**: When an activity is in **Delete requested** or **Deleted** status, only **Admin** and **System Admin** may access the edit page. Other users (including those with `activities.edit`) can view the activity and use Restore from the banner if allowed; the UI redirects non-admins away from the edit page. No new permission is used; enforcement is role-based in the UI and via redirect.
 - **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
