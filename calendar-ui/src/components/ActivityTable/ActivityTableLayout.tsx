@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react';
 import type { ReactNode, RefObject } from 'react';
 
 import {
@@ -9,6 +10,7 @@ import {
   TableSummaryBar,
   type BooleanFilter,
 } from '@/components/Table/TableSummaryBar';
+import { Input } from '@/components/ui/input';
 
 export interface ActivityTableLayoutProps {
   /** Ref forwarded to the scroll container for scroll-to-top on pagination. */
@@ -25,6 +27,9 @@ export interface ActivityTableLayoutProps {
   singularLabel: string;
   pluralLabel: string;
   filters?: BooleanFilter[];
+  /** Optional keyword search (persisted with other preferences). */
+  searchKeyword?: string;
+  onSearchKeywordChange?: (value: string) => void;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
@@ -46,11 +51,29 @@ export function ActivityTableLayout({
   singularLabel,
   pluralLabel,
   filters = [],
+  searchKeyword,
+  onSearchKeywordChange,
   children,
 }: ActivityTableLayoutProps) {
+  const showSearch =
+    searchKeyword !== undefined && onSearchKeywordChange !== undefined;
+
   return (
     <div className="min-w-0 space-y-4">
       <div className="mb-4 flex flex-wrap items-center justify-end gap-4">
+        {showSearch && (
+          <div className="relative mr-auto max-w-md min-w-[240px] flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              type="search"
+              placeholder="Search activities..."
+              value={searchKeyword}
+              onChange={(e) => onSearchKeywordChange(e.target.value)}
+              className="pl-8"
+              aria-label="Search activities"
+            />
+          </div>
+        )}
         <SortDropdown
           hideDirectionLabel
           columns={sortColumns}

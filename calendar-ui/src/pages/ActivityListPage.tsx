@@ -41,7 +41,7 @@ export const ActivityListPage = () => {
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
   const { data: ministries = [] } = useMinistries();
 
-  const userTeamIds = user?.teamIds ?? [];
+  const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
   const userTeams = useMemo(
     () => leadTeamOptions.filter((t) => userTeamIds.includes(t.id)),
     [leadTeamOptions, userTeamIds]

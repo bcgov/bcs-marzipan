@@ -2,11 +2,54 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
+import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
 
 import {
   buildOptimisticActivity,
+  filterActivityRowsByKeyword,
   normalizeListParams,
 } from './activity-query-utils';
+
+function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
+  return {
+    id: 1,
+    displayId: null,
+    title: '',
+    activityCategories: [],
+    pitchDate: null,
+    pitchRequiredStatus: null,
+    isConfidential: false,
+    isIssue: false,
+    summary: '',
+    tags: [],
+    lookAheadStatus: null,
+    lookAheadSection: null,
+    allDay: false,
+    startDate: null,
+    endDate: null,
+    dateStatus: '',
+    startTime: null,
+    endTime: null,
+    timeStatus: '',
+    venue: null,
+    premierRequested: null,
+    activityRepresentatives: [],
+    leadOrg: null,
+    leadMinistry: null,
+    leadMinistryAbbreviation: null,
+    commsLeadName: null,
+    commsContactsCount: 0,
+    eventLead: null,
+    translationsRequired: [],
+    translationsRequiredStatus: null,
+    commsMaterials: [],
+    activityStatus: '',
+    lastUpdatedDateTime: '',
+    lastUpdatedBy: 0,
+    createdDateTime: '',
+    ...overrides,
+  };
+}
 
 describe('normalizeListParams', () => {
   it('returns empty object for no input', () => {
@@ -158,5 +201,63 @@ describe('buildOptimisticActivity', () => {
     const result = buildOptimisticActivity(minimalExisting, update);
     expect(result).toEqual(minimalExisting);
     expect(result).not.toBe(minimalExisting);
+  });
+});
+
+describe('filterActivityRowsByKeyword', () => {
+  it('returns all rows when keyword is empty', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha' }),
+      makeRow({ id: 2, title: 'Beta' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, '')).toEqual(rows);
+    expect(filterActivityRowsByKeyword(rows, '   ')).toEqual(rows);
+  });
+
+  it('matches in title (case-insensitive)', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha Event' }),
+      makeRow({ id: 2, title: 'Beta Event' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'alpha')).toEqual([rows[0]]);
+    expect(filterActivityRowsByKeyword(rows, 'ALPHA')).toEqual([rows[0]]);
+  });
+
+  it('matches in summary', () => {
+    const rows = [
+      makeRow({ id: 1, summary: 'First activity summary' }),
+      makeRow({ id: 2, summary: 'Second activity' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'summary')).toEqual([rows[0]]);
+  });
+
+  it('matches in displayId', () => {
+    const rows = [
+      makeRow({ id: 1, displayId: 'AG-000123' }),
+      makeRow({ id: 2, displayId: 'HLTH-456' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'AG-000123')).toEqual([rows[0]]);
+    expect(filterActivityRowsByKeyword(rows, '000123')).toEqual([rows[0]]);
+  });
+
+  it('returns empty array when no row matches', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha', summary: 'One' }),
+      makeRow({ id: 2, title: 'Beta', summary: 'Two' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'gamma')).toEqual([]);
+  });
+
+  it('matches in tags and activityCategories', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        title: 'X',
+        tags: [{ id: 1, text: 'environment' }],
+        activityCategories: ['Event'],
+      }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'environment')).toEqual(rows);
+    expect(filterActivityRowsByKeyword(rows, 'Event')).toEqual(rows);
   });
 });

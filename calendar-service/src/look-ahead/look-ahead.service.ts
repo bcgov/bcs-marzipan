@@ -56,6 +56,7 @@ export class LookAheadService {
         lookAheadSection: sectionId,
         page: 1,
         limit: 500,
+        sharedWithTeamIds: undefined,
         excludeCompleted: undefined,
         includeDeleted: undefined,
       };

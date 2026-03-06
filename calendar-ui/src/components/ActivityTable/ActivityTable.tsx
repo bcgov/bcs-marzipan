@@ -63,6 +63,7 @@ import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
 import { useUsers } from '@/hooks/useLookups';
+import { filterActivityRowsByKeyword } from '@/lib/activity-query-utils';
 import {
   formatDateRange,
   formatExactDate,
@@ -608,6 +609,7 @@ export function ActivityTable({
   const sortDirection = preferences.sortDirection;
   const showCompleted = preferences.showCompleted;
   const showDeleted = preferences.showDeleted;
+  const searchKeyword = preferences.searchKeyword;
   const [pageIndex, setPageIndex] = useState(0);
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
@@ -667,6 +669,15 @@ export function ActivityTable({
     }
   }, [activityFilters]);
 
+  // Reset to first page when search keyword changes
+  const prevSearchKeywordRef = useRef(searchKeyword);
+  useEffect(() => {
+    if (prevSearchKeywordRef.current !== searchKeyword) {
+      prevSearchKeywordRef.current = searchKeyword;
+      setPageIndex(0);
+    }
+  }, [searchKeyword]);
+
   const activitiesQuery = useActivityList(activityFilters);
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
@@ -712,14 +723,19 @@ export function ActivityTable({
     [activitiesQuery.data]
   );
 
+  const filteredData = useMemo(
+    () => filterActivityRowsByKeyword(data, searchKeyword),
+    [data, searchKeyword]
+  );
+
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
     sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
   const sortedData = useMemo(() => {
-    return [...data].sort((a, b) =>
+    return [...filteredData].sort((a, b) =>
       compareActivityRows(a, b, effectiveSortKey, effectiveSortDirection)
     );
-  }, [data, effectiveSortKey, effectiveSortDirection]);
+  }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
   // Track which row ids we have seen so we can animate only newly arrived rows on refetch
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -934,6 +950,15 @@ export function ActivityTable({
     return filters;
   }, [showCompleted, showDeleted, canSeeDeleted, setPreferences]);
 
+  const searchLayoutProps = useMemo(
+    () => ({
+      searchKeyword,
+      onSearchKeywordChange: (value: string) =>
+        setPreferences({ searchKeyword: value }),
+    }),
+    [searchKeyword, setPreferences]
+  );
+
   // Loading state
   if (loading) {
     return (
@@ -949,6 +974,7 @@ export function ActivityTable({
         singularLabel="entry"
         pluralLabel="entries"
         filters={eventTableFilters}
+        {...searchLayoutProps}
       >
         <div className="flex flex-col items-center justify-center gap-3 py-12">
           <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -971,7 +997,7 @@ export function ActivityTable({
     );
   }
 
-  // Empty state
+  // Empty state (no activities from server)
   if (data.length === 0) {
     return (
       <ActivityTableLayout
@@ -986,6 +1012,7 @@ export function ActivityTable({
         singularLabel="entry"
         pluralLabel="entries"
         filters={eventTableFilters}
+        {...searchLayoutProps}
       >
         <div className="py-12 text-center text-sm text-slate-600">
           <div className="mb-2 font-semibold">No activities found</div>
@@ -999,6 +1026,7 @@ export function ActivityTable({
 
   const pageRows = table.getRowModel().rows;
 
+  // Single return so ActivityTableLayout (and search input) stay mounted when switching to empty-search state; preserves focus.
   return (
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
@@ -1014,150 +1042,164 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          {...searchLayoutProps}
         >
-          <table
-            className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-            role="grid"
-            aria-colcount={columns.length}
-          >
-            <thead className={tableThead}>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const pinStyles = getCommonPinningStyles(header.column);
-                    const meta = header.column.columnDef.meta as
-                      | { sortKey?: string; sortKeys?: string[] }
-                      | undefined;
-                    const isSortable =
-                      meta?.sortKey != null ||
-                      (meta?.sortKeys?.length ?? 0) > 0;
-                    const sortPayload = meta?.sortKeys ?? meta?.sortKey;
-                    const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
-                    return (
-                      <th
-                        key={header.id}
-                        className={cn(tableTh, hasMultiSort && 'group')}
-                        style={{
-                          width: header.getSize(),
-                          minWidth:
-                            header.column.columnDef.minSize ?? header.getSize(),
-                          maxWidth:
-                            header.column.columnDef.maxSize ?? header.getSize(),
-                          cursor: isSortable ? 'pointer' : 'default',
-                          ...pinStyles,
-                          ...(pinStyles.position === 'sticky'
-                            ? { backgroundColor: 'rgb(248 250 252)' }
-                            : {}),
-                        }}
-                        onClick={(e) => {
-                          if (
-                            (e.target as HTMLElement).closest(
-                              `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
-                            )
-                          ) {
-                            return;
-                          }
-                          const onHeaderSort = (
-                            table.options.meta as
-                              | {
-                                  handleHeaderSort?: (
-                                    key: string | string[]
-                                  ) => void;
-                                }
-                              | undefined
-                          )?.handleHeaderSort;
-                          if (sortPayload != null && onHeaderSort)
-                            onHeaderSort(sortPayload);
-                        }}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {pageRows.map((row) => {
-                const isNewRow = newRowIds.has(row.original.id);
-                return (
-                  <tr
-                    key={row.id}
-                    className={`group/row ${tableBodyRow} cursor-pointer ${
-                      isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                    }`}
-                    tabIndex={0}
-                    onClick={(e) => {
-                      if (
-                        (e.target as HTMLElement).closest('[data-no-row-nav]')
-                      )
-                        return;
-                      if (window.getSelection()?.toString().trim()) return;
-                      void navigate(`/activity/${row.original.id}`);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return;
-                      if (
-                        (e.target as HTMLElement).closest('[data-no-row-nav]')
-                      )
-                        return;
-                      e.preventDefault();
-                      void navigate(`/activity/${row.original.id}`);
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      const pinStyles = getCommonPinningStyles(cell.column);
-                      const isOverview = cell.column.id === 'overview';
+          {filteredData.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-600">
+              <div className="mb-2 font-semibold">
+                No activities match your search
+              </div>
+              <div>Try a different keyword or clear the search.</div>
+            </div>
+          ) : (
+            <table
+              className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+              role="grid"
+              aria-colcount={columns.length}
+            >
+              <thead className={tableThead}>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const pinStyles = getCommonPinningStyles(header.column);
+                      const meta = header.column.columnDef.meta as
+                        | { sortKey?: string; sortKeys?: string[] }
+                        | undefined;
+                      const isSortable =
+                        meta?.sortKey != null ||
+                        (meta?.sortKeys?.length ?? 0) > 0;
+                      const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                      const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
                       return (
-                        <td
-                          key={cell.id}
-                          className={`${tableTd} border-b border-slate-100 ${
-                            isOverview
-                              ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                              : ''
-                          }`}
+                        <th
+                          key={header.id}
+                          className={cn(tableTh, hasMultiSort && 'group')}
                           style={{
-                            width: cell.column.getSize(),
+                            width: header.getSize(),
                             minWidth:
-                              cell.column.columnDef.minSize ??
-                              cell.column.getSize(),
+                              header.column.columnDef.minSize ??
+                              header.getSize(),
                             maxWidth:
-                              cell.column.columnDef.maxSize ??
-                              cell.column.getSize(),
+                              header.column.columnDef.maxSize ??
+                              header.getSize(),
+                            cursor: isSortable ? 'pointer' : 'default',
                             ...pinStyles,
+                            ...(pinStyles.position === 'sticky'
+                              ? { backgroundColor: 'rgb(248 250 252)' }
+                              : {}),
+                          }}
+                          onClick={(e) => {
+                            if (
+                              (e.target as HTMLElement).closest(
+                                `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                              )
+                            ) {
+                              return;
+                            }
+                            const onHeaderSort = (
+                              table.options.meta as
+                                | {
+                                    handleHeaderSort?: (
+                                      key: string | string[]
+                                    ) => void;
+                                  }
+                                | undefined
+                            )?.handleHeaderSort;
+                            if (sortPayload != null && onHeaderSort)
+                              onHeaderSort(sortPayload);
                           }}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </td>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </th>
                       );
                     })}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </thead>
+              <tbody>
+                {pageRows.map((row) => {
+                  const isNewRow = newRowIds.has(row.original.id);
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`group/row ${tableBodyRow} cursor-pointer ${
+                        isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                      }`}
+                      tabIndex={0}
+                      onClick={(e) => {
+                        if (
+                          (e.target as HTMLElement).closest('[data-no-row-nav]')
+                        )
+                          return;
+                        if (window.getSelection()?.toString().trim()) return;
+                        void navigate(`/activity/${row.original.id}`);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        if (
+                          (e.target as HTMLElement).closest('[data-no-row-nav]')
+                        )
+                          return;
+                        e.preventDefault();
+                        void navigate(`/activity/${row.original.id}`);
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const pinStyles = getCommonPinningStyles(cell.column);
+                        const isOverview = cell.column.id === 'overview';
+                        return (
+                          <td
+                            key={cell.id}
+                            className={`${tableTd} border-b border-slate-100 ${
+                              isOverview
+                                ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                                : ''
+                            }`}
+                            style={{
+                              width: cell.column.getSize(),
+                              minWidth:
+                                cell.column.columnDef.minSize ??
+                                cell.column.getSize(),
+                              maxWidth:
+                                cell.column.columnDef.maxSize ??
+                                cell.column.getSize(),
+                              ...pinStyles,
+                            }}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </ActivityTableLayout>
 
-        <TablePagination
-          totalItems={sortedData.length}
-          page={pagination.pageIndex + 1}
-          pageSize={pagination.pageSize}
-          onPageChange={(page) =>
-            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-          }
-          onPageSizeChange={(pageSize) =>
-            setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-          }
-          scrollContainerRef={tableScrollRef}
-        />
+        {filteredData.length > 0 && (
+          <TablePagination
+            totalItems={sortedData.length}
+            page={pagination.pageIndex + 1}
+            pageSize={pagination.pageSize}
+            onPageChange={(page) =>
+              setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+            }
+            onPageSizeChange={(pageSize) =>
+              setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+            }
+            scrollContainerRef={tableScrollRef}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

@@ -8,6 +8,10 @@ const URL_PARAM_DIR = 'dir';
 const URL_PARAM_COMPLETED = 'completed';
 const URL_PARAM_DELETED = 'deleted';
 const URL_PARAM_PAGE_SIZE = 'pageSize';
+const URL_PARAM_SEARCH = 'search';
+
+/** Delay before syncing search keyword to URL so the input keeps focus while typing. */
+const SEARCH_SYNC_DEBOUNCE_MS = 400;
 
 const VALID_SORT_KEYS = new Set([
   'activityId',
@@ -30,6 +34,7 @@ export interface ActivityTablePreferences {
   showCompleted: boolean;
   showDeleted: boolean;
   pageSize: number;
+  searchKeyword: string;
 }
 
 const DEFAULT_PREFERENCES: ActivityTablePreferences = {
@@ -38,6 +43,7 @@ const DEFAULT_PREFERENCES: ActivityTablePreferences = {
   showCompleted: false,
   showDeleted: false,
   pageSize: DEFAULT_PAGE_SIZE,
+  searchKeyword: '',
 };
 
 function parseBool(value: string | null): boolean | null {
@@ -65,6 +71,9 @@ function parseFromSearchParams(
   const completed = parseBool(searchParams.get(URL_PARAM_COMPLETED));
   const deleted = parseBool(searchParams.get(URL_PARAM_DELETED));
   const pageSize = parsePageSize(searchParams.get(URL_PARAM_PAGE_SIZE));
+  const searchParam = searchParams.get(URL_PARAM_SEARCH);
+  const searchKeyword =
+    typeof searchParam === 'string' ? searchParam.trim() : '';
 
   return {
     sortKey:
@@ -79,6 +88,7 @@ function parseFromSearchParams(
         ? deleted
         : DEFAULT_PREFERENCES.showDeleted,
     pageSize: pageSize ?? DEFAULT_PREFERENCES.pageSize,
+    searchKeyword,
   };
 }
 
@@ -116,6 +126,10 @@ function parseFromStorage(
       parsed.pageSize <= MAX_PAGE_SIZE
         ? parsed.pageSize
         : DEFAULT_PREFERENCES.pageSize;
+    const searchKeyword =
+      typeof parsed.searchKeyword === 'string'
+        ? parsed.searchKeyword.trim()
+        : DEFAULT_PREFERENCES.searchKeyword;
 
     return {
       sortKey,
@@ -123,6 +137,7 @@ function parseFromStorage(
       showCompleted,
       showDeleted,
       pageSize,
+      searchKeyword,
     };
   } catch {
     return null;
@@ -135,7 +150,8 @@ function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_DIR) ||
     searchParams.has(URL_PARAM_COMPLETED) ||
     searchParams.has(URL_PARAM_DELETED) ||
-    searchParams.has(URL_PARAM_PAGE_SIZE)
+    searchParams.has(URL_PARAM_PAGE_SIZE) ||
+    searchParams.has(URL_PARAM_SEARCH)
   );
 }
 
@@ -164,6 +180,7 @@ function preferencesToParams(
     [URL_PARAM_COMPLETED]: String(prefs.showCompleted),
     [URL_PARAM_DELETED]: String(prefs.showDeleted),
     [URL_PARAM_PAGE_SIZE]: String(prefs.pageSize),
+    [URL_PARAM_SEARCH]: prefs.searchKeyword,
   };
 }
 
@@ -193,6 +210,12 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
     () => getInitialPreferences(searchParams, canSeeDeleted)
   );
   const hasUserChangedRef = useRef(false);
+  const lastUrlSyncRef = useRef<ActivityTablePreferences | null>(null);
+  const searchSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
 
   const setPreferences = useCallback(
     (partial: Partial<ActivityTablePreferences>) => {
@@ -214,17 +237,58 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
     [canSeeDeleted]
   );
 
+  const syncToUrl = useCallback(
+    (prefs: ActivityTablePreferences) => {
+      lastUrlSyncRef.current = prefs;
+      setSearchParams(preferencesToParams(prefs), { replace: true });
+    },
+    [setSearchParams]
+  );
+
   useEffect(() => {
     if (!hasUserChangedRef.current) return;
-    setSearchParams(preferencesToParams(preferences), { replace: true });
+
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
       } catch {
-        // ignore storage errors
+        // ignore
       }
     }
-  }, [preferences, setSearchParams]);
+
+    const prev = lastUrlSyncRef.current;
+    const onlySearchChanged =
+      prev !== null &&
+      prev.sortKey === preferences.sortKey &&
+      prev.sortDirection === preferences.sortDirection &&
+      prev.showCompleted === preferences.showCompleted &&
+      prev.showDeleted === preferences.showDeleted &&
+      prev.pageSize === preferences.pageSize &&
+      prev.searchKeyword !== preferences.searchKeyword;
+
+    if (onlySearchChanged) {
+      if (searchSyncTimeoutRef.current != null) {
+        clearTimeout(searchSyncTimeoutRef.current);
+      }
+      searchSyncTimeoutRef.current = setTimeout(() => {
+        searchSyncTimeoutRef.current = null;
+        syncToUrl(preferencesRef.current);
+      }, SEARCH_SYNC_DEBOUNCE_MS);
+    } else {
+      if (searchSyncTimeoutRef.current != null) {
+        clearTimeout(searchSyncTimeoutRef.current);
+        searchSyncTimeoutRef.current = null;
+      }
+      syncToUrl(preferences);
+    }
+
+    return () => {
+      if (searchSyncTimeoutRef.current != null) {
+        clearTimeout(searchSyncTimeoutRef.current);
+        searchSyncTimeoutRef.current = null;
+      }
+    };
+  }, [preferences, syncToUrl]);
 
   return { preferences, setPreferences };
 }

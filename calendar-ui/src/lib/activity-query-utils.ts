@@ -3,6 +3,41 @@ import type {
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
+
+/**
+ * Client-side keyword filter for activity table rows.
+ * Matches when the trimmed keyword appears (case-insensitive) in any searchable field.
+ * Returns all rows when keyword is empty.
+ */
+export function filterActivityRowsByKeyword(
+  rows: ActivityTableRow[],
+  keyword: string
+): ActivityTableRow[] {
+  const term = keyword.trim();
+  if (term === '') return rows;
+  const lower = term.toLowerCase();
+  return rows.filter((row) => {
+    const searchableValues: string[] = [
+      row.title,
+      row.displayId ?? '',
+      row.summary,
+      row.activityCategories.join(' '),
+      row.tags.map((t) => t.text).join(' '),
+      row.lookAheadStatus ?? '',
+      row.lookAheadSection ?? '',
+      row.venue ?? '',
+      row.leadOrg ?? '',
+      row.leadMinistryAbbreviation ?? '',
+      row.leadMinistry ?? '',
+      row.commsLeadName ?? '',
+      row.eventLead ?? '',
+      row.activityStatus,
+      row.activityRepresentatives.join(' '),
+    ];
+    return searchableValues.some((v) => v.toLowerCase().includes(lower));
+  });
+}
 
 /** Params for activity list query; extend with sort, search, etc. later. */
 export type ActivityListQueryParams = Partial<
