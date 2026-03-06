@@ -184,7 +184,9 @@ export class ActivityMapperService {
       reportSettings: relatedData?.reportSettings ?? [],
 
       // Edit access for current user (set when authenticated)
-      ...(relatedData?.canEdit !== undefined && { canEdit: relatedData.canEdit }),
+      ...(relatedData?.canEdit !== undefined && {
+        canEdit: relatedData.canEdit,
+      }),
 
       // Meta
       createdDateTime:

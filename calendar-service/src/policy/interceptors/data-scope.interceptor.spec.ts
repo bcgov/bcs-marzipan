@@ -287,4 +287,66 @@ describe('DataScopeInterceptor', () => {
       });
     });
   });
+
+  it('should use bypass false when user.bypassDataScoping is false without calling policy', async () => {
+    const user: AuthUser = {
+      id: 1,
+      username: 'user',
+      displayName: 'User',
+      email: 'user@example.com',
+      roleId: SYSTEM_ROLE_IDS.EDITOR,
+      roleName: SYSTEM_ROLES.EDITOR,
+      permissions: [],
+      teamIds: [1, 2],
+      bypassDataScoping: false,
+    };
+    mockExecutionContext = createMockExecutionContext(user);
+    mockCallHandler = createMockCallHandler();
+
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [1, 2],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).not.toHaveBeenCalled();
+          resolve();
+        },
+      });
+    });
+  });
+
+  it('should call bypassesDataScoping when user.bypassDataScoping is undefined', async () => {
+    bypassesDataScopingMock.mockReturnValue(false);
+    const user: AuthUser = {
+      id: 1,
+      username: 'editor',
+      displayName: 'Editor User',
+      email: 'editor@example.com',
+      roleId: SYSTEM_ROLE_IDS.EDITOR,
+      roleName: SYSTEM_ROLES.EDITOR,
+      permissions: [],
+      teamIds: [1],
+    };
+    mockExecutionContext = createMockExecutionContext(user);
+    mockCallHandler = createMockCallHandler();
+
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [1],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.EDITOR
+          );
+          resolve();
+        },
+      });
+    });
+  });
 });

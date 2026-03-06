@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
+import { PERMISSIONS } from '@corpcal/shared';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 
 import {
@@ -708,6 +710,201 @@ describe('ActivitiesService', () => {
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.activityStatusId).toBe(1);
     });
+
+    it('should throw ForbiddenException when user lacks create.any and context.teamIds is empty', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        leadTeamId: 1,
+      });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [],
+        })
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [],
+        })
+      ).rejects.toThrow(
+        'You may only create activities for teams you belong to.'
+      );
+    });
+
+    it('should throw ForbiddenException when user lacks create.any and context.teamIds is undefined', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        leadTeamId: 1,
+      });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+        })
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException when user lacks create.any and leadTeamId not in context.teamIds', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        leadTeamId: 99,
+      });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 99, name: 'Other Team', ministryId: 2 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1, 2],
+        })
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1, 2],
+        })
+      ).rejects.toThrow(
+        'You may only create activities for teams you belong to.'
+      );
+    });
+
+    it('should allow create when user has create.any even with empty teamIds', async () => {
+      const createDto = createMockActivityRequest({
+        title: 'New Activity',
+        leadTeamId: 5,
+      });
+      const createdActivity = createMockActivity({
+        id: 3,
+        title: 'New Activity',
+        leadTeamId: 5,
+      });
+      const mockInsert = {
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([createdActivity]),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const ministryQuery = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
+        };
+        const tx = {
+          insert: vi.fn().mockReturnValue(mockInsert),
+          select: vi.fn((...args) => {
+            if (args.length > 0 && typeof args[0] === 'object') {
+              return ministryQuery;
+            }
+            return createMockQueryChain([createdActivity]);
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([createdActivity]),
+          }),
+        };
+        return await callback(tx);
+      });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([{ id: 5, name: 'Team', ministryId: 1 }]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([createdActivity]);
+      });
+
+      const result = await service.create(createDto, 1, {
+        roleName: 'Admin',
+        permissions: [PERMISSIONS.ACTIVITIES.CREATE_ANY],
+        teamIds: [],
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.id).toBe(3);
+    });
   });
 
   describe('update', () => {
@@ -971,6 +1168,86 @@ describe('ActivitiesService', () => {
       await expect(service.update(1, updateDto, 1)).rejects.toThrow(
         /cannot be updated when status is 'deleted'/
       );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when changing leadTeamId and user lacks create.any and context.teamIds is empty', async () => {
+      const existingActivity = createMockActivity({ id: 1, leadTeamId: 1 });
+      mockDatabaseService.db.transaction = vi.fn();
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'draft' }] : [{ id: 1 }]
+            ),
+        };
+      });
+
+      const updateDto = createMockUpdateRequest({ leadTeamId: 5 });
+
+      await expect(
+        service.update(1, updateDto, 1, {
+          permissions: ['activities.edit'],
+          roleName: 'Editor',
+          teamIds: [],
+        })
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update(1, updateDto, 1, {
+          permissions: ['activities.edit'],
+          roleName: 'Editor',
+          teamIds: [],
+        })
+      ).rejects.toThrow('You may only set lead team to a team you belong to.');
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when changing leadTeamId and user lacks create.any and new leadTeamId not in context.teamIds', async () => {
+      const existingActivity = createMockActivity({ id: 1, leadTeamId: 1 });
+      mockDatabaseService.db.transaction = vi.fn();
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'draft' }] : [{ id: 1 }]
+            ),
+        };
+      });
+
+      const updateDto = createMockUpdateRequest({ leadTeamId: 99 });
+
+      await expect(
+        service.update(1, updateDto, 1, {
+          permissions: ['activities.edit'],
+          roleName: 'Editor',
+          teamIds: [1, 2],
+        })
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update(1, updateDto, 1, {
+          permissions: ['activities.edit'],
+          roleName: 'Editor',
+          teamIds: [1, 2],
+        })
+      ).rejects.toThrow('You may only set lead team to a team you belong to.');
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
   });

@@ -284,6 +284,30 @@ describe('CanRestoreActivityGuard', () => {
     expect(policyService.getLeadTeamIdForActivity).not.toHaveBeenCalled();
   });
 
+  it('should throw ForbiddenException when activity status is unknown (null)', async () => {
+    policyService.getActivityStatusNameForActivity.mockResolvedValue(null);
+    const user: AuthUser = {
+      id: 1,
+      username: 'u',
+      displayName: 'U',
+      email: 'u@e.com',
+      roleId: 1,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.REQUEST_DELETE],
+      teamIds: [5],
+    };
+    const ctx = createMockContext(user, { id: '999' });
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /Activity not found or status unknown; cannot restore/
+    );
+    expect(policyService.getActivityStatusNameForActivity).toHaveBeenCalledWith(
+      999
+    );
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
+  });
+
   it('should throw BadRequestException when activity id param is missing', async () => {
     const user: AuthUser = {
       id: 1,

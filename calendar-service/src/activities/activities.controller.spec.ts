@@ -10,6 +10,7 @@ import {
 } from '../common/test-utils';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { PolicyService } from '../policy/policy.service';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
@@ -64,9 +65,14 @@ describe('ActivitiesController', () => {
         },
         {
           provide: PolicyService,
-          useValue: { isCommsLeadForActivity: vi.fn() },
+          useValue: {
+            isCommsLeadForActivity: vi.fn(),
+            isCommsContactForActivity: vi.fn().mockResolvedValue(true),
+            getLeadTeamIdForActivity: vi.fn().mockResolvedValue(10),
+          },
         },
         CanDeleteActivityGuard,
+        CanEditActivityGuard,
       ],
     }).compile();
 

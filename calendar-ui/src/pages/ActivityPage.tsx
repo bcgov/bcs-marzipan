@@ -100,9 +100,11 @@ export function ActivityPage({
     .canEdit;
   const canEditActivity =
     hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(
-    canCreateActivity || canEditActivity
-  );
+  const {
+    data: leadTeamOptions = [],
+    isError: leadTeamOptionsError,
+    refetch: refetchLeadTeamOptions,
+  } = useLeadTeamOptions(canCreateActivity || canEditActivity);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -522,6 +524,21 @@ export function ActivityPage({
             onFocus={!isEditMode ? handleFormInteraction : undefined}
             onClick={!isEditMode ? handleFormInteraction : undefined}
           >
+            {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
+              <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                <span>Could not load lead team options.</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void refetchLeadTeamOptions();
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
             <ActivityFormBody
               form={form}
               lookups={lookups}

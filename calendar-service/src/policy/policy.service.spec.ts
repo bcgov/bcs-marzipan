@@ -211,4 +211,201 @@ describe('PolicyService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('getLeadTeamIdForActivity', () => {
+    it('should return leadTeamId when activity exists', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([{ leadTeamId: 5 }]),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      const result = await policyService.getLeadTeamIdForActivity(1);
+      expect(result).toBe(5);
+    });
+
+    it('should return null when activity not found', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      const result = await policyService.getLeadTeamIdForActivity(999);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getPermissionsForTeams', () => {
+    it('should return empty array when teamIds is empty', async () => {
+      const result = await service.getPermissionsForTeams([]);
+      expect(result).toEqual([]);
+    });
+
+    it('should return merged permissions from team roles and team_permissions', async () => {
+      mockDatabaseService.db = {
+        select: vi
+          .fn()
+          .mockImplementation(
+            (arg: { id?: number; roleId?: number; key?: string }) => {
+              if ('roleId' in arg && !('key' in arg)) {
+                return {
+                  from: vi.fn().mockReturnValue({
+                    where: vi.fn().mockResolvedValue([
+                      { id: 1, roleId: 2 },
+                      { id: 2, roleId: 2 },
+                    ]),
+                  }),
+                };
+              }
+              if ('key' in arg) {
+                return {
+                  from: vi.fn().mockReturnValue({
+                    innerJoin: vi.fn().mockReturnValue({
+                      where: vi
+                        .fn()
+                        .mockResolvedValue([
+                          { key: 'activities.edit' },
+                          { key: 'activities.view' },
+                        ]),
+                    }),
+                  }),
+                };
+              }
+              return {
+                from: vi
+                  .fn()
+                  .mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+              };
+            }
+          ),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      vi.spyOn(policyService as any, 'getPermissionsForRole').mockResolvedValue(
+        ['activities.view', 'activities.create']
+      );
+
+      const result = await policyService.getPermissionsForTeams([1, 2]);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toContain('activities.view');
+      expect(result).toContain('activities.create');
+      expect(result).toContain('activities.edit');
+    });
+  });
+
+  describe('getEffectivePermissionsForUser', () => {
+    it('should return empty permissions and bypass false when user not found', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      vi.spyOn(policyService, 'getTeamIdsForUser').mockResolvedValue([]);
+
+      const result = await policyService.getEffectivePermissionsForUser(999);
+      expect(result).toEqual({ permissions: [], bypass: false });
+    });
+
+    it('should return merged user and team permissions and bypass from user role', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi
+                  .fn()
+                  .mockReturnValue(Promise.resolve([{ roleId: 1 }])),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      vi.spyOn(policyService, 'getTeamIdsForUser').mockResolvedValue([1]);
+      vi.spyOn(policyService as any, 'getPermissionsForRole').mockResolvedValue(
+        ['activities.view']
+      );
+      vi.spyOn(policyService, 'getPermissionsForTeams').mockResolvedValue([
+        'activities.edit',
+      ]);
+      vi.spyOn(policyService, 'getRoleName').mockResolvedValue(
+        SYSTEM_ROLES.ADMIN
+      );
+
+      const result = await policyService.getEffectivePermissionsForUser(1);
+      expect(result.permissions).toContain('activities.view');
+      expect(result.permissions).toContain('activities.edit');
+      expect(result.bypass).toBe(true);
+    });
+  });
 });

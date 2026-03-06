@@ -5,9 +5,9 @@ import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 
 import { fetchActivity } from '../api/activitiesApi';
-import { useAuth } from '../hooks/useAuth';
 import { ErrorState } from '../components/ErrorState';
 import { StatusMessage } from '../components/StatusMessage';
+import { useAuth } from '../hooks/useAuth';
 import {
   LOAD_ACTIVITY_NO_ID,
   LOAD_ACTIVITY_TITLE,
@@ -40,7 +40,7 @@ export function ActivityLayout(): React.ReactElement {
   // Redirect users without EDIT permission away from edit route before loading activity
   useEffect(() => {
     if (!id || !redirectToView) return;
-    navigate(`/activity/${id}`, { replace: true });
+    void navigate(`/activity/${id}`, { replace: true });
   }, [id, redirectToView, navigate]);
 
   const refreshActivity = useCallback(async () => {

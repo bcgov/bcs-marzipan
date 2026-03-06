@@ -84,7 +84,11 @@ export const CreateActivityForm: FC = () => {
 
   // Fetch all lookup data
   const lookups = useFormLookups();
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(canCreateActivity);
+  const {
+    data: leadTeamOptions = [],
+    isError: leadTeamOptionsError,
+    refetch: refetchLeadTeamOptions,
+  } = useLeadTeamOptions(canCreateActivity);
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -401,6 +405,21 @@ export const CreateActivityForm: FC = () => {
             void form.handleSubmit(onSubmit, onError)(e);
           }}
         >
+          {canCreateActivity && leadTeamOptionsError && (
+            <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <span>Could not load lead team options.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void refetchLeadTeamOptions();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
           <ActivityFormBody
             form={form}
             lookups={lookups}

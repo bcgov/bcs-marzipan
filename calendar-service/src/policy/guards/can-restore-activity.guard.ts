@@ -44,6 +44,11 @@ export class CanRestoreActivityGuard implements CanActivate {
     const status = statusName?.toLowerCase() ?? '';
 
     if (status !== 'delete_requested' && status !== 'deleted') {
+      if (status === '') {
+        throw new ForbiddenException(
+          'Activity not found or status unknown; cannot restore.'
+        );
+      }
       return true;
     }
 

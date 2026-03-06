@@ -501,6 +501,8 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  /** Same edit guard as PATCH/PUT: comms contact, lead-team member, or Admin/System Admin. */
+  @UseGuards(CanEditActivityGuard)
   @RequirePermission('activities.edit')
   @Post(':id/cancel-changes')
   async cancelChanges(

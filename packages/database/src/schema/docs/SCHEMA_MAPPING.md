@@ -32,8 +32,8 @@ When migrating legacy data:
 
 Lookup tables use a consistent shape for type safety and generic UI components:
 
-- **`name`** (notNull): Stable key or code (e.g. slug, abbreviation, internal identifier).
-- **`display_name`** (notNull): User-facing label for UI display.
+- `**name`\*\* (notNull): Stable key or code (e.g. slug, abbreviation, internal identifier).
+- `**display_name**` (notNull): User-facing label for UI display.
 
 ## Table of Contents
 
@@ -175,57 +175,61 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 ### Key Transformations
 
 1. **Date/Time Split**: `StartDateTime` and `EndDateTime` have been split into separate `startDate`/`startTime` and `endDate`/`endTime` fields, allowing for more flexible scheduling.
-
 2. **Status Fields**:
-   - `StatusId` → `activityStatusId` (now required, FK to ActivityStatus)
-   - `HqStatusId` → `lookAheadStatus` (changed from FK to enum-like varchar)
-   - `IsConfirmed` → `dateStatusId` (replaced boolean with FK to DateStatus)
-   - New: `timeStatusId` (FK to TimeStatus)
+
+- `StatusId` → `activityStatusId` (now required, FK to ActivityStatus)
+- `HqStatusId` → `lookAheadStatus` (changed from FK to enum-like varchar)
+- `IsConfirmed` → `dateStatusId` (replaced boolean with FK to DateStatus)
+- New: `timeStatusId` (FK to TimeStatus)
 
 3. **Organization Fields**:
-   - `LeadOrganization` → Split into `leadOrgId` (FK) or `leadOrgName` (free text) with XOR constraint
-   - News Release Origin: Handled through `ActivityNROrigins` junction table in legacy, now uses direct FK `newsReleaseOriginId` (integer FK to NewsReleaseOrigin lookup table) for a single optional reference per activity
+
+- `LeadOrganization` → Split into `leadOrgId` (FK) or `leadOrgName` (free text) with XOR constraint
+- News Release Origin: Handled through `ActivityNROrigins` junction table in legacy, now uses direct FK `newsReleaseOriginId` (integer FK to NewsReleaseOrigin lookup table) for a single optional reference per activity
 
 4. **Text Field Expansions**: Several varchar fields have been changed to `text` type for unlimited length:
-   - `Details` → `summary` (text, required)
-   - `Significance` → `significance` (text, required)
-   - `Schedule` → `schedulingNotes` (text)
-   - `Strategy` → `strategy` (text)
-   - `HqComments` → `executiveSummary` (text)
+
+- `Details` → `summary` (text, required)
+- `Significance` → `significance` (text, required)
+- `Schedule` → `schedulingNotes` (text)
+- `Strategy` → `strategy` (text)
+- `HqComments` → `executiveSummary` (text)
 
 5. **Venue Management**: Venue-related fields (`Venue`, `CityId`, `OtherCity`) have been moved to a separate `venueAddresses` table for better normalization.
-
 6. **Audit Fields**:
-   - `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
-   - `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
-   - `CreatedBy` and `LastUpdatedBy` are now required
-   - `RowGuid` field has been removed (unused in business logic)
+
+- `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
+- `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
+- `CreatedBy` and `LastUpdatedBy` are now required
+- `RowGuid` field has been removed (unused in business logic)
 
 7. **Removed Fields**: Several legacy fields have been removed:
-   - `PotentialDates` (deprecated in legacy)
-   - `VideographerId` (removed - no longer needed)
-   - `IsAtLegislature` (redundant with venue)
-   - `IsConfidential` → `isConfidential` on activities table (returned to activities)
-   - `IsMilestone` (deprecated in legacy)
-   - `pitchStatusId` (removed - pitch workflow simplified)
-   - `pitchComments` (removed - pitch workflow simplified)
-   - `calendarVisibility` (removed)
-   - `venueStatusId` (removed)
-   - `eventLeadOrgId` and `eventLeadOrgName` (removed)
+
+- `PotentialDates` (deprecated in legacy)
+- `VideographerId` (removed - no longer needed)
+- `IsAtLegislature` (redundant with venue)
+- `IsConfidential` → `isConfidential` on activities table (returned to activities)
+- `IsMilestone` (deprecated in legacy)
+- `pitchStatusId` (removed - pitch workflow simplified)
+- `pitchComments` (removed - pitch workflow simplified)
+- `calendarVisibility` (removed)
+- `venueStatusId` (removed)
+- `eventLeadOrgId` and `eventLeadOrgName` (removed)
 
 8. **New Features**:
-   - `displayId`: Computed display identifier with ministry prefix
-   - `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
-   - `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
-   - `isConfidential`: Activity-level boolean property that determines placeholder inclusion when combined with `omitted` flag.
-   - `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
-   - `leadMinistryId`: Renamed from contactMinistryId
-   - `pitchDate`: Date tracking for pitch workflow
-   - `notes`: General notes field (mapped from legacy Comments)
-   - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
-   - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
-   - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
-   - `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
+
+- `displayId`: Computed display identifier with ministry prefix
+- `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
+- `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
+- `isConfidential`: Activity-level boolean property that determines placeholder inclusion when combined with `omitted` flag.
+- `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
+- `leadMinistryId`: Renamed from contactMinistryId
+- `pitchDate`: Date tracking for pitch workflow
+- `notes`: General notes field (mapped from legacy Comments)
+- `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
+- `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
+- `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
+- `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
 
 ### Visibility and Sharing
 
@@ -462,8 +466,8 @@ The `config` field stores a JSONB object that defines how activities are include
 
 ### Report Visibility
 
-- **`visibility = 'global'`**: Report is visible to all teams (e.g., Look Ahead)
-- **`visibility = 'team'`**: Report is visible only to the creator's team (e.g., 30/60/90)
+- `**visibility = 'global'`\*\*: Report is visible to all teams (e.g., Look Ahead)
+- `**visibility = 'team'**`: Report is visible only to the creator's team (e.g., 30/60/90)
 
 ### Related Tables
 
@@ -497,8 +501,8 @@ Activity inclusion in reports is determined by `isConfidential` (on activities) 
 
 This table replaces the legacy boolean flags on the Activity table:
 
-- **`IsConfidential` (notForLookAhead)**: `isConfidential=true` on activities (for placeholder) + `omitted=true` in activityReportSettings (for omission)
-- **`notForThirtySixtyNinety`**: `omitted=true` for 'thirty-sixty-ninety' report
+- `**IsConfidential` (notForLookAhead)\*\*: `isConfidential=true` on activities (for placeholder) + `omitted=true` in activityReportSettings (for omission)
+- `**notForThirtySixtyNinety`\*\*: `omitted=true` for 'thirty-sixty-ninety' report
 
 ### Related Tables
 
@@ -553,9 +557,7 @@ This table replaces the legacy boolean flags on the Activity table:
 ### Key Transformations
 
 1. **AD Fields**: User profile fields have been prefixed with `ad` to clearly indicate they come from Active Directory integration. This allows for separate local overrides if needed.
-
 2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 6 system roles and extensible custom roles.
-
 3. **Removed UI Preferences**: `FilterDisplayValue` and `HiddenColumns` have been removed as UI preferences will be handled separately.
 
 ### Related Tables
@@ -781,7 +783,6 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 ### Key Transformations
 
 1. **Ministry to Team**: The legacy `SystemUserMinistry` table linked users to ministries. The new `user_teams` table links users to teams, which is a more flexible grouping concept. During migration, ministries may map to teams or a separate `ministryUsers` junction table.
-
 2. **Simplified Schema**: Audit fields (`CreatedBy`, `LastUpdatedBy`, etc.) have been removed from the junction table as they add overhead without significant value for this relationship type.
 
 ### Data Scoping Behavior

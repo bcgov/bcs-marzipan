@@ -53,10 +53,7 @@ import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type {
-  DataScope,
-  RequestContext as RequestContextType,
-} from '../../policy/dto/user-context.dto';
+import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
@@ -375,12 +372,19 @@ export class ActivitiesService {
     }
     const resolvedLeadMinistryId = leadTeam.ministryId ?? null;
 
-    // Scope: without activities.create.any, leadTeamId must be in user's teams
+    // Data scope: without activities.create.any, user may only create for teams they belong to.
+    // Guards enforce permission; service enforces scope.
     const canCreateAny =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ??
       false;
-    if (!canCreateAny && context?.teamIds?.length) {
-      if (!context.teamIds.includes(activityData.leadTeamId)) {
+    if (!canCreateAny) {
+      const teamIds = context?.teamIds;
+      if (!Array.isArray(teamIds) || teamIds.length === 0) {
+        throw new ForbiddenException(
+          'You may only create activities for teams you belong to.'
+        );
+      }
+      if (!teamIds.includes(activityData.leadTeamId)) {
         throw new ForbiddenException(
           'You may only create activities for teams you belong to.'
         );
@@ -1115,14 +1119,19 @@ export class ActivitiesService {
       .from(activityReportSettings)
       .where(eq(activityReportSettings.activityId, id));
 
-    // When leadTeamId is being updated, validate scoping
+    // Data scope: when changing leadTeamId, user without create.any may only set a team they belong to.
     if (
       dto.leadTeamId !== undefined &&
       context?.permissions &&
-      !context.permissions.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) &&
-      context.teamIds?.length
+      !context.permissions.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY)
     ) {
-      if (!context.teamIds.includes(dto.leadTeamId)) {
+      const teamIds = context.teamIds;
+      if (!Array.isArray(teamIds) || teamIds.length === 0) {
+        throw new ForbiddenException(
+          'You may only set lead team to a team you belong to.'
+        );
+      }
+      if (!teamIds.includes(dto.leadTeamId)) {
         throw new ForbiddenException(
           'You may only set lead team to a team you belong to.'
         );
