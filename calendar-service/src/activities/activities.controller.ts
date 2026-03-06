@@ -145,6 +145,9 @@ export class ActivitiesController {
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
       query.leadTeamId !== undefined ||
+      query.commsContactLeadUserId !== undefined ||
+      query.sharedWithTeamId !== undefined ||
+      query.sharedWithTeamIds !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
       query.isIssue !== undefined ||

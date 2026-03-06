@@ -130,6 +130,28 @@ describe('filterActivitiesQuerySchema', () => {
     ).toThrow();
   });
 
+  it('parses commsContactLeadUserId and sharedWithTeamId from query strings', () => {
+    expect(
+      filterActivitiesQuerySchema.parse({ commsContactLeadUserId: '7' })
+        .commsContactLeadUserId
+    ).toBe(7);
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamId: '12' })
+        .sharedWithTeamId
+    ).toBe(12);
+  });
+
+  it('parses sharedWithTeamIds from comma-separated string', () => {
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '1,2,3' })
+        .sharedWithTeamIds
+    ).toEqual([1, 2, 3]);
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '5' })
+        .sharedWithTeamIds
+    ).toEqual([5]);
+  });
+
   it('rejects non-integer activityStatusId', () => {
     expect(() =>
       filterActivitiesQuerySchema.parse({ activityStatusId: 'x' })

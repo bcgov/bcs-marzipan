@@ -62,6 +62,29 @@ describe('normalizeListParams', () => {
       includeDeleted: false,
     });
   });
+
+  it('includes leadTeamId, commsContactLeadUserId, sharedWithTeamId, sharedWithTeamIds when provided', () => {
+    expect(
+      normalizeListParams({
+        excludeCompleted: true,
+        leadTeamId: 5,
+      })
+    ).toEqual({ excludeCompleted: true, leadTeamId: 5 });
+    expect(
+      normalizeListParams({
+        commsContactLeadUserId: 10,
+        sharedWithTeamId: 3,
+      })
+    ).toEqual({
+      commsContactLeadUserId: 10,
+      sharedWithTeamId: 3,
+    });
+    expect(
+      normalizeListParams({
+        sharedWithTeamIds: [3, 1, 2],
+      })
+    ).toEqual({ sharedWithTeamIds: [1, 2, 3] });
+  });
 });
 
 describe('buildOptimisticActivity', () => {

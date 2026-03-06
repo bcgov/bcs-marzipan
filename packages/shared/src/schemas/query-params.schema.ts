@@ -67,6 +67,40 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int())
     .optional(),
   leadTeamId: z.string().transform(Number).pipe(z.number().int()).optional(),
+  /**
+   * Restrict to activities where this user is the comms contact lead (isLead = true).
+   */
+  commsContactLeadUserId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
+  /**
+   * Restrict to activities shared with this team (in activity_shared_with_teams).
+   */
+  sharedWithTeamId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
+  /**
+   * Restrict to activities shared with any of these teams (in activity_shared_with_teams).
+   * Comma-separated team IDs in query string.
+   */
+  sharedWithTeamIds: z
+    .union([
+      z.array(z.string().transform(Number).pipe(z.number().int())),
+      z.string().transform((val) =>
+        val
+          .split(',')
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((id) => !isNaN(id))
+      ),
+    ])
+    .optional()
+    .transform((val) =>
+      val == null || (Array.isArray(val) && val.length === 0) ? undefined : val
+    ),
   lookAheadSection: z.enum(LOOK_AHEAD_SECTION).optional(),
   city: z.string().optional(),
   isIssue: z

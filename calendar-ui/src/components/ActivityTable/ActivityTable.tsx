@@ -578,7 +578,23 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
-export function ActivityTable() {
+export interface ActivityTableProps {
+  /** When set, only activities with this lead team are shown (e.g. ministry tab). */
+  leadTeamId?: number;
+  /** When set, only activities where this user is comms contact lead are shown. */
+  commsContactLeadUserId?: number;
+  /** When set, only activities shared with this team are shown. */
+  sharedWithTeamId?: number;
+  /** When set, only activities shared with any of these teams are shown. */
+  sharedWithTeamIds?: number[];
+}
+
+export function ActivityTable({
+  leadTeamId,
+  commsContactLeadUserId,
+  sharedWithTeamId,
+  sharedWithTeamIds,
+}: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const canSeeDeleted =
@@ -605,17 +621,46 @@ export function ActivityTable() {
     () => ({
       excludeCompleted: !showCompleted,
       includeDeleted: showDeleted && canSeeDeleted,
+      ...(leadTeamId !== undefined && { leadTeamId }),
+      ...(commsContactLeadUserId !== undefined && {
+        commsContactLeadUserId,
+      }),
+      ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
+      ...(sharedWithTeamIds !== undefined &&
+        sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
     }),
-    [showCompleted, showDeleted, canSeeDeleted]
+    [
+      showCompleted,
+      showDeleted,
+      canSeeDeleted,
+      leadTeamId,
+      commsContactLeadUserId,
+      sharedWithTeamId,
+      sharedWithTeamIds,
+    ]
   );
 
   // Reset to first page when user changes filters so results match expectations
   const prevFiltersRef = useRef(activityFilters);
   useEffect(() => {
     const prev = prevFiltersRef.current;
+    const sameSharedWithTeamIds =
+      (prev.sharedWithTeamIds == null &&
+        activityFilters.sharedWithTeamIds == null) ||
+      (prev.sharedWithTeamIds != null &&
+        activityFilters.sharedWithTeamIds != null &&
+        prev.sharedWithTeamIds.length ===
+          activityFilters.sharedWithTeamIds.length &&
+        prev.sharedWithTeamIds.every(
+          (id, i) => id === activityFilters.sharedWithTeamIds![i]
+        ));
     const same =
       prev.excludeCompleted === activityFilters.excludeCompleted &&
-      prev.includeDeleted === activityFilters.includeDeleted;
+      prev.includeDeleted === activityFilters.includeDeleted &&
+      prev.leadTeamId === activityFilters.leadTeamId &&
+      prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
+      prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;
       setPageIndex(0);

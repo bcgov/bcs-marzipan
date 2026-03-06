@@ -6,17 +6,38 @@ import type {
 
 /** Params for activity list query; extend with sort, search, etc. later. */
 export type ActivityListQueryParams = Partial<
-  Pick<FilterActivitiesQueryParams, 'excludeCompleted' | 'includeDeleted'>
+  Pick<
+    FilterActivitiesQueryParams,
+    | 'excludeCompleted'
+    | 'includeDeleted'
+    | 'leadTeamId'
+    | 'commsContactLeadUserId'
+    | 'sharedWithTeamId'
+    | 'sharedWithTeamIds'
+  >
 >;
 
 /** Normalize filters so the same logical view produces a stable query key. */
 export function normalizeListParams(
   params: ActivityListQueryParams = {}
 ): ActivityListQueryParams {
-  const { excludeCompleted, includeDeleted } = params;
+  const {
+    excludeCompleted,
+    includeDeleted,
+    leadTeamId,
+    commsContactLeadUserId,
+    sharedWithTeamId,
+    sharedWithTeamIds,
+  } = params;
   const out: ActivityListQueryParams = {};
   if (excludeCompleted !== undefined) out.excludeCompleted = excludeCompleted;
   if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
+  if (leadTeamId !== undefined) out.leadTeamId = leadTeamId;
+  if (commsContactLeadUserId !== undefined)
+    out.commsContactLeadUserId = commsContactLeadUserId;
+  if (sharedWithTeamId !== undefined) out.sharedWithTeamId = sharedWithTeamId;
+  if (sharedWithTeamIds !== undefined && sharedWithTeamIds.length > 0)
+    out.sharedWithTeamIds = [...sharedWithTeamIds].sort((a, b) => a - b);
   return out;
 }
 
