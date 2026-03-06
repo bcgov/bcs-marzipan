@@ -1,7 +1,8 @@
 -- ============================================================================
--- TEAMS, TEAM MINISTRIES, AND USER-TEAM ASSIGNMENTS
+-- TEAMS AND USER-TEAM ASSIGNMENTS
 -- Seeds teams for datascoping; run after lookups (users, ministries) and
 -- optionally after activities seed. Idempotent: ON CONFLICT DO NOTHING.
+-- Team ministry (teams.ministry_id) is set below for scoping.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -12,7 +13,7 @@
 INSERT INTO teams (id, name, display_name, description, sort_order, is_active, created_by, last_updated_by) VALUES
   -- GCPE teams (sort_order 1-7)
   (1, 'MR', 'Media Relations', 'Media Relations', 1, true, 1, 1),
-  (2, 'CC HQ', 'CC HQ', 'Corporate Calendar Admin', 2, true, 1, 1),
+  (2, 'CCHQ', 'CCHQ', 'Corporate Calendar Admin', 2, true, 1, 1),
   (3, 'Editorial', 'Editorial', 'Editorial Services', 3, true, 1, 1),
   (4, 'Events', 'Events', 'Corporate Events', 4, true, 1, 1),
   (5, 'Digital Comms', 'Digital Comms', 'Digital Communications', 5, true, 1, 1),
@@ -20,20 +21,20 @@ INSERT INTO teams (id, name, display_name, description, sort_order, is_active, c
   (7, 'GCPE Exec', 'GCPE Exec', 'GCPE Executive', 7, true, 1, 1),
   -- Ministry Comms: PREM then AGRI through WLRS (sort_order 8-32)
   (8, 'PREM', 'PREM', 'Office of the Premier', 8, true, 1, 1),
-  (9, 'AGRI Comms', 'AGRI Comms', 'Agriculture and Food Comms', 9, true, 1, 1),
+  (9, 'AF Comms', 'AF Comms', 'Agriculture and Food Comms', 9, true, 1, 1),
   (10, 'AG Comms', 'AG Comms', 'Attorney General Comms', 10, true, 1, 1),
-  (11, 'CFD Comms', 'CFD Comms', 'Children and Family Development Comms', 11, true, 1, 1),
+  (11, 'MCFD Comms', 'MCFD Comms', 'Children and Family Development Comms', 11, true, 1, 1),
   (12, 'CITZ Comms', 'CITZ Comms', 'Citizens'' Services Comms', 12, true, 1, 1),
-  (13, 'EDUC Comms', 'EDUC Comms', 'Education and Child Care Comms', 13, true, 1, 1),
+  (13, 'ECC Comms', 'ECC Comms', 'Education and Child Care Comms', 13, true, 1, 1),
   (14, 'EMCR Comms', 'EMCR Comms', 'Emergency Management and Climate Readiness Comms', 14, true, 1, 1),
-  (15, 'ENER Comms', 'ENER Comms', 'Energy and Climate Solutions Comms', 15, true, 1, 1),
-  (16, 'ENV Comms', 'ENV Comms', 'Environment and Parks Comms', 16, true, 1, 1),
+  (15, 'ECS Comms', 'ECS Comms', 'Energy and Climate Solutions Comms', 15, true, 1, 1),
+  (16, 'EP Comms', 'EP Comms', 'Environment and Parks Comms', 16, true, 1, 1),
   (17, 'FIN Comms', 'FIN Comms', 'Finance Comms', 17, true, 1, 1),
   (18, 'FOR Comms', 'FOR Comms', 'Forests Comms', 18, true, 1, 1),
   (19, 'HLTH Comms', 'HLTH Comms', 'Health Comms', 19, true, 1, 1),
-  (20, 'HOUS Comms', 'HOUS Comms', 'Housing and Municipal Affairs Comms', 20, true, 1, 1),
+  (20, 'HMA Comms', 'HMA Comms', 'Housing and Municipal Affairs Comms', 20, true, 1, 1),
   (21, 'IRR Comms', 'IRR Comms', 'Indigenous Relations and Reconciliation Comms', 21, true, 1, 1),
-  (22, 'INFRA Comms', 'INFRA Comms', 'Infrastructure Comms', 22, true, 1, 1),
+  (22, 'INF Comms', 'INF Comms', 'Infrastructure Comms', 22, true, 1, 1),
   (23, 'IGRS Comms', 'IGRS Comms', 'Intergovernmental Relations Secretariat Comms', 23, true, 1, 1),
   (24, 'JEG Comms', 'JEG Comms', 'Jobs and Economic Growth Comms', 24, true, 1, 1),
   (25, 'LAB Comms', 'LAB Comms', 'Labour Comms', 25, true, 1, 1),
@@ -42,7 +43,7 @@ INSERT INTO teams (id, name, display_name, description, sort_order, is_active, c
   (28, 'PSSG Comms', 'PSSG Comms', 'Public Safety and Solicitor General Comms', 28, true, 1, 1),
   (29, 'SDPR Comms', 'SDPR Comms', 'Social Development and Poverty Reduction Comms', 29, true, 1, 1),
   (30, 'TACS Comms', 'TACS Comms', 'Tourism, Arts, Culture and Sport Comms', 30, true, 1, 1),
-  (31, 'TRAN Comms', 'TRAN Comms', 'Transportation and Transit Comms', 31, true, 1, 1),
+  (31, 'MOTT Comms', 'MOTT Comms', 'Transportation and Transit Comms', 31, true, 1, 1),
   (32, 'WLRS Comms', 'WLRS Comms', 'Water, Land and Resource Stewardship Comms', 32, true, 1, 1),
   -- Crown / other teams (sort_order 33-36)
   (33, 'BC Wildfire', 'BC Wildfire', 'BC Wildfire Service', 33, true, 1, 1),
@@ -55,42 +56,54 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ----------------------------------------------------------------------------
--- TEAM_MINISTRIES
--- Ministry Comms teams (8-32): one ministry per team (PREM=1, AGRI=2, ... WLRS=25).
--- Crown teams: BC Wildfire->FOR(11), BC Coroners->PSSG(21), IGRS->IGRS(16), EAO->ENV(9).
+-- TEAM MINISTRY (teams.ministry_id)
+-- CCHQ (2) and IGRS (35): Premier's Office (1).
+-- Ministry Comms (8-32): PREM=1, AGRI=2, ... WLRS=25.
+-- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->ENV(9).
 -- ----------------------------------------------------------------------------
 
-INSERT INTO team_ministries (team_id, ministry_id, is_active) VALUES
-  (8, 1, true),
-  (9, 2, true),
-  (10, 3, true),
-  (11, 4, true),
-  (12, 5, true),
-  (13, 6, true),
-  (14, 7, true),
-  (15, 8, true),
-  (16, 9, true),
-  (17, 10, true),
-  (18, 11, true),
-  (19, 12, true),
-  (20, 13, true),
-  (21, 14, true),
-  (22, 15, true),
-  (23, 16, true),
-  (24, 17, true),
-  (25, 18, true),
-  (26, 19, true),
-  (27, 20, true),
-  (28, 21, true),
-  (29, 22, true),
-  (30, 23, true),
-  (31, 24, true),
-  (32, 25, true),
-  (33, 11, true),
-  (34, 21, true),
-  (35, 16, true),
-  (36, 9, true)
-ON CONFLICT (team_id, ministry_id) DO NOTHING;
+UPDATE teams SET ministry_id = 1 WHERE id IN (2, 8, 35);
+UPDATE teams SET ministry_id = 2 WHERE id = 9;
+UPDATE teams SET ministry_id = 3 WHERE id = 10;
+UPDATE teams SET ministry_id = 4 WHERE id = 11;
+UPDATE teams SET ministry_id = 5 WHERE id = 12;
+UPDATE teams SET ministry_id = 6 WHERE id = 13;
+UPDATE teams SET ministry_id = 7 WHERE id = 14;
+UPDATE teams SET ministry_id = 8 WHERE id = 15;
+UPDATE teams SET ministry_id = 9 WHERE id = 16;
+UPDATE teams SET ministry_id = 10 WHERE id = 17;
+UPDATE teams SET ministry_id = 11 WHERE id IN (18, 33);
+UPDATE teams SET ministry_id = 12 WHERE id = 19;
+UPDATE teams SET ministry_id = 13 WHERE id = 20;
+UPDATE teams SET ministry_id = 14 WHERE id = 21;
+UPDATE teams SET ministry_id = 15 WHERE id = 22;
+UPDATE teams SET ministry_id = 16 WHERE id = 23;
+UPDATE teams SET ministry_id = 17 WHERE id = 24;
+UPDATE teams SET ministry_id = 18 WHERE id = 25;
+UPDATE teams SET ministry_id = 19 WHERE id = 26;
+UPDATE teams SET ministry_id = 20 WHERE id = 27;
+UPDATE teams SET ministry_id = 21 WHERE id IN (28, 34);
+UPDATE teams SET ministry_id = 22 WHERE id = 29;
+UPDATE teams SET ministry_id = 23 WHERE id = 30;
+UPDATE teams SET ministry_id = 24 WHERE id = 31;
+UPDATE teams SET ministry_id = 25 WHERE id = 32;
+UPDATE teams SET ministry_id = 9 WHERE id = 36;
+
+-- ----------------------------------------------------------------------------
+-- TEAM ROLE (teams.role_id)
+-- Role IDs: 1=Viewer, 2=Editor, 3=Advanced Viewer, 4=Advanced Editor, 5=Admin, 6=System Admin
+-- 2=Admin; 1,3-7=Advanced Viewer; 8-32,35=Editor; 33,34,36=Viewer
+-- ----------------------------------------------------------------------------
+
+UPDATE teams SET role_id = 5 WHERE id = 2;
+UPDATE teams SET role_id = 3 WHERE id IN (1, 3, 4, 5, 6, 7);
+
+-- ----------------------------------------------------------------------------
+-- Remove Editor role from Ministry Comms teams; must be explicitly set for each user.
+-- Comms teams may need to have Viewer members.
+-- UPDATE teams SET role_id = 2 WHERE id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 35);
+-- ----------------------------------------------------------------------------
+UPDATE teams SET role_id = 1 WHERE id IN (33, 34, 36);
 
 -- ----------------------------------------------------------------------------
 -- USER_TEAMS

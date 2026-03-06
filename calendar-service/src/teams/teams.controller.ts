@@ -17,7 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import type { AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import type {
   TeamDetail,
   TeamHistoryEntry,
@@ -30,7 +30,10 @@ import {
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../policy/decorators/require-permission.decorator';
 import {
   CreateTeamDto,
   TeamDetailResponseWrapperDto,
@@ -48,7 +51,7 @@ export class TeamsController {
 
   @ApiOperation({
     summary: 'List teams',
-    description: 'Returns all teams with member and ministry counts.',
+    description: 'Returns all teams with member count and optional ministry.',
   })
   @ApiQuery({
     name: 'activeOnly',
@@ -67,6 +70,34 @@ export class TeamsController {
   ): Promise<{ success: boolean; data: TeamListItem[] }> {
     const active = activeOnly === undefined || activeOnly === 'true';
     const data = await this.teamsService.findAll(active);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'List teams for lead team dropdown',
+    description:
+      "Returns teams the current user may choose as activity lead team: user's teams, or (with activities.create.any) all active teams so any activity's lead team can be displayed and selected.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of teams for lead team select',
+    type: TeamListResponseWrapperDto,
+  })
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.CREATE,
+    PERMISSIONS.ACTIVITIES.EDIT
+  )
+  @Get('lead-options')
+  async getLeadOptions(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: TeamListItem[] }> {
+    const hasCreateAny = user.permissions?.includes(
+      PERMISSIONS.ACTIVITIES.CREATE_ANY
+    );
+    const data = await this.teamsService.findLeadOptions(
+      user.teamIds ?? [],
+      hasCreateAny ?? false
+    );
     return { success: true, data };
   }
 

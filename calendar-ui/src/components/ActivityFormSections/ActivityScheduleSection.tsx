@@ -126,13 +126,13 @@ export const ActivityScheduleSection: React.FC<
       <FormField
         control={form.control}
         name="startDate"
-        render={() => (
+        render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center gap-1">
               Date <span className="text-destructive">*</span>
             </FormLabel>
             <div className="flex items-center gap-4">
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <DateRangePicker
                   disabled={readOnly}
                   startDate={String(startDateValue || '')}
@@ -175,7 +175,7 @@ export const ActivityScheduleSection: React.FC<
             <div className="space-y-0.5">
               <FormLabel>All day</FormLabel>
             </div>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Switch
                 checked={field.value}
                 disabled={readOnly}
@@ -191,13 +191,13 @@ export const ActivityScheduleSection: React.FC<
         <FormField
           control={form.control}
           name="startTime"
-          render={() => (
+          render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center gap-1">
                 Time <span className="text-destructive">*</span>
               </FormLabel>
               <div className="flex items-center gap-4">
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <TimeRangePicker
                     disabled={readOnly}
                     startTime={String(startTimeValue || '')}
@@ -265,7 +265,7 @@ export const ActivityScheduleSection: React.FC<
                 </svg>
               </span>
             </FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}

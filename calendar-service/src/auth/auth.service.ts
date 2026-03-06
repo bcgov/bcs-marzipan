@@ -23,6 +23,7 @@ export interface JwtPayload {
   roleName: string;
   permissions: string[];
   teamIds: number[];
+  bypassDataScoping: boolean;
 }
 
 @Injectable()
@@ -59,16 +60,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid username');
     }
 
-    const [roleName, permissions, teamIds] = await Promise.all([
+    const [roleName, effective] = await Promise.all([
       this.policyService.getRoleName(dbUser.roleId),
-      this.policyService.getPermissionsForRole(dbUser.roleId),
-      this.policyService.getTeamIdsForUser(dbUser.id),
+      this.policyService.getEffectivePermissionsForUser(dbUser.id),
     ]);
 
     if (!roleName) {
       throw new UnauthorizedException('User role not found');
     }
 
+    const teamIds = await this.policyService.getTeamIdsForUser(dbUser.id);
     const user: AuthUser = {
       id: dbUser.id,
       username: dbUser.adUsername ?? String(dbUser.id),
@@ -77,8 +78,9 @@ export class AuthService {
       email: dbUser.adEmail ?? '',
       roleId: dbUser.roleId,
       roleName,
-      permissions,
+      permissions: effective.permissions,
       teamIds,
+      bypassDataScoping: effective.bypass,
     };
 
     const raw = this.configService.get<string | number>('JWT_EXPIRES_IN', 3600);
@@ -93,6 +95,7 @@ export class AuthService {
         roleName: user.roleName,
         permissions: user.permissions,
         teamIds: user.teamIds,
+        bypassDataScoping: user.bypassDataScoping ?? false,
       } satisfies JwtPayload,
       { expiresIn }
     );
@@ -117,6 +120,7 @@ export class AuthService {
       roleName: payload.roleName,
       permissions: payload.permissions ?? [],
       teamIds: payload.teamIds ?? [],
+      bypassDataScoping: payload.bypassDataScoping ?? false,
     };
   }
 

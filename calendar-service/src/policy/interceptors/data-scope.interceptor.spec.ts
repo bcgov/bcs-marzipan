@@ -133,15 +133,15 @@ describe('DataScopeInterceptor', () => {
     });
   });
 
-  it('should set bypass to true and empty teamIds for Advanced role', async () => {
+  it('should set bypass to true and empty teamIds for Advanced Editor role', async () => {
     bypassesDataScopingMock.mockReturnValue(true);
     const user: AuthUser = {
       id: 1,
       username: 'advanced',
-      displayName: 'Advanced User',
+      displayName: 'Advanced Editor User',
       email: 'advanced@example.com',
-      roleId: SYSTEM_ROLE_IDS.ADVANCED,
-      roleName: SYSTEM_ROLES.ADVANCED,
+      roleId: SYSTEM_ROLE_IDS.ADVANCED_EDITOR,
+      roleName: SYSTEM_ROLES.ADVANCED_EDITOR,
       permissions: [],
       teamIds: [1, 2, 3],
     };
@@ -157,8 +157,38 @@ describe('DataScopeInterceptor', () => {
             bypass: true,
           });
           expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-            SYSTEM_ROLES.ADVANCED
+            SYSTEM_ROLES.ADVANCED_EDITOR
           );
+          resolve();
+        },
+      });
+    });
+  });
+
+  it('should use user.bypassDataScoping when present without calling policy', async () => {
+    const user: AuthUser = {
+      id: 1,
+      username: 'user',
+      displayName: 'User',
+      email: 'user@example.com',
+      roleId: SYSTEM_ROLE_IDS.EDITOR,
+      roleName: SYSTEM_ROLES.EDITOR,
+      permissions: [],
+      teamIds: [1],
+      bypassDataScoping: true,
+    };
+    mockExecutionContext = createMockExecutionContext(user);
+    mockCallHandler = createMockCallHandler();
+
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [],
+            bypass: true,
+          });
+          expect(bypassesDataScopingMock).not.toHaveBeenCalled();
           resolve();
         },
       });
@@ -197,15 +227,15 @@ describe('DataScopeInterceptor', () => {
     });
   });
 
-  it('should set bypass to false and empty teamIds for View Only role with no teams', async () => {
+  it('should set bypass to false and empty teamIds for Viewer role with no teams', async () => {
     bypassesDataScopingMock.mockReturnValue(false);
     const user: AuthUser = {
       id: 1,
       username: 'viewer',
       displayName: 'Viewer User',
       email: 'viewer@example.com',
-      roleId: SYSTEM_ROLE_IDS.VIEW_ONLY,
-      roleName: SYSTEM_ROLES.VIEW_ONLY,
+      roleId: SYSTEM_ROLE_IDS.VIEWER,
+      roleName: SYSTEM_ROLES.VIEWER,
       permissions: [],
       teamIds: [],
     };
@@ -221,7 +251,7 @@ describe('DataScopeInterceptor', () => {
             bypass: false,
           });
           expect(bypassesDataScopingMock).toHaveBeenCalledWith(
-            SYSTEM_ROLES.VIEW_ONLY
+            SYSTEM_ROLES.VIEWER
           );
           resolve();
         },
@@ -252,6 +282,68 @@ describe('DataScopeInterceptor', () => {
             teamIds: [],
             bypass: false,
           });
+          resolve();
+        },
+      });
+    });
+  });
+
+  it('should use bypass false when user.bypassDataScoping is false without calling policy', async () => {
+    const user: AuthUser = {
+      id: 1,
+      username: 'user',
+      displayName: 'User',
+      email: 'user@example.com',
+      roleId: SYSTEM_ROLE_IDS.EDITOR,
+      roleName: SYSTEM_ROLES.EDITOR,
+      permissions: [],
+      teamIds: [1, 2],
+      bypassDataScoping: false,
+    };
+    mockExecutionContext = createMockExecutionContext(user);
+    mockCallHandler = createMockCallHandler();
+
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [1, 2],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).not.toHaveBeenCalled();
+          resolve();
+        },
+      });
+    });
+  });
+
+  it('should call bypassesDataScoping when user.bypassDataScoping is undefined', async () => {
+    bypassesDataScopingMock.mockReturnValue(false);
+    const user: AuthUser = {
+      id: 1,
+      username: 'editor',
+      displayName: 'Editor User',
+      email: 'editor@example.com',
+      roleId: SYSTEM_ROLE_IDS.EDITOR,
+      roleName: SYSTEM_ROLES.EDITOR,
+      permissions: [],
+      teamIds: [1],
+    };
+    mockExecutionContext = createMockExecutionContext(user);
+    mockCallHandler = createMockCallHandler();
+
+    await new Promise<void>((resolve) => {
+      interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
+        next: () => {
+          const request = mockExecutionContext.switchToHttp().getRequest();
+          expect(request.dataScope).toEqual({
+            teamIds: [1],
+            bypass: false,
+          });
+          expect(bypassesDataScopingMock).toHaveBeenCalledWith(
+            SYSTEM_ROLES.EDITOR
+          );
           resolve();
         },
       });

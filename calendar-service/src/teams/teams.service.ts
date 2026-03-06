@@ -4,7 +4,6 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
   ministries,
   teamHistory,
-  teamMinistries,
   teams,
   users,
   userTeams,
@@ -40,6 +39,86 @@ export class TeamsService {
     });
   }
 
+  /**
+   * Teams the current user can choose as lead team when creating/editing an activity.
+   * Without activities.create.any: only the user's teams. With it: all active teams (so any activity's lead team can be displayed and selected).
+   */
+  async findLeadOptions(
+    userTeamIds: number[],
+    hasCreateAny: boolean
+  ): Promise<TeamListItem[]> {
+    let teamIds: number[];
+    if (hasCreateAny) {
+      const rows = await this.databaseService.db
+        .select({ id: teams.id })
+        .from(teams)
+        .where(eq(teams.isActive, true));
+      teamIds = rows.map((r) => r.id);
+    } else {
+      if (userTeamIds.length === 0) return [];
+      teamIds = userTeamIds;
+    }
+    if (teamIds.length === 0) return [];
+    return this.findManyByIds(teamIds);
+  }
+
+  private async findManyByIds(teamIds: number[]): Promise<TeamListItem[]> {
+    const teamRows = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        displayName: teams.displayName,
+        description: teams.description,
+        sortOrder: teams.sortOrder,
+        isActive: teams.isActive,
+        roleId: teams.roleId,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(and(inArray(teams.id, teamIds), eq(teams.isActive, true)))
+      .orderBy(asc(teams.sortOrder), teams.name);
+
+    const memberCounts = await this.databaseService.db
+      .select({
+        teamId: userTeams.teamId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userTeams)
+      .where(
+        and(inArray(userTeams.teamId, teamIds), eq(userTeams.isActive, true))
+      )
+      .groupBy(userTeams.teamId);
+    const memberMap = new Map(memberCounts.map((m) => [m.teamId, m.count]));
+
+    const ministryIds = [
+      ...new Set(
+        teamRows
+          .map((t) => t.ministryId)
+          .filter((id): id is number => id != null)
+      ),
+    ];
+    const ministryNameRows =
+      ministryIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: ministries.id,
+              displayName: ministries.displayName,
+            })
+            .from(ministries)
+            .where(inArray(ministries.id, ministryIds))
+        : [];
+    const ministryMap = new Map(
+      ministryNameRows.map((m) => [m.id, m.displayName])
+    );
+
+    return teamRows.map((t) => ({
+      ...t,
+      memberCount: memberMap.get(t.id) ?? 0,
+      ministryName:
+        t.ministryId != null ? (ministryMap.get(t.ministryId) ?? null) : null,
+    }));
+  }
+
   async findAll(activeOnly = true): Promise<TeamListItem[]> {
     const teamRows = await this.databaseService.db
       .select({
@@ -49,6 +128,8 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        roleId: teams.roleId,
+        ministryId: teams.ministryId,
       })
       .from(teams)
       .where(activeOnly ? eq(teams.isActive, true) : undefined)
@@ -57,39 +138,45 @@ export class TeamsService {
     const teamIds = teamRows.map((t) => t.id);
     if (teamIds.length === 0) return [];
 
-    const [memberCounts, ministryCounts] = await Promise.all([
-      this.databaseService.db
-        .select({
-          teamId: userTeams.teamId,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(userTeams)
-        .where(
-          and(inArray(userTeams.teamId, teamIds), eq(userTeams.isActive, true))
-        )
-        .groupBy(userTeams.teamId),
-      this.databaseService.db
-        .select({
-          teamId: teamMinistries.teamId,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(teamMinistries)
-        .where(
-          and(
-            inArray(teamMinistries.teamId, teamIds),
-            eq(teamMinistries.isActive, true)
-          )
-        )
-        .groupBy(teamMinistries.teamId),
-    ]);
+    const memberCounts = await this.databaseService.db
+      .select({
+        teamId: userTeams.teamId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userTeams)
+      .where(
+        and(inArray(userTeams.teamId, teamIds), eq(userTeams.isActive, true))
+      )
+      .groupBy(userTeams.teamId);
 
     const memberMap = new Map(memberCounts.map((m) => [m.teamId, m.count]));
-    const ministryMap = new Map(ministryCounts.map((m) => [m.teamId, m.count]));
+
+    const ministryIds = [
+      ...new Set(
+        teamRows
+          .map((t) => t.ministryId)
+          .filter((id): id is number => id != null)
+      ),
+    ];
+    const ministryNameRows =
+      ministryIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: ministries.id,
+              displayName: ministries.displayName,
+            })
+            .from(ministries)
+            .where(inArray(ministries.id, ministryIds))
+        : [];
+    const ministryMap = new Map(
+      ministryNameRows.map((m) => [m.id, m.displayName])
+    );
 
     return teamRows.map((t) => ({
       ...t,
       memberCount: memberMap.get(t.id) ?? 0,
-      ministryCount: ministryMap.get(t.id) ?? 0,
+      ministryName:
+        t.ministryId != null ? (ministryMap.get(t.ministryId) ?? null) : null,
     }));
   }
 
@@ -102,6 +189,8 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        roleId: teams.roleId,
+        ministryId: teams.ministryId,
       })
       .from(teams)
       .where(eq(teams.id, id))
@@ -109,24 +198,15 @@ export class TeamsService {
 
     if (!t) return null;
 
-    const [memberRows, ministryRows] = await Promise.all([
-      this.databaseService.db
-        .select({
-          userId: userTeams.userId,
-          role: userTeams.role,
-        })
-        .from(userTeams)
-        .where(and(eq(userTeams.teamId, id), eq(userTeams.isActive, true))),
-      this.databaseService.db
-        .select({ ministryId: teamMinistries.ministryId })
-        .from(teamMinistries)
-        .where(
-          and(eq(teamMinistries.teamId, id), eq(teamMinistries.isActive, true))
-        ),
-    ]);
+    const memberRows = await this.databaseService.db
+      .select({
+        userId: userTeams.userId,
+        role: userTeams.role,
+      })
+      .from(userTeams)
+      .where(and(eq(userTeams.teamId, id), eq(userTeams.isActive, true)));
 
     const userIds = memberRows.map((m) => m.userId);
-    const ministryIds = ministryRows.map((m) => m.ministryId);
 
     const userRows =
       userIds.length > 0
@@ -146,32 +226,24 @@ export class TeamsService {
       ])
     );
 
-    const ministryNameRows =
-      ministryIds.length > 0
-        ? await this.databaseService.db
-            .select({
-              id: ministries.id,
-              displayName: ministries.displayName,
-            })
-            .from(ministries)
-            .where(inArray(ministries.id, ministryIds))
-        : [];
-    const ministryMap = new Map(
-      ministryNameRows.map((m) => [m.id, m.displayName])
-    );
+    let ministryName: string | null = null;
+    if (t.ministryId != null) {
+      const [m] = await this.databaseService.db
+        .select({ displayName: ministries.displayName })
+        .from(ministries)
+        .where(eq(ministries.id, t.ministryId))
+        .limit(1);
+      ministryName = m?.displayName ?? null;
+    }
 
     return {
       ...t,
+      ministryName,
       memberCount: memberRows.length,
-      ministryCount: ministryRows.length,
       members: memberRows.map((m) => ({
         userId: m.userId,
         userName: userMap.get(m.userId) ?? `User ${m.userId}`,
         role: m.role,
-      })),
-      ministries: ministryRows.map((m) => ({
-        ministryId: m.ministryId,
-        ministryName: ministryMap.get(m.ministryId) ?? String(m.ministryId),
       })),
     };
   }
@@ -185,30 +257,19 @@ export class TeamsService {
         description: dto.description ?? null,
         sortOrder: dto.sortOrder ?? 0,
         isActive: dto.isActive ?? true,
+        roleId: dto.roleId ?? null,
+        ministryId: dto.ministryId ?? null,
         createdBy,
         lastUpdatedBy: createdBy,
       })
       .returning();
 
-    const ministryIdStrs = dto.ministryIds?.filter((id) => id?.trim()) ?? [];
-    const ministryIds = ministryIdStrs
-      .map((id) => parseInt(id, 10))
-      .filter((n) => !Number.isNaN(n));
-    if (ministryIds.length > 0) {
-      await this.databaseService.db.insert(teamMinistries).values(
-        ministryIds.map((ministryId) => ({
-          teamId: inserted.id,
-          ministryId,
-        }))
-      );
-    }
-
     const changes: HistoryChange[] = [];
-    if (ministryIdStrs.length > 0) {
+    if (dto.ministryId != null) {
       changes.push({
-        field: 'ministryIds',
+        field: 'ministryId',
         oldValue: null,
-        newValue: ministryIdStrs,
+        newValue: dto.ministryId,
       });
     }
     await this.recordTeamHistory(
@@ -238,30 +299,9 @@ export class TeamsService {
     if (dto.description !== undefined) updates.description = dto.description;
     if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
-
-    const previousMinistryIds = existing.ministries
-      .map((m) => m.ministryId)
-      .sort((a, b) => a - b);
-    let newMinistryIds: string[] | null = null;
-    if (dto.ministryIds !== undefined) {
-      newMinistryIds = dto.ministryIds.filter((mid) => mid?.trim());
-      await this.databaseService.db
-        .update(teamMinistries)
-        .set({ isActive: false })
-        .where(eq(teamMinistries.teamId, id));
-      const ministryIdsNum = newMinistryIds
-        .map((mid) => parseInt(mid, 10))
-        .filter((n) => !Number.isNaN(n));
-      for (const ministryId of ministryIdsNum) {
-        await this.databaseService.db
-          .insert(teamMinistries)
-          .values({ teamId: id, ministryId, isActive: true })
-          .onConflictDoUpdate({
-            target: [teamMinistries.teamId, teamMinistries.ministryId],
-            set: { isActive: true },
-          });
-      }
-    }
+    if (dto.roleId !== undefined) updates.roleId = dto.roleId;
+    if (dto.ministryId !== undefined)
+      updates.ministryId = dto.ministryId ?? null;
 
     if (Object.keys(updates).length > 0) {
       updates.lastUpdatedBy = lastUpdatedBy;
@@ -314,21 +354,26 @@ export class TeamsService {
         newValue: dto.isActive,
       });
     }
-    if (newMinistryIds !== null) {
-      const sortedNewNum = newMinistryIds
-        .map((mid) => parseInt(mid, 10))
-        .filter((n) => !Number.isNaN(n))
-        .sort((a, b) => a - b);
-      if (
-        previousMinistryIds.length !== sortedNewNum.length ||
-        previousMinistryIds.some((id, i) => id !== sortedNewNum[i])
-      ) {
-        changes.push({
-          field: 'ministryIds',
-          oldValue: previousMinistryIds,
-          newValue: newMinistryIds,
-        });
-      }
+    if (
+      dto.roleId !== undefined &&
+      dto.roleId !== existing.roleId &&
+      (dto.roleId ?? null) !== (existing.roleId ?? null)
+    ) {
+      changes.push({
+        field: 'roleId',
+        oldValue: existing.roleId ?? null,
+        newValue: dto.roleId ?? null,
+      });
+    }
+    if (
+      dto.ministryId !== undefined &&
+      (dto.ministryId ?? null) !== (existing.ministryId ?? null)
+    ) {
+      changes.push({
+        field: 'ministryId',
+        oldValue: existing.ministryId ?? null,
+        newValue: dto.ministryId ?? null,
+      });
     }
 
     if (changes.length > 0) {

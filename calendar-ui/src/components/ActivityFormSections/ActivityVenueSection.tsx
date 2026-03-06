@@ -155,7 +155,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
 
               <FormItem>
                 <FormLabel>City</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.city || ''}
                     disabled
@@ -167,7 +167,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
 
               <FormItem>
                 <FormLabel>Province/State</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.provinceOrState || ''}
                     disabled
@@ -179,7 +179,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
 
               <FormItem>
                 <FormLabel>Country</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.country || ''}
                     disabled
@@ -224,7 +224,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>Event Planner</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <FreeformCombobox
                   options={eventPlannerOptions}
                   value={comboboxValue}

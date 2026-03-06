@@ -16,7 +16,7 @@ import { PolicyService } from '../policy.service';
  *
  * request.dataScope = { teamIds, bypass }
  * - teamIds: from user.teamIds (empty if bypass)
- * - bypass: true for Advanced, Admin, and System Admin (see all data)
+ * - bypass: from user.bypassDataScoping (set at login from user + team roles)
  */
 @Injectable()
 export class DataScopeInterceptor implements NestInterceptor {
@@ -27,7 +27,10 @@ export class DataScopeInterceptor implements NestInterceptor {
     const user = request.user;
 
     if (user) {
-      const bypass = this.policyService.bypassesDataScoping(user.roleName);
+      const bypass =
+        typeof user.bypassDataScoping === 'boolean'
+          ? user.bypassDataScoping
+          : this.policyService.bypassesDataScoping(user.roleName);
       request.dataScope = {
         teamIds: bypass ? [] : (user.teamIds ?? []),
         bypass,

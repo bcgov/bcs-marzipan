@@ -84,52 +84,55 @@ A default TTL of one hour (3600 seconds) is a reasonable balance between securit
 
 This document does not describe refresh or revocation implementation; the above is guidance for future work.
 
+### Effective permissions and team roles
+
+At login, the backend computes **effective permissions** as the union of (1) the user's role permissions, (2) the permissions of each team the user belongs to (via `teams.role_id`), and (3) any permissions granted directly to those teams via `team_permissions`. The JWT stores this effective list and a **bypassDataScoping** flag. Bypass is true if the user's role or any of the user's team roles are Advanced Viewer, Advanced Editor, Admin, or System Admin (relaxed: one bypass role grants see-all). The DataScopeInterceptor uses `user.bypassDataScoping` to set `request.dataScope.bypass`. Create and delete are scoped when the user lacks `activities.create.any` or `activities.delete.any`: create requires the activity's lead team to be one of the user's teams (or, with `activities.create.any`, any team whose role has `activities.create`); delete requires the user to be a comms contact or member of the lead team for the activity (or have `activities.delete.any`).
+
 ## System Roles
 
-The system includes 5 predefined roles with hierarchical capabilities:
+The system includes six predefined roles. Teams may optionally have a role (`teams.role_id`); members receive that role's permissions in addition to their user role (effective permissions = union of user role permissions, all team role permissions, and team_permissions). Data-scoping bypass is relaxed: if the user's role or any of the user's team roles bypass (Advanced Viewer, Advanced Editor, Admin, System Admin), the user sees all activities.
 
-| Role         | ID  | Description                                                 |
-| ------------ | --- | ----------------------------------------------------------- |
-| View Only    | 1   | Read-only access to view data                               |
-| Editor       | 2   | Can create and edit activities and drafts                   |
-| Advanced     | 3   | Editor + approve activities and export reports              |
-| Admin        | 4   | Full admin access including delete, publish, users, teams   |
-| System Admin | 5   | Complete system access including role/permission management |
+| Role            | ID  | Description                                                                      |
+| --------------- | --- | -------------------------------------------------------------------------------- |
+| Viewer          | 1   | Read-only access; view data scoped to own teams                                  |
+| Editor          | 2   | Create, edit, delete activities and drafts (scoped to own teams)                 |
+| Advanced Viewer | 3   | View any team's activities; no create, edit, or delete                           |
+| Advanced Editor | 4   | View any team; edit any; create/delete only own team; approve, export, recover   |
+| Admin           | 5   | Full admin: create/delete any team's activities, users, teams, lookups, settings |
+| System Admin    | 6   | Complete system access including role/permission management                      |
 
 ### Role Capabilities Matrix
 
-| Permission                | View Only | Editor | Advanced | Admin | System Admin |
-| ------------------------- | --------- | ------ | -------- | ----- | ------------ |
-| activities.view           | x         | x      | x        | x     | x            |
-| activities.create         |           | x      | x        | x     | x            |
-| activities.edit           |           | x      | x        | x     | x            |
-| activities.delete         |           |        |          | x     | x            |
-| activities.approve        |           |        | x        | x     | x            |
-| activities.publish        |           |        |          | x     | x            |
-| activities.unpublish      |           |        |          | x     | x            |
-| drafts.view               | x         | x      | x        | x     | x            |
-| drafts.create             |           | x      | x        | x     | x            |
-| drafts.edit               |           | x      | x        | x     | x            |
-| drafts.delete             |           | x      | x        | x     | x            |
-| drafts.recover            |           |        | x        | x     | x            |
-| reports.view              | x         | x      | x        | x     | x            |
-| reports.export            |           |        | x        | x     | x            |
-| reports.create_custom     |           |        |          | x     | x            |
-| lookups.view              | x         | x      | x        | x     | x            |
-| lookups.manage            |           |        |          | x     | x            |
-| users.view                |           |        |          | x     | x            |
-| users.create              |           |        |          | x     | x            |
-| users.edit                |           |        |          | x     | x            |
-| users.delete              |           |        |          |       | x            |
-| users.manage_roles        |           |        |          |       | x            |
-| teams.view                |           |        |          | x     | x            |
-| teams.create              |           |        |          | x     | x            |
-| teams.edit                |           |        |          | x     | x            |
-| teams.delete              |           |        |          | x     | x            |
-| settings.view             |           |        |          | x     | x            |
-| settings.manage           |           |        |          | x     | x            |
-| system.view_logs          |           |        |          |       | x            |
-| system.manage_permissions |           |        |          |       | x            |
+| Permission                            | Viewer | Editor | Adv Viewer | Adv Editor  | Admin       | Sys Admin |
+| ------------------------------------- | ------ | ------ | ---------- | ----------- | ----------- | --------- |
+| activities.view                       | x      | x      | x          | x           | x           | x         |
+| activities.create                     |        | x      |            | x           | x           | x         |
+| activities.create.any                 |        |        |            |             | x           | x         |
+| activities.edit                       |        | x      |            | x           | x           | x         |
+| activities.delete                     |        | x      |            | x           | x           | x         |
+| activities.delete.any                 |        |        |            |             | x           | x         |
+| activities.approve                    |        |        |            | x           | x           | x         |
+| activities.review                     |        |        |            |             | x           | x         |
+| activities.publish                    |        |        |            |             | x           | x         |
+| activities.unpublish                  |        |        |            |             | x           | x         |
+| drafts.\*                             | view   | all    | view       | all+recover | all         | all       |
+| reports.view/export                   | view   | view   | view       | view+export | all         | all       |
+| reports.create_custom                 |        |        |            |             | x           | x         |
+| lookups.view/manage                   | view   | view   | view       | view        | view+manage | all       |
+| users.\* (except manage_roles/delete) |        |        |            |             | x           | x         |
+| users.delete, manage_roles            |        |        |            |             |             | x         |
+| teams.\*                              |        |        |            |             | x           | x         |
+| settings.\*                           |        |        |            |             | x           | x         |
+| system.\*                             |        |        |            |             |             | x         |
+
+- **activities.create.any**: may choose any team that has create permission as lead team when creating (otherwise only the user's teams).
+- **activities.delete.any**: may delete or restore-from-deleted any activity without being a comms contact or lead-team member. Without it, delete and restore-from-deleted are restricted as below.
+- **Activity request delete**: **Request delete** (sets status to Delete requested) requires the `activities.requestDelete` permission **and** the user must be a comms contact on the activity or a member of the activity's lead team. The permission is granted to Editor, Advanced Editor, Admin, and System Admin.
+- **Restore**: **Deleted** status: only users with `activities.delete.any` may restore. **Delete requested** status: users with `activities.requestDelete`, `activities.delete`, or `activities.delete.any` may restore **and** must be Admin/System Admin, a comms contact on the activity, or a member of the activity's lead team. Enforced by `CanRestoreActivityGuard`.
+- **Delete (soft and hard)**: Requires `activities.delete` **and** (comms contact or lead-team member or `activities.delete.any`). Without `activities.delete.any`, the service allows delete only when the user is a comms contact or lead-team member for the activity. Enforced by `CanDeleteActivityGuard` and by the activities service for context.
+- **Edit page when Delete requested or Deleted**: When an activity is in **Delete requested** or **Deleted** status, only **Admin** and **System Admin** may access the edit page. Other users (including those with `activities.edit`) can view the activity and use Restore from the banner if allowed; the UI redirects non-admins away from the edit page. No new permission is used; enforcement is role-based in the UI and via redirect. (Edit is implemented as a mode of the same activity page; the URL reflects edit state and non-admins are redirected to view when in delete_requested/deleted status.)
+- **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
+- Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
 ## Database Schema
 
@@ -243,7 +246,7 @@ Content-Type: application/json
     "username": "john.doe",
     "displayName": "John Doe",
     "email": "john.doe@gov.bc.ca",
-    "roleId": 4,
+    "roleId": 5,
     "roleName": "Admin",
     "permissions": [
       "activities.view",
@@ -400,24 +403,44 @@ After the JWT is validated, **DataScopeInterceptor** (policy module) runs and se
 ```typescript
 interface DataScope {
   teamIds: number[]; // User's team IDs (empty when bypass is true)
-  bypass: boolean; // true for Advanced, Admin, System Admin
+  bypass: boolean; // true for Advanced Viewer, Advanced Editor, Admin, System Admin
 }
 ```
 
-- **`bypass`**: Determined by `PolicyService.bypassesDataScoping(user.roleName)`. It is `true` only for **Advanced**, **Admin**, and **System Admin**.
+- **`bypass`**: Determined by `PolicyService.bypassesDataScoping(user.roleName)`. It is `true` only for **Advanced Viewer**, **Advanced Editor**, **Admin**, and **System Admin**.
 - **`teamIds`**: When `bypass` is true, `teamIds` is set to `[]`. Otherwise it is the user's `teamIds` from the JWT (sourced from `user_teams` at login).
 
 So **dataScope** is derived from role + teams: the role decides whether to bypass; the teams define the scope when not bypassing.
 
 #### Which roles bypass
 
-| Role         | Bypass | Effect                              |
-| ------------ | ------ | ----------------------------------- |
-| View Only    | No     | Data restricted to the user's teams |
-| Editor       | No     | Data restricted to the user's teams |
-| Advanced     | Yes    | Can see all data (no team filter)   |
-| Admin        | Yes    | Can see all data (no team filter)   |
-| System Admin | Yes    | Can see all data (no team filter)   |
+| Role            | Bypass | Effect                              |
+| --------------- | ------ | ----------------------------------- |
+| Viewer          | No     | Data restricted to the user's teams |
+| Editor          | No     | Data restricted to the user's teams |
+| Advanced Viewer | Yes    | Can see all data (no team filter)   |
+| Advanced Editor | Yes    | Can see all data (no team filter)   |
+| Admin           | Yes    | Can see all data (no team filter)   |
+| System Admin    | Yes    | Can see all data (no team filter)   |
+
+#### Activity visibility (list and view)
+
+Activity list and single-activity view use **visibility** and **shared-with** to decide which activities a user sees when `dataScope.bypass` is false:
+
+- **Global** (`visibility = 'global'`): The activity is visible to everyone (any team or no team). No team-based filter is applied for these activities.
+- **Team** (`visibility = 'team'`): The activity is visible only to:
+  - Members of the activity's **lead team** (`leadTeamId`),
+  - Users with **data scope bypass** (Advanced Viewer, Advanced Editor, Admin, System Admin),
+  - Users who are members of teams the activity is **shared with** (via `activity_shared_with_teams`).
+
+So for team-visibility activities, "comms lead in user's team" and "lead ministry maps to user's team" do **not** grant visibility; only lead team and shared-with (plus bypass) apply. When the user has no teams (`teamIds.length === 0`), they see only global-visibility activities.
+
+#### Activity edit restriction (shared-with view-only)
+
+Users who can see an activity only because it is **shared with** one of their teams must not be able to edit it. The backend enforces this as follows:
+
+- **CanEditActivityGuard**: Used on PATCH/PUT activity, PUT categories, PUT tags, PUT shared-with, and PUT themes. The user must have `activities.edit` (enforced by `@RequirePermission`) and at least one of: (a) comms contact for the activity, (b) member of the activity's lead team, or (c) Admin / System Admin. Otherwise the request is rejected with 403 (view-only for shared-with).
+- **Response field `canEdit`**: The activity API response includes an optional `canEdit: boolean` when the request is authenticated. It is `true` when the user may edit (comms, lead team, or bypass) and `false` when the user has only shared-with access. The frontend uses this to hide the Edit button and keep the form read-only for shared-with-only users.
 
 #### Using dataScope in controllers and services
 
@@ -437,7 +460,7 @@ async findAll(@RequestContext() ctx: RequestContextType) {
 Services branch on `bypass` and `teamIds`:
 
 - **`dataScope.bypass === true`**: Do not apply a team filter; return all rows the permission system allows.
-- **`dataScope.bypass === false`**: Filter by `dataScope.teamIds` (e.g. `WHERE teamId IN (dataScope.teamIds)`). If `teamIds` is empty (user has no teams), the service should return no rows or treat the request as no access.
+- **`dataScope.bypass === false`**: Filter results by team/visibility rules. For **activities**, see [Activity visibility (list and view)](#activity-visibility-list-and-view): include global-visibility activities and, when `teamIds.length > 0`, team-visibility activities where the user is in the lead team or in a shared-with team; when `teamIds` is empty, only global-visibility activities are returned. Other resources may use a simple `teamId IN (dataScope.teamIds)` filter.
 
 Example:
 
@@ -494,6 +517,7 @@ export const PERMISSIONS = {
     EDIT: 'activities.edit',
     DELETE: 'activities.delete',
     APPROVE: 'activities.approve',
+    REVIEW: 'activities.review',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
   },
@@ -512,9 +536,10 @@ export const PERMISSIONS = {
 
 ```typescript
 export const SYSTEM_ROLES = {
-  VIEW_ONLY: 'View Only',
+  VIEWER: 'Viewer',
   EDITOR: 'Editor',
-  ADVANCED: 'Advanced',
+  ADVANCED_VIEWER: 'Advanced Viewer',
+  ADVANCED_EDITOR: 'Advanced Editor',
   ADMIN: 'Admin',
   SYSTEM_ADMIN: 'System Admin',
 } as const;
@@ -532,14 +557,13 @@ curl -X POST http://localhost:3001/auth/login \
 
 ### Seeded Mock Users
 
-| Username      | Role      | Teams |
-| ------------- | --------- | ----- |
-| john.doe      | Admin     | -     |
-| jane.smith    | Editor    | -     |
-| sam.wilson    | Editor    | -     |
-| david.chen    | Editor    | -     |
-| emily.wang    | View Only | -     |
-| michael.brown | View Only | -     |
+| Username        | Role            | Teams |
+| --------------- | --------------- | ----- |
+| john.doe        | Advanced Editor | -     |
+| jane.smith      | Viewer          | -     |
+| thomas.garcia   | Admin           | -     |
+| daniel.robinson | System Admin    | -     |
+| priya.patel     | Editor          | -     |
 
 ## Active Directory Integration (Production)
 

@@ -74,7 +74,7 @@ export const ActivityNewsReleaseSection: React.FC<
               }
               value={field.value?.toString() || ''}
             >
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select news release origin" />
                 </SelectTrigger>
@@ -105,7 +105,7 @@ export const ActivityNewsReleaseSection: React.FC<
               }
               value={field.value?.toString() || ''}
             >
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select news release distribution" />
                 </SelectTrigger>

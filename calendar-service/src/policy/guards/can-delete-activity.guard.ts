@@ -12,7 +12,8 @@ import { PolicyService } from '../policy.service';
 
 /**
  * Guard for activity delete (hard and soft).
- * Allows the request if the user has activities.delete permission OR is the comms lead for the activity.
+ * Requires activities.delete and (comms contact OR lead-team member OR activities.delete.any).
+ * Users without delete.any may only delete activities where they are a comms contact or lead-team member.
  */
 @Injectable()
 export class CanDeleteActivityGuard implements CanActivate {
@@ -36,28 +37,40 @@ export class CanDeleteActivityGuard implements CanActivate {
       throw new BadRequestException('Invalid activity ID');
     }
 
-    const hasPermission =
+    const hasDeletePermission =
       user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE) ?? false;
+    if (!hasDeletePermission) {
+      throw new ForbiddenException(
+        'You do not have the required permission to delete activities.'
+      );
+    }
 
-    if (hasPermission) {
+    const hasDeleteAny =
+      user.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ?? false;
+    if (hasDeleteAny) {
       return true;
     }
 
-    const isCommsLead = await this.policyService.isCommsLeadForActivity(
+    const isCommsContact = await this.policyService.isCommsContactForActivity(
       activityId,
       user.id
     );
-
-    if (isCommsLead) {
+    if (isCommsContact) {
       return true;
     }
 
-    throw new ForbiddenException({
-      message: 'Permission denied',
-      required: [
-        PERMISSIONS.ACTIVITIES.DELETE,
-        'or be the comms lead for this activity',
-      ],
-    });
+    const leadTeamId =
+      await this.policyService.getLeadTeamIdForActivity(activityId);
+    const isLeadTeamMember =
+      leadTeamId != null &&
+      Array.isArray(user.teamIds) &&
+      user.teamIds.includes(leadTeamId);
+    if (isLeadTeamMember) {
+      return true;
+    }
+
+    throw new ForbiddenException(
+      'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
+    );
   }
 }

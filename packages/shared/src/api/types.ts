@@ -38,7 +38,6 @@ export type {
 // Team CRUD API types
 export type {
   TeamListItem,
-  TeamMinistry,
   TeamMember,
   TeamDetail,
   CreateTeamBody,

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -14,21 +15,30 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityHistory,
   activityReportSettings,
   activityRepresentatives,
+  activitySectors,
   activitySharedWithTeams,
   activityStatuses,
+  activitySubscriptions,
   activityTags,
   activityThemes,
   activityTranslationsRequired,
   categories,
+  deletionAudit,
+  favoriteActivities,
   ministries,
-  teamMinistries,
+  teams,
   userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
-import { SYSTEM_ROLES, type ActivityStatusName } from '@corpcal/shared';
+import {
+  PERMISSIONS,
+  SYSTEM_ROLES,
+  type ActivityStatusName,
+} from '@corpcal/shared';
 import type {
   ActivityResponse,
   CreateActivityRequest,
@@ -43,10 +53,8 @@ import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type {
-  DataScope,
-  RequestContext as RequestContextType,
-} from '../../policy/dto/user-context.dto';
+import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
+import { PolicyService } from '../../policy/policy.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -65,7 +73,8 @@ export class ActivitiesService {
     private readonly dataFetcherService: ActivityDataFetcherService,
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService,
-    private readonly locksService: LocksService
+    private readonly locksService: LocksService,
+    private readonly policyService: PolicyService
   ) {}
 
   /**
@@ -300,16 +309,21 @@ export class ActivitiesService {
 
   /**
    * Create a new activity with related junction table records.
-   * Initial activityStatusId is set by backend: 'reviewed' if admin/sysAdmin and markAsReviewed, else 'new'.
+   * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
+   * When context.permissions does not include activities.create.any, leadMinistryId must be in a ministry linked to context.teamIds.
    */
   async create(
     dto: CreateActivityRequest,
     userId: number,
-    context?: { roleName: string }
+    context?: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
   ): Promise<ActivityResponse> {
     // Extract junction table IDs, venue address, and status/options from the DTO
-    // activityStatusId is ignored (backend sets from markAsReviewed + role)
+    // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
       categoryIds,
       tagIds,
@@ -326,13 +340,62 @@ export class ActivitiesService {
       ...activityData
     } = dto;
 
-    const isAdmin =
-      context?.roleName === SYSTEM_ROLES.ADMIN ||
-      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const canReview =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
     const initialStatusName: ActivityStatusName =
-      isAdmin && markAsReviewed === true ? 'reviewed' : 'new';
+      canReview && markAsReviewed === true ? 'reviewed' : 'new';
     const initialStatusId =
       await this.getActivityStatusIdByName(initialStatusName);
+
+    // leadTeamId is required
+    if (
+      activityData.leadTeamId == null ||
+      typeof activityData.leadTeamId !== 'number'
+    ) {
+      throw new BadRequestException('leadTeamId is required');
+    }
+
+    // Resolve lead team and derive leadMinistryId from team.ministryId
+    const [leadTeam] = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(eq(teams.id, activityData.leadTeamId))
+      .limit(1);
+    if (!leadTeam) {
+      throw new BadRequestException(
+        `Team with ID ${activityData.leadTeamId} not found`
+      );
+    }
+    const resolvedLeadMinistryId = leadTeam.ministryId ?? null;
+
+    // Data scope: without activities.create.any, user may only create for teams they belong to.
+    // Guards enforce permission; service enforces scope.
+    const canCreateAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ??
+      false;
+    if (!canCreateAny) {
+      const teamIds = context?.teamIds;
+      if (!Array.isArray(teamIds) || teamIds.length === 0) {
+        throw new ForbiddenException(
+          'You may only create activities for teams you belong to.'
+        );
+      }
+      if (!teamIds.includes(activityData.leadTeamId)) {
+        throw new ForbiddenException(
+          'You may only create activities for teams you belong to.'
+        );
+      }
+    }
+
+    // Override leadMinistryId with resolved value from team
+    const activityDataWithResolvedMinistry = {
+      ...activityData,
+      leadMinistryId: resolvedLeadMinistryId,
+    };
 
     // Validate category IDs if provided
     if (categoryIds && categoryIds.length > 0) {
@@ -362,7 +425,7 @@ export class ActivitiesService {
         createdDateTime: Date;
         lastUpdatedDateTime: Date;
       } = {
-        ...activityData,
+        ...activityDataWithResolvedMinistry,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
@@ -379,30 +442,29 @@ export class ActivitiesService {
 
       const activityId = created.id;
 
-      // Fetch ministry abbreviation to generate displayId
-      // leadMinistryId is required, so it should always be present
-      // TODO: refactor so that we do not need to fetch ministry abbreviation again here.
-      if (!activityData.leadMinistryId) {
-        throw new BadRequestException('leadMinistryId is required');
-      }
-
-      const [ministry] = await tx
-        .select({ abbreviation: ministries.abbreviation })
-        .from(ministries)
-        .where(eq(ministries.id, activityData.leadMinistryId))
-        .limit(1);
-
-      if (!ministry || !ministry.abbreviation) {
-        throw new BadRequestException(
-          `Ministry with ID ${activityData.leadMinistryId} not found or missing abbreviation`
+      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else first 4 chars of team name
+      let displayId: string;
+      if (resolvedLeadMinistryId != null) {
+        const [ministry] = await tx
+          .select({ abbreviation: ministries.abbreviation })
+          .from(ministries)
+          .where(eq(ministries.id, resolvedLeadMinistryId))
+          .limit(1);
+        if (!ministry?.abbreviation) {
+          throw new BadRequestException(
+            `Ministry with ID ${resolvedLeadMinistryId} not found or missing abbreviation`
+          );
+        }
+        displayId = this.utilsService.generateDisplayId(
+          ministry.abbreviation,
+          activityId
         );
+      } else {
+        const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+          leadTeam.name
+        );
+        displayId = this.utilsService.generateDisplayId(prefix, activityId);
       }
-
-      // Generate displayId using ministry abbreviation and activity ID
-      const displayId = this.utilsService.generateDisplayId(
-        ministry.abbreviation,
-        activityId
-      );
 
       // Update activity with generated displayId
       await tx
@@ -546,51 +608,62 @@ export class ActivitiesService {
   }
 
   /**
-   * Get activity IDs visible to the given teams via (1) comms lead user in team or (2) lead ministry in team
+   * Get activity IDs visible to the given teams by visibility rules:
+   * - Global: all activities with visibility = 'global' (visible to everyone).
+   * - Team: when teamIds.length > 0, activities with visibility = 'team' where
+   *   leadTeamId is in teamIds OR activity is in activity_shared_with_teams for one of teamIds.
+   * When teamIds.length === 0, only global visibility activities are returned.
    */
   private async getVisibleActivityIdsForTeams(
     teamIds: number[]
   ): Promise<Set<number>> {
-    if (teamIds.length === 0) return new Set();
+    const globalIds = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.visibility, 'global'))
+      .then((rows) => new Set(rows.map((r) => r.id)));
 
-    const [commsLeadActivityIds, leadMinistryActivityIds] = await Promise.all([
-      this.databaseService.db
-        .selectDistinct({ activityId: activityCommsContacts.activityId })
-        .from(activityCommsContacts)
-        .innerJoin(
-          userTeams,
-          eq(activityCommsContacts.userId, userTeams.userId)
-        )
-        .where(
-          and(
-            eq(activityCommsContacts.isLead, true),
-            eq(activityCommsContacts.isActive, true),
-            eq(userTeams.isActive, true),
-            inArray(userTeams.teamId, teamIds)
-          )
-        )
-        .then((rows) => new Set(rows.map((r) => r.activityId))),
+    if (teamIds.length === 0) {
+      return globalIds;
+    }
+
+    const [teamLeadIds, teamSharedIds] = await Promise.all([
       this.databaseService.db
         .select({ id: activities.id })
         .from(activities)
-        .innerJoin(
-          teamMinistries,
-          eq(activities.leadMinistryId, teamMinistries.ministryId)
-        )
         .where(
           and(
-            eq(teamMinistries.isActive, true),
-            inArray(teamMinistries.teamId, teamIds)
+            eq(activities.visibility, 'team'),
+            inArray(activities.leadTeamId, teamIds)
           )
         )
         .then((rows) => new Set(rows.map((r) => r.id))),
+      this.databaseService.db
+        .selectDistinct({ activityId: activitySharedWithTeams.activityId })
+        .from(activitySharedWithTeams)
+        .where(
+          and(
+            inArray(activitySharedWithTeams.teamId, teamIds),
+            eq(activitySharedWithTeams.isActive, true)
+          )
+        )
+        .then(async (rows) => {
+          const sharedIds = rows.map((r) => r.activityId);
+          if (sharedIds.length === 0) return new Set<number>();
+          return this.databaseService.db
+            .select({ id: activities.id })
+            .from(activities)
+            .where(
+              and(
+                eq(activities.visibility, 'team'),
+                inArray(activities.id, sharedIds)
+              )
+            )
+            .then((activityRows) => new Set(activityRows.map((r) => r.id)));
+        }),
     ]);
 
-    const visible = new Set<number>([
-      ...commsLeadActivityIds,
-      ...leadMinistryActivityIds,
-    ]);
-    return visible;
+    return new Set<number>([...globalIds, ...teamLeadIds, ...teamSharedIds]);
   }
 
   /**
@@ -651,6 +724,9 @@ export class ActivitiesService {
       }
       if (filters.leadMinistryId !== undefined) {
         conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
+      }
+      if (filters.leadTeamId !== undefined) {
+        conditions.push(eq(activities.leadTeamId, filters.leadTeamId));
       }
       if (filters.lookAheadSection) {
         conditions.push(
@@ -732,20 +808,14 @@ export class ActivitiesService {
       );
     }
 
-    // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
-    // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
+    // Team-based data scoping: when bypass is false, restrict to activities visible by visibility rules
+    // (global visibility for all; team visibility for lead team or shared-with teams only)
     const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass && dataScope.teamIds.length > 0) {
+    if (dataScope && !dataScope.bypass) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
       activityResults = activityResults.filter((a) => visibleIds.has(a.id));
-    } else if (
-      dataScope &&
-      !dataScope.bypass &&
-      dataScope.teamIds.length === 0
-    ) {
-      activityResults = [];
     }
 
     // Fetch related data for all activities
@@ -757,8 +827,22 @@ export class ActivitiesService {
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
-    return activityResults.map((activity) =>
-      this.mapperService.mapToResponseDto(activity, {
+    const hasEditPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+
+    return activityResults.map((activity) => {
+      const commsContacts = related.commsContactsMap.get(activity.id) ?? [];
+      const canEdit =
+        ctx?.user &&
+        hasEditPermission &&
+        this.computeCanEdit(
+          activity.leadTeamId,
+          commsContacts.map((c) => c.userId),
+          ctx.user.id,
+          ctx.user.teamIds,
+          dataScope?.bypass ?? false
+        );
+      return this.mapperService.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
         categoryIds: categoryIdsMap.get(activity.id) ?? [],
         tags: related.tagsMap.get(activity.id) ?? [],
@@ -772,7 +856,7 @@ export class ActivitiesService {
         representativesAttending:
           related.representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: related.sharedWithMap.get(activity.id) ?? [],
-        commsContacts: related.commsContactsMap.get(activity.id) ?? [],
+        commsContacts,
         eventLeadName: related.eventPlannerNamesMap.get(activity.id) ?? null,
         leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
         newsReleaseOrigin:
@@ -788,14 +872,42 @@ export class ActivitiesService {
         leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
         leadMinistryAbbreviation:
           related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
-      })
-    );
+        canEdit: canEdit ?? undefined,
+      });
+    });
+  }
+
+  /**
+   * Whether the current user can edit this activity (comms contact, lead-team member, or bypass).
+   */
+  private computeCanEdit(
+    leadTeamId: number | null,
+    commsContactUserIds: number[],
+    userId: number | undefined,
+    teamIds: number[] | undefined,
+    bypass: boolean
+  ): boolean {
+    if (userId === undefined) return false;
+    if (bypass) return true;
+    if (commsContactUserIds.includes(userId)) return true;
+    if (
+      leadTeamId != null &&
+      Array.isArray(teamIds) &&
+      teamIds.includes(leadTeamId)
+    ) {
+      return true;
+    }
+    return false;
   }
 
   /**
    * Find one activity by ID. When dataScope is provided and bypass is false, returns 404 if the activity is not visible to the user's teams.
    */
-  async findOne(id: number, dataScope?: DataScope): Promise<ActivityResponse> {
+  async findOne(
+    id: number,
+    ctx?: RequestContextType
+  ): Promise<ActivityResponse> {
+    const dataScope = ctx?.dataScope;
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -807,9 +919,6 @@ export class ActivitiesService {
     }
 
     if (dataScope && !dataScope.bypass) {
-      if (dataScope.teamIds.length === 0) {
-        throw new NotFoundException(`Activity #${id} not found`);
-      }
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
@@ -822,6 +931,19 @@ export class ActivitiesService {
     const related = await this.fetchRelatedForActivityIds([id], [activity]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
+    const commsContacts = related.commsContactsMap.get(id) ?? [];
+    const hasEditPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+    const canEdit =
+      ctx?.user &&
+      hasEditPermission &&
+      this.computeCanEdit(
+        activity.leadTeamId,
+        commsContacts.map((c) => c.userId),
+        ctx.user.id,
+        ctx.user.teamIds,
+        dataScope?.bypass ?? false
+      );
 
     return this.mapperService.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
@@ -836,7 +958,7 @@ export class ActivitiesService {
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
-      commsContacts: related.commsContactsMap.get(id) ?? [],
+      commsContacts,
       eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
@@ -850,6 +972,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      canEdit: canEdit ?? undefined,
     });
   }
 
@@ -860,7 +983,11 @@ export class ActivitiesService {
     id: number,
     dto: UpdateActivityRequest,
     userId: number,
-    context?: { roleName: string }
+    context?: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
   ): Promise<ActivityResponse> {
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
@@ -924,12 +1051,11 @@ export class ActivitiesService {
       ...activityUpdateData
     } = dto;
 
-    // Compute new status: admin/sysAdmin with markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
-    const isAdmin =
-      context?.roleName === SYSTEM_ROLES.ADMIN ||
-      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    // Compute new status: user with activities.review and markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
+    const canReview =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
     const newStatusName: ActivityStatusName =
-      isAdmin && dto.markAsReviewed === true ? 'reviewed' : 'changed';
+      canReview && dto.markAsReviewed === true ? 'reviewed' : 'changed';
     const computedStatusId =
       await this.getActivityStatusIdByName(newStatusName);
 
@@ -993,30 +1119,110 @@ export class ActivitiesService {
       .from(activityReportSettings)
       .where(eq(activityReportSettings.activityId, id));
 
+    // Data scope: when changing leadTeamId, user without create.any may only set a team they belong to.
+    if (
+      dto.leadTeamId !== undefined &&
+      context?.permissions &&
+      !context.permissions.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY)
+    ) {
+      const teamIds = context.teamIds;
+      if (!Array.isArray(teamIds) || teamIds.length === 0) {
+        throw new ForbiddenException(
+          'You may only set lead team to a team you belong to.'
+        );
+      }
+      if (!teamIds.includes(dto.leadTeamId)) {
+        throw new ForbiddenException(
+          'You may only set lead team to a team you belong to.'
+        );
+      }
+    }
+
     // Use transaction to ensure atomicity of activity and junction table updates
     const updated = await this.databaseService.db.transaction(async (tx) => {
-      // If leadMinistryId is being updated, recalculate displayId
-      // TODO: consider if users still need to reference previous displayId.
-      if (dto.leadMinistryId !== undefined && dto.leadMinistryId !== null) {
-        // Fetch the new ministry abbreviation
-        const [ministry] = await tx
-          .select({ abbreviation: ministries.abbreviation })
-          .from(ministries)
-          .where(eq(ministries.id, dto.leadMinistryId))
-          .limit(1);
+      const effectiveLeadTeamId =
+        dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
+      const effectiveLeadMinistryId =
+        dto.leadMinistryId !== undefined
+          ? dto.leadMinistryId
+          : oldActivity.leadMinistryId;
 
-        if (!ministry || !ministry.abbreviation) {
-          throw new BadRequestException(
-            `Ministry with ID ${dto.leadMinistryId} not found or missing abbreviation`
-          );
+      // Recalculate displayId when lead team or ministry changes
+      const leadTeamOrMinistryChanged =
+        dto.leadTeamId !== undefined || dto.leadMinistryId !== undefined;
+      if (leadTeamOrMinistryChanged) {
+        if (dto.leadTeamId !== undefined) {
+          const [newTeam] = await tx
+            .select({ name: teams.name, ministryId: teams.ministryId })
+            .from(teams)
+            .where(eq(teams.id, dto.leadTeamId))
+            .limit(1);
+          if (!newTeam) {
+            throw new BadRequestException(
+              `Team with ID ${dto.leadTeamId} not found`
+            );
+          }
+          updateData.leadMinistryId = newTeam.ministryId ?? null;
+          if (newTeam.ministryId != null) {
+            const [ministry] = await tx
+              .select({ abbreviation: ministries.abbreviation })
+              .from(ministries)
+              .where(eq(ministries.id, newTeam.ministryId))
+              .limit(1);
+            if (ministry?.abbreviation) {
+              updateData.displayId = this.utilsService.generateDisplayId(
+                ministry.abbreviation,
+                id
+              );
+            } else {
+              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+                newTeam.name
+              );
+              updateData.displayId = this.utilsService.generateDisplayId(
+                prefix,
+                id
+              );
+            }
+          } else {
+            const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+              newTeam.name
+            );
+            updateData.displayId = this.utilsService.generateDisplayId(
+              prefix,
+              id
+            );
+          }
+        } else if (effectiveLeadMinistryId != null) {
+          const [ministry] = await tx
+            .select({ abbreviation: ministries.abbreviation })
+            .from(ministries)
+            .where(eq(ministries.id, effectiveLeadMinistryId))
+            .limit(1);
+          if (ministry?.abbreviation) {
+            updateData.displayId = this.utilsService.generateDisplayId(
+              ministry.abbreviation,
+              id
+            );
+          }
+        } else {
+          const teamId = effectiveLeadTeamId;
+          if (teamId != null) {
+            const [teamRow] = await tx
+              .select({ name: teams.name })
+              .from(teams)
+              .where(eq(teams.id, teamId))
+              .limit(1);
+            if (teamRow) {
+              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
+                teamRow.name
+              );
+              updateData.displayId = this.utilsService.generateDisplayId(
+                prefix,
+                id
+              );
+            }
+          }
         }
-
-        // Generate new displayId using the new ministry abbreviation
-        const newDisplayId = this.utilsService.generateDisplayId(
-          ministry.abbreviation,
-          id
-        );
-        updateData.displayId = newDisplayId;
       }
 
       const [updatedActivity] = await tx
@@ -1334,24 +1540,89 @@ export class ActivitiesService {
   }
 
   /**
-   * Remove an activity (hard delete)
+   * Remove an activity (hard delete).
+   * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
+   * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
    */
-  async remove(id: number, userId: number): Promise<{ message: string }> {
+  async remove(
+    id: number,
+    userId: number,
+    context?: { permissions?: string[]; teamIds?: number[] },
+    options?: { reason?: string }
+  ): Promise<{ message: string }> {
+    const canDeleteAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+    if (!canDeleteAny) {
+      const [isCommsContact, leadTeamId] = await Promise.all([
+        this.policyService.isCommsContactForActivity(id, userId),
+        this.policyService.getLeadTeamIdForActivity(id),
+      ]);
+      const isLeadTeamMember =
+        leadTeamId != null &&
+        Array.isArray(context?.teamIds) &&
+        context.teamIds.includes(leadTeamId);
+      if (!isCommsContact && !isLeadTeamMember) {
+        throw new ForbiddenException(
+          'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
+        );
+      }
+    }
+
     // Verify activity exists so we return 404 for non-existent IDs
     await this.findOne(id);
 
-    // Record deletion in history before deleting
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'deleted',
-      undefined,
-      'Activity permanently deleted'
-    );
+    const reason = options?.reason ?? undefined;
 
-    await this.databaseService.db
-      .delete(activities)
-      .where(eq(activities.id, id));
+    await this.databaseService.db.transaction(async (tx) => {
+      // Audit trail for permanent deletion (no FK to activities so record survives)
+      await tx.insert(deletionAudit).values({
+        activityId: id,
+        userId,
+        reason: reason ?? null,
+      });
+
+      // Delete all child rows that reference this activity (order does not matter for these tables)
+      await tx
+        .delete(activityHistory)
+        .where(eq(activityHistory.activityId, id));
+      await tx
+        .delete(activityCategories)
+        .where(eq(activityCategories.activityId, id));
+      await tx
+        .delete(activityCommsContacts)
+        .where(eq(activityCommsContacts.activityId, id));
+      await tx
+        .delete(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      await tx
+        .delete(activityReportSettings)
+        .where(eq(activityReportSettings.activityId, id));
+      await tx
+        .delete(activityRepresentatives)
+        .where(eq(activityRepresentatives.activityId, id));
+      await tx
+        .delete(activitySharedWithTeams)
+        .where(eq(activitySharedWithTeams.activityId, id));
+      await tx
+        .delete(activitySectors)
+        .where(eq(activitySectors.activityId, id));
+      await tx.delete(activityTags).where(eq(activityTags.activityId, id));
+      await tx.delete(activityThemes).where(eq(activityThemes.activityId, id));
+      await tx
+        .delete(activityTranslationsRequired)
+        .where(eq(activityTranslationsRequired.activityId, id));
+      await tx
+        .delete(favoriteActivities)
+        .where(eq(favoriteActivities.activityId, id));
+      await tx
+        .delete(activitySubscriptions)
+        .where(eq(activitySubscriptions.activityId, id));
+      await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
+
+      await tx.delete(activities).where(eq(activities.id, id));
+    });
+
     return { message: `Activity #${id} deleted successfully` };
   }
 
@@ -1403,12 +1674,14 @@ export class ActivitiesService {
   }
 
   /**
-   * Soft delete (set activityStatusId to 'deleted')
+   * Soft delete (set activityStatusId to 'deleted').
+   * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
    */
   async softDelete(
     id: number,
     reason: string,
-    userId: number
+    userId: number,
+    context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
@@ -1425,6 +1698,25 @@ export class ActivitiesService {
 
     if (!existing) {
       throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const canDeleteAny =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+    if (!canDeleteAny) {
+      const [isCommsContact, leadTeamId] = await Promise.all([
+        this.policyService.isCommsContactForActivity(id, userId),
+        this.policyService.getLeadTeamIdForActivity(id),
+      ]);
+      const isLeadTeamMember =
+        leadTeamId != null &&
+        Array.isArray(context?.teamIds) &&
+        context.teamIds.includes(leadTeamId);
+      if (!isCommsContact && !isLeadTeamMember) {
+        throw new ForbiddenException(
+          'You may only delete activities where you are a comms contact or lead-team member, or have activities.delete.any.'
+        );
+      }
     }
 
     // Get deleted status ID
@@ -1654,6 +1946,9 @@ export class ActivitiesService {
     const currentStatusName = await this.getActivityStatusNameById(
       existing.activityStatusId
     );
+    this.logger.debug(
+      `Restore activity ${id}: current status="${currentStatusName ?? 'null'}"`
+    );
     if (
       currentStatusName !== 'delete_requested' &&
       currentStatusName !== 'deleted'
@@ -1699,6 +1994,13 @@ export class ActivitiesService {
     if (!updated) {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
+
+    const newStatusName = await this.getActivityStatusNameById(
+      updated.activityStatusId
+    );
+    this.logger.log(
+      `Activity ${id} restore committed: status "${currentStatusName}" -> "${newStatusName ?? 'unknown'}"`
+    );
 
     const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =

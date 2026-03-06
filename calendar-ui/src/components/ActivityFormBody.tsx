@@ -1,6 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 import type { ReactElement } from 'react';
 
+import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
@@ -18,6 +19,8 @@ type ActivityFormBodyProps = {
   form: UseFormReturn<ActivityFormData>;
   lookups: FormLookupData;
   readOnly?: boolean;
+  /** Teams for lead team dropdown (create/edit). When provided, overview shows lead team field instead of lead ministry only. */
+  leadTeamOptions?: TeamListItem[];
 };
 
 /**
@@ -27,6 +30,7 @@ export function ActivityFormBody({
   form,
   lookups,
   readOnly = false,
+  leadTeamOptions,
 }: ActivityFormBodyProps): ReactElement {
   const commsLeadOptions = lookups.users.map((u) => ({
     value: u.value,
@@ -38,10 +42,10 @@ export function ActivityFormBody({
       <div className="space-y-6">
         <ActivityOverviewSection
           categories={lookups.categories}
-          ministries={lookups.ministries}
           organizations={lookups.organizations}
           tags={lookups.tags}
           readOnly={readOnly}
+          leadTeamOptions={leadTeamOptions}
         />
 
         <div>
@@ -75,7 +79,10 @@ export function ActivityFormBody({
         />
 
         <ActivitySharingSection
-          sharedWithTeamOptions={[]}
+          sharedWithTeamOptions={lookups.sharedWithTeams.map((t) => ({
+            value: String(t.id),
+            label: t.displayName ?? t.name,
+          }))}
           readOnly={readOnly}
         />
       </div>

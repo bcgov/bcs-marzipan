@@ -92,7 +92,8 @@ export const activityDbFieldsSchema = z.object({
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
-  leadMinistryId: z.number().int(),
+  leadTeamId: z.number().int(),
+  leadMinistryId: z.number().int().nullable(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -179,6 +180,10 @@ export const activityComputedFieldsSchema = z.object({
   // Report settings (from activityReportSettings junction table)
   // Includes omitted flag for each report
   reportSettings: z.array(reportSettingSchema).default([]),
+
+  // Whether the current user may edit this activity (comms contact, lead-team member, or bypass).
+  // When false, user has view-only access (e.g. shared-with only). Omitted when not authenticated.
+  canEdit: z.boolean().optional(),
 });
 
 /**

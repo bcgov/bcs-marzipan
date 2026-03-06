@@ -88,7 +88,6 @@ import { compareActivityRows } from './activityTableSort';
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
 
-const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;
 
@@ -200,7 +199,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
           items={row.activityCategories.map(
             (cat): BadgeGroupItem => ({
               key: cat,
-              label: toSentenceCase(cat),
+              label: cat,
               variant: 'primary',
               className: 'h-auto min-h-5 whitespace-normal text-white',
             })
@@ -529,9 +528,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
             strokeWidth={1.5}
             className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
-          <span>
-            {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
-          </span>
+          <span>{row.commsMaterials.join(', ')}</span>
         </div>
       )}
     </div>
@@ -563,10 +560,7 @@ function StatusCell({
 
   return (
     <div>
-      <Badge
-        variant={getActivityStatusBadgeVariant(row.activityStatus)}
-        className="capitalize"
-      >
+      <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
         {row.activityStatus}
       </Badge>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
@@ -630,8 +624,6 @@ export function ActivityTable() {
 
   const activitiesQuery = useActivityList(activityFilters);
   const usersQuery = useUsers();
-  const activities = activitiesQuery.data ?? [];
-  const users = usersQuery.data ?? [];
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
@@ -659,6 +651,7 @@ export function ActivityTable() {
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
+    const users = usersQuery.data ?? [];
     users.forEach((u) => {
       const displayName = u.name || u.email || String(u.id);
       map.set(String(u.id), {
@@ -667,11 +660,11 @@ export function ActivityTable() {
       });
     });
     return map;
-  }, [users]);
+  }, [usersQuery.data]);
 
   const data = useMemo(
-    () => activities.map(mapActivityResponseToTableRow),
-    [activities]
+    () => (activitiesQuery.data ?? []).map(mapActivityResponseToTableRow),
+    [activitiesQuery.data]
   );
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
@@ -848,7 +841,13 @@ export function ActivityTable() {
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
-    [columnHelper, userMap, effectiveSortKey, effectiveSortDirection]
+    [
+      columnHelper,
+      userMap,
+      effectiveSortKey,
+      effectiveSortDirection,
+      handleSortChange,
+    ]
   );
 
   const table = useReactTable({

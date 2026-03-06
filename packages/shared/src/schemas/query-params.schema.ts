@@ -66,6 +66,7 @@ export const filterActivitiesQuerySchema = z.object({
     .transform(Number)
     .pipe(z.number().int())
     .optional(),
+  leadTeamId: z.string().transform(Number).pipe(z.number().int()).optional(),
   lookAheadSection: z.enum(LOOK_AHEAD_SECTION).optional(),
   city: z.string().optional(),
   isIssue: z

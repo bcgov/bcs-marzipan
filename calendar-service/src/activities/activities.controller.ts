@@ -25,6 +25,7 @@ import type { ActivityResponse } from '@corpcal/shared/api';
 import {
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  hardDeleteRequestBodySchema,
   requestDeleteRequestSchema,
   restoreRequestSchema,
   softDeleteRequestSchema,
@@ -35,6 +36,7 @@ import {
   updateThemesSchema,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
+  type HardDeleteRequest,
   type RequestDeleteRequest,
   type RestoreRequest,
   type SoftDeleteRequest,
@@ -61,6 +63,7 @@ import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
 import { ActivitiesService } from './services/activities.service';
@@ -100,6 +103,8 @@ export class ActivitiesController {
 
     const result = await this.activitiesService.create(body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,
@@ -139,6 +144,7 @@ export class ActivitiesController {
       query.endDateTo !== undefined ||
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
+      query.leadTeamId !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
       query.isIssue !== undefined ||
@@ -203,7 +209,7 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.findOne(id, ctx.dataScope);
+    const result = await this.activitiesService.findOne(id, ctx);
     return {
       success: true,
       data: result,
@@ -236,6 +242,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -245,6 +252,8 @@ export class ActivitiesController {
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.update(id, body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,
@@ -278,6 +287,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id')
   async put(
     @Param('id', ParseIntPipe) id: number,
@@ -288,6 +298,8 @@ export class ActivitiesController {
     // PUT uses createActivityRequestSchema (all fields) but calls update
     const result = await this.activitiesService.update(id, body, user.id, {
       roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
     });
     return {
       success: true,
@@ -331,7 +343,8 @@ export class ActivitiesController {
     const result = await this.activitiesService.softDelete(
       id,
       body.reason,
-      user.id
+      user.id,
+      { permissions: user.permissions, teamIds: user.teamIds }
     );
     return {
       success: true,
@@ -390,7 +403,7 @@ export class ActivitiesController {
   @ApiOperation({
     summary: 'Restore activity',
     description:
-      'Restores an activity from delete_requested or deleted to its previous status. Allowed for comms contacts on the activity or admin/sysAdmin.',
+      'Restores an activity from delete_requested or deleted to its previous status. Deleted: requires activities.delete.any. Delete requested: requires activities.requestDelete, activities.delete, or activities.delete.any plus comms contact, lead-team member, or admin/sysAdmin.',
   })
   @ApiParam({
     name: 'id',
@@ -419,11 +432,15 @@ export class ActivitiesController {
     @Body(new ZodValidationPipe(restoreRequestSchema)) body: RestoreRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
+    this.logger.log(`Restore requested for activity ${id} by user ${user.id}`);
     const result = await this.activitiesService.restore(
       id,
       user.id,
       body.note,
       { roleName: user.roleName }
+    );
+    this.logger.log(
+      `Activity ${id} restored to status "${result.activityStatus ?? 'unknown'}"`
     );
     return {
       success: true,
@@ -484,6 +501,8 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  /** Same edit guard as PATCH/PUT: comms contact, lead-team member, or Admin/System Admin. */
+  @UseGuards(CanEditActivityGuard)
   @RequirePermission('activities.edit')
   @Post(':id/cancel-changes')
   async cancelChanges(
@@ -516,13 +535,28 @@ export class ActivitiesController {
     status: 404,
     description: 'Activity not found',
   })
+  @ApiBody({
+    required: false,
+    description: 'Optional reason for audit (stored in deletion_audit).',
+    schema: { type: 'object', properties: { reason: { type: 'string' } } },
+  })
   @UseGuards(CanDeleteActivityGuard)
   @Delete(':id')
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(hardDeleteRequestBodySchema))
+    body: HardDeleteRequest = {}
   ): Promise<{ message: string }> {
-    return this.activitiesService.remove(id, user.id);
+    return this.activitiesService.remove(
+      id,
+      user.id,
+      {
+        permissions: user.permissions,
+        teamIds: user.teamIds,
+      },
+      { reason: body.reason }
+    );
   }
 
   @ApiOperation({
@@ -551,6 +585,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/categories')
   async updateCategories(
     @Param('id', ParseIntPipe) id: number,
@@ -595,6 +630,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/themes')
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
@@ -639,6 +675,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/tags')
   async updateTags(
     @Param('id', ParseIntPipe) id: number,
@@ -683,6 +720,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/shared-with')
   async updateSharedWith(
     @Param('id', ParseIntPipe) id: number,

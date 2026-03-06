@@ -3,6 +3,7 @@ import { createZodDto } from 'nestjs-zod';
 import {
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  hardDeleteRequestSchema,
   requestDeleteRequestSchema,
   restoreRequestSchema,
   softDeleteRequestSchema,
@@ -52,3 +53,9 @@ export class RequestDeleteDto extends createZodDto(
  * Generated from restoreRequestSchema using nestjs-zod
  */
 export class RestoreDto extends createZodDto(restoreRequestSchema) {}
+
+/**
+ * DTO for hard delete (permanent) request body. Reason is optional.
+ * Generated from hardDeleteRequestSchema using nestjs-zod
+ */
+export class HardDeleteDto extends createZodDto(hardDeleteRequestSchema) {}

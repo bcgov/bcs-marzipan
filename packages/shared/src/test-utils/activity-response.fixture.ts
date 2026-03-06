@@ -83,6 +83,7 @@ export function createMockActivityResponse(
     visibility: DEFAULT_VISIBILITY,
 
     // Ownership
+    leadTeamId: 1,
     leadMinistryId: 1,
     activityStatusId: 1,
 

@@ -42,6 +42,7 @@ export const createMockActivityRequest = (
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
+    leadTeamId: 1,
     leadMinistryId: 1, // Office of the Premier (from seed)
     visibility: 'global',
     leadOrgName: 'Test Org', // XOR with leadOrgId: exactly one must be set
@@ -98,6 +99,7 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: 'global',
+    leadTeamId: 1,
     leadMinistryId: 1,
     createdDateTime: now,
     createdBy: 1,
@@ -121,8 +123,10 @@ export const createMockTeamListItem = (
   description: 'Test description',
   sortOrder: 0,
   isActive: true,
+  roleId: null,
   memberCount: 2,
-  ministryCount: 1,
+  ministryId: 1,
+  ministryName: 'Office of the Premier',
   ...overrides,
 });
 
@@ -134,7 +138,6 @@ export const createMockTeamDetail = (
     { userId: 1, userName: 'User One', role: 'owner' },
     { userId: 2, userName: 'User Two', role: 'member' },
   ],
-  ministries: [{ ministryId: 1, ministryName: 'Office of the Premier' }],
   ...overrides,
 });
 
@@ -160,7 +163,7 @@ export const createMockCreateTeamBody = (
   description: undefined,
   sortOrder: 0,
   isActive: true,
-  ministryIds: ['1'],
+  ministryId: 1,
   notes: undefined,
   ...overrides,
 });

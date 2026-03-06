@@ -32,8 +32,8 @@ When migrating legacy data:
 
 Lookup tables use a consistent shape for type safety and generic UI components:
 
-- **`name`** (notNull): Stable key or code (e.g. slug, abbreviation, internal identifier).
-- **`display_name`** (notNull): User-facing label for UI display.
+- `**name`\*\* (notNull): Stable key or code (e.g. slug, abbreviation, internal identifier).
+- `**display_name**` (notNull): User-facing label for UI display.
 
 ## Table of Contents
 
@@ -175,57 +175,61 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 ### Key Transformations
 
 1. **Date/Time Split**: `StartDateTime` and `EndDateTime` have been split into separate `startDate`/`startTime` and `endDate`/`endTime` fields, allowing for more flexible scheduling.
-
 2. **Status Fields**:
-   - `StatusId` → `activityStatusId` (now required, FK to ActivityStatus)
-   - `HqStatusId` → `lookAheadStatus` (changed from FK to enum-like varchar)
-   - `IsConfirmed` → `dateStatusId` (replaced boolean with FK to DateStatus)
-   - New: `timeStatusId` (FK to TimeStatus)
+
+- `StatusId` → `activityStatusId` (now required, FK to ActivityStatus)
+- `HqStatusId` → `lookAheadStatus` (changed from FK to enum-like varchar)
+- `IsConfirmed` → `dateStatusId` (replaced boolean with FK to DateStatus)
+- New: `timeStatusId` (FK to TimeStatus)
 
 3. **Organization Fields**:
-   - `LeadOrganization` → Split into `leadOrgId` (FK) or `leadOrgName` (free text) with XOR constraint
-   - News Release Origin: Handled through `ActivityNROrigins` junction table in legacy, now uses direct FK `newsReleaseOriginId` (integer FK to NewsReleaseOrigin lookup table) for a single optional reference per activity
+
+- `LeadOrganization` → Split into `leadOrgId` (FK) or `leadOrgName` (free text) with XOR constraint
+- News Release Origin: Handled through `ActivityNROrigins` junction table in legacy, now uses direct FK `newsReleaseOriginId` (integer FK to NewsReleaseOrigin lookup table) for a single optional reference per activity
 
 4. **Text Field Expansions**: Several varchar fields have been changed to `text` type for unlimited length:
-   - `Details` → `summary` (text, required)
-   - `Significance` → `significance` (text, required)
-   - `Schedule` → `schedulingNotes` (text)
-   - `Strategy` → `strategy` (text)
-   - `HqComments` → `executiveSummary` (text)
+
+- `Details` → `summary` (text, required)
+- `Significance` → `significance` (text, required)
+- `Schedule` → `schedulingNotes` (text)
+- `Strategy` → `strategy` (text)
+- `HqComments` → `executiveSummary` (text)
 
 5. **Venue Management**: Venue-related fields (`Venue`, `CityId`, `OtherCity`) have been moved to a separate `venueAddresses` table for better normalization.
-
 6. **Audit Fields**:
-   - `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
-   - `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
-   - `CreatedBy` and `LastUpdatedBy` are now required
-   - `RowGuid` field has been removed (unused in business logic)
+
+- `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
+- `CreatedDateTime` and `LastUpdatedDateTime` are now required with default values
+- `CreatedBy` and `LastUpdatedBy` are now required
+- `RowGuid` field has been removed (unused in business logic)
 
 7. **Removed Fields**: Several legacy fields have been removed:
-   - `PotentialDates` (deprecated in legacy)
-   - `VideographerId` (removed - no longer needed)
-   - `IsAtLegislature` (redundant with venue)
-   - `IsConfidential` → `isConfidential` on activities table (returned to activities)
-   - `IsMilestone` (deprecated in legacy)
-   - `pitchStatusId` (removed - pitch workflow simplified)
-   - `pitchComments` (removed - pitch workflow simplified)
-   - `calendarVisibility` (removed)
-   - `venueStatusId` (removed)
-   - `eventLeadOrgId` and `eventLeadOrgName` (removed)
+
+- `PotentialDates` (deprecated in legacy)
+- `VideographerId` (removed - no longer needed)
+- `IsAtLegislature` (redundant with venue)
+- `IsConfidential` → `isConfidential` on activities table (returned to activities)
+- `IsMilestone` (deprecated in legacy)
+- `pitchStatusId` (removed - pitch workflow simplified)
+- `pitchComments` (removed - pitch workflow simplified)
+- `calendarVisibility` (removed)
+- `venueStatusId` (removed)
+- `eventLeadOrgId` and `eventLeadOrgName` (removed)
 
 8. **New Features**:
-   - `displayId`: Computed display identifier with ministry prefix
-   - `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
-   - `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
-   - `isConfidential`: Activity-level boolean property that determines placeholder inclusion when combined with `omitted` flag.
-   - `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
-   - `leadMinistryId`: Renamed from contactMinistryId
-   - `pitchDate`: Date tracking for pitch workflow
-   - `notes`: General notes field (mapped from legacy Comments)
-   - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
-   - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
-   - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
-   - `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
+
+- `displayId`: Computed display identifier with ministry prefix
+- `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
+- `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
+- `isConfidential`: Activity-level boolean property that determines placeholder inclusion when combined with `omitted` flag.
+- `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
+- `leadMinistryId`: Renamed from contactMinistryId
+- `pitchDate`: Date tracking for pitch workflow
+- `notes`: General notes field (mapped from legacy Comments)
+- `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
+- `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
+- `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
+- `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
 
 ### Visibility and Sharing
 
@@ -296,28 +300,31 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ### Field Mappings
 
-| New Field Name        | New Type                   | New Constraints            | Description                                                        |
-| --------------------- | -------------------------- | -------------------------- | ------------------------------------------------------------------ |
-| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                        |
-| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                               |
-| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                               |
-| `description`         | `text`                     | nullable                   | Team description (nullable)                                        |
-| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                         |
-| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)      |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                |
-| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now) |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)           |
+| New Field Name        | New Type                   | New Constraints            | Description                                                           |
+| --------------------- | -------------------------- | -------------------------- | --------------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                           |
+| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                                  |
+| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                                  |
+| `description`         | `text`                     | nullable                   | Team description (nullable)                                           |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Sort order for display                                                |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                            |
+| `roleId`              | `integer`                  | nullable, FK               | FK to Role - default role for team members                            |
+| `ministryId`          | `integer`                  | nullable, FK               | FK to Ministry - team's ministry for data scoping (create/visibility) |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)         |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                   |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now)    |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)              |
 
 ### Notes
 
-- **Placeholder Table**: This table is marked as a placeholder with TODO comments. Full implementation is pending.
-- **Purpose**: Used for team-based access control, particularly for controlling which teams can view specific categories via the `teamCategories` junction table.
-- **Future Implementation**: A `teamUsers` junction table will be added when teams are fully implemented to link teams to users.
+- **Purpose**: Used for team-based access control and data scoping. Activity create and visibility use `teams.ministry_id` (the team's single ministry) for scoping; users see activities whose lead ministry matches one of their teams' ministry.
+- **Data scoping**: Only `teams.ministry_id` is used for activity scoping (not a junction table). The former `team_ministries` junction table has been removed.
 
 ### Related Tables
 
 - **Junction Tables**:
   - `teamCategories`: Many-to-many relationship between Teams and Categories for access control
+  - `userTeams`: Many-to-many relationship between Users and Teams (membership)
 
 ---
 
@@ -459,8 +466,8 @@ The `config` field stores a JSONB object that defines how activities are include
 
 ### Report Visibility
 
-- **`visibility = 'global'`**: Report is visible to all teams (e.g., Look Ahead)
-- **`visibility = 'team'`**: Report is visible only to the creator's team (e.g., 30/60/90)
+- `**visibility = 'global'`\*\*: Report is visible to all teams (e.g., Look Ahead)
+- `**visibility = 'team'**`: Report is visible only to the creator's team (e.g., 30/60/90)
 
 ### Related Tables
 
@@ -494,8 +501,8 @@ Activity inclusion in reports is determined by `isConfidential` (on activities) 
 
 This table replaces the legacy boolean flags on the Activity table:
 
-- **`IsConfidential` (notForLookAhead)**: `isConfidential=true` on activities (for placeholder) + `omitted=true` in activityReportSettings (for omission)
-- **`notForThirtySixtyNinety`**: `omitted=true` for 'thirty-sixty-ninety' report
+- `**IsConfidential` (notForLookAhead)\*\*: `isConfidential=true` on activities (for placeholder) + `omitted=true` in activityReportSettings (for omission)
+- `**notForThirtySixtyNinety`\*\*: `omitted=true` for 'thirty-sixty-ninety' report
 
 ### Related Tables
 
@@ -550,9 +557,7 @@ This table replaces the legacy boolean flags on the Activity table:
 ### Key Transformations
 
 1. **AD Fields**: User profile fields have been prefixed with `ad` to clearly indicate they come from Active Directory integration. This allows for separate local overrides if needed.
-
-2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 5 system roles and extensible custom roles.
-
+2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 6 system roles and extensible custom roles.
 3. **Removed UI Preferences**: `FilterDisplayValue` and `HiddenColumns` have been removed as UI preferences will be handled separately.
 
 ### Related Tables
@@ -572,7 +577,7 @@ This table replaces the legacy boolean flags on the Activity table:
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[Role]`  
 **New Table Name:** `roles`
 
-**Description:** System and custom roles for RBAC. Defines the 5 system roles (View Only, Editor, Advanced, Admin, System Admin) plus support for custom roles.
+**Description:** System and custom roles for RBAC. Defines the 6 system roles (Viewer, Editor, Advanced Viewer, Advanced Editor, Admin, System Admin) plus support for custom roles.
 
 ### Field Mappings
 
@@ -596,27 +601,29 @@ This table replaces the legacy boolean flags on the Activity table:
 
 ### System Roles
 
-The new schema includes 5 predefined system roles with `isSystem=true`:
+The new schema includes 6 predefined system roles with `isSystem=true`:
 
-| ID  | Name         | Description                                                     |
-| --- | ------------ | --------------------------------------------------------------- |
-| 1   | View Only    | Read-only access to view data                                   |
-| 2   | Editor       | Can create and edit activities and drafts                       |
-| 3   | Advanced     | Editor plus approve and export                                  |
-| 4   | Admin        | Full admin access including delete, publish, users, teams       |
-| 5   | System Admin | Complete system access including role and permission management |
+| ID  | Name            | Description                                                      |
+| --- | --------------- | ---------------------------------------------------------------- |
+| 1   | Viewer          | Read-only access to view data                                    |
+| 2   | Editor          | Can create and edit activities and drafts                        |
+| 3   | Advanced Viewer | View any team's activities; no create, edit, or delete           |
+| 4   | Advanced Editor | Editor plus approve and export; create/delete scoped to own team |
+| 5   | Admin           | Full admin access including delete, publish, users, teams        |
+| 6   | System Admin    | Complete system access including role and permission management  |
 
 ### Legacy Role Mapping
 
-| Legacy Role Value | New Role Name |
-| ----------------- | ------------- |
-| ReadOnly          | View Only     |
-| ViewOnly          | View Only     |
-| Editor            | Editor        |
-| Advanced          | Advanced      |
-| Admin             | Admin         |
-| SystemAdmin       | System Admin  |
-| System Admin      | System Admin  |
+| Legacy Role Value | New Role Name   |
+| ----------------- | --------------- |
+| ReadOnly          | Viewer          |
+| ViewOnly          | Viewer          |
+| View Only         | Viewer          |
+| Editor            | Editor          |
+| Advanced          | Advanced Editor |
+| Admin             | Admin           |
+| SystemAdmin       | System Admin    |
+| System Admin      | System Admin    |
 
 ### Related Tables
 
@@ -703,13 +710,14 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 
 ### Default Role-Permission Mappings
 
-| Role         | Permissions                                                                                          |
-| ------------ | ---------------------------------------------------------------------------------------------------- |
-| View Only    | activities.view, drafts.view, reports.view, lookups.view                                             |
-| Editor       | View Only + activities.create/edit, drafts.create/edit/delete                                        |
-| Advanced     | Editor + activities.approve, reports.export, drafts.recover                                          |
-| Admin        | Advanced + activities.delete/publish/unpublish, users.view/edit, teams._, lookups.manage, settings._ |
-| System Admin | All permissions                                                                                      |
+| Role            | Permissions                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| Viewer          | activities.view, drafts.view, reports.view, lookups.view                                                    |
+| Editor          | Viewer + activities.create/edit, drafts.create/edit/delete                                                  |
+| Advanced Viewer | Same as Viewer (view only; bypasses team scoping)                                                           |
+| Advanced Editor | Editor + activities.approve, reports.export, drafts.recover                                                 |
+| Admin           | Advanced Editor + activities.delete/publish/unpublish, users.view/edit, teams._, lookups.manage, settings._ |
+| System Admin    | All permissions                                                                                             |
 
 ### Related Tables
 
@@ -756,7 +764,7 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[SystemUserMinistry]` (partial mapping)  
 **New Table Name:** `user_teams`
 
-**Description:** Junction table defining user membership in teams. Used for data scoping (what data a user can see). Advanced, Admin, and System Admin roles bypass team scoping.
+**Description:** Junction table defining user membership in teams. Used for data scoping (what data a user can see). Advanced Viewer, Advanced Editor, Admin, and System Admin roles bypass team scoping.
 
 ### Field Mappings
 
@@ -775,12 +783,11 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 ### Key Transformations
 
 1. **Ministry to Team**: The legacy `SystemUserMinistry` table linked users to ministries. The new `user_teams` table links users to teams, which is a more flexible grouping concept. During migration, ministries may map to teams or a separate `ministryUsers` junction table.
-
 2. **Simplified Schema**: Audit fields (`CreatedBy`, `LastUpdatedBy`, etc.) have been removed from the junction table as they add overhead without significant value for this relationship type.
 
 ### Data Scoping Behavior
 
-- Users with `Advanced`, `Admin`, or `System Admin` roles bypass team-based data scoping and can see all data
+- Users with `Advanced Viewer`, `Advanced Editor`, `Admin`, or `System Admin` roles bypass team-based data scoping and can see all data
 - Other users can only see data associated with their team memberships
 - The `DataScopeInterceptor` in the backend sets `request.dataScope` based on user's team memberships and role
 
