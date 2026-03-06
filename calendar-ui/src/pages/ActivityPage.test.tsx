@@ -318,4 +318,22 @@ describe('ActivityPage edit mode', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
   });
+
+  it('redirects to view when user has EDIT permission but activity canEdit is false', () => {
+    const activityViewOnly = createMockActivityResponse({
+      id: 1,
+      displayId: 'ACT-1',
+      title: 'Shared activity',
+      leadTeamId: 5,
+      activityStatus: 'Draft',
+      canEdit: false,
+    });
+
+    renderActivityPage({
+      activity: activityViewOnly,
+      initialRoute: '/activity/1/edit',
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
+  });
 });

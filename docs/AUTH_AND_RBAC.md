@@ -423,6 +423,25 @@ So **dataScope** is derived from role + teams: the role decides whether to bypas
 | Admin           | Yes    | Can see all data (no team filter)   |
 | System Admin    | Yes    | Can see all data (no team filter)   |
 
+#### Activity visibility (list and view)
+
+Activity list and single-activity view use **visibility** and **shared-with** to decide which activities a user sees when `dataScope.bypass` is false:
+
+- **Global** (`visibility = 'global'`): The activity is visible to everyone (any team or no team). No team-based filter is applied for these activities.
+- **Team** (`visibility = 'team'`): The activity is visible only to:
+  - Members of the activity's **lead team** (`leadTeamId`),
+  - Users with **data scope bypass** (Advanced Viewer, Advanced Editor, Admin, System Admin),
+  - Users who are members of teams the activity is **shared with** (via `activity_shared_with_teams`).
+
+So for team-visibility activities, "comms lead in user's team" and "lead ministry maps to user's team" do **not** grant visibility; only lead team and shared-with (plus bypass) apply. When the user has no teams (`teamIds.length === 0`), they see only global-visibility activities.
+
+#### Activity edit restriction (shared-with view-only)
+
+Users who can see an activity only because it is **shared with** one of their teams must not be able to edit it. The backend enforces this as follows:
+
+- **CanEditActivityGuard**: Used on PATCH/PUT activity, PUT categories, PUT tags, PUT shared-with, and PUT themes. The user must have `activities.edit` (enforced by `@RequirePermission`) and at least one of: (a) comms contact for the activity, (b) member of the activity's lead team, or (c) Admin / System Admin. Otherwise the request is rejected with 403 (view-only for shared-with).
+- **Response field `canEdit`**: The activity API response includes an optional `canEdit: boolean` when the request is authenticated. It is `true` when the user may edit (comms, lead team, or bypass) and `false` when the user has only shared-with access. The frontend uses this to hide the Edit button and keep the form read-only for shared-with-only users.
+
 #### Using dataScope in controllers and services
 
 Controllers obtain `dataScope` via the `@RequestContext()` decorator and pass it into services:
@@ -441,7 +460,7 @@ async findAll(@RequestContext() ctx: RequestContextType) {
 Services branch on `bypass` and `teamIds`:
 
 - **`dataScope.bypass === true`**: Do not apply a team filter; return all rows the permission system allows.
-- **`dataScope.bypass === false`**: Filter by `dataScope.teamIds` (e.g. `WHERE teamId IN (dataScope.teamIds)`). If `teamIds` is empty (user has no teams), the service should return no rows or treat the request as no access.
+- **`dataScope.bypass === false`**: Filter results by team/visibility rules. For **activities**, see [Activity visibility (list and view)](#activity-visibility-list-and-view): include global-visibility activities and, when `teamIds.length > 0`, team-visibility activities where the user is in the lead team or in a shared-with team; when `teamIds` is empty, only global-visibility activities are returned. Other resources may use a simple `teamId IN (dataScope.teamIds)` filter.
 
 Example:
 

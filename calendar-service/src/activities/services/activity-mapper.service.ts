@@ -66,6 +66,7 @@ export class ActivityMapperService {
       translationsRequiredStatus?: string | null;
       leadMinistry?: string | null;
       leadMinistryAbbreviation?: string | null;
+      canEdit?: boolean;
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -181,6 +182,9 @@ export class ActivityMapperService {
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],
+
+      // Edit access for current user (set when authenticated)
+      ...(relatedData?.canEdit !== undefined && { canEdit: relatedData.canEdit }),
 
       // Meta
       createdDateTime:

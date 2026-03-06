@@ -63,6 +63,7 @@ import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
 import { ActivitiesService } from './services/activities.service';
@@ -208,7 +209,7 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.findOne(id, ctx.dataScope);
+    const result = await this.activitiesService.findOne(id, ctx);
     return {
       success: true,
       data: result,
@@ -241,6 +242,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -285,6 +287,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id')
   async put(
     @Param('id', ParseIntPipe) id: number,
@@ -580,6 +583,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/categories')
   async updateCategories(
     @Param('id', ParseIntPipe) id: number,
@@ -624,6 +628,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/themes')
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
@@ -668,6 +673,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/tags')
   async updateTags(
     @Param('id', ParseIntPipe) id: number,
@@ -712,6 +718,7 @@ export class ActivitiesController {
     description: 'Activity not found',
   })
   @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
   @Put(':id/shared-with')
   async updateSharedWith(
     @Param('id', ParseIntPipe) id: number,

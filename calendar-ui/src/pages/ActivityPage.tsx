@@ -96,7 +96,10 @@ export function ActivityPage({
 
   const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
-  const canEditActivity = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
+  const apiCanEdit = (activity as ActivityResponse & { canEdit?: boolean })
+    .canEdit;
+  const canEditActivity =
+    hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(
     canCreateActivity || canEditActivity
   );

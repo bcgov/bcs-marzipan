@@ -180,6 +180,10 @@ export const activityComputedFieldsSchema = z.object({
   // Report settings (from activityReportSettings junction table)
   // Includes omitted flag for each report
   reportSettings: z.array(reportSettingSchema).default([]),
+
+  // Whether the current user may edit this activity (comms contact, lead-team member, or bypass).
+  // When false, user has view-only access (e.g. shared-with only). Omitted when not authenticated.
+  canEdit: z.boolean().optional(),
 });
 
 /**

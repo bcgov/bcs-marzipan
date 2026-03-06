@@ -209,7 +209,7 @@ describe('ActivitiesController', () => {
       });
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         1,
-        mockRequestContext.dataScope
+        mockRequestContext
       );
       expect(mockActivitiesService.findOne).toHaveBeenCalledTimes(1);
     });
@@ -224,7 +224,7 @@ describe('ActivitiesController', () => {
       ).rejects.toThrow();
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         999,
-        mockRequestContext.dataScope
+        mockRequestContext
       );
     });
   });

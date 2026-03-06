@@ -604,50 +604,62 @@ export class ActivitiesService {
   }
 
   /**
-   * Get activity IDs visible to the given teams via (1) comms lead user in team, (2) lead team in user's teams, or (3) lead ministry in team
+   * Get activity IDs visible to the given teams by visibility rules:
+   * - Global: all activities with visibility = 'global' (visible to everyone).
+   * - Team: when teamIds.length > 0, activities with visibility = 'team' where
+   *   leadTeamId is in teamIds OR activity is in activity_shared_with_teams for one of teamIds.
+   * When teamIds.length === 0, only global visibility activities are returned.
    */
   private async getVisibleActivityIdsForTeams(
     teamIds: number[]
   ): Promise<Set<number>> {
-    if (teamIds.length === 0) return new Set();
+    const globalIds = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.visibility, 'global'))
+      .then((rows) => new Set(rows.map((r) => r.id)));
 
-    const [commsLeadActivityIds, leadTeamActivityIds, leadMinistryActivityIds] =
-      await Promise.all([
-        this.databaseService.db
-          .selectDistinct({ activityId: activityCommsContacts.activityId })
-          .from(activityCommsContacts)
-          .innerJoin(
-            userTeams,
-            eq(activityCommsContacts.userId, userTeams.userId)
+    if (teamIds.length === 0) {
+      return globalIds;
+    }
+
+    const [teamLeadIds, teamSharedIds] = await Promise.all([
+      this.databaseService.db
+        .select({ id: activities.id })
+        .from(activities)
+        .where(
+          and(
+            eq(activities.visibility, 'team'),
+            inArray(activities.leadTeamId, teamIds)
           )
-          .where(
-            and(
-              eq(activityCommsContacts.isLead, true),
-              eq(activityCommsContacts.isActive, true),
-              eq(userTeams.isActive, true),
-              inArray(userTeams.teamId, teamIds)
+        )
+        .then((rows) => new Set(rows.map((r) => r.id))),
+      this.databaseService.db
+        .selectDistinct({ activityId: activitySharedWithTeams.activityId })
+        .from(activitySharedWithTeams)
+        .where(
+          and(
+            inArray(activitySharedWithTeams.teamId, teamIds),
+            eq(activitySharedWithTeams.isActive, true)
+          )
+        )
+        .then(async (rows) => {
+          const sharedIds = rows.map((r) => r.activityId);
+          if (sharedIds.length === 0) return new Set<number>();
+          return this.databaseService.db
+            .select({ id: activities.id })
+            .from(activities)
+            .where(
+              and(
+                eq(activities.visibility, 'team'),
+                inArray(activities.id, sharedIds)
+              )
             )
-          )
-          .then((rows) => new Set(rows.map((r) => r.activityId))),
-        this.databaseService.db
-          .select({ id: activities.id })
-          .from(activities)
-          .where(inArray(activities.leadTeamId, teamIds))
-          .then((rows) => new Set(rows.map((r) => r.id))),
-        this.databaseService.db
-          .select({ id: activities.id })
-          .from(activities)
-          .innerJoin(teams, eq(activities.leadMinistryId, teams.ministryId))
-          .where(inArray(teams.id, teamIds))
-          .then((rows) => new Set(rows.map((r) => r.id))),
-      ]);
-
-    const visible = new Set<number>([
-      ...commsLeadActivityIds,
-      ...leadTeamActivityIds,
-      ...leadMinistryActivityIds,
+            .then((activityRows) => new Set(activityRows.map((r) => r.id)));
+        }),
     ]);
-    return visible;
+
+    return new Set<number>([...globalIds, ...teamLeadIds, ...teamSharedIds]);
   }
 
   /**
@@ -792,20 +804,14 @@ export class ActivitiesService {
       );
     }
 
-    // Team-based data scoping: when bypass is false, restrict to activities visible to user's teams
-    // (comms lead user in one of user's teams, or activity's lead ministry in one of user's teams)
+    // Team-based data scoping: when bypass is false, restrict to activities visible by visibility rules
+    // (global visibility for all; team visibility for lead team or shared-with teams only)
     const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass && dataScope.teamIds.length > 0) {
+    if (dataScope && !dataScope.bypass) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
       activityResults = activityResults.filter((a) => visibleIds.has(a.id));
-    } else if (
-      dataScope &&
-      !dataScope.bypass &&
-      dataScope.teamIds.length === 0
-    ) {
-      activityResults = [];
     }
 
     // Fetch related data for all activities
@@ -817,8 +823,22 @@ export class ActivitiesService {
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
-    return activityResults.map((activity) =>
-      this.mapperService.mapToResponseDto(activity, {
+    const hasEditPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+
+    return activityResults.map((activity) => {
+      const commsContacts = related.commsContactsMap.get(activity.id) ?? [];
+      const canEdit =
+        ctx?.user &&
+        hasEditPermission &&
+        this.computeCanEdit(
+          activity.leadTeamId,
+          commsContacts.map((c) => c.userId),
+          ctx.user.id,
+          ctx.user.teamIds,
+          dataScope?.bypass ?? false
+        );
+      return this.mapperService.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
         categoryIds: categoryIdsMap.get(activity.id) ?? [],
         tags: related.tagsMap.get(activity.id) ?? [],
@@ -832,7 +852,7 @@ export class ActivitiesService {
         representativesAttending:
           related.representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: related.sharedWithMap.get(activity.id) ?? [],
-        commsContacts: related.commsContactsMap.get(activity.id) ?? [],
+        commsContacts,
         eventLeadName: related.eventPlannerNamesMap.get(activity.id) ?? null,
         leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
         newsReleaseOrigin:
@@ -848,14 +868,42 @@ export class ActivitiesService {
         leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
         leadMinistryAbbreviation:
           related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
-      })
-    );
+        canEdit: canEdit ?? undefined,
+      });
+    });
+  }
+
+  /**
+   * Whether the current user can edit this activity (comms contact, lead-team member, or bypass).
+   */
+  private computeCanEdit(
+    leadTeamId: number | null,
+    commsContactUserIds: number[],
+    userId: number | undefined,
+    teamIds: number[] | undefined,
+    bypass: boolean
+  ): boolean {
+    if (userId === undefined) return false;
+    if (bypass) return true;
+    if (commsContactUserIds.includes(userId)) return true;
+    if (
+      leadTeamId != null &&
+      Array.isArray(teamIds) &&
+      teamIds.includes(leadTeamId)
+    ) {
+      return true;
+    }
+    return false;
   }
 
   /**
    * Find one activity by ID. When dataScope is provided and bypass is false, returns 404 if the activity is not visible to the user's teams.
    */
-  async findOne(id: number, dataScope?: DataScope): Promise<ActivityResponse> {
+  async findOne(
+    id: number,
+    ctx?: RequestContextType
+  ): Promise<ActivityResponse> {
+    const dataScope = ctx?.dataScope;
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -867,9 +915,6 @@ export class ActivitiesService {
     }
 
     if (dataScope && !dataScope.bypass) {
-      if (dataScope.teamIds.length === 0) {
-        throw new NotFoundException(`Activity #${id} not found`);
-      }
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
@@ -882,6 +927,19 @@ export class ActivitiesService {
     const related = await this.fetchRelatedForActivityIds([id], [activity]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
+    const commsContacts = related.commsContactsMap.get(id) ?? [];
+    const hasEditPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+    const canEdit =
+      ctx?.user &&
+      hasEditPermission &&
+      this.computeCanEdit(
+        activity.leadTeamId,
+        commsContacts.map((c) => c.userId),
+        ctx.user.id,
+        ctx.user.teamIds,
+        dataScope?.bypass ?? false
+      );
 
     return this.mapperService.mapToResponseDto(activity, {
       categories: categoriesList.get(id) ?? [],
@@ -896,7 +954,7 @@ export class ActivitiesService {
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
-      commsContacts: related.commsContactsMap.get(id) ?? [],
+      commsContacts,
       eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
@@ -910,6 +968,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      canEdit: canEdit ?? undefined,
     });
   }
 

@@ -97,7 +97,12 @@ UPDATE teams SET ministry_id = 9 WHERE id = 36;
 
 UPDATE teams SET role_id = 5 WHERE id = 2;
 UPDATE teams SET role_id = 3 WHERE id IN (1, 3, 4, 5, 6, 7);
-UPDATE teams SET role_id = 2 WHERE id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 35);
+
+-- ----------------------------------------------------------------------------
+-- Remove Editor role from Ministry Comms teams; must be explicitly set for each user.
+-- Comms teams may need to have Viewer members.
+-- UPDATE teams SET role_id = 2 WHERE id IN (8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 35);
+-- ----------------------------------------------------------------------------
 UPDATE teams SET role_id = 1 WHERE id IN (33, 34, 36);
 
 -- ----------------------------------------------------------------------------
