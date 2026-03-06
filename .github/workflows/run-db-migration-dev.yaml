@@ -21,6 +21,7 @@ jobs:
       OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
+      APP_VERSION: ${{ vars.APP_VERSION }}
 
     steps:
       - name: Checkout code
@@ -67,12 +68,13 @@ jobs:
       - name: Run DB seeds
         if: ${{ inputs.run_seeds == true }}
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
           oc start-build calendar-db-seed-build \
             --from-dir=. \
             --follow \
             --commit=$(git rev-parse HEAD)
-          oc tag ${TOOLS_NAMESPACE}/calendar-db-seed:latest ${DEV_NAMESPACE}/calendar-db-seed:latest
+          oc tag ${TOOLS_NAMESPACE}/calendar-db-seed:${APP_VERSION} ${DEV_NAMESPACE}/calendar-db-seed:${APP_VERSION}
 
           oc delete job calendar-db-seed \
             -n ${DEV_NAMESPACE} \
@@ -87,6 +89,7 @@ jobs:
 
       - name: Deploy to Dev environment
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
           export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -

@@ -25,6 +25,6 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: calendar-service:latest
+      name: calendar-service:${APP_VERSION}
   triggers:
     - type: ConfigChange

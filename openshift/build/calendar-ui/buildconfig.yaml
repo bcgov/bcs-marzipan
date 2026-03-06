@@ -36,6 +36,6 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: calendar-ui:latest
+      name: calendar-ui:${APP_VERSION}
   triggers:
     - type: ConfigChange

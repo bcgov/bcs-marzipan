@@ -10,7 +10,7 @@ namespace: ${PROD_NAMESPACE}
 images:
   - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-service
     newName: image-registry.openshift-image-registry.svc:5000/${PROD_NAMESPACE}/calendar-service
-    newTag: latest
+    newTag: ${APP_VERSION}
   - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-ui
     newName: image-registry.openshift-image-registry.svc:5000/${PROD_NAMESPACE}/calendar-ui
-    newTag: latest
+    newTag: ${APP_VERSION}

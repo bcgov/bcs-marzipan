@@ -17,6 +17,7 @@ jobs:
       OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
+      APP_VERSION: ${{ vars.APP_VERSION }}
 
     steps:
       - name: Checkout code
@@ -41,28 +42,32 @@ jobs:
 
       - name: Apply build resources in tools namespace
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
           export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/build | envsubst | oc apply -f -
 
       - name: Start binary build (calendar-service)
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc start-build calendar-service-build \
             --from-dir=. \
             --follow \
             --commit=$(git rev-parse HEAD)
-          oc tag ${TOOLS_NAMESPACE}/calendar-service:latest ${DEV_NAMESPACE}/calendar-service:latest
+          oc tag ${TOOLS_NAMESPACE}/calendar-service:${APP_VERSION} ${DEV_NAMESPACE}/calendar-service:${APP_VERSION}
 
       - name: Start binary build (calendar-ui)
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc start-build calendar-ui-build \
             --from-dir=. \
             --follow \
             --commit=$(git rev-parse HEAD)
-          oc tag ${TOOLS_NAMESPACE}/calendar-ui:latest ${DEV_NAMESPACE}/calendar-ui:latest
+          oc tag ${TOOLS_NAMESPACE}/calendar-ui:${APP_VERSION} ${DEV_NAMESPACE}/calendar-ui:${APP_VERSION}
 
       - name: Deploy to Dev environment
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
           export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
