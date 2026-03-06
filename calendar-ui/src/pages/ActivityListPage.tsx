@@ -1,5 +1,5 @@
 import { ChevronDown, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
@@ -17,12 +17,45 @@ import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
 import { cn } from '@/lib/utils';
 
+const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
+
 type ActivityListTabValue =
   | 'all'
   | 'ministry'
   | 'my-activities'
   | 'recent'
   | 'shared-with-me';
+
+const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
+  'all',
+  'ministry',
+  'my-activities',
+  'recent',
+  'shared-with-me',
+];
+
+function getStoredActivityListTab(): ActivityListTabValue | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(ACTIVITY_LIST_TAB_STORAGE_KEY);
+    if (!raw) return null;
+    if (ACTIVITY_LIST_TAB_VALUES.includes(raw as ActivityListTabValue)) {
+      return raw as ActivityListTabValue;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setStoredActivityListTab(tab: ActivityListTabValue): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(ACTIVITY_LIST_TAB_STORAGE_KEY, tab);
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Activity list. Rendered inside Layout, which wraps content with
@@ -34,6 +67,7 @@ export const ActivityListPage = () => {
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 
   const [activeTab, setActiveTab] = useState<ActivityListTabValue>('all');
+  const initialTabAppliedRef = useRef(false);
   const [selectedLeadTeamId, setSelectedLeadTeamId] = useState<number | null>(
     null
   );
@@ -53,6 +87,30 @@ export const ActivityListPage = () => {
       ),
     [userTeams]
   );
+
+  const showMinistryTab = teamsWithMinistry.length > 0;
+
+  useEffect(() => {
+    if (initialTabAppliedRef.current) return;
+    initialTabAppliedRef.current = true;
+
+    const stored = getStoredActivityListTab();
+    if (stored !== null) {
+      if (stored === 'ministry' && !showMinistryTab) {
+        setActiveTab('all');
+        setStoredActivityListTab('all');
+      } else {
+        setActiveTab(stored);
+      }
+      return;
+    }
+
+    const defaultTab: ActivityListTabValue = showMinistryTab
+      ? 'my-activities'
+      : 'all';
+    setActiveTab(defaultTab);
+    setStoredActivityListTab(defaultTab);
+  }, [showMinistryTab]);
 
   const ministryAbbreviationByMinistryId = useMemo(() => {
     const map = new Map<number, string>();
@@ -74,7 +132,6 @@ export const ActivityListPage = () => {
       'Ministry')
     : 'Ministry';
 
-  const showMinistryTab = teamsWithMinistry.length > 0;
   const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
 
   const tableProps = useMemo(() => {
@@ -120,7 +177,11 @@ export const ActivityListPage = () => {
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as ActivityListTabValue)}
+        onValueChange={(v) => {
+          const tab = v as ActivityListTabValue;
+          setActiveTab(tab);
+          setStoredActivityListTab(tab);
+        }}
       >
         <div className="mb-0">
           <TabsList className="mb-0" variant="line" size="med">
