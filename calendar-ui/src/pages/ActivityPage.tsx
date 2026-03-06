@@ -118,6 +118,8 @@ export function ActivityPage({
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
+  /** Users with delete.any may open/edit when status is delete_requested or deleted. */
+  const canEditWhenBlocked = canDeleteAny;
   const canRestore =
     normalizedStatus === 'deleted'
       ? canDeleteAny
@@ -199,12 +201,12 @@ export function ActivityPage({
     }
   }, [isEditMode, canEditActivity, navigate, viewPath]);
 
-  // Redirect: edit mode + blocked status and not admin -> view
+  // Redirect: edit mode + blocked status and no permission to edit when blocked -> view
   useEffect(() => {
-    if (isEditMode && isBlockedStatus && !isAdminOrSysAdmin) {
+    if (isEditMode && isBlockedStatus && !canEditWhenBlocked) {
       void navigate(viewPath, { replace: true });
     }
-  }, [isEditMode, isBlockedStatus, isAdminOrSysAdmin, navigate, viewPath]);
+  }, [isEditMode, isBlockedStatus, canEditWhenBlocked, navigate, viewPath]);
 
   // When entering view mode, record time so handleFormInteraction can ignore events within grace period
   useEffect(() => {
@@ -281,24 +283,25 @@ export function ActivityPage({
     !isEditMode ||
     lockedByOther ||
     lockLoading ||
-    (isBlockedStatus && !isAdminOrSysAdmin);
+    (isBlockedStatus && !canEditWhenBlocked);
 
   const enterEdit = useCallback(
     (focusField?: string, action?: PendingAction) => {
       if (!canEditActivity) return;
-      if (isBlockedStatus && !isAdminOrSysAdmin) return;
+      if (isBlockedStatus && !canEditWhenBlocked) return;
       if (focusField) pendingFocusFieldRef.current = focusField;
       if (action) setPendingAction(action);
       void navigate(editPath, { replace: true });
     },
-    [canEditActivity, isBlockedStatus, isAdminOrSysAdmin, navigate, editPath]
+    [canEditActivity, isBlockedStatus, canEditWhenBlocked, navigate, editPath]
   );
 
   const handleFormInteraction = useCallback(
     (
       e: React.FocusEvent<HTMLFormElement> | React.MouseEvent<HTMLFormElement>
     ) => {
-      if (!isEditMode && canEditActivity && !isBlockedStatus) {
+      const mayEnterEdit = !isBlockedStatus || canEditWhenBlocked;
+      if (!isEditMode && canEditActivity && mayEnterEdit) {
         // Skip if still in grace period after entering view mode (avoids redirect on load)
         if (Date.now() - viewModeEnteredAtRef.current < VIEW_MODE_GRACE_MS) {
           return;
@@ -310,7 +313,13 @@ export function ActivityPage({
         enterEdit(field ?? undefined);
       }
     },
-    [isEditMode, canEditActivity, isBlockedStatus, enterEdit]
+    [
+      isEditMode,
+      canEditActivity,
+      isBlockedStatus,
+      canEditWhenBlocked,
+      enterEdit,
+    ]
   );
 
   const handleCancel = async () => {
@@ -492,6 +501,7 @@ export function ActivityPage({
         <ActivityStatusBanner
           status={activityStatusName}
           canRestore={canRestore}
+          canEditWhenBlocked={canEditWhenBlocked}
           onRestore={handleRestore}
           isRestoring={isRestoring}
         />
@@ -612,7 +622,10 @@ export function ActivityPage({
                     <Button
                       type="button"
                       onClick={() => enterEdit()}
-                      disabled={!canEditActivity || isBlockedStatus}
+                      disabled={
+                        !canEditActivity ||
+                        (isBlockedStatus && !canEditWhenBlocked)
+                      }
                     >
                       Edit
                     </Button>

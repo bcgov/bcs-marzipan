@@ -1878,6 +1878,9 @@ export class ActivitiesService {
     const currentStatusName = await this.getActivityStatusNameById(
       existing.activityStatusId
     );
+    this.logger.debug(
+      `Restore activity ${id}: current status="${currentStatusName ?? 'null'}"`
+    );
     if (
       currentStatusName !== 'delete_requested' &&
       currentStatusName !== 'deleted'
@@ -1923,6 +1926,13 @@ export class ActivitiesService {
     if (!updated) {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
+
+    const newStatusName = await this.getActivityStatusNameById(
+      updated.activityStatusId
+    );
+    this.logger.log(
+      `Activity ${id} restore committed: status "${currentStatusName}" -> "${newStatusName ?? 'unknown'}"`
+    );
 
     const related = await this.fetchRelatedForActivityIds([id], [updated]);
     const { namesMap: categoriesList, idsMap: categoryIdsList } =

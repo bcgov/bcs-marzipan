@@ -429,11 +429,15 @@ export class ActivitiesController {
     @Body(new ZodValidationPipe(restoreRequestSchema)) body: RestoreRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
+    this.logger.log(`Restore requested for activity ${id} by user ${user.id}`);
     const result = await this.activitiesService.restore(
       id,
       user.id,
       body.note,
       { roleName: user.roleName }
+    );
+    this.logger.log(
+      `Activity ${id} restored to status "${result.activityStatus ?? 'unknown'}"`
     );
     return {
       success: true,
