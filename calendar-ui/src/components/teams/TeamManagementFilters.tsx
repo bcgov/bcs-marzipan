@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import {
   SortDropdown,
@@ -48,13 +48,23 @@ export function TeamManagementFilters({
           <div className="relative max-w-md min-w-[240px] flex-1">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
             <Input
-              type="search"
+              type="text"
               placeholder="Search teams..."
               value={keyword}
               onChange={(e) => onKeywordChange(e.target.value)}
-              className="pl-8"
+              className="pr-8 pl-8"
               aria-label="Keyword search"
             />
+            {keyword && (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                onClick={() => onKeywordChange('')}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <SortDropdown
             columns={TEAM_SORT_COLUMNS}

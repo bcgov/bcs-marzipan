@@ -1,14 +1,12 @@
-import { ChevronDown, X } from 'lucide-react';
 import { useCallback } from 'react';
 
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { FilterTrigger } from '@/components/users/FilterTrigger';
 
 export interface FilterCheckboxOption {
   value: string;
@@ -49,51 +47,18 @@ export function FilterCheckboxDropdown({
     [onChange, selectedValues]
   );
 
-  const handleClear = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onChange([]);
-    },
-    [onChange]
-  );
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant={hasSelection ? 'default' : 'outline'}
-          size="sm"
+        <FilterTrigger
+          label={label}
+          active={hasSelection}
+          count={selectedValues.length}
+          onClear={() => onChange([])}
+          clearAriaLabel={`Clear ${label} filter`}
           disabled={disabled}
-          className={cn(
-            'min-w-[100px] justify-between gap-1 font-normal',
-            className
-          )}
-        >
-          <span className="truncate">
-            {hasSelection ? `${label} (${selectedValues.length})` : label}
-          </span>
-          {hasSelection ? (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={handleClear}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onChange([]);
-                }
-              }}
-              className="ml-1 inline-flex cursor-pointer rounded p-0.5 hover:bg-white/20"
-              aria-label={`Clear ${label} filter`}
-            >
-              <X className="h-3.5 w-3.5" />
-            </span>
-          ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-          )}
-        </Button>
+          className={className}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-64 overflow-auto" align="start">
         {options.length === 0 ? (

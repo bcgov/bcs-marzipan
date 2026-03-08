@@ -1,6 +1,11 @@
 import { useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  DEFAULT_ACTIVITY_FILTER_STATE,
+  type ActivityFilterState,
+} from '@/components/ActivityTable/activityFilterState';
+
 const STORAGE_KEY = 'activityTablePreferences';
 
 const URL_PARAM_SORT = 'sort';
@@ -9,6 +14,18 @@ const URL_PARAM_COMPLETED = 'completed';
 const URL_PARAM_DELETED = 'deleted';
 const URL_PARAM_PAGE_SIZE = 'pageSize';
 const URL_PARAM_SEARCH = 'search';
+const URL_PARAM_DATE_FROM = 'dateFrom';
+const URL_PARAM_DATE_TO = 'dateTo';
+const URL_PARAM_NO_START = 'noStart';
+const URL_PARAM_NO_END = 'noEnd';
+const URL_PARAM_CATEGORY = 'category';
+const URL_PARAM_STATUS = 'status';
+const URL_PARAM_PITCH_STATUS = 'pitchStatus';
+const URL_PARAM_PITCH_DATE_KIND = 'pitchDateKind';
+const URL_PARAM_PITCH_DATE_FROM = 'pitchDateFrom';
+const URL_PARAM_PITCH_DATE_TO = 'pitchDateTo';
+const URL_PARAM_PITCH_NO_START = 'pitchNoStart';
+const URL_PARAM_PITCH_NO_END = 'pitchNoEnd';
 
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 const SEARCH_SYNC_DEBOUNCE_MS = 400;
@@ -35,6 +52,7 @@ export interface ActivityTablePreferences {
   showDeleted: boolean;
   pageSize: number;
   searchKeyword: string;
+  filterState: ActivityFilterState;
 }
 
 const DEFAULT_PREFERENCES: ActivityTablePreferences = {
@@ -44,6 +62,7 @@ const DEFAULT_PREFERENCES: ActivityTablePreferences = {
   showDeleted: false,
   pageSize: DEFAULT_PAGE_SIZE,
   searchKeyword: '',
+  filterState: DEFAULT_ACTIVITY_FILTER_STATE,
 };
 
 function parseBool(value: string | null): boolean | null {
@@ -75,6 +94,75 @@ function parseFromSearchParams(
   const searchKeyword =
     typeof searchParam === 'string' ? searchParam.trim() : '';
 
+  const dateFrom = searchParams.get(URL_PARAM_DATE_FROM)?.trim() ?? '';
+  const dateTo = searchParams.get(URL_PARAM_DATE_TO)?.trim() ?? '';
+  const noStart = parseBool(searchParams.get(URL_PARAM_NO_START));
+  const noEnd = parseBool(searchParams.get(URL_PARAM_NO_END));
+  const categoryParam = searchParams.get(URL_PARAM_CATEGORY);
+  const categoryNames =
+    typeof categoryParam === 'string' && categoryParam.trim()
+      ? categoryParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+  const statusParam = searchParams.get(URL_PARAM_STATUS);
+  const activityStatusIds =
+    typeof statusParam === 'string' && statusParam.trim()
+      ? statusParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+  const pitchStatusParam = searchParams.get(URL_PARAM_PITCH_STATUS);
+  const pitchRequiredStatusNames =
+    typeof pitchStatusParam === 'string' && pitchStatusParam.trim()
+      ? pitchStatusParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+  const pitchDateKindParam = searchParams
+    .get(URL_PARAM_PITCH_DATE_KIND)
+    ?.trim();
+  const pitchDateFrom =
+    searchParams.get(URL_PARAM_PITCH_DATE_FROM)?.trim() ?? '';
+  const pitchDateTo = searchParams.get(URL_PARAM_PITCH_DATE_TO)?.trim() ?? '';
+  const pitchNoStart = parseBool(searchParams.get(URL_PARAM_PITCH_NO_START));
+  const pitchNoEnd = parseBool(searchParams.get(URL_PARAM_PITCH_NO_END));
+
+  let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
+    kind: 'any',
+  };
+  if (pitchDateKindParam === 'not_scheduled') {
+    pitchDateFilter = { kind: 'not_scheduled' };
+  } else if (pitchDateKindParam === 'scheduled') {
+    pitchDateFilter = {
+      kind: 'scheduled',
+      dateRange: {
+        startDate: pitchDateFrom,
+        endDate: pitchDateTo,
+        noStartDate: pitchNoStart === true,
+        noEndDate: pitchNoEnd === true,
+      },
+    };
+  }
+
+  const filterState: ActivityFilterState = {
+    dateRange: {
+      startDate: dateFrom,
+      endDate: dateTo,
+      noStartDate: noStart === true,
+      noEndDate: noEnd === true,
+    },
+    categoryNames,
+    activityStatusIds,
+    pitchRequiredStatusNames,
+    pitchDateFilter,
+  };
+
   return {
     sortKey:
       sort && VALID_SORT_KEYS.has(sort) ? sort : DEFAULT_PREFERENCES.sortKey,
@@ -89,6 +177,7 @@ function parseFromSearchParams(
         : DEFAULT_PREFERENCES.showDeleted,
     pageSize: pageSize ?? DEFAULT_PREFERENCES.pageSize,
     searchKeyword,
+    filterState,
   };
 }
 
@@ -131,6 +220,67 @@ function parseFromStorage(
         ? parsed.searchKeyword.trim()
         : DEFAULT_PREFERENCES.searchKeyword;
 
+    const rawFilter = parsed.filterState as Record<string, unknown> | undefined;
+    let filterState: ActivityFilterState = DEFAULT_ACTIVITY_FILTER_STATE;
+    if (rawFilter && typeof rawFilter === 'object') {
+      const dr = rawFilter.dateRange as Record<string, unknown> | undefined;
+      if (dr && typeof dr === 'object') {
+        const pitchRequiredStatusNames = Array.isArray(
+          rawFilter.pitchRequiredStatusNames
+        )
+          ? (rawFilter.pitchRequiredStatusNames as string[]).filter(
+              (s): s is string => typeof s === 'string'
+            )
+          : [];
+        const pdf = rawFilter.pitchDateFilter as
+          | { kind: string; dateRange?: Record<string, unknown> }
+          | undefined;
+        let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
+          kind: 'any',
+        };
+        if (pdf && typeof pdf === 'object' && pdf.kind === 'not_scheduled') {
+          pitchDateFilter = { kind: 'not_scheduled' };
+        } else if (
+          pdf &&
+          typeof pdf === 'object' &&
+          pdf.kind === 'scheduled' &&
+          pdf.dateRange &&
+          typeof pdf.dateRange === 'object'
+        ) {
+          const pr = pdf.dateRange;
+          pitchDateFilter = {
+            kind: 'scheduled',
+            dateRange: {
+              startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
+              endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
+              noStartDate: pr.noStartDate === true,
+              noEndDate: pr.noEndDate === true,
+            },
+          };
+        }
+        filterState = {
+          dateRange: {
+            startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
+            endDate: typeof dr.endDate === 'string' ? dr.endDate : '',
+            noStartDate: dr.noStartDate === true,
+            noEndDate: dr.noEndDate === true,
+          },
+          categoryNames: Array.isArray(rawFilter.categoryNames)
+            ? (rawFilter.categoryNames as string[]).filter(
+                (s): s is string => typeof s === 'string'
+              )
+            : [],
+          activityStatusIds: Array.isArray(rawFilter.activityStatusIds)
+            ? (rawFilter.activityStatusIds as number[]).filter(
+                (n): n is number => typeof n === 'number' && Number.isFinite(n)
+              )
+            : [],
+          pitchRequiredStatusNames,
+          pitchDateFilter,
+        };
+      }
+    }
+
     return {
       sortKey,
       sortDirection,
@@ -138,6 +288,7 @@ function parseFromStorage(
       showDeleted,
       pageSize,
       searchKeyword,
+      filterState,
     };
   } catch {
     return null;
@@ -151,7 +302,19 @@ function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_COMPLETED) ||
     searchParams.has(URL_PARAM_DELETED) ||
     searchParams.has(URL_PARAM_PAGE_SIZE) ||
-    searchParams.has(URL_PARAM_SEARCH)
+    searchParams.has(URL_PARAM_SEARCH) ||
+    searchParams.has(URL_PARAM_DATE_FROM) ||
+    searchParams.has(URL_PARAM_DATE_TO) ||
+    searchParams.has(URL_PARAM_NO_START) ||
+    searchParams.has(URL_PARAM_NO_END) ||
+    searchParams.has(URL_PARAM_CATEGORY) ||
+    searchParams.has(URL_PARAM_STATUS) ||
+    searchParams.has(URL_PARAM_PITCH_STATUS) ||
+    searchParams.has(URL_PARAM_PITCH_DATE_KIND) ||
+    searchParams.has(URL_PARAM_PITCH_DATE_FROM) ||
+    searchParams.has(URL_PARAM_PITCH_DATE_TO) ||
+    searchParams.has(URL_PARAM_PITCH_NO_START) ||
+    searchParams.has(URL_PARAM_PITCH_NO_END)
   );
 }
 
@@ -174,14 +337,31 @@ function getInitialPreferences(
 function preferencesToParams(
   prefs: ActivityTablePreferences
 ): Record<string, string> {
-  return {
+  const f = prefs.filterState;
+  const out: Record<string, string> = {
     [URL_PARAM_SORT]: prefs.sortKey,
     [URL_PARAM_DIR]: prefs.sortDirection,
     [URL_PARAM_COMPLETED]: String(prefs.showCompleted),
     [URL_PARAM_DELETED]: String(prefs.showDeleted),
     [URL_PARAM_PAGE_SIZE]: String(prefs.pageSize),
     [URL_PARAM_SEARCH]: prefs.searchKeyword,
+    [URL_PARAM_DATE_FROM]: f.dateRange.startDate,
+    [URL_PARAM_DATE_TO]: f.dateRange.endDate,
+    [URL_PARAM_NO_START]: String(f.dateRange.noStartDate),
+    [URL_PARAM_NO_END]: String(f.dateRange.noEndDate),
+    [URL_PARAM_CATEGORY]: f.categoryNames.join(','),
+    [URL_PARAM_STATUS]: f.activityStatusIds.join(','),
+    [URL_PARAM_PITCH_STATUS]: f.pitchRequiredStatusNames.join(','),
+    [URL_PARAM_PITCH_DATE_KIND]: f.pitchDateFilter.kind,
   };
+  if (f.pitchDateFilter.kind === 'scheduled') {
+    const dr = f.pitchDateFilter.dateRange;
+    out[URL_PARAM_PITCH_DATE_FROM] = dr.startDate;
+    out[URL_PARAM_PITCH_DATE_TO] = dr.endDate;
+    out[URL_PARAM_PITCH_NO_START] = String(dr.noStartDate);
+    out[URL_PARAM_PITCH_NO_END] = String(dr.noEndDate);
+  }
+  return out;
 }
 
 /**
@@ -230,6 +410,10 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
                 ? partial.showDeleted
                 : false
               : prev.showDeleted,
+          filterState:
+            partial.filterState !== undefined
+              ? partial.filterState
+              : prev.filterState,
         };
         return next;
       });
@@ -264,6 +448,8 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
       prev.showCompleted === preferences.showCompleted &&
       prev.showDeleted === preferences.showDeleted &&
       prev.pageSize === preferences.pageSize &&
+      JSON.stringify(prev.filterState) ===
+        JSON.stringify(preferences.filterState) &&
       prev.searchKeyword !== preferences.searchKeyword;
 
     if (onlySearchChanged) {

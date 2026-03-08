@@ -1,0 +1,207 @@
+import { Search, X } from 'lucide-react';
+import { useCallback, useMemo } from 'react';
+
+import {
+  SortDropdown,
+  type SortColumnConfig,
+} from '@/components/Table/SortDropdown';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
+
+import type { ActivityFilterState } from './activityFilterState';
+import { PitchFilter } from './PitchFilter';
+import { ScheduledDateFilter } from './ScheduledDateFilter';
+
+export interface ActivityTableFiltersProps {
+  filterState: ActivityFilterState;
+  onFilterStateChange: (state: ActivityFilterState) => void;
+  searchKeyword: string;
+  onSearchKeywordChange: (value: string) => void;
+  sortKey: string | null;
+  sortDirection: 'asc' | 'desc';
+  onSortChange: (key: string | null, direction: 'asc' | 'desc') => void;
+  defaultSortKey: string;
+  defaultSortDirection: 'asc' | 'desc';
+  sortColumns: SortColumnConfig[];
+  categoryOptions: { value: string; label: string }[];
+  pitchRequiredStatusOptions: { value: string; label: string }[];
+  statusOptions: { value: string; label: string }[];
+}
+
+function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
+  const {
+    dateRange,
+    categoryNames,
+    activityStatusIds,
+    pitchRequiredStatusNames,
+    pitchDateFilter,
+  } = filterState;
+  const pitchDateRangeActive =
+    pitchDateFilter.kind === 'scheduled' &&
+    (pitchDateFilter.dateRange.startDate !== '' ||
+      pitchDateFilter.dateRange.endDate !== '' ||
+      pitchDateFilter.dateRange.noStartDate ||
+      pitchDateFilter.dateRange.noEndDate);
+  const pitchActive =
+    pitchRequiredStatusNames.length > 0 ||
+    pitchDateFilter.kind !== 'any' ||
+    pitchDateRangeActive;
+  return (
+    dateRange.startDate !== '' ||
+    dateRange.endDate !== '' ||
+    dateRange.noStartDate ||
+    dateRange.noEndDate ||
+    categoryNames.length > 0 ||
+    activityStatusIds.length > 0 ||
+    pitchActive
+  );
+}
+
+export function ActivityTableFilters({
+  filterState,
+  onFilterStateChange,
+  searchKeyword,
+  onSearchKeywordChange,
+  sortKey,
+  sortDirection,
+  onSortChange,
+  defaultSortKey,
+  defaultSortDirection,
+  sortColumns,
+  categoryOptions,
+  pitchRequiredStatusOptions,
+  statusOptions,
+}: ActivityTableFiltersProps) {
+  const anyActive = useMemo(
+    () => hasAnyFilterActive(filterState),
+    [filterState]
+  );
+
+  const handleDateRangeChange = useCallback(
+    (dateRange: ActivityFilterState['dateRange']) => {
+      onFilterStateChange({
+        ...filterState,
+        dateRange,
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
+
+  const handleCategoryChange = useCallback(
+    (values: string[]) => {
+      onFilterStateChange({
+        ...filterState,
+        categoryNames: values,
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
+
+  const handleStatusChange = useCallback(
+    (values: string[]) => {
+      onFilterStateChange({
+        ...filterState,
+        activityStatusIds: values
+          .map((v) => parseInt(v, 10))
+          .filter((n) => !Number.isNaN(n)),
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
+
+  const handleClearAllFilters = useCallback(() => {
+    onFilterStateChange({
+      dateRange: {
+        startDate: '',
+        endDate: '',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: [],
+      activityStatusIds: [],
+      pitchRequiredStatusNames: [],
+      pitchDateFilter: { kind: 'any' },
+    });
+  }, [onFilterStateChange]);
+
+  const categorySelectedValues = filterState.categoryNames;
+  const statusSelectedValues = filterState.activityStatusIds.map(String);
+
+  return (
+    <div
+      className="mb-4 flex flex-wrap items-center justify-between gap-4"
+      role="search"
+      aria-label="Filter activities by date, category, pitch, status, and keyword"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <ScheduledDateFilter
+          value={filterState.dateRange}
+          onChange={handleDateRangeChange}
+        />
+        <FilterCheckboxDropdown
+          label="Category"
+          options={categoryOptions}
+          selectedValues={categorySelectedValues}
+          onChange={handleCategoryChange}
+        />
+        <PitchFilter
+          filterState={filterState}
+          onFilterStateChange={onFilterStateChange}
+          pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+        />
+        <FilterCheckboxDropdown
+          label="Status"
+          options={statusOptions}
+          selectedValues={statusSelectedValues}
+          onChange={handleStatusChange}
+        />
+        {anyActive && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="animate-in fade-in duration-200"
+            onClick={handleClearAllFilters}
+            aria-label="Clear all filters"
+          >
+            Clear all filters
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="relative max-w-md min-w-[240px] flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+          <Input
+            type="text"
+            placeholder="Search activities..."
+            value={searchKeyword}
+            onChange={(e) => onSearchKeywordChange(e.target.value)}
+            className="pr-8 pl-8"
+            aria-label="Search activities"
+          />
+          {searchKeyword && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+              onClick={() => onSearchKeywordChange('')}
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <SortDropdown
+          hideDirectionLabel
+          columns={sortColumns}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortChange={onSortChange}
+          defaultSortKey={defaultSortKey}
+          defaultSortDirection={defaultSortDirection}
+          ariaLabel="Sort by"
+        />
+      </div>
+    </div>
+  );
+}

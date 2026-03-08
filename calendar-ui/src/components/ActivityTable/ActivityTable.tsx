@@ -62,8 +62,17 @@ import {
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
-import { useUsers } from '@/hooks/useLookups';
-import { filterActivityRowsByKeyword } from '@/lib/activity-query-utils';
+import {
+  useActivityStatuses,
+  useCategories,
+  usePitchRequiredStatuses,
+  useUsers,
+} from '@/hooks/useLookups';
+import {
+  filterActivityRowsByFilters,
+  filterActivityRowsByKeyword,
+  type ActivityListQueryParams,
+} from '@/lib/activity-query-utils';
 import {
   formatDateRange,
   formatExactDate,
@@ -73,6 +82,7 @@ import {
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { cn } from '@/lib/utils';
 
+import { ActivityTableFilters } from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
@@ -610,7 +620,65 @@ export function ActivityTable({
   const showCompleted = preferences.showCompleted;
   const showDeleted = preferences.showDeleted;
   const searchKeyword = preferences.searchKeyword;
+  const filterState = preferences.filterState;
   const [pageIndex, setPageIndex] = useState(0);
+
+  const { data: categoriesForFilter = [] } = useCategories();
+  const { data: activityStatusesForFilter = [] } = useActivityStatuses();
+  const { data: pitchRequiredStatusesForFilter = [] } =
+    usePitchRequiredStatuses();
+  const categoryOptions = useMemo(
+    () =>
+      categoriesForFilter
+        .filter((c) => c.isActive)
+        .map((c) => ({ value: c.displayName, label: c.displayName })),
+    [categoriesForFilter]
+  );
+  const statusArchiveIds = useMemo(() => {
+    const completed = activityStatusesForFilter.find(
+      (s) => s.name === 'completed'
+    );
+    const deleted = activityStatusesForFilter.find((s) => s.name === 'deleted');
+    return {
+      completedStatusId: completed?.id,
+      deletedStatusId: deleted?.id,
+    };
+  }, [activityStatusesForFilter]);
+
+  const statusOptions = useMemo(
+    () =>
+      activityStatusesForFilter
+        .filter((s) => canSeeDeleted || s.name !== 'deleted')
+        .map((s) => ({
+          value: String(s.id),
+          label: s.displayName,
+        })),
+    [activityStatusesForFilter, canSeeDeleted]
+  );
+
+  const pitchRequiredStatusOptions = useMemo(
+    () =>
+      pitchRequiredStatusesForFilter.map((s) => ({
+        value: s.displayName,
+        label: s.displayName,
+      })),
+    [pitchRequiredStatusesForFilter]
+  );
+
+  const hasStatusFilter = filterState.activityStatusIds.length > 0;
+  const statusFilterIncludesCompleted =
+    statusArchiveIds.completedStatusId != null &&
+    filterState.activityStatusIds.includes(statusArchiveIds.completedStatusId);
+  const statusFilterIncludesDeleted =
+    statusArchiveIds.deletedStatusId != null &&
+    filterState.activityStatusIds.includes(statusArchiveIds.deletedStatusId);
+  const effectiveShowCompleted = hasStatusFilter
+    ? statusFilterIncludesCompleted
+    : showCompleted;
+  const effectiveShowDeleted = hasStatusFilter
+    ? statusFilterIncludesDeleted && canSeeDeleted
+    : showDeleted && canSeeDeleted;
+
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
     [pageIndex, preferences.pageSize]
@@ -619,10 +687,11 @@ export function ActivityTable({
     left: ['overview'],
   });
 
-  const activityFilters = useMemo(
-    () => ({
-      excludeCompleted: !showCompleted,
-      includeDeleted: showDeleted && canSeeDeleted,
+  const activityFilters = useMemo((): ActivityListQueryParams => {
+    const dr = filterState.dateRange;
+    const base: ActivityListQueryParams = {
+      excludeCompleted: !effectiveShowCompleted,
+      includeDeleted: effectiveShowDeleted,
       ...(leadTeamId !== undefined && { leadTeamId }),
       ...(commsContactLeadUserId !== undefined && {
         commsContactLeadUserId,
@@ -630,17 +699,29 @@ export function ActivityTable({
       ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
-    }),
-    [
-      showCompleted,
-      showDeleted,
-      canSeeDeleted,
-      leadTeamId,
-      commsContactLeadUserId,
-      sharedWithTeamId,
-      sharedWithTeamIds,
-    ]
-  );
+    };
+    if (dr.startDate && !dr.noStartDate) {
+      base.startDateFrom = dr.startDate;
+      base.endDateFrom = dr.startDate;
+    }
+    if (dr.endDate && !dr.noEndDate) {
+      base.startDateTo = dr.endDate;
+      base.endDateTo = dr.endDate;
+    }
+    if (filterState.activityStatusIds.length === 1) {
+      base.activityStatusId = filterState.activityStatusIds[0];
+    }
+    return base;
+  }, [
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    leadTeamId,
+    commsContactLeadUserId,
+    sharedWithTeamId,
+    sharedWithTeamIds,
+    filterState.dateRange,
+    filterState.activityStatusIds,
+  ]);
 
   // Reset to first page when user changes filters so results match expectations
   const prevFiltersRef = useRef(activityFilters);
@@ -669,14 +750,23 @@ export function ActivityTable({
     }
   }, [activityFilters]);
 
-  // Reset to first page when search keyword changes
+  // Reset to first page when search keyword or filter state changes
   const prevSearchKeywordRef = useRef(searchKeyword);
+  const prevFilterStateRef = useRef(filterState);
   useEffect(() => {
     if (prevSearchKeywordRef.current !== searchKeyword) {
       prevSearchKeywordRef.current = searchKeyword;
       setPageIndex(0);
     }
   }, [searchKeyword]);
+  useEffect(() => {
+    if (
+      JSON.stringify(prevFilterStateRef.current) !== JSON.stringify(filterState)
+    ) {
+      prevFilterStateRef.current = filterState;
+      setPageIndex(0);
+    }
+  }, [filterState]);
 
   const activitiesQuery = useActivityList(activityFilters);
   const usersQuery = useUsers();
@@ -723,10 +813,10 @@ export function ActivityTable({
     [activitiesQuery.data]
   );
 
-  const filteredData = useMemo(
-    () => filterActivityRowsByKeyword(data, searchKeyword),
-    [data, searchKeyword]
-  );
+  const filteredData = useMemo(() => {
+    const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
+    return filterActivityRowsByFilters(afterKeyword, filterState);
+  }, [data, searchKeyword, filterState]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
@@ -929,58 +1019,87 @@ export function ActivityTable({
   });
 
   const eventTableFilters = useMemo(() => {
+    const disabledTooltip = hasStatusFilter
+      ? 'Controlled by status filter'
+      : undefined;
     const filters = [
       {
         id: 'show-completed',
         label: 'Show completed',
-        checked: showCompleted,
+        checked: effectiveShowCompleted,
         onCheckedChange: (checked: boolean) =>
           setPreferences({ showCompleted: checked }),
+        disabled: hasStatusFilter,
+        disabledTooltip,
       },
     ];
     if (canSeeDeleted) {
       filters.push({
         id: 'show-deleted',
         label: 'Show deleted',
-        checked: showDeleted,
+        checked: effectiveShowDeleted,
         onCheckedChange: (checked: boolean) =>
           setPreferences({ showDeleted: checked }),
+        disabled: hasStatusFilter,
+        disabledTooltip,
       });
     }
     return filters;
-  }, [showCompleted, showDeleted, canSeeDeleted, setPreferences]);
+  }, [
+    hasStatusFilter,
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    canSeeDeleted,
+    setPreferences,
+  ]);
 
-  const searchLayoutProps = useMemo(
-    () => ({
-      searchKeyword,
-      onSearchKeywordChange: (value: string) =>
-        setPreferences({ searchKeyword: value }),
-    }),
-    [searchKeyword, setPreferences]
+  const handleFilterStateChange = useCallback(
+    (nextFilterState: typeof filterState) => {
+      setPreferences({ filterState: nextFilterState });
+    },
+    [setPreferences]
+  );
+
+  const filterBar = (
+    <ActivityTableFilters
+      filterState={filterState}
+      onFilterStateChange={handleFilterStateChange}
+      searchKeyword={searchKeyword}
+      onSearchKeywordChange={(value: string) =>
+        setPreferences({ searchKeyword: value })
+      }
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSortChange={handleSortChange}
+      defaultSortKey={DEFAULT_SORT_KEY}
+      defaultSortDirection={DEFAULT_SORT_DIRECTION}
+      sortColumns={ACTIVITY_SORT_COLUMNS}
+      categoryOptions={categoryOptions}
+      pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+      statusOptions={statusOptions}
+    />
   );
 
   // Loading state
   if (loading) {
     return (
-      <ActivityTableLayout
-        scrollRef={tableScrollRef}
-        sortColumns={ACTIVITY_SORT_COLUMNS}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-        defaultSortKey={DEFAULT_SORT_KEY}
-        defaultSortDirection={DEFAULT_SORT_DIRECTION}
-        count={0}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-        {...searchLayoutProps}
-      >
-        <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          <span className="text-sm text-slate-600">Loading activities...</span>
-        </div>
-      </ActivityTableLayout>
+      <div className="min-w-0 space-y-4">
+        {filterBar}
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        >
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <span className="text-sm text-slate-600">
+              Loading activities...
+            </span>
+          </div>
+        </ActivityTableLayout>
+      </div>
     );
   }
 
@@ -1000,49 +1119,39 @@ export function ActivityTable({
   // Empty state (no activities from server)
   if (data.length === 0) {
     return (
-      <ActivityTableLayout
-        scrollRef={tableScrollRef}
-        sortColumns={ACTIVITY_SORT_COLUMNS}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-        defaultSortKey={DEFAULT_SORT_KEY}
-        defaultSortDirection={DEFAULT_SORT_DIRECTION}
-        count={0}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-        {...searchLayoutProps}
-      >
-        <div className="py-12 text-center text-sm text-slate-600">
-          <div className="mb-2 font-semibold">No activities found</div>
-          <div>
-            Create a new entry or adjust filters to see activities here.
+      <div className="min-w-0 space-y-4">
+        {filterBar}
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        >
+          <div className="py-12 text-center text-sm text-slate-600">
+            <div className="mb-2 font-semibold">No activities found</div>
+            <div>
+              Create a new entry or adjust filters to see activities here.
+            </div>
           </div>
-        </div>
-      </ActivityTableLayout>
+        </ActivityTableLayout>
+      </div>
     );
   }
 
   const pageRows = table.getRowModel().rows;
 
-  // Single return so ActivityTableLayout (and search input) stay mounted when switching to empty-search state; preserves focus.
+  // Single return so ActivityTableLayout stays mounted when switching to empty-search state.
   return (
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
+        {filterBar}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
-          sortColumns={ACTIVITY_SORT_COLUMNS}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortChange={handleSortChange}
-          defaultSortKey={DEFAULT_SORT_KEY}
-          defaultSortDirection={DEFAULT_SORT_DIRECTION}
           count={sortedData.length}
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
-          {...searchLayoutProps}
         >
           {filteredData.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-600">

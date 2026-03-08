@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/ActivityTable/activityFilterState';
 import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
 
 import {
   buildOptimisticActivity,
+  filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   normalizeListParams,
 } from './activity-query-utils';
@@ -44,6 +46,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     translationsRequiredStatus: null,
     commsMaterials: [],
     activityStatus: '',
+    activityStatusId: 0,
     lastUpdatedDateTime: '',
     lastUpdatedBy: 0,
     createdDateTime: '',
@@ -127,6 +130,82 @@ describe('normalizeListParams', () => {
         sharedWithTeamIds: [3, 1, 2],
       })
     ).toEqual({ sharedWithTeamIds: [1, 2, 3] });
+  });
+
+  it('includes date and activityStatusId when provided', () => {
+    expect(
+      normalizeListParams({
+        startDateFrom: '2025-01-01',
+        startDateTo: '2025-01-31',
+        activityStatusId: 2,
+      })
+    ).toEqual({
+      startDateFrom: '2025-01-01',
+      startDateTo: '2025-01-31',
+      activityStatusId: 2,
+    });
+  });
+});
+
+describe('filterActivityRowsByFilters', () => {
+  it('returns all rows when filter state is empty', () => {
+    const rows = [
+      makeRow({ id: 1, activityCategories: ['Event'], activityStatusId: 1 }),
+      makeRow({ id: 2, activityCategories: ['Release'], activityStatusId: 2 }),
+    ];
+    expect(
+      filterActivityRowsByFilters(rows, {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        dateRange: {
+          startDate: '',
+          endDate: '',
+          noStartDate: false,
+          noEndDate: false,
+        },
+        categoryNames: [],
+        activityStatusIds: [],
+      })
+    ).toEqual(rows);
+  });
+
+  it('filters by category names', () => {
+    const rows = [
+      makeRow({ id: 1, activityCategories: ['Event', 'Release'] }),
+      makeRow({ id: 2, activityCategories: ['FYI'] }),
+      makeRow({ id: 3, activityCategories: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '',
+        endDate: '',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: ['Event', 'FYI'],
+      activityStatusIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by activity status IDs', () => {
+    const rows = [
+      makeRow({ id: 1, activityStatusId: 1 }),
+      makeRow({ id: 2, activityStatusId: 2 }),
+      makeRow({ id: 3, activityStatusId: 3 }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '',
+        endDate: '',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: [],
+      activityStatusIds: [1, 3],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
   });
 });
 

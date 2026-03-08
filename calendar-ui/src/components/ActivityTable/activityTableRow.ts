@@ -53,6 +53,7 @@ export interface ActivityTableRow {
 
   // Status column
   activityStatus: string;
+  activityStatusId: number;
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
@@ -135,6 +136,7 @@ export function mapActivityResponseToTableRow(
 
     // Status
     activityStatus: activity.activityStatus,
+    activityStatusId: activity.activityStatusId ?? 0,
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
