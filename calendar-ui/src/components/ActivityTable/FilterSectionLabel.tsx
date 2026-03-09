@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from 'react';
+import type { ComponentPropsWithoutRef, MouseEvent } from 'react';
 
 import { DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ export function FilterSectionLabel({
   children,
   ...props
 }: FilterSectionLabelProps) {
-  const handleClearClick = (e: React.MouseEvent) => {
+  const handleClearClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     onClearAll?.();

@@ -1,4 +1,3 @@
-import { Check, Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import {
@@ -9,10 +8,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
 
 import type { ActivityFilterState } from './activityFilterState';
+import { FilterSearchableList } from './FilterSearchableList';
 
 export interface LeadFilterOption {
   value: string;
@@ -28,85 +27,12 @@ export interface LeadsFilterProps {
   eventPlannerOptions: LeadFilterOption[];
 }
 
-function filterOptionsBySearch(
-  options: LeadFilterOption[],
-  search: string
-): LeadFilterOption[] {
-  const term = search.trim().toLowerCase();
-  if (term === '') return options;
-  return options.filter((opt) => opt.label.toLowerCase().includes(term));
-}
-
 function isLeadsFilterActive(filterState: ActivityFilterState): boolean {
   return (
     filterState.leadMinistryIds.length > 0 ||
     filterState.leadOrgIds.length > 0 ||
     filterState.commsContactLeadUserIds.length > 0 ||
     filterState.eventPlannerLeadIds.length > 0
-  );
-}
-
-/** Same list-item pattern as TagsFilter: button with Check icon when checked, pl-8 for icon space. */
-function LeadSubList({
-  options,
-  selectedIds,
-  onToggle,
-  searchValue,
-  onSearchChange,
-  searchAriaLabel,
-}: {
-  options: LeadFilterOption[];
-  selectedIds: number[];
-  onToggle: (id: number) => void;
-  searchValue: string;
-  onSearchChange: (value: string) => void;
-  searchAriaLabel: string;
-}) {
-  const filtered = useMemo(
-    () => filterOptionsBySearch(options, searchValue),
-    [options, searchValue]
-  );
-  return (
-    <>
-      <div className="border-b p-2">
-        <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
-          <Input
-            type="text"
-            className="h-8 pr-3 pl-8 text-sm"
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
-            aria-label={searchAriaLabel}
-          />
-        </div>
-      </div>
-      <div className="max-h-[250px] overflow-y-auto py-1">
-        {filtered.length === 0 ? (
-          <div className="text-muted-foreground px-3 py-2 text-center text-sm">
-            No results
-          </div>
-        ) : (
-          filtered.map((opt) => {
-            const id = parseInt(opt.value, 10);
-            const checked = Number.isFinite(id) && selectedIds.includes(id);
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                className="focus:bg-accent focus:text-accent-foreground hover:bg-accent relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-left text-sm outline-none select-none"
-                onClick={() => Number.isFinite(id) && onToggle(id)}
-              >
-                <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-                  {checked ? <Check className="size-4" /> : null}
-                </span>
-                <span className="truncate">{opt.label}</span>
-              </button>
-            );
-          })
-        )}
-      </div>
-    </>
   );
 }
 
@@ -119,10 +45,6 @@ export function LeadsFilter({
   eventPlannerOptions,
 }: LeadsFilterProps) {
   const [open, setOpen] = useState(false);
-  const [ministrySearch, setMinistrySearch] = useState('');
-  const [organizationSearch, setOrganizationSearch] = useState('');
-  const [commsSearch, setCommsSearch] = useState('');
-  const [eventPlannerSearch, setEventPlannerSearch] = useState('');
 
   const active = useMemo(
     () => isLeadsFilterActive(filterState),
@@ -192,24 +114,26 @@ export function LeadsFilter({
     [filterState, onFilterStateChange]
   );
 
+  const handleClearMinistry = useCallback(() => {
+    onFilterStateChange({ ...filterState, leadMinistryIds: [] });
+  }, [filterState, onFilterStateChange]);
+  const handleClearOrg = useCallback(() => {
+    onFilterStateChange({ ...filterState, leadOrgIds: [] });
+  }, [filterState, onFilterStateChange]);
+  const handleClearComms = useCallback(() => {
+    onFilterStateChange({ ...filterState, commsContactLeadUserIds: [] });
+  }, [filterState, onFilterStateChange]);
+  const handleClearEventPlanner = useCallback(() => {
+    onFilterStateChange({ ...filterState, eventPlannerLeadIds: [] });
+  }, [filterState, onFilterStateChange]);
+
   const ministryCount = filterState.leadMinistryIds.length;
   const orgCount = filterState.leadOrgIds.length;
   const commsCount = filterState.commsContactLeadUserIds.length;
   const eventPlannerCount = filterState.eventPlannerLeadIds.length;
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) {
-          setMinistrySearch('');
-          setOrganizationSearch('');
-          setCommsSearch('');
-          setEventPlannerSearch('');
-        }
-      }}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <FilterTrigger
           label="Leads"
@@ -222,7 +146,6 @@ export function LeadsFilter({
       <DropdownMenuContent
         className="min-w-48"
         align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
         aria-label="Filter by leads (ministry, organization, comms contact, event planner)"
       >
         <DropdownMenuSub>
@@ -230,13 +153,15 @@ export function LeadsFilter({
             {ministryCount > 0 ? `Ministry (${ministryCount})` : 'Ministry'}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64 p-0">
-            <LeadSubList
+            <FilterSearchableList
               options={ministryOptions}
               selectedIds={filterState.leadMinistryIds}
               onToggle={handleMinistryToggle}
-              searchValue={ministrySearch}
-              onSearchChange={setMinistrySearch}
+              searchPlaceholder="Search ministries..."
               searchAriaLabel="Search ministries"
+              emptyMessage="No results"
+              showClearButton
+              onClear={handleClearMinistry}
             />
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -245,13 +170,15 @@ export function LeadsFilter({
             {orgCount > 0 ? `Organization (${orgCount})` : 'Organization'}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64 p-0">
-            <LeadSubList
+            <FilterSearchableList
               options={organizationOptions}
               selectedIds={filterState.leadOrgIds}
               onToggle={handleOrgToggle}
-              searchValue={organizationSearch}
-              onSearchChange={setOrganizationSearch}
+              searchPlaceholder="Search organizations..."
               searchAriaLabel="Search organizations"
+              emptyMessage="No results"
+              showClearButton
+              onClear={handleClearOrg}
             />
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -260,13 +187,15 @@ export function LeadsFilter({
             {commsCount > 0 ? `Comms contact (${commsCount})` : 'Comms contact'}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64 p-0">
-            <LeadSubList
+            <FilterSearchableList
               options={commsContactOptions}
               selectedIds={filterState.commsContactLeadUserIds}
               onToggle={handleCommsToggle}
-              searchValue={commsSearch}
-              onSearchChange={setCommsSearch}
+              searchPlaceholder="Search comms contacts..."
               searchAriaLabel="Search comms contacts"
+              emptyMessage="No results"
+              showClearButton
+              onClear={handleClearComms}
             />
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -277,13 +206,15 @@ export function LeadsFilter({
               : 'Event planner'}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-64 p-0">
-            <LeadSubList
+            <FilterSearchableList
               options={eventPlannerOptions}
               selectedIds={filterState.eventPlannerLeadIds}
               onToggle={handleEventPlannerToggle}
-              searchValue={eventPlannerSearch}
-              onSearchChange={setEventPlannerSearch}
+              searchPlaceholder="Search event planners..."
               searchAriaLabel="Search event planners"
+              emptyMessage="No results"
+              showClearButton
+              onClear={handleClearEventPlanner}
             />
           </DropdownMenuSubContent>
         </DropdownMenuSub>

@@ -1,5 +1,12 @@
 import { ChevronDown, X } from 'lucide-react';
-import { useCallback } from 'react';
+import {
+  useCallback,
+  type ButtonHTMLAttributes,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type Ref,
+} from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -16,7 +23,7 @@ const filterTriggerStyles = {
 } as const;
 
 export interface FilterTriggerProps extends Omit<
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  ButtonHTMLAttributes<HTMLButtonElement>,
   'children' | 'onClear'
 > {
   /** Filter label (e.g. "Date", "Category", "Team"). */
@@ -30,7 +37,7 @@ export interface FilterTriggerProps extends Omit<
   /** Accessible label for the clear button. */
   clearAriaLabel: string;
   /** React 19: ref forwarded to the root button for Radix asChild. */
-  ref?: React.Ref<HTMLButtonElement>;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 /**
@@ -50,7 +57,7 @@ export function FilterTrigger({
   ...rest
 }: FilterTriggerProps) {
   const handleClearClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent<HTMLSpanElement>) => {
       e.preventDefault();
       e.stopPropagation();
       onClear();
@@ -58,13 +65,16 @@ export function FilterTrigger({
     [onClear]
   );
 
-  const handleClearPointerDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
+  const handleClearPointerDown = useCallback(
+    (e: PointerEvent<HTMLSpanElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    []
+  );
 
   const handleClearKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent<HTMLSpanElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         e.stopPropagation();

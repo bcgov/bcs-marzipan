@@ -40,6 +40,9 @@ export function LookAheadFilter({
     [lookAheadStatusValues, lookAheadSectionValues]
   );
 
+  const lookAheadCount =
+    lookAheadStatusValues.length + lookAheadSectionValues.length;
+
   const handleClearTrigger = useCallback(() => {
     onFilterStateChange({
       ...filterState,
@@ -94,7 +97,7 @@ export function LookAheadFilter({
         <FilterTrigger
           label="Look Ahead"
           active={active}
-          count={1}
+          count={lookAheadCount}
           onClear={handleClearTrigger}
           clearAriaLabel="Clear Look Ahead filter"
         />

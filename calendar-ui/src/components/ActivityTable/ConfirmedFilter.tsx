@@ -41,6 +41,10 @@ export function ConfirmedFilter({
     [dateConfirmedFilter, timeConfirmedFilter]
   );
 
+  const confirmedCount =
+    (dateConfirmedFilter !== 'any' ? 1 : 0) +
+    (timeConfirmedFilter !== 'any' ? 1 : 0);
+
   const handleClearTrigger = useCallback(() => {
     onFilterStateChange({
       ...filterState,
@@ -93,7 +97,7 @@ export function ConfirmedFilter({
         <FilterTrigger
           label="Confirmed"
           active={active}
-          count={1}
+          count={confirmedCount}
           onClear={handleClearTrigger}
           clearAriaLabel="Clear Confirmed filter"
         />

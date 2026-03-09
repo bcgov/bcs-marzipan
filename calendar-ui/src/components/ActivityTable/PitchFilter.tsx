@@ -45,6 +45,13 @@ export function PitchFilter({
     [pitchRequiredStatusNames, pitchDateFilter]
   );
 
+  const pitchCount = useMemo(
+    () =>
+      pitchRequiredStatusNames.length +
+      (pitchDateFilter.kind !== 'any' ? 1 : 0),
+    [pitchRequiredStatusNames.length, pitchDateFilter.kind]
+  );
+
   const handleClearTrigger = useCallback(() => {
     onFilterStateChange({
       ...filterState,
@@ -119,7 +126,7 @@ export function PitchFilter({
         <FilterTrigger
           label="Pitch"
           active={active}
-          count={1}
+          count={pitchCount}
           onClear={handleClearTrigger}
           clearAriaLabel="Clear Pitch filter"
         />
@@ -139,7 +146,7 @@ export function PitchFilter({
         </FilterSectionLabel>
         {pitchRequiredStatusOptions.length === 0 ? (
           <p className="text-muted-foreground px-2 py-2 text-center text-sm">
-            No options
+            No results
           </p>
         ) : (
           pitchRequiredStatusOptions.map((opt) => (

@@ -208,6 +208,88 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 3]);
   });
 
+  it('filters by pitch required status names (case-insensitive)', () => {
+    const rows = [
+      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
+      makeRow({ id: 2, pitchRequiredStatus: 'Not required' }),
+      makeRow({ id: 3, pitchRequiredStatus: 'TBD' }),
+      makeRow({ id: 4, pitchRequiredStatus: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchRequiredStatusNames: ['required', 'tbd'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('does not filter by pitch status when pitchRequiredStatusNames is empty', () => {
+    const rows = [
+      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
+      makeRow({ id: 2, pitchRequiredStatus: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchRequiredStatusNames: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by pitch date not_scheduled (row must have no pitch date)', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: null }),
+      makeRow({ id: 2, pitchDate: '2025-03-01' }),
+      makeRow({ id: 3, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: { kind: 'not_scheduled' },
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by pitch date scheduled with date range', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: '2025-02-15' }),
+      makeRow({ id: 2, pitchDate: '2025-01-10' }),
+      makeRow({ id: 3, pitchDate: '2025-03-20' }),
+      makeRow({ id: 4, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: {
+        kind: 'scheduled',
+        dateRange: {
+          startDate: '2025-02-01',
+          endDate: '2025-02-28',
+          noStartDate: false,
+          noEndDate: false,
+        },
+      },
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('pitch date scheduled with empty range includes all rows with pitch date', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: '2025-02-15' }),
+      makeRow({ id: 2, pitchDate: '2024-01-01' }),
+      makeRow({ id: 3, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: {
+        kind: 'scheduled',
+        dateRange: {
+          startDate: '',
+          endDate: '',
+          noStartDate: false,
+          noEndDate: false,
+        },
+      },
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
   it('filters by date range (activity start and end must fall within range)', () => {
     const rows = [
       makeRow({

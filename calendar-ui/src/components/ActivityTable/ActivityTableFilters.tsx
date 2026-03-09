@@ -143,6 +143,7 @@ export function ActivityTableFilters({
     [filterState, onFilterStateChange]
   );
 
+  /** Clears all filter state only. Search keyword is intentionally left unchanged so users can adjust filters without losing their search. If search is later moved to the left with filters, consider extending this to also call onSearchKeywordChange(''). */
   const handleClearAllFilters = useCallback(() => {
     onFilterStateChange({
       dateRange: {

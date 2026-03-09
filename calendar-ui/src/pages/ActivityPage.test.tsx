@@ -5,7 +5,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -140,7 +140,7 @@ describe('ActivityPage form readiness (view mode)', () => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
   });
 
-  it('renders Lead team field (combobox) even when lead team options have not been fetched yet', () => {
+  it('renders Lead team field (combobox) even when lead team options have not been fetched yet', async () => {
     mockUseLeadTeamOptions.mockReturnValue({
       data: [],
       isFetched: false,
@@ -148,7 +148,7 @@ describe('ActivityPage form readiness (view mode)', () => {
 
     renderActivityPage();
 
-    expect(screen.getByText(/Lead team/)).toBeInTheDocument();
+    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
     const comboboxes = screen.getAllByRole('combobox');
     const leadTeamCombobox = comboboxes.find((el) =>
       el.textContent?.includes('Select lead team')
@@ -156,7 +156,7 @@ describe('ActivityPage form readiness (view mode)', () => {
     expect(leadTeamCombobox).toBeDefined();
   });
 
-  it('renders form body with Lead team when lead team options have been fetched', () => {
+  it('renders form body with Lead team when lead team options have been fetched', async () => {
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
         {
@@ -173,10 +173,10 @@ describe('ActivityPage form readiness (view mode)', () => {
 
     renderActivityPage();
 
-    expect(screen.getByText(/Lead team/)).toBeInTheDocument();
+    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
   });
 
-  it('renders form body when activity has no leadTeamId even if lead options not fetched', () => {
+  it('renders form body when activity has no leadTeamId even if lead options not fetched', async () => {
     mockUseLeadTeamOptions.mockReturnValue({
       data: [],
       isFetched: false,
@@ -189,7 +189,7 @@ describe('ActivityPage form readiness (view mode)', () => {
       },
     });
 
-    expect(screen.getByText(/Lead team/)).toBeInTheDocument();
+    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
   });
 });
 
@@ -211,7 +211,7 @@ describe('ActivityPage restore button visibility (view mode)', () => {
     });
   });
 
-  it('shows Restore when status is deleted and user has DELETE_ANY', () => {
+  it('shows Restore when status is deleted and user has DELETE_ANY', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.DELETE_ANY,
       user: { id: 1, roleName: 'Admin', teamIds: [] },
@@ -224,12 +224,12 @@ describe('ActivityPage restore button visibility (view mode)', () => {
       },
     });
 
-    expect(
-      screen.getByRole('button', { name: /Restore/i })
-    ).toBeInTheDocument();
+    await expect(
+      screen.findByRole('button', { name: /Restore/i })
+    ).resolves.toBeInTheDocument();
   });
 
-  it('does not show Restore when status is deleted and user lacks DELETE_ANY', () => {
+  it('does not show Restore when status is deleted and user lacks DELETE_ANY', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.DELETE_ANY,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
@@ -242,12 +242,13 @@ describe('ActivityPage restore button visibility (view mode)', () => {
       },
     });
 
+    await screen.findByText(/Lead team/);
     expect(
       screen.queryByRole('button', { name: /Restore/i })
     ).not.toBeInTheDocument();
   });
 
-  it('shows Restore when status is delete_requested and user has REQUEST_DELETE and is lead-team member', () => {
+  it('shows Restore when status is delete_requested and user has REQUEST_DELETE and is lead-team member', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) =>
         key === PERMISSIONS.ACTIVITIES.REQUEST_DELETE,
@@ -261,9 +262,9 @@ describe('ActivityPage restore button visibility (view mode)', () => {
       },
     });
 
-    expect(
-      screen.getByRole('button', { name: /Restore/i })
-    ).toBeInTheDocument();
+    await expect(
+      screen.findByRole('button', { name: /Restore/i })
+    ).resolves.toBeInTheDocument();
   });
 });
 
@@ -291,10 +292,12 @@ describe('ActivityPage edit mode', () => {
     });
   });
 
-  it('renders Update and Cancel when route is /activity/1/edit', () => {
+  it('renders Update and Cancel when route is /activity/1/edit', async () => {
     renderActivityPage({ initialRoute: '/activity/1/edit' });
 
-    expect(screen.getByRole('button', { name: /Update/i })).toBeInTheDocument();
+    await expect(
+      screen.findByRole('button', { name: /Update/i })
+    ).resolves.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
   });
 
@@ -302,13 +305,14 @@ describe('ActivityPage edit mode', () => {
     const user = userEvent.setup();
     renderActivityPage({ initialRoute: '/activity/1/edit' });
 
-    await user.click(screen.getByRole('button', { name: /Cancel/i }));
+    const cancelButton = await screen.findByRole('button', { name: /Cancel/i });
+    await user.click(cancelButton);
 
     expect(mockRelease).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
   });
 
-  it('redirects to view when user lacks EDIT permission and route is edit', () => {
+  it('redirects to view when user lacks EDIT permission and route is edit', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.EDIT,
       user: { id: 1, roleName: 'Viewer', teamIds: [5] },
@@ -316,10 +320,14 @@ describe('ActivityPage edit mode', () => {
 
     renderActivityPage({ initialRoute: '/activity/1/edit' });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/activity/1', {
+        replace: true,
+      })
+    );
   });
 
-  it('redirects to view when user has EDIT permission but activity canEdit is false', () => {
+  it('redirects to view when user has EDIT permission but activity canEdit is false', async () => {
     const activityViewOnly = createMockActivityResponse({
       id: 1,
       displayId: 'ACT-1',
@@ -334,6 +342,10 @@ describe('ActivityPage edit mode', () => {
       initialRoute: '/activity/1/edit',
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/activity/1', {
+        replace: true,
+      })
+    );
   });
 });

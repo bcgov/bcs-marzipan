@@ -20,6 +20,8 @@ interface FilterCheckboxDropdownProps {
   onChange: (values: string[]) => void;
   disabled?: boolean;
   className?: string;
+  /** Message when options list is empty. Default "No results" for consistency with other filter dropdowns. */
+  emptyMessage?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export function FilterCheckboxDropdown({
   onChange,
   disabled = false,
   className,
+  emptyMessage = 'No results',
 }: FilterCheckboxDropdownProps) {
   const hasSelection = selectedValues.length > 0;
 
@@ -63,7 +66,7 @@ export function FilterCheckboxDropdown({
       <DropdownMenuContent className="max-h-64 overflow-auto" align="start">
         {options.length === 0 ? (
           <p className="text-muted-foreground py-2 text-center text-sm">
-            No options
+            {emptyMessage}
           </p>
         ) : (
           options.map((opt) => (
