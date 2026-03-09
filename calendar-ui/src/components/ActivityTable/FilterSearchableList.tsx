@@ -117,7 +117,7 @@ export function FilterSearchableList({
             onClick={onClear}
           >
             <X className="h-3.5 w-3.5" />
-            Clear filters
+            Clear all
           </button>
         </>
       )}

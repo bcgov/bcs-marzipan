@@ -541,6 +541,68 @@ describe('filterActivityRowsByFilters', () => {
     });
     expect(result.map((r) => r.id)).toEqual([1]);
   });
+
+  it('filters by translationLanguageIds when context provides options', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequired: ['French', 'Spanish'] }),
+      makeRow({ id: 2, translationsRequired: ['Spanish'] }),
+      makeRow({ id: 3, translationsRequired: [] }),
+      makeRow({ id: 4, translationsRequired: ['fr'] }),
+    ];
+    const context = {
+      translationLanguageOptions: [
+        { value: '10', label: 'French' },
+        { value: '20', label: 'Spanish' },
+        { value: '30', label: 'fr' },
+      ],
+    };
+    const result = filterActivityRowsByFilters(
+      rows,
+      {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        translationLanguageIds: [10, 30],
+      },
+      context
+    );
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
+  });
+
+  it('does not filter by translations when translationLanguageIds is empty', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequired: ['French'] }),
+      makeRow({ id: 2, translationsRequired: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      translationLanguageIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by translationRequiredStatusIds when context provides options', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequiredStatus: 'Required' }),
+      makeRow({ id: 2, translationsRequiredStatus: 'Pending' }),
+      makeRow({ id: 3, translationsRequiredStatus: null }),
+      makeRow({ id: 4, translationsRequiredStatus: 'Required' }),
+    ];
+    const context = {
+      translationRequiredStatusOptions: [
+        { value: '1', label: 'Pending' },
+        { value: '2', label: 'Required' },
+        { value: '3', label: 'Not required' },
+      ],
+    };
+    const result = filterActivityRowsByFilters(
+      rows,
+      {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        translationRequiredStatusIds: [2],
+      },
+      context
+    );
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
+  });
 });
 
 describe('buildOptimisticActivity', () => {

@@ -31,6 +31,8 @@ const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
 const URL_PARAM_DATE_CONFIRMED = 'dateConfirmed';
 const URL_PARAM_TIME_CONFIRMED = 'timeConfirmed';
 const URL_PARAM_TAG = 'tag';
+const URL_PARAM_TRANSLATION = 'translation';
+const URL_PARAM_TRANSLATION_STATUS = 'translationStatus';
 
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 const SEARCH_SYNC_DEBOUNCE_MS = 400;
@@ -192,6 +194,24 @@ function parseFromSearchParams(
           .filter((n) => Number.isFinite(n))
       : [];
 
+  const translationParam = searchParams.get(URL_PARAM_TRANSLATION);
+  const translationLanguageIds =
+    typeof translationParam === 'string' && translationParam.trim()
+      ? translationParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+  const translationStatusParam = searchParams.get(URL_PARAM_TRANSLATION_STATUS);
+  const translationRequiredStatusIds =
+    typeof translationStatusParam === 'string' && translationStatusParam.trim()
+      ? translationStatusParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
   const filterState: ActivityFilterState = {
     dateRange: {
       startDate: dateFrom,
@@ -212,6 +232,8 @@ function parseFromSearchParams(
     leadOrgIds: [],
     commsContactLeadUserIds: [],
     eventPlannerLeadIds: [],
+    translationRequiredStatusIds,
+    translationLanguageIds,
   };
 
   return {
@@ -362,6 +384,20 @@ function parseFromStorage(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
+        const translationLanguageIds = Array.isArray(
+          rawFilter.translationLanguageIds
+        )
+          ? (rawFilter.translationLanguageIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
+        const translationRequiredStatusIds = Array.isArray(
+          rawFilter.translationRequiredStatusIds
+        )
+          ? (rawFilter.translationRequiredStatusIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
         filterState = {
           dateRange: {
             startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
@@ -390,6 +426,8 @@ function parseFromStorage(
           leadOrgIds,
           commsContactLeadUserIds,
           eventPlannerLeadIds,
+          translationRequiredStatusIds,
+          translationLanguageIds,
         };
       }
     }
@@ -432,7 +470,9 @@ function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION) ||
     searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
     searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
-    searchParams.has(URL_PARAM_TAG)
+    searchParams.has(URL_PARAM_TAG) ||
+    searchParams.has(URL_PARAM_TRANSLATION) ||
+    searchParams.has(URL_PARAM_TRANSLATION_STATUS)
   );
 }
 
@@ -484,6 +524,8 @@ function preferencesToParams(
     [URL_PARAM_TIME_CONFIRMED]:
       f.timeConfirmedFilter === 'any' ? '' : f.timeConfirmedFilter,
     [URL_PARAM_TAG]: f.tagIds.join(','),
+    [URL_PARAM_TRANSLATION]: f.translationLanguageIds.join(','),
+    [URL_PARAM_TRANSLATION_STATUS]: f.translationRequiredStatusIds.join(','),
   };
   if (f.pitchDateFilter.kind === 'scheduled') {
     const dr = f.pitchDateFilter.dateRange;

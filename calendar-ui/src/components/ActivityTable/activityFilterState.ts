@@ -45,6 +45,10 @@ export interface ActivityFilterState {
   commsContactLeadUserIds: number[];
   /** Event planner lead IDs (multi-select). */
   eventPlannerLeadIds: number[];
+  /** Translation required status IDs (multi-select), e.g. pending, required, not_required. */
+  translationRequiredStatusIds: number[];
+  /** Translation language IDs (multi-select). */
+  translationLanguageIds: number[];
 }
 
 export type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
@@ -76,4 +80,6 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   leadOrgIds: [],
   commsContactLeadUserIds: [],
   eventPlannerLeadIds: [],
+  translationRequiredStatusIds: [],
+  translationLanguageIds: [],
 };

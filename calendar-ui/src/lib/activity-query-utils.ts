@@ -58,13 +58,23 @@ function isDateInRange(
   return true;
 }
 
+/** Optional context for filterActivityRowsByFilters (e.g. lookup options to resolve IDs to labels). */
+export interface FilterActivityRowsContext {
+  /** Options for translation required statuses (value = id, label = displayName matching row.translationsRequiredStatus). */
+  translationRequiredStatusOptions?: Array<{ value: string; label: string }>;
+  /** Options for translation languages (value = id, label = string that appears in row.translationsRequired). */
+  translationLanguageOptions?: Array<{ value: string; label: string }>;
+}
+
 /**
- * Client-side filter by date range, category (names), status (IDs), and pitch (status names + date).
- * Same semantics as backend: activity start and end must fall within the filter range.
+ * Client-side filter by date range, category (names), status (IDs), pitch, tags, leads, translations, etc.
+ * Same semantics as backend where applicable.
+ * Optional context provides lookup options to resolve filter IDs to labels (e.g. for translation languages).
  */
 export function filterActivityRowsByFilters(
   rows: ActivityTableRow[],
-  filterState: ActivityFilterState
+  filterState: ActivityFilterState,
+  context?: FilterActivityRowsContext
 ): ActivityTableRow[] {
   let result = rows;
 
@@ -205,6 +215,38 @@ export function filterActivityRowsByFilters(
     result = result.filter(
       (row) =>
         row.eventPlannerLeadId != null && plannerSet.has(row.eventPlannerLeadId)
+    );
+  }
+
+  if (
+    filterState.translationRequiredStatusIds.length > 0 &&
+    context?.translationRequiredStatusOptions
+  ) {
+    const idSet = new Set(filterState.translationRequiredStatusIds);
+    const statusLabelSet = new Set(
+      context.translationRequiredStatusOptions
+        .filter((opt) => idSet.has(parseInt(opt.value, 10)))
+        .map((opt) => opt.label)
+    );
+    result = result.filter(
+      (row) =>
+        row.translationsRequiredStatus != null &&
+        statusLabelSet.has(row.translationsRequiredStatus)
+    );
+  }
+
+  if (
+    filterState.translationLanguageIds.length > 0 &&
+    context?.translationLanguageOptions
+  ) {
+    const idSet = new Set(filterState.translationLanguageIds);
+    const labelSet = new Set(
+      context.translationLanguageOptions
+        .filter((opt) => idSet.has(parseInt(opt.value, 10)))
+        .map((opt) => opt.label)
+    );
+    result = result.filter((row) =>
+      row.translationsRequired.some((t) => labelSet.has(t))
     );
   }
 

@@ -70,12 +70,15 @@ import {
   useOrganizations,
   usePitchRequiredStatuses,
   useTags,
+  useTranslationLanguages,
+  useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
 import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   type ActivityListQueryParams,
+  type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
 import {
   formatDateRange,
@@ -636,6 +639,10 @@ export function ActivityTable({
   const { data: organizationsForFilter = [] } = useOrganizations();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
+  const { data: translationLanguagesForFilter = [] } =
+    useTranslationLanguages();
+  const { data: translationRequiredStatusesForFilter = [] } =
+    useTranslationRequiredStatuses();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -714,6 +721,40 @@ export function ActivityTable({
         label: ep.label ?? String(ep.id),
       })),
     [eventPlannersForFilter]
+  );
+  const translationOptions = useMemo(
+    () =>
+      translationLanguagesForFilter.map((l) => {
+        const displayLabel = l.shortcode
+          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
+          : (l.displayName ?? String(l.id));
+        return { value: String(l.id), label: displayLabel };
+      }),
+    [translationLanguagesForFilter]
+  );
+  const translationLanguageOptionsForFilter = useMemo(
+    () =>
+      translationLanguagesForFilter.map((l) => ({
+        value: String(l.id),
+        label: l.shortcode ?? l.displayName ?? String(l.id),
+      })),
+    [translationLanguagesForFilter]
+  );
+  const translationStatusOptions = useMemo(
+    () =>
+      translationRequiredStatusesForFilter.map((s) => ({
+        value: String(s.id),
+        label: s.displayName ?? s.name ?? String(s.id),
+      })),
+    [translationRequiredStatusesForFilter]
+  );
+  const translationRequiredStatusOptionsForFilter = useMemo(
+    () =>
+      translationRequiredStatusesForFilter.map((s) => ({
+        value: String(s.id),
+        label: s.displayName ?? s.name ?? String(s.id),
+      })),
+    [translationRequiredStatusesForFilter]
   );
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
@@ -849,10 +890,34 @@ export function ActivityTable({
     [activitiesQuery.data]
   );
 
+  const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
+    const hasTranslationStatus =
+      translationRequiredStatusOptionsForFilter.length > 0;
+    const hasTranslationLanguages =
+      translationLanguageOptionsForFilter.length > 0;
+    if (!hasTranslationStatus && !hasTranslationLanguages) return undefined;
+    return {
+      ...(hasTranslationStatus && {
+        translationRequiredStatusOptions:
+          translationRequiredStatusOptionsForFilter,
+      }),
+      ...(hasTranslationLanguages && {
+        translationLanguageOptions: translationLanguageOptionsForFilter,
+      }),
+    };
+  }, [
+    translationRequiredStatusOptionsForFilter,
+    translationLanguageOptionsForFilter,
+  ]);
+
   const filteredData = useMemo(() => {
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
-    return filterActivityRowsByFilters(afterKeyword, filterState);
-  }, [data, searchKeyword, filterState]);
+    return filterActivityRowsByFilters(
+      afterKeyword,
+      filterState,
+      filterContext
+    );
+  }, [data, searchKeyword, filterState, filterContext]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
@@ -1114,6 +1179,8 @@ export function ActivityTable({
       pitchRequiredStatusOptions={pitchRequiredStatusOptions}
       statusOptions={statusOptions}
       tagOptions={tagOptions}
+      translationStatusOptions={translationStatusOptions}
+      translationOptions={translationOptions}
       ministryOptions={ministryOptions}
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}

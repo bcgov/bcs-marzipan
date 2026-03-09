@@ -17,6 +17,11 @@ import { PitchFilter } from './PitchFilter';
 import { ScheduledDateFilter } from './ScheduledDateFilter';
 import { isDateRangeActive } from './ScheduledDateRangeFields';
 import { TagsFilter, type TagFilterOption } from './TagsFilter';
+import {
+  TranslationsFilter,
+  type TranslationFilterOption,
+  type TranslationStatusFilterOption,
+} from './TranslationsFilter';
 
 export interface ActivityTableFiltersProps {
   filterState: ActivityFilterState;
@@ -37,6 +42,8 @@ export interface ActivityTableFiltersProps {
   organizationOptions: LeadFilterOption[];
   commsContactOptions: LeadFilterOption[];
   eventPlannerOptions: LeadFilterOption[];
+  translationStatusOptions: TranslationStatusFilterOption[];
+  translationOptions: TranslationFilterOption[];
 }
 
 function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
@@ -55,6 +62,8 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     leadOrgIds,
     commsContactLeadUserIds,
     eventPlannerLeadIds,
+    translationRequiredStatusIds,
+    translationLanguageIds,
   } = filterState;
   const pitchDateRangeActive =
     pitchDateFilter.kind === 'scheduled' &&
@@ -70,6 +79,9 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     leadOrgIds.length > 0 ||
     commsContactLeadUserIds.length > 0 ||
     eventPlannerLeadIds.length > 0;
+  const translationsActive =
+    translationRequiredStatusIds.length > 0 ||
+    translationLanguageIds.length > 0;
   return (
     dateRange.startDate !== '' ||
     dateRange.endDate !== '' ||
@@ -82,7 +94,8 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     dateConfirmedFilter !== 'any' ||
     timeConfirmedFilter !== 'any' ||
     tagIds.length > 0 ||
-    leadsActive
+    leadsActive ||
+    translationsActive
   );
 }
 
@@ -105,6 +118,8 @@ export function ActivityTableFilters({
   organizationOptions,
   commsContactOptions,
   eventPlannerOptions,
+  translationStatusOptions,
+  translationOptions,
 }: ActivityTableFiltersProps) {
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
@@ -165,6 +180,8 @@ export function ActivityTableFilters({
       leadOrgIds: [],
       commsContactLeadUserIds: [],
       eventPlannerLeadIds: [],
+      translationRequiredStatusIds: [],
+      translationLanguageIds: [],
     });
   }, [onFilterStateChange]);
 
@@ -178,64 +195,100 @@ export function ActivityTableFilters({
     [filterState, onFilterStateChange]
   );
 
+  const handleTranslationRequiredStatusIdsChange = useCallback(
+    (translationRequiredStatusIds: number[]) => {
+      onFilterStateChange({
+        ...filterState,
+        translationRequiredStatusIds,
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
+
+  const handleTranslationLanguageIdsChange = useCallback(
+    (translationLanguageIds: number[]) => {
+      onFilterStateChange({
+        ...filterState,
+        translationLanguageIds,
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
+
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   return (
     <div
-      className="mb-4 flex flex-wrap items-center justify-between gap-4"
+      className="mb-4 flex flex-nowrap items-center justify-between gap-4"
       role="search"
-      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, leads, and keyword"
+      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, translations, leads, and keyword"
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <ScheduledDateFilter
-          value={filterState.dateRange}
-          onChange={handleDateRangeChange}
-        />
-        <FilterCheckboxDropdown
-          label="Category"
-          options={categoryOptions}
-          selectedValues={categorySelectedValues}
-          onChange={handleCategoryChange}
-        />
-        <PitchFilter
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-          pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-        />
-        <LookAheadFilter
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-        />
-        <ConfirmedFilter
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-        />
-        <FilterCheckboxDropdown
-          label="Status"
-          options={statusOptions}
-          selectedValues={statusSelectedValues}
-          onChange={handleStatusChange}
-        />
-        <TagsFilter
-          tagOptions={tagOptions}
-          selectedTagIds={filterState.tagIds}
-          onTagIdsChange={handleTagIdsChange}
-        />
-        <LeadsFilter
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-          ministryOptions={ministryOptions}
-          organizationOptions={organizationOptions}
-          commsContactOptions={commsContactOptions}
-          eventPlannerOptions={eventPlannerOptions}
-        />
+      <div className="flex max-w-4xl min-w-0 flex-1 items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <div className="scrollbar-hide flex min-h-9 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pr-4 *:shrink-0">
+            <ScheduledDateFilter
+              value={filterState.dateRange}
+              onChange={handleDateRangeChange}
+            />
+            <FilterCheckboxDropdown
+              label="Category"
+              options={categoryOptions}
+              selectedValues={categorySelectedValues}
+              onChange={handleCategoryChange}
+            />
+            <PitchFilter
+              filterState={filterState}
+              onFilterStateChange={onFilterStateChange}
+              pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+            />
+            <LookAheadFilter
+              filterState={filterState}
+              onFilterStateChange={onFilterStateChange}
+            />
+            <ConfirmedFilter
+              filterState={filterState}
+              onFilterStateChange={onFilterStateChange}
+            />
+            <FilterCheckboxDropdown
+              label="Status"
+              options={statusOptions}
+              selectedValues={statusSelectedValues}
+              onChange={handleStatusChange}
+            />
+            <TagsFilter
+              tagOptions={tagOptions}
+              selectedTagIds={filterState.tagIds}
+              onTagIdsChange={handleTagIdsChange}
+            />
+            <TranslationsFilter
+              translationStatusOptions={translationStatusOptions}
+              translationOptions={translationOptions}
+              selectedStatusIds={filterState.translationRequiredStatusIds}
+              selectedLanguageIds={filterState.translationLanguageIds}
+              onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
+              onLanguageIdsChange={handleTranslationLanguageIdsChange}
+            />
+            <LeadsFilter
+              filterState={filterState}
+              onFilterStateChange={onFilterStateChange}
+              ministryOptions={ministryOptions}
+              organizationOptions={organizationOptions}
+              commsContactOptions={commsContactOptions}
+              eventPlannerOptions={eventPlannerOptions}
+            />
+          </div>
+          <div
+            className="from-background pointer-events-none absolute top-0 right-0 bottom-0 w-12 bg-linear-to-l to-transparent"
+            aria-hidden
+          />
+        </div>
         {anyActive && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="animate-in fade-in duration-200"
+            className="animate-in fade-in h-9 shrink-0 duration-200"
             onClick={handleClearAllFilters}
             aria-label="Clear all filters"
           >
@@ -243,7 +296,7 @@ export function ActivityTableFilters({
           </Button>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
