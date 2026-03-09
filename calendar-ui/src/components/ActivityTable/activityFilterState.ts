@@ -27,6 +27,10 @@ export interface ActivityFilterState {
   pitchRequiredStatusNames: string[];
   /** Pitch date filter; 'any' = no radio selected (deselect by clicking selected radio again). */
   pitchDateFilter: PitchDateFilter;
+  /** Look Ahead status values (e.g. 'new', 'changed'). */
+  lookAheadStatusValues: string[];
+  /** Look Ahead section values (e.g. 'events', 'issues'). */
+  lookAheadSectionValues: string[];
 }
 
 export const DEFAULT_PITCH_DATE_RANGE: DateRangeValue = {
@@ -47,4 +51,6 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   activityStatusIds: [],
   pitchRequiredStatusNames: [],
   pitchDateFilter: { kind: 'any' },
+  lookAheadStatusValues: [],
+  lookAheadSectionValues: [],
 };

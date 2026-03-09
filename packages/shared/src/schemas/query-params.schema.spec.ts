@@ -171,20 +171,20 @@ describe('filterActivitiesQuerySchema', () => {
     expect(filterActivitiesQuerySchema.parse({ limit: '100' }).limit).toBe(100);
   });
 
-  it('omits excludeCompleted and includeDeleted when not sent', () => {
+  it('omits includeCompleted and includeDeleted when not sent', () => {
     const result = filterActivitiesQuerySchema.parse({});
-    expect(result.excludeCompleted).toBeUndefined();
+    expect(result.includeCompleted).toBeUndefined();
     expect(result.includeDeleted).toBeUndefined();
   });
 
-  it('parses excludeCompleted and includeDeleted from query strings', () => {
+  it('parses includeCompleted and includeDeleted from query strings', () => {
     expect(
-      filterActivitiesQuerySchema.parse({ excludeCompleted: 'true' })
-        .excludeCompleted
+      filterActivitiesQuerySchema.parse({ includeCompleted: 'true' })
+        .includeCompleted
     ).toBe(true);
     expect(
-      filterActivitiesQuerySchema.parse({ excludeCompleted: 'false' })
-        .excludeCompleted
+      filterActivitiesQuerySchema.parse({ includeCompleted: 'false' })
+        .includeCompleted
     ).toBe(false);
     expect(
       filterActivitiesQuerySchema.parse({ includeDeleted: 'true' })

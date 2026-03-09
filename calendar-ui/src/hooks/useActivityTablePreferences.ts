@@ -26,6 +26,8 @@ const URL_PARAM_PITCH_DATE_FROM = 'pitchDateFrom';
 const URL_PARAM_PITCH_DATE_TO = 'pitchDateTo';
 const URL_PARAM_PITCH_NO_START = 'pitchNoStart';
 const URL_PARAM_PITCH_NO_END = 'pitchNoEnd';
+const URL_PARAM_LOOK_AHEAD_STATUS = 'lookAheadStatus';
+const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
 
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 const SEARCH_SYNC_DEBOUNCE_MS = 400;
@@ -150,6 +152,23 @@ function parseFromSearchParams(
     };
   }
 
+  const lookAheadStatusParam = searchParams.get(URL_PARAM_LOOK_AHEAD_STATUS);
+  const lookAheadStatusValues =
+    typeof lookAheadStatusParam === 'string' && lookAheadStatusParam.trim()
+      ? lookAheadStatusParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+  const lookAheadSectionParam = searchParams.get(URL_PARAM_LOOK_AHEAD_SECTION);
+  const lookAheadSectionValues =
+    typeof lookAheadSectionParam === 'string' && lookAheadSectionParam.trim()
+      ? lookAheadSectionParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
   const filterState: ActivityFilterState = {
     dateRange: {
       startDate: dateFrom,
@@ -161,6 +180,8 @@ function parseFromSearchParams(
     activityStatusIds,
     pitchRequiredStatusNames,
     pitchDateFilter,
+    lookAheadStatusValues,
+    lookAheadSectionValues,
   };
 
   return {
@@ -258,6 +279,20 @@ function parseFromStorage(
             },
           };
         }
+        const lookAheadStatusValues = Array.isArray(
+          rawFilter.lookAheadStatusValues
+        )
+          ? (rawFilter.lookAheadStatusValues as string[]).filter(
+              (s): s is string => typeof s === 'string'
+            )
+          : [];
+        const lookAheadSectionValues = Array.isArray(
+          rawFilter.lookAheadSectionValues
+        )
+          ? (rawFilter.lookAheadSectionValues as string[]).filter(
+              (s): s is string => typeof s === 'string'
+            )
+          : [];
         filterState = {
           dateRange: {
             startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
@@ -277,6 +312,8 @@ function parseFromStorage(
             : [],
           pitchRequiredStatusNames,
           pitchDateFilter,
+          lookAheadStatusValues,
+          lookAheadSectionValues,
         };
       }
     }
@@ -314,7 +351,9 @@ function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_PITCH_DATE_FROM) ||
     searchParams.has(URL_PARAM_PITCH_DATE_TO) ||
     searchParams.has(URL_PARAM_PITCH_NO_START) ||
-    searchParams.has(URL_PARAM_PITCH_NO_END)
+    searchParams.has(URL_PARAM_PITCH_NO_END) ||
+    searchParams.has(URL_PARAM_LOOK_AHEAD_STATUS) ||
+    searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION)
   );
 }
 
@@ -353,6 +392,8 @@ function preferencesToParams(
     [URL_PARAM_STATUS]: f.activityStatusIds.join(','),
     [URL_PARAM_PITCH_STATUS]: f.pitchRequiredStatusNames.join(','),
     [URL_PARAM_PITCH_DATE_KIND]: f.pitchDateFilter.kind,
+    [URL_PARAM_LOOK_AHEAD_STATUS]: f.lookAheadStatusValues.join(','),
+    [URL_PARAM_LOOK_AHEAD_SECTION]: f.lookAheadSectionValues.join(','),
   };
   if (f.pitchDateFilter.kind === 'scheduled') {
     const dr = f.pitchDateFilter.dateRange;

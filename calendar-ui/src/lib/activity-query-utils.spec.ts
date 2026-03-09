@@ -60,12 +60,12 @@ describe('normalizeListParams', () => {
     expect(normalizeListParams({})).toEqual({});
   });
 
-  it('includes only excludeCompleted when provided', () => {
-    expect(normalizeListParams({ excludeCompleted: true })).toEqual({
-      excludeCompleted: true,
+  it('includes only includeCompleted when provided', () => {
+    expect(normalizeListParams({ includeCompleted: true })).toEqual({
+      includeCompleted: true,
     });
-    expect(normalizeListParams({ excludeCompleted: false })).toEqual({
-      excludeCompleted: false,
+    expect(normalizeListParams({ includeCompleted: false })).toEqual({
+      includeCompleted: false,
     });
   });
 
@@ -81,30 +81,30 @@ describe('normalizeListParams', () => {
   it('includes both keys when both provided', () => {
     expect(
       normalizeListParams({
-        excludeCompleted: false,
+        includeCompleted: false,
         includeDeleted: true,
       })
-    ).toEqual({ excludeCompleted: false, includeDeleted: true });
+    ).toEqual({ includeCompleted: false, includeDeleted: true });
   });
 
   it('omits keys when value is undefined for stable query key', () => {
     expect(
       normalizeListParams({
-        excludeCompleted: undefined,
+        includeCompleted: undefined,
         includeDeleted: undefined,
       })
     ).toEqual({});
   });
 
-  it('copies only excludeCompleted and includeDeleted when params have extra keys', () => {
+  it('copies only includeCompleted and includeDeleted when params have extra keys', () => {
     const params = {
-      excludeCompleted: true,
+      includeCompleted: true,
       includeDeleted: false,
       page: 1,
       limit: 20,
     } as Parameters<typeof normalizeListParams>[0];
     expect(normalizeListParams(params)).toEqual({
-      excludeCompleted: true,
+      includeCompleted: true,
       includeDeleted: false,
     });
   });
@@ -112,10 +112,10 @@ describe('normalizeListParams', () => {
   it('includes leadTeamId, commsContactLeadUserId, sharedWithTeamId, sharedWithTeamIds when provided', () => {
     expect(
       normalizeListParams({
-        excludeCompleted: true,
+        includeCompleted: true,
         leadTeamId: 5,
       })
-    ).toEqual({ excludeCompleted: true, leadTeamId: 5 });
+    ).toEqual({ includeCompleted: true, leadTeamId: 5 });
     expect(
       normalizeListParams({
         commsContactLeadUserId: 10,
@@ -132,18 +132,14 @@ describe('normalizeListParams', () => {
     ).toEqual({ sharedWithTeamIds: [1, 2, 3] });
   });
 
-  it('includes date and activityStatusId when provided', () => {
+  it('omits date and activityStatusId (filtered client-side)', () => {
     expect(
       normalizeListParams({
         startDateFrom: '2025-01-01',
         startDateTo: '2025-01-31',
         activityStatusId: 2,
-      })
-    ).toEqual({
-      startDateFrom: '2025-01-01',
-      startDateTo: '2025-01-31',
-      activityStatusId: 2,
-    });
+      } as Parameters<typeof normalizeListParams>[0])
+    ).toEqual({});
   });
 });
 
@@ -206,6 +202,92 @@ describe('filterActivityRowsByFilters', () => {
       activityStatusIds: [1, 3],
     });
     expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by date range (activity start and end must fall within range)', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        startDate: '2025-01-15',
+        endDate: '2025-01-20',
+      }),
+      makeRow({
+        id: 2,
+        startDate: '2024-12-01',
+        endDate: '2024-12-31',
+      }),
+      makeRow({
+        id: 3,
+        startDate: '2025-02-01',
+        endDate: '2025-02-28',
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: [],
+      activityStatusIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by look-ahead status', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({
+        id: 2,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'issues',
+      }),
+      makeRow({ id: 3, lookAheadStatus: 'none', lookAheadSection: 'news' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: ['new', 'changed'],
+      lookAheadSectionValues: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by look-ahead section', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({
+        id: 2,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'issues',
+      }),
+      makeRow({ id: 3, lookAheadStatus: 'none', lookAheadSection: 'news' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: [],
+      lookAheadSectionValues: ['events', 'news'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by both look-ahead status and section (AND)', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({ id: 2, lookAheadStatus: 'new', lookAheadSection: 'issues' }),
+      makeRow({
+        id: 3,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'events',
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: ['new'],
+      lookAheadSectionValues: ['events'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
   });
 });
 

@@ -109,9 +109,9 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.boolean())
     .optional(),
   /**
-   * When true, exclude activities with status 'completed'. Omit to include completed (e.g. calendar). Set to true for list views to reduce payload.
+   * When true, include activities with status 'completed'. Omit or false for list default (exclude completed).
    */
-  excludeCompleted: z
+  includeCompleted: z
     .string()
     .optional()
     .transform((val): boolean | undefined =>

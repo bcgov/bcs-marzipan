@@ -713,7 +713,7 @@ export class ActivitiesService {
           conditions.push(ne(activities.activityStatusId, deletedStatusId));
         }
         if (
-          filters.excludeCompleted === true &&
+          filters.includeCompleted !== true &&
           completedStatusId !== undefined
         ) {
           conditions.push(ne(activities.activityStatusId, completedStatusId));
@@ -761,7 +761,7 @@ export class ActivitiesService {
           );
         }
         if (
-          filters.excludeCompleted === true &&
+          filters.includeCompleted !== true &&
           completedStatusId !== undefined
         ) {
           statusConditions.push(

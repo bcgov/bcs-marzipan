@@ -4,9 +4,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -17,6 +14,7 @@ import {
   type ActivityFilterState,
   type PitchDateFilter,
 } from './activityFilterState';
+import { FilterSectionLabel } from './FilterSectionLabel';
 import { ScheduledDateRangeFields } from './ScheduledDateRangeFields';
 
 export interface PitchFilterProps {
@@ -32,21 +30,8 @@ function isPitchFilterActive(
 ): boolean {
   if (pitchRequiredStatusNames.length > 0) return true;
   if (pitchDateFilter.kind !== 'any') return true;
-  if (
-    pitchDateFilter.kind === 'scheduled' &&
-    (pitchDateFilter.dateRange.startDate !== '' ||
-      pitchDateFilter.dateRange.endDate !== '' ||
-      pitchDateFilter.dateRange.noStartDate ||
-      pitchDateFilter.dateRange.noEndDate)
-  ) {
-    return true;
-  }
   return false;
 }
-
-const PITCH_DATE_ANY = '';
-const PITCH_DATE_NOT_SCHEDULED = 'not_scheduled';
-const PITCH_DATE_SCHEDULED = 'scheduled';
 
 export function PitchFilter({
   filterState,
@@ -60,20 +45,10 @@ export function PitchFilter({
     [pitchRequiredStatusNames, pitchDateFilter]
   );
 
-  const pitchDateRadioValue =
-    pitchDateFilter.kind === 'any' ? PITCH_DATE_ANY : pitchDateFilter.kind;
-
   const handleClearTrigger = useCallback(() => {
     onFilterStateChange({
       ...filterState,
       pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
-    });
-  }, [filterState, onFilterStateChange]);
-
-  const handleSetPitchDateAny = useCallback(() => {
-    onFilterStateChange({
-      ...filterState,
       pitchDateFilter: { kind: 'any' },
     });
   }, [filterState, onFilterStateChange]);
@@ -91,38 +66,26 @@ export function PitchFilter({
     [filterState, onFilterStateChange, pitchRequiredStatusNames]
   );
 
-  const handlePitchDateRadioChange = useCallback(
-    (value: string) => {
-      const currentKind = pitchDateFilter.kind;
-
-      if (value === currentKind) {
-        onFilterStateChange({
-          ...filterState,
-          pitchDateFilter: { kind: 'any' },
-        });
-        return;
-      }
-
-      if (value === PITCH_DATE_NOT_SCHEDULED) {
-        onFilterStateChange({
-          ...filterState,
-          pitchDateFilter: { kind: 'not_scheduled' },
-        });
-        return;
-      }
-
-      if (value === PITCH_DATE_SCHEDULED) {
-        onFilterStateChange({
-          ...filterState,
-          pitchDateFilter: {
-            kind: 'scheduled',
-            dateRange: { ...DEFAULT_PITCH_DATE_RANGE },
-          },
-        });
-        return;
-      }
+  const handlePitchDateNotScheduledChange = useCallback(
+    (checked: boolean) => {
+      onFilterStateChange({
+        ...filterState,
+        pitchDateFilter: checked ? { kind: 'not_scheduled' } : { kind: 'any' },
+      });
     },
-    [filterState, onFilterStateChange, pitchDateFilter.kind]
+    [filterState, onFilterStateChange]
+  );
+
+  const handlePitchDateScheduledChange = useCallback(
+    (checked: boolean) => {
+      onFilterStateChange({
+        ...filterState,
+        pitchDateFilter: checked
+          ? { kind: 'scheduled', dateRange: { ...DEFAULT_PITCH_DATE_RANGE } }
+          : { kind: 'any' },
+      });
+    },
+    [filterState, onFilterStateChange]
   );
 
   const handlePitchDateRangeChange = useCallback(
@@ -135,6 +98,20 @@ export function PitchFilter({
     },
     [filterState, onFilterStateChange, pitchDateFilter.kind]
   );
+
+  const handleClearPitchStatus = useCallback(() => {
+    onFilterStateChange({
+      ...filterState,
+      pitchRequiredStatusNames: [],
+    });
+  }, [filterState, onFilterStateChange]);
+
+  const handleClearPitchDate = useCallback(() => {
+    onFilterStateChange({
+      ...filterState,
+      pitchDateFilter: { kind: 'any' },
+    });
+  }, [filterState, onFilterStateChange]);
 
   return (
     <DropdownMenu>
@@ -151,9 +128,15 @@ export function PitchFilter({
         className="max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto"
         align="start"
       >
-        <DropdownMenuLabel className="text-foreground font-normal">
+        <FilterSectionLabel
+          onClearAll={
+            pitchRequiredStatusNames.length > 0
+              ? handleClearPitchStatus
+              : undefined
+          }
+        >
           Pitch status
-        </DropdownMenuLabel>
+        </FilterSectionLabel>
         {pitchRequiredStatusOptions.length === 0 ? (
           <p className="text-muted-foreground px-2 py-2 text-center text-sm">
             No options
@@ -171,36 +154,29 @@ export function PitchFilter({
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-foreground font-normal">
-          Pitch date
-        </DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={pitchDateRadioValue}
-          onValueChange={handlePitchDateRadioChange}
+        <FilterSectionLabel
+          onClearAll={
+            pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
+          }
         >
-          <DropdownMenuRadioItem
-            value={PITCH_DATE_NOT_SCHEDULED}
-            onSelect={(e) => {
-              if (pitchDateFilter.kind === 'not_scheduled') {
-                e.preventDefault();
-                handleSetPitchDateAny();
-              }
-            }}
-          >
-            Not scheduled for panel
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem
-            value={PITCH_DATE_SCHEDULED}
-            onSelect={(e) => {
-              if (pitchDateFilter.kind === 'scheduled') {
-                e.preventDefault();
-                handleSetPitchDateAny();
-              }
-            }}
-          >
-            Scheduled for panel
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+          Pitch date
+        </FilterSectionLabel>
+        <DropdownMenuCheckboxItem
+          checked={pitchDateFilter.kind === 'not_scheduled'}
+          onCheckedChange={handlePitchDateNotScheduledChange}
+          onSelect={(e) => e.preventDefault()}
+        >
+          Not scheduled for panel
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={pitchDateFilter.kind === 'scheduled'}
+          onCheckedChange={(checked) =>
+            handlePitchDateScheduledChange(checked === true)
+          }
+          onSelect={(e) => e.preventDefault()}
+        >
+          Scheduled for panel
+        </DropdownMenuCheckboxItem>
 
         {pitchDateFilter.kind === 'scheduled' && (
           <div className="border-t px-2 pt-2 pb-2">

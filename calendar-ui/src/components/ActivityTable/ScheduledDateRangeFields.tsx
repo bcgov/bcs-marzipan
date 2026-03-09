@@ -3,11 +3,12 @@ import {
   addMonths,
   format,
   startOfDay,
+  startOfMonth,
   subDays,
   subMonths,
 } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -73,6 +74,16 @@ export interface DateRangeValue {
   noEndDate: boolean;
 }
 
+/** True when the date range has any constraint (dates set or "no start/end date" toggles). */
+export function isDateRangeActive(dateRange: DateRangeValue): boolean {
+  return (
+    dateRange.startDate !== '' ||
+    dateRange.endDate !== '' ||
+    dateRange.noStartDate ||
+    dateRange.noEndDate
+  );
+}
+
 export interface ScheduledDateRangeFieldsProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
@@ -114,6 +125,31 @@ export function ScheduledDateRangeFields({
 }: ScheduledDateRangeFieldsProps) {
   const [startCalendarOpen, setStartCalendarOpen] = useState(false);
   const [endCalendarOpen, setEndCalendarOpen] = useState(false);
+
+  const [startCalendarMonth, setStartCalendarMonth] = useState<Date>(() =>
+    value.startDate
+      ? startOfMonth(new Date(value.startDate + 'T12:00:00'))
+      : startOfMonth(new Date())
+  );
+  const [endCalendarMonth, setEndCalendarMonth] = useState<Date>(() =>
+    value.endDate
+      ? startOfMonth(new Date(value.endDate + 'T12:00:00'))
+      : startOfMonth(new Date())
+  );
+
+  useEffect(() => {
+    if (value.startDate) {
+      setStartCalendarMonth(
+        startOfMonth(new Date(value.startDate + 'T12:00:00'))
+      );
+    }
+  }, [value.startDate]);
+
+  useEffect(() => {
+    if (value.endDate) {
+      setEndCalendarMonth(startOfMonth(new Date(value.endDate + 'T12:00:00')));
+    }
+  }, [value.endDate]);
 
   const startLabel = useMemo(() => {
     if (value.noStartDate) return 'No start date';
@@ -249,9 +285,10 @@ export function ScheduledDateRangeFields({
                     mode="single"
                     selected={startDateObj}
                     onSelect={handleStartSelect}
+                    month={startCalendarMonth}
+                    onMonthChange={setStartCalendarMonth}
                     initialFocus
                     captionLayout="dropdown-buttons"
-                    defaultMonth={startDateObj ?? new Date()}
                     fromYear={calendarYearFrom}
                     toYear={calendarYearTo}
                     classNames={calendarDropdownCaptionClassNames}
@@ -338,9 +375,10 @@ export function ScheduledDateRangeFields({
                     mode="single"
                     selected={endDateObj}
                     onSelect={handleEndSelect}
+                    month={endCalendarMonth}
+                    onMonthChange={setEndCalendarMonth}
                     initialFocus
                     captionLayout="dropdown-buttons"
-                    defaultMonth={endDateObj ?? new Date()}
                     fromYear={calendarYearFrom}
                     toYear={calendarYearTo}
                     classNames={calendarDropdownCaptionClassNames}

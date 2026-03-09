@@ -688,9 +688,8 @@ export function ActivityTable({
   });
 
   const activityFilters = useMemo((): ActivityListQueryParams => {
-    const dr = filterState.dateRange;
-    const base: ActivityListQueryParams = {
-      excludeCompleted: !effectiveShowCompleted,
+    return {
+      includeCompleted: effectiveShowCompleted,
       includeDeleted: effectiveShowDeleted,
       ...(leadTeamId !== undefined && { leadTeamId }),
       ...(commsContactLeadUserId !== undefined && {
@@ -700,18 +699,6 @@ export function ActivityTable({
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
     };
-    if (dr.startDate && !dr.noStartDate) {
-      base.startDateFrom = dr.startDate;
-      base.endDateFrom = dr.startDate;
-    }
-    if (dr.endDate && !dr.noEndDate) {
-      base.startDateTo = dr.endDate;
-      base.endDateTo = dr.endDate;
-    }
-    if (filterState.activityStatusIds.length === 1) {
-      base.activityStatusId = filterState.activityStatusIds[0];
-    }
-    return base;
   }, [
     effectiveShowCompleted,
     effectiveShowDeleted,
@@ -719,8 +706,6 @@ export function ActivityTable({
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
-    filterState.dateRange,
-    filterState.activityStatusIds,
   ]);
 
   // Reset to first page when user changes filters so results match expectations
@@ -738,7 +723,7 @@ export function ActivityTable({
           (id, i) => id === activityFilters.sharedWithTeamIds![i]
         ));
     const same =
-      prev.excludeCompleted === activityFilters.excludeCompleted &&
+      prev.includeCompleted === activityFilters.includeCompleted &&
       prev.includeDeleted === activityFilters.includeDeleted &&
       prev.leadTeamId === activityFilters.leadTeamId &&
       prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&

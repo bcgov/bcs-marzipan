@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   Popover,
@@ -8,6 +8,7 @@ import {
 import { FilterTrigger } from '@/components/users/FilterTrigger';
 
 import {
+  isDateRangeActive,
   ScheduledDateRangeFields,
   type DateRangeValue,
 } from './ScheduledDateRangeFields';
@@ -19,22 +20,12 @@ interface ScheduledDateFilterProps {
   onChange: (value: DateRangeValue) => void;
 }
 
-function isDateRangeActive(dateRange: DateRangeValue): boolean {
-  return (
-    dateRange.startDate !== '' ||
-    dateRange.endDate !== '' ||
-    dateRange.noStartDate ||
-    dateRange.noEndDate
-  );
-}
-
 export function ScheduledDateFilter({
   value,
   onChange,
 }: ScheduledDateFilterProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRangeValue>(() => value);
-  const commitOnCloseRef = useRef<DateRangeValue | null>(null);
 
   const active = isDateRangeActive(value);
 
@@ -55,22 +46,23 @@ export function ScheduledDateFilter({
   const handleMainOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        commitOnCloseRef.current = null;
         setDraft(value);
         setOpen(true);
       } else {
-        const toCommit = commitOnCloseRef.current ?? draft;
-        commitOnCloseRef.current = null;
-        onChange(toCommit);
+        onChange(draft);
         setOpen(false);
       }
     },
     [value, draft, onChange]
   );
 
-  const handleDraftChange = useCallback((next: DateRangeValue) => {
-    setDraft(next);
-  }, []);
+  const handleDraftChange = useCallback(
+    (next: DateRangeValue) => {
+      setDraft(next);
+      onChange(next);
+    },
+    [onChange]
+  );
 
   const handleAfterClear = useCallback(() => {
     const empty = {
@@ -79,10 +71,10 @@ export function ScheduledDateFilter({
       noStartDate: false,
       noEndDate: false,
     };
-    commitOnCloseRef.current = empty;
+    onChange(empty);
     setDraft(empty);
     setOpen(false);
-  }, []);
+  }, [onChange]);
 
   return (
     <Popover open={open} onOpenChange={handleMainOpenChange} modal>

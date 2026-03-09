@@ -10,8 +10,10 @@ import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
+import { LookAheadFilter } from './LookAheadFilter';
 import { PitchFilter } from './PitchFilter';
 import { ScheduledDateFilter } from './ScheduledDateFilter';
+import { isDateRangeActive } from './ScheduledDateRangeFields';
 
 export interface ActivityTableFiltersProps {
   filterState: ActivityFilterState;
@@ -36,17 +38,18 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     activityStatusIds,
     pitchRequiredStatusNames,
     pitchDateFilter,
+    lookAheadStatusValues,
+    lookAheadSectionValues,
   } = filterState;
   const pitchDateRangeActive =
     pitchDateFilter.kind === 'scheduled' &&
-    (pitchDateFilter.dateRange.startDate !== '' ||
-      pitchDateFilter.dateRange.endDate !== '' ||
-      pitchDateFilter.dateRange.noStartDate ||
-      pitchDateFilter.dateRange.noEndDate);
+    isDateRangeActive(pitchDateFilter.dateRange);
   const pitchActive =
     pitchRequiredStatusNames.length > 0 ||
     pitchDateFilter.kind !== 'any' ||
     pitchDateRangeActive;
+  const lookAheadActive =
+    lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
   return (
     dateRange.startDate !== '' ||
     dateRange.endDate !== '' ||
@@ -54,7 +57,8 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     dateRange.noEndDate ||
     categoryNames.length > 0 ||
     activityStatusIds.length > 0 ||
-    pitchActive
+    pitchActive ||
+    lookAheadActive
   );
 }
 
@@ -122,6 +126,8 @@ export function ActivityTableFilters({
       activityStatusIds: [],
       pitchRequiredStatusNames: [],
       pitchDateFilter: { kind: 'any' },
+      lookAheadStatusValues: [],
+      lookAheadSectionValues: [],
     });
   }, [onFilterStateChange]);
 
@@ -132,7 +138,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-wrap items-center justify-between gap-4"
       role="search"
-      aria-label="Filter activities by date, category, pitch, status, and keyword"
+      aria-label="Filter activities by date, category, pitch, look ahead, status, and keyword"
     >
       <div className="flex flex-wrap items-center gap-2">
         <ScheduledDateFilter
@@ -149,6 +155,10 @@ export function ActivityTableFilters({
           filterState={filterState}
           onFilterStateChange={onFilterStateChange}
           pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+        />
+        <LookAheadFilter
+          filterState={filterState}
+          onFilterStateChange={onFilterStateChange}
         />
         <FilterCheckboxDropdown
           label="Status"

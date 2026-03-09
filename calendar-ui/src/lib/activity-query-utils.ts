@@ -58,14 +58,41 @@ function isDateInRange(
 }
 
 /**
- * Client-side filter by category (names), status (IDs), and pitch (status names + date).
- * Date filtering is done server-side via query params.
+ * Client-side filter by date range, category (names), status (IDs), and pitch (status names + date).
+ * Same semantics as backend: activity start and end must fall within the filter range.
  */
 export function filterActivityRowsByFilters(
   rows: ActivityTableRow[],
   filterState: ActivityFilterState
 ): ActivityTableRow[] {
   let result = rows;
+
+  const dr = filterState.dateRange;
+  const dateRangeActive =
+    dr.startDate !== '' || dr.endDate !== '' || dr.noStartDate || dr.noEndDate;
+  if (dateRangeActive) {
+    result = result.filter((row) => {
+      const start = row.startDate ?? '';
+      const end = row.endDate ?? '';
+      if (start === '' || end === '') return false;
+      return (
+        isDateInRange(
+          start,
+          dr.startDate,
+          dr.endDate,
+          dr.noStartDate,
+          dr.noEndDate
+        ) &&
+        isDateInRange(
+          end,
+          dr.startDate,
+          dr.endDate,
+          dr.noStartDate,
+          dr.noEndDate
+        )
+      );
+    });
+  }
 
   if (filterState.categoryNames.length > 0) {
     const set = new Set(
@@ -114,24 +141,35 @@ export function filterActivityRowsByFilters(
     });
   }
 
+  if (filterState.lookAheadStatusValues.length > 0) {
+    const statusSet = new Set(filterState.lookAheadStatusValues);
+    result = result.filter((row) => {
+      const status = row.lookAheadStatus ?? null;
+      return status !== null && statusSet.has(status);
+    });
+  }
+
+  if (filterState.lookAheadSectionValues.length > 0) {
+    const sectionSet = new Set(filterState.lookAheadSectionValues);
+    result = result.filter((row) => {
+      const section = row.lookAheadSection ?? null;
+      return section !== null && sectionSet.has(section);
+    });
+  }
+
   return result;
 }
 
-/** Params for activity list query. */
+/** Params for activity list query (archive + context only; date/status filtered client-side). */
 export type ActivityListQueryParams = Partial<
   Pick<
     FilterActivitiesQueryParams,
-    | 'excludeCompleted'
+    | 'includeCompleted'
     | 'includeDeleted'
     | 'leadTeamId'
     | 'commsContactLeadUserId'
     | 'sharedWithTeamId'
     | 'sharedWithTeamIds'
-    | 'startDateFrom'
-    | 'startDateTo'
-    | 'endDateFrom'
-    | 'endDateTo'
-    | 'activityStatusId'
   >
 >;
 
@@ -140,20 +178,15 @@ export function normalizeListParams(
   params: ActivityListQueryParams = {}
 ): ActivityListQueryParams {
   const {
-    excludeCompleted,
+    includeCompleted,
     includeDeleted,
     leadTeamId,
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
-    startDateFrom,
-    startDateTo,
-    endDateFrom,
-    endDateTo,
-    activityStatusId,
   } = params;
   const out: ActivityListQueryParams = {};
-  if (excludeCompleted !== undefined) out.excludeCompleted = excludeCompleted;
+  if (includeCompleted !== undefined) out.includeCompleted = includeCompleted;
   if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
   if (leadTeamId !== undefined) out.leadTeamId = leadTeamId;
   if (commsContactLeadUserId !== undefined)
@@ -161,14 +194,6 @@ export function normalizeListParams(
   if (sharedWithTeamId !== undefined) out.sharedWithTeamId = sharedWithTeamId;
   if (sharedWithTeamIds !== undefined && sharedWithTeamIds.length > 0)
     out.sharedWithTeamIds = [...sharedWithTeamIds].sort((a, b) => a - b);
-  if (startDateFrom !== undefined && startDateFrom !== '')
-    out.startDateFrom = startDateFrom;
-  if (startDateTo !== undefined && startDateTo !== '')
-    out.startDateTo = startDateTo;
-  if (endDateFrom !== undefined && endDateFrom !== '')
-    out.endDateFrom = endDateFrom;
-  if (endDateTo !== undefined && endDateTo !== '') out.endDateTo = endDateTo;
-  if (activityStatusId !== undefined) out.activityStatusId = activityStatusId;
   return out;
 }
 
