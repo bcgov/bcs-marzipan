@@ -422,11 +422,17 @@ function getInitialPreferences(
   );
 }
 
+/**
+ * Builds URL params from preferences. Omits any param whose value is an empty
+ * string so that "param is present" means "user set this filter". Otherwise
+ * hasAnyKnownParam would always be true and we would always read from URL
+ * instead of sessionStorage when the URL is "empty or unrelated".
+ */
 function preferencesToParams(
   prefs: ActivityTablePreferences
 ): Record<string, string> {
   const f = prefs.filterState;
-  const out: Record<string, string> = {
+  const raw: Record<string, string> = {
     [URL_PARAM_SORT]: prefs.sortKey,
     [URL_PARAM_DIR]: prefs.sortDirection,
     [URL_PARAM_COMPLETED]: String(prefs.showCompleted),
@@ -451,10 +457,16 @@ function preferencesToParams(
   };
   if (f.pitchDateFilter.kind === 'scheduled') {
     const dr = f.pitchDateFilter.dateRange;
-    out[URL_PARAM_PITCH_DATE_FROM] = dr.startDate;
-    out[URL_PARAM_PITCH_DATE_TO] = dr.endDate;
-    out[URL_PARAM_PITCH_NO_START] = String(dr.noStartDate);
-    out[URL_PARAM_PITCH_NO_END] = String(dr.noEndDate);
+    raw[URL_PARAM_PITCH_DATE_FROM] = dr.startDate;
+    raw[URL_PARAM_PITCH_DATE_TO] = dr.endDate;
+    raw[URL_PARAM_PITCH_NO_START] = String(dr.noStartDate);
+    raw[URL_PARAM_PITCH_NO_END] = String(dr.noEndDate);
+  }
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value !== '') {
+      out[key] = value;
+    }
   }
   return out;
 }
