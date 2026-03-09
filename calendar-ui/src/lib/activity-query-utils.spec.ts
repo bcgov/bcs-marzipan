@@ -42,6 +42,10 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     commsLeadName: null,
     commsContactsCount: 0,
     eventLead: null,
+    leadMinistryId: null,
+    leadOrgId: null,
+    commsContactLeadUserId: null,
+    eventPlannerLeadId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
     commsMaterials: [],
@@ -374,6 +378,86 @@ describe('filterActivityRowsByFilters', () => {
       tagIds: [],
     });
     expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by leadMinistryIds', () => {
+    const rows = [
+      makeRow({ id: 1, leadMinistryId: 10 }),
+      makeRow({ id: 2, leadMinistryId: 20 }),
+      makeRow({ id: 3, leadMinistryId: null }),
+      makeRow({ id: 4, leadMinistryId: 10 }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadMinistryIds: [10, 30],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
+  });
+
+  it('filters by leadOrgIds', () => {
+    const rows = [
+      makeRow({ id: 1, leadOrgId: 5 }),
+      makeRow({ id: 2, leadOrgId: 6 }),
+      makeRow({ id: 3, leadOrgId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadOrgIds: [5],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by commsContactLeadUserIds', () => {
+    const rows = [
+      makeRow({ id: 1, commsContactLeadUserId: 100 }),
+      makeRow({ id: 2, commsContactLeadUserId: 200 }),
+      makeRow({ id: 3, commsContactLeadUserId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      commsContactLeadUserIds: [100, 300],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by eventPlannerLeadIds', () => {
+    const rows = [
+      makeRow({ id: 1, eventPlannerLeadId: 1 }),
+      makeRow({ id: 2, eventPlannerLeadId: 2 }),
+      makeRow({ id: 3, eventPlannerLeadId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      eventPlannerLeadIds: [2],
+    });
+    expect(result.map((r) => r.id)).toEqual([2]);
+  });
+
+  it('applies AND across lead types when multiple lead filters are set', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        leadMinistryId: 10,
+        leadOrgId: 5,
+        commsContactLeadUserId: 100,
+        eventPlannerLeadId: 1,
+      }),
+      makeRow({
+        id: 2,
+        leadMinistryId: 10,
+        leadOrgId: 99,
+        commsContactLeadUserId: 100,
+        eventPlannerLeadId: 1,
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadMinistryIds: [10],
+      leadOrgIds: [5],
+      commsContactLeadUserIds: [100],
+      eventPlannerLeadIds: [1],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
   });
 });
 

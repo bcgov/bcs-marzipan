@@ -11,6 +11,7 @@ import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdow
 
 import type { ActivityFilterState } from './activityFilterState';
 import { ConfirmedFilter } from './ConfirmedFilter';
+import { LeadsFilter, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilter } from './LookAheadFilter';
 import { PitchFilter } from './PitchFilter';
 import { ScheduledDateFilter } from './ScheduledDateFilter';
@@ -32,6 +33,10 @@ export interface ActivityTableFiltersProps {
   pitchRequiredStatusOptions: { value: string; label: string }[];
   statusOptions: { value: string; label: string }[];
   tagOptions: TagFilterOption[];
+  ministryOptions: LeadFilterOption[];
+  organizationOptions: LeadFilterOption[];
+  commsContactOptions: LeadFilterOption[];
+  eventPlannerOptions: LeadFilterOption[];
 }
 
 function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
@@ -46,6 +51,10 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
+    leadMinistryIds,
+    leadOrgIds,
+    commsContactLeadUserIds,
+    eventPlannerLeadIds,
   } = filterState;
   const pitchDateRangeActive =
     pitchDateFilter.kind === 'scheduled' &&
@@ -56,6 +65,11 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     pitchDateRangeActive;
   const lookAheadActive =
     lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
+  const leadsActive =
+    leadMinistryIds.length > 0 ||
+    leadOrgIds.length > 0 ||
+    commsContactLeadUserIds.length > 0 ||
+    eventPlannerLeadIds.length > 0;
   return (
     dateRange.startDate !== '' ||
     dateRange.endDate !== '' ||
@@ -67,7 +81,8 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     lookAheadActive ||
     dateConfirmedFilter !== 'any' ||
     timeConfirmedFilter !== 'any' ||
-    tagIds.length > 0
+    tagIds.length > 0 ||
+    leadsActive
   );
 }
 
@@ -86,6 +101,10 @@ export function ActivityTableFilters({
   pitchRequiredStatusOptions,
   statusOptions,
   tagOptions,
+  ministryOptions,
+  organizationOptions,
+  commsContactOptions,
+  eventPlannerOptions,
 }: ActivityTableFiltersProps) {
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
@@ -141,6 +160,10 @@ export function ActivityTableFilters({
       dateConfirmedFilter: 'any',
       timeConfirmedFilter: 'any',
       tagIds: [],
+      leadMinistryIds: [],
+      leadOrgIds: [],
+      commsContactLeadUserIds: [],
+      eventPlannerLeadIds: [],
     });
   }, [onFilterStateChange]);
 
@@ -161,7 +184,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-wrap items-center justify-between gap-4"
       role="search"
-      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, and keyword"
+      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, leads, and keyword"
     >
       <div className="flex flex-wrap items-center gap-2">
         <ScheduledDateFilter
@@ -197,6 +220,14 @@ export function ActivityTableFilters({
           tagOptions={tagOptions}
           selectedTagIds={filterState.tagIds}
           onTagIdsChange={handleTagIdsChange}
+        />
+        <LeadsFilter
+          filterState={filterState}
+          onFilterStateChange={onFilterStateChange}
+          ministryOptions={ministryOptions}
+          organizationOptions={organizationOptions}
+          commsContactOptions={commsContactOptions}
+          eventPlannerOptions={eventPlannerOptions}
         />
         {anyActive && (
           <Button

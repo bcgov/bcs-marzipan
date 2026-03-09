@@ -37,6 +37,14 @@ export interface ActivityFilterState {
   timeConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
   /** Selected tag IDs (multi-select). */
   tagIds: number[];
+  /** Lead ministry IDs (multi-select). */
+  leadMinistryIds: number[];
+  /** Lead organization IDs (multi-select). */
+  leadOrgIds: number[];
+  /** Comms contact lead user IDs (multi-select). */
+  commsContactLeadUserIds: number[];
+  /** Event planner lead IDs (multi-select). */
+  eventPlannerLeadIds: number[];
 }
 
 export type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
@@ -64,4 +72,8 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   dateConfirmedFilter: 'any',
   timeConfirmedFilter: 'any',
   tagIds: [],
+  leadMinistryIds: [],
+  leadOrgIds: [],
+  commsContactLeadUserIds: [],
+  eventPlannerLeadIds: [],
 };

@@ -180,6 +180,34 @@ export function filterActivityRowsByFilters(
     result = result.filter((row) => row.tags.some((t) => tagIdSet.has(t.id)));
   }
 
+  if (filterState.leadMinistryIds.length > 0) {
+    const ministrySet = new Set(filterState.leadMinistryIds);
+    result = result.filter(
+      (row) => row.leadMinistryId != null && ministrySet.has(row.leadMinistryId)
+    );
+  }
+  if (filterState.leadOrgIds.length > 0) {
+    const orgSet = new Set(filterState.leadOrgIds);
+    result = result.filter(
+      (row) => row.leadOrgId != null && orgSet.has(row.leadOrgId)
+    );
+  }
+  if (filterState.commsContactLeadUserIds.length > 0) {
+    const commsSet = new Set(filterState.commsContactLeadUserIds);
+    result = result.filter(
+      (row) =>
+        row.commsContactLeadUserId != null &&
+        commsSet.has(row.commsContactLeadUserId)
+    );
+  }
+  if (filterState.eventPlannerLeadIds.length > 0) {
+    const plannerSet = new Set(filterState.eventPlannerLeadIds);
+    result = result.filter(
+      (row) =>
+        row.eventPlannerLeadId != null && plannerSet.has(row.eventPlannerLeadId)
+    );
+  }
+
   return result;
 }
 

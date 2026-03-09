@@ -208,6 +208,10 @@ function parseFromSearchParams(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
+    leadMinistryIds: [],
+    leadOrgIds: [],
+    commsContactLeadUserIds: [],
+    eventPlannerLeadIds: [],
   };
 
   return {
@@ -336,6 +340,28 @@ function parseFromStorage(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
+        const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
+          ? (rawFilter.leadMinistryIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
+        const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
+          ? (rawFilter.leadOrgIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
+        const commsContactLeadUserIds = Array.isArray(
+          rawFilter.commsContactLeadUserIds
+        )
+          ? (rawFilter.commsContactLeadUserIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
+        const eventPlannerLeadIds = Array.isArray(rawFilter.eventPlannerLeadIds)
+          ? (rawFilter.eventPlannerLeadIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
         filterState = {
           dateRange: {
             startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
@@ -360,6 +386,10 @@ function parseFromStorage(
           dateConfirmedFilter,
           timeConfirmedFilter,
           tagIds,
+          leadMinistryIds,
+          leadOrgIds,
+          commsContactLeadUserIds,
+          eventPlannerLeadIds,
         };
       }
     }

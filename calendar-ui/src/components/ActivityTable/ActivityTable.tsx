@@ -65,6 +65,9 @@ import { useActivityList } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
   useCategories,
+  useEventPlanners,
+  useMinistries,
+  useOrganizations,
   usePitchRequiredStatuses,
   useTags,
   useUsers,
@@ -629,6 +632,10 @@ export function ActivityTable({
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
+  const { data: ministriesForFilter = [] } = useMinistries();
+  const { data: organizationsForFilter = [] } = useOrganizations();
+  const { data: usersForFilter = [] } = useUsers();
+  const { data: eventPlannersForFilter = [] } = useEventPlanners();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -674,6 +681,39 @@ export function ActivityTable({
         label: t.displayName ?? t.label ?? String(t.id),
       })),
     [tagsForFilter]
+  );
+
+  const ministryOptions = useMemo(
+    () =>
+      ministriesForFilter.map((m) => ({
+        value: String(m.id),
+        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
+      })),
+    [ministriesForFilter]
+  );
+  const organizationOptions = useMemo(
+    () =>
+      organizationsForFilter.map((o) => ({
+        value: String(o.id),
+        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
+      })),
+    [organizationsForFilter]
+  );
+  const commsContactOptions = useMemo(
+    () =>
+      usersForFilter.map((u) => ({
+        value: String(u.id),
+        label: u.name ?? u.email ?? String(u.id),
+      })),
+    [usersForFilter]
+  );
+  const eventPlannerOptions = useMemo(
+    () =>
+      eventPlannersForFilter.map((ep) => ({
+        value: String(ep.id),
+        label: ep.label ?? String(ep.id),
+      })),
+    [eventPlannersForFilter]
   );
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
@@ -1074,6 +1114,10 @@ export function ActivityTable({
       pitchRequiredStatusOptions={pitchRequiredStatusOptions}
       statusOptions={statusOptions}
       tagOptions={tagOptions}
+      ministryOptions={ministryOptions}
+      organizationOptions={organizationOptions}
+      commsContactOptions={commsContactOptions}
+      eventPlannerOptions={eventPlannerOptions}
     />
   );
 
