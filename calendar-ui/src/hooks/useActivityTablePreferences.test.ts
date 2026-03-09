@@ -208,6 +208,8 @@ describe('useActivityTablePreferences', () => {
           leadOrgIds: [],
           commsContactLeadUserIds: [],
           eventPlannerLeadIds: [],
+          translationRequiredStatusIds: [],
+          translationLanguageIds: [],
         },
       };
       sessionStorageGet.mockImplementation((key: string) =>
@@ -258,6 +260,8 @@ describe('useActivityTablePreferences', () => {
           leadOrgIds: [] as number[],
           commsContactLeadUserIds: [] as number[],
           eventPlannerLeadIds: [] as number[],
+          translationRequiredStatusIds: [],
+          translationLanguageIds: [],
         },
       };
       sessionStorageGet.mockImplementation((key: string) =>
@@ -394,6 +398,8 @@ describe('getStoredActivityListSearch', () => {
         leadOrgIds: [] as number[],
         commsContactLeadUserIds: [] as number[],
         eventPlannerLeadIds: [] as number[],
+        translationRequiredStatusIds: [],
+        translationLanguageIds: [],
       },
     };
     sessionStorageGet.mockImplementation((key: string) =>

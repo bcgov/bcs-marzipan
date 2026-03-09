@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import { ResponsiveFilterRow } from '@/components/ResponsiveFilterRow';
 import {
   SortDropdown,
   type SortColumnConfig,
@@ -218,83 +219,121 @@ export function ActivityTableFilters({
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
+  const filterSlots = useMemo(
+    () => [
+      <ScheduledDateFilter
+        key="date"
+        value={filterState.dateRange}
+        onChange={handleDateRangeChange}
+      />,
+      <FilterCheckboxDropdown
+        key="category"
+        label="Category"
+        options={categoryOptions}
+        selectedValues={categorySelectedValues}
+        onChange={handleCategoryChange}
+      />,
+      <PitchFilter
+        key="pitch"
+        filterState={filterState}
+        onFilterStateChange={onFilterStateChange}
+        pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+      />,
+      <LookAheadFilter
+        key="lookAhead"
+        filterState={filterState}
+        onFilterStateChange={onFilterStateChange}
+      />,
+      <ConfirmedFilter
+        key="confirmed"
+        filterState={filterState}
+        onFilterStateChange={onFilterStateChange}
+      />,
+      <FilterCheckboxDropdown
+        key="status"
+        label="Status"
+        options={statusOptions}
+        selectedValues={statusSelectedValues}
+        onChange={handleStatusChange}
+      />,
+      <TagsFilter
+        key="tags"
+        tagOptions={tagOptions}
+        selectedTagIds={filterState.tagIds}
+        onTagIdsChange={handleTagIdsChange}
+      />,
+      <TranslationsFilter
+        key="translations"
+        translationStatusOptions={translationStatusOptions}
+        translationOptions={translationOptions}
+        selectedStatusIds={filterState.translationRequiredStatusIds}
+        selectedLanguageIds={filterState.translationLanguageIds}
+        onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
+        onLanguageIdsChange={handleTranslationLanguageIdsChange}
+      />,
+      <LeadsFilter
+        key="leads"
+        filterState={filterState}
+        onFilterStateChange={onFilterStateChange}
+        ministryOptions={ministryOptions}
+        organizationOptions={organizationOptions}
+        commsContactOptions={commsContactOptions}
+        eventPlannerOptions={eventPlannerOptions}
+      />,
+    ],
+    [
+      filterState,
+      onFilterStateChange,
+      categoryOptions,
+      categorySelectedValues,
+      handleCategoryChange,
+      handleDateRangeChange,
+      handleStatusChange,
+      handleTagIdsChange,
+      handleTranslationRequiredStatusIdsChange,
+      handleTranslationLanguageIdsChange,
+      pitchRequiredStatusOptions,
+      statusOptions,
+      statusSelectedValues,
+      tagOptions,
+      translationStatusOptions,
+      translationOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+    ]
+  );
+
   return (
     <div
-      className="mb-4 flex flex-nowrap items-center justify-between gap-4"
+      className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
       aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, translations, leads, and keyword"
     >
-      <div className="flex max-w-4xl min-w-0 flex-1 items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <div className="scrollbar-hide flex min-h-9 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden pr-4 *:shrink-0">
-            <ScheduledDateFilter
-              value={filterState.dateRange}
-              onChange={handleDateRangeChange}
-            />
-            <FilterCheckboxDropdown
-              label="Category"
-              options={categoryOptions}
-              selectedValues={categorySelectedValues}
-              onChange={handleCategoryChange}
-            />
-            <PitchFilter
-              filterState={filterState}
-              onFilterStateChange={onFilterStateChange}
-              pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-            />
-            <LookAheadFilter
-              filterState={filterState}
-              onFilterStateChange={onFilterStateChange}
-            />
-            <ConfirmedFilter
-              filterState={filterState}
-              onFilterStateChange={onFilterStateChange}
-            />
-            <FilterCheckboxDropdown
-              label="Status"
-              options={statusOptions}
-              selectedValues={statusSelectedValues}
-              onChange={handleStatusChange}
-            />
-            <TagsFilter
-              tagOptions={tagOptions}
-              selectedTagIds={filterState.tagIds}
-              onTagIdsChange={handleTagIdsChange}
-            />
-            <TranslationsFilter
-              translationStatusOptions={translationStatusOptions}
-              translationOptions={translationOptions}
-              selectedStatusIds={filterState.translationRequiredStatusIds}
-              selectedLanguageIds={filterState.translationLanguageIds}
-              onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
-              onLanguageIdsChange={handleTranslationLanguageIdsChange}
-            />
-            <LeadsFilter
-              filterState={filterState}
-              onFilterStateChange={onFilterStateChange}
-              ministryOptions={ministryOptions}
-              organizationOptions={organizationOptions}
-              commsContactOptions={commsContactOptions}
-              eventPlannerOptions={eventPlannerOptions}
-            />
-          </div>
-          <div
-            className="from-background pointer-events-none absolute top-0 right-0 bottom-0 w-12 bg-linear-to-l to-transparent"
-            aria-hidden
-          />
-        </div>
-        {anyActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="animate-in fade-in h-9 shrink-0 duration-200"
-            onClick={handleClearAllFilters}
-            aria-label="Clear all filters"
-          >
-            Clear all filters
-          </Button>
-        )}
+      <div className="flex max-w-4xl min-w-0 flex-1 items-center">
+        <ResponsiveFilterRow
+          overflowTriggerLabel="All filters"
+          overflowTriggerClassName="h-10"
+          reservedWidthForTrailing={120}
+          trailingContent={
+            anyActive ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="flex h-10 shrink-0 items-center gap-1"
+                onClick={handleClearAllFilters}
+                aria-label="Clear all filters"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear filters
+              </Button>
+            ) : undefined
+          }
+        >
+          {filterSlots}
+        </ResponsiveFilterRow>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] flex-1">
