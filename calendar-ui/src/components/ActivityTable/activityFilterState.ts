@@ -31,7 +31,15 @@ export interface ActivityFilterState {
   lookAheadStatusValues: string[];
   /** Look Ahead section values (e.g. 'events', 'issues'). */
   lookAheadSectionValues: string[];
+  /** Date section confirmation: any (no filter), confirmed, or not_confirmed. */
+  dateConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
+  /** Time section confirmation: any (no filter), confirmed, or not_confirmed. */
+  timeConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
+  /** Selected tag IDs (multi-select). */
+  tagIds: number[];
 }
+
+export type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
 
 export const DEFAULT_PITCH_DATE_RANGE: DateRangeValue = {
   startDate: '',
@@ -53,4 +61,7 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   pitchDateFilter: { kind: 'any' },
   lookAheadStatusValues: [],
   lookAheadSectionValues: [],
+  dateConfirmedFilter: 'any',
+  timeConfirmedFilter: 'any',
+  tagIds: [],
 };

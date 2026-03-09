@@ -289,6 +289,92 @@ describe('filterActivityRowsByFilters', () => {
     });
     expect(result.map((r) => r.id)).toEqual([1]);
   });
+
+  it('filters by date confirmed only', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'unknown' }),
+      makeRow({ id: 2, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'confirmed',
+      timeConfirmedFilter: 'any',
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by time not_confirmed only', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'Confirmed', timeStatus: 'Not confirmed' }),
+      makeRow({ id: 3, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'any',
+      timeConfirmedFilter: 'not_confirmed',
+    });
+    expect(result.map((r) => r.id)).toEqual([2, 3]);
+  });
+
+  it('filters by both date and time confirmed (AND)', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'confirmed', timeStatus: 'Not confirmed' }),
+      makeRow({ id: 3, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'confirmed',
+      timeConfirmedFilter: 'confirmed',
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('does not filter by confirmation when both are any', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'any',
+      timeConfirmedFilter: 'any',
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by tagIds (row must have at least one matching tag)', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        tags: [
+          { id: 10, text: 'env' },
+          { id: 20, text: 'health' },
+        ],
+      }),
+      makeRow({ id: 2, tags: [{ id: 20, text: 'health' }] }),
+      makeRow({ id: 3, tags: [{ id: 30, text: 'other' }] }),
+      makeRow({ id: 4, tags: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      tagIds: [20, 40],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('does not filter by tags when tagIds is empty', () => {
+    const rows = [
+      makeRow({ id: 1, tags: [{ id: 10, text: 'a' }] }),
+      makeRow({ id: 2, tags: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      tagIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
 });
 
 describe('buildOptimisticActivity', () => {

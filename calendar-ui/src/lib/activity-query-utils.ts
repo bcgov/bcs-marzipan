@@ -5,6 +5,7 @@ import type {
 } from '@corpcal/shared/schemas';
 import type { ActivityFilterState } from '@/components/ActivityTable/activityFilterState';
 import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
+import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
 
 /**
  * Client-side keyword filter for activity table rows.
@@ -155,6 +156,28 @@ export function filterActivityRowsByFilters(
       const section = row.lookAheadSection ?? null;
       return section !== null && sectionSet.has(section);
     });
+  }
+
+  const isStatusConfirmed = (s: string) =>
+    CONFIRMED_STATUS_NAMES.includes((s ?? '').trim().toLowerCase());
+  if (filterState.dateConfirmedFilter !== 'any') {
+    if (filterState.dateConfirmedFilter === 'confirmed') {
+      result = result.filter((row) => isStatusConfirmed(row.dateStatus));
+    } else {
+      result = result.filter((row) => !isStatusConfirmed(row.dateStatus));
+    }
+  }
+  if (filterState.timeConfirmedFilter !== 'any') {
+    if (filterState.timeConfirmedFilter === 'confirmed') {
+      result = result.filter((row) => isStatusConfirmed(row.timeStatus));
+    } else {
+      result = result.filter((row) => !isStatusConfirmed(row.timeStatus));
+    }
+  }
+
+  if (filterState.tagIds.length > 0) {
+    const tagIdSet = new Set(filterState.tagIds);
+    result = result.filter((row) => row.tags.some((t) => tagIdSet.has(t.id)));
   }
 
   return result;

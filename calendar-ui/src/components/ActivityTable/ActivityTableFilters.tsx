@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
+import { ConfirmedFilter } from './ConfirmedFilter';
 import { LookAheadFilter } from './LookAheadFilter';
 import { PitchFilter } from './PitchFilter';
 import { ScheduledDateFilter } from './ScheduledDateFilter';
 import { isDateRangeActive } from './ScheduledDateRangeFields';
+import { TagsFilter, type TagFilterOption } from './TagsFilter';
 
 export interface ActivityTableFiltersProps {
   filterState: ActivityFilterState;
@@ -29,6 +31,7 @@ export interface ActivityTableFiltersProps {
   categoryOptions: { value: string; label: string }[];
   pitchRequiredStatusOptions: { value: string; label: string }[];
   statusOptions: { value: string; label: string }[];
+  tagOptions: TagFilterOption[];
 }
 
 function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
@@ -40,6 +43,9 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     pitchDateFilter,
     lookAheadStatusValues,
     lookAheadSectionValues,
+    dateConfirmedFilter,
+    timeConfirmedFilter,
+    tagIds,
   } = filterState;
   const pitchDateRangeActive =
     pitchDateFilter.kind === 'scheduled' &&
@@ -58,7 +64,10 @@ function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
     categoryNames.length > 0 ||
     activityStatusIds.length > 0 ||
     pitchActive ||
-    lookAheadActive
+    lookAheadActive ||
+    dateConfirmedFilter !== 'any' ||
+    timeConfirmedFilter !== 'any' ||
+    tagIds.length > 0
   );
 }
 
@@ -76,6 +85,7 @@ export function ActivityTableFilters({
   categoryOptions,
   pitchRequiredStatusOptions,
   statusOptions,
+  tagOptions,
 }: ActivityTableFiltersProps) {
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
@@ -128,8 +138,21 @@ export function ActivityTableFilters({
       pitchDateFilter: { kind: 'any' },
       lookAheadStatusValues: [],
       lookAheadSectionValues: [],
+      dateConfirmedFilter: 'any',
+      timeConfirmedFilter: 'any',
+      tagIds: [],
     });
   }, [onFilterStateChange]);
+
+  const handleTagIdsChange = useCallback(
+    (tagIds: number[]) => {
+      onFilterStateChange({
+        ...filterState,
+        tagIds,
+      });
+    },
+    [filterState, onFilterStateChange]
+  );
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
@@ -138,7 +161,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-wrap items-center justify-between gap-4"
       role="search"
-      aria-label="Filter activities by date, category, pitch, look ahead, status, and keyword"
+      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, and keyword"
     >
       <div className="flex flex-wrap items-center gap-2">
         <ScheduledDateFilter
@@ -160,11 +183,20 @@ export function ActivityTableFilters({
           filterState={filterState}
           onFilterStateChange={onFilterStateChange}
         />
+        <ConfirmedFilter
+          filterState={filterState}
+          onFilterStateChange={onFilterStateChange}
+        />
         <FilterCheckboxDropdown
           label="Status"
           options={statusOptions}
           selectedValues={statusSelectedValues}
           onChange={handleStatusChange}
+        />
+        <TagsFilter
+          tagOptions={tagOptions}
+          selectedTagIds={filterState.tagIds}
+          onTagIdsChange={handleTagIdsChange}
         />
         {anyActive && (
           <Button

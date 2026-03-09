@@ -66,6 +66,7 @@ import {
   useActivityStatuses,
   useCategories,
   usePitchRequiredStatuses,
+  useTags,
   useUsers,
 } from '@/hooks/useLookups';
 import {
@@ -627,6 +628,7 @@ export function ActivityTable({
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
+  const { data: tagsForFilter = [] } = useTags();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -663,6 +665,15 @@ export function ActivityTable({
         label: s.displayName,
       })),
     [pitchRequiredStatusesForFilter]
+  );
+
+  const tagOptions = useMemo(
+    () =>
+      tagsForFilter.map((t) => ({
+        value: String(t.id),
+        label: t.displayName ?? t.label ?? String(t.id),
+      })),
+    [tagsForFilter]
   );
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
@@ -1062,6 +1073,7 @@ export function ActivityTable({
       categoryOptions={categoryOptions}
       pitchRequiredStatusOptions={pitchRequiredStatusOptions}
       statusOptions={statusOptions}
+      tagOptions={tagOptions}
     />
   );
 

@@ -28,6 +28,9 @@ const URL_PARAM_PITCH_NO_START = 'pitchNoStart';
 const URL_PARAM_PITCH_NO_END = 'pitchNoEnd';
 const URL_PARAM_LOOK_AHEAD_STATUS = 'lookAheadStatus';
 const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
+const URL_PARAM_DATE_CONFIRMED = 'dateConfirmed';
+const URL_PARAM_TIME_CONFIRMED = 'timeConfirmed';
+const URL_PARAM_TAG = 'tag';
 
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 const SEARCH_SYNC_DEBOUNCE_MS = 400;
@@ -169,6 +172,26 @@ function parseFromSearchParams(
           .filter(Boolean)
       : [];
 
+  const dateConfirmedParam = searchParams.get(URL_PARAM_DATE_CONFIRMED)?.trim();
+  const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
+    dateConfirmedParam === 'confirmed' || dateConfirmedParam === 'not_confirmed'
+      ? dateConfirmedParam
+      : 'any';
+  const timeConfirmedParam = searchParams.get(URL_PARAM_TIME_CONFIRMED)?.trim();
+  const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
+    timeConfirmedParam === 'confirmed' || timeConfirmedParam === 'not_confirmed'
+      ? timeConfirmedParam
+      : 'any';
+
+  const tagParam = searchParams.get(URL_PARAM_TAG);
+  const tagIds =
+    typeof tagParam === 'string' && tagParam.trim()
+      ? tagParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
   const filterState: ActivityFilterState = {
     dateRange: {
       startDate: dateFrom,
@@ -182,6 +205,9 @@ function parseFromSearchParams(
     pitchDateFilter,
     lookAheadStatusValues,
     lookAheadSectionValues,
+    dateConfirmedFilter,
+    timeConfirmedFilter,
+    tagIds,
   };
 
   return {
@@ -293,6 +319,23 @@ function parseFromStorage(
               (s): s is string => typeof s === 'string'
             )
           : [];
+        const dateConfirmedFilterValue = rawFilter.dateConfirmedFilter;
+        const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
+          dateConfirmedFilterValue === 'confirmed' ||
+          dateConfirmedFilterValue === 'not_confirmed'
+            ? dateConfirmedFilterValue
+            : 'any';
+        const timeConfirmedFilterValue = rawFilter.timeConfirmedFilter;
+        const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
+          timeConfirmedFilterValue === 'confirmed' ||
+          timeConfirmedFilterValue === 'not_confirmed'
+            ? timeConfirmedFilterValue
+            : 'any';
+        const tagIds = Array.isArray(rawFilter.tagIds)
+          ? (rawFilter.tagIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
         filterState = {
           dateRange: {
             startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
@@ -314,6 +357,9 @@ function parseFromStorage(
           pitchDateFilter,
           lookAheadStatusValues,
           lookAheadSectionValues,
+          dateConfirmedFilter,
+          timeConfirmedFilter,
+          tagIds,
         };
       }
     }
@@ -353,7 +399,10 @@ function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_PITCH_NO_START) ||
     searchParams.has(URL_PARAM_PITCH_NO_END) ||
     searchParams.has(URL_PARAM_LOOK_AHEAD_STATUS) ||
-    searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION)
+    searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION) ||
+    searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
+    searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
+    searchParams.has(URL_PARAM_TAG)
   );
 }
 
@@ -394,6 +443,11 @@ function preferencesToParams(
     [URL_PARAM_PITCH_DATE_KIND]: f.pitchDateFilter.kind,
     [URL_PARAM_LOOK_AHEAD_STATUS]: f.lookAheadStatusValues.join(','),
     [URL_PARAM_LOOK_AHEAD_SECTION]: f.lookAheadSectionValues.join(','),
+    [URL_PARAM_DATE_CONFIRMED]:
+      f.dateConfirmedFilter === 'any' ? '' : f.dateConfirmedFilter,
+    [URL_PARAM_TIME_CONFIRMED]:
+      f.timeConfirmedFilter === 'any' ? '' : f.timeConfirmedFilter,
+    [URL_PARAM_TAG]: f.tagIds.join(','),
   };
   if (f.pitchDateFilter.kind === 'scheduled') {
     const dr = f.pitchDateFilter.dateRange;
