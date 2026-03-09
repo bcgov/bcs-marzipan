@@ -130,6 +130,28 @@ describe('filterActivitiesQuerySchema', () => {
     ).toThrow();
   });
 
+  it('parses commsContactLeadUserId and sharedWithTeamId from query strings', () => {
+    expect(
+      filterActivitiesQuerySchema.parse({ commsContactLeadUserId: '7' })
+        .commsContactLeadUserId
+    ).toBe(7);
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamId: '12' })
+        .sharedWithTeamId
+    ).toBe(12);
+  });
+
+  it('parses sharedWithTeamIds from comma-separated string', () => {
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '1,2,3' })
+        .sharedWithTeamIds
+    ).toEqual([1, 2, 3]);
+    expect(
+      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '5' })
+        .sharedWithTeamIds
+    ).toEqual([5]);
+  });
+
   it('rejects non-integer activityStatusId', () => {
     expect(() =>
       filterActivitiesQuerySchema.parse({ activityStatusId: 'x' })
@@ -149,20 +171,20 @@ describe('filterActivitiesQuerySchema', () => {
     expect(filterActivitiesQuerySchema.parse({ limit: '100' }).limit).toBe(100);
   });
 
-  it('omits excludeCompleted and includeDeleted when not sent', () => {
+  it('omits includeCompleted and includeDeleted when not sent', () => {
     const result = filterActivitiesQuerySchema.parse({});
-    expect(result.excludeCompleted).toBeUndefined();
+    expect(result.includeCompleted).toBeUndefined();
     expect(result.includeDeleted).toBeUndefined();
   });
 
-  it('parses excludeCompleted and includeDeleted from query strings', () => {
+  it('parses includeCompleted and includeDeleted from query strings', () => {
     expect(
-      filterActivitiesQuerySchema.parse({ excludeCompleted: 'true' })
-        .excludeCompleted
+      filterActivitiesQuerySchema.parse({ includeCompleted: 'true' })
+        .includeCompleted
     ).toBe(true);
     expect(
-      filterActivitiesQuerySchema.parse({ excludeCompleted: 'false' })
-        .excludeCompleted
+      filterActivitiesQuerySchema.parse({ includeCompleted: 'false' })
+        .includeCompleted
     ).toBe(false);
     expect(
       filterActivitiesQuerySchema.parse({ includeDeleted: 'true' })

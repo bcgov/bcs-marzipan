@@ -105,7 +105,14 @@ export function SortDropdown({
             : (col.defaultDirection ?? 'asc');
           const SortIcon = direction === 'asc' ? ArrowUp : ArrowDown;
           return (
-            <DropdownMenuItem key={col.id} onSelect={() => handleSelect(col)}>
+            <DropdownMenuItem
+              key={col.id}
+              onSelect={(e) => {
+                // Keep sort menu open so user can toggle asc/desc without auto-closing
+                e.preventDefault();
+                handleSelect(col);
+              }}
+            >
               {isActive ? (
                 <SortIcon className="h-4 w-4 shrink-0" aria-hidden />
               ) : (

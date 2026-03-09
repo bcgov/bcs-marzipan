@@ -713,7 +713,7 @@ export class ActivitiesService {
           conditions.push(ne(activities.activityStatusId, deletedStatusId));
         }
         if (
-          filters.excludeCompleted === true &&
+          filters.includeCompleted !== true &&
           completedStatusId !== undefined
         ) {
           conditions.push(ne(activities.activityStatusId, completedStatusId));
@@ -761,7 +761,7 @@ export class ActivitiesService {
           );
         }
         if (
-          filters.excludeCompleted === true &&
+          filters.includeCompleted !== true &&
           completedStatusId !== undefined
         ) {
           statusConditions.push(
@@ -806,6 +806,55 @@ export class ActivitiesService {
       activityResults = activityResults.filter((a) =>
         activityIdsWithCity.has(a.id)
       );
+    }
+
+    // Restrict to activities where this user is the comms contact lead
+    if (filters?.commsContactLeadUserId !== undefined) {
+      const commsLeadRows = await this.databaseService.db
+        .select({ activityId: activityCommsContacts.activityId })
+        .from(activityCommsContacts)
+        .where(
+          and(
+            eq(activityCommsContacts.userId, filters.commsContactLeadUserId),
+            eq(activityCommsContacts.isLead, true),
+            eq(activityCommsContacts.isActive, true)
+          )
+        );
+      const commsLeadIds = new Set(commsLeadRows.map((r) => r.activityId));
+      activityResults = activityResults.filter((a) => commsLeadIds.has(a.id));
+    }
+
+    // Restrict to activities shared with this team
+    if (filters?.sharedWithTeamId !== undefined) {
+      const sharedRows = await this.databaseService.db
+        .select({ activityId: activitySharedWithTeams.activityId })
+        .from(activitySharedWithTeams)
+        .where(
+          and(
+            eq(activitySharedWithTeams.teamId, filters.sharedWithTeamId),
+            eq(activitySharedWithTeams.isActive, true)
+          )
+        );
+      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
+      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
+    }
+
+    // Restrict to activities shared with any of these teams
+    if (
+      filters?.sharedWithTeamIds !== undefined &&
+      filters.sharedWithTeamIds.length > 0
+    ) {
+      const sharedRows = await this.databaseService.db
+        .select({ activityId: activitySharedWithTeams.activityId })
+        .from(activitySharedWithTeams)
+        .where(
+          and(
+            inArray(activitySharedWithTeams.teamId, filters.sharedWithTeamIds),
+            eq(activitySharedWithTeams.isActive, true)
+          )
+        );
+      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
+      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
     }
 
     // Team-based data scoping: when bypass is false, restrict to activities visible by visibility rules

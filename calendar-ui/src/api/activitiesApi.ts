@@ -21,10 +21,17 @@ const logger = createLogger('ActivitiesAPI');
 export async function fetchActivities(
   filters?: Partial<FilterActivitiesQueryParams>
 ): Promise<ActivityResponse[]> {
+  const params =
+    filters?.sharedWithTeamIds != null && filters.sharedWithTeamIds.length > 0
+      ? {
+          ...filters,
+          sharedWithTeamIds: filters.sharedWithTeamIds.join(','),
+        }
+      : filters;
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',
     {
-      params: filters,
+      params,
     }
   );
   // Handle different response structures

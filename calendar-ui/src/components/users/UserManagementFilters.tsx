@@ -1,5 +1,5 @@
-import { Check, ChevronDown, Search, X } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Check, Search, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   SortDropdown,
@@ -22,7 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
+import { FilterTrigger } from '@/components/users/FilterTrigger';
 import { cn } from '@/lib/utils';
+
+const KEYWORD_DEBOUNCE_MS = 400;
 
 const USER_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'name', label: 'Name', defaultDirection: 'asc' },
@@ -105,24 +108,6 @@ export function UserManagementFilters({
     [teamOptions, teamSelectedValues]
   );
   const hasTeamSelection = teamIds.length > 0;
-  const handleTeamClear = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onTeamIdsChange([]);
-    },
-    [onTeamIdsChange]
-  );
-  const handleTeamClearKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        e.stopPropagation();
-        onTeamIdsChange([]);
-      }
-    },
-    [onTeamIdsChange]
-  );
   const handleTeamSelectItem = useCallback(
     (value: string) => {
       handleTeamSelect(value);
@@ -147,6 +132,43 @@ export function UserManagementFilters({
     onRoleIdsChange([]);
   }, [onTeamIdsChange, onRoleIdsChange]);
 
+  const [searchInput, setSearchInput] = useState(keyword);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setSearchInput(keyword);
+  }, [keyword]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchInput(value);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
+        onKeywordChange(value);
+      }, KEYWORD_DEBOUNCE_MS);
+    },
+    [onKeywordChange]
+  );
+
+  const handleClearSearch = useCallback(() => {
+    setSearchInput('');
+    onKeywordChange('');
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  }, [onKeywordChange]);
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div
       className={className}
@@ -157,29 +179,13 @@ export function UserManagementFilters({
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant={hasTeamSelection ? 'default' : 'outline'}
-                size="sm"
-                className="min-w-[100px] justify-between gap-1 font-normal"
-              >
-                <span className="truncate">
-                  {hasTeamSelection ? `Team (${teamIds.length})` : 'Team'}
-                </span>
-                {hasTeamSelection ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={handleTeamClear}
-                    onKeyDown={handleTeamClearKeyDown}
-                    className="ml-1 inline-flex cursor-pointer rounded p-0.5 hover:bg-white/20"
-                    aria-label="Clear Team filter"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </span>
-                ) : (
-                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-                )}
-              </Button>
+              <FilterTrigger
+                label="Team"
+                active={hasTeamSelection}
+                count={teamIds.length}
+                onClear={() => onTeamIdsChange([])}
+                clearAriaLabel="Clear Team filter"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-72 p-0" align="start">
               <Command className="rounded-md border-0" shouldFilter={false}>
@@ -261,13 +267,23 @@ export function UserManagementFilters({
           <div className="relative max-w-md min-w-[240px] flex-1">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
             <Input
-              type="search"
+              type="text"
               placeholder="Search by name, email, username..."
-              value={keyword}
-              onChange={(e) => onKeywordChange(e.target.value)}
-              className="pl-8"
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pr-8 pl-8"
               aria-label="Keyword search"
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <SortDropdown
             columns={USER_SORT_COLUMNS}

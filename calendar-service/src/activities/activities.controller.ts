@@ -145,10 +145,13 @@ export class ActivitiesController {
       query.activityStatusId !== undefined ||
       query.leadMinistryId !== undefined ||
       query.leadTeamId !== undefined ||
+      query.commsContactLeadUserId !== undefined ||
+      query.sharedWithTeamId !== undefined ||
+      query.sharedWithTeamIds !== undefined ||
       query.lookAheadSection !== undefined ||
       query.city !== undefined ||
       query.isIssue !== undefined ||
-      query.excludeCompleted !== undefined ||
+      query.includeCompleted !== undefined ||
       query.includeDeleted !== undefined;
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters, ctx);

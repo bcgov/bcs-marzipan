@@ -45,6 +45,11 @@ export interface ActivityTableRow {
   commsLeadName: string | null;
   commsContactsCount: number;
   eventLead: string | null;
+  /** IDs for client-side lead filtering */
+  leadMinistryId: number | null;
+  leadOrgId: number | null;
+  commsContactLeadUserId: number | null;
+  eventPlannerLeadId: number | null;
 
   // Materials column
   translationsRequired: string[];
@@ -53,6 +58,7 @@ export interface ActivityTableRow {
 
   // Status column
   activityStatus: string;
+  activityStatusId: number;
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
@@ -127,6 +133,10 @@ export function mapActivityResponseToTableRow(
     commsLeadName: commsLead?.name ?? null,
     commsContactsCount: activity.commsContacts.length,
     eventLead: activity.eventLead,
+    leadMinistryId: activity.leadMinistryId ?? null,
+    leadOrgId: activity.leadOrgId ?? null,
+    commsContactLeadUserId: commsLead?.userId ?? null,
+    eventPlannerLeadId: activity.eventPlannerLeadId ?? null,
 
     // Materials
     translationsRequired: activity.translationsRequired,
@@ -135,6 +145,7 @@ export function mapActivityResponseToTableRow(
 
     // Status
     activityStatus: activity.activityStatus,
+    activityStatusId: activity.activityStatusId ?? 0,
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,

@@ -12,8 +12,9 @@ export const tableContainer =
   'flex min-w-0 w-full max-w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white';
 
 /** Inner scrollable div (assign ref for scrollTo). Bounded so horizontal scroll is inside this div. */
+/* [overflow-y:scroll] can be removed if causing layout shift */
 export const tableScrollWrapper =
-  'min-h-0 min-w-0 w-full max-w-full flex-1 overflow-auto';
+  'min-h-0 min-w-0 w-full max-w-full flex-1 overflow-auto [overflow-y:scroll]';
 
 /** Base table element; add min-w-[Npx] per table if needed */
 export const tableTable = 'w-full table-fixed border-collapse';

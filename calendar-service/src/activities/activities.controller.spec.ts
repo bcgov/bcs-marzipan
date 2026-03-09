@@ -124,7 +124,8 @@ describe('ActivitiesController', () => {
         {
           page: 1,
           limit: 10,
-          excludeCompleted: undefined,
+          sharedWithTeamIds: undefined,
+          includeCompleted: undefined,
           includeDeleted: undefined,
         },
         {} as Parameters<ActivitiesController['findAll']>[1]
@@ -143,7 +144,8 @@ describe('ActivitiesController', () => {
         page: 1,
         limit: 10,
         title: 'Test',
-        excludeCompleted: undefined,
+        sharedWithTeamIds: undefined,
+        includeCompleted: undefined,
         includeDeleted: undefined,
       };
       mockActivitiesService.findAll.mockResolvedValue(activities);

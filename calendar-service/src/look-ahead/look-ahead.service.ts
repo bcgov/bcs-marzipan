@@ -56,7 +56,8 @@ export class LookAheadService {
         lookAheadSection: sectionId,
         page: 1,
         limit: 500,
-        excludeCompleted: undefined,
+        sharedWithTeamIds: undefined,
+        includeCompleted: undefined,
         includeDeleted: undefined,
       };
       if (options?.startDate) {
