@@ -13,20 +13,67 @@ export interface FilterCheckboxOption {
   label: string;
 }
 
-interface FilterCheckboxDropdownProps {
-  label: string;
+export interface FilterCheckboxDropdownPanelProps {
   options: FilterCheckboxOption[];
   selectedValues: string[];
   onChange: (values: string[]) => void;
-  disabled?: boolean;
-  className?: string;
-  /** Message when options list is empty. Default "No results" for consistency with other filter dropdowns. */
+  /** Message when options list is empty. Default "No results". */
   emptyMessage?: string;
 }
 
 /**
- * Multi-select filter dropdown with checkboxes.
- * States: unselected (gray button + chevron), open (dropdown with checkboxes), active (primary button + count + clear X).
+ * Panel content (uses menu items; must be inside DropdownMenuContent or DropdownMenuSubContent).
+ * Exported for use in ResponsiveFilterRow inline and overflow.
+ */
+export function FilterCheckboxDropdownPanel({
+  options,
+  selectedValues,
+  onChange,
+  emptyMessage = 'No results',
+}: FilterCheckboxDropdownPanelProps) {
+  const handleToggle = useCallback(
+    (value: string) => {
+      if (selectedValues.includes(value)) {
+        onChange(selectedValues.filter((v) => v !== value));
+      } else {
+        onChange([...selectedValues, value]);
+      }
+    },
+    [onChange, selectedValues]
+  );
+
+  if (options.length === 0) {
+    return (
+      <p className="text-muted-foreground py-2 text-center text-sm">
+        {emptyMessage}
+      </p>
+    );
+  }
+  return (
+    <>
+      {options.map((opt) => (
+        <DropdownMenuCheckboxItem
+          key={opt.value}
+          checked={selectedValues.includes(opt.value)}
+          onCheckedChange={() => handleToggle(opt.value)}
+          onSelect={(e) => e.preventDefault()}
+        >
+          <span className="truncate">{opt.label}</span>
+        </DropdownMenuCheckboxItem>
+      ))}
+    </>
+  );
+}
+
+interface FilterCheckboxDropdownProps extends FilterCheckboxDropdownPanelProps {
+  label: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+/**
+ * Full filter: trigger + dropdown. For composition by ResponsiveFilterRow use
+ * FilterCheckboxDropdownPanel with a separate trigger.
  */
 export function FilterCheckboxDropdown({
   label,
@@ -38,17 +85,6 @@ export function FilterCheckboxDropdown({
   emptyMessage = 'No results',
 }: FilterCheckboxDropdownProps) {
   const hasSelection = selectedValues.length > 0;
-
-  const handleToggle = useCallback(
-    (value: string) => {
-      if (selectedValues.includes(value)) {
-        onChange(selectedValues.filter((v) => v !== value));
-      } else {
-        onChange([...selectedValues, value]);
-      }
-    },
-    [onChange, selectedValues]
-  );
 
   return (
     <DropdownMenu>
@@ -64,22 +100,12 @@ export function FilterCheckboxDropdown({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-64 overflow-auto" align="start">
-        {options.length === 0 ? (
-          <p className="text-muted-foreground py-2 text-center text-sm">
-            {emptyMessage}
-          </p>
-        ) : (
-          options.map((opt) => (
-            <DropdownMenuCheckboxItem
-              key={opt.value}
-              checked={selectedValues.includes(opt.value)}
-              onCheckedChange={() => handleToggle(opt.value)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <span className="truncate">{opt.label}</span>
-            </DropdownMenuCheckboxItem>
-          ))
-        )}
+        <FilterCheckboxDropdownPanel
+          options={options}
+          selectedValues={selectedValues}
+          onChange={onChange}
+          emptyMessage={emptyMessage}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

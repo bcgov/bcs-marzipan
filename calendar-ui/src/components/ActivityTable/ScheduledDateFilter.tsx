@@ -15,10 +15,57 @@ import {
 
 export type { DateRangeValue } from './ScheduledDateRangeFields';
 
-interface ScheduledDateFilterProps {
+const EMPTY_DATE_RANGE: DateRangeValue = {
+  startDate: '',
+  endDate: '',
+  noStartDate: false,
+  noEndDate: false,
+};
+
+export interface ScheduledDateFilterPanelProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
 }
+
+/**
+ * Panel content only (no trigger). For use in ResponsiveFilterRow inline and overflow.
+ */
+export function ScheduledDateFilterPanel({
+  value,
+  onChange,
+}: ScheduledDateFilterPanelProps) {
+  const [draft, setDraft] = useState<DateRangeValue>(() => value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const handleDraftChange = useCallback(
+    (next: DateRangeValue) => {
+      setDraft(next);
+      onChange(next);
+    },
+    [onChange]
+  );
+
+  const handleAfterClear = useCallback(() => {
+    onChange(EMPTY_DATE_RANGE);
+    setDraft(EMPTY_DATE_RANGE);
+  }, [onChange]);
+
+  return (
+    <div className="p-3">
+      <ScheduledDateRangeFields
+        value={draft}
+        onChange={handleDraftChange}
+        clearButtonLabel="Clear dates"
+        onAfterClear={handleAfterClear}
+      />
+    </div>
+  );
+}
+
+type ScheduledDateFilterProps = ScheduledDateFilterPanelProps;
 
 export function ScheduledDateFilter({
   value,
@@ -34,12 +81,7 @@ export function ScheduledDateFilter({
   }, [open, value]);
 
   const handleClearTrigger = useCallback(() => {
-    onChange({
-      startDate: '',
-      endDate: '',
-      noStartDate: false,
-      noEndDate: false,
-    });
+    onChange(EMPTY_DATE_RANGE);
     setOpen(false);
   }, [onChange]);
 
@@ -56,26 +98,6 @@ export function ScheduledDateFilter({
     [value, draft, onChange]
   );
 
-  const handleDraftChange = useCallback(
-    (next: DateRangeValue) => {
-      setDraft(next);
-      onChange(next);
-    },
-    [onChange]
-  );
-
-  const handleAfterClear = useCallback(() => {
-    const empty = {
-      startDate: '',
-      endDate: '',
-      noStartDate: false,
-      noEndDate: false,
-    };
-    onChange(empty);
-    setDraft(empty);
-    setOpen(false);
-  }, [onChange]);
-
   return (
     <Popover open={open} onOpenChange={handleMainOpenChange} modal>
       <PopoverTrigger asChild>
@@ -88,14 +110,13 @@ export function ScheduledDateFilter({
         />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <div className="p-3">
-          <ScheduledDateRangeFields
-            value={draft}
-            onChange={handleDraftChange}
-            clearButtonLabel="Clear dates"
-            onAfterClear={handleAfterClear}
-          />
-        </div>
+        <ScheduledDateFilterPanel
+          value={draft}
+          onChange={(next) => {
+            setDraft(next);
+            onChange(next);
+          }}
+        />
       </PopoverContent>
     </Popover>
   );

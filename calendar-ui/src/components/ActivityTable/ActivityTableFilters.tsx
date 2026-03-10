@@ -11,18 +11,21 @@ import {
 } from '@/components/Table/SortDropdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
+import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
-import { ConfirmedFilter } from './ConfirmedFilter';
-import { LeadsFilter, type LeadFilterOption } from './LeadsFilter';
-import { LookAheadFilter } from './LookAheadFilter';
-import { PitchFilter } from './PitchFilter';
-import { ScheduledDateFilter } from './ScheduledDateFilter';
-import { isDateRangeActive } from './ScheduledDateRangeFields';
-import { TagsFilter, type TagFilterOption } from './TagsFilter';
+import { ConfirmedFilterPanel } from './ConfirmedFilter';
 import {
-  TranslationsFilter,
+  LeadsFilterDropdownContent,
+  type LeadFilterOption,
+} from './LeadsFilter';
+import { LookAheadFilterPanel } from './LookAheadFilter';
+import { PitchFilterPanel } from './PitchFilter';
+import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
+import { isDateRangeActive } from './ScheduledDateRangeFields';
+import { TagsFilterPanel, type TagFilterOption } from './TagsFilter';
+import {
+  TranslationsFilterDropdownContent,
   type TranslationFilterOption,
   type TranslationStatusFilterOption,
 } from './TranslationsFilter';
@@ -222,152 +225,174 @@ export function ActivityTableFilters({
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
-  const slotActiveCounts = useMemo(() => {
-    const {
-      dateRange,
-      categoryNames,
-      activityStatusIds,
-      pitchRequiredStatusNames,
-      pitchDateFilter,
-      lookAheadStatusValues,
-      lookAheadSectionValues,
-      dateConfirmedFilter,
-      timeConfirmedFilter,
-      tagIds,
-      leadMinistryIds,
-      leadOrgIds,
-      commsContactLeadUserIds,
-      eventPlannerLeadIds,
-      translationRequiredStatusIds,
-      translationLanguageIds,
-    } = filterState;
-    const pitchDateRangeActive =
-      pitchDateFilter.kind === 'scheduled' &&
-      isDateRangeActive(pitchDateFilter.dateRange);
-    const pitchActive =
-      pitchRequiredStatusNames.length > 0 ||
-      pitchDateFilter.kind !== 'any' ||
-      pitchDateRangeActive;
-    const lookAheadActive =
-      lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
-    const leadsActive =
-      leadMinistryIds.length > 0 ||
-      leadOrgIds.length > 0 ||
-      commsContactLeadUserIds.length > 0 ||
-      eventPlannerLeadIds.length > 0;
-    const translationsActive =
-      translationRequiredStatusIds.length > 0 ||
-      translationLanguageIds.length > 0;
-    const dateActive =
-      dateRange.startDate !== '' ||
-      dateRange.endDate !== '' ||
-      dateRange.noStartDate ||
-      dateRange.noEndDate;
-    const confirmedActive =
-      dateConfirmedFilter !== 'any' || timeConfirmedFilter !== 'any';
-    return [
-      dateActive ? 1 : 0,
-      categoryNames.length,
-      pitchActive ? 1 : 0,
-      lookAheadActive ? 1 : 0,
-      confirmedActive ? 1 : 0,
-      activityStatusIds.length,
-      tagIds.length,
-      translationsActive
-        ? translationRequiredStatusIds.length + translationLanguageIds.length
-        : 0,
-      leadsActive
-        ? leadMinistryIds.length +
-          leadOrgIds.length +
-          commsContactLeadUserIds.length +
-          eventPlannerLeadIds.length
-        : 0,
-    ];
-  }, [filterState]);
+  const handleClearDate = useCallback(() => {
+    handleDateRangeChange({
+      startDate: '',
+      endDate: '',
+      noStartDate: false,
+      noEndDate: false,
+    });
+  }, [handleDateRangeChange]);
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
     () => [
       {
         key: 'date',
         label: 'Date',
-        content: (
-          <ScheduledDateFilter
+        panel: (
+          <ScheduledDateFilterPanel
             value={filterState.dateRange}
             onChange={handleDateRangeChange}
           />
         ),
+        triggerProps: {
+          active: isDateRangeActive(filterState.dateRange),
+          count: 1,
+          onClear: handleClearDate,
+          clearAriaLabel: 'Clear date filter',
+        },
+        wrapper: 'popover',
       },
       {
         key: 'category',
         label: 'Category',
-        content: (
-          <FilterCheckboxDropdown
-            label="Category"
+        panel: (
+          <FilterCheckboxDropdownPanel
             options={categoryOptions}
             selectedValues={categorySelectedValues}
             onChange={handleCategoryChange}
+            emptyMessage="No results"
           />
         ),
+        triggerProps: {
+          active: categorySelectedValues.length > 0,
+          count: categorySelectedValues.length,
+          onClear: () => handleCategoryChange([]),
+          clearAriaLabel: 'Clear Category filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'pitch',
         label: 'Pitch',
-        content: (
-          <PitchFilter
+        panel: (
+          <PitchFilterPanel
             filterState={filterState}
             onFilterStateChange={onFilterStateChange}
             pitchRequiredStatusOptions={pitchRequiredStatusOptions}
           />
         ),
+        triggerProps: {
+          active:
+            filterState.pitchRequiredStatusNames.length > 0 ||
+            filterState.pitchDateFilter.kind !== 'any',
+          count:
+            filterState.pitchRequiredStatusNames.length +
+            (filterState.pitchDateFilter.kind !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              pitchRequiredStatusNames: [],
+              pitchDateFilter: { kind: 'any' },
+            }),
+          clearAriaLabel: 'Clear Pitch filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'lookAhead',
         label: 'Look Ahead',
-        content: (
-          <LookAheadFilter
+        panel: (
+          <LookAheadFilterPanel
             filterState={filterState}
             onFilterStateChange={onFilterStateChange}
           />
         ),
+        triggerProps: {
+          active:
+            filterState.lookAheadStatusValues.length > 0 ||
+            filterState.lookAheadSectionValues.length > 0,
+          count:
+            filterState.lookAheadStatusValues.length +
+            filterState.lookAheadSectionValues.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              lookAheadStatusValues: [],
+              lookAheadSectionValues: [],
+            }),
+          clearAriaLabel: 'Clear Look Ahead filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'confirmed',
         label: 'Confirmed',
-        content: (
-          <ConfirmedFilter
+        panel: (
+          <ConfirmedFilterPanel
             filterState={filterState}
             onFilterStateChange={onFilterStateChange}
           />
         ),
+        triggerProps: {
+          active:
+            filterState.dateConfirmedFilter !== 'any' ||
+            filterState.timeConfirmedFilter !== 'any',
+          count:
+            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
+            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              dateConfirmedFilter: 'any',
+              timeConfirmedFilter: 'any',
+            }),
+          clearAriaLabel: 'Clear Confirmed filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'status',
         label: 'Status',
-        content: (
-          <FilterCheckboxDropdown
-            label="Status"
+        panel: (
+          <FilterCheckboxDropdownPanel
             options={statusOptions}
             selectedValues={statusSelectedValues}
             onChange={handleStatusChange}
+            emptyMessage="No results"
           />
         ),
+        triggerProps: {
+          active: statusSelectedValues.length > 0,
+          count: statusSelectedValues.length,
+          onClear: () => handleStatusChange([]),
+          clearAriaLabel: 'Clear Status filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'tags',
         label: 'Tags',
-        content: (
-          <TagsFilter
+        panel: (
+          <TagsFilterPanel
             tagOptions={tagOptions}
             selectedTagIds={filterState.tagIds}
             onTagIdsChange={handleTagIdsChange}
           />
         ),
+        triggerProps: {
+          active: filterState.tagIds.length > 0,
+          count: filterState.tagIds.length,
+          onClear: () => handleTagIdsChange([]),
+          clearAriaLabel: 'Clear Tags filter',
+        },
+        wrapper: 'popover',
       },
       {
         key: 'translations',
         label: 'Translations',
-        content: (
-          <TranslationsFilter
+        panel: (
+          <TranslationsFilterDropdownContent
             translationStatusOptions={translationStatusOptions}
             translationOptions={translationOptions}
             selectedStatusIds={filterState.translationRequiredStatusIds}
@@ -376,12 +401,26 @@ export function ActivityTableFilters({
             onLanguageIdsChange={handleTranslationLanguageIdsChange}
           />
         ),
+        triggerProps: {
+          active:
+            filterState.translationRequiredStatusIds.length > 0 ||
+            filterState.translationLanguageIds.length > 0,
+          count:
+            filterState.translationRequiredStatusIds.length +
+            filterState.translationLanguageIds.length,
+          onClear: () => {
+            handleTranslationRequiredStatusIdsChange([]);
+            handleTranslationLanguageIdsChange([]);
+          },
+          clearAriaLabel: 'Clear Translations filter',
+        },
+        wrapper: 'dropdown',
       },
       {
         key: 'leads',
         label: 'Leads',
-        content: (
-          <LeadsFilter
+        panel: (
+          <LeadsFilterDropdownContent
             filterState={filterState}
             onFilterStateChange={onFilterStateChange}
             ministryOptions={ministryOptions}
@@ -390,6 +429,28 @@ export function ActivityTableFilters({
             eventPlannerOptions={eventPlannerOptions}
           />
         ),
+        triggerProps: {
+          active:
+            filterState.leadMinistryIds.length > 0 ||
+            filterState.leadOrgIds.length > 0 ||
+            filterState.commsContactLeadUserIds.length > 0 ||
+            filterState.eventPlannerLeadIds.length > 0,
+          count:
+            filterState.leadMinistryIds.length +
+            filterState.leadOrgIds.length +
+            filterState.commsContactLeadUserIds.length +
+            filterState.eventPlannerLeadIds.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              leadMinistryIds: [],
+              leadOrgIds: [],
+              commsContactLeadUserIds: [],
+              eventPlannerLeadIds: [],
+            }),
+          clearAriaLabel: 'Clear Leads filter',
+        },
+        wrapper: 'dropdown',
       },
     ],
     [
@@ -399,6 +460,7 @@ export function ActivityTableFilters({
       categorySelectedValues,
       handleCategoryChange,
       handleDateRangeChange,
+      handleClearDate,
       handleStatusChange,
       handleTagIdsChange,
       handleTranslationRequiredStatusIdsChange,
@@ -425,7 +487,6 @@ export function ActivityTableFilters({
       <div className="flex min-w-0 flex-1 items-center">
         <ResponsiveFilterRow
           slots={filterSlots}
-          slotActiveCounts={slotActiveCounts}
           overflowTriggerClassName="h-10"
           reservedWidthForTrailing={120}
           trailingContent={

@@ -14,21 +14,23 @@ export interface TagFilterOption {
   label: string;
 }
 
-export interface TagsFilterProps {
+export interface TagsFilterPanelProps {
   tagOptions: TagFilterOption[];
   selectedTagIds: number[];
   onTagIdsChange: (tagIds: number[]) => void;
 }
 
-export function TagsFilter({
+export type TagsFilterProps = TagsFilterPanelProps;
+
+/**
+ * Panel content only (no trigger). For use in ResponsiveFilterRow inline and overflow.
+ */
+export function TagsFilterPanel({
   tagOptions,
   selectedTagIds,
   onTagIdsChange,
-}: TagsFilterProps) {
-  const [open, setOpen] = useState(false);
+}: TagsFilterPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const hasSelection = selectedTagIds.length > 0;
 
   const handleToggle = useCallback(
     (id: number) => {
@@ -41,23 +43,40 @@ export function TagsFilter({
     [selectedTagIds, onTagIdsChange]
   );
 
-  const handleClearFilters = useCallback(() => {
+  const handleClear = useCallback(() => {
     onTagIdsChange([]);
-    setOpen(false);
   }, [onTagIdsChange]);
 
+  return (
+    <FilterSearchableList
+      options={tagOptions}
+      selectedIds={selectedTagIds}
+      onToggle={handleToggle}
+      searchPlaceholder="Search tags..."
+      searchAriaLabel="Search tags"
+      emptyMessage="No results"
+      showClearButton
+      onClear={handleClear}
+      searchValue={searchTerm}
+      onSearchChange={setSearchTerm}
+    />
+  );
+}
+
+export function TagsFilter({
+  tagOptions,
+  selectedTagIds,
+  onTagIdsChange,
+}: TagsFilterProps) {
+  const [open, setOpen] = useState(false);
+
+  const hasSelection = selectedTagIds.length > 0;
   const handleClearTrigger = useCallback(() => {
     onTagIdsChange([]);
   }, [onTagIdsChange]);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) setSearchTerm('');
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <FilterTrigger
           label="Tags"
@@ -68,17 +87,10 @@ export function TagsFilter({
         />
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
-        <FilterSearchableList
-          options={tagOptions}
-          selectedIds={selectedTagIds}
-          onToggle={handleToggle}
-          searchPlaceholder="Search tags..."
-          searchAriaLabel="Search tags"
-          emptyMessage="No results"
-          showClearButton
-          onClear={handleClearFilters}
-          searchValue={searchTerm}
-          onSearchChange={setSearchTerm}
+        <TagsFilterPanel
+          tagOptions={tagOptions}
+          selectedTagIds={selectedTagIds}
+          onTagIdsChange={onTagIdsChange}
         />
       </PopoverContent>
     </Popover>
