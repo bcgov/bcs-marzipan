@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { useElementWidth } from '@/hooks/useElementWidth';
 import { cn } from '@/lib/utils';
 
 import { Badge, type BadgeProps } from './badge';
@@ -52,10 +53,10 @@ export function BadgeGroup({
   visibleCountOverride,
 }: BadgeGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const containerWidth = useElementWidth(containerRef);
   const prevContainerWidthRef = useRef(0);
   const prevContentSignatureRef = useRef<string>(null);
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
 
   const finalVisibleCount =
     visibleCountOverride != null
@@ -72,25 +73,6 @@ export function BadgeGroup({
     [items, finalVisibleCount]
   );
   const overflowCount = overflowItems.length;
-
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-
-    const updateWidth = () => {
-      setContainerWidth(node.clientWidth);
-    };
-
-    updateWidth();
-
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => {
-      updateWidth();
-    });
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, []);
 
   // Reset visible count only when content (length + keys) or line cap actually change, not on new array reference.
   const contentSignature = `${items.length}:${items.map((i) => i.key).join(',')}`;

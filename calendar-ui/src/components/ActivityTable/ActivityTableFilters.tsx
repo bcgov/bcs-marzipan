@@ -489,6 +489,7 @@ export function ActivityTableFilters({
           slots={filterSlots}
           overflowTriggerClassName="h-10"
           reservedWidthForTrailing={120}
+          onClearAll={handleClearAllFilters}
           trailingContent={
             anyActive ? (
               <Button

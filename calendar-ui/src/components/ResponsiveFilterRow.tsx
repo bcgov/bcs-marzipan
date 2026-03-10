@@ -16,7 +16,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +31,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
-import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  FilterTrigger,
+  filterTriggerStyles,
+} from '@/components/users/FilterTrigger';
+import { useElementWidth } from '@/hooks/useElementWidth';
 import { cn } from '@/lib/utils';
 
 const PLACEHOLDER_SAVED_FILTERS = [
@@ -111,14 +113,14 @@ function OverflowFilterSubTrigger({
   );
 
   return (
-    <DropdownMenuSubTrigger className="data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-none px-4 py-2">
+    <DropdownMenuSubTrigger className="data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 py-2 pr-4 pl-6">
       <span className="truncate">{labelWithCount}</span>
       {triggerProps.active && (
         <button
           type="button"
           onClick={handleClearClick}
           onPointerDown={handleClearPointerDown}
-          className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 rounded p-0.5"
+          className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 align-middle"
           aria-label={triggerProps.clearAriaLabel}
         >
           <X className="h-3.5 w-3.5" />
@@ -156,8 +158,10 @@ export interface ResponsiveFilterRowProps {
   overflowTriggerLabelWhenAlone?: string;
   /** Class name for the overflow trigger button (e.g. h-10 for alignment). */
   overflowTriggerClassName?: string;
-  /** Optional content rendered after the overflow trigger (e.g. Clear filters button). */
+  /** Optional content rendered after the overflow trigger (e.g. Clear filters button). Shown only when some filters are visible inline; when only the Filters trigger is visible, use onClearAll instead. */
   trailingContent?: ReactNode;
+  /** When provided and only the Filters trigger is visible (no inline slots), clicking the clear icon in the trigger calls this. Mirrors FilterTrigger clear behavior. */
+  onClearAll?: () => void;
   /** Width in px to reserve for trailing content when measuring. */
   reservedWidthForTrailing?: number;
   /** Class name for the row container. */
@@ -168,7 +172,7 @@ export interface ResponsiveFilterRowProps {
 
 /**
  * Renders as many slot contents as fit in one row; the rest are moved into a
- * "More filters" (or "Filters" when none visible) dropdown with an All filters accordion,
+ * "More filters" (or "Filters" when none visible) dropdown with a Filters accordion,
  * My saved filters, and Save current filter. Uses ResizeObserver and layout measurement to compute how many slots fit.
  */
 export function ResponsiveFilterRow({
@@ -177,57 +181,23 @@ export function ResponsiveFilterRow({
   overflowTriggerLabelWhenAlone = 'Filters',
   overflowTriggerClassName,
   trailingContent,
+  onClearAll,
   reservedWidthForTrailing,
   className,
   containerClassName,
 }: ResponsiveFilterRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
+  const containerWidth = useElementWidth(containerRef, {
+    minChange: WIDTH_CHANGE_THRESHOLD_PX,
+    debounceMs: RESIZE_DEBOUNCE_MS,
+  });
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
-  const prevContainerWidthRef = useRef(0);
-  const isMobile = useIsMobile();
 
   const count = slots.length;
 
   useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-
-    setContainerWidth(node.clientWidth);
-
-    if (typeof ResizeObserver === 'undefined') return;
-
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    const debouncedUpdateWidth = () => {
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        timeoutId = null;
-        const current = containerRef.current;
-        if (current) setContainerWidth(current.clientWidth);
-      }, RESIZE_DEBOUNCE_MS);
-    };
-
-    const observer = new ResizeObserver(debouncedUpdateWidth);
-    observer.observe(node);
-
-    return () => {
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      observer.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (containerWidth === 0) return;
-    const prev = prevContainerWidthRef.current;
-    if (prev === containerWidth) return;
-    const delta = Math.abs(containerWidth - prev);
-    const pastThreshold =
-      delta >= WIDTH_CHANGE_THRESHOLD_PX || prev === 0 || visibleCount === null;
-    prevContainerWidthRef.current = containerWidth;
-    if (pastThreshold) {
-      setVisibleCount(null);
-    }
-  }, [containerWidth, visibleCount]);
+    if (containerWidth > 0) setVisibleCount(null);
+  }, [containerWidth]);
 
   useLayoutEffect(() => {
     const node = containerRef.current;
@@ -305,6 +275,24 @@ export function ResponsiveFilterRow({
     ? `${triggerLabel} (${overflowActiveCount})`
     : triggerLabel;
 
+  const showClearInTrigger =
+    finalVisible === 0 && overflowTriggerActive && onClearAll != null;
+  const handleClearAllClick = useCallback(
+    (e: MouseEvent<HTMLSpanElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClearAll?.();
+    },
+    [onClearAll]
+  );
+  const handleClearAllPointerDown = useCallback(
+    (e: PointerEvent<HTMLSpanElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    []
+  );
+
   if (count === 0) {
     return (
       <div
@@ -372,16 +360,15 @@ export function ResponsiveFilterRow({
           <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   className={cn(
-                    'h-10 shrink-0 justify-start gap-1.5 font-normal',
-                    isMobile ? 'min-w-10 px-2' : 'min-w-[100px]',
+                    filterTriggerStyles.base,
+                    'shrink-0 gap-1.5',
+                    showClearInTrigger ? 'justify-between' : 'justify-start',
                     overflowTriggerActive
-                      ? 'border-primary bg-primary text-primary-foreground hover:opacity-90'
-                      : 'border-input bg-background hover:bg-accent hover:text-accent-foreground',
+                      ? filterTriggerStyles.active
+                      : filterTriggerStyles.inactive,
                     overflowTriggerClassName
                   )}
                   aria-label={
@@ -392,27 +379,42 @@ export function ResponsiveFilterRow({
                       : `${triggerLabel}; saved filters and save current filter`
                   }
                 >
-                  <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-70" />
-                  {isMobile ? (
-                    <span className="sr-only">{triggerLabelWithCount}</span>
-                  ) : (
-                    <span>{triggerLabelWithCount}</span>
+                  <span className="flex min-w-0 shrink items-center gap-1.5">
+                    <SlidersHorizontal
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        overflowTriggerActive ? 'opacity-100' : 'opacity-70'
+                      )}
+                    />
+                    <span className="truncate">{triggerLabelWithCount}</span>
+                  </span>
+                  {showClearInTrigger && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onPointerDown={handleClearAllPointerDown}
+                      onClick={handleClearAllClick}
+                      className={filterTriggerStyles.clearIcon}
+                      aria-label="Clear all filters"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </span>
                   )}
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="flex max-h-[min(80vh,400px)] w-[380px] flex-col overflow-hidden p-0"
+                className="flex max-h-[min(80vh,400px)] flex-col overflow-hidden p-0"
               >
                 {hasOverflow && (
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem
-                        value="all-filters"
+                        value="filters"
                         className="border-b last:border-b-0"
                       >
-                        <AccordionTrigger className="px-4 py-3 text-sm font-medium hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                          All filters
+                        <AccordionTrigger className="hover:bg-accent hover:text-accent-foreground px-4 py-2 text-sm font-medium hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                          Filters
                         </AccordionTrigger>
                         <AccordionContent className="px-0 pt-0 pb-0">
                           {overflowSlotEntries.map((entry) => {
@@ -427,8 +429,8 @@ export function ResponsiveFilterRow({
                                   labelWithCount={labelWithCount}
                                   triggerProps={triggerProps}
                                 />
-                                <DropdownMenuSubContent className="max-h-[min(80vh,400px)] w-[320px] overflow-y-auto p-0">
-                                  <div className="p-4">{panel}</div>
+                                <DropdownMenuSubContent className="max-h-[min(80vh,400px)] w-max overflow-y-auto p-0">
+                                  {panel}
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                             );
@@ -506,15 +508,25 @@ export function ResponsiveFilterRow({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {reservedWidthForTrailing != null
-              ? (trailingContent ?? (
+            {reservedWidthForTrailing != null ? (
+              finalVisible > 0 ? (
+                (trailingContent ?? (
                   <span
                     className="shrink-0"
                     style={{ width: reservedWidthForTrailing }}
                     aria-hidden
                   />
                 ))
-              : trailingContent}
+              ) : (
+                <span
+                  className="shrink-0"
+                  style={{ width: reservedWidthForTrailing }}
+                  aria-hidden
+                />
+              )
+            ) : finalVisible > 0 ? (
+              trailingContent
+            ) : null}
           </div>
         </div>
       )}
