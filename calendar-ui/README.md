@@ -55,6 +55,41 @@ src/
   styles/        # globals.css, App.css
 ```
 
+## Azure AD local development
+
+The login page shows a **Sign in with Microsoft** button automatically when the backend reports that Azure is configured. To test this locally:
+
+1. Create a `.env` file at the **monorepo root** (`bcs-marzipan/.env`) with your App Registration credentials:
+
+   ```bash
+   # Azure AD App Registration (BC Gov IDIR tenant)
+   AZURE_TENANT_ID=your-tenant-id
+   AZURE_CLIENT_ID=your-app-client-id
+   AZURE_CLIENT_SECRET=your-app-client-secret
+
+   # Explicit callback URL — must exactly match an entry in your Azure App Registration.
+   # For local development, register https://localhost:3001/api/auth/azure/callback
+   # Leave blank to auto-derive from the request host.
+   AZURE_REDIRECT_URI=
+
+   # Required so the backend activates the OIDC redirect endpoints
+   AUTH_STRATEGY=azure
+   ```
+
+2. Register the redirect URI in your Azure App Registration:
+
+   | Environment            | Redirect URI to register                          |
+   | ---------------------- | ------------------------------------------------- |
+   | Local (backend direct) | `http://localhost:3001/api/auth/azure/callback`   |
+   | Local (via UI proxy)   | `http://localhost:3000/api/auth/azure/callback`   |
+   | Dev / staging          | `https://<your-env-host>/api/auth/azure/callback` |
+
+3. Start both services (`npm start` from the repo root). The **Sign in with Microsoft** button appears on the login page once `GET /api/auth/azure/config` responds `{ "enabled": true }`.
+
+4. After a successful sign-in, the backend sets the httpOnly auth cookie and redirects to `/`. The user must already have an active account in the database whose `adEmail` matches the Azure AD `preferred_username` claim; otherwise login is refused with an `azure_no_account` error.
+
+> **Local accounts only** — the Azure OIDC flow does not auto-provision new users. An admin must create the user record in advance.
+
 ## Docs
 
 - **[Management tables UX](src/components/Table/README.md)** – Sticky header, scrolling, skeleton loading, column widths, filters, sort, and pagination. Users/Teams tables as reference.

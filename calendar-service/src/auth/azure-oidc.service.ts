@@ -49,7 +49,16 @@ export class AzureOidcService {
   }
 
   getRedirectUri(req: Request): string {
-    return `${req.protocol}://${req.get('host')}/auth/azure/callback`;
+    const configuredRedirectUri =
+      this.configService.get<string>('AZURE_REDIRECT_URI');
+
+    if (configuredRedirectUri?.trim()) {
+      return configuredRedirectUri.trim();
+    }
+
+    // Default to /api so UI-hosted proxy setups (e.g. Vite dev server) keep
+    // the callback and post-login redirects on the frontend origin.
+    return `${req.protocol}://${req.get('host')}/api/auth/azure/callback`;
   }
 
   generateState(): string {

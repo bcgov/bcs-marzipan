@@ -60,8 +60,16 @@ This document describes the authentication and authorization system implemented 
 Configure authentication in your `.env` file:
 
 ```bash
-# Authentication strategy: 'mock' for development, 'ad' for Active Directory
+# Authentication strategy: 'mock' for development, 'ad' for AD, 'azure' for OIDC
 AUTH_STRATEGY=mock
+
+# Azure AD settings (required when AUTH_STRATEGY=azure)
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-app-client-id
+AZURE_CLIENT_SECRET=your-app-client-secret
+
+# Optional callback override; if omitted, callback is derived from request host
+AZURE_REDIRECT_URI=
 
 # JWT secret key (required in production - use a strong random value)
 JWT_SECRET=your-jwt-secret-change-in-production
@@ -217,12 +225,15 @@ CREATE TABLE user_teams (
 
 ### Authentication Endpoints
 
-| Method | Endpoint      | Description                     | Auth Required |
-| ------ | ------------- | ------------------------------- | ------------- |
-| POST   | /auth/login   | Login with username             | No            |
-| GET    | /auth/me      | Get current user & permissions  | Yes           |
-| POST   | /auth/logout  | Log out (client discards token) | Yes           |
-| POST   | /auth/refresh | Refresh token (not implemented) | Yes           |
+| Method | Endpoint             | Description                                 | Auth Required |
+| ------ | -------------------- | ------------------------------------------- | ------------- |
+| POST   | /auth/login          | Login with username                         | No            |
+| GET    | /auth/azure/config   | Returns whether Azure sign-in is configured | No            |
+| GET    | /auth/azure          | Starts Azure AD OIDC redirect flow          | No            |
+| GET    | /auth/azure/callback | Handles Azure AD callback                   | No            |
+| GET    | /auth/me             | Get current user & permissions              | Yes           |
+| POST   | /auth/logout         | Log out (client discards token)             | Yes           |
+| POST   | /auth/refresh        | Refresh token (not implemented)             | Yes           |
 
 ### Login Request/Response
 
@@ -565,18 +576,22 @@ curl -X POST http://localhost:3001/auth/login \
 | daniel.robinson | System Admin    | -     |
 | priya.patel     | Editor          | -     |
 
+## Azure AD OIDC Integration (Production)
+
+When `AUTH_STRATEGY=azure`:
+
+1. User starts auth at `GET /auth/azure` (or `/api/auth/azure` from the UI).
+2. Backend redirects to Azure AD using OpenID Connect authorization code flow.
+3. Callback (`/auth/azure/callback`) validates state/nonce and exchanges code for tokens.
+4. User is matched by `externalId` first, then by email if needed.
+5. Local user profile is synced (`externalId`, username, display name, email, last login).
+6. JWT is issued and stored in the httpOnly auth cookie.
+
+If no active local account can be linked, login is denied with `azure_no_account`.
+
 ## Active Directory Integration (Production)
 
-> **Note:** AD integration is a placeholder for future implementation.
-
-When `AUTH_STRATEGY=ad`:
-
-1. User credentials are validated against Active Directory
-2. If valid, local user record is created/updated with AD profile data
-3. JWT is issued with user context
-4. AD groups can be mapped to application roles
-
-The `ad.strategy.ts` file provides the extension point for AD integration.
+When `AUTH_STRATEGY=ad`, the `ad.strategy.ts` file remains the extension point for direct AD credential validation flows.
 
 ## Security Considerations
 
