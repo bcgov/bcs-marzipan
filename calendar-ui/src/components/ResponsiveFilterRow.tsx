@@ -33,6 +33,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 const PLACEHOLDER_SAVED_FILTERS = [
@@ -44,8 +45,10 @@ const PLACEHOLDER_SAVED_FILTERS = [
 const SLOT_GAP_PX = 8;
 const OVERFLOW_BUTTON_RESERVE_PX = 110;
 const TRAILING_GROUP_OFFSET_PX = 32;
-/** Min available width (px) above which a measured fitCount of 0 is treated as invalid (e.g. layout not ready). */
-const MIN_AVAILABLE_WIDTH_TO_TRUST_ZERO = 200;
+/** Min change in container width (px) before re-measuring. Avoids resize loop from small reflows. */
+const WIDTH_CHANGE_THRESHOLD_PX = 10;
+/** Debounce (ms) for ResizeObserver to avoid rapid re-measure during resize. */
+const RESIZE_DEBOUNCE_MS = 80;
 
 /** Renders one slot for inline: Trigger + DropdownMenu or Popover + panel. */
 function InlineFilterSlot({ slot }: { slot: ResponsiveFilterSlot }) {
@@ -182,6 +185,7 @@ export function ResponsiveFilterRow({
   const [containerWidth, setContainerWidth] = useState(0);
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
   const prevContainerWidthRef = useRef(0);
+  const isMobile = useIsMobile();
 
   const count = slots.length;
 
@@ -189,28 +193,41 @@ export function ResponsiveFilterRow({
     const node = containerRef.current;
     if (!node) return;
 
-    const updateWidth = () => {
-      setContainerWidth(node.clientWidth);
-    };
-
-    updateWidth();
+    setContainerWidth(node.clientWidth);
 
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(updateWidth);
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const debouncedUpdateWidth = () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        const current = containerRef.current;
+        if (current) setContainerWidth(current.clientWidth);
+      }, RESIZE_DEBOUNCE_MS);
+    };
+
+    const observer = new ResizeObserver(debouncedUpdateWidth);
     observer.observe(node);
 
-    return () => observer.disconnect();
+    return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
+    if (containerWidth === 0) return;
     const prev = prevContainerWidthRef.current;
-    if (prev !== containerWidth) {
-      prevContainerWidthRef.current = containerWidth;
-      if (containerWidth > 0) {
-        setVisibleCount(null);
-      }
+    if (prev === containerWidth) return;
+    const delta = Math.abs(containerWidth - prev);
+    const pastThreshold =
+      delta >= WIDTH_CHANGE_THRESHOLD_PX || prev === 0 || visibleCount === null;
+    prevContainerWidthRef.current = containerWidth;
+    if (pastThreshold) {
+      setVisibleCount(null);
     }
-  }, [containerWidth]);
+  }, [containerWidth, visibleCount]);
 
   useLayoutEffect(() => {
     const node = containerRef.current;
@@ -219,7 +236,7 @@ export function ResponsiveFilterRow({
       return;
     }
     if (containerWidth === 0) {
-      setVisibleCount(count);
+      setVisibleCount(0);
       return;
     }
     if (visibleCount !== null) return;
@@ -227,7 +244,10 @@ export function ResponsiveFilterRow({
     const measureRow = node.querySelector<HTMLElement>(
       '[data-responsive-filter-row-measure="true"]'
     );
-    if (!measureRow) return;
+    if (!measureRow) {
+      setVisibleCount(0);
+      return;
+    }
 
     const slotWrappers = measureRow.querySelectorAll<HTMLElement>(
       '[data-responsive-filter-slot="true"]'
@@ -236,7 +256,7 @@ export function ResponsiveFilterRow({
     const availableWidth =
       containerWidth -
       TRAILING_GROUP_OFFSET_PX -
-      (count > 1 ? OVERFLOW_BUTTON_RESERVE_PX : 0) -
+      OVERFLOW_BUTTON_RESERVE_PX -
       trailingReserve;
 
     let used = 0;
@@ -249,12 +269,13 @@ export function ResponsiveFilterRow({
       fitCount = i + 1;
     }
 
-    // Don't trust fitCount 0 when we have slots and space (avoids stuck "filters disappear" from bad measurement)
+    // Only treat fitCount 0 as invalid when layout is likely not ready (first slot has no width yet)
+    const firstSlotWidth = slotWrappers[0]?.offsetWidth ?? -1;
     if (
       fitCount === 0 &&
       count > 0 &&
-      (availableWidth > MIN_AVAILABLE_WIDTH_TO_TRUST_ZERO ||
-        (slotWrappers.length > 0 && slotWrappers[0].offsetWidth === 0))
+      slotWrappers.length > 0 &&
+      firstSlotWidth === 0
     ) {
       fitCount = count;
     }
@@ -293,13 +314,26 @@ export function ResponsiveFilterRow({
     );
   }
 
+  const minWidthWhenMeasuring =
+    visibleCount === null
+      ? TRAILING_GROUP_OFFSET_PX +
+        OVERFLOW_BUTTON_RESERVE_PX +
+        (reservedWidthForTrailing ?? 0)
+      : undefined;
+
   return (
     <div
       ref={containerRef}
       className={cn(
         'flex min-w-0 flex-1 items-center justify-start',
+        visibleCount === null && 'min-h-10',
         className
       )}
+      style={
+        minWidthWhenMeasuring != null
+          ? { minWidth: minWidthWhenMeasuring }
+          : undefined
+      }
     >
       {visibleCount === null ? (
         <div
@@ -336,34 +370,41 @@ export function ResponsiveFilterRow({
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {hasOverflow && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      'h-10 min-w-[100px] shrink-0 justify-start gap-1.5 font-normal',
-                      overflowTriggerActive
-                        ? 'border-primary bg-primary text-primary-foreground hover:opacity-90'
-                        : 'border-input bg-background hover:bg-accent hover:text-accent-foreground',
-                      overflowTriggerClassName
-                    )}
-                    aria-label={
-                      finalVisible === 0
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'h-10 shrink-0 justify-start gap-1.5 font-normal',
+                    isMobile ? 'min-w-10 px-2' : 'min-w-[100px]',
+                    overflowTriggerActive
+                      ? 'border-primary bg-primary text-primary-foreground hover:opacity-90'
+                      : 'border-input bg-background hover:bg-accent hover:text-accent-foreground',
+                    overflowTriggerClassName
+                  )}
+                  aria-label={
+                    hasOverflow
+                      ? finalVisible === 0
                         ? `${triggerLabel}; ${overflowSlotEntries.length} filters`
                         : `${triggerLabel}; ${overflowSlotEntries.length} more filters`
-                    }
-                  >
-                    <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-70" />
-                    <span>{triggerLabelWithCount}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="flex max-h-[min(80vh,400px)] w-[380px] flex-col overflow-hidden p-0"
+                      : `${triggerLabel}; saved filters and save current filter`
+                  }
                 >
+                  <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-70" />
+                  {isMobile ? (
+                    <span className="sr-only">{triggerLabelWithCount}</span>
+                  ) : (
+                    <span>{triggerLabelWithCount}</span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="flex max-h-[min(80vh,400px)] w-[380px] flex-col overflow-hidden p-0"
+              >
+                {hasOverflow && (
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem
@@ -396,75 +437,75 @@ export function ResponsiveFilterRow({
                       </AccordionItem>
                     </Accordion>
                   </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="px-4 py-2">
-                      My saved filters
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="grid max-h-60 w-64 grid-cols-[1fr_auto] overflow-x-hidden overflow-y-auto p-0">
-                      {PLACEHOLDER_SAVED_FILTERS.flatMap((label, i) => [
-                        <DropdownMenuItem
-                          key={`${i}-item`}
-                          className="min-w-0 rounded-none border-0 py-2"
-                          onSelect={(e) => e.preventDefault()}
-                          aria-label={`Apply ${label}`}
+                )}
+                {hasOverflow && <DropdownMenuSeparator />}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="px-4 py-2">
+                    My saved filters
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="grid max-h-60 w-64 grid-cols-[1fr_auto] overflow-x-hidden overflow-y-auto p-0">
+                    {PLACEHOLDER_SAVED_FILTERS.flatMap((label, i) => [
+                      <DropdownMenuItem
+                        key={`${i}-item`}
+                        className="min-w-0 rounded-none border-0 py-2"
+                        onSelect={(e) => e.preventDefault()}
+                        aria-label={`Apply ${label}`}
+                      >
+                        {label}
+                      </DropdownMenuItem>,
+                      <DropdownMenuSub key={`${i}-sub`}>
+                        <DropdownMenuSubTrigger
+                          className="w-8 shrink-0 justify-center rounded-none px-1 py-2"
+                          aria-label={`Actions for ${label}`}
                         >
-                          {label}
-                        </DropdownMenuItem>,
-                        <DropdownMenuSub key={`${i}-sub`}>
-                          <DropdownMenuSubTrigger
-                            className="w-8 shrink-0 justify-center rounded-none px-1 py-2"
-                            aria-label={`Actions for ${label}`}
+                          <span className="sr-only">Actions for {label}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="min-w-48">
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            className="flex flex-col items-start gap-0 py-2"
                           >
-                            <span className="sr-only">Actions for {label}</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="min-w-48">
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="flex flex-col items-start gap-0 py-2"
-                            >
-                              <span className="flex items-center gap-2">
-                                <Save className="size-4 shrink-0" />
-                                Update
-                              </span>
-                              <span className="text-muted-foreground pl-6 text-xs">
-                                To currently applied filters
-                              </span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              <Copy className="size-4" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              <Pencil className="size-4" />
-                              Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              <Trash2 className="size-4" />
-                              Delete saved filter
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>,
-                      ])}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
+                            <span className="flex items-center gap-2">
+                              <Save className="size-4 shrink-0" />
+                              Update
+                            </span>
+                            <span className="text-muted-foreground pl-6 text-xs">
+                              To currently applied filters
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Copy className="size-4" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Pencil className="size-4" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Trash2 className="size-4" />
+                            Delete saved filter
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>,
+                    ])}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
 
-                  <DropdownMenuItem
-                    className="px-4 py-2"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    Save current filter
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                <DropdownMenuItem
+                  className="px-4 py-2"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Save current filter
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {reservedWidthForTrailing != null
               ? (trailingContent ?? (
                   <span
