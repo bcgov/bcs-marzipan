@@ -13,8 +13,10 @@ import { setupGracefulShutdown } from './common/utils/graceful-shutdown';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Enable cookie parsing for httpOnly auth cookies
-  app.use(cookieParser());
+  // Enable cookie parsing for httpOnly auth cookies (signed cookies require a secret)
+  const cookieSecret =
+    process.env.SESSION_SECRET ?? 'dev-cookie-secret-change-in-production';
+  app.use(cookieParser(cookieSecret));
 
   // Apply global exception filter for consistent error responses
   app.useGlobalFilters(new HttpExceptionFilter());

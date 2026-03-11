@@ -17,7 +17,7 @@ import {
   findUserByExternalId,
   syncAzureIdentity,
   type AuthDbUser,
-} from './strategies/ad.strategy';
+} from './strategies/azure.strategy';
 import { findUserByUsername } from './strategies/mock.strategy';
 
 export interface JwtPayload {

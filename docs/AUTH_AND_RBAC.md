@@ -235,6 +235,8 @@ CREATE TABLE user_teams (
 | POST   | /auth/logout         | Log out (client discards token)             | Yes           |
 | POST   | /auth/refresh        | Refresh token (not implemented)             | Yes           |
 
+> **Note:** The backend service exposes these routes at `/auth/...`. In some deployments (for example, when served behind a reverse proxy or via the `calendar-ui` dev server), the externally visible API may be prefixed, such as `/api/auth/...`. When configuring OAuth redirect URIs (e.g., for Azure AD), always use the externally reachable URL (including any `/api` prefix), but keep using the unprefixed `/auth/...` paths in backend routing.
+
 ### Login Request/Response
 
 **Request:**

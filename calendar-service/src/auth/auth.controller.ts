@@ -20,6 +20,7 @@ import * as oidc from 'openid-client';
 
 import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 
+import { AppLogger } from '../common/logger/logger.service';
 import { AuthService } from './auth.service';
 import { AzureOidcService } from './azure-oidc.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -29,6 +30,8 @@ import { loginBodySchema } from './dto/login.dto';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new AppLogger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly azureOidcService: AzureOidcService
@@ -85,7 +88,9 @@ export class AuthController {
       const config = await this.azureOidcService.getConfig();
       const redirectUri = this.azureOidcService.getRedirectUri(req);
       const nonce = this.azureOidcService.generateNonce();
-      const state = this.azureOidcService.createState(nonce);
+      const state = this.azureOidcService.generateState();
+
+      this.azureOidcService.setStateCookie(res, state, nonce);
 
       const redirectUrl = oidc.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
@@ -96,8 +101,12 @@ export class AuthController {
       });
 
       return res.redirect(redirectUrl.href);
-    } catch (error) {
-      console.error('Azure AD login initiation error:', error);
+    } catch (error: unknown) {
+      this.logger.error(
+        'Azure AD login initiation error',
+        error instanceof Error ? error.stack : String(error),
+        AuthController.name
+      );
       return res.redirect('/login?error=azure_auth_failed');
     }
   }
@@ -121,7 +130,7 @@ export class AuthController {
         return res.redirect('/login?error=azure_auth_failed');
       }
 
-      const nonce = this.azureOidcService.consumeState(state);
+      const nonce = this.azureOidcService.consumeStateCookie(req, res, state);
       if (!nonce) {
         return res.redirect('/login?error=azure_auth_failed');
       }
@@ -179,18 +188,31 @@ export class AuthController {
         return res.redirect('/login?error=azure_auth_failed');
       }
 
-      const result = await this.authService.loginWithAzureClaims({
-        externalId,
-        username,
-        displayName,
-        email,
-      });
+      try {
+        const result = await this.authService.loginWithAzureClaims({
+          externalId,
+          username,
+          displayName,
+          email,
+        });
 
-      this.setAuthCookie(res, result.accessToken, result.expiresIn);
-      return res.redirect('/');
-    } catch (error) {
-      console.error('Azure AD callback error:', error);
-      return res.redirect('/login?error=azure_no_account');
+        this.setAuthCookie(res, result.accessToken, result.expiresIn);
+        return res.redirect('/');
+      } catch (error: unknown) {
+        this.logger.error(
+          'Azure AD account lookup/sync error',
+          error instanceof Error ? error.stack : String(error),
+          AuthController.name
+        );
+        return res.redirect('/login?error=azure_no_account');
+      }
+    } catch (error: unknown) {
+      this.logger.error(
+        'Azure AD callback error',
+        error instanceof Error ? error.stack : String(error),
+        AuthController.name
+      );
+      return res.redirect('/login?error=azure_auth_failed');
     }
   }
 

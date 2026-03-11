@@ -1,19 +1,14 @@
 import crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
-interface OidcStateEntry {
-  nonce: string;
-  expiresAt: number;
-}
+const OIDC_STATE_COOKIE = 'oidc_auth_state';
 
 @Injectable()
 export class AzureOidcService {
   private cachedConfig: oidc.Configuration | null = null;
-  private readonly stateStore = new Map<string, OidcStateEntry>();
-  private readonly stateTtlMs = 10 * 60 * 1000;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -69,41 +64,58 @@ export class AzureOidcService {
     return crypto.randomBytes(16).toString('hex');
   }
 
-  createState(nonce: string): string {
-    this.cleanupStateStore();
+  /**
+   * Stores the OIDC state and nonce in a signed, httpOnly cookie so the
+   * pairing survives across multiple backend replicas without a shared store.
+   */
+  setStateCookie(res: Response, state: string, nonce: string): void {
+    const cookieValue = `${state}|${nonce}`;
+    res.cookie(OIDC_STATE_COOKIE, cookieValue, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      signed: true,
+      maxAge: 10 * 60 * 1000, // 10 minutes
+      path: '/',
+    });
+  }
 
-    const state = this.generateState();
-    this.stateStore.set(state, {
-      nonce,
-      expiresAt: Date.now() + this.stateTtlMs,
+  /**
+   * Reads and clears the OIDC state cookie.
+   * Returns the stored nonce if the cookie exists and the state value matches,
+   * or null if the cookie is missing, tampered, or the state doesn't match.
+   */
+  consumeStateCookie(
+    req: Request,
+    res: Response,
+    state: string
+  ): string | null {
+    const rawCookie: unknown = req.signedCookies?.[OIDC_STATE_COOKIE];
+    if (typeof rawCookie !== 'string' || !rawCookie) {
+      return null;
+    }
+
+    // Clear the cookie immediately to prevent replay
+    res.clearCookie(OIDC_STATE_COOKIE, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      signed: true,
+      path: '/',
     });
 
-    return state;
-  }
-
-  consumeState(state: string): string | null {
-    this.cleanupStateStore();
-
-    const entry = this.stateStore.get(state);
-    if (!entry) {
+    const separatorIndex = rawCookie.indexOf('|');
+    if (separatorIndex === -1) {
       return null;
     }
 
-    this.stateStore.delete(state);
+    const cookieState = rawCookie.slice(0, separatorIndex);
+    const nonce = rawCookie.slice(separatorIndex + 1);
 
-    if (entry.expiresAt < Date.now()) {
+    if (cookieState !== state || !nonce) {
       return null;
     }
 
-    return entry.nonce;
-  }
-
-  private cleanupStateStore(): void {
-    const now = Date.now();
-    for (const [key, value] of this.stateStore.entries()) {
-      if (value.expiresAt < now) {
-        this.stateStore.delete(key);
-      }
-    }
+    return nonce;
   }
 }
