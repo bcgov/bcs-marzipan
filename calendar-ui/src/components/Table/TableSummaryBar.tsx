@@ -1,4 +1,9 @@
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export interface BooleanFilter {
@@ -6,6 +11,10 @@ export interface BooleanFilter {
   label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  /** When true, checkbox is disabled and not editable. */
+  disabled?: boolean;
+  /** Shown only when disabled is true; directs user why the control is disabled. */
+  disabledTooltip?: string;
 }
 
 interface TableSummaryBarProps {
@@ -38,20 +47,39 @@ export function TableSummaryBar({
       </span>
       {filters.length > 0 && (
         <div className="flex flex-wrap items-center gap-4">
-          {filters.map((filter) => (
-            <label
-              key={filter.id}
-              className="flex cursor-pointer items-center gap-2 text-sm text-stone-500"
-            >
-              <Checkbox
-                checked={filter.checked}
-                onCheckedChange={(v) => filter.onCheckedChange(v === true)}
-                aria-label={filter.label}
-                className="border-stone-500"
-              />
-              {filter.label}
-            </label>
-          ))}
+          {filters.map((filter) => {
+            const isDisabled = filter.disabled === true;
+            const labelClassName = cn(
+              'flex items-center gap-2 text-sm text-stone-500',
+              isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+            );
+            const labelContent = (
+              <>
+                <Checkbox
+                  checked={filter.checked}
+                  onCheckedChange={(v) => filter.onCheckedChange(v === true)}
+                  aria-label={filter.label}
+                  className="border-stone-500"
+                  disabled={isDisabled}
+                />
+                {filter.label}
+              </>
+            );
+            return (
+              <span key={filter.id}>
+                {isDisabled && filter.disabledTooltip ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <label className={labelClassName}>{labelContent}</label>
+                    </TooltipTrigger>
+                    <TooltipContent>{filter.disabledTooltip}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <label className={labelClassName}>{labelContent}</label>
+                )}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,17 +1,20 @@
-import { Outlet, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 
 import { fetchActivity } from '../api/activitiesApi';
 import { ErrorState } from '../components/ErrorState';
 import { StatusMessage } from '../components/StatusMessage';
+import { useAuth } from '../hooks/useAuth';
 import {
   LOAD_ACTIVITY_NO_ID,
   LOAD_ACTIVITY_TITLE,
 } from '../lib/error-messages';
 import { getFriendlyErrorMessage } from '../lib/error-toast';
 import { createLogger } from '../lib/logger';
+import { ActivityPage } from './ActivityPage';
 
 const logger = createLogger('ActivityLayout');
 
@@ -23,9 +26,22 @@ export type ActivityLayoutContext = {
 
 export function ActivityLayout(): React.ReactElement {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditRoute = location.pathname.endsWith('/edit');
+  const canAccessEdit = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
+  const redirectToView = isEditRoute && !canAccessEdit;
+
+  // Redirect users without EDIT permission away from edit route before loading activity
+  useEffect(() => {
+    if (!id || !redirectToView) return;
+    void navigate(`/activity/${id}`, { replace: true });
+  }, [id, redirectToView, navigate]);
 
   const refreshActivity = useCallback(async () => {
     if (!id) return;
@@ -38,6 +54,9 @@ export function ActivityLayout(): React.ReactElement {
     if (!id) {
       setError(LOAD_ACTIVITY_NO_ID);
       setLoading(false);
+      return;
+    }
+    if (redirectToView) {
       return;
     }
     let mounted = true;
@@ -60,7 +79,7 @@ export function ActivityLayout(): React.ReactElement {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, redirectToView]);
 
   if (loading) {
     return (
@@ -94,5 +113,5 @@ export function ActivityLayout(): React.ReactElement {
     );
   }
 
-  return <Outlet context={{ activity, refreshActivity }} />;
+  return <ActivityPage activity={activity} refreshActivity={refreshActivity} />;
 }

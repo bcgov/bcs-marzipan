@@ -16,7 +16,7 @@ So URL and sessionStorage always hold the same preference shape; the only differ
 
 On mount, the hook decides initial preferences in this order:
 
-1. **URL has any known param?** (`sort`, `dir`, `completed`, `deleted`, `pageSize`)  
+1. **URL has any known param?** (`sort`, `dir`, `completed`, `deleted`, `pageSize`, `search`)  
    If **yes**: Parse all preferences from the URL (with validation and defaults for missing/invalid values). Ignore sessionStorage for this load.
 2. **Otherwise**: Read from sessionStorage key `activityTablePreferences`. Parse and validate. If invalid or missing, use `DEFAULT_PREFERENCES`.
 
@@ -44,13 +44,14 @@ So URL and sessionStorage are updated together; they are not sources of truth fo
 
 Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](../src/hooks/useActivityTablePreferences.ts):
 
-| Preference    | URL param   | Type                                | Default     |
-| ------------- | ----------- | ----------------------------------- | ----------- |
-| sortKey       | `sort`      | string (must be in VALID_SORT_KEYS) | `startDate` |
-| sortDirection | `dir`       | `asc` \| `desc`                     | `desc`      |
-| showCompleted | `completed` | boolean                             | `false`     |
-| showDeleted   | `deleted`   | boolean                             | `false`     |
-| pageSize      | `pageSize`  | number (1–100)                      | `10`        |
+| Preference    | URL param   | Type                                    | Default     |
+| ------------- | ----------- | --------------------------------------- | ----------- |
+| sortKey       | `sort`      | string (must be in VALID_SORT_KEYS)     | `startDate` |
+| sortDirection | `dir`       | `asc` \| `desc`                         | `desc`      |
+| showCompleted | `completed` | boolean                                 | `false`     |
+| showDeleted   | `deleted`   | boolean                                 | `false`     |
+| pageSize      | `pageSize`  | number (1–100)                          | `10`        |
+| searchKeyword | `search`    | string (keyword; sync to URL debounced) | `''`        |
 
 - **sessionStorage key**: `activityTablePreferences`. Stored value is a single JSON object with these keys.
 - **pageIndex** is not persisted; it is local component state and resets when filters change.

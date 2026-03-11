@@ -8,6 +8,7 @@ import { DatabaseModule } from '../database/database.module';
 import { PolicyModule } from '../policy/policy.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AzureOidcService } from './azure-oidc.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({
@@ -45,8 +46,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtAuthGuard, AzureOidcService],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, JwtModule],
+  exports: [AuthService, JwtAuthGuard, JwtModule, AzureOidcService],
 })
 export class AuthModule {}

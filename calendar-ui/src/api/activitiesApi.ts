@@ -21,10 +21,17 @@ const logger = createLogger('ActivitiesAPI');
 export async function fetchActivities(
   filters?: Partial<FilterActivitiesQueryParams>
 ): Promise<ActivityResponse[]> {
+  const params =
+    filters?.sharedWithTeamIds != null && filters.sharedWithTeamIds.length > 0
+      ? {
+          ...filters,
+          sharedWithTeamIds: filters.sharedWithTeamIds.join(','),
+        }
+      : filters;
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',
     {
-      params: filters,
+      params,
     }
   );
   // Handle different response structures
@@ -78,8 +85,11 @@ export async function updateActivity(
   return res.data.data;
 }
 
-export async function deleteActivity(id: number): Promise<void> {
-  await api.delete(`/activities/${id}`);
+export async function deleteActivity(
+  id: number,
+  body?: { reason?: string }
+): Promise<void> {
+  await api.delete(`/activities/${id}`, body ? { data: body } : undefined);
 }
 
 export async function requestDeleteActivity(

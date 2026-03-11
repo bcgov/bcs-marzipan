@@ -17,7 +17,7 @@ const mockUser: AuthUser = {
   username: 'testuser',
   displayName: 'Test User',
   email: 'test@example.com',
-  roleId: 4,
+  roleId: 5,
   roleName: 'Admin',
   permissions: ['teams.view', 'teams.create', 'teams.edit'],
   teamIds: [],

@@ -66,6 +66,7 @@ export class ActivityMapperService {
       translationsRequiredStatus?: string | null;
       leadMinistry?: string | null;
       leadMinistryAbbreviation?: string | null;
+      canEdit?: boolean;
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -164,7 +165,8 @@ export class ActivityMapperService {
         (DEFAULT_VISIBILITY satisfies Visibility),
 
       // Sharing
-      leadMinistryId: activity.leadMinistryId,
+      leadTeamId: activity.leadTeamId,
+      leadMinistryId: activity.leadMinistryId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       commsContacts: relatedData?.commsContacts ?? [],
 
@@ -180,6 +182,11 @@ export class ActivityMapperService {
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],
+
+      // Edit access for current user (set when authenticated)
+      ...(relatedData?.canEdit !== undefined && {
+        canEdit: relatedData.canEdit,
+      }),
 
       // Meta
       createdDateTime:

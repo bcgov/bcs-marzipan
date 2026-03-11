@@ -133,7 +133,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               }}
               value={field.value ? field.value.toString() : ''}
             >
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select premier requested option" />
                 </SelectTrigger>
@@ -163,7 +163,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>Representatives</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <Combobox
                   disabled={readOnly}
                   options={representativeComboboxOptions}
@@ -249,7 +249,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
             <div className="space-y-4">
               <FormItem>
                 <FormLabel>Venue</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.venueName ?? ''}
                     readOnly={readOnly}
@@ -311,7 +311,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
               <FormItem>
                 <FormLabel>City</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.city ?? ''}
                     readOnly={readOnly}
@@ -330,7 +330,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
               <FormItem>
                 <FormLabel>Province/State</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.provinceOrState ?? ''}
                     readOnly={readOnly}
@@ -349,7 +349,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
               <FormItem>
                 <FormLabel>Country</FormLabel>
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.country ?? ''}
                     readOnly={readOnly}
@@ -401,7 +401,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>Event Planner</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <FreeformCombobox
                   disabled={readOnly}
                   options={eventPlannerOptions}

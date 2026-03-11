@@ -14,12 +14,14 @@ import { CanDeleteActivityGuard } from './can-delete-activity.guard';
 describe('CanDeleteActivityGuard', () => {
   let guard: CanDeleteActivityGuard;
   let policyService: {
-    isCommsLeadForActivity: Mock;
+    isCommsContactForActivity: Mock;
+    getLeadTeamIdForActivity: Mock;
   };
 
   beforeEach(async () => {
     policyService = {
-      isCommsLeadForActivity: vi.fn(),
+      isCommsContactForActivity: vi.fn(),
+      getLeadTeamIdForActivity: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,29 +57,98 @@ describe('CanDeleteActivityGuard', () => {
     await expect(guard.canActivate(ctx)).rejects.toThrow(
       'Authentication required'
     );
-    expect(policyService.isCommsLeadForActivity).not.toHaveBeenCalled();
   });
 
-  it('should return true when user has activities.delete permission', async () => {
+  it('should return true when user has activities.delete.any', async () => {
     const user: AuthUser = {
       id: 10,
       username: 'admin',
       displayName: 'Admin User',
       email: 'admin@example.com',
-      roleId: 4,
+      roleId: 5,
       roleName: 'Admin',
-      permissions: [PERMISSIONS.ACTIVITIES.DELETE],
+      permissions: [
+        PERMISSIONS.ACTIVITIES.DELETE,
+        PERMISSIONS.ACTIVITIES.DELETE_ANY,
+      ],
       teamIds: [],
     };
-    const ctx = createMockContext(user);
+    const ctx = createMockContext(user, { id: '42' });
 
     const result = await guard.canActivate(ctx);
 
     expect(result).toBe(true);
-    expect(policyService.isCommsLeadForActivity).not.toHaveBeenCalled();
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
+    expect(policyService.getLeadTeamIdForActivity).not.toHaveBeenCalled();
   });
 
-  it('should return true when user is comms lead for the activity', async () => {
+  it('should return true when user has activities.delete and is comms contact', async () => {
+    const user: AuthUser = {
+      id: 5,
+      username: 'comms',
+      displayName: 'Comms Lead',
+      email: 'comms@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.DELETE],
+      teamIds: [],
+    };
+    policyService.isCommsContactForActivity.mockResolvedValue(true);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+    const ctx = createMockContext(user, { id: '42' });
+
+    const result = await guard.canActivate(ctx);
+
+    expect(result).toBe(true);
+    expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 5);
+  });
+
+  it('should return true when user has activities.delete and is lead-team member', async () => {
+    const user: AuthUser = {
+      id: 7,
+      username: 'teammate',
+      displayName: 'Team Member',
+      email: 'team@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.DELETE],
+      teamIds: [10, 20],
+    };
+    policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+    const ctx = createMockContext(user, { id: '42' });
+
+    const result = await guard.canActivate(ctx);
+
+    expect(result).toBe(true);
+    expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(42, 7);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(42);
+  });
+
+  it('should throw ForbiddenException when user has activities.delete but not delete.any and not comms/lead-team', async () => {
+    const user: AuthUser = {
+      id: 3,
+      username: 'editor',
+      displayName: 'Editor User',
+      email: 'editor@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.DELETE],
+      teamIds: [5, 6],
+    };
+    policyService.isCommsContactForActivity.mockResolvedValue(false);
+    policyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+    const ctx = createMockContext(user, { id: '1' });
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /You may only delete activities where you are a comms contact or lead-team member/
+    );
+    expect(policyService.isCommsContactForActivity).toHaveBeenCalledWith(1, 3);
+    expect(policyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(1);
+  });
+
+  it('should throw ForbiddenException when user is comms lead but has no activities.delete permission', async () => {
     const user: AuthUser = {
       id: 5,
       username: 'comms',
@@ -88,16 +159,17 @@ describe('CanDeleteActivityGuard', () => {
       permissions: [],
       teamIds: [],
     };
-    policyService.isCommsLeadForActivity.mockResolvedValue(true);
+    policyService.isCommsContactForActivity.mockResolvedValue(true);
     const ctx = createMockContext(user, { id: '42' });
 
-    const result = await guard.canActivate(ctx);
-
-    expect(result).toBe(true);
-    expect(policyService.isCommsLeadForActivity).toHaveBeenCalledWith(42, 5);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /You do not have the required permission to delete activities/
+    );
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
   });
 
-  it('should throw ForbiddenException when user has no permission and is not comms lead', async () => {
+  it('should throw ForbiddenException when user has no permission', async () => {
     const user: AuthUser = {
       id: 3,
       username: 'editor',
@@ -108,23 +180,12 @@ describe('CanDeleteActivityGuard', () => {
       permissions: [PERMISSIONS.ACTIVITIES.VIEW, PERMISSIONS.ACTIVITIES.EDIT],
       teamIds: [],
     };
-    policyService.isCommsLeadForActivity.mockResolvedValue(false);
     const ctx = createMockContext(user, { id: '1' });
 
-    let err: ForbiddenException | undefined;
-    await guard.canActivate(ctx).catch((e) => {
-      err = e;
-    });
-
-    expect(err).toBeInstanceOf(ForbiddenException);
-    expect(err?.getResponse()).toMatchObject({
-      message: 'Permission denied',
-      required: expect.arrayContaining([
-        PERMISSIONS.ACTIVITIES.DELETE,
-        'or be the comms lead for this activity',
-      ]),
-    });
-    expect(policyService.isCommsLeadForActivity).toHaveBeenCalledWith(1, 3);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /You do not have the required permission to delete activities/
+    );
   });
 
   it('should throw BadRequestException when activity id param is missing', async () => {
@@ -134,7 +195,7 @@ describe('CanDeleteActivityGuard', () => {
       displayName: 'U',
       email: 'u@e.com',
       roleId: 1,
-      roleName: 'View Only',
+      roleName: 'Viewer',
       permissions: [],
       teamIds: [],
     };
@@ -144,7 +205,6 @@ describe('CanDeleteActivityGuard', () => {
     await expect(guard.canActivate(ctx)).rejects.toThrow(
       'Activity ID required'
     );
-    expect(policyService.isCommsLeadForActivity).not.toHaveBeenCalled();
   });
 
   it('should throw BadRequestException when activity id is invalid', async () => {
@@ -154,7 +214,7 @@ describe('CanDeleteActivityGuard', () => {
       displayName: 'U',
       email: 'u@e.com',
       roleId: 1,
-      roleName: 'View Only',
+      roleName: 'Viewer',
       permissions: [],
       teamIds: [],
     };
@@ -162,6 +222,5 @@ describe('CanDeleteActivityGuard', () => {
 
     await expect(guard.canActivate(ctx)).rejects.toThrow(BadRequestException);
     await expect(guard.canActivate(ctx)).rejects.toThrow('Invalid activity ID');
-    expect(policyService.isCommsLeadForActivity).not.toHaveBeenCalled();
   });
 });

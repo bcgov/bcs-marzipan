@@ -3,15 +3,52 @@ import {
   boolean,
   integer,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { podSharedWithTeams } from './ministry';
-import { teamCategories, teamMinistries, userTeams } from './relations';
+import { ministries, podSharedWithTeams } from './ministry';
+import { permissions, roles } from './rbac';
+import { teamCategories, userTeams } from './relations';
 import { users } from './user';
+
+/**
+ * TeamPermissions junction table - Maps permissions granted by team (for field-level etc.)
+ * Used in effective permissions union at login; no seed data in initial phase.
+ */
+export const teamPermissions = pgTable(
+  'team_permissions',
+  {
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id, { onDelete: 'cascade' }),
+    permissionId: integer('permission_id')
+      .notNull()
+      .references(() => permissions.id, { onDelete: 'cascade' }),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.teamId, table.permissionId] })]
+);
+
+export const teamPermissionsRelations = relations(
+  teamPermissions,
+  ({ one }) => ({
+    team: one(teams, {
+      fields: [teamPermissions.teamId],
+      references: [teams.id],
+    }),
+    permission: one(permissions, {
+      fields: [teamPermissions.permissionId],
+      references: [permissions.id],
+    }),
+  })
+);
 
 /**
  * Teams table - Groups of users
@@ -24,6 +61,12 @@ export const teams = pgTable('teams', {
   description: text('description'),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  roleId: integer('role_id').references(() => roles.id, {
+    onDelete: 'set null',
+  }),
+  ministryId: integer('ministry_id').references(() => ministries.id, {
+    onDelete: 'set null',
+  }),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -52,8 +95,16 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     references: [users.id],
     relationName: 'teamUpdater',
   }),
+  role: one(roles, {
+    fields: [teams.roleId],
+    references: [roles.id],
+  }),
+  ministry: one(ministries, {
+    fields: [teams.ministryId],
+    references: [ministries.id],
+  }),
   teamCategories: many(teamCategories),
-  teamMinistries: many(teamMinistries),
+  teamPermissions: many(teamPermissions),
   userTeams: many(userTeams),
   podSharedWithTeams: many(podSharedWithTeams, {
     relationName: 'teamPodSharedWithTeams',

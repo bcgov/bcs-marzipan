@@ -10,6 +10,7 @@ import {
 } from '../common/test-utils';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
+import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { PolicyService } from '../policy/policy.service';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
@@ -64,9 +65,14 @@ describe('ActivitiesController', () => {
         },
         {
           provide: PolicyService,
-          useValue: { isCommsLeadForActivity: vi.fn() },
+          useValue: {
+            isCommsLeadForActivity: vi.fn(),
+            isCommsContactForActivity: vi.fn().mockResolvedValue(true),
+            getLeadTeamIdForActivity: vi.fn().mockResolvedValue(10),
+          },
         },
         CanDeleteActivityGuard,
+        CanEditActivityGuard,
       ],
     }).compile();
 
@@ -99,7 +105,11 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.create).toHaveBeenCalledWith(
         createDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
       expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
     });
@@ -114,7 +124,8 @@ describe('ActivitiesController', () => {
         {
           page: 1,
           limit: 10,
-          excludeCompleted: undefined,
+          sharedWithTeamIds: undefined,
+          includeCompleted: undefined,
           includeDeleted: undefined,
         },
         {} as Parameters<ActivitiesController['findAll']>[1]
@@ -133,7 +144,8 @@ describe('ActivitiesController', () => {
         page: 1,
         limit: 10,
         title: 'Test',
-        excludeCompleted: undefined,
+        sharedWithTeamIds: undefined,
+        includeCompleted: undefined,
         includeDeleted: undefined,
       };
       mockActivitiesService.findAll.mockResolvedValue(activities);
@@ -205,7 +217,7 @@ describe('ActivitiesController', () => {
       });
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         1,
-        mockRequestContext.dataScope
+        mockRequestContext
       );
       expect(mockActivitiesService.findOne).toHaveBeenCalledTimes(1);
     });
@@ -220,7 +232,7 @@ describe('ActivitiesController', () => {
       ).rejects.toThrow();
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         999,
-        mockRequestContext.dataScope
+        mockRequestContext
       );
     });
   });
@@ -249,7 +261,11 @@ describe('ActivitiesController', () => {
         1,
         updateDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
       expect(mockActivitiesService.update).toHaveBeenCalledTimes(1);
     });
@@ -270,7 +286,11 @@ describe('ActivitiesController', () => {
         999,
         updateDto,
         mockUser.id,
-        { roleName: mockUser.roleName }
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
       );
     });
   });
@@ -283,8 +303,35 @@ describe('ActivitiesController', () => {
       const result = await controller.remove(1, mockUser);
 
       expect(result).toEqual(deleteResponse);
-      expect(mockActivitiesService.remove).toHaveBeenCalledWith(1, mockUser.id);
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        },
+        { reason: undefined }
+      );
       expect(mockActivitiesService.remove).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass reason to service when body.reason is provided', async () => {
+      const deleteResponse = { message: 'Activity #1 deleted successfully' };
+      mockActivitiesService.remove.mockResolvedValue(deleteResponse);
+
+      await controller.remove(1, mockUser, {
+        reason: 'Duplicate and no longer needed',
+      });
+
+      expect(mockActivitiesService.remove).toHaveBeenCalledWith(
+        1,
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        },
+        { reason: 'Duplicate and no longer needed' }
+      );
     });
 
     it('should throw error when deleting non-existent activity', async () => {
@@ -295,7 +342,12 @@ describe('ActivitiesController', () => {
       await expect(controller.remove(999, mockUser)).rejects.toThrow();
       expect(mockActivitiesService.remove).toHaveBeenCalledWith(
         999,
-        mockUser.id
+        mockUser.id,
+        {
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        },
+        { reason: undefined }
       );
     });
   });
@@ -314,7 +366,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
         1,
         body.reason,
-        mockUser.id
+        mockUser.id,
+        { permissions: mockUser.permissions, teamIds: mockUser.teamIds }
       );
       expect(mockActivitiesService.softDelete).toHaveBeenCalledTimes(1);
     });
@@ -331,7 +384,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.softDelete).toHaveBeenCalledWith(
         999,
         body.reason,
-        mockUser.id
+        mockUser.id,
+        { permissions: mockUser.permissions, teamIds: mockUser.teamIds }
       );
     });
   });

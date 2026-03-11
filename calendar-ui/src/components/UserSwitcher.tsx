@@ -28,15 +28,15 @@ const logger = createLogger('UserSwitcher');
  * Exported for use in Header profile dropdown (dev-only switch user submenu).
  */
 export const MOCK_USERS = [
-  // View (role_id: 1)
-  { username: 'jane.smith', displayName: 'Jane Smith', role: 'View Only' },
+  // Viewer (role_id: 1)
+  { username: 'jane.smith', displayName: 'Jane Smith', role: 'Viewer' },
   // Editor (role_id: 2)
   { username: 'priya.patel', displayName: 'Priya Patel', role: 'Editor' },
-  // Advanced (role_id: 3)
-  { username: 'john.doe', displayName: 'John Doe', role: 'Advanced' },
-  // Admin (role_id: 4)
+  // Advanced Editor (role_id: 4)
+  { username: 'john.doe', displayName: 'John Doe', role: 'Advanced Editor' },
+  // Admin (role_id: 5)
   { username: 'thomas.garcia', displayName: 'Thomas Garcia', role: 'Admin' },
-  // System Admin (role_id: 5)
+  // System Admin (role_id: 6)
   {
     username: 'daniel.robinson',
     displayName: 'Daniel Robinson',
@@ -55,7 +55,8 @@ function getRoleBadgeVariant(
       return 'destructive';
     case 'Admin':
       return 'default';
-    case 'Advanced':
+    case 'Advanced Editor':
+    case 'Advanced Viewer':
       return 'secondary';
     default:
       return 'outline';

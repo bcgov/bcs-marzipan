@@ -41,6 +41,7 @@ import {
   activityTranslationsRequired,
   favoriteActivities,
 } from './relations';
+import { teams } from './teams';
 import { users } from './user';
 import { venueAddresses } from './venue-address';
 
@@ -123,9 +124,10 @@ export const activities = pgTable(
       .notNull()
       .default('global'), // 'global' or 'team' - controls base access visibility
 
-    leadMinistryId: integer('lead_ministry_id')
+    leadTeamId: integer('lead_team_id')
       .notNull()
-      .references(() => ministries.id), // FK to Ministry (required for displayId generation)
+      .references(() => teams.id), // FK to Teams - primary association for which team leads this activity
+    leadMinistryId: integer('lead_ministry_id').references(() => ministries.id), // FK to Ministry (nullable; derived from lead team's ministry for displayId/reporting)
     activityStatusId: integer('activity_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
@@ -193,6 +195,11 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.createdBy],
     references: [users.id],
     relationName: 'createdBy',
+  }),
+  leadTeam: one(teams, {
+    fields: [activities.leadTeamId],
+    references: [teams.id],
+    relationName: 'leadTeam',
   }),
   leadMinistry: one(ministries, {
     fields: [activities.leadMinistryId],

@@ -14,19 +14,29 @@ export class ActivityUtilsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
-   * Generate displayId from ministry abbreviation and activity ID
-   * Format: <ACRONYM>-<last 6 digits of id>
+   * Generate displayId from a prefix (ministry abbreviation or team name) and activity ID
+   * Format: <PREFIX>-<last 6 digits of id>
    * Example: AG-000123 (Attorney General, activity ID 123)
    * Example: HLTH-456789 (Health, activity ID 123456789)
+   * Example: TEAM-000123 (first 4 chars of team name when no ministry)
    *
-   * @param ministryAbbreviation - Ministry abbreviation from ministries table
+   * @param prefix - Ministry abbreviation or 4-char team name prefix
    * @param activityId - Activity ID (serial)
    * @returns Formatted displayId string
    */
-  generateDisplayId(ministryAbbreviation: string, activityId: number): string {
-    // Get last 6 digits of activity ID
+  generateDisplayId(prefix: string, activityId: number): string {
     const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
-    return `${ministryAbbreviation.toUpperCase().trim()}-${lastSixDigits}`;
+    return `${prefix.toUpperCase().trim()}-${lastSixDigits}`;
+  }
+
+  /**
+   * Get a 4-character prefix from a team name for displayId when ministry is null.
+   * Uses first 4 letters, uppercased, padded with 'X' if shorter than 4.
+   */
+  getDisplayIdPrefixFromTeamName(teamName: string): string {
+    const trimmed = (teamName ?? '').trim().replace(/\s+/g, '');
+    const firstFour = trimmed.slice(0, 4).toUpperCase();
+    return firstFour.padEnd(4, 'X');
   }
 
   /**

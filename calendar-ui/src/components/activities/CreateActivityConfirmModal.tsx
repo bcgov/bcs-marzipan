@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import type { FormLookupData } from '../../hooks/useFormLookups';
@@ -24,6 +25,8 @@ interface CreateActivityConfirmModalProps {
   lookups: FormLookupData;
   dateStatuses?: Array<{ id: number; name: string; label?: string }>;
   timeStatuses?: Array<{ id: number; name: string; label?: string }>;
+  /** When provided, used to resolve leadTeamId to team name in confirm summary. */
+  leadTeamOptions?: TeamListItem[];
   onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
   /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
@@ -33,7 +36,7 @@ interface CreateActivityConfirmModalProps {
 const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
   'categoryIds',
   'title',
-  'leadMinistryId',
+  'leadTeamId',
   'summary',
   'commsContactLeadId',
   'startDate',
@@ -47,7 +50,7 @@ const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
 const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'categoryIds',
   'title',
-  'leadMinistryId',
+  'leadTeamId',
   'summary',
   'commsContactLeadId',
   'startDate',
@@ -81,9 +84,19 @@ function resolveDisplayValue(
   value: unknown,
   lookups: FormLookupData,
   dateStatuses?: Array<{ id: number; name: string; label?: string }>,
-  timeStatuses?: Array<{ id: number; name: string; label?: string }>
+  timeStatuses?: Array<{ id: number; name: string; label?: string }>,
+  leadTeamOptions?: TeamListItem[]
 ): string {
   if (value === null || value === undefined || value === '') return '(empty)';
+
+  if (field === 'leadTeamId' && typeof value === 'number' && leadTeamOptions) {
+    const team = leadTeamOptions.find((t) => t.id === value);
+    if (team) {
+      return team.ministryName
+        ? `${team.displayName || team.name} (${team.ministryName})`
+        : team.displayName || team.name;
+    }
+  }
 
   if (field === 'categoryIds' && Array.isArray(value)) {
     if (value.length === 0) return '(none)';
@@ -178,6 +191,7 @@ export function CreateActivityConfirmModal({
   lookups,
   dateStatuses,
   timeStatuses,
+  leadTeamOptions,
   onConfirm,
   isSubmitting,
   showMarkAsReviewed = false,
@@ -233,7 +247,8 @@ export function CreateActivityConfirmModal({
                       value,
                       lookups,
                       dateStatuses,
-                      timeStatuses
+                      timeStatuses,
+                      leadTeamOptions
                     )}
                   </span>
                 </div>

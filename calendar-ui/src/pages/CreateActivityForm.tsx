@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
@@ -37,6 +37,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCreateActivity } from '../hooks/useCalendar';
 import { useFormLookups } from '../hooks/useFormLookups';
+import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
   DEFAULT_FORM_VALUES,
@@ -75,9 +76,7 @@ export const CreateActivityForm: FC = () => {
     user,
   } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
-  const isAdminOrSysAdmin =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
 
   // Fetch date and time statuses
   const { data: dateStatuses } = useDateStatuses();
@@ -85,6 +84,11 @@ export const CreateActivityForm: FC = () => {
 
   // Fetch all lookup data
   const lookups = useFormLookups();
+  const {
+    data: leadTeamOptions = [],
+    isError: leadTeamOptionsError,
+    refetch: refetchLeadTeamOptions,
+  } = useLeadTeamOptions(canCreateActivity);
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -114,6 +118,22 @@ export const CreateActivityForm: FC = () => {
       }
     }
   }, [timeStatuses, form]);
+
+  // Default lead team to user's first team when options load (only if form has no leadTeamId yet)
+  useEffect(() => {
+    if (leadTeamOptions.length === 0) return;
+    const currentLeadTeamId = form.getValues('leadTeamId');
+    if (currentLeadTeamId != null) return;
+    const firstUserTeamId = user?.teamIds?.[0];
+    const defaultTeam =
+      (firstUserTeamId != null &&
+        leadTeamOptions.find((t) => t.id === firstUserTeamId)) ||
+      leadTeamOptions[0];
+    if (defaultTeam) {
+      form.setValue('leadTeamId', defaultTeam.id);
+      form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
+    }
+  }, [leadTeamOptions, user?.teamIds, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
@@ -193,7 +213,11 @@ export const CreateActivityForm: FC = () => {
   // Reset dialog session flag if user starts fresh or continues draft
   const handleContinueDraft = () => {
     if (existingDraft?.draftData) {
-      form.reset(existingDraft.draftData as ActivityFormData);
+      const normalized = {
+        ...getDefaultFormValues(),
+        ...existingDraft.draftData,
+      } as ActivityFormData;
+      form.reset(normalized);
     }
     setShowDraftDialog(false);
     sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
@@ -242,7 +266,7 @@ export const CreateActivityForm: FC = () => {
     try {
       const formValues = form.getValues();
       const submitData = buildPayloadForCreate(validatedData, formValues, {
-        markAsReviewed: isAdminOrSysAdmin ? markAsReviewed : undefined,
+        markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
       });
       const payload = {
         ...submitData,
@@ -381,7 +405,27 @@ export const CreateActivityForm: FC = () => {
             void form.handleSubmit(onSubmit, onError)(e);
           }}
         >
-          <ActivityFormBody form={form} lookups={lookups} readOnly={false} />
+          {canCreateActivity && leadTeamOptionsError && (
+            <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <span>Could not load lead team options.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void refetchLeadTeamOptions();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          <ActivityFormBody
+            form={form}
+            lookups={lookups}
+            readOnly={false}
+            leadTeamOptions={leadTeamOptions}
+          />
 
           <div className="flex justify-end gap-4 pt-6">
             <Button
@@ -447,10 +491,11 @@ export const CreateActivityForm: FC = () => {
         lookups={lookups}
         dateStatuses={dateStatuses}
         timeStatuses={timeStatuses}
+        leadTeamOptions={leadTeamOptions}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }
-        showMarkAsReviewed={isAdminOrSysAdmin}
+        showMarkAsReviewed={canReviewActivities}
         isSubmitting={isSubmitting}
       />
     </ErrorBoundary>

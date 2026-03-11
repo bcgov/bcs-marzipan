@@ -12,6 +12,12 @@ import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
+import {
+  findUserByEmail,
+  findUserByExternalId,
+  syncAzureIdentity,
+  type AuthDbUser,
+} from './strategies/ad.strategy';
 import { findUserByUsername } from './strategies/mock.strategy';
 
 export interface JwtPayload {
@@ -23,6 +29,7 @@ export interface JwtPayload {
   roleName: string;
   permissions: string[];
   teamIds: number[];
+  bypassDataScoping: boolean;
 }
 
 @Injectable()
@@ -47,9 +54,47 @@ export class AuthService {
       );
     }
 
+    if (strategy === 'azure') {
+      throw new UnauthorizedException(
+        'Azure strategy uses OIDC redirect flow. Start at GET /auth/azure.'
+      );
+    }
+
     throw new UnauthorizedException(
-      `Unknown AUTH_STRATEGY: ${strategy}. Use 'mock' or 'ad'.`
+      `Unknown AUTH_STRATEGY: ${strategy}. Use 'mock', 'ad', or 'azure'.`
     );
+  }
+
+  async loginWithAzureClaims(claims: {
+    externalId: string;
+    username?: string;
+    displayName?: string;
+    email?: string;
+  }): Promise<AuthResponseDto> {
+    let dbUser = await findUserByExternalId(
+      this.databaseService.db,
+      claims.externalId
+    );
+
+    if (!dbUser && claims.email?.trim()) {
+      dbUser = await findUserByEmail(this.databaseService.db, claims.email);
+    }
+
+    if (!dbUser) {
+      throw new UnauthorizedException(
+        'No active local account found for this Azure AD user.'
+      );
+    }
+
+    await syncAzureIdentity(this.databaseService.db, dbUser.id, claims);
+
+    const syncedUser =
+      (await findUserByExternalId(
+        this.databaseService.db,
+        claims.externalId
+      )) ?? dbUser;
+
+    return this.buildAuthResponse(syncedUser);
   }
 
   private async loginMock(username: string): Promise<AuthResponseDto> {
@@ -59,16 +104,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid username');
     }
 
-    const [roleName, permissions, teamIds] = await Promise.all([
+    return this.buildAuthResponse(dbUser);
+  }
+
+  private async buildAuthResponse(
+    dbUser: AuthDbUser
+  ): Promise<AuthResponseDto> {
+    const [roleName, effective] = await Promise.all([
       this.policyService.getRoleName(dbUser.roleId),
-      this.policyService.getPermissionsForRole(dbUser.roleId),
-      this.policyService.getTeamIdsForUser(dbUser.id),
+      this.policyService.getEffectivePermissionsForUser(dbUser.id),
     ]);
 
     if (!roleName) {
       throw new UnauthorizedException('User role not found');
     }
 
+    const teamIds = await this.policyService.getTeamIdsForUser(dbUser.id);
     const user: AuthUser = {
       id: dbUser.id,
       username: dbUser.adUsername ?? String(dbUser.id),
@@ -77,8 +128,9 @@ export class AuthService {
       email: dbUser.adEmail ?? '',
       roleId: dbUser.roleId,
       roleName,
-      permissions,
+      permissions: effective.permissions,
       teamIds,
+      bypassDataScoping: effective.bypass,
     };
 
     const raw = this.configService.get<string | number>('JWT_EXPIRES_IN', 3600);
@@ -93,6 +145,7 @@ export class AuthService {
         roleName: user.roleName,
         permissions: user.permissions,
         teamIds: user.teamIds,
+        bypassDataScoping: user.bypassDataScoping ?? false,
       } satisfies JwtPayload,
       { expiresIn }
     );
@@ -117,6 +170,7 @@ export class AuthService {
       roleName: payload.roleName,
       permissions: payload.permissions ?? [],
       teamIds: payload.teamIds ?? [],
+      bypassDataScoping: payload.bypassDataScoping ?? false,
     };
   }
 

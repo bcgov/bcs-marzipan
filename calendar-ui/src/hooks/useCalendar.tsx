@@ -103,12 +103,14 @@ export function useUpdateActivity() {
   });
 }
 
-// Delete (with optimistic update)
+// Delete (with optimistic update). Pass { id, body?: { reason?: string } } for hard delete audit.
 export function useDeleteActivity() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => deleteActivity(id),
-    onMutate: async (id) => {
+    mutationFn: (vars: { id: number; body?: { reason?: string } }) =>
+      deleteActivity(vars.id, vars.body),
+    onMutate: async (vars) => {
+      const id = vars.id;
       await qc.cancelQueries({ queryKey: ['activities', 'list'] });
       const snapshot = qc.getQueriesData<ActivityResponse[]>({
         queryKey: ['activities', 'list'],
@@ -122,7 +124,7 @@ export function useDeleteActivity() {
       );
       return { snapshot };
     },
-    onError: (_err, _id, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.snapshot) {
         context.snapshot.forEach(([queryKey, data]) => {
           qc.setQueryData(queryKey, data);

@@ -102,7 +102,7 @@ describe('RolesGuard', () => {
         username: 'test',
         displayName: 'Test User',
         email: 'test@example.com',
-        roleId: SYSTEM_ROLE_IDS.VIEW_ONLY,
+        roleId: SYSTEM_ROLE_IDS.VIEWER,
         permissions: [],
         teamIds: [],
       } as unknown as AuthUser;

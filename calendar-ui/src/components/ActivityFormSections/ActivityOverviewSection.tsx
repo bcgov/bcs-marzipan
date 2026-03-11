@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useFormContext, useFormState } from 'react-hook-form';
 
+import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import {
@@ -41,15 +42,22 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  ministries: Array<{ id: number; name: string; displayName?: string }>;
   organizations: Array<{ value: number; label: string }>;
   tags: Array<{ id: number; text: string }>;
   readOnly?: boolean;
+  /** When provided, show Lead team combobox. Ministry is derived from the selected team. */
+  leadTeamOptions?: TeamListItem[];
 };
 
 export const ActivityOverviewSection: React.FC<
   ActivityOverviewSectionProps
-> = ({ categories, ministries, organizations, tags, readOnly = false }) => {
+> = ({
+  categories,
+  organizations,
+  tags,
+  readOnly = false,
+  leadTeamOptions,
+}) => {
   const form = useFormContext<ActivityFormData>();
 
   const [selectedCategories, toggleCategory] = useMultiSelect<
@@ -116,7 +124,7 @@ export const ActivityOverviewSection: React.FC<
                 </Badge>
               )}
             </FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Input
                 placeholder="Enter activity title"
                 readOnly={readOnly}
@@ -129,38 +137,59 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="leadMinistryId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Lead Ministry <span className="text-destructive">*</span>
-            </FormLabel>
-            <Select
-              disabled={readOnly}
-              onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
+      {leadTeamOptions ? (
+        <FormField
+          control={form.control}
+          name="leadTeamId"
+          render={({ field }) => {
+            const comboboxValue: FreeformComboboxValue =
+              field.value != null
+                ? { type: 'option', value: String(field.value) }
+                : null;
+
+            const handleChange = (value: FreeformComboboxValue) => {
+              if (!value) {
+                field.onChange(undefined);
+                form.setValue('leadMinistryId', undefined);
+              } else if (value.type === 'option') {
+                const teamId = Number(value.value);
+                field.onChange(teamId);
+                const team = leadTeamOptions.find((t) => t.id === teamId);
+                form.setValue('leadMinistryId', team?.ministryId ?? undefined);
               }
-              value={field.value != null ? String(field.value) : ''}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lead ministry" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {ministries.map((ministry) => (
-                  <SelectItem key={ministry.id} value={String(ministry.id)}>
-                    {ministry.displayName || ministry.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+            };
+
+            const options = leadTeamOptions.map((t) => ({
+              value: String(t.id),
+              label: t.ministryName
+                ? `${t.displayName || t.name} (${t.ministryName})`
+                : t.displayName || t.name,
+            }));
+
+            return (
+              <FormItem>
+                <FormLabel>
+                  Lead team <span className="text-destructive">*</span>
+                </FormLabel>
+                <FormControl data-field={field.name}>
+                  <FreeformCombobox
+                    disabled={readOnly}
+                    options={options}
+                    value={comboboxValue}
+                    onChange={handleChange}
+                    placeholder="Select lead team"
+                    searchPlaceholder="Search teams..."
+                    emptyMessage="No teams found."
+                    freeformLabel="Other"
+                    freeformDescription="Can't find the team?"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
+      ) : null}
 
       <FormField
         control={form.control}
@@ -193,7 +222,7 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel>Lead Organization</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <FreeformCombobox
                   disabled={readOnly}
                   options={organizations.map((o) => ({
@@ -224,7 +253,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Summary</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter activity summary"
                 readOnly={readOnly}
@@ -243,7 +272,7 @@ export const ActivityOverviewSection: React.FC<
         name="isConfidential"
         render={({ field }) => (
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
                 disabled={readOnly}
@@ -262,7 +291,7 @@ export const ActivityOverviewSection: React.FC<
         name="isIssue"
         render={({ field }) => (
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
                 disabled={readOnly}
@@ -282,7 +311,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Significance</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter significance"
                 readOnly={readOnly}
@@ -318,7 +347,7 @@ export const ActivityOverviewSection: React.FC<
                   field.onChange(value === '' ? undefined : Number(value))
                 }
               >
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -342,7 +371,7 @@ export const ActivityOverviewSection: React.FC<
           render={({ field }) => (
             <FormItem>
               <FormLabel>Pitch Date</FormLabel>
-              <FormControl>
+              <FormControl data-field={field.name}>
                 <Input
                   readOnly={readOnly}
                   type="date"
@@ -378,7 +407,7 @@ export const ActivityOverviewSection: React.FC<
                   field.onChange(value === '' ? undefined : Number(value))
                 }
               >
-                <FormControl>
+                <FormControl data-field={field.name}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -403,7 +432,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>Notes</FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter notes"
                 readOnly={readOnly}

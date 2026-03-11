@@ -13,7 +13,7 @@ function normalizeForMatch(value: string): string {
 function buildFormLookups(
   lookups: Pick<
     FormLookupData,
-    'categories' | 'commsMaterials' | 'translationLanguages'
+    'categories' | 'commsMaterials' | 'translationLanguages' | 'sharedWithTeams'
   >
 ): Parameters<typeof mapResponseToFormData>[1] {
   return {
@@ -42,6 +42,17 @@ function buildFormLookups(
           (l.displayName != null && normalizeForMatch(l.displayName) === key)
       )?.id;
     },
+    sharedWithTeamNameToId: lookups.sharedWithTeams?.length
+      ? (name: string) => {
+          const key = normalizeForMatch(name);
+          return lookups.sharedWithTeams?.find(
+            (t) =>
+              normalizeForMatch(t.name) === key ||
+              (t.displayName != null &&
+                normalizeForMatch(t.displayName) === key)
+          )?.id;
+        }
+      : undefined,
   };
 }
 

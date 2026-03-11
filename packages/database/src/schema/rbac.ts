@@ -15,7 +15,7 @@ import { users } from './user';
 
 /**
  * Roles table - System and custom roles for RBAC
- * System roles (View Only, Editor, Advanced, Admin, System Admin) cannot be deleted.
+ * System roles (Viewer, Editor, Advanced Viewer, Advanced Editor, Admin, System Admin) cannot be deleted.
  * Admins can add custom roles with granular permission assignments.
  * createdBy/updatedBy are nullable to handle system roles created via migrations.
  */

@@ -1,3 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
+
+import { REFERENCE_LOOKUP_CACHE_MS } from '@corpcal/shared';
+
+import { fetchTeams } from '../api/usersApi';
 import {
   useActivityStatuses,
   useCategories,
@@ -72,6 +77,9 @@ export interface FormLookupData {
   // News Release Origins - for Select
   newsReleaseOrigins: Array<{ value: string; label: string }>;
 
+  // Teams - for Shared With resolution (name to id in mapper) and dropdown options
+  sharedWithTeams: Array<{ id: number; name: string; displayName?: string }>;
+
   // Loading state
   isLoading: boolean;
 
@@ -94,6 +102,11 @@ export function useFormLookups(): FormLookupData {
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
   const premierRequestedQuery = usePremierRequested();
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
+  const teamsQuery = useQuery({
+    queryKey: ['teams'],
+    queryFn: fetchTeams,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
 
   const isLoading =
     categoriesQuery.isLoading ||
@@ -109,7 +122,8 @@ export function useFormLookups(): FormLookupData {
     governmentRepresentativesQuery.isLoading ||
     newsReleaseDistributionsQuery.isLoading ||
     premierRequestedQuery.isLoading ||
-    newsReleaseOriginsQuery.isLoading;
+    newsReleaseOriginsQuery.isLoading ||
+    teamsQuery.isLoading;
 
   const hasError =
     categoriesQuery.isError ||
@@ -125,7 +139,8 @@ export function useFormLookups(): FormLookupData {
     governmentRepresentativesQuery.isError ||
     newsReleaseDistributionsQuery.isError ||
     premierRequestedQuery.isError ||
-    newsReleaseOriginsQuery.isError;
+    newsReleaseOriginsQuery.isError ||
+    teamsQuery.isError;
 
   // Transform categories for Badge components
   const categories =
@@ -234,6 +249,14 @@ export function useFormLookups(): FormLookupData {
       label: item.label,
     })) || [];
 
+  // Teams for Shared With dropdown and response->form mapping (name to id)
+  const sharedWithTeams =
+    teamsQuery.data?.map((t) => ({
+      id: t.id,
+      name: t.name,
+      displayName: t.displayName ?? undefined,
+    })) ?? [];
+
   return {
     categories: categories as Array<{
       id: number;
@@ -275,6 +298,7 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributions,
     premierRequested,
     newsReleaseOrigins,
+    sharedWithTeams,
     isLoading,
     hasError,
   };

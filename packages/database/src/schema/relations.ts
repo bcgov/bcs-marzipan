@@ -331,39 +331,6 @@ export const ministryUsersRelations = relations(ministryUsers, ({ one }) => ({
 }));
 
 /**
- * TeamMinistries junction table - Many-to-many relationship between Teams and Ministries
- * Teams can be related to zero or more ministries for data scoping (e.g. activities whose
- * lead ministry matches a ministry in the user's team are visible to that team).
- */
-export const teamMinistries = pgTable(
-  'team_ministries',
-  {
-    teamId: integer('team_id')
-      .notNull()
-      .references(() => teams.id, { onDelete: 'cascade' }),
-    ministryId: integer('ministry_id')
-      .notNull()
-      .references(() => ministries.id, { onDelete: 'cascade' }),
-    isActive: boolean('is_active').notNull().default(true),
-    timestamp: timestamp('timestamp', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [primaryKey({ columns: [table.teamId, table.ministryId] })]
-);
-
-export const teamMinistriesRelations = relations(teamMinistries, ({ one }) => ({
-  team: one(teams, {
-    fields: [teamMinistries.teamId],
-    references: [teams.id],
-  }),
-  ministry: one(ministries, {
-    fields: [teamMinistries.ministryId],
-    references: [ministries.id],
-  }),
-}));
-
-/**
  * UserTeams junction table - Many-to-many relationship between Users and Teams
  * Defines which teams a user belongs to for data scoping (what data the user can see).
  * Role is 'owner' or 'member' (extensible via varchar).

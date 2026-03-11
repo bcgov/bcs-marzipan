@@ -258,7 +258,7 @@ export function TeamsTabContent({
                   />
                 </span>
               </th>
-              <th className={tableTh}>Ministries</th>
+              <th className={tableTh}>Ministry</th>
               <th className={tableTh}>Status</th>
               <th className={tableTh}>Actions</th>
             </tr>
@@ -316,8 +316,7 @@ export function TeamsTabContent({
                     {team.memberCount === 1 ? 'member' : 'members'}
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
-                    {team.ministryCount}{' '}
-                    {team.ministryCount === 1 ? 'ministry' : 'ministries'}
+                    {team.ministryName ?? '-'}
                   </td>
                   <td className={tableTd}>{statusBadge(team.isActive)}</td>
                   <td className={tableTd}>

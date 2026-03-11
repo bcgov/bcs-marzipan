@@ -52,18 +52,18 @@ export function RequestDeleteActivityModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Request delete</DialogTitle>
           <DialogDescription>
-            This will mark the activity for deletion. An admin can approve or
-            restore it. You must provide a reason (at least {MIN_REASON_LENGTH}{' '}
-            characters).
+            Activities must be deleted by calendar admins. While your request is
+            pending the activity can still be restored by you or by admin. You
+            must provide a reason (at least {MIN_REASON_LENGTH} characters).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Label htmlFor="request-delete-reason">
-            Reason <span className="text-destructive">*</span>
+            Add a note (required) <span className="text-destructive">*</span>
           </Label>
           <Textarea
             id="request-delete-reason"
@@ -71,13 +71,13 @@ export function RequestDeleteActivityModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}
-            rows={4}
+            rows={3}
             maxLength={MAX_REASON_LENGTH}
             className={showError ? 'border-destructive' : ''}
           />
           {showError && (
             <p className="text-destructive text-sm">
-              Reason must be between {MIN_REASON_LENGTH} and {MAX_REASON_LENGTH}{' '}
+              Note must be between {MIN_REASON_LENGTH} and {MAX_REASON_LENGTH}{' '}
               characters.
             </p>
           )}
@@ -92,10 +92,11 @@ export function RequestDeleteActivityModal({
             onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            Go back
           </Button>
           <Button
             type="button"
+            variant="destructive"
             onClick={handleConfirm}
             disabled={isSubmitting || !valid}
           >

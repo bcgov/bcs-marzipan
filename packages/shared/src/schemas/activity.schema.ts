@@ -114,7 +114,11 @@ const activityCoreFieldsSchema = z.object({
     z.string().uuid().nullable().optional()
   ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
-  leadMinistryId: z.preprocess(emptyStringToNull, z.number().int()), // Required for displayId generation
+  leadTeamId: z.number().int(), // Required - primary association for which team leads this activity
+  leadMinistryId: z.preprocess(
+    emptyStringToNull,
+    z.number().int().nullable().optional()
+  ), // Optional; derived from lead team's ministry
 
   // Optional user ID fields
   eventPlannerLeadId: z.number().int().nullable().optional(),
@@ -265,6 +269,22 @@ export const restoreRequestSchema = z.object({
   note: z.string().max(1000).optional(),
 });
 
+/**
+ * Schema for hard delete (permanent) request body.
+ * Reason is optional but recommended for audit; when provided, same validation as soft delete.
+ */
+export const hardDeleteRequestSchema = z.object({
+  reason: z
+    .string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(1000, 'Reason must not exceed 1000 characters')
+    .trim()
+    .optional(),
+});
+
+/** Request body for hard delete; defaults to {} when body is omitted. */
+export const hardDeleteRequestBodySchema = hardDeleteRequestSchema.default({});
+
 // ============================================================================
 // TypeScript Types
 // ============================================================================
@@ -281,6 +301,7 @@ export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;
+export type HardDeleteRequest = z.infer<typeof hardDeleteRequestSchema>;
 
 /**
  * Form data type for create/edit activity forms.

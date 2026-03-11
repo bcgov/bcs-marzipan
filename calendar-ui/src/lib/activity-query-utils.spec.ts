@@ -2,11 +2,61 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/ActivityTable/activityFilterState';
+import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
 
 import {
   buildOptimisticActivity,
+  filterActivityRowsByFilters,
+  filterActivityRowsByKeyword,
   normalizeListParams,
 } from './activity-query-utils';
+
+function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
+  return {
+    id: 1,
+    displayId: null,
+    title: '',
+    activityCategories: [],
+    pitchDate: null,
+    pitchRequiredStatus: null,
+    isConfidential: false,
+    isIssue: false,
+    summary: '',
+    tags: [],
+    lookAheadStatus: null,
+    lookAheadSection: null,
+    allDay: false,
+    startDate: null,
+    endDate: null,
+    dateStatus: '',
+    startTime: null,
+    endTime: null,
+    timeStatus: '',
+    venue: null,
+    premierRequested: null,
+    activityRepresentatives: [],
+    leadOrg: null,
+    leadMinistry: null,
+    leadMinistryAbbreviation: null,
+    commsLeadName: null,
+    commsContactsCount: 0,
+    eventLead: null,
+    leadMinistryId: null,
+    leadOrgId: null,
+    commsContactLeadUserId: null,
+    eventPlannerLeadId: null,
+    translationsRequired: [],
+    translationsRequiredStatus: null,
+    commsMaterials: [],
+    activityStatus: '',
+    activityStatusId: 0,
+    lastUpdatedDateTime: '',
+    lastUpdatedBy: 0,
+    createdDateTime: '',
+    ...overrides,
+  };
+}
 
 describe('normalizeListParams', () => {
   it('returns empty object for no input', () => {
@@ -14,12 +64,12 @@ describe('normalizeListParams', () => {
     expect(normalizeListParams({})).toEqual({});
   });
 
-  it('includes only excludeCompleted when provided', () => {
-    expect(normalizeListParams({ excludeCompleted: true })).toEqual({
-      excludeCompleted: true,
+  it('includes only includeCompleted when provided', () => {
+    expect(normalizeListParams({ includeCompleted: true })).toEqual({
+      includeCompleted: true,
     });
-    expect(normalizeListParams({ excludeCompleted: false })).toEqual({
-      excludeCompleted: false,
+    expect(normalizeListParams({ includeCompleted: false })).toEqual({
+      includeCompleted: false,
     });
   });
 
@@ -35,32 +85,523 @@ describe('normalizeListParams', () => {
   it('includes both keys when both provided', () => {
     expect(
       normalizeListParams({
-        excludeCompleted: false,
+        includeCompleted: false,
         includeDeleted: true,
       })
-    ).toEqual({ excludeCompleted: false, includeDeleted: true });
+    ).toEqual({ includeCompleted: false, includeDeleted: true });
   });
 
   it('omits keys when value is undefined for stable query key', () => {
     expect(
       normalizeListParams({
-        excludeCompleted: undefined,
+        includeCompleted: undefined,
         includeDeleted: undefined,
       })
     ).toEqual({});
   });
 
-  it('copies only excludeCompleted and includeDeleted when params have extra keys', () => {
+  it('copies only includeCompleted and includeDeleted when params have extra keys', () => {
     const params = {
-      excludeCompleted: true,
+      includeCompleted: true,
       includeDeleted: false,
       page: 1,
       limit: 20,
     } as Parameters<typeof normalizeListParams>[0];
     expect(normalizeListParams(params)).toEqual({
-      excludeCompleted: true,
+      includeCompleted: true,
       includeDeleted: false,
     });
+  });
+
+  it('includes leadTeamId, commsContactLeadUserId, sharedWithTeamId, sharedWithTeamIds when provided', () => {
+    expect(
+      normalizeListParams({
+        includeCompleted: true,
+        leadTeamId: 5,
+      })
+    ).toEqual({ includeCompleted: true, leadTeamId: 5 });
+    expect(
+      normalizeListParams({
+        commsContactLeadUserId: 10,
+        sharedWithTeamId: 3,
+      })
+    ).toEqual({
+      commsContactLeadUserId: 10,
+      sharedWithTeamId: 3,
+    });
+    expect(
+      normalizeListParams({
+        sharedWithTeamIds: [3, 1, 2],
+      })
+    ).toEqual({ sharedWithTeamIds: [1, 2, 3] });
+  });
+
+  it('omits date and activityStatusId (filtered client-side)', () => {
+    expect(
+      normalizeListParams({
+        startDateFrom: '2025-01-01',
+        startDateTo: '2025-01-31',
+        activityStatusId: 2,
+      } as Parameters<typeof normalizeListParams>[0])
+    ).toEqual({});
+  });
+});
+
+describe('filterActivityRowsByFilters', () => {
+  it('returns all rows when filter state is empty', () => {
+    const rows = [
+      makeRow({ id: 1, activityCategories: ['Event'], activityStatusId: 1 }),
+      makeRow({ id: 2, activityCategories: ['Release'], activityStatusId: 2 }),
+    ];
+    expect(
+      filterActivityRowsByFilters(rows, {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        dateRange: {
+          startDate: '',
+          endDate: '',
+          noStartDate: false,
+          noEndDate: false,
+        },
+        categoryNames: [],
+        activityStatusIds: [],
+      })
+    ).toEqual(rows);
+  });
+
+  it('filters by category names', () => {
+    const rows = [
+      makeRow({ id: 1, activityCategories: ['Event', 'Release'] }),
+      makeRow({ id: 2, activityCategories: ['FYI'] }),
+      makeRow({ id: 3, activityCategories: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '',
+        endDate: '',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: ['Event', 'FYI'],
+      activityStatusIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by activity status IDs', () => {
+    const rows = [
+      makeRow({ id: 1, activityStatusId: 1 }),
+      makeRow({ id: 2, activityStatusId: 2 }),
+      makeRow({ id: 3, activityStatusId: 3 }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '',
+        endDate: '',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: [],
+      activityStatusIds: [1, 3],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by pitch required status names (case-insensitive)', () => {
+    const rows = [
+      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
+      makeRow({ id: 2, pitchRequiredStatus: 'Not required' }),
+      makeRow({ id: 3, pitchRequiredStatus: 'TBD' }),
+      makeRow({ id: 4, pitchRequiredStatus: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchRequiredStatusNames: ['required', 'tbd'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('does not filter by pitch status when pitchRequiredStatusNames is empty', () => {
+    const rows = [
+      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
+      makeRow({ id: 2, pitchRequiredStatus: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchRequiredStatusNames: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by pitch date not_scheduled (row must have no pitch date)', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: null }),
+      makeRow({ id: 2, pitchDate: '2025-03-01' }),
+      makeRow({ id: 3, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: { kind: 'not_scheduled' },
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by pitch date scheduled with date range', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: '2025-02-15' }),
+      makeRow({ id: 2, pitchDate: '2025-01-10' }),
+      makeRow({ id: 3, pitchDate: '2025-03-20' }),
+      makeRow({ id: 4, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: {
+        kind: 'scheduled',
+        dateRange: {
+          startDate: '2025-02-01',
+          endDate: '2025-02-28',
+          noStartDate: false,
+          noEndDate: false,
+        },
+      },
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('pitch date scheduled with empty range includes all rows with pitch date', () => {
+    const rows = [
+      makeRow({ id: 1, pitchDate: '2025-02-15' }),
+      makeRow({ id: 2, pitchDate: '2024-01-01' }),
+      makeRow({ id: 3, pitchDate: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      pitchDateFilter: {
+        kind: 'scheduled',
+        dateRange: {
+          startDate: '',
+          endDate: '',
+          noStartDate: false,
+          noEndDate: false,
+        },
+      },
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by date range (activity start and end must fall within range)', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        startDate: '2025-01-15',
+        endDate: '2025-01-20',
+      }),
+      makeRow({
+        id: 2,
+        startDate: '2024-12-01',
+        endDate: '2024-12-31',
+      }),
+      makeRow({
+        id: 3,
+        startDate: '2025-02-01',
+        endDate: '2025-02-28',
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateRange: {
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+        noStartDate: false,
+        noEndDate: false,
+      },
+      categoryNames: [],
+      activityStatusIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by look-ahead status', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({
+        id: 2,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'issues',
+      }),
+      makeRow({ id: 3, lookAheadStatus: 'none', lookAheadSection: 'news' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: ['new', 'changed'],
+      lookAheadSectionValues: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by look-ahead section', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({
+        id: 2,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'issues',
+      }),
+      makeRow({ id: 3, lookAheadStatus: 'none', lookAheadSection: 'news' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: [],
+      lookAheadSectionValues: ['events', 'news'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  it('filters by both look-ahead status and section (AND)', () => {
+    const rows = [
+      makeRow({ id: 1, lookAheadStatus: 'new', lookAheadSection: 'events' }),
+      makeRow({ id: 2, lookAheadStatus: 'new', lookAheadSection: 'issues' }),
+      makeRow({
+        id: 3,
+        lookAheadStatus: 'changed',
+        lookAheadSection: 'events',
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      lookAheadStatusValues: ['new'],
+      lookAheadSectionValues: ['events'],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by date confirmed only', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'unknown' }),
+      makeRow({ id: 2, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'confirmed',
+      timeConfirmedFilter: 'any',
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by time not_confirmed only', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'Confirmed', timeStatus: 'Not confirmed' }),
+      makeRow({ id: 3, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'any',
+      timeConfirmedFilter: 'not_confirmed',
+    });
+    expect(result.map((r) => r.id)).toEqual([2, 3]);
+  });
+
+  it('filters by both date and time confirmed (AND)', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'confirmed', timeStatus: 'Not confirmed' }),
+      makeRow({ id: 3, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'confirmed',
+      timeConfirmedFilter: 'confirmed',
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('does not filter by confirmation when both are any', () => {
+    const rows = [
+      makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
+      makeRow({ id: 2, dateStatus: 'unknown', timeStatus: 'unknown' }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      dateConfirmedFilter: 'any',
+      timeConfirmedFilter: 'any',
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by tagIds (row must have at least one matching tag)', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        tags: [
+          { id: 10, text: 'env' },
+          { id: 20, text: 'health' },
+        ],
+      }),
+      makeRow({ id: 2, tags: [{ id: 20, text: 'health' }] }),
+      makeRow({ id: 3, tags: [{ id: 30, text: 'other' }] }),
+      makeRow({ id: 4, tags: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      tagIds: [20, 40],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('does not filter by tags when tagIds is empty', () => {
+    const rows = [
+      makeRow({ id: 1, tags: [{ id: 10, text: 'a' }] }),
+      makeRow({ id: 2, tags: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      tagIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by leadMinistryIds', () => {
+    const rows = [
+      makeRow({ id: 1, leadMinistryId: 10 }),
+      makeRow({ id: 2, leadMinistryId: 20 }),
+      makeRow({ id: 3, leadMinistryId: null }),
+      makeRow({ id: 4, leadMinistryId: 10 }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadMinistryIds: [10, 30],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
+  });
+
+  it('filters by leadOrgIds', () => {
+    const rows = [
+      makeRow({ id: 1, leadOrgId: 5 }),
+      makeRow({ id: 2, leadOrgId: 6 }),
+      makeRow({ id: 3, leadOrgId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadOrgIds: [5],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by commsContactLeadUserIds', () => {
+    const rows = [
+      makeRow({ id: 1, commsContactLeadUserId: 100 }),
+      makeRow({ id: 2, commsContactLeadUserId: 200 }),
+      makeRow({ id: 3, commsContactLeadUserId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      commsContactLeadUserIds: [100, 300],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by eventPlannerLeadIds', () => {
+    const rows = [
+      makeRow({ id: 1, eventPlannerLeadId: 1 }),
+      makeRow({ id: 2, eventPlannerLeadId: 2 }),
+      makeRow({ id: 3, eventPlannerLeadId: null }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      eventPlannerLeadIds: [2],
+    });
+    expect(result.map((r) => r.id)).toEqual([2]);
+  });
+
+  it('applies AND across lead types when multiple lead filters are set', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        leadMinistryId: 10,
+        leadOrgId: 5,
+        commsContactLeadUserId: 100,
+        eventPlannerLeadId: 1,
+      }),
+      makeRow({
+        id: 2,
+        leadMinistryId: 10,
+        leadOrgId: 99,
+        commsContactLeadUserId: 100,
+        eventPlannerLeadId: 1,
+      }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      leadMinistryIds: [10],
+      leadOrgIds: [5],
+      commsContactLeadUserIds: [100],
+      eventPlannerLeadIds: [1],
+    });
+    expect(result.map((r) => r.id)).toEqual([1]);
+  });
+
+  it('filters by translationLanguageIds when context provides options', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequired: ['French', 'Spanish'] }),
+      makeRow({ id: 2, translationsRequired: ['Spanish'] }),
+      makeRow({ id: 3, translationsRequired: [] }),
+      makeRow({ id: 4, translationsRequired: ['fr'] }),
+    ];
+    const context = {
+      translationLanguageOptions: [
+        { value: '10', label: 'French' },
+        { value: '20', label: 'Spanish' },
+        { value: '30', label: 'fr' },
+      ],
+    };
+    const result = filterActivityRowsByFilters(
+      rows,
+      {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        translationLanguageIds: [10, 30],
+      },
+      context
+    );
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
+  });
+
+  it('does not filter by translations when translationLanguageIds is empty', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequired: ['French'] }),
+      makeRow({ id: 2, translationsRequired: [] }),
+    ];
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      translationLanguageIds: [],
+    });
+    expect(result.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('filters by translationRequiredStatusIds when context provides options', () => {
+    const rows = [
+      makeRow({ id: 1, translationsRequiredStatus: 'Required' }),
+      makeRow({ id: 2, translationsRequiredStatus: 'Pending' }),
+      makeRow({ id: 3, translationsRequiredStatus: null }),
+      makeRow({ id: 4, translationsRequiredStatus: 'Required' }),
+    ];
+    const context = {
+      translationRequiredStatusOptions: [
+        { value: '1', label: 'Pending' },
+        { value: '2', label: 'Required' },
+        { value: '3', label: 'Not required' },
+      ],
+    };
+    const result = filterActivityRowsByFilters(
+      rows,
+      {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        translationRequiredStatusIds: [2],
+      },
+      context
+    );
+    expect(result.map((r) => r.id)).toEqual([1, 4]);
   });
 });
 
@@ -135,5 +676,63 @@ describe('buildOptimisticActivity', () => {
     const result = buildOptimisticActivity(minimalExisting, update);
     expect(result).toEqual(minimalExisting);
     expect(result).not.toBe(minimalExisting);
+  });
+});
+
+describe('filterActivityRowsByKeyword', () => {
+  it('returns all rows when keyword is empty', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha' }),
+      makeRow({ id: 2, title: 'Beta' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, '')).toEqual(rows);
+    expect(filterActivityRowsByKeyword(rows, '   ')).toEqual(rows);
+  });
+
+  it('matches in title (case-insensitive)', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha Event' }),
+      makeRow({ id: 2, title: 'Beta Event' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'alpha')).toEqual([rows[0]]);
+    expect(filterActivityRowsByKeyword(rows, 'ALPHA')).toEqual([rows[0]]);
+  });
+
+  it('matches in summary', () => {
+    const rows = [
+      makeRow({ id: 1, summary: 'First activity summary' }),
+      makeRow({ id: 2, summary: 'Second activity' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'summary')).toEqual([rows[0]]);
+  });
+
+  it('matches in displayId', () => {
+    const rows = [
+      makeRow({ id: 1, displayId: 'AG-000123' }),
+      makeRow({ id: 2, displayId: 'HLTH-456' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'AG-000123')).toEqual([rows[0]]);
+    expect(filterActivityRowsByKeyword(rows, '000123')).toEqual([rows[0]]);
+  });
+
+  it('returns empty array when no row matches', () => {
+    const rows = [
+      makeRow({ id: 1, title: 'Alpha', summary: 'One' }),
+      makeRow({ id: 2, title: 'Beta', summary: 'Two' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'gamma')).toEqual([]);
+  });
+
+  it('matches in tags and activityCategories', () => {
+    const rows = [
+      makeRow({
+        id: 1,
+        title: 'X',
+        tags: [{ id: 1, text: 'environment' }],
+        activityCategories: ['Event'],
+      }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'environment')).toEqual(rows);
+    expect(filterActivityRowsByKeyword(rows, 'Event')).toEqual(rows);
   });
 });

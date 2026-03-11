@@ -1,5 +1,6 @@
 export * from './activity';
 export * from './activityHistory';
+export * from './deletionAudit';
 export * from './user';
 export * from './userHistory';
 export * from './teamHistory';

@@ -62,7 +62,24 @@ import {
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
-import { useUsers } from '@/hooks/useLookups';
+import {
+  useActivityStatuses,
+  useCategories,
+  useEventPlanners,
+  useMinistries,
+  useOrganizations,
+  usePitchRequiredStatuses,
+  useTags,
+  useTranslationLanguages,
+  useTranslationRequiredStatuses,
+  useUsers,
+} from '@/hooks/useLookups';
+import {
+  filterActivityRowsByFilters,
+  filterActivityRowsByKeyword,
+  type ActivityListQueryParams,
+  type FilterActivityRowsContext,
+} from '@/lib/activity-query-utils';
 import {
   formatDateRange,
   formatExactDate,
@@ -72,6 +89,7 @@ import {
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { cn } from '@/lib/utils';
 
+import { ActivityTableFilters } from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
@@ -88,7 +106,6 @@ import { compareActivityRows } from './activityTableSort';
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
 
-const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;
 
@@ -200,7 +217,7 @@ function OverviewCell({ row }: { row: ActivityTableRow }) {
           items={row.activityCategories.map(
             (cat): BadgeGroupItem => ({
               key: cat,
-              label: toSentenceCase(cat),
+              label: cat,
               variant: 'primary',
               className: 'h-auto min-h-5 whitespace-normal text-white',
             })
@@ -529,9 +546,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
             strokeWidth={1.5}
             className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
           />
-          <span>
-            {row.commsMaterials.map((m) => toSentenceCase(m)).join(', ')}
-          </span>
+          <span>{row.commsMaterials.join(', ')}</span>
         </div>
       )}
     </div>
@@ -563,10 +578,7 @@ function StatusCell({
 
   return (
     <div>
-      <Badge
-        variant={getActivityStatusBadgeVariant(row.activityStatus)}
-        className="capitalize"
-      >
+      <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
         {row.activityStatus}
       </Badge>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
@@ -584,7 +596,23 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
-export function ActivityTable() {
+export interface ActivityTableProps {
+  /** When set, only activities with this lead team are shown (e.g. ministry tab). */
+  leadTeamId?: number;
+  /** When set, only activities where this user is comms contact lead are shown. */
+  commsContactLeadUserId?: number;
+  /** When set, only activities shared with this team are shown. */
+  sharedWithTeamId?: number;
+  /** When set, only activities shared with any of these teams are shown. */
+  sharedWithTeamIds?: number[];
+}
+
+export function ActivityTable({
+  leadTeamId,
+  commsContactLeadUserId,
+  sharedWithTeamId,
+  sharedWithTeamIds,
+}: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const canSeeDeleted =
@@ -598,7 +626,151 @@ export function ActivityTable() {
   const sortDirection = preferences.sortDirection;
   const showCompleted = preferences.showCompleted;
   const showDeleted = preferences.showDeleted;
+  const searchKeyword = preferences.searchKeyword;
+  const filterState = preferences.filterState;
   const [pageIndex, setPageIndex] = useState(0);
+
+  const { data: categoriesForFilter = [] } = useCategories();
+  const { data: activityStatusesForFilter = [] } = useActivityStatuses();
+  const { data: pitchRequiredStatusesForFilter = [] } =
+    usePitchRequiredStatuses();
+  const { data: tagsForFilter = [] } = useTags();
+  const { data: ministriesForFilter = [] } = useMinistries();
+  const { data: organizationsForFilter = [] } = useOrganizations();
+  const { data: usersForFilter = [] } = useUsers();
+  const { data: eventPlannersForFilter = [] } = useEventPlanners();
+  const { data: translationLanguagesForFilter = [] } =
+    useTranslationLanguages();
+  const { data: translationRequiredStatusesForFilter = [] } =
+    useTranslationRequiredStatuses();
+  const categoryOptions = useMemo(
+    () =>
+      categoriesForFilter
+        .filter((c) => c.isActive)
+        .map((c) => ({ value: c.displayName, label: c.displayName })),
+    [categoriesForFilter]
+  );
+  const statusArchiveIds = useMemo(() => {
+    const completed = activityStatusesForFilter.find(
+      (s) => s.name === 'completed'
+    );
+    const deleted = activityStatusesForFilter.find((s) => s.name === 'deleted');
+    return {
+      completedStatusId: completed?.id,
+      deletedStatusId: deleted?.id,
+    };
+  }, [activityStatusesForFilter]);
+
+  const statusOptions = useMemo(
+    () =>
+      activityStatusesForFilter
+        .filter((s) => canSeeDeleted || s.name !== 'deleted')
+        .map((s) => ({
+          value: String(s.id),
+          label: s.displayName,
+        })),
+    [activityStatusesForFilter, canSeeDeleted]
+  );
+
+  const pitchRequiredStatusOptions = useMemo(
+    () =>
+      pitchRequiredStatusesForFilter.map((s) => ({
+        value: s.displayName,
+        label: s.displayName,
+      })),
+    [pitchRequiredStatusesForFilter]
+  );
+
+  const tagOptions = useMemo(
+    () =>
+      tagsForFilter.map((t) => ({
+        value: String(t.id),
+        label: t.displayName ?? t.label ?? String(t.id),
+      })),
+    [tagsForFilter]
+  );
+
+  const ministryOptions = useMemo(
+    () =>
+      ministriesForFilter.map((m) => ({
+        value: String(m.id),
+        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
+      })),
+    [ministriesForFilter]
+  );
+  const organizationOptions = useMemo(
+    () =>
+      organizationsForFilter.map((o) => ({
+        value: String(o.id),
+        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
+      })),
+    [organizationsForFilter]
+  );
+  const commsContactOptions = useMemo(
+    () =>
+      usersForFilter.map((u) => ({
+        value: String(u.id),
+        label: u.name ?? u.email ?? String(u.id),
+      })),
+    [usersForFilter]
+  );
+  const eventPlannerOptions = useMemo(
+    () =>
+      eventPlannersForFilter.map((ep) => ({
+        value: String(ep.id),
+        label: ep.label ?? String(ep.id),
+      })),
+    [eventPlannersForFilter]
+  );
+  const translationOptions = useMemo(
+    () =>
+      translationLanguagesForFilter.map((l) => {
+        const displayLabel = l.shortcode
+          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
+          : (l.displayName ?? String(l.id));
+        return { value: String(l.id), label: displayLabel };
+      }),
+    [translationLanguagesForFilter]
+  );
+  const translationLanguageOptionsForFilter = useMemo(
+    () =>
+      translationLanguagesForFilter.map((l) => ({
+        value: String(l.id),
+        label: l.shortcode ?? l.displayName ?? String(l.id),
+      })),
+    [translationLanguagesForFilter]
+  );
+  const translationStatusOptions = useMemo(
+    () =>
+      translationRequiredStatusesForFilter.map((s) => ({
+        value: String(s.id),
+        label: s.displayName ?? s.name ?? String(s.id),
+      })),
+    [translationRequiredStatusesForFilter]
+  );
+  const translationRequiredStatusOptionsForFilter = useMemo(
+    () =>
+      translationRequiredStatusesForFilter.map((s) => ({
+        value: String(s.id),
+        label: s.displayName ?? s.name ?? String(s.id),
+      })),
+    [translationRequiredStatusesForFilter]
+  );
+
+  const hasStatusFilter = filterState.activityStatusIds.length > 0;
+  const statusFilterIncludesCompleted =
+    statusArchiveIds.completedStatusId != null &&
+    filterState.activityStatusIds.includes(statusArchiveIds.completedStatusId);
+  const statusFilterIncludesDeleted =
+    statusArchiveIds.deletedStatusId != null &&
+    filterState.activityStatusIds.includes(statusArchiveIds.deletedStatusId);
+  const effectiveShowCompleted = hasStatusFilter
+    ? statusFilterIncludesCompleted
+    : showCompleted;
+  const effectiveShowDeleted = hasStatusFilter
+    ? statusFilterIncludesDeleted && canSeeDeleted
+    : showDeleted && canSeeDeleted;
+
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
     [pageIndex, preferences.pageSize]
@@ -607,31 +779,74 @@ export function ActivityTable() {
     left: ['overview'],
   });
 
-  const activityFilters = useMemo(
-    () => ({
-      excludeCompleted: !showCompleted,
-      includeDeleted: showDeleted && canSeeDeleted,
-    }),
-    [showCompleted, showDeleted, canSeeDeleted]
-  );
+  const activityFilters = useMemo((): ActivityListQueryParams => {
+    return {
+      includeCompleted: effectiveShowCompleted,
+      includeDeleted: effectiveShowDeleted,
+      ...(leadTeamId !== undefined && { leadTeamId }),
+      ...(commsContactLeadUserId !== undefined && {
+        commsContactLeadUserId,
+      }),
+      ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
+      ...(sharedWithTeamIds !== undefined &&
+        sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
+    };
+  }, [
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    leadTeamId,
+    commsContactLeadUserId,
+    sharedWithTeamId,
+    sharedWithTeamIds,
+  ]);
 
   // Reset to first page when user changes filters so results match expectations
   const prevFiltersRef = useRef(activityFilters);
   useEffect(() => {
     const prev = prevFiltersRef.current;
+    const sameSharedWithTeamIds =
+      (prev.sharedWithTeamIds == null &&
+        activityFilters.sharedWithTeamIds == null) ||
+      (prev.sharedWithTeamIds != null &&
+        activityFilters.sharedWithTeamIds != null &&
+        prev.sharedWithTeamIds.length ===
+          activityFilters.sharedWithTeamIds.length &&
+        prev.sharedWithTeamIds.every(
+          (id, i) => id === activityFilters.sharedWithTeamIds![i]
+        ));
     const same =
-      prev.excludeCompleted === activityFilters.excludeCompleted &&
-      prev.includeDeleted === activityFilters.includeDeleted;
+      prev.includeCompleted === activityFilters.includeCompleted &&
+      prev.includeDeleted === activityFilters.includeDeleted &&
+      prev.leadTeamId === activityFilters.leadTeamId &&
+      prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
+      prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;
       setPageIndex(0);
     }
   }, [activityFilters]);
 
+  // Reset to first page when search keyword or filter state changes
+  const prevSearchKeywordRef = useRef(searchKeyword);
+  const prevFilterStateRef = useRef(filterState);
+  useEffect(() => {
+    if (prevSearchKeywordRef.current !== searchKeyword) {
+      prevSearchKeywordRef.current = searchKeyword;
+      setPageIndex(0);
+    }
+  }, [searchKeyword]);
+  useEffect(() => {
+    if (
+      JSON.stringify(prevFilterStateRef.current) !== JSON.stringify(filterState)
+    ) {
+      prevFilterStateRef.current = filterState;
+      setPageIndex(0);
+    }
+  }, [filterState]);
+
   const activitiesQuery = useActivityList(activityFilters);
   const usersQuery = useUsers();
-  const activities = activitiesQuery.data ?? [];
-  const users = usersQuery.data ?? [];
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
@@ -659,6 +874,7 @@ export function ActivityTable() {
 
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
+    const users = usersQuery.data ?? [];
     users.forEach((u) => {
       const displayName = u.name || u.email || String(u.id);
       map.set(String(u.id), {
@@ -667,21 +883,50 @@ export function ActivityTable() {
       });
     });
     return map;
-  }, [users]);
+  }, [usersQuery.data]);
 
   const data = useMemo(
-    () => activities.map(mapActivityResponseToTableRow),
-    [activities]
+    () => (activitiesQuery.data ?? []).map(mapActivityResponseToTableRow),
+    [activitiesQuery.data]
   );
+
+  const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
+    const hasTranslationStatus =
+      translationRequiredStatusOptionsForFilter.length > 0;
+    const hasTranslationLanguages =
+      translationLanguageOptionsForFilter.length > 0;
+    if (!hasTranslationStatus && !hasTranslationLanguages) return undefined;
+    return {
+      ...(hasTranslationStatus && {
+        translationRequiredStatusOptions:
+          translationRequiredStatusOptionsForFilter,
+      }),
+      ...(hasTranslationLanguages && {
+        translationLanguageOptions: translationLanguageOptionsForFilter,
+      }),
+    };
+  }, [
+    translationRequiredStatusOptionsForFilter,
+    translationLanguageOptionsForFilter,
+  ]);
+
+  const filteredData = useMemo(() => {
+    const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
+    return filterActivityRowsByFilters(
+      afterKeyword,
+      filterState,
+      filterContext
+    );
+  }, [data, searchKeyword, filterState, filterContext]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
     sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
   const sortedData = useMemo(() => {
-    return [...data].sort((a, b) =>
+    return [...filteredData].sort((a, b) =>
       compareActivityRows(a, b, effectiveSortKey, effectiveSortDirection)
     );
-  }, [data, effectiveSortKey, effectiveSortDirection]);
+  }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
   // Track which row ids we have seen so we can animate only newly arrived rows on refetch
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -848,7 +1093,13 @@ export function ActivityTable() {
         cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
-    [columnHelper, userMap, effectiveSortKey, effectiveSortDirection]
+    [
+      columnHelper,
+      userMap,
+      effectiveSortKey,
+      effectiveSortDirection,
+      handleSortChange,
+    ]
   );
 
   const table = useReactTable({
@@ -869,48 +1120,94 @@ export function ActivityTable() {
   });
 
   const eventTableFilters = useMemo(() => {
+    const disabledTooltip = hasStatusFilter
+      ? 'Controlled by status filter'
+      : undefined;
     const filters = [
       {
         id: 'show-completed',
         label: 'Show completed',
-        checked: showCompleted,
+        checked: effectiveShowCompleted,
         onCheckedChange: (checked: boolean) =>
           setPreferences({ showCompleted: checked }),
+        disabled: hasStatusFilter,
+        disabledTooltip,
       },
     ];
     if (canSeeDeleted) {
       filters.push({
         id: 'show-deleted',
         label: 'Show deleted',
-        checked: showDeleted,
+        checked: effectiveShowDeleted,
         onCheckedChange: (checked: boolean) =>
           setPreferences({ showDeleted: checked }),
+        disabled: hasStatusFilter,
+        disabledTooltip,
       });
     }
     return filters;
-  }, [showCompleted, showDeleted, canSeeDeleted, setPreferences]);
+  }, [
+    hasStatusFilter,
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    canSeeDeleted,
+    setPreferences,
+  ]);
+
+  const handleFilterStateChange = useCallback(
+    (nextFilterState: typeof filterState) => {
+      setPreferences({ filterState: nextFilterState });
+    },
+    [setPreferences]
+  );
+
+  const filterBar = (
+    <ActivityTableFilters
+      filterState={filterState}
+      onFilterStateChange={handleFilterStateChange}
+      searchKeyword={searchKeyword}
+      onSearchKeywordChange={(value: string) =>
+        setPreferences({ searchKeyword: value })
+      }
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSortChange={handleSortChange}
+      defaultSortKey={DEFAULT_SORT_KEY}
+      defaultSortDirection={DEFAULT_SORT_DIRECTION}
+      sortColumns={ACTIVITY_SORT_COLUMNS}
+      categoryOptions={categoryOptions}
+      pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+      statusOptions={statusOptions}
+      tagOptions={tagOptions}
+      translationStatusOptions={translationStatusOptions}
+      translationOptions={translationOptions}
+      ministryOptions={ministryOptions}
+      organizationOptions={organizationOptions}
+      commsContactOptions={commsContactOptions}
+      eventPlannerOptions={eventPlannerOptions}
+    />
+  );
 
   // Loading state
   if (loading) {
     return (
-      <ActivityTableLayout
-        scrollRef={tableScrollRef}
-        sortColumns={ACTIVITY_SORT_COLUMNS}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-        defaultSortKey={DEFAULT_SORT_KEY}
-        defaultSortDirection={DEFAULT_SORT_DIRECTION}
-        count={0}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-      >
-        <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          <span className="text-sm text-slate-600">Loading activities...</span>
-        </div>
-      </ActivityTableLayout>
+      <div className="min-w-0 space-y-4">
+        {filterBar}
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        >
+          <div className="flex flex-col items-center justify-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <span className="text-sm text-slate-600">
+              Loading activities...
+            </span>
+          </div>
+        </ActivityTableLayout>
+      </div>
     );
   }
 
@@ -927,193 +1224,199 @@ export function ActivityTable() {
     );
   }
 
-  // Empty state
+  // Empty state (no activities from server)
   if (data.length === 0) {
     return (
-      <ActivityTableLayout
-        scrollRef={tableScrollRef}
-        sortColumns={ACTIVITY_SORT_COLUMNS}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-        defaultSortKey={DEFAULT_SORT_KEY}
-        defaultSortDirection={DEFAULT_SORT_DIRECTION}
-        count={0}
-        singularLabel="entry"
-        pluralLabel="entries"
-        filters={eventTableFilters}
-      >
-        <div className="py-12 text-center text-sm text-slate-600">
-          <div className="mb-2 font-semibold">No activities found</div>
-          <div>
-            Create a new entry or adjust filters to see activities here.
+      <div className="min-w-0 space-y-4">
+        {filterBar}
+        <ActivityTableLayout
+          scrollRef={tableScrollRef}
+          count={0}
+          singularLabel="entry"
+          pluralLabel="entries"
+          filters={eventTableFilters}
+        >
+          <div className="py-12 text-center text-sm text-slate-600">
+            <div className="mb-2 font-semibold">No activities found</div>
+            <div>
+              Create a new entry or adjust filters to see activities here.
+            </div>
           </div>
-        </div>
-      </ActivityTableLayout>
+        </ActivityTableLayout>
+      </div>
     );
   }
 
   const pageRows = table.getRowModel().rows;
 
+  // Single return so ActivityTableLayout stays mounted when switching to empty-search state.
   return (
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
+        {filterBar}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
-          sortColumns={ACTIVITY_SORT_COLUMNS}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortChange={handleSortChange}
-          defaultSortKey={DEFAULT_SORT_KEY}
-          defaultSortDirection={DEFAULT_SORT_DIRECTION}
           count={sortedData.length}
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
         >
-          <table
-            className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-            role="grid"
-            aria-colcount={columns.length}
-          >
-            <thead className={tableThead}>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const pinStyles = getCommonPinningStyles(header.column);
-                    const meta = header.column.columnDef.meta as
-                      | { sortKey?: string; sortKeys?: string[] }
-                      | undefined;
-                    const isSortable =
-                      meta?.sortKey != null ||
-                      (meta?.sortKeys?.length ?? 0) > 0;
-                    const sortPayload = meta?.sortKeys ?? meta?.sortKey;
-                    const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
-                    return (
-                      <th
-                        key={header.id}
-                        className={cn(tableTh, hasMultiSort && 'group')}
-                        style={{
-                          width: header.getSize(),
-                          minWidth:
-                            header.column.columnDef.minSize ?? header.getSize(),
-                          maxWidth:
-                            header.column.columnDef.maxSize ?? header.getSize(),
-                          cursor: isSortable ? 'pointer' : 'default',
-                          ...pinStyles,
-                          ...(pinStyles.position === 'sticky'
-                            ? { backgroundColor: 'rgb(248 250 252)' }
-                            : {}),
-                        }}
-                        onClick={(e) => {
-                          if (
-                            (e.target as HTMLElement).closest(
-                              `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
-                            )
-                          ) {
-                            return;
-                          }
-                          const onHeaderSort = (
-                            table.options.meta as
-                              | {
-                                  handleHeaderSort?: (
-                                    key: string | string[]
-                                  ) => void;
-                                }
-                              | undefined
-                          )?.handleHeaderSort;
-                          if (sortPayload != null && onHeaderSort)
-                            onHeaderSort(sortPayload);
-                        }}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {pageRows.map((row) => {
-                const isNewRow = newRowIds.has(row.original.id);
-                return (
-                  <tr
-                    key={row.id}
-                    className={`group/row ${tableBodyRow} cursor-pointer ${
-                      isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                    }`}
-                    tabIndex={0}
-                    onClick={(e) => {
-                      if (
-                        (e.target as HTMLElement).closest('[data-no-row-nav]')
-                      )
-                        return;
-                      if (window.getSelection()?.toString().trim()) return;
-                      void navigate(`/activity/${row.original.id}`);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return;
-                      if (
-                        (e.target as HTMLElement).closest('[data-no-row-nav]')
-                      )
-                        return;
-                      e.preventDefault();
-                      void navigate(`/activity/${row.original.id}`);
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => {
-                      const pinStyles = getCommonPinningStyles(cell.column);
-                      const isOverview = cell.column.id === 'overview';
+          {filteredData.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-600">
+              <div className="mb-2 font-semibold">
+                No activities match your search
+              </div>
+              <div>Try a different keyword or clear the search.</div>
+            </div>
+          ) : (
+            <table
+              className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+              role="grid"
+              aria-colcount={columns.length}
+            >
+              <thead className={tableThead}>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const pinStyles = getCommonPinningStyles(header.column);
+                      const meta = header.column.columnDef.meta as
+                        | { sortKey?: string; sortKeys?: string[] }
+                        | undefined;
+                      const isSortable =
+                        meta?.sortKey != null ||
+                        (meta?.sortKeys?.length ?? 0) > 0;
+                      const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                      const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
                       return (
-                        <td
-                          key={cell.id}
-                          className={`${tableTd} border-b border-slate-100 ${
-                            isOverview
-                              ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                              : ''
-                          }`}
+                        <th
+                          key={header.id}
+                          className={cn(tableTh, hasMultiSort && 'group')}
                           style={{
-                            width: cell.column.getSize(),
+                            width: header.getSize(),
                             minWidth:
-                              cell.column.columnDef.minSize ??
-                              cell.column.getSize(),
+                              header.column.columnDef.minSize ??
+                              header.getSize(),
                             maxWidth:
-                              cell.column.columnDef.maxSize ??
-                              cell.column.getSize(),
+                              header.column.columnDef.maxSize ??
+                              header.getSize(),
+                            cursor: isSortable ? 'pointer' : 'default',
                             ...pinStyles,
+                            ...(pinStyles.position === 'sticky'
+                              ? { backgroundColor: 'rgb(248 250 252)' }
+                              : {}),
+                          }}
+                          onClick={(e) => {
+                            if (
+                              (e.target as HTMLElement).closest(
+                                `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                              )
+                            ) {
+                              return;
+                            }
+                            const onHeaderSort = (
+                              table.options.meta as
+                                | {
+                                    handleHeaderSort?: (
+                                      key: string | string[]
+                                    ) => void;
+                                  }
+                                | undefined
+                            )?.handleHeaderSort;
+                            if (sortPayload != null && onHeaderSort)
+                              onHeaderSort(sortPayload);
                           }}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </td>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </th>
                       );
                     })}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </thead>
+              <tbody>
+                {pageRows.map((row) => {
+                  const isNewRow = newRowIds.has(row.original.id);
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`group/row ${tableBodyRow} cursor-pointer ${
+                        isNewRow ? 'animate-in fade-in-0 duration-300' : ''
+                      }`}
+                      tabIndex={0}
+                      onClick={(e) => {
+                        if (
+                          (e.target as HTMLElement).closest('[data-no-row-nav]')
+                        )
+                          return;
+                        if (window.getSelection()?.toString().trim()) return;
+                        void navigate(`/activity/${row.original.id}`);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        if (
+                          (e.target as HTMLElement).closest('[data-no-row-nav]')
+                        )
+                          return;
+                        e.preventDefault();
+                        void navigate(`/activity/${row.original.id}`);
+                      }}
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const pinStyles = getCommonPinningStyles(cell.column);
+                        const isOverview = cell.column.id === 'overview';
+                        return (
+                          <td
+                            key={cell.id}
+                            className={`${tableTd} border-b border-slate-100 ${
+                              isOverview
+                                ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                                : ''
+                            }`}
+                            style={{
+                              width: cell.column.getSize(),
+                              minWidth:
+                                cell.column.columnDef.minSize ??
+                                cell.column.getSize(),
+                              maxWidth:
+                                cell.column.columnDef.maxSize ??
+                                cell.column.getSize(),
+                              ...pinStyles,
+                            }}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </ActivityTableLayout>
 
-        <TablePagination
-          totalItems={sortedData.length}
-          page={pagination.pageIndex + 1}
-          pageSize={pagination.pageSize}
-          onPageChange={(page) =>
-            setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-          }
-          onPageSizeChange={(pageSize) =>
-            setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-          }
-          scrollContainerRef={tableScrollRef}
-        />
+        {filteredData.length > 0 && (
+          <TablePagination
+            totalItems={sortedData.length}
+            page={pagination.pageIndex + 1}
+            pageSize={pagination.pageSize}
+            onPageChange={(page) =>
+              setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
+            }
+            onPageSizeChange={(pageSize) =>
+              setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
+            }
+            scrollContainerRef={tableScrollRef}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

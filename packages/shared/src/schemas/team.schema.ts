@@ -22,22 +22,13 @@ export const teamListItemSchema = z.object({
   description: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  roleId: z.number().int().nullable(),
   memberCount: z.number().int(),
-  ministryCount: z.number().int(),
+  ministryId: z.number().int().nullable(),
+  ministryName: z.string().nullable(),
 });
 
 export type TeamListItem = z.infer<typeof teamListItemSchema>;
-
-/**
- * Team ministry membership.
- * ministryId matches ministries.id (serial integer); consistent with other lookup IDs in the API.
- */
-export const teamMinistrySchema = z.object({
-  ministryId: z.number().int(),
-  ministryName: z.string(),
-});
-
-export type TeamMinistry = z.infer<typeof teamMinistrySchema>;
 
 /**
  * Team member.
@@ -52,10 +43,9 @@ export type TeamMember = z.infer<typeof teamMemberSchema>;
 
 /**
  * Team detail returned by GET /teams/:id.
- * Extends TeamListItem with ministries and members.
+ * Extends TeamListItem with members. Ministry is on the list item (ministryId, ministryName).
  */
 export const teamDetailSchema = teamListItemSchema.extend({
-  ministries: z.array(teamMinistrySchema),
   members: z.array(teamMemberSchema),
 });
 
@@ -74,7 +64,8 @@ export const createTeamBodySchema = z.object({
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  ministryIds: z.array(z.string()).optional(),
+  roleId: z.number().int().nullable().optional(),
+  ministryId: z.number().int().nullable().optional(),
   notes: z.string().optional(),
 });
 
@@ -89,7 +80,8 @@ export const updateTeamBodySchema = z.object({
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  ministryIds: z.array(z.string()).optional(),
+  roleId: z.number().int().nullable().optional(),
+  ministryId: z.number().int().nullable().optional(),
   notes: z.string().optional(),
 });
 
