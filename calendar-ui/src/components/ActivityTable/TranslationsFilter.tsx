@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
 
 import { FilterSearchableList } from './FilterSearchableList';
 import { FilterSectionLabel } from './FilterSectionLabel';
@@ -84,6 +85,11 @@ export function TranslationsFilterPanel({
     if (!open) setSearchTerm('');
   }, []);
 
+  const subPopoverHover = useSubPopoverHover(
+    languagesOpen,
+    handleLanguagesOpenChange
+  );
+
   return (
     <div className="min-w-48 space-y-2 py-1">
       <FilterSectionLabel
@@ -116,13 +122,14 @@ export function TranslationsFilterPanel({
           })}
         </ul>
       )}
-      <Popover open={languagesOpen} onOpenChange={handleLanguagesOpenChange}>
+      <Popover open={languagesOpen} onOpenChange={subPopoverHover.onOpenChange}>
         <PopoverTrigger asChild>
           <button
             type="button"
             className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
             aria-expanded={languagesOpen}
             aria-label={`Translations languages${languageCount > 0 ? ` (${languageCount} selected)` : ''}`}
+            {...subPopoverHover.triggerPointerHandlers}
           >
             <span className="flex items-center gap-2">
               <span className="text-muted-foreground text-xs font-normal uppercase">
@@ -142,6 +149,7 @@ export function TranslationsFilterPanel({
           align="start"
           className="w-auto min-w-48 p-0"
           sideOffset={2}
+          {...subPopoverHover.contentPointerHandlers}
         >
           <FilterSearchableList
             options={translationOptions}

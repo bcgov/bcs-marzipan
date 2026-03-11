@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
 
 import type { ActivityFilterState } from './activityFilterState';
 import { FilterSearchableList } from './FilterSearchableList';
@@ -71,6 +72,71 @@ const LEAD_SECTIONS: LeadSectionConfig[] = [
   },
 ];
 
+interface LeadSectionPopoverProps {
+  section: LeadSectionConfig;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedIds: number[];
+  options: LeadFilterOption[];
+  onToggle: (id: number) => void;
+  onClear: () => void;
+}
+
+function LeadSectionPopover({
+  section,
+  isOpen,
+  onOpenChange,
+  selectedIds,
+  options,
+  onToggle,
+  onClear,
+}: LeadSectionPopoverProps) {
+  const subPopoverHover = useSubPopoverHover(isOpen, onOpenChange);
+  const count = selectedIds.length;
+
+  return (
+    <Popover open={isOpen} onOpenChange={subPopoverHover.onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+          aria-expanded={isOpen}
+          aria-label={`${section.label} filter${count > 0 ? ` (${count} selected)` : ''}`}
+          {...subPopoverHover.triggerPointerHandlers}
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs font-normal uppercase">
+              {section.label}
+            </span>
+            {count > 0 && (
+              <span className="text-muted-foreground text-xs">({count})</span>
+            )}
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="w-auto min-w-48 p-0"
+        sideOffset={2}
+        {...subPopoverHover.contentPointerHandlers}
+      >
+        <FilterSearchableList
+          options={options}
+          selectedIds={selectedIds}
+          onToggle={onToggle}
+          searchPlaceholder={section.searchPlaceholder}
+          searchAriaLabel={section.searchAriaLabel}
+          emptyMessage="No results"
+          showClearButton
+          onClear={onClear}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /**
  * Leads filter panel with four trigger rows, each opening a sub Popover
  * containing a searchable list for that section.
@@ -112,57 +178,18 @@ export function LeadsFilterPanel({
 
   return (
     <div className="min-w-48 py-1">
-      {LEAD_SECTIONS.map((section) => {
-        const selectedIds = filterState[section.stateKey];
-        const count = selectedIds.length;
-        const isOpen = openSection === section.key;
-
-        return (
-          <Popover
-            key={section.key}
-            open={isOpen}
-            onOpenChange={(open) => setOpenSection(open ? section.key : null)}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
-                aria-expanded={isOpen}
-                aria-label={`${section.label} filter${count > 0 ? ` (${count} selected)` : ''}`}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-xs font-normal uppercase">
-                    {section.label}
-                  </span>
-                  {count > 0 && (
-                    <span className="text-muted-foreground text-xs">
-                      ({count})
-                    </span>
-                  )}
-                </span>
-                <ChevronRight className="text-muted-foreground h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              side="right"
-              align="start"
-              className="w-auto min-w-48 p-0"
-              sideOffset={2}
-            >
-              <FilterSearchableList
-                options={optionsMap[section.key]}
-                selectedIds={selectedIds}
-                onToggle={(id) => handleToggle(section.stateKey, id)}
-                searchPlaceholder={section.searchPlaceholder}
-                searchAriaLabel={section.searchAriaLabel}
-                emptyMessage="No results"
-                showClearButton
-                onClear={() => handleClear(section.stateKey)}
-              />
-            </PopoverContent>
-          </Popover>
-        );
-      })}
+      {LEAD_SECTIONS.map((section) => (
+        <LeadSectionPopover
+          key={section.key}
+          section={section}
+          isOpen={openSection === section.key}
+          onOpenChange={(open) => setOpenSection(open ? section.key : null)}
+          selectedIds={filterState[section.stateKey]}
+          options={optionsMap[section.key]}
+          onToggle={(id) => handleToggle(section.stateKey, id)}
+          onClear={() => handleClear(section.stateKey)}
+        />
+      ))}
     </div>
   );
 }

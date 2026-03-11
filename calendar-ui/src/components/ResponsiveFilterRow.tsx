@@ -33,6 +33,7 @@ import {
   filterTriggerStyles,
 } from '@/components/users/FilterTrigger';
 import { useElementWidth } from '@/hooks/useElementWidth';
+import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
 import { cn } from '@/lib/utils';
 
 const PLACEHOLDER_SAVED_FILTERS = [
@@ -133,6 +134,48 @@ const OverflowFilterRow = forwardRef<
     </button>
   );
 });
+
+/** Overflow filter slot with sub-popover that opens on hover (mouse) or click/keyboard. */
+function OverflowFilterPopover({
+  entry,
+  isOpen,
+  onOpenChange,
+}: {
+  entry: ResponsiveFilterSlot;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { label, panel, triggerProps } = entry;
+  const labelWithCount =
+    triggerProps.active && triggerProps.count > 0
+      ? `${label} (${triggerProps.count})`
+      : label;
+  const subPopoverHover = useSubPopoverHover(isOpen, onOpenChange);
+
+  return (
+    <Popover open={isOpen} onOpenChange={subPopoverHover.onOpenChange}>
+      <PopoverTrigger asChild>
+        <OverflowFilterRow
+          labelWithCount={labelWithCount}
+          triggerProps={triggerProps}
+          {...subPopoverHover.triggerPointerHandlers}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        className={cn(
+          FILTER_PANEL_MIN_WIDTH,
+          'max-h-[min(80vh,400px)] w-auto overflow-y-auto p-0'
+        )}
+        sideOffset={2}
+        {...subPopoverHover.contentPointerHandlers}
+      >
+        {panel}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export interface ResponsiveFilterSlotTriggerProps {
   active: boolean;
@@ -417,7 +460,7 @@ export function ResponsiveFilterRow({
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <button
                       type="button"
-                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 border-b px-4 py-2 text-sm font-medium outline-none"
+                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 px-4 py-2 text-sm font-medium outline-none"
                       onClick={() => setFiltersAccordionOpen((prev) => !prev)}
                       aria-expanded={filtersAccordionOpen}
                     >
@@ -431,40 +474,16 @@ export function ResponsiveFilterRow({
                     </button>
                     {filtersAccordionOpen && (
                       <div>
-                        {overflowSlotEntries.map((entry) => {
-                          const { label, panel, triggerProps } = entry;
-                          const labelWithCount =
-                            triggerProps.active && triggerProps.count > 0
-                              ? `${label} (${triggerProps.count})`
-                              : label;
-                          return (
-                            <Popover
-                              key={entry.key}
-                              open={openFilterKey === entry.key}
-                              onOpenChange={(open) =>
-                                setOpenFilterKey(open ? entry.key : null)
-                              }
-                            >
-                              <PopoverTrigger asChild>
-                                <OverflowFilterRow
-                                  labelWithCount={labelWithCount}
-                                  triggerProps={triggerProps}
-                                />
-                              </PopoverTrigger>
-                              <PopoverContent
-                                side="right"
-                                align="start"
-                                className={cn(
-                                  FILTER_PANEL_MIN_WIDTH,
-                                  'max-h-[min(80vh,400px)] w-auto overflow-y-auto p-0'
-                                )}
-                                sideOffset={2}
-                              >
-                                {panel}
-                              </PopoverContent>
-                            </Popover>
-                          );
-                        })}
+                        {overflowSlotEntries.map((entry) => (
+                          <OverflowFilterPopover
+                            key={entry.key}
+                            entry={entry}
+                            isOpen={openFilterKey === entry.key}
+                            onOpenChange={(open) =>
+                              setOpenFilterKey(open ? entry.key : null)
+                            }
+                          />
+                        ))}
                       </div>
                     )}
                   </div>

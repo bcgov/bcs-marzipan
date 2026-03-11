@@ -1,7 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { Checkbox } from '@/components/ui/checkbox';
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 import { Input } from '@/components/ui/input';
 
 export interface FilterSearchableListOption {
@@ -103,7 +103,13 @@ export function FilterSearchableList({
         tabIndex={0}
         onFocus={(e) => {
           if (e.target === e.currentTarget && filteredOptions.length > 0) {
-            requestAnimationFrame(() => firstItemRef.current?.focus());
+            const firstCheckbox =
+              firstItemRef.current?.querySelector<HTMLButtonElement>(
+                'button[role="checkbox"]'
+              );
+            requestAnimationFrame(
+              () => firstCheckbox?.focus() ?? firstItemRef.current?.focus()
+            );
           }
         }}
       >
@@ -117,22 +123,17 @@ export function FilterSearchableList({
             const checked = Number.isFinite(id) && selectedIds.includes(id);
             const isFirst = index === 0;
             return (
-              <label
+              <FilterCheckboxItem
                 key={opt.value}
                 ref={isFirst ? firstItemRef : undefined}
-                tabIndex={0}
-                className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-sm outline-none select-none"
+                checked={checked}
+                onCheckedChange={() =>
+                  Number.isFinite(id) && handleToggle(opt.value)
+                }
                 onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
               >
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={() =>
-                    Number.isFinite(id) && handleToggle(opt.value)
-                  }
-                  tabIndex={-1}
-                />
-                <span className="truncate">{opt.label}</span>
-              </label>
+                {opt.label}
+              </FilterCheckboxItem>
             );
           })
         )}
