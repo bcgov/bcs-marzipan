@@ -96,8 +96,8 @@ export type FormatExactDateOptions = {
   /** Include time, e.g. "Jan 23, 2026 at 2:00 PM". Default false. */
   includeTime?: boolean;
   /**
-   * Include year: true = always "Jan 23, 2026"; false = "Jan 23"; 'auto' = omit when same as current year.
-   * Default 'auto'.
+   * Include year: true | 'auto' = always show (e.g. "Jan 23, 2026"); false = omit (e.g. "Jan 23").
+   * Default 'auto' (always show year).
    */
   includeYear?: boolean | 'auto';
 };
@@ -112,10 +112,7 @@ export function formatExactDate(
 ): string {
   const includeTime = options?.includeTime ?? false;
   const includeYear = options?.includeYear ?? 'auto';
-  const now = new Date();
-  const showYear =
-    includeYear === true ||
-    (includeYear === 'auto' && date.getFullYear() !== now.getFullYear());
+  const showYear = includeYear !== false;
 
   const datePart = date.toLocaleDateString('en-US', {
     month: 'short',
@@ -128,8 +125,9 @@ export function formatExactDate(
 }
 
 /**
- * Format a date range with year shown once at the end when same year (e.g. "Jan 23 – Feb 1, 2027"),
- * or omitted when that year is the current year ("Jan 23 – Feb 1"). When years differ, both are shown.
+ * Format a date range. Year is always shown.
+ * Same year: year once after the end date (e.g. "Dec 1 – Dec 4, 2026").
+ * Different years: both years shown (e.g. "Dec 1, 2026 – Jan 31, 2027").
  */
 export function formatDateRange(
   start: Date | string,
@@ -137,16 +135,12 @@ export function formatDateRange(
 ): string {
   const startDate = typeof start === 'string' ? new Date(start) : start;
   const endDate = typeof end === 'string' ? new Date(end) : end;
-  const currentYear = new Date().getFullYear();
   const startYear = startDate.getFullYear();
   const endYear = endDate.getFullYear();
 
   if (startYear === endYear) {
     const startPart = formatExactDate(startDate, { includeYear: false });
-    const showYear = startYear !== currentYear;
-    const endPart = formatExactDate(endDate, {
-      includeYear: showYear ? true : false,
-    });
+    const endPart = formatExactDate(endDate, { includeYear: true });
     return `${startPart} \u2013 ${endPart}`;
   }
   return `${formatExactDate(startDate, { includeYear: true })} \u2013 ${formatExactDate(endDate, { includeYear: true })}`;
