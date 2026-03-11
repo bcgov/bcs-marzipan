@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -160,23 +161,32 @@ export function PitchFilterPanel({
 
       {pitchDateFilter.kind === 'scheduled' && (
         <div className="border-t px-2 pt-2 pb-2">
-          <div className="text-foreground mb-2 flex w-full items-center justify-between gap-2 text-xs font-normal">
+          <div className="mb-2 flex w-full items-center justify-between gap-2">
             <span className="text-muted-foreground text-xs font-normal uppercase">
               Panel date
             </span>
             {isDateRangeActive(pitchDateFilter.dateRange) ? (
-              <button
-                type="button"
-                onClick={(e: MouseEvent<HTMLButtonElement>) => {
+              <DropdownMenuItem
+                asChild
+                className="h-auto shrink-0 cursor-pointer gap-0 rounded-none p-0 text-xs font-normal focus:bg-transparent focus:text-inherit"
+                onSelect={(e) => {
                   e.preventDefault();
-                  e.stopPropagation();
                   handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
                 }}
-                className="text-primary shrink-0 text-xs font-normal hover:underline"
-                aria-label="Clear panel date range"
               >
-                Clear dates
-              </button>
+                <button
+                  type="button"
+                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
+                  }}
+                  className="text-primary focus-visible:ring-ring text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                  aria-label="Clear panel date range"
+                >
+                  Clear dates
+                </button>
+              </DropdownMenuItem>
             ) : null}
           </div>
           <ScheduledDateRangeFields

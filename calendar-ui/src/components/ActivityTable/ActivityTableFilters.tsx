@@ -369,7 +369,7 @@ export function ActivityTableFilters({
           onClear: () => handleTagIdsChange([]),
           clearAriaLabel: 'Clear Tags filter',
         },
-        wrapper: 'popover',
+        wrapper: 'dropdown',
       },
       {
         key: 'translations',

@@ -2,14 +2,13 @@ import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
+  DropdownMenu,
   DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSectionTitle,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
 import { cn } from '@/lib/utils';
 
@@ -125,23 +124,28 @@ export function ScheduledDateFilterPanel({
 
   return (
     <div className="p-3">
-      <div
-        className={cn(
-          'text-foreground mb-2 flex w-full items-center justify-between gap-2 text-xs font-normal'
-        )}
-      >
+      <div className="mb-2 flex w-full items-center justify-between gap-2">
         <span className="text-muted-foreground text-xs font-normal uppercase">
           Date range
         </span>
         {dateRangeActive ? (
-          <button
-            type="button"
-            onClick={handleClearDatesClick}
-            className="text-primary shrink-0 text-xs font-normal hover:underline"
-            aria-label="Clear date range"
+          <DropdownMenuItem
+            asChild
+            className="h-auto shrink-0 cursor-pointer gap-0 rounded-none p-0 text-xs font-normal focus:bg-transparent focus:text-inherit"
+            onSelect={(e) => {
+              e.preventDefault();
+              handleClearDates();
+            }}
           >
-            Clear dates
-          </button>
+            <button
+              type="button"
+              onClick={handleClearDatesClick}
+              className="text-primary focus-visible:ring-ring text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+              aria-label="Clear date range"
+            >
+              Clear dates
+            </button>
+          </DropdownMenuItem>
         ) : null}
       </div>
       <ScheduledDateRangeFields
@@ -234,8 +238,8 @@ export function ScheduledDateFilter({
   );
 
   return (
-    <Popover open={open} onOpenChange={handleMainOpenChange} modal>
-      <PopoverTrigger asChild>
+    <DropdownMenu open={open} onOpenChange={handleMainOpenChange}>
+      <DropdownMenuTrigger asChild>
         <FilterTrigger
           label="Scheduled date"
           active={active}
@@ -247,8 +251,8 @@ export function ScheduledDateFilter({
           onClear={handleClearTrigger}
           clearAriaLabel="Clear scheduled date filter"
         />
-      </PopoverTrigger>
-      <PopoverContent
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
         className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
         align="start"
       >
@@ -261,7 +265,7 @@ export function ScheduledDateFilter({
           filterState={filterState}
           onFilterStateChange={onFilterStateChange}
         />
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

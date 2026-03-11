@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -167,21 +168,32 @@ function PanelSectionLabel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="text-foreground flex w-full items-center justify-between gap-2 px-2 py-1.5 text-xs font-normal">
-      <span>{children}</span>
+    <div className="flex w-full items-center justify-between gap-2 px-2 py-1.5">
+      <span className="text-muted-foreground text-xs font-normal uppercase">
+        {children}
+      </span>
       {onClearAll ? (
-        <button
-          type="button"
-          onClick={(e) => {
+        <DropdownMenuItem
+          asChild
+          className="h-auto shrink-0 cursor-pointer gap-0 rounded-none p-0 text-xs font-normal focus:bg-transparent focus:text-inherit"
+          onSelect={(e) => {
             e.preventDefault();
-            e.stopPropagation();
             onClearAll();
           }}
-          className="text-primary shrink-0 text-xs font-normal hover:underline"
-          aria-label="Clear all filters in this section"
         >
-          Clear all
-        </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClearAll();
+            }}
+            className="text-primary focus-visible:ring-ring text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            aria-label="Clear all filters in this section"
+          >
+            Clear all
+          </button>
+        </DropdownMenuItem>
       ) : null}
     </div>
   );

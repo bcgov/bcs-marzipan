@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react';
 
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
 import { cn } from '@/lib/utils';
 
@@ -78,8 +78,8 @@ export function TagsFilter({
   }, [onTagIdsChange]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
         <FilterTrigger
           label="Tags"
           active={hasSelection}
@@ -87,8 +87,8 @@ export function TagsFilter({
           onClear={handleClearTrigger}
           clearAriaLabel="Clear Tags filter"
         />
-      </PopoverTrigger>
-      <PopoverContent
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
         className={cn(FILTER_PANEL_MIN_WIDTH, 'w-64 p-0')}
         align="start"
       >
@@ -97,7 +97,7 @@ export function TagsFilter({
           selectedTagIds={selectedTagIds}
           onTagIdsChange={onTagIdsChange}
         />
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
