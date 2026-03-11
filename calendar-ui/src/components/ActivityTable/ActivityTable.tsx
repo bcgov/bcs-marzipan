@@ -34,7 +34,10 @@ import {
   ColumnSortDropdown,
 } from '@/components/Table/ColumnSortDropdown';
 import { SortableColumnHeader } from '@/components/Table/SortableColumnHeader';
-import type { SortColumnConfig } from '@/components/Table/SortDropdown';
+import type {
+  SortColumnConfig,
+  SortLevel,
+} from '@/components/Table/SortDropdown';
 import { SortIndicator } from '@/components/Table/SortIndicator';
 import {
   getActivityColumnSizes,
@@ -95,7 +98,7 @@ import {
   mapActivityResponseToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
-import { compareActivityRows } from './activityTableSort';
+import { compareActivityRowsByLevels } from './activityTableSort';
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
@@ -111,13 +114,30 @@ const DEFAULT_SORT_DIRECTION = 'desc' as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
-  { id: 'activityStatus', label: 'Status', defaultDirection: 'asc' },
+  {
+    id: 'activityStatus',
+    label: 'Status',
+    defaultDirection: 'asc',
+    tieBreakers: [
+      { key: 'startDate', direction: 'asc' },
+      { key: 'startTime', direction: 'asc' },
+    ],
+  },
   {
     id: 'lookAheadStatus',
-    label: 'Look Ahead Status',
+    label: 'LA Status',
     defaultDirection: 'asc',
+    tieBreakers: [
+      { key: 'startDate', direction: 'asc' },
+      { key: 'startTime', direction: 'asc' },
+    ],
   },
-  { id: 'startDate', label: 'Scheduled date', defaultDirection: 'desc' },
+  {
+    id: 'startDate',
+    label: 'Scheduled date',
+    defaultDirection: 'desc',
+    tieBreakers: [{ key: 'startTime', direction: 'asc' }],
+  },
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
   { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
 ];
@@ -337,6 +357,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             badgeVariant="outline"
             badgeClassName="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
             containerClassName="gap-1"
+            overflowBadgeVariant="outline"
+            overflowBadgeClassName="text-slate-600"
           />
         </div>
       )}
@@ -923,8 +945,15 @@ export function ActivityTable({
   const effectiveSortDirection =
     sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
   const sortedData = useMemo(() => {
+    const activeColumn = ACTIVITY_SORT_COLUMNS.find(
+      (c) => c.id === effectiveSortKey
+    );
+    const sortLevels: SortLevel[] = [
+      { key: effectiveSortKey, direction: effectiveSortDirection },
+      ...(activeColumn?.tieBreakers ?? []),
+    ];
     return [...filteredData].sort((a, b) =>
-      compareActivityRows(a, b, effectiveSortKey, effectiveSortDirection)
+      compareActivityRowsByLevels(a, b, sortLevels)
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -9,10 +9,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
+export type SortLevel = { key: string; direction: 'asc' | 'desc' };
+
 export interface SortColumnConfig {
   id: string;
   label: string;
   defaultDirection?: 'asc' | 'desc';
+  /** Tie-breaker sort levels applied when this column is primary (under the hood). */
+  tieBreakers?: SortLevel[];
 }
 
 interface SortDropdownProps {
@@ -67,6 +71,8 @@ export function SortDropdown({
           : `${activeColumn.label} ${directionLabel(activeColumn, effectiveDirection)}`
         : 'Sort by';
 
+  const SortIcon = effectiveDirection === 'asc' ? ArrowUp : ArrowDown;
+
   const handleSelect = (col: SortColumnConfig) => {
     const isActive = effectiveKey === col.id;
     if (isActive) {
@@ -83,7 +89,7 @@ export function SortDropdown({
           variant="outline"
           size="sm"
           className={cn(
-            'h-10 min-w-[140px] justify-between gap-2',
+            'h-10 justify-between gap-2 font-normal',
             triggerClassName
           )}
           aria-label={
@@ -92,7 +98,7 @@ export function SortDropdown({
               : ariaLabel
           }
         >
-          <ArrowUpDown className="h-4 w-4 shrink-0" />
+          <SortIcon className="h-4 w-4 shrink-0" />
           <span className="truncate">{triggerLabel}</span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
