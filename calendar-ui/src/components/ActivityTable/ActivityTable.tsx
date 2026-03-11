@@ -257,6 +257,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const showMoreLessRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -267,6 +268,12 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       );
     }
   }, [row.summary]);
+
+  useEffect(() => {
+    if (expanded && needsTruncation) {
+      showMoreLessRef.current?.focus();
+    }
+  }, [expanded, needsTruncation]);
 
   const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
@@ -295,8 +302,11 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
     return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
   }, [lookAheadLabel, row.tags]);
 
+  const isCollapsedWithTruncation = needsTruncation && !expanded;
+
   const showMoreLessButton = (
     <button
+      ref={showMoreLessRef}
       type="button"
       data-no-row-nav
       aria-expanded={expanded}
@@ -309,8 +319,6 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       {expanded ? 'Show less' : 'Show more'}
     </button>
   );
-
-  const isCollapsedWithTruncation = needsTruncation && !expanded;
 
   return (
     <div>
@@ -332,21 +340,20 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
           {row.summary}
         </div>
 
-        {isCollapsedWithTruncation && (
-          <span
-            className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]"
-            aria-hidden
-          >
-            <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
-              {showMoreLessButton}
+        {needsTruncation &&
+          (isCollapsedWithTruncation ? (
+            <span
+              className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]"
+              aria-hidden
+            >
+              <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
+                {showMoreLessButton}
+              </span>
             </span>
-          </span>
-        )}
+          ) : (
+            <div className="mt-1 flex justify-end">{showMoreLessButton}</div>
+          ))}
       </div>
-
-      {needsTruncation && expanded && (
-        <div className="mt-1">{showMoreLessButton}</div>
-      )}
 
       {summaryBadgeGroupItems.length > 0 && (
         <div className="mt-2">

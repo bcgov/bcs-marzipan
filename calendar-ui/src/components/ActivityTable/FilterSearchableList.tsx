@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import {
   DropdownMenuCheckboxItem,
@@ -68,6 +68,17 @@ export function FilterSearchableList({
     [onToggle]
   );
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const firstItemRef = useRef<HTMLDivElement>(null);
+
+  const handleFirstItemKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      searchInputRef.current?.focus();
+    }
+  }, []);
+
   const hasSelection = selectedIds.length > 0;
 
   return (
@@ -88,13 +99,20 @@ export function FilterSearchableList({
           <div className="relative">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
             <Input
+              ref={searchInputRef}
               type="text"
               className="h-8 pr-3 pl-8 text-sm"
               placeholder={searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') {
+                const allowPropagation = [
+                  'ArrowDown',
+                  'ArrowUp',
+                  'ArrowLeft', // Let Radix close submenu and return to parent
+                  'ArrowRight',
+                ].includes(e.key);
+                if (!allowPropagation) {
                   e.stopPropagation();
                 }
               }}
@@ -103,23 +121,35 @@ export function FilterSearchableList({
           </div>
         </div>
       </DropdownMenuItem>
-      <div className="overflow-y-auto py-1" style={{ maxHeight }}>
+      <div
+        className="overflow-y-auto py-1"
+        style={{ maxHeight }}
+        tabIndex={0}
+        onFocus={(e) => {
+          if (e.target === e.currentTarget && filteredOptions.length > 0) {
+            requestAnimationFrame(() => firstItemRef.current?.focus());
+          }
+        }}
+      >
         {filteredOptions.length === 0 ? (
           <div className="text-muted-foreground px-3 py-2 text-center text-sm">
             {emptyMessage}
           </div>
         ) : (
-          filteredOptions.map((opt) => {
+          filteredOptions.map((opt, index) => {
             const id = parseInt(opt.value, 10);
             const checked = Number.isFinite(id) && selectedIds.includes(id);
+            const isFirst = index === 0;
             return (
               <DropdownMenuCheckboxItem
                 key={opt.value}
+                ref={isFirst ? firstItemRef : undefined}
                 checked={checked}
                 onCheckedChange={() =>
                   Number.isFinite(id) && handleToggle(opt.value)
                 }
                 onSelect={(e) => e.preventDefault()}
+                onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
               >
                 <span className="truncate">{opt.label}</span>
               </DropdownMenuCheckboxItem>
