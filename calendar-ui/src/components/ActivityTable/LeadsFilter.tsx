@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { cn } from '@/lib/utils';
 
 import type { ActivityFilterState } from './activityFilterState';
 import { FilterSearchableList } from './FilterSearchableList';
@@ -418,7 +420,7 @@ export function LeadsFilter({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="min-w-48"
+        className={cn(FILTER_PANEL_MIN_WIDTH, 'min-w-48')}
         align="start"
         aria-label="Filter by leads (ministry, organization, comms contact, event planner)"
       >

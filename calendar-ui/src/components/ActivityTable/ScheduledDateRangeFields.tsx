@@ -10,6 +10,7 @@ import {
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -87,10 +88,14 @@ export function isDateRangeActive(dateRange: DateRangeValue): boolean {
 export interface ScheduledDateRangeFieldsProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
-  /** Label for the end-date "no date" control (e.g. "No end date (all upcoming pitches)"). Default "Reset". */
+  /** Label for the start-date clear control in the calendar. Default "Clear". */
+  startNoDateLabel?: string;
+  /** Label for the end-date "no date" control (e.g. "No end date (all upcoming pitches)"). Default "Clear". */
   endNoDateLabel?: string;
   /** Label for the clear button. Default "Clear dates". */
   clearButtonLabel?: string;
+  /** When false, the clear button below the inputs is hidden (caller renders clear in header). Default true. */
+  showClearButton?: boolean;
   /** Called after clear is applied (e.g. parent can close popover). */
   onAfterClear?: () => void;
 }
@@ -119,8 +124,10 @@ const calendarDropdownLabels = {
 export function ScheduledDateRangeFields({
   value,
   onChange,
-  endNoDateLabel = 'Reset',
+  startNoDateLabel = 'Clear',
+  endNoDateLabel = 'Clear',
   clearButtonLabel = 'Clear dates',
+  showClearButton = true,
   onAfterClear,
 }: ScheduledDateRangeFieldsProps) {
   const [startCalendarOpen, setStartCalendarOpen] = useState(false);
@@ -264,7 +271,10 @@ export function ScheduledDateRangeFields({
               <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
+            align="start"
+          >
             <div className="flex flex-col items-center p-3">
               <div className="flex w-full items-center justify-between">
                 <span className="text-sm font-medium">Select start date</span>
@@ -276,7 +286,7 @@ export function ScheduledDateRangeFields({
                   className={cn('text-sm', value.startDate && 'text-primary')}
                   onClick={handleStartNoDate}
                 >
-                  Reset
+                  {startNoDateLabel}
                 </Button>
               </div>
               <div className="flex w-full flex-col items-center">
@@ -354,7 +364,10 @@ export function ScheduledDateRangeFields({
               <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
+            align="start"
+          >
             <div className="flex flex-col items-center p-3">
               <div className="flex w-full items-center justify-between">
                 <span className="text-sm font-medium">Select end date</span>
@@ -427,14 +440,16 @@ export function ScheduledDateRangeFields({
           </PopoverContent>
         </Popover>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground w-full"
-        onClick={handleClear}
-      >
-        {clearButtonLabel}
-      </Button>
+      {showClearButton && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground w-full"
+          onClick={handleClear}
+        >
+          {clearButtonLabel}
+        </Button>
+      )}
     </div>
   );
 }

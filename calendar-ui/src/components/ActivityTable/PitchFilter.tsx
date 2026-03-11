@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type MouseEvent } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -8,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { cn } from '@/lib/utils';
 
 import {
   DEFAULT_PITCH_DATE_RANGE,
@@ -15,7 +17,10 @@ import {
   type PitchDateFilter,
 } from './activityFilterState';
 import { FilterSectionLabel } from './FilterSectionLabel';
-import { ScheduledDateRangeFields } from './ScheduledDateRangeFields';
+import {
+  isDateRangeActive,
+  ScheduledDateRangeFields,
+} from './ScheduledDateRangeFields';
 
 export interface PitchFilterPanelProps {
   filterState: ActivityFilterState;
@@ -155,11 +160,30 @@ export function PitchFilterPanel({
 
       {pitchDateFilter.kind === 'scheduled' && (
         <div className="border-t px-2 pt-2 pb-2">
+          <div className="text-foreground mb-2 flex w-full items-center justify-between gap-2 text-xs font-normal">
+            <span className="text-muted-foreground text-xs font-normal uppercase">
+              Panel date
+            </span>
+            {isDateRangeActive(pitchDateFilter.dateRange) ? (
+              <button
+                type="button"
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
+                }}
+                className="text-primary shrink-0 text-xs font-normal hover:underline"
+                aria-label="Clear panel date range"
+              >
+                Clear dates
+              </button>
+            ) : null}
+          </div>
           <ScheduledDateRangeFields
             value={pitchDateFilter.dateRange}
             onChange={handlePitchDateRangeChange}
             endNoDateLabel="No end date (all upcoming pitches)"
-            clearButtonLabel="Clear dates"
+            showClearButton={false}
           />
         </div>
       )}
@@ -203,7 +227,10 @@ export function PitchFilter({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto"
+        className={cn(
+          FILTER_PANEL_MIN_WIDTH,
+          'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
+        )}
         align="start"
       >
         <PitchFilterPanel

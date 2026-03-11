@@ -1,4 +1,12 @@
-import { Copy, Pencil, Save, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  Copy,
+  Pencil,
+  Save,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -10,12 +18,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,7 +76,10 @@ function InlineFilterSlot({ slot }: { slot: ResponsiveFilterSlot }) {
     return (
       <Popover>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent className={contentClassName} align="start">
+        <PopoverContent
+          className={cn(FILTER_PANEL_MIN_WIDTH, contentClassName)}
+          align="start"
+        >
           {panel}
         </PopoverContent>
       </Popover>
@@ -82,7 +88,10 @@ function InlineFilterSlot({ slot }: { slot: ResponsiveFilterSlot }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent className={contentClassName} align="start">
+      <DropdownMenuContent
+        className={cn(FILTER_PANEL_MIN_WIDTH, contentClassName)}
+        align="start"
+      >
         {panel}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -192,6 +201,7 @@ export function ResponsiveFilterRow({
     debounceMs: RESIZE_DEBOUNCE_MS,
   });
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
+  const [filtersAccordionOpen, setFiltersAccordionOpen] = useState(false);
 
   const count = slots.length;
 
@@ -404,40 +414,56 @@ export function ResponsiveFilterRow({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="flex max-h-[min(80vh,400px)] flex-col overflow-hidden p-0"
+                className={cn(
+                  FILTER_PANEL_MIN_WIDTH,
+                  'flex max-h-[min(80vh,400px)] w-auto flex-col overflow-hidden p-0'
+                )}
               >
                 {hasOverflow && (
                   <div className="min-h-0 flex-1 overflow-y-auto">
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem
-                        value="filters"
-                        className="border-b last:border-b-0"
-                      >
-                        <AccordionTrigger className="hover:bg-accent hover:text-accent-foreground px-4 py-2 text-sm font-medium hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                          Filters
-                        </AccordionTrigger>
-                        <AccordionContent className="px-0 pt-0 pb-0">
-                          {overflowSlotEntries.map((entry) => {
-                            const { label, panel, triggerProps } = entry;
-                            const labelWithCount =
-                              triggerProps.active && triggerProps.count > 0
-                                ? `${label} (${triggerProps.count})`
-                                : label;
-                            return (
-                              <DropdownMenuSub key={entry.key}>
-                                <OverflowFilterSubTrigger
-                                  labelWithCount={labelWithCount}
-                                  triggerProps={triggerProps}
-                                />
-                                <DropdownMenuSubContent className="max-h-[min(80vh,400px)] w-max overflow-y-auto p-0">
-                                  {panel}
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            );
-                          })}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <DropdownMenuItem
+                      className="hover:bg-accent hover:text-accent-foreground flex cursor-default items-center gap-2 rounded-sm border-b px-4 py-2 text-sm font-medium outline-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setFiltersAccordionOpen((open) => !open);
+                      }}
+                      aria-expanded={filtersAccordionOpen}
+                    >
+                      Filters
+                      <ChevronDownIcon
+                        className={cn(
+                          'ml-auto size-4 transition-transform duration-200',
+                          filtersAccordionOpen && 'rotate-180'
+                        )}
+                      />
+                    </DropdownMenuItem>
+                    {filtersAccordionOpen && (
+                      <div className="px-0 pt-0 pb-0">
+                        {overflowSlotEntries.map((entry) => {
+                          const { label, panel, triggerProps } = entry;
+                          const labelWithCount =
+                            triggerProps.active && triggerProps.count > 0
+                              ? `${label} (${triggerProps.count})`
+                              : label;
+                          return (
+                            <DropdownMenuSub key={entry.key}>
+                              <OverflowFilterSubTrigger
+                                labelWithCount={labelWithCount}
+                                triggerProps={triggerProps}
+                              />
+                              <DropdownMenuSubContent
+                                className={cn(
+                                  FILTER_PANEL_MIN_WIDTH,
+                                  'max-h-[min(80vh,400px)] w-max overflow-y-auto p-0'
+                                )}
+                              >
+                                {panel}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
                 {hasOverflow && <DropdownMenuSeparator />}

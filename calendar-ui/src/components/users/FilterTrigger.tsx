@@ -18,7 +18,8 @@ export const filterTriggerStyles = {
   base: 'flex h-10 min-w-[100px] items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm font-normal whitespace-nowrap transition-colors',
   inactive:
     'border-input bg-background hover:bg-accent hover:text-accent-foreground',
-  active: 'border-primary bg-primary text-primary-foreground hover:opacity-90',
+  // active: 'border-primary bg-[#545454] text-primary-foreground hover:opacity-90',
+  active: 'border-input bg-accent text-accent-foreground hover:opacity-90',
   clearIcon: 'ml-1 inline-flex cursor-pointer rounded p-0.5 hover:opacity-80',
   chevron: 'h-4 w-4 shrink-0 opacity-50',
 } as const;

@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { cn } from '@/lib/utils';
 
 import { FilterSearchableList } from './FilterSearchableList';
 
@@ -86,7 +88,10 @@ export function TagsFilter({
           clearAriaLabel="Clear Tags filter"
         />
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
+      <PopoverContent
+        className={cn(FILTER_PANEL_MIN_WIDTH, 'w-64 p-0')}
+        align="start"
+      >
         <TagsFilterPanel
           tagOptions={tagOptions}
           selectedTagIds={selectedTagIds}

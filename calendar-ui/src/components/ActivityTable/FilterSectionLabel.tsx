@@ -1,17 +1,14 @@
 import type { ComponentPropsWithoutRef, MouseEvent } from 'react';
 
-import { DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { DropdownMenuSectionTitle } from '@/components/ui/dropdown-menu';
 
 /**
  * Shared section heading for filter dropdowns (e.g. Pitch, Look Ahead).
  * Use for "Pitch status", "Look Ahead section", etc. to keep styling consistent.
  * Optionally show a "Clear all" button that calls onClearAll when provided.
  */
-const FILTER_SECTION_LABEL_CLASS = 'text-foreground text-xs font-normal';
-
 export interface FilterSectionLabelProps extends ComponentPropsWithoutRef<
-  typeof DropdownMenuLabel
+  typeof DropdownMenuSectionTitle
 > {
   /** When provided, shows a "Clear all" button that calls this when clicked (clears filters in this section). */
   onClearAll?: () => void;
@@ -30,12 +27,9 @@ export function FilterSectionLabel({
   };
 
   return (
-    <DropdownMenuLabel
-      className={cn(FILTER_SECTION_LABEL_CLASS, className)}
-      {...props}
-    >
+    <DropdownMenuSectionTitle className={className} {...props}>
       {onClearAll ? (
-        <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex w-full items-center justify-between gap-6">
           <span>{children}</span>
           <button
             type="button"
@@ -49,6 +43,6 @@ export function FilterSectionLabel({
       ) : (
         children
       )}
-    </DropdownMenuLabel>
+    </DropdownMenuSectionTitle>
   );
 }

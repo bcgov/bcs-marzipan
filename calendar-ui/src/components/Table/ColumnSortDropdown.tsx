@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 
 import type { SortColumnConfig } from '@/components/Table/SortDropdown';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -74,7 +75,10 @@ export function ColumnSortDropdown({
           <ChevronDown className={cn('h-4 w-4', iconClassName)} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
+      <DropdownMenuContent
+        align="start"
+        className={cn(FILTER_PANEL_MIN_WIDTH, 'w-48')}
+      >
         {options.map((col) => {
           const isActive = effectiveSortKey === col.id;
           const direction = isActive

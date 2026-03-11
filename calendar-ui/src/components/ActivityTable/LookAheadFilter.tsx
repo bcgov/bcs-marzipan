@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -12,6 +13,7 @@ import {
   lookAheadSectionOptions,
   lookAheadStatusOptions,
 } from '@/constants/form-options';
+import { cn } from '@/lib/utils';
 
 import type { ActivityFilterState } from './activityFilterState';
 import { FilterSectionLabel } from './FilterSectionLabel';
@@ -85,7 +87,7 @@ export function LookAheadFilterPanel({
             : undefined
         }
       >
-        Look Ahead status
+        LA status
       </FilterSectionLabel>
       {lookAheadStatusOptions.map((opt) => (
         <DropdownMenuCheckboxItem
@@ -105,7 +107,7 @@ export function LookAheadFilterPanel({
             : undefined
         }
       >
-        Look Ahead section
+        LA section
       </FilterSectionLabel>
       {lookAheadSectionOptions.map((opt) => (
         <DropdownMenuCheckboxItem
@@ -153,7 +155,10 @@ export function LookAheadFilter({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto"
+        className={cn(
+          FILTER_PANEL_MIN_WIDTH,
+          'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
+        )}
         align="start"
       >
         <LookAheadFilterPanel

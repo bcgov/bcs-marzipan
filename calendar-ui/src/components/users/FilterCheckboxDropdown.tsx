@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -7,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { cn } from '@/lib/utils';
 
 export interface FilterCheckboxOption {
   value: string;
@@ -99,7 +101,10 @@ export function FilterCheckboxDropdown({
           className={className}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-64 overflow-auto" align="start">
+      <DropdownMenuContent
+        className={cn(FILTER_PANEL_MIN_WIDTH, 'max-h-64 overflow-auto')}
+        align="start"
+      >
         <FilterCheckboxDropdownPanel
           options={options}
           selectedValues={selectedValues}

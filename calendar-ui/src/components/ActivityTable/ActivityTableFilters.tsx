@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
-import { ConfirmedFilterPanel } from './ConfirmedFilter';
 import {
   LeadsFilterDropdownContent,
   type LeadFilterOption,
@@ -225,33 +224,43 @@ export function ActivityTableFilters({
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
-  const handleClearDate = useCallback(() => {
-    handleDateRangeChange({
-      startDate: '',
-      endDate: '',
-      noStartDate: false,
-      noEndDate: false,
-    });
-  }, [handleDateRangeChange]);
-
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
     () => [
       {
-        key: 'date',
+        key: 'scheduledDate',
         label: 'Date',
         panel: (
           <ScheduledDateFilterPanel
             value={filterState.dateRange}
             onChange={handleDateRangeChange}
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
           />
         ),
         triggerProps: {
-          active: isDateRangeActive(filterState.dateRange),
-          count: 1,
-          onClear: handleClearDate,
-          clearAriaLabel: 'Clear date filter',
+          active:
+            isDateRangeActive(filterState.dateRange) ||
+            filterState.dateConfirmedFilter !== 'any' ||
+            filterState.timeConfirmedFilter !== 'any',
+          count:
+            (isDateRangeActive(filterState.dateRange) ? 1 : 0) +
+            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
+            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              dateRange: {
+                startDate: '',
+                endDate: '',
+                noStartDate: false,
+                noEndDate: false,
+              },
+              dateConfirmedFilter: 'any',
+              timeConfirmedFilter: 'any',
+            }),
+          clearAriaLabel: 'Clear Datetime filter',
         },
-        wrapper: 'popover',
+        wrapper: 'dropdown',
       },
       {
         key: 'category',
@@ -326,32 +335,6 @@ export function ActivityTableFilters({
         wrapper: 'dropdown',
       },
       {
-        key: 'confirmed',
-        label: 'Confirmed',
-        panel: (
-          <ConfirmedFilterPanel
-            filterState={filterState}
-            onFilterStateChange={onFilterStateChange}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.dateConfirmedFilter !== 'any' ||
-            filterState.timeConfirmedFilter !== 'any',
-          count:
-            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
-            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              dateConfirmedFilter: 'any',
-              timeConfirmedFilter: 'any',
-            }),
-          clearAriaLabel: 'Clear Confirmed filter',
-        },
-        wrapper: 'dropdown',
-      },
-      {
         key: 'status',
         label: 'Status',
         panel: (
@@ -408,10 +391,12 @@ export function ActivityTableFilters({
           count:
             filterState.translationRequiredStatusIds.length +
             filterState.translationLanguageIds.length,
-          onClear: () => {
-            handleTranslationRequiredStatusIdsChange([]);
-            handleTranslationLanguageIdsChange([]);
-          },
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              translationRequiredStatusIds: [],
+              translationLanguageIds: [],
+            }),
           clearAriaLabel: 'Clear Translations filter',
         },
         wrapper: 'dropdown',
@@ -460,7 +445,6 @@ export function ActivityTableFilters({
       categorySelectedValues,
       handleCategoryChange,
       handleDateRangeChange,
-      handleClearDate,
       handleStatusChange,
       handleTagIdsChange,
       handleTranslationRequiredStatusIdsChange,
@@ -482,7 +466,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, translations, leads, and keyword"
+      aria-label="Filter activities by datetime, category, pitch, look ahead, status, tags, translations, leads, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <ResponsiveFilterRow
@@ -501,7 +485,7 @@ export function ActivityTableFilters({
                 aria-label="Clear all filters"
               >
                 <X className="h-3.5 w-3.5" />
-                Clear all
+                Clear filters
               </Button>
             ) : undefined
           }

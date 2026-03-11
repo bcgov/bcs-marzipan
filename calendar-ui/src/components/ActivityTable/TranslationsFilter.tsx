@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -337,7 +338,7 @@ export function TranslationsFilter({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="min-w-48"
+        className={cn(FILTER_PANEL_MIN_WIDTH, 'min-w-48')}
         align="start"
         aria-label="Filter by translations (status, languages)"
       >

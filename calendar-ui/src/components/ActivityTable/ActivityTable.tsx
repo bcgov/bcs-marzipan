@@ -1308,6 +1308,8 @@ export function ActivityTable({
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
                       const pinStyles = getCommonPinningStyles(header.column);
+                      const { backgroundColor: _pinBg, ...headerPinStyles } =
+                        pinStyles;
                       const meta = header.column.columnDef.meta as
                         | { sortKey?: string; sortKeys?: string[] }
                         | undefined;
@@ -1329,10 +1331,7 @@ export function ActivityTable({
                               header.column.columnDef.maxSize ??
                               header.getSize(),
                             cursor: isSortable ? 'pointer' : 'default',
-                            ...pinStyles,
-                            ...(pinStyles.position === 'sticky'
-                              ? { backgroundColor: 'rgb(248 250 252)' }
-                              : {}),
+                            ...headerPinStyles,
                           }}
                           onClick={(e) => {
                             if (
