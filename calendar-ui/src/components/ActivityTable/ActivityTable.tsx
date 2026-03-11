@@ -342,10 +342,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
 
         {needsTruncation &&
           (isCollapsedWithTruncation ? (
-            <span
-              className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]"
-              aria-hidden
-            >
+            <span className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]">
               <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
                 {showMoreLessButton}
               </span>

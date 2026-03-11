@@ -1,14 +1,5 @@
 import { useCallback, useState } from 'react';
 
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
-import { cn } from '@/lib/utils';
-
 import { FilterSearchableList } from './FilterSearchableList';
 
 export interface TagFilterOption {
@@ -65,39 +56,39 @@ export function TagsFilterPanel({
   );
 }
 
-export function TagsFilter({
-  tagOptions,
-  selectedTagIds,
-  onTagIdsChange,
-}: TagsFilterProps) {
-  const [open, setOpen] = useState(false);
+// export function TagsFilter({
+//   tagOptions,
+//   selectedTagIds,
+//   onTagIdsChange,
+// }: TagsFilterProps) {
+//   const [open, setOpen] = useState(false);
 
-  const hasSelection = selectedTagIds.length > 0;
-  const handleClearTrigger = useCallback(() => {
-    onTagIdsChange([]);
-  }, [onTagIdsChange]);
+//   const hasSelection = selectedTagIds.length > 0;
+//   const handleClearTrigger = useCallback(() => {
+//     onTagIdsChange([]);
+//   }, [onTagIdsChange]);
 
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Tags"
-          active={hasSelection}
-          count={selectedTagIds.length}
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear Tags filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className={cn(FILTER_PANEL_MIN_WIDTH, 'w-64 p-0')}
-        align="start"
-      >
-        <TagsFilterPanel
-          tagOptions={tagOptions}
-          selectedTagIds={selectedTagIds}
-          onTagIdsChange={onTagIdsChange}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+//   return (
+//     <DropdownMenu open={open} onOpenChange={setOpen}>
+//       <DropdownMenuTrigger asChild>
+//         <FilterTrigger
+//           label="Tags"
+//           active={hasSelection}
+//           count={selectedTagIds.length}
+//           onClear={handleClearTrigger}
+//           clearAriaLabel="Clear Tags filter"
+//         />
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent
+//         className={cn(FILTER_PANEL_MIN_WIDTH, 'w-64 p-0')}
+//         align="start"
+//       >
+//         <TagsFilterPanel
+//           tagOptions={tagOptions}
+//           selectedTagIds={selectedTagIds}
+//           onTagIdsChange={onTagIdsChange}
+//         />
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }

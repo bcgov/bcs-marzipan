@@ -1,5 +1,6 @@
 import {
   ChevronDownIcon,
+  ChevronRight,
   Copy,
   Pencil,
   Save,
@@ -8,27 +9,20 @@ import {
   X,
 } from 'lucide-react';
 import {
+  forwardRef,
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
 } from 'react';
 
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Popover,
   PopoverContent,
@@ -55,9 +49,9 @@ const WIDTH_CHANGE_THRESHOLD_PX = 10;
 /** Debounce (ms) for ResizeObserver to avoid rapid re-measure during resize. */
 const RESIZE_DEBOUNCE_MS = 80;
 
-/** Renders one slot for inline: Trigger + DropdownMenu or Popover + panel. */
+/** Renders one slot inline: Trigger + Popover + panel. */
 function InlineFilterSlot({ slot }: { slot: ResponsiveFilterSlot }) {
-  const { label, panel, triggerProps, wrapper } = slot;
+  const { label, panel, triggerProps } = slot;
   const trigger = (
     <FilterTrigger
       label={label}
@@ -68,45 +62,34 @@ function InlineFilterSlot({ slot }: { slot: ResponsiveFilterSlot }) {
       disabled={triggerProps.disabled}
     />
   );
-  const contentClassName =
-    wrapper === 'dropdown'
-      ? 'max-h-[min(80vh,400px)] overflow-y-auto p-1'
-      : 'w-auto p-0';
-  if (wrapper === 'popover') {
-    return (
-      <Popover>
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent
-          className={cn(FILTER_PANEL_MIN_WIDTH, contentClassName)}
-          align="start"
-        >
-          {panel}
-        </PopoverContent>
-      </Popover>
-    );
-  }
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent
-        className={cn(FILTER_PANEL_MIN_WIDTH, contentClassName)}
+    <Popover>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        className={cn(
+          FILTER_PANEL_MIN_WIDTH,
+          'max-h-[min(80vh,400px)] w-auto overflow-y-auto p-0'
+        )}
         align="start"
       >
         {panel}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-function OverflowFilterSubTrigger({
-  labelWithCount,
-  triggerProps,
-}: {
-  labelWithCount: string;
-  triggerProps: ResponsiveFilterSlotTriggerProps;
-}) {
+const OverflowFilterRow = forwardRef<
+  HTMLButtonElement,
+  {
+    labelWithCount: string;
+    triggerProps: ResponsiveFilterSlotTriggerProps;
+  } & ComponentPropsWithoutRef<'button'>
+>(function OverflowFilterRow(
+  { labelWithCount, triggerProps, className, ...buttonProps },
+  ref
+) {
   const handleClearClick = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
+    (e: MouseEvent<HTMLSpanElement>) => {
       e.preventDefault();
       e.stopPropagation();
       triggerProps.onClear();
@@ -114,7 +97,7 @@ function OverflowFilterSubTrigger({
     [triggerProps]
   );
   const handleClearPointerDown = useCallback(
-    (e: PointerEvent<HTMLButtonElement>) => {
+    (e: PointerEvent<HTMLSpanElement>) => {
       e.preventDefault();
       e.stopPropagation();
     },
@@ -122,22 +105,34 @@ function OverflowFilterSubTrigger({
   );
 
   return (
-    <DropdownMenuSubTrigger className="data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 py-2 pr-4 pl-6">
-      <span className="truncate">{labelWithCount}</span>
-      {triggerProps.active && (
-        <button
-          type="button"
-          onClick={handleClearClick}
-          onPointerDown={handleClearPointerDown}
-          className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 align-middle"
-          aria-label={triggerProps.clearAriaLabel}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+    <button
+      ref={ref}
+      type="button"
+      className={cn(
+        'data-[state=open]:bg-accent hover:bg-accent hover:text-accent-foreground flex w-full items-center justify-between gap-2 py-2 pr-4 pl-6 text-sm outline-none select-none',
+        className
       )}
-    </DropdownMenuSubTrigger>
+      {...buttonProps}
+    >
+      <span className="truncate">{labelWithCount}</span>
+      <span className="flex shrink-0 items-center gap-1">
+        {triggerProps.active && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={handleClearClick}
+            onPointerDown={handleClearPointerDown}
+            className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 align-middle"
+            aria-label={triggerProps.clearAriaLabel}
+          >
+            <X className="h-3.5 w-3.5" />
+          </span>
+        )}
+        <ChevronRight className="text-muted-foreground h-4 w-4" />
+      </span>
+    </button>
   );
-}
+});
 
 export interface ResponsiveFilterSlotTriggerProps {
   active: boolean;
@@ -154,12 +149,10 @@ export interface ResponsiveFilterSlot {
   panel: ReactNode;
   /** Used for both inline trigger and overflow SubTrigger row (label, count, Clear). */
   triggerProps: ResponsiveFilterSlotTriggerProps;
-  /** Inline only: whether to wrap panel in DropdownMenu or Popover. */
-  wrapper: 'dropdown' | 'popover';
 }
 
 export interface ResponsiveFilterRowProps {
-  /** Ordered list of filter slots (panel + triggerProps + wrapper). */
+  /** Ordered list of filter slots (panel + triggerProps). */
   slots: ResponsiveFilterSlot[];
   /** Label for the overflow trigger when some filters are visible inline. Default "More filters". */
   overflowTriggerLabel?: string;
@@ -181,7 +174,7 @@ export interface ResponsiveFilterRowProps {
 
 /**
  * Renders as many slot contents as fit in one row; the rest are moved into a
- * "More filters" (or "Filters" when none visible) dropdown with a Filters accordion,
+ * "More filters" (or "Filters" when none visible) popover with a Filters accordion,
  * My saved filters, and Save current filter. Uses ResizeObserver and layout measurement to compute how many slots fit.
  */
 export function ResponsiveFilterRow({
@@ -202,6 +195,7 @@ export function ResponsiveFilterRow({
   });
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
   const [filtersAccordionOpen, setFiltersAccordionOpen] = useState(false);
+  const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
 
   const count = slots.length;
 
@@ -368,8 +362,8 @@ export function ResponsiveFilterRow({
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <button
                   type="button"
                   className={cn(
@@ -411,8 +405,8 @@ export function ResponsiveFilterRow({
                     </span>
                   )}
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
+              </PopoverTrigger>
+              <PopoverContent
                 align="start"
                 className={cn(
                   FILTER_PANEL_MIN_WIDTH,
@@ -421,12 +415,10 @@ export function ResponsiveFilterRow({
               >
                 {hasOverflow && (
                   <div className="min-h-0 flex-1 overflow-y-auto">
-                    <DropdownMenuItem
-                      className="hover:bg-accent hover:text-accent-foreground flex cursor-default items-center gap-2 rounded-sm border-b px-4 py-2 text-sm font-medium outline-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setFiltersAccordionOpen((open) => !open);
-                      }}
+                    <button
+                      type="button"
+                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 border-b px-4 py-2 text-sm font-medium outline-none"
+                      onClick={() => setFiltersAccordionOpen((prev) => !prev)}
                       aria-expanded={filtersAccordionOpen}
                     >
                       Filters
@@ -436,9 +428,9 @@ export function ResponsiveFilterRow({
                           filtersAccordionOpen && 'rotate-180'
                         )}
                       />
-                    </DropdownMenuItem>
+                    </button>
                     {filtersAccordionOpen && (
-                      <div className="px-0 pt-0 pb-0">
+                      <div>
                         {overflowSlotEntries.map((entry) => {
                           const { label, panel, triggerProps } = entry;
                           const labelWithCount =
@@ -446,94 +438,128 @@ export function ResponsiveFilterRow({
                               ? `${label} (${triggerProps.count})`
                               : label;
                           return (
-                            <DropdownMenuSub key={entry.key}>
-                              <OverflowFilterSubTrigger
-                                labelWithCount={labelWithCount}
-                                triggerProps={triggerProps}
-                              />
-                              <DropdownMenuSubContent
+                            <Popover
+                              key={entry.key}
+                              open={openFilterKey === entry.key}
+                              onOpenChange={(open) =>
+                                setOpenFilterKey(open ? entry.key : null)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <OverflowFilterRow
+                                  labelWithCount={labelWithCount}
+                                  triggerProps={triggerProps}
+                                />
+                              </PopoverTrigger>
+                              <PopoverContent
+                                side="right"
+                                align="start"
                                 className={cn(
                                   FILTER_PANEL_MIN_WIDTH,
-                                  'max-h-[min(80vh,400px)] w-max overflow-y-auto p-0'
+                                  'max-h-[min(80vh,400px)] w-auto overflow-y-auto p-0'
                                 )}
+                                sideOffset={2}
                               >
                                 {panel}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
+                              </PopoverContent>
+                            </Popover>
                           );
                         })}
                       </div>
                     )}
                   </div>
                 )}
-                {hasOverflow && <DropdownMenuSeparator />}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="px-4 py-2">
-                    My saved filters
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="grid max-h-60 w-64 grid-cols-[1fr_auto] overflow-x-hidden overflow-y-auto p-0">
-                    {PLACEHOLDER_SAVED_FILTERS.flatMap((label, i) => [
-                      <DropdownMenuItem
-                        key={`${i}-item`}
-                        className="min-w-0 rounded-none border-0 py-2"
-                        onSelect={(e) => e.preventDefault()}
-                        aria-label={`Apply ${label}`}
-                      >
-                        {label}
-                      </DropdownMenuItem>,
-                      <DropdownMenuSub key={`${i}-sub`}>
-                        <DropdownMenuSubTrigger
-                          className="w-8 shrink-0 justify-center rounded-none px-1 py-2"
-                          aria-label={`Actions for ${label}`}
-                        >
-                          <span className="sr-only">Actions for {label}</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="min-w-48">
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                            className="flex flex-col items-start gap-0 py-2"
+                {hasOverflow && <div className="border-t" />}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between px-4 py-2 text-sm outline-none"
+                    >
+                      My saved filters
+                      <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="right"
+                    align="start"
+                    className="max-h-60 w-64 overflow-x-hidden overflow-y-auto p-0"
+                    sideOffset={2}
+                  >
+                    <div className="grid grid-cols-[1fr_auto]">
+                      {PLACEHOLDER_SAVED_FILTERS.map((label, i) => (
+                        <Fragment key={i}>
+                          <button
+                            type="button"
+                            className="hover:bg-accent hover:text-accent-foreground min-w-0 truncate py-2 pr-2 pl-4 text-left text-sm outline-none"
+                            aria-label={`Apply ${label}`}
                           >
-                            <span className="flex items-center gap-2">
-                              <Save className="size-4 shrink-0" />
-                              Update
-                            </span>
-                            <span className="text-muted-foreground pl-6 text-xs">
-                              To currently applied filters
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <Copy className="size-4" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <Pencil className="size-4" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <Trash2 className="size-4" />
-                            Delete saved filter
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>,
-                    ])}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuItem
-                  className="px-4 py-2"
-                  onSelect={(e) => e.preventDefault()}
+                            {label}
+                          </button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-8 shrink-0 items-center justify-center py-2 outline-none"
+                                aria-label={`Actions for ${label}`}
+                              >
+                                <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              side="right"
+                              align="start"
+                              className="min-w-48 p-1"
+                              sideOffset={2}
+                            >
+                              <button
+                                type="button"
+                                className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <Save className="size-4 shrink-0" />
+                                  Update
+                                </span>
+                                <span className="text-muted-foreground pl-6 text-xs">
+                                  To currently applied filters
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+                              >
+                                <Copy className="size-4" />
+                                Duplicate
+                              </button>
+                              <button
+                                type="button"
+                                className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+                              >
+                                <Pencil className="size-4" />
+                                Rename
+                              </button>
+                              <button
+                                type="button"
+                                className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+                              >
+                                <Trash2 className="size-4" />
+                                Delete saved filter
+                              </button>
+                            </PopoverContent>
+                          </Popover>
+                        </Fragment>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <button
+                  type="button"
+                  className="hover:bg-accent hover:text-accent-foreground w-full px-4 py-2 text-left text-sm outline-none"
                 >
                   Save current filter
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </button>
+              </PopoverContent>
+            </Popover>
             {reservedWidthForTrailing != null ? (
               finalVisible > 0 ? (
                 (trailingContent ?? (

@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSectionTitle,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
-import { cn } from '@/lib/utils';
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 
 import type { ActivityFilterState } from './activityFilterState';
 import {
@@ -30,6 +20,9 @@ const EMPTY_DATE_RANGE: DateRangeValue = {
 
 type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
 
+const SECTION_TITLE_CLASS =
+  'text-muted-foreground px-2 py-1.5 text-xs font-normal uppercase';
+
 export interface ScheduledDateFilterPanelProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
@@ -38,7 +31,8 @@ export interface ScheduledDateFilterPanelProps {
 }
 
 /**
- * Panel content only (no trigger). For use in ResponsiveFilterRow inline and overflow.
+ * Panel content only (no trigger). Uses plain markup so it works inside
+ * Popover, DropdownMenuContent, or DropdownMenuSubContent.
  * Combines date range and date/time confirmation filters (Datetime filter).
  */
 export function ScheduledDateFilterPanel({
@@ -125,27 +119,16 @@ export function ScheduledDateFilterPanel({
   return (
     <div className="p-3">
       <div className="mb-2 flex w-full items-center justify-between gap-2">
-        <span className="text-muted-foreground text-xs font-normal uppercase">
-          Date range
-        </span>
+        <span className={SECTION_TITLE_CLASS}>Date range</span>
         {dateRangeActive ? (
-          <DropdownMenuItem
-            asChild
-            className="h-auto shrink-0 cursor-pointer gap-0 rounded-none p-0 text-xs font-normal focus:bg-transparent focus:text-inherit"
-            onSelect={(e) => {
-              e.preventDefault();
-              handleClearDates();
-            }}
+          <button
+            type="button"
+            onClick={handleClearDatesClick}
+            className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            aria-label="Clear date range"
           >
-            <button
-              type="button"
-              onClick={handleClearDatesClick}
-              className="text-primary focus-visible:ring-ring text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
-              aria-label="Clear date range"
-            >
-              Clear dates
-            </button>
-          </DropdownMenuItem>
+            Clear dates
+          </button>
         ) : null}
       </div>
       <ScheduledDateRangeFields
@@ -155,117 +138,109 @@ export function ScheduledDateFilterPanel({
         onAfterClear={handleClearDates}
       />
       <div className="border-border my-4 border-t" role="separator" />
-      <DropdownMenuSectionTitle>Date status</DropdownMenuSectionTitle>
-      <DropdownMenuCheckboxItem
+      <div className={SECTION_TITLE_CLASS}>Date status</div>
+      <FilterCheckboxItem
         checked={dateConfirmedFilter === 'confirmed'}
-        onCheckedChange={(c) => handleDateConfirmedChange(c === true)}
-        onSelect={(e) => e.preventDefault()}
+        onCheckedChange={handleDateConfirmedChange}
       >
         Confirmed
-      </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem
+      </FilterCheckboxItem>
+      <FilterCheckboxItem
         checked={dateConfirmedFilter === 'not_confirmed'}
-        onCheckedChange={(c) => handleDateNotConfirmedChange(c === true)}
-        onSelect={(e) => e.preventDefault()}
-        className="flex-1"
+        onCheckedChange={handleDateNotConfirmedChange}
       >
         Not confirmed
-      </DropdownMenuCheckboxItem>
-
-      {/* <DropdownMenuSeparator /> */}
-      <DropdownMenuSectionTitle>Time status</DropdownMenuSectionTitle>
-      <DropdownMenuCheckboxItem
+      </FilterCheckboxItem>
+      <div className={SECTION_TITLE_CLASS}>Time status</div>
+      <FilterCheckboxItem
         checked={timeConfirmedFilter === 'confirmed'}
-        onCheckedChange={(c) => handleTimeConfirmedChange(c === true)}
-        onSelect={(e) => e.preventDefault()}
+        onCheckedChange={handleTimeConfirmedChange}
       >
         Confirmed
-      </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem
+      </FilterCheckboxItem>
+      <FilterCheckboxItem
         checked={timeConfirmedFilter === 'not_confirmed'}
-        onCheckedChange={(c) => handleTimeNotConfirmedChange(c === true)}
-        onSelect={(e) => e.preventDefault()}
-        className="flex-1"
+        onCheckedChange={handleTimeNotConfirmedChange}
       >
         Not confirmed
-      </DropdownMenuCheckboxItem>
+      </FilterCheckboxItem>
     </div>
   );
 }
 
 type ScheduledDateFilterProps = ScheduledDateFilterPanelProps;
 
-export function ScheduledDateFilter({
-  value,
-  onChange,
-  filterState,
-  onFilterStateChange,
-}: ScheduledDateFilterProps) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRangeValue>(() => value);
+// export function ScheduledDateFilter({
+//   value,
+//   onChange,
+//   filterState,
+//   onFilterStateChange,
+// }: ScheduledDateFilterProps) {
+//   const [open, setOpen] = useState(false);
+//   const [draft, setDraft] = useState<DateRangeValue>(() => value);
 
-  const dateRangeActive = isDateRangeActive(value);
-  const confirmedActive =
-    filterState.dateConfirmedFilter !== 'any' ||
-    filterState.timeConfirmedFilter !== 'any';
-  const active = dateRangeActive || confirmedActive;
+//   const dateRangeActive = isDateRangeActive(value);
+//   const confirmedActive =
+//     filterState.dateConfirmedFilter !== 'any' ||
+//     filterState.timeConfirmedFilter !== 'any';
+//   const active = dateRangeActive || confirmedActive;
 
-  useEffect(() => {
-    if (!open) setDraft(value);
-  }, [open, value]);
+//   useEffect(() => {
+//     if (!open) setDraft(value);
+//   }, [open, value]);
 
-  const handleClearTrigger = useCallback(() => {
-    onChange(EMPTY_DATE_RANGE);
-    onFilterStateChange({
-      ...filterState,
-      dateConfirmedFilter: 'any',
-      timeConfirmedFilter: 'any',
-    });
-    setOpen(false);
-  }, [onChange, filterState, onFilterStateChange]);
+//   const handleClearTrigger = useCallback(() => {
+//     onChange(EMPTY_DATE_RANGE);
+//     onFilterStateChange({
+//       ...filterState,
+//       dateConfirmedFilter: 'any',
+//       timeConfirmedFilter: 'any',
+//     });
+//     setOpen(false);
+//   }, [onChange, filterState, onFilterStateChange]);
 
-  const handleMainOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (nextOpen) {
-        setDraft(value);
-        setOpen(true);
-      } else {
-        onChange(draft);
-        setOpen(false);
-      }
-    },
-    [value, draft, onChange]
-  );
+//   const handleMainOpenChange = useCallback(
+//     (nextOpen: boolean) => {
+//       if (nextOpen) {
+//         setDraft(value);
+//         setOpen(true);
+//       } else {
+//         onChange(draft);
+//         setOpen(false);
+//       }
+//     },
+//     [value, draft, onChange]
+//   );
 
-  return (
-    <DropdownMenu open={open} onOpenChange={handleMainOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Scheduled date"
-          active={active}
-          count={
-            (dateRangeActive ? 1 : 0) +
-            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
-            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0)
-          }
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear scheduled date filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
-        align="start"
-      >
-        <ScheduledDateFilterPanel
-          value={draft}
-          onChange={(next) => {
-            setDraft(next);
-            onChange(next);
-          }}
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+//   return (
+//     <DropdownMenu open={open} onOpenChange={handleMainOpenChange}>
+//       <DropdownMenuTrigger asChild>
+//         <FilterTrigger
+//           label="Scheduled date"
+//           active={active}
+//           count={
+//             (dateRangeActive ? 1 : 0) +
+//             (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
+//             (filterState.timeConfirmedFilter !== 'any' ? 1 : 0)
+//           }
+//           onClear={handleClearTrigger}
+//           clearAriaLabel="Clear scheduled date filter"
+//         />
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent
+//         className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
+//         align="start"
+//       >
+//         <ScheduledDateFilterPanel
+//           value={draft}
+//           onChange={(next) => {
+//             setDraft(next);
+//             onChange(next);
+//           }}
+//           filterState={filterState}
+//           onFilterStateChange={onFilterStateChange}
+//         />
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }

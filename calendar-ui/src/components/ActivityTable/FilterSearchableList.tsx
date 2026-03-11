@@ -1,10 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import {
-  DropdownMenuCheckboxItem,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 
 export interface FilterSearchableListOption {
@@ -28,8 +25,8 @@ export interface FilterSearchableListProps {
 }
 
 /**
- * Searchable multi-select list for use only inside DropdownMenuContent or
- * DropdownMenuSubContent. Uses Radix menu items so arrow-key navigation works.
+ * Searchable multi-select list using plain markup (no Radix menu primitives).
+ * Works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
  */
 export function FilterSearchableList({
   options,
@@ -69,7 +66,7 @@ export function FilterSearchableList({
   );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const firstItemRef = useRef<HTMLDivElement>(null);
+  const firstItemRef = useRef<HTMLLabelElement>(null);
 
   const handleFirstItemKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Tab' && e.shiftKey) {
@@ -83,44 +80,23 @@ export function FilterSearchableList({
 
   return (
     <>
-      <DropdownMenuItem
-        asChild
-        className="block cursor-text rounded-none p-0 focus:bg-transparent"
-        onSelect={(e) => e.preventDefault()}
-      >
-        <div
-          className="border-b p-2"
-          onFocus={(e) => {
-            if (e.target === e.currentTarget) {
-              e.currentTarget.querySelector('input')?.focus();
-            }
-          }}
-        >
-          <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
-            <Input
-              ref={searchInputRef}
-              type="text"
-              className="h-8 pr-3 pl-8 text-sm"
-              placeholder={searchPlaceholder}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                const allowPropagation = [
-                  'ArrowDown',
-                  'ArrowUp',
-                  'ArrowLeft', // Let Radix close submenu and return to parent
-                  'ArrowRight',
-                ].includes(e.key);
-                if (!allowPropagation) {
-                  e.stopPropagation();
-                }
-              }}
-              aria-label={searchAriaLabel}
-            />
-          </div>
+      <div className="border-b p-2">
+        <div className="relative">
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
+          <Input
+            ref={searchInputRef}
+            type="text"
+            className="h-8 pr-3 pl-8 text-sm"
+            placeholder={searchPlaceholder}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+            }}
+            aria-label={searchAriaLabel}
+          />
         </div>
-      </DropdownMenuItem>
+      </div>
       <div
         className="overflow-y-auto py-1"
         style={{ maxHeight }}
@@ -141,18 +117,22 @@ export function FilterSearchableList({
             const checked = Number.isFinite(id) && selectedIds.includes(id);
             const isFirst = index === 0;
             return (
-              <DropdownMenuCheckboxItem
+              <label
                 key={opt.value}
                 ref={isFirst ? firstItemRef : undefined}
-                checked={checked}
-                onCheckedChange={() =>
-                  Number.isFinite(id) && handleToggle(opt.value)
-                }
-                onSelect={(e) => e.preventDefault()}
+                tabIndex={0}
+                className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-2 text-sm outline-none select-none"
                 onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
               >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() =>
+                    Number.isFinite(id) && handleToggle(opt.value)
+                  }
+                  tabIndex={-1}
+                />
                 <span className="truncate">{opt.label}</span>
-              </DropdownMenuCheckboxItem>
+              </label>
             );
           })
         )}
@@ -160,16 +140,14 @@ export function FilterSearchableList({
       {showClearButton && hasSelection && onClear && (
         <>
           <div className="border-t" />
-          <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
-            <button
-              type="button"
-              className="text-muted-foreground flex w-full items-center gap-2 px-3 py-2 text-sm"
-              onClick={onClear}
-            >
-              <X className="h-3.5 w-3.5" />
-              Clear all
-            </button>
-          </DropdownMenuItem>
+          <button
+            type="button"
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-2 text-sm"
+            onClick={onClear}
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear all
+          </button>
         </>
       )}
     </>

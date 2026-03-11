@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -24,8 +24,8 @@ export interface FilterCheckboxDropdownPanelProps {
 }
 
 /**
- * Panel content (uses menu items; must be inside DropdownMenuContent or DropdownMenuSubContent).
- * Exported for use in ResponsiveFilterRow inline and overflow.
+ * Panel content using plain markup. Works inside Popover, DropdownMenuContent,
+ * or DropdownMenuSubContent.
  */
 export function FilterCheckboxDropdownPanel({
   options,
@@ -54,14 +54,13 @@ export function FilterCheckboxDropdownPanel({
   return (
     <>
       {options.map((opt) => (
-        <DropdownMenuCheckboxItem
+        <FilterCheckboxItem
           key={opt.value}
           checked={selectedValues.includes(opt.value)}
           onCheckedChange={() => handleToggle(opt.value)}
-          onSelect={(e) => e.preventDefault()}
         >
-          <span className="truncate">{opt.label}</span>
-        </DropdownMenuCheckboxItem>
+          {opt.label}
+        </FilterCheckboxItem>
       ))}
     </>
   );

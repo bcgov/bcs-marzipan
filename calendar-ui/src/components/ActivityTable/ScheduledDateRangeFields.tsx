@@ -14,7 +14,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import {
   Popover,
   PopoverContent,
@@ -88,9 +87,8 @@ export function isDateRangeActive(dateRange: DateRangeValue): boolean {
 }
 
 /**
- * For use only inside DropdownMenuContent or DropdownMenuSubContent.
- * Date buttons are wrapped in DropdownMenuItem so they participate in
- * the menu's roving tabindex (arrow-key navigation).
+ * Date range picker using plain markup (no Radix menu primitives).
+ * Works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
  */
 export interface ScheduledDateRangeFieldsProps {
   value: DateRangeValue;
@@ -341,40 +339,6 @@ export function ScheduledDateRangeFields({
     focusTabbableDay(endCalendarRef);
   }, []);
 
-  const handleStartDateKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
-        e.currentTarget.dispatchEvent(
-          new KeyboardEvent('keydown', {
-            key: 'ArrowDown',
-            bubbles: true,
-            cancelable: true,
-          })
-        );
-      }
-    },
-    []
-  );
-
-  const handleEndDateKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
-        e.currentTarget.dispatchEvent(
-          new KeyboardEvent('keydown', {
-            key: 'ArrowUp',
-            bubbles: true,
-            cancelable: true,
-          })
-        );
-      }
-    },
-    []
-  );
-
   const handleClear = useCallback(() => {
     onChange({
       startDate: '',
@@ -389,25 +353,22 @@ export function ScheduledDateRangeFields({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Popover open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
-          <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  'min-w-[160px] flex-1 justify-start text-left font-normal',
-                  !value.startDate &&
-                    !value.noStartDate &&
-                    'text-muted-foreground'
-                )}
-                onKeyDown={handleStartDateKeyDown}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                {startLabel}
-                <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-          </DropdownMenuItem>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'min-w-[160px] flex-1 justify-start text-left font-normal',
+                !value.startDate &&
+                  !value.noStartDate &&
+                  'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {startLabel}
+              <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
+            </Button>
+          </PopoverTrigger>
           <PopoverContent
             className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
             align="start"
@@ -487,23 +448,20 @@ export function ScheduledDateRangeFields({
           →
         </span>
         <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
-          <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  'min-w-[160px] flex-1 justify-start text-left font-normal',
-                  !value.endDate && !value.noEndDate && 'text-muted-foreground'
-                )}
-                onKeyDown={handleEndDateKeyDown}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                {endLabel}
-                <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-          </DropdownMenuItem>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                'min-w-[160px] flex-1 justify-start text-left font-normal',
+                !value.endDate && !value.noEndDate && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {endLabel}
+              <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
+            </Button>
+          </PopoverTrigger>
           <PopoverContent
             className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
             align="start"

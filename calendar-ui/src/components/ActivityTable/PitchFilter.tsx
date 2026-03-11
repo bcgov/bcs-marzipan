@@ -1,16 +1,6 @@
-import { useCallback, useMemo, type MouseEvent } from 'react';
+import { useCallback, type MouseEvent } from 'react';
 
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
-import { cn } from '@/lib/utils';
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 
 import {
   DEFAULT_PITCH_DATE_RANGE,
@@ -107,6 +97,15 @@ export function PitchFilterPanel({
     });
   }, [filterState, onFilterStateChange]);
 
+  const handleClearDatesClick = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
+    },
+    [handlePitchDateRangeChange]
+  );
+
   return (
     <>
       <FilterSectionLabel
@@ -124,17 +123,16 @@ export function PitchFilterPanel({
         </p>
       ) : (
         pitchRequiredStatusOptions.map((opt) => (
-          <DropdownMenuCheckboxItem
+          <FilterCheckboxItem
             key={opt.value}
             checked={pitchRequiredStatusNames.includes(opt.value)}
             onCheckedChange={() => handlePitchStatusToggle(opt.value)}
-            onSelect={(e) => e.preventDefault()}
           >
-            <span className="truncate">{opt.label}</span>
-          </DropdownMenuCheckboxItem>
+            {opt.label}
+          </FilterCheckboxItem>
         ))
       )}
-      <DropdownMenuSeparator />
+      <div className="border-t" role="separator" />
       <FilterSectionLabel
         onClearAll={
           pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
@@ -142,22 +140,18 @@ export function PitchFilterPanel({
       >
         Pitch date
       </FilterSectionLabel>
-      <DropdownMenuCheckboxItem
+      <FilterCheckboxItem
         checked={pitchDateFilter.kind === 'not_scheduled'}
         onCheckedChange={handlePitchDateNotScheduledChange}
-        onSelect={(e) => e.preventDefault()}
       >
         Not scheduled for panel
-      </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem
+      </FilterCheckboxItem>
+      <FilterCheckboxItem
         checked={pitchDateFilter.kind === 'scheduled'}
-        onCheckedChange={(checked) =>
-          handlePitchDateScheduledChange(checked === true)
-        }
-        onSelect={(e) => e.preventDefault()}
+        onCheckedChange={(checked) => handlePitchDateScheduledChange(checked)}
       >
         Scheduled for panel
-      </DropdownMenuCheckboxItem>
+      </FilterCheckboxItem>
 
       {pitchDateFilter.kind === 'scheduled' && (
         <div className="border-t px-2 pt-2 pb-2">
@@ -166,27 +160,14 @@ export function PitchFilterPanel({
               Panel date
             </span>
             {isDateRangeActive(pitchDateFilter.dateRange) ? (
-              <DropdownMenuItem
-                asChild
-                className="h-auto shrink-0 cursor-pointer gap-0 rounded-none p-0 text-xs font-normal focus:bg-transparent focus:text-inherit"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
-                }}
+              <button
+                type="button"
+                onClick={handleClearDatesClick}
+                className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                aria-label="Clear panel date range"
               >
-                <button
-                  type="button"
-                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
-                  }}
-                  className="text-primary focus-visible:ring-ring text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                  aria-label="Clear panel date range"
-                >
-                  Clear dates
-                </button>
-              </DropdownMenuItem>
+                Clear dates
+              </button>
             ) : null}
           </div>
           <ScheduledDateRangeFields
@@ -201,54 +182,54 @@ export function PitchFilterPanel({
   );
 }
 
-export function PitchFilter({
-  filterState,
-  onFilterStateChange,
-  pitchRequiredStatusOptions,
-}: PitchFilterProps) {
-  const { pitchRequiredStatusNames, pitchDateFilter } = filterState;
-  const active = useMemo(
-    () => isPitchFilterActive(pitchRequiredStatusNames, pitchDateFilter),
-    [pitchRequiredStatusNames, pitchDateFilter]
-  );
-  const pitchCount = useMemo(
-    () =>
-      pitchRequiredStatusNames.length +
-      (pitchDateFilter.kind !== 'any' ? 1 : 0),
-    [pitchRequiredStatusNames.length, pitchDateFilter.kind]
-  );
-  const handleClearTrigger = useCallback(() => {
-    onFilterStateChange({
-      ...filterState,
-      pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
-    });
-  }, [filterState, onFilterStateChange]);
+// export function PitchFilter({
+//   filterState,
+//   onFilterStateChange,
+//   pitchRequiredStatusOptions,
+// }: PitchFilterProps) {
+//   const { pitchRequiredStatusNames, pitchDateFilter } = filterState;
+//   const active = useMemo(
+//     () => isPitchFilterActive(pitchRequiredStatusNames, pitchDateFilter),
+//     [pitchRequiredStatusNames, pitchDateFilter]
+//   );
+//   const pitchCount = useMemo(
+//     () =>
+//       pitchRequiredStatusNames.length +
+//       (pitchDateFilter.kind !== 'any' ? 1 : 0),
+//     [pitchRequiredStatusNames.length, pitchDateFilter.kind]
+//   );
+//   const handleClearTrigger = useCallback(() => {
+//     onFilterStateChange({
+//       ...filterState,
+//       pitchRequiredStatusNames: [],
+//       pitchDateFilter: { kind: 'any' },
+//     });
+//   }, [filterState, onFilterStateChange]);
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Pitch"
-          active={active}
-          count={pitchCount}
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear Pitch filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className={cn(
-          FILTER_PANEL_MIN_WIDTH,
-          'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
-        )}
-        align="start"
-      >
-        <PitchFilterPanel
-          filterState={filterState}
-          onFilterStateChange={onFilterStateChange}
-          pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+//   return (
+//     <DropdownMenu>
+//       <DropdownMenuTrigger asChild>
+//         <FilterTrigger
+//           label="Pitch"
+//           active={active}
+//           count={pitchCount}
+//           onClear={handleClearTrigger}
+//           clearAriaLabel="Clear Pitch filter"
+//         />
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent
+//         className={cn(
+//           FILTER_PANEL_MIN_WIDTH,
+//           'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
+//         )}
+//         align="start"
+//       >
+//         <PitchFilterPanel
+//           filterState={filterState}
+//           onFilterStateChange={onFilterStateChange}
+//           pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+//         />
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }

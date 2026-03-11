@@ -14,17 +14,14 @@ import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
-import {
-  LeadsFilterDropdownContent,
-  type LeadFilterOption,
-} from './LeadsFilter';
+import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
 import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
 import { isDateRangeActive } from './ScheduledDateRangeFields';
 import { TagsFilterPanel, type TagFilterOption } from './TagsFilter';
 import {
-  TranslationsFilterDropdownContent,
+  TranslationsFilterPanel,
   type TranslationFilterOption,
   type TranslationStatusFilterOption,
 } from './TranslationsFilter';
@@ -260,7 +257,6 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Datetime filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'category',
@@ -279,7 +275,6 @@ export function ActivityTableFilters({
           onClear: () => handleCategoryChange([]),
           clearAriaLabel: 'Clear Category filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'pitch',
@@ -306,7 +301,6 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Pitch filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'lookAhead',
@@ -332,7 +326,6 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Look Ahead filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'status',
@@ -351,7 +344,6 @@ export function ActivityTableFilters({
           onClear: () => handleStatusChange([]),
           clearAriaLabel: 'Clear Status filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'tags',
@@ -369,13 +361,12 @@ export function ActivityTableFilters({
           onClear: () => handleTagIdsChange([]),
           clearAriaLabel: 'Clear Tags filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'translations',
         label: 'Translations',
         panel: (
-          <TranslationsFilterDropdownContent
+          <TranslationsFilterPanel
             translationStatusOptions={translationStatusOptions}
             translationOptions={translationOptions}
             selectedStatusIds={filterState.translationRequiredStatusIds}
@@ -399,13 +390,12 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Translations filter',
         },
-        wrapper: 'dropdown',
       },
       {
         key: 'leads',
         label: 'Leads',
         panel: (
-          <LeadsFilterDropdownContent
+          <LeadsFilterPanel
             filterState={filterState}
             onFilterStateChange={onFilterStateChange}
             ministryOptions={ministryOptions}
@@ -435,7 +425,6 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Leads filter',
         },
-        wrapper: 'dropdown',
       },
     ],
     [
