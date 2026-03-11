@@ -342,4 +342,4 @@ Example: `feat/CORPCAL-123-add-user-authentication`
 
 Protected branches (`main`, `master`, `develop`) skip validation.
 
-For detailed hook documentation, see [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md).
+For detailed hook documentation see [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md).
