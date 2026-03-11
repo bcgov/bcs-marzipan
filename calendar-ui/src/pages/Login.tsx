@@ -1,11 +1,12 @@
 /**
  * Login Page
- * Simple username login for Corporate Calendar (mock auth mode).
+ * Supports local username/password login and optional Azure AD sign-in.
  */
 import { Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useState, type SubmitEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 
+import { getAzureConfig, startAzureLogin } from '../api/authApi';
 import { Button } from '../components/ui/button';
 import {
   Card,
@@ -28,6 +29,36 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAzureLoading, setIsAzureLoading] = useState(false);
+  const [azureEnabled, setAzureEnabled] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const azureError = params.get('error');
+
+    if (azureError) {
+      if (azureError === 'azure_not_configured') {
+        setError('Microsoft sign-in is not configured in this environment.');
+      } else if (azureError === 'azure_no_account') {
+        setError(
+          'Your Microsoft account is not linked to an active Corporate Calendar user.'
+        );
+      } else {
+        setError('Microsoft sign-in failed. Please try again.');
+      }
+
+      // Keep the URL clean after surfacing the error.
+      window.history.replaceState({}, '', '/login');
+    }
+
+    void getAzureConfig()
+      .then((result) => {
+        setAzureEnabled(result.enabled === true);
+      })
+      .catch(() => {
+        setAzureEnabled(false);
+      });
+  }, []);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,6 +78,11 @@ export function Login() {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  const handleAzureLogin = () => {
+    setIsAzureLoading(true);
+    startAzureLogin();
   };
 
   return (
@@ -151,6 +187,38 @@ export function Login() {
                 'Sign In'
               )}
             </Button>
+
+            {azureEnabled && (
+              <>
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 tracking-wide text-slate-500">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full"
+                  disabled={isLoading || isAzureLoading}
+                  onClick={handleAzureLogin}
+                >
+                  {isAzureLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Redirecting to Microsoft...
+                    </>
+                  ) : (
+                    'Sign in with Microsoft'
+                  )}
+                </Button>
+              </>
+            )}
           </form>
 
           <div className="mt-8 border-t pt-6 text-center">

@@ -90,20 +90,24 @@ npm run dev --workspace=calendar-ui              # Frontend only
 
 ## Environment Variables
 
-| Variable             | Description                                         | Required | Default               |
-| -------------------- | --------------------------------------------------- | -------- | --------------------- |
-| `DATABASE_URL`       | PostgreSQL connection string                        | Yes      | -                     |
-| `API_KEY`            | API authentication key (optional in dev)            | No       | -                     |
-| `PORT`               | Backend service port                                | No       | 3001                  |
-| `VITE_API_BASE_URL`  | Frontend API base URL                               | No       | http://localhost:3001 |
-| `DB_MAX_CONNECTIONS` | Database connection pool size                       | No       | 10                    |
-| `DB_IDLE_TIMEOUT`    | Database idle timeout (seconds)                     | No       | 20                    |
-| `DB_CONNECT_TIMEOUT` | Database connection timeout (seconds)               | No       | 10                    |
-| `AUTH_STRATEGY`      | Authentication strategy: `mock` or `ad`             | No       | mock                  |
-| `JWT_SECRET`         | Secret key for JWT signing (required in production) | No       | dev-secret            |
-| `JWT_EXPIRES_IN`     | JWT token expiration in seconds                     | No       | 3600                  |
+| Variable              | Description                                                              | Required | Default               |
+| --------------------- | ------------------------------------------------------------------------ | -------- | --------------------- |
+| `DATABASE_URL`        | PostgreSQL connection string                                             | Yes      | -                     |
+| `API_KEY`             | API authentication key (optional in dev)                                 | No       | -                     |
+| `PORT`                | Backend service port                                                     | No       | 3001                  |
+| `VITE_API_BASE_URL`   | Frontend API base URL                                                    | No       | http://localhost:3001 |
+| `DB_MAX_CONNECTIONS`  | Database connection pool size                                            | No       | 10                    |
+| `DB_IDLE_TIMEOUT`     | Database idle timeout (seconds)                                          | No       | 20                    |
+| `DB_CONNECT_TIMEOUT`  | Database connection timeout (seconds)                                    | No       | 10                    |
+| `AUTH_STRATEGY`       | Authentication strategy: `mock`, `ad`, or `azure`                        | No       | mock                  |
+| `AZURE_TENANT_ID`     | Azure AD tenant ID (required when `AUTH_STRATEGY=azure`)                 | No       | -                     |
+| `AZURE_CLIENT_ID`     | Azure AD application client ID (required when `AUTH_STRATEGY=azure`)     | No       | -                     |
+| `AZURE_CLIENT_SECRET` | Azure AD application client secret (required when `AUTH_STRATEGY=azure`) | No       | -                     |
+| `AZURE_REDIRECT_URI`  | Optional explicit callback URL override for Azure OIDC                   | No       | auto-derived          |
+| `JWT_SECRET`          | Secret key for JWT signing (required in production)                      | No       | dev-secret            |
+| `JWT_EXPIRES_IN`      | JWT token expiration in seconds                                          | No       | 3600                  |
 
-**Authentication**: The API uses JWT-based authentication. In development, use `AUTH_STRATEGY=mock` to authenticate with any seeded username. The `/health`, `/ready`, and `/auth/login` endpoints are public. See [AUTH_AND_RBAC.md](docs/AUTH_AND_RBAC.md) for details.
+**Authentication**: The API uses JWT-based authentication. In development, use `AUTH_STRATEGY=mock` to authenticate with any seeded username. Azure sign-in is available at `/auth/azure` (or `/api/auth/azure` from the UI) when Azure environment variables are configured. See [AUTH_AND_RBAC.md](docs/AUTH_AND_RBAC.md) for details.
 
 ## Project Structure
 
