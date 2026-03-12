@@ -1,7 +1,7 @@
 html,
 body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'BCSans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f3f2f1;
   overflow-x: hidden;
 }

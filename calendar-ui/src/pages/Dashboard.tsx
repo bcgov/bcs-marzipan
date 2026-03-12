@@ -1,14 +1,15 @@
-import {
-  Badge,
-  Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-} from '@fluentui/react-components';
 import { lazy, Suspense } from 'react';
+
+import {
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from '@/components/table/tableConstants';
+import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 const LazyBarChart = lazy(() =>
   import('@/components/shared/DashboardBarChart').then((m) => ({
@@ -50,114 +51,116 @@ const graphData = {
 };
 
 export const Dashboard = () => (
-  <div
-    style={{
-      display: 'grid',
-      gap: '24px',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-      padding: '32px',
-    }}
-  >
+  <div className="grid grid-cols-1 gap-6 p-8 md:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
     {/* Section 1: Stats */}
     <Card>
-      <h3>Application Stats</h3>
-      <div style={{ display: 'flex', gap: '16px' }}>
-        {stats.map((stat) => (
-          <div key={stat.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
-              {stat.value}
+      <CardHeader>
+        <CardTitle>Application Stats</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-6">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className="text-3xl font-bold">{stat.value}</div>
+              <div className="text-muted-foreground text-sm">{stat.label}</div>
             </div>
-            <div>{stat.label}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </CardContent>
     </Card>
 
     {/* Section 2: Recent Changes */}
     <Card>
-      <h3>Recent Changes</h3>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>ID</TableHeaderCell>
-            <TableHeaderCell>Title</TableHeaderCell>
-            <TableHeaderCell>Status</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {recentChanges.map((change) => (
-            <TableRow key={change.id}>
-              <TableCell>{change.id}</TableCell>
-              <TableCell>{change.title}</TableCell>
-              <TableCell>
-                <Badge appearance="tint">{change.status}</Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <CardHeader>
+        <CardTitle>Recent Changes</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <table className={tableTable}>
+          <thead className={tableThead}>
+            <tr>
+              <th className={tableTh}>ID</th>
+              <th className={tableTh}>Title</th>
+              <th className={tableTh}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentChanges.map((change) => (
+              <tr key={change.id} className={tableBodyRow}>
+                <td className={tableTd}>{change.id}</td>
+                <td className={tableTd}>{change.title}</td>
+                <td className={tableTd}>
+                  <Badge variant={getActivityStatusBadgeVariant(change.status)}>
+                    {change.status}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
     </Card>
 
     {/* Section 3: Filtered Data */}
     <Card>
-      <h3>Filtered Entries</h3>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>ID</TableHeaderCell>
-            <TableHeaderCell>Title</TableHeaderCell>
-            <TableHeaderCell>Category</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredData.map((entry) => (
-            <TableRow key={entry.id}>
-              <TableCell>{entry.id}</TableCell>
-              <TableCell>{entry.title}</TableCell>
-              <TableCell>{entry.category}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <CardHeader>
+        <CardTitle>Filtered Entries</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <table className={tableTable}>
+          <thead className={tableThead}>
+            <tr>
+              <th className={tableTh}>ID</th>
+              <th className={tableTh}>Title</th>
+              <th className={tableTh}>Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.map((entry) => (
+              <tr key={entry.id} className={tableBodyRow}>
+                <td className={tableTd}>{entry.id}</td>
+                <td className={tableTd}>{entry.title}</td>
+                <td className={tableTd}>{entry.category}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
     </Card>
 
     {/* Section 4: Graph - chart.js + react-chartjs-2 loaded on demand */}
     <Card>
-      <h3>Entries Over Time</h3>
-      <div style={{ height: '200px' }}>
-        <Suspense
-          fallback={
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                height: '200px',
+      <CardHeader>
+        <CardTitle>Entries Over Time</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[200px]">
+          <Suspense
+            fallback={
+              <div className="text-muted-foreground flex h-[200px] items-center justify-center text-sm">
+                Loading chart...
+              </div>
+            }
+          >
+            <LazyBarChart
+              data={graphData}
+              options={{
+                responsive: true,
+                plugins: { legend: { display: false } },
               }}
-            >
-              Loading chart...
-            </div>
-          }
-        >
-          <LazyBarChart
-            data={graphData}
-            options={{
-              responsive: true,
-              plugins: { legend: { display: false } },
-            }}
-          />
-        </Suspense>
-      </div>
+            />
+          </Suspense>
+        </div>
+      </CardContent>
     </Card>
 
     {/* Section 5: Custom Filter */}
     <Card>
-      <h3>Quick Filter</h3>
-      <input
-        type="text"
-        placeholder="Search by title..."
-        style={{ width: '100%', padding: '8px' }}
-      />
-      {/* You can add filter logic here */}
+      <CardHeader>
+        <CardTitle>Quick Filter</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Input type="text" placeholder="Search by title..." />
+      </CardContent>
     </Card>
   </div>
 );
