@@ -1,10 +1,21 @@
-import { X } from 'lucide-react';
 import { useFormContext, useFormState } from 'react-hook-form';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import {
   FormControl,
   FormDescription,
@@ -18,7 +29,6 @@ import {
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -31,7 +41,6 @@ import {
   usePitchRequiredStatuses,
   useTranslationRequiredStatuses,
 } from '@/hooks/useLookups';
-import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -42,7 +51,11 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  organizations: Array<{ value: number; label: string }>;
+  organizations: Array<{
+    value: number;
+    label: string;
+    ministryId?: number | null;
+  }>;
   tags: Array<{ id: number; text: string }>;
   readOnly?: boolean;
   /** When provided, show Lead team combobox. Ministry is derived from the selected team. */
@@ -59,18 +72,17 @@ export const ActivityOverviewSection: React.FC<
   leadTeamOptions,
 }) => {
   const form = useFormContext<ActivityFormData>();
+  const categoriesAnchorRef = useComboboxAnchor();
+  const tagsAnchorRef = useComboboxAnchor();
 
-  const [selectedCategories, toggleCategory] = useMultiSelect<
-    ActivityFormData,
-    'categoryIds',
-    number
-  >(form, 'categoryIds');
-
-  const [selectedTags, toggleTag] = useMultiSelect<
-    ActivityFormData,
-    'tagIds',
-    number
-  >(form, 'tagIds');
+  const categoryOptions = categories.map((c) => ({
+    value: String(c.id),
+    label: c.displayName ?? c.name,
+  }));
+  const tagOptions = tags.map((t) => ({
+    value: String(t.id),
+    label: t.text,
+  }));
 
   const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
   const { data: translationRequiredStatuses = [] } =
@@ -85,30 +97,61 @@ export const ActivityOverviewSection: React.FC<
       title={getActivityFormSectionLabel('overview')}
       fieldsClassName="space-y-6"
     >
-      <div>
-        <Label className="block">
-          Category <span className="text-destructive">*</span>
-        </Label>
-        <p className="text-muted-foreground mb-3 text-sm">
-          Select all that apply
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <Badge
-              key={category.id}
-              variant={
-                selectedCategories.includes(category.id)
-                  ? 'selected'
-                  : 'outline'
-              }
-              className="cursor-pointer px-4 py-2 text-sm"
-              onClick={readOnly ? undefined : () => toggleCategory(category.id)}
-            >
-              {category.displayName || category.name}
-            </Badge>
-          ))}
-        </div>
-      </div>
+      <FormField
+        control={form.control}
+        name="categoryIds"
+        render={({ field }) => {
+          const selectedOptions = categoryOptions.filter((o) =>
+            (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>
+                Categories <span className="text-destructive">*</span>
+              </FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={categoryOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips ref={categoriesAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select categories..." />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={categoriesAnchorRef}>
+                    <ComboboxEmpty>No categories found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormDescription>Select all that apply</FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
 
       {/* Title field with change indicator */}
       <FormField
@@ -148,14 +191,54 @@ export const ActivityOverviewSection: React.FC<
                 : null;
 
             const handleChange = (value: FreeformComboboxValue) => {
+              const previousTeamId = field.value ?? null;
+              const previousTeam =
+                previousTeamId != null
+                  ? leadTeamOptions.find((t) => t.id === previousTeamId)
+                  : null;
+              const syncedOrgId =
+                previousTeam?.ministryId != null
+                  ? (organizations.find(
+                      (o) => o.ministryId === previousTeam.ministryId
+                    )?.value ?? null)
+                  : null;
+              const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
+              const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
+              const leadOrgInSyncWithTeam =
+                (syncedOrgId != null &&
+                  currentLeadOrgId === syncedOrgId &&
+                  (currentLeadOrgName == null || currentLeadOrgName === '')) ||
+                (syncedOrgId == null &&
+                  currentLeadOrgId == null &&
+                  (currentLeadOrgName == null || currentLeadOrgName === ''));
+
               if (!value) {
                 field.onChange(undefined);
                 form.setValue('leadMinistryId', undefined);
+                if (leadOrgInSyncWithTeam) {
+                  form.setValue('leadOrgId', null);
+                  form.setValue('leadOrgName', null);
+                }
               } else if (value.type === 'option') {
                 const teamId = Number(value.value);
                 field.onChange(teamId);
                 const team = leadTeamOptions.find((t) => t.id === teamId);
                 form.setValue('leadMinistryId', team?.ministryId ?? undefined);
+                if (leadOrgInSyncWithTeam && team) {
+                  const orgForMinistry =
+                    team.ministryId != null
+                      ? organizations.find(
+                          (o) => o.ministryId === team.ministryId
+                        )
+                      : undefined;
+                  if (orgForMinistry) {
+                    form.setValue('leadOrgId', orgForMinistry.value);
+                    form.setValue('leadOrgName', null);
+                  } else {
+                    form.setValue('leadOrgId', null);
+                    form.setValue('leadOrgName', null);
+                  }
+                }
               }
             };
 
@@ -276,7 +359,27 @@ export const ActivityOverviewSection: React.FC<
               <Checkbox
                 checked={field.value}
                 disabled={readOnly}
-                onCheckedChange={field.onChange}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked);
+                  if (checked) {
+                    form.setValue('visibility', 'team');
+                    const executiveSummary = form.getValues('executiveSummary');
+                    if (!executiveSummary?.trim()) {
+                      const leadTeamId = form.getValues('leadTeamId');
+                      const team =
+                        leadTeamId != null && leadTeamOptions?.length
+                          ? leadTeamOptions.find((t) => t.id === leadTeamId)
+                          : undefined;
+                      const holdFor = team
+                        ? team.ministryName ||
+                          team.displayName ||
+                          team.name ||
+                          'team'
+                        : 'team';
+                      form.setValue('executiveSummary', `Hold for ${holdFor}.`);
+                    }
+                  }
+                }}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
@@ -449,25 +552,61 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <div>
-        <Label className="mb-3 block">Tags</Label>
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
-              className="cursor-pointer px-4 py-2 text-sm"
-              onClick={readOnly ? undefined : () => toggleTag(tag.id)}
-            >
-              {tag.text}
-              {selectedTags.includes(tag.id) && <X className="ml-2 h-3 w-3" />}
-            </Badge>
-          ))}
-        </div>
-        <FormDescription className="mt-2">
-          Select tags to categorize this activity
-        </FormDescription>
-      </div>
+      <FormField
+        control={form.control}
+        name="tagIds"
+        render={({ field }) => {
+          const selectedOptions = tagOptions.filter((o) =>
+            (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={tagOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips ref={tagsAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select tags..." />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={tagsAnchorRef}>
+                    <ComboboxEmpty>No tags found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormDescription>
+                Select tags to categorize this activity
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
     </ActivityFormSection>
   );
 };

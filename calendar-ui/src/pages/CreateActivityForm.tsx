@@ -121,11 +121,12 @@ export const CreateActivityForm: FC = () => {
     }
   }, [timeStatuses, form]);
 
-  // Default lead team to user's first team when options load (only if form has no leadTeamId yet)
+  // Default lead team to user's first team when options load (only if form has no leadTeamId yet).
+  // One-way sync: also set Lead Org from the team's ministry (first org with matching ministryId, or leave unfilled).
   useEffect(() => {
     if (leadTeamOptions.length === 0) return;
     const currentLeadTeamId = form.getValues('leadTeamId');
-    if (currentLeadTeamId != null) return;
+    if (currentLeadTeamId != null && currentLeadTeamId !== 0) return;
     const firstUserTeamId = user?.teamIds?.[0];
     const defaultTeam =
       (firstUserTeamId != null &&
@@ -134,8 +135,42 @@ export const CreateActivityForm: FC = () => {
     if (defaultTeam) {
       form.setValue('leadTeamId', defaultTeam.id);
       form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
+      const ministryId = defaultTeam.ministryId ?? null;
+      const orgForMinistry = lookups.organizations.find(
+        (o) => o.ministryId != null && o.ministryId === ministryId
+      );
+      if (orgForMinistry) {
+        form.setValue('leadOrgId', orgForMinistry.value);
+        form.setValue('leadOrgName', null);
+      }
+      // If no org has this ministryId, leave Lead Org unfilled (defaults already null)
     }
-  }, [leadTeamOptions, user?.teamIds, form]);
+  }, [leadTeamOptions, user?.teamIds, lookups.organizations, form]);
+
+  // When organizations load after default team was set, populate Lead Org from that team's ministry (one-time sync).
+  useEffect(() => {
+    if (lookups.organizations.length === 0 || leadTeamOptions.length === 0)
+      return;
+    const leadTeamId = form.getValues('leadTeamId');
+    const leadOrgId = form.getValues('leadOrgId');
+    const leadOrgName = form.getValues('leadOrgName');
+    if (
+      leadTeamId == null ||
+      leadTeamId === 0 ||
+      (leadOrgId != null && leadOrgId !== 0) ||
+      (leadOrgName != null && leadOrgName !== '')
+    )
+      return;
+    const team = leadTeamOptions.find((t) => t.id === leadTeamId);
+    if (!team?.ministryId) return;
+    const orgForMinistry = lookups.organizations.find(
+      (o) => o.ministryId != null && o.ministryId === team.ministryId
+    );
+    if (orgForMinistry) {
+      form.setValue('leadOrgId', orgForMinistry.value);
+      form.setValue('leadOrgName', null);
+    }
+  }, [lookups.organizations, leadTeamOptions, form]);
 
   // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
@@ -179,7 +214,10 @@ export const CreateActivityForm: FC = () => {
     undefined,
     {
       debounceMs: 3000, // Save 3 seconds after user stops typing
-      enabled: !isSubmitting, // Disable during submission
+      // enabled: !isSubmitting, // Disable during submission
+
+      // Temporarily disabling while polishing other form features
+      enabled: false,
       onSaveError: (err) => {
         logger.error('Draft save failed', err);
         showErrorToast(err, 'Draft could not be saved.');

@@ -98,6 +98,7 @@ export class LookupsService {
         id: organizations.id,
         name: organizations.name,
         displayName: organizations.displayName,
+        ministryId: organizations.ministryId,
       })
       .from(organizations)
       .where(eq(organizations.isActive, true))
@@ -109,6 +110,7 @@ export class LookupsService {
       value: org.id,
       name: org.name,
       displayName: org.displayName,
+      ministryId: org.ministryId,
     }));
   }
 

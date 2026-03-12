@@ -1,10 +1,18 @@
-import { ChevronDown } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { useState } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import {
   FormControl,
   FormDescription,
@@ -13,12 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -26,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -51,14 +52,14 @@ export const ActivityNewsReleaseSection: React.FC<
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
+  const translationsAnchorRef = useComboboxAnchor();
 
-  const [selectedTranslationLanguages, toggleTranslationLanguage] =
-    useMultiSelect<ActivityFormData, 'translationLanguageIds', number>(
-      form,
-      'translationLanguageIds'
-    );
-
-  const [translationsOpen, setTranslationsOpen] = useState(false);
+  const translationLanguageComboboxOptions = translationLanguageOptions.map(
+    (l) => ({
+      value: String(l.id),
+      label: l.displayName ?? l.name,
+    })
+  );
 
   return (
     <ActivityFormSection
@@ -127,59 +128,63 @@ export const ActivityNewsReleaseSection: React.FC<
         )}
       />
 
-      <div>
-        <Label className="mb-3 block">Translations Required</Label>
-        <Popover
-          open={readOnly ? false : translationsOpen}
-          onOpenChange={readOnly ? () => {} : setTranslationsOpen}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              disabled={readOnly}
-              variant="outline"
-              role="combobox"
-              className="w-full justify-between"
-            >
-              {selectedTranslationLanguages.length > 0
-                ? `${selectedTranslationLanguages.length} selected`
-                : 'Select translation languages'}
-              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
-            <div className="max-h-60 overflow-auto p-4">
-              <div className="space-y-2">
-                {translationLanguageOptions.map((language) => (
-                  <div
-                    key={language.id}
-                    className="flex items-center space-x-2"
-                  >
-                    <Checkbox
-                      id={`translation-language-${language.id}`}
-                      checked={selectedTranslationLanguages.includes(
-                        language.id
+      <FormField
+        control={form.control}
+        name="translationLanguageIds"
+        render={({ field }) => {
+          const selectedOptions = translationLanguageComboboxOptions.filter(
+            (o) => (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>Translations Required</FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={translationLanguageComboboxOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips ref={translationsAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select translation languages" />
+                        </>
                       )}
-                      disabled={readOnly}
-                      onCheckedChange={() =>
-                        toggleTranslationLanguage(language.id)
-                      }
-                    />
-                    <label
-                      htmlFor={`translation-language-${language.id}`}
-                      className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {language.displayName || language.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <FormDescription className="mt-2">
-          Select translation languages if applicable
-        </FormDescription>
-      </div>
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={translationsAnchorRef}>
+                    <ComboboxEmpty>
+                      No translation languages found.
+                    </ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormDescription>
+                Select translation languages if applicable
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
     </ActivityFormSection>
   );
 };

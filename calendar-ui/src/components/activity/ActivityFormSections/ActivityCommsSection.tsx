@@ -1,10 +1,18 @@
-import { ChevronDown } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { useState } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import {
   FormControl,
   FormDescription,
@@ -13,21 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -48,14 +42,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
+  const commsLeadAnchorRef = useComboboxAnchor();
+  const commsMaterialsAnchorRef = useComboboxAnchor();
 
-  const [selectedCommsMaterials, toggleCommsMaterial] = useMultiSelect<
-    ActivityFormData,
-    'commsMaterialIds',
-    number
-  >(form, 'commsMaterialIds');
-
-  const [commsMaterialsOpen, setCommsMaterialsOpen] = useState(false);
+  const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
+    value: String(m.id),
+    label: m.displayName ?? m.name,
+  }));
 
   return (
     <ActivityFormSection
@@ -65,34 +58,62 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
       <FormField
         control={form.control}
         name="commsContactLeadId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Comms Lead <span className="text-destructive">*</span>
-            </FormLabel>
-            <Select
-              disabled={readOnly}
-              onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
-              }
-              value={field.value != null ? String(field.value) : ''}
-            >
+        render={({ field }) => {
+          const selectedOption =
+            field.value != null
+              ? commsLeadOptions.find((o) => o.value === String(field.value))
+              : null;
+          const selectedOptions = selectedOption ? [selectedOption] : [];
+          return (
+            <FormItem>
+              <FormLabel>
+                Comms Lead <span className="text-destructive">*</span>
+              </FormLabel>
               <FormControl data-field={field.name}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select comms lead" />
-                </SelectTrigger>
+                <Combobox
+                  items={commsLeadOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(
+                      selected.length > 0
+                        ? parseInt(selected[0].value, 10)
+                        : null
+                    )
+                  }
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips ref={commsLeadAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select comms lead" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={commsLeadAnchorRef}>
+                    <ComboboxEmpty>No comms leads found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FormControl>
-              <SelectContent>
-                {commsLeadOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
 
       <FormField
@@ -115,55 +136,64 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         )}
       />
 
-      <div>
-        <Label className="mb-3 block">Comms Materials</Label>
-        <Popover
-          open={readOnly ? false : commsMaterialsOpen}
-          onOpenChange={readOnly ? () => {} : setCommsMaterialsOpen}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              disabled={readOnly}
-              variant="outline"
-              role="combobox"
-              className="w-full justify-between"
-            >
-              {selectedCommsMaterials.length > 0
-                ? `${selectedCommsMaterials.length} selected`
-                : 'Select comms materials'}
-              <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
-            <div className="max-h-60 overflow-auto p-4">
-              <div className="space-y-2">
-                {commsMaterialOptions.map((material) => (
-                  <div
-                    key={material.id}
-                    className="flex items-center space-x-2"
+      <FormField
+        control={form.control}
+        name="commsMaterialIds"
+        render={({ field }) => {
+          const selectedOptions = commsMaterialComboboxOptions.filter((o) =>
+            (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>Comms Materials</FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={commsMaterialComboboxOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips
+                    ref={commsMaterialsAnchorRef}
+                    className="w-full"
                   >
-                    <Checkbox
-                      id={`comms-material-${material.id}`}
-                      checked={selectedCommsMaterials.includes(material.id)}
-                      disabled={readOnly}
-                      onCheckedChange={() => toggleCommsMaterial(material.id)}
-                    />
-                    <label
-                      htmlFor={`comms-material-${material.id}`}
-                      className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {material.displayName || material.name}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-        <FormDescription className="mt-2">
-          Select comms materials if applicable
-        </FormDescription>
-      </div>
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select comms materials" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={commsMaterialsAnchorRef}>
+                    <ComboboxEmpty>No comms materials found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormDescription>
+                Select comms materials if applicable
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
     </ActivityFormSection>
   );
 };

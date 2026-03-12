@@ -74,14 +74,10 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="global">Global</SelectItem>
-                <SelectItem value="team">Team Only</SelectItem>
+                <SelectItem value="global">All ministries</SelectItem>
+                <SelectItem value="team">My team only</SelectItem>
               </SelectContent>
             </Select>
-            <FormDescription>
-              Global: visible to all teams. Team Only: visible only to your team
-              and shared teams.
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -101,7 +97,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>Shared With Teams</FormLabel>
+              <FormLabel>Shared With</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={sharedWithTeamOptions}

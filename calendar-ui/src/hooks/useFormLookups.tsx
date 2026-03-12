@@ -28,8 +28,12 @@ export interface FormLookupData {
     displayName?: string;
   }>;
 
-  // Organizations - for Select/Combobox (id is number; coerce to string where UI requires)
-  organizations: Array<{ value: number; label: string }>;
+  // Organizations - for Select/Combobox (id is number; coerce to string where UI requires). ministryId used for Lead Org sync from Lead Team.
+  organizations: Array<{
+    value: number;
+    label: string;
+    ministryId?: number | null;
+  }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
   ministries: Array<{ id: number; name: string; displayName?: string }>;
@@ -150,11 +154,12 @@ export function useFormLookups(): FormLookupData {
       displayName: item.displayName || item.label,
     })) || [];
 
-  // Transform organizations for Select/Combobox (lookup ids are numbers)
+  // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
   const organizations =
     organizationsQuery.data?.map((item) => ({
       value: item.value,
       label: item.label,
+      ministryId: item.ministryId ?? undefined,
     })) || [];
 
   // Transform ministries for Select

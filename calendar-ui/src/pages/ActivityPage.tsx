@@ -487,7 +487,7 @@ export function ActivityPage({
       ? computeFormChanges(initialFormDataRef.current, form.getValues())
       : [];
 
-  const displayId = activity.displayId ?? `ACT-${activity.id}`;
+  const displayId = activity.displayId ?? `???-${activity.id}`;
   const categories = activity.category ?? [];
 
   return (

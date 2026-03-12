@@ -116,6 +116,7 @@ export const organizationLookupItemSchema = z.object({
   value: z.number().int(),
   name: z.string(),
   displayName: z.string(),
+  ministryId: z.number().int().nullable().optional(),
 });
 
 // ============================================
