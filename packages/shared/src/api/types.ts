@@ -29,6 +29,7 @@ export type {
   UserListItem,
   UserDetail,
   RoleOption,
+  CreateUserBody,
   UpdateUserBody,
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,

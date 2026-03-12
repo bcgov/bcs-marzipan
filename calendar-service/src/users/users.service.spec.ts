@@ -73,6 +73,82 @@ describe('UsersService', () => {
     vi.clearAllMocks();
   });
 
+  describe('create', () => {
+    it('should throw ConflictException when email already exists', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([{ id: 1 }], 'limit'));
+
+      await expect(
+        service.create({ email: 'existing@example.com', roleId: 1 }, 1)
+      ).rejects.toThrow(ConflictException);
+      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when roleId is invalid', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([], 'limit'))
+        .mockReturnValueOnce(createChain([], 'limit'));
+
+      await expect(
+        service.create({ email: 'new@example.com', roleId: 999 }, 1)
+      ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+    });
+
+    it('should create user and return UserDetail', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: null,
+        adDisplayName: 'New User',
+        adEmail: 'newuser@example.com',
+        roleId: 2,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Editor' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+      const teamNameRows: { id: number; name: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([], 'limit'))
+        .mockReturnValueOnce(createChain([{ id: 2 }], 'limit'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain(teamNameRows, 'where'));
+
+      mockDatabaseService.db.insert = vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockResolvedValue(undefined),
+        }))
+        .mockReturnThis();
+
+      const result = await service.create(
+        {
+          email: 'newuser@example.com',
+          roleId: 2,
+          displayName: 'New User',
+        },
+        1
+      );
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe(1);
+      expect(result.adEmail).toBe('newuser@example.com');
+      expect(result.roleId).toBe(2);
+      expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('findAll', () => {
     it('should return list with teams per user', async () => {
       const userRows = [

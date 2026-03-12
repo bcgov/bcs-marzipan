@@ -176,17 +176,25 @@ export function parseErrorResponse(error: unknown): ProblemDetails | null {
   // Fallback: construct Problem Details from standard error response
   const statusCode =
     getNumber(response, 'statusCode', 0) || getNumber(response, 'status', 500);
-  if (!isRecord(data) || !hasKeys(data, 'message') || !statusCode) return null;
-
-  const messageStr = getString(data, 'message', 'An error occurred');
   const headers = isRecord(response.headers) ? response.headers : {};
   const config = isRecord(error.config) ? error.config : {};
 
+  let detail: string;
+  if (isRecord(data) && hasKeys(data, 'message')) {
+    detail = getString(data, 'message', 'An error occurred');
+  } else if (typeof data === 'string' && data.trim() !== '') {
+    detail = data.trim();
+  } else if (statusCode >= 400) {
+    detail = `Request failed with status ${statusCode}`;
+  } else {
+    return null;
+  }
+
   return {
     type: `https://api.example.com/errors/${statusCode}`,
-    title: messageStr,
+    title: detail,
     status: statusCode,
-    detail: messageStr,
+    detail,
     instance: getString(config, 'url', ''),
     correlationId: getString(headers, 'x-correlation-id', 'unknown'),
   };
