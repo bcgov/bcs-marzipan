@@ -34,7 +34,10 @@ import {
   ColumnSortDropdown,
 } from '@/components/Table/ColumnSortDropdown';
 import { SortableColumnHeader } from '@/components/Table/SortableColumnHeader';
-import type { SortColumnConfig } from '@/components/Table/SortDropdown';
+import type {
+  SortColumnConfig,
+  SortLevel,
+} from '@/components/Table/SortDropdown';
 import { SortIndicator } from '@/components/Table/SortIndicator';
 import {
   getActivityColumnSizes,
@@ -95,7 +98,7 @@ import {
   mapActivityResponseToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
-import { compareActivityRows } from './activityTableSort';
+import { compareActivityRowsByLevels } from './activityTableSort';
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
@@ -111,13 +114,30 @@ const DEFAULT_SORT_DIRECTION = 'desc' as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
-  { id: 'activityStatus', label: 'Status', defaultDirection: 'asc' },
+  {
+    id: 'activityStatus',
+    label: 'Status',
+    defaultDirection: 'asc',
+    tieBreakers: [
+      { key: 'startDate', direction: 'asc' },
+      { key: 'startTime', direction: 'asc' },
+    ],
+  },
   {
     id: 'lookAheadStatus',
-    label: 'Look Ahead Status',
+    label: 'LA Status',
     defaultDirection: 'asc',
+    tieBreakers: [
+      { key: 'startDate', direction: 'asc' },
+      { key: 'startTime', direction: 'asc' },
+    ],
   },
-  { id: 'startDate', label: 'Scheduled date', defaultDirection: 'desc' },
+  {
+    id: 'startDate',
+    label: 'Scheduled date',
+    defaultDirection: 'asc',
+    tieBreakers: [{ key: 'startTime', direction: 'asc' }],
+  },
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
   { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
 ];
@@ -237,6 +257,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const showMoreLessRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -247,6 +268,12 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       );
     }
   }, [row.summary]);
+
+  useEffect(() => {
+    if (expanded && needsTruncation) {
+      showMoreLessRef.current?.focus();
+    }
+  }, [expanded, needsTruncation]);
 
   const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
@@ -275,8 +302,11 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
     return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
   }, [lookAheadLabel, row.tags]);
 
+  const isCollapsedWithTruncation = needsTruncation && !expanded;
+
   const showMoreLessButton = (
     <button
+      ref={showMoreLessRef}
       type="button"
       data-no-row-nav
       aria-expanded={expanded}
@@ -289,8 +319,6 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       {expanded ? 'Show less' : 'Show more'}
     </button>
   );
-
-  const isCollapsedWithTruncation = needsTruncation && !expanded;
 
   return (
     <div>
@@ -312,21 +340,17 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
           {row.summary}
         </div>
 
-        {isCollapsedWithTruncation && (
-          <span
-            className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]"
-            aria-hidden
-          >
-            <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
-              {showMoreLessButton}
+        {needsTruncation &&
+          (isCollapsedWithTruncation ? (
+            <span className="absolute right-0 bottom-0 w-28 group-hover/row:bg-[linear-gradient(to_right,transparent_0%,rgb(248_250_252/0.5)_35%,rgb(248_250_252/0.5)_100%)]">
+              <span className="flex justify-end bg-[linear-gradient(to_right,transparent_0%,white_35%,white_100%)] whitespace-nowrap [&>button]:inline">
+                {showMoreLessButton}
+              </span>
             </span>
-          </span>
-        )}
+          ) : (
+            <div className="mt-1 flex justify-end">{showMoreLessButton}</div>
+          ))}
       </div>
-
-      {needsTruncation && expanded && (
-        <div className="mt-1">{showMoreLessButton}</div>
-      )}
 
       {summaryBadgeGroupItems.length > 0 && (
         <div className="mt-2">
@@ -337,6 +361,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             badgeVariant="outline"
             badgeClassName="h-auto min-h-5 text-xs whitespace-normal text-slate-600"
             containerClassName="gap-1"
+            overflowBadgeVariant="outline"
+            overflowBadgeClassName="text-slate-600"
           />
         </div>
       )}
@@ -923,8 +949,15 @@ export function ActivityTable({
   const effectiveSortDirection =
     sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
   const sortedData = useMemo(() => {
+    const activeColumn = ACTIVITY_SORT_COLUMNS.find(
+      (c) => c.id === effectiveSortKey
+    );
+    const sortLevels: SortLevel[] = [
+      { key: effectiveSortKey, direction: effectiveSortDirection },
+      ...(activeColumn?.tieBreakers ?? []),
+    ];
     return [...filteredData].sort((a, b) =>
-      compareActivityRows(a, b, effectiveSortKey, effectiveSortDirection)
+      compareActivityRowsByLevels(a, b, sortLevels)
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
@@ -1279,6 +1312,8 @@ export function ActivityTable({
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
                       const pinStyles = getCommonPinningStyles(header.column);
+                      const { backgroundColor: _pinBg, ...headerPinStyles } =
+                        pinStyles;
                       const meta = header.column.columnDef.meta as
                         | { sortKey?: string; sortKeys?: string[] }
                         | undefined;
@@ -1300,10 +1335,7 @@ export function ActivityTable({
                               header.column.columnDef.maxSize ??
                               header.getSize(),
                             cursor: isSortable ? 'pointer' : 'default',
-                            ...pinStyles,
-                            ...(pinStyles.position === 'sticky'
-                              ? { backgroundColor: 'rgb(248 250 252)' }
-                              : {}),
+                            ...headerPinStyles,
                           }}
                           onClick={(e) => {
                             if (

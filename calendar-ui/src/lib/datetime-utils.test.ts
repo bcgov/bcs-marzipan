@@ -114,11 +114,11 @@ describe('formatExactDate', () => {
     vi.useRealTimers();
   });
 
-  it('returns short month and day, omits year when same year (auto)', () => {
-    expect(formatExactDate(new Date(2026, 0, 23))).toBe('Jan 23');
+  it('includes year by default (auto), including current year', () => {
+    expect(formatExactDate(new Date(2026, 0, 23))).toBe('Jan 23, 2026');
   });
 
-  it('includes year when different from current year (auto)', () => {
+  it('includes year for other years (auto)', () => {
     expect(formatExactDate(new Date(2025, 0, 23))).toBe('Jan 23, 2025');
   });
 
@@ -157,9 +157,9 @@ describe('formatDateRange', () => {
     );
   });
 
-  it('omits year when same year and current year', () => {
+  it('shows year after end date when same year (including current year)', () => {
     expect(formatDateRange(new Date(2026, 0, 23), new Date(2026, 1, 1))).toBe(
-      'Jan 23 – Feb 1'
+      'Jan 23 – Feb 1, 2026'
     );
   });
 

@@ -1,3 +1,5 @@
+import type { SortLevel } from '@/components/Table/SortDropdown';
+
 import type { ActivityTableRow } from './activityTableRow';
 
 /** Plan order: New, Changed, Delete requested, Reviewed, Completed, Deleted (on_hold last). */
@@ -14,12 +16,18 @@ export const ACTIVITY_STATUS_SORT_ORDER = [
 /** Plan order: New, Changed, None. */
 export const LOOK_AHEAD_SORT_ORDER = ['new', 'changed', 'none'] as const;
 
+/** Normalize display value to match lookup name (e.g. "Delete requested" -> "delete_requested"). */
+function toOrderKey(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, '_');
+}
+
 function indexOfOrder<T extends string>(
   order: readonly T[],
   value: string | null
 ): number {
   if (!value) return order.length;
-  const i = order.indexOf(value.toLowerCase() as T);
+  const key = toOrderKey(value);
+  const i = order.indexOf(key as T);
   return i === -1 ? order.length : i;
 }
 
@@ -59,20 +67,27 @@ const byLastUpdated: RowComparator = (a, b) =>
 const byCreatedDateTime: RowComparator = (a, b) =>
   new Date(a.createdDateTime).getTime() - new Date(b.createdDateTime).getTime();
 
+/** Compare by start time (earliest first); nulls sort last. */
+const byStartTime: RowComparator = (a, b) => {
+  const parseTime = (t: string | null): number =>
+    t ? new Date(`1970-01-01T${t}`).getTime() : Number.MAX_SAFE_INTEGER;
+  return parseTime(a.startTime) - parseTime(b.startTime);
+};
+
 const ACTIVITY_SORT_COMPARATORS: Record<string, RowComparator> = {
   activityId: byActivityId,
   activityStatus: byActivityStatus,
   lookAheadStatus: byLookAheadStatus,
   startDate: byStartDate,
+  startTime: byStartTime,
   lastUpdated: byLastUpdated,
   createdDateTime: byCreatedDateTime,
 };
 
 /**
- * Compare two activity table rows for sorting. Uses a map of comparators keyed by sortKey;
- * applies direction (asc/desc) to the result.
+ * Compare two activity table rows for a single sort level (key + direction).
  */
-export function compareActivityRows(
+function compareActivityRowsOneLevel(
   a: ActivityTableRow,
   b: ActivityTableRow,
   sortKey: string,
@@ -82,4 +97,24 @@ export function compareActivityRows(
   if (!comparator) return 0;
   const mult = direction === 'asc' ? 1 : -1;
   return mult * comparator(a, b);
+}
+
+/**
+ * Compare two activity table rows by applying sort levels in order; returns the first non-zero result.
+ */
+export function compareActivityRowsByLevels(
+  a: ActivityTableRow,
+  b: ActivityTableRow,
+  sortLevels: SortLevel[]
+): number {
+  for (const level of sortLevels) {
+    const result = compareActivityRowsOneLevel(
+      a,
+      b,
+      level.key,
+      level.direction
+    );
+    if (result !== 0) return result;
+  }
+  return 0;
 }

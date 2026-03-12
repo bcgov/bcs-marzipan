@@ -1,13 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, type MouseEvent } from 'react';
 
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 
 import {
   DEFAULT_PITCH_DATE_RANGE,
@@ -15,16 +8,20 @@ import {
   type PitchDateFilter,
 } from './activityFilterState';
 import { FilterSectionLabel } from './FilterSectionLabel';
-import { ScheduledDateRangeFields } from './ScheduledDateRangeFields';
+import {
+  isDateRangeActive,
+  ScheduledDateRangeFields,
+} from './ScheduledDateRangeFields';
 
-export interface PitchFilterProps {
-  /** Full filter state; only pitch-related fields are read/updated. */
+export interface PitchFilterPanelProps {
   filterState: ActivityFilterState;
   onFilterStateChange: (state: ActivityFilterState) => void;
   pitchRequiredStatusOptions: { value: string; label: string }[];
 }
 
-function isPitchFilterActive(
+export type PitchFilterProps = PitchFilterPanelProps;
+
+function _isPitchFilterActive(
   pitchRequiredStatusNames: string[],
   pitchDateFilter: PitchDateFilter
 ): boolean {
@@ -33,32 +30,12 @@ function isPitchFilterActive(
   return false;
 }
 
-export function PitchFilter({
+export function PitchFilterPanel({
   filterState,
   onFilterStateChange,
   pitchRequiredStatusOptions,
-}: PitchFilterProps) {
+}: PitchFilterPanelProps) {
   const { pitchRequiredStatusNames, pitchDateFilter } = filterState;
-
-  const active = useMemo(
-    () => isPitchFilterActive(pitchRequiredStatusNames, pitchDateFilter),
-    [pitchRequiredStatusNames, pitchDateFilter]
-  );
-
-  const pitchCount = useMemo(
-    () =>
-      pitchRequiredStatusNames.length +
-      (pitchDateFilter.kind !== 'any' ? 1 : 0),
-    [pitchRequiredStatusNames.length, pitchDateFilter.kind]
-  );
-
-  const handleClearTrigger = useCallback(() => {
-    onFilterStateChange({
-      ...filterState,
-      pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
-    });
-  }, [filterState, onFilterStateChange]);
 
   const handlePitchStatusToggle = useCallback(
     (value: string) => {
@@ -120,82 +97,139 @@ export function PitchFilter({
     });
   }, [filterState, onFilterStateChange]);
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Pitch"
-          active={active}
-          count={pitchCount}
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear Pitch filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto"
-        align="start"
-      >
-        <FilterSectionLabel
-          onClearAll={
-            pitchRequiredStatusNames.length > 0
-              ? handleClearPitchStatus
-              : undefined
-          }
-        >
-          Pitch status
-        </FilterSectionLabel>
-        {pitchRequiredStatusOptions.length === 0 ? (
-          <p className="text-muted-foreground px-2 py-2 text-center text-sm">
-            No results
-          </p>
-        ) : (
-          pitchRequiredStatusOptions.map((opt) => (
-            <DropdownMenuCheckboxItem
-              key={opt.value}
-              checked={pitchRequiredStatusNames.includes(opt.value)}
-              onCheckedChange={() => handlePitchStatusToggle(opt.value)}
-              onSelect={(e) => e.preventDefault()}
-            >
-              <span className="truncate">{opt.label}</span>
-            </DropdownMenuCheckboxItem>
-          ))
-        )}
-        <DropdownMenuSeparator />
-        <FilterSectionLabel
-          onClearAll={
-            pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
-          }
-        >
-          Pitch date
-        </FilterSectionLabel>
-        <DropdownMenuCheckboxItem
-          checked={pitchDateFilter.kind === 'not_scheduled'}
-          onCheckedChange={handlePitchDateNotScheduledChange}
-          onSelect={(e) => e.preventDefault()}
-        >
-          Not scheduled for panel
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          checked={pitchDateFilter.kind === 'scheduled'}
-          onCheckedChange={(checked) =>
-            handlePitchDateScheduledChange(checked === true)
-          }
-          onSelect={(e) => e.preventDefault()}
-        >
-          Scheduled for panel
-        </DropdownMenuCheckboxItem>
+  const handleClearDatesClick = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handlePitchDateRangeChange({ ...DEFAULT_PITCH_DATE_RANGE });
+    },
+    [handlePitchDateRangeChange]
+  );
 
-        {pitchDateFilter.kind === 'scheduled' && (
-          <div className="border-t px-2 pt-2 pb-2">
-            <ScheduledDateRangeFields
-              value={pitchDateFilter.dateRange}
-              onChange={handlePitchDateRangeChange}
-              endNoDateLabel="No end date (all upcoming pitches)"
-              clearButtonLabel="Clear dates"
-            />
+  return (
+    <>
+      <FilterSectionLabel
+        onClearAll={
+          pitchRequiredStatusNames.length > 0
+            ? handleClearPitchStatus
+            : undefined
+        }
+      >
+        Pitch status
+      </FilterSectionLabel>
+      {pitchRequiredStatusOptions.length === 0 ? (
+        <p className="text-muted-foreground px-2 py-2 text-center text-sm">
+          No results
+        </p>
+      ) : (
+        pitchRequiredStatusOptions.map((opt) => (
+          <FilterCheckboxItem
+            key={opt.value}
+            checked={pitchRequiredStatusNames.includes(opt.value)}
+            onCheckedChange={() => handlePitchStatusToggle(opt.value)}
+          >
+            {opt.label}
+          </FilterCheckboxItem>
+        ))
+      )}
+      <div className="border-t" role="separator" />
+      <FilterSectionLabel
+        onClearAll={
+          pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
+        }
+      >
+        Pitch date
+      </FilterSectionLabel>
+      <FilterCheckboxItem
+        checked={pitchDateFilter.kind === 'not_scheduled'}
+        onCheckedChange={handlePitchDateNotScheduledChange}
+      >
+        Not scheduled for panel
+      </FilterCheckboxItem>
+      <FilterCheckboxItem
+        checked={pitchDateFilter.kind === 'scheduled'}
+        onCheckedChange={(checked) => handlePitchDateScheduledChange(checked)}
+      >
+        Scheduled for panel
+      </FilterCheckboxItem>
+
+      {pitchDateFilter.kind === 'scheduled' && (
+        <div className="border-t px-2 pt-2 pb-2">
+          <div className="mb-2 flex w-full items-center justify-between gap-2">
+            <span className="text-muted-foreground text-xs font-normal uppercase">
+              Panel date
+            </span>
+            {isDateRangeActive(pitchDateFilter.dateRange) ? (
+              <button
+                type="button"
+                onClick={handleClearDatesClick}
+                className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                aria-label="Clear panel date range"
+              >
+                Clear dates
+              </button>
+            ) : null}
           </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <ScheduledDateRangeFields
+            value={pitchDateFilter.dateRange}
+            onChange={handlePitchDateRangeChange}
+            endNoDateLabel="No end date (all upcoming pitches)"
+            showClearButton={false}
+          />
+        </div>
+      )}
+    </>
   );
 }
+
+// export function PitchFilter({
+//   filterState,
+//   onFilterStateChange,
+//   pitchRequiredStatusOptions,
+// }: PitchFilterProps) {
+//   const { pitchRequiredStatusNames, pitchDateFilter } = filterState;
+//   const active = useMemo(
+//     () => isPitchFilterActive(pitchRequiredStatusNames, pitchDateFilter),
+//     [pitchRequiredStatusNames, pitchDateFilter]
+//   );
+//   const pitchCount = useMemo(
+//     () =>
+//       pitchRequiredStatusNames.length +
+//       (pitchDateFilter.kind !== 'any' ? 1 : 0),
+//     [pitchRequiredStatusNames.length, pitchDateFilter.kind]
+//   );
+//   const handleClearTrigger = useCallback(() => {
+//     onFilterStateChange({
+//       ...filterState,
+//       pitchRequiredStatusNames: [],
+//       pitchDateFilter: { kind: 'any' },
+//     });
+//   }, [filterState, onFilterStateChange]);
+
+//   return (
+//     <DropdownMenu>
+//       <DropdownMenuTrigger asChild>
+//         <FilterTrigger
+//           label="Pitch"
+//           active={active}
+//           count={pitchCount}
+//           onClear={handleClearTrigger}
+//           clearAriaLabel="Clear Pitch filter"
+//         />
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent
+//         className={cn(
+//           FILTER_PANEL_MIN_WIDTH,
+//           'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
+//         )}
+//         align="start"
+//       >
+//         <PitchFilterPanel
+//           filterState={filterState}
+//           onFilterStateChange={onFilterStateChange}
+//           pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+//         />
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }

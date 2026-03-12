@@ -5,6 +5,7 @@ import {
   SortDropdown,
   type SortColumnConfig,
 } from '@/components/Table/SortDropdown';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -187,7 +188,10 @@ export function UserManagementFilters({
                 clearAriaLabel="Clear Team filter"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72 p-0" align="start">
+            <DropdownMenuContent
+              className={cn(FILTER_PANEL_MIN_WIDTH, 'w-72 p-0')}
+              align="start"
+            >
               <Command className="rounded-md border-0" shouldFilter={false}>
                 <CommandInput
                   placeholder="Search teams..."

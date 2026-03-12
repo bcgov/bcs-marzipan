@@ -2,14 +2,16 @@ import {
   addDays,
   addMonths,
   format,
+  isSameMonth,
   startOfDay,
   startOfMonth,
   subDays,
   subMonths,
 } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -84,13 +86,21 @@ export function isDateRangeActive(dateRange: DateRangeValue): boolean {
   );
 }
 
+/**
+ * Date range picker using plain markup (no Radix menu primitives).
+ * Works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
+ */
 export interface ScheduledDateRangeFieldsProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
-  /** Label for the end-date "no date" control (e.g. "No end date (all upcoming pitches)"). Default "Reset". */
+  /** Label for the start-date clear control in the calendar. Default "Clear". */
+  startNoDateLabel?: string;
+  /** Label for the end-date "no date" control (e.g. "No end date (all upcoming pitches)"). Default "Clear". */
   endNoDateLabel?: string;
   /** Label for the clear button. Default "Clear dates". */
   clearButtonLabel?: string;
+  /** When false, the clear button below the inputs is hidden (caller renders clear in header). Default true. */
+  showClearButton?: boolean;
   /** Called after clear is applied (e.g. parent can close popover). */
   onAfterClear?: () => void;
 }
@@ -116,13 +126,67 @@ const calendarDropdownLabels = {
   labelYearDropdown: () => '',
 };
 
+const PLACEHOLDER_MODIFIER_CLASS_NAMES = {
+  placeholder: 'bg-accent text-accent-foreground',
+};
+
+/**
+ * Returns the first non-disabled day of `visibleMonth` when neither `selected`
+ * nor today falls within that month. Used as a visual focus-target placeholder
+ * so the calendar grid always has an obvious anchor day.
+ */
+function getPlaceholderDay(
+  visibleMonth: Date,
+  selected: Date | undefined,
+  isDisabled: (date: Date) => boolean
+): Date | undefined {
+  const today = startOfDay(new Date());
+  if (selected && isSameMonth(selected, visibleMonth)) return undefined;
+  if (isSameMonth(today, visibleMonth)) return undefined;
+
+  const monthStart = startOfMonth(visibleMonth);
+  const daysInMonth = new Date(
+    monthStart.getFullYear(),
+    monthStart.getMonth() + 1,
+    0
+  ).getDate();
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
+    if (!isDisabled(date)) return date;
+  }
+  return undefined;
+}
+
+/**
+ * After a month change, react-day-picker recalculates which day gets
+ * `tabIndex={0}` (selected > today > first focusable). However it only calls
+ * `.focus()` on mount via `initialFocus`. This helper focuses the new
+ * tabbable day after re-render so arrow-key navigation works immediately.
+ */
+function focusTabbableDay(
+  containerRef: React.RefObject<HTMLDivElement | null>
+) {
+  requestAnimationFrame(() => {
+    const btn = containerRef.current?.querySelector<HTMLButtonElement>(
+      'table button[tabindex="0"]:not([disabled])'
+    );
+    btn?.focus();
+  });
+}
+
 export function ScheduledDateRangeFields({
   value,
   onChange,
-  endNoDateLabel = 'Reset',
+  startNoDateLabel = 'Clear',
+  endNoDateLabel = 'Clear',
   clearButtonLabel = 'Clear dates',
+  showClearButton = true,
   onAfterClear,
 }: ScheduledDateRangeFieldsProps) {
+  const startCalendarRef = useRef<HTMLDivElement>(null);
+  const endCalendarRef = useRef<HTMLDivElement>(null);
+
   const [startCalendarOpen, setStartCalendarOpen] = useState(false);
   const [endCalendarOpen, setEndCalendarOpen] = useState(false);
 
@@ -165,12 +229,46 @@ export function ScheduledDateRangeFields({
     return 'No end date';
   }, [value.endDate, value.noEndDate]);
 
-  const startDateObj = value.startDate
-    ? new Date(value.startDate + 'T12:00:00')
-    : undefined;
-  const endDateObj = value.endDate
-    ? new Date(value.endDate + 'T12:00:00')
-    : undefined;
+  const startDateObj = useMemo(
+    () =>
+      value.startDate ? new Date(value.startDate + 'T12:00:00') : undefined,
+    [value.startDate]
+  );
+  const endDateObj = useMemo(
+    () => (value.endDate ? new Date(value.endDate + 'T12:00:00') : undefined),
+    [value.endDate]
+  );
+
+  const isStartDisabled = useCallback(
+    (date: Date) =>
+      Boolean(value.endDate && date > new Date(value.endDate + 'T23:59:59')),
+    [value.endDate]
+  );
+  const isEndDisabled = useCallback(
+    (date: Date) =>
+      Boolean(
+        value.startDate && date < new Date(value.startDate + 'T00:00:00')
+      ),
+    [value.startDate]
+  );
+
+  const startPlaceholder = useMemo(
+    () => getPlaceholderDay(startCalendarMonth, startDateObj, isStartDisabled),
+    [startCalendarMonth, startDateObj, isStartDisabled]
+  );
+  const endPlaceholder = useMemo(
+    () => getPlaceholderDay(endCalendarMonth, endDateObj, isEndDisabled),
+    [endCalendarMonth, endDateObj, isEndDisabled]
+  );
+
+  const startModifiers = useMemo(
+    () => (startPlaceholder ? { placeholder: startPlaceholder } : undefined),
+    [startPlaceholder]
+  );
+  const endModifiers = useMemo(
+    () => (endPlaceholder ? { placeholder: endPlaceholder } : undefined),
+    [endPlaceholder]
+  );
 
   const handleStartSelect = useCallback(
     (date: Date | undefined) => {
@@ -234,6 +332,16 @@ export function ScheduledDateRangeFields({
     });
   }, [value, onChange]);
 
+  const handleStartMonthChange = useCallback((month: Date) => {
+    setStartCalendarMonth(month);
+    focusTabbableDay(startCalendarRef);
+  }, []);
+
+  const handleEndMonthChange = useCallback((month: Date) => {
+    setEndCalendarMonth(month);
+    focusTabbableDay(endCalendarRef);
+  }, []);
+
   const handleClear = useCallback(() => {
     onChange({
       startDate: '',
@@ -264,7 +372,10 @@ export function ScheduledDateRangeFields({
               <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
+            align="start"
+          >
             <div className="flex flex-col items-center p-3">
               <div className="flex w-full items-center justify-between">
                 <span className="text-sm font-medium">Select start date</span>
@@ -276,17 +387,20 @@ export function ScheduledDateRangeFields({
                   className={cn('text-sm', value.startDate && 'text-primary')}
                   onClick={handleStartNoDate}
                 >
-                  Reset
+                  {startNoDateLabel}
                 </Button>
               </div>
-              <div className="flex w-full flex-col items-center">
+              <div
+                ref={startCalendarRef}
+                className="flex w-full flex-col items-center"
+              >
                 <div className="flex w-fit flex-col">
                   <Calendar
                     mode="single"
                     selected={startDateObj}
                     onSelect={handleStartSelect}
                     month={startCalendarMonth}
-                    onMonthChange={setStartCalendarMonth}
+                    onMonthChange={handleStartMonthChange}
                     initialFocus
                     captionLayout="dropdown-buttons"
                     fromYear={calendarYearFrom}
@@ -294,12 +408,9 @@ export function ScheduledDateRangeFields({
                     classNames={calendarDropdownCaptionClassNames}
                     formatters={calendarFormatters}
                     labels={calendarDropdownLabels}
-                    disabled={(date) =>
-                      Boolean(
-                        value.endDate &&
-                        date > new Date(value.endDate + 'T23:59:59')
-                      )
-                    }
+                    disabled={isStartDisabled}
+                    modifiers={startModifiers}
+                    modifiersClassNames={PLACEHOLDER_MODIFIER_CLASS_NAMES}
                   />
                 </div>
               </div>
@@ -354,7 +465,10 @@ export function ScheduledDateRangeFields({
               <ChevronDown className="ml-auto h-3.5 w-3.5 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className={cn(FILTER_PANEL_MIN_WIDTH, 'w-auto p-0')}
+            align="start"
+          >
             <div className="flex flex-col items-center p-3">
               <div className="flex w-full items-center justify-between">
                 <span className="text-sm font-medium">Select end date</span>
@@ -369,14 +483,17 @@ export function ScheduledDateRangeFields({
                   {endNoDateLabel}
                 </Button>
               </div>
-              <div className="flex w-full flex-col items-center">
+              <div
+                ref={endCalendarRef}
+                className="flex w-full flex-col items-center"
+              >
                 <div className="flex w-fit flex-col">
                   <Calendar
                     mode="single"
                     selected={endDateObj}
                     onSelect={handleEndSelect}
                     month={endCalendarMonth}
-                    onMonthChange={setEndCalendarMonth}
+                    onMonthChange={handleEndMonthChange}
                     initialFocus
                     captionLayout="dropdown-buttons"
                     fromYear={calendarYearFrom}
@@ -384,12 +501,9 @@ export function ScheduledDateRangeFields({
                     classNames={calendarDropdownCaptionClassNames}
                     formatters={calendarFormatters}
                     labels={calendarDropdownLabels}
-                    disabled={(date) =>
-                      Boolean(
-                        value.startDate &&
-                        date < new Date(value.startDate + 'T00:00:00')
-                      )
-                    }
+                    disabled={isEndDisabled}
+                    modifiers={endModifiers}
+                    modifiersClassNames={PLACEHOLDER_MODIFIER_CLASS_NAMES}
                   />
                 </div>
               </div>
@@ -427,14 +541,16 @@ export function ScheduledDateRangeFields({
           </PopoverContent>
         </Popover>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground w-full"
-        onClick={handleClear}
-      >
-        {clearButtonLabel}
-      </Button>
+      {showClearButton && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground w-full"
+          onClick={handleClear}
+        >
+          {clearButtonLabel}
+        </Button>
+      )}
     </div>
   );
 }

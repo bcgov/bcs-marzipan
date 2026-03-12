@@ -1,18 +1,16 @@
-import { X } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
 
 import { FilterSearchableList } from './FilterSearchableList';
+import { FilterSectionLabel } from './FilterSectionLabel';
 
 export interface TranslationFilterOption {
   value: string;
@@ -24,7 +22,7 @@ export interface TranslationStatusFilterOption {
   label: string;
 }
 
-export interface TranslationsFilterProps {
+export interface TranslationsFilterPanelProps {
   translationStatusOptions: TranslationStatusFilterOption[];
   translationOptions: TranslationFilterOption[];
   selectedStatusIds: number[];
@@ -33,33 +31,24 @@ export interface TranslationsFilterProps {
   onLanguageIdsChange: (ids: number[]) => void;
 }
 
-function isTranslationsFilterActive(
-  statusCount: number,
-  languageCount: number
-): boolean {
-  return statusCount > 0 || languageCount > 0;
-}
+export type TranslationsFilterProps = TranslationsFilterPanelProps;
 
-export function TranslationsFilter({
+/**
+ * Translations filter panel with status checkboxes inline and languages in a sub Popover.
+ * Works inside Popover or PopoverContent for both inline and overflow filter paths.
+ */
+export function TranslationsFilterPanel({
   translationStatusOptions,
   translationOptions,
   selectedStatusIds,
   selectedLanguageIds,
   onStatusIdsChange,
   onLanguageIdsChange,
-}: TranslationsFilterProps) {
-  const [open, setOpen] = useState(false);
+}: TranslationsFilterPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
-
+  const [languagesOpen, setLanguagesOpen] = useState(false);
   const statusCount = selectedStatusIds.length;
   const languageCount = selectedLanguageIds.length;
-  const active = isTranslationsFilterActive(statusCount, languageCount);
-  const totalCount = statusCount + languageCount;
-
-  const handleClearTrigger = useCallback(() => {
-    onStatusIdsChange([]);
-    onLanguageIdsChange([]);
-  }, [onStatusIdsChange, onLanguageIdsChange]);
 
   const handleStatusToggle = useCallback(
     (id: number) => {
@@ -89,94 +78,90 @@ export function TranslationsFilter({
 
   const handleClearLanguages = useCallback(() => {
     onLanguageIdsChange([]);
-    setOpen(false);
   }, [onLanguageIdsChange]);
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) setSearchTerm('');
+  const handleLanguagesOpenChange = useCallback((open: boolean) => {
+    setLanguagesOpen(open);
+    if (!open) setSearchTerm('');
   }, []);
 
+  const subPopoverHover = useSubPopoverHover(
+    languagesOpen,
+    handleLanguagesOpenChange
+  );
+
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Translations"
-          active={active}
-          count={totalCount}
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear Translations filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="min-w-48"
-        align="start"
-        aria-label="Filter by translations (status, languages)"
+    <div className="min-w-48 space-y-2 py-1">
+      <FilterSectionLabel
+        onClearAll={statusCount > 0 ? handleClearStatus : undefined}
       >
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            {statusCount > 0
-              ? `Translations status (${statusCount})`
-              : 'Translations status'}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="min-w-48">
-            {translationStatusOptions.length === 0 ? (
-              <p className="text-muted-foreground py-2 text-center text-sm">
-                No results
-              </p>
-            ) : (
-              translationStatusOptions.map((opt) => {
-                const id = parseInt(opt.value, 10);
-                const checked =
-                  Number.isFinite(id) && selectedStatusIds.includes(id);
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={opt.value}
-                    checked={checked}
-                    onCheckedChange={() =>
-                      Number.isFinite(id) && handleStatusToggle(id)
-                    }
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <span className="truncate">{opt.label}</span>
-                  </DropdownMenuCheckboxItem>
-                );
-              })
-            )}
-            {statusCount > 0 && (
-              <button
-                type="button"
-                className="hover:bg-accent text-muted-foreground flex w-full items-center gap-2 border-t px-3 py-2 text-sm"
-                onClick={handleClearStatus}
-              >
-                <X className="h-3.5 w-3.5" />
-                Clear all
-              </button>
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            {languageCount > 0
-              ? `Translations (${languageCount})`
-              : 'Translations'}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-64 p-0">
-            <FilterSearchableList
-              options={translationOptions}
-              selectedIds={selectedLanguageIds}
-              onToggle={handleLanguageToggle}
-              searchPlaceholder="Search languages..."
-              searchAriaLabel="Search languages"
-              emptyMessage="No results"
-              showClearButton
-              onClear={handleClearLanguages}
-              searchValue={searchTerm}
-              onSearchChange={setSearchTerm}
-            />
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        Translations status
+      </FilterSectionLabel>
+      {translationStatusOptions.length === 0 ? (
+        <p className="text-muted-foreground py-2 text-center text-sm">
+          No results
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-0" role="list">
+          {translationStatusOptions.map((opt) => {
+            const id = parseInt(opt.value, 10);
+            const checked =
+              Number.isFinite(id) && selectedStatusIds.includes(id);
+            return (
+              <li key={opt.value}>
+                <FilterCheckboxItem
+                  checked={checked}
+                  onCheckedChange={() =>
+                    Number.isFinite(id) && handleStatusToggle(id)
+                  }
+                >
+                  {opt.label}
+                </FilterCheckboxItem>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="my-3 border-t" role="separator" />
+      <Popover open={languagesOpen} onOpenChange={subPopoverHover.onOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+            aria-expanded={languagesOpen}
+            aria-label={`Translations languages${languageCount > 0 ? ` (${languageCount} selected)` : ''}`}
+            {...subPopoverHover.triggerPointerHandlers}
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-normal">Translations</span>
+              {languageCount > 0 && (
+                <span className="text-sm">({languageCount})</span>
+              )}
+            </span>
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="right"
+          align="start"
+          className="w-auto min-w-48 p-0"
+          sideOffset={2}
+          {...subPopoverHover.contentPointerHandlers}
+        >
+          <FilterSearchableList
+            options={translationOptions}
+            selectedIds={selectedLanguageIds}
+            onToggle={handleLanguageToggle}
+            searchPlaceholder="Search languages..."
+            searchAriaLabel="Search languages"
+            emptyMessage="No results"
+            showClearButton
+            onClear={handleClearLanguages}
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
