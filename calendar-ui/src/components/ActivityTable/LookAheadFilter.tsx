@@ -16,7 +16,7 @@ export interface LookAheadFilterPanelProps {
 
 export type LookAheadFilterProps = LookAheadFilterPanelProps;
 
-function isLookAheadFilterActive(
+function _isLookAheadFilterActive(
   lookAheadStatusValues: string[],
   lookAheadSectionValues: string[]
 ): boolean {

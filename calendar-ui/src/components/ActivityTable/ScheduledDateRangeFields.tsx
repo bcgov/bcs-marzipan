@@ -229,12 +229,15 @@ export function ScheduledDateRangeFields({
     return 'No end date';
   }, [value.endDate, value.noEndDate]);
 
-  const startDateObj = value.startDate
-    ? new Date(value.startDate + 'T12:00:00')
-    : undefined;
-  const endDateObj = value.endDate
-    ? new Date(value.endDate + 'T12:00:00')
-    : undefined;
+  const startDateObj = useMemo(
+    () =>
+      value.startDate ? new Date(value.startDate + 'T12:00:00') : undefined,
+    [value.startDate]
+  );
+  const endDateObj = useMemo(
+    () => (value.endDate ? new Date(value.endDate + 'T12:00:00') : undefined),
+    [value.endDate]
+  );
 
   const isStartDisabled = useCallback(
     (date: Date) =>

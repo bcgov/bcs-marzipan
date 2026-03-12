@@ -62,7 +62,7 @@ export function useElementWidth(
       if (timeoutId !== null) clearTimeout(timeoutId);
       observer.disconnect();
     };
-  }, [minChange, debounceMs]);
+  }, [ref, minChange, debounceMs]);
 
   return width;
 }

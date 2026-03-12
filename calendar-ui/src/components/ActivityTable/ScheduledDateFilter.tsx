@@ -168,14 +168,14 @@ export function ScheduledDateFilterPanel({
   );
 }
 
-type ScheduledDateFilterProps = ScheduledDateFilterPanelProps;
+type _ScheduledDateFilterProps = ScheduledDateFilterPanelProps;
 
 // export function ScheduledDateFilter({
 //   value,
 //   onChange,
 //   filterState,
 //   onFilterStateChange,
-// }: ScheduledDateFilterProps) {
+// }: _ScheduledDateFilterProps) {
 //   const [open, setOpen] = useState(false);
 //   const [draft, setDraft] = useState<DateRangeValue>(() => value);
 

@@ -21,7 +21,7 @@ export interface PitchFilterPanelProps {
 
 export type PitchFilterProps = PitchFilterPanelProps;
 
-function isPitchFilterActive(
+function _isPitchFilterActive(
   pitchRequiredStatusNames: string[],
   pitchDateFilter: PitchDateFilter
 ): boolean {
