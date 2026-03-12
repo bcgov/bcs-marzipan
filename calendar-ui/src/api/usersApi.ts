@@ -3,6 +3,7 @@
  */
 import type {
   AddUserToTeamBody,
+  CreateUserBody,
   RoleOption,
   TeamListItem,
   TransferActivitiesBody,
@@ -47,6 +48,14 @@ export async function fetchUser(id: number): Promise<UserDetail | null> {
     success: boolean;
     data: UserDetail | null;
   }>(`/users/${id}`);
+  return response.data.data;
+}
+
+export async function createUser(body: CreateUserBody): Promise<UserDetail> {
+  const response = await api.post<{ success: boolean; data: UserDetail }>(
+    '/users',
+    body
+  );
   return response.data.data;
 }
 

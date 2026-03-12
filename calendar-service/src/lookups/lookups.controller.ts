@@ -221,7 +221,7 @@ export class LookupsController {
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
   async getRoles(): Promise<{
     success: boolean;
-    data: { id: number; name: string }[];
+    data: { id: number; name: string; description: string | null }[];
   }> {
     const data = await this.lookupsService.getRoles();
     return { success: true, data };

@@ -8,7 +8,18 @@ import {
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { getActivityFormSectionLabel } from '../../lib/activity-form-section-labels';
-import { Combobox } from '../ui/combobox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '../ui/combobox';
 import {
   FormControl,
   FormDescription,
@@ -36,6 +47,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
+  const sharedWithAnchorRef = useComboboxAnchor();
   return (
     <ActivityFormSection title={getActivityFormSectionLabel('sharing')}>
       <FormField
@@ -84,29 +96,48 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                 .filter((v): v is number => typeof v === 'number')
                 .map((v) => String(v))
             : [];
+          const selectedOptions = sharedWithTeamOptions.filter((o) =>
+            currentValues.includes(o.value)
+          );
           return (
             <FormItem>
               <FormLabel>Shared With Teams</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
-                  disabled={readOnly}
-                  options={sharedWithTeamOptions}
-                  selectedValues={currentValues}
-                  onSelect={(value) => {
-                    const teamId = parseInt(value);
-                    const current = Array.isArray(field.value)
-                      ? field.value
-                      : [];
-                    if (current.includes(teamId)) {
-                      field.onChange(current.filter((id) => id !== teamId));
-                    } else {
-                      field.onChange([...current, teamId]);
-                    }
+                  items={sharedWithTeamOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) => {
+                    field.onChange(selected.map((o) => parseInt(o.value, 10)));
                   }}
-                  placeholder="Select teams"
-                  searchPlaceholder="Search teams..."
-                  emptyMessage="No teams found."
-                />
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips ref={sharedWithAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Add teams" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={sharedWithAnchorRef}>
+                    <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FormControl>
               <FormDescription>
                 These teams can see this activity and it will be marked as
