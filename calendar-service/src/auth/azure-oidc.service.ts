@@ -56,9 +56,10 @@ export class AzureOidcService {
       return configuredRedirectUri.trim();
     }
 
-    // Default to /api so UI-hosted proxy setups (e.g. Vite dev server) keep
-    // the callback and post-login redirects on the frontend origin.
-    return `${req.protocol}://${req.get('host')}/api/auth/azure/callback`;
+    // Use X-Forwarded-Proto when behind a reverse proxy (nginx, OpenShift edge TLS)
+    // so the URI scheme is https rather than the internal http.
+    const protocol = req.get('X-Forwarded-Proto') || req.protocol;
+    return `${protocol}://${req.get('host')}/api/auth/azure/callback`;
   }
 
   generateState(): string {
