@@ -13,7 +13,18 @@ import {
   type AddressData,
 } from '../ui/address-autocomplete';
 import { Badge } from '../ui/badge';
-import { Combobox } from '../ui/combobox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '../ui/combobox';
 import {
   FormControl,
   FormDescription,
@@ -97,6 +108,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 }) => {
   const form = useFormContext<ActivityFormData>();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
+  const representativesAnchorRef = useComboboxAnchor();
 
   const { data: fixedQuickPicks = [] } = useQuery({
     queryKey: ['venueQuickPicks'],
@@ -159,38 +171,56 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           const selectedValues = representatives
             .filter((rep) => rep.representativeId !== undefined)
             .map((rep) => rep.representativeId!.toString());
+          const selectedOptions = representativeComboboxOptions.filter((o) =>
+            selectedValues.includes(o.value)
+          );
 
           return (
             <FormItem>
               <FormLabel>Representatives</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
-                  disabled={readOnly}
-                  options={representativeComboboxOptions}
-                  selectedValues={selectedValues}
-                  onSelect={(value) => {
-                    const representativeId = parseInt(value, 10);
-                    const current = representatives || [];
-                    const exists = current.some(
-                      (r) => r.representativeId === representativeId
+                  items={representativeComboboxOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) => {
+                    field.onChange(
+                      selected.map((o) => ({
+                        representativeId: parseInt(o.value, 10),
+                      }))
                     );
-
-                    if (exists) {
-                      // Remove if already selected
-                      field.onChange(
-                        current.filter(
-                          (r) => r.representativeId !== representativeId
-                        )
-                      );
-                    } else {
-                      // Add if not selected
-                      field.onChange([...current, { representativeId }]);
-                    }
                   }}
-                  placeholder="Select representatives"
-                  searchPlaceholder="Search representatives..."
-                  emptyMessage="No representatives found."
-                />
+                  itemToStringValue={(o) => o.label}
+                  disabled={readOnly}
+                >
+                  <ComboboxChips
+                    ref={representativesAnchorRef}
+                    className="w-full"
+                  >
+                    <ComboboxValue>
+                      {(values: Array<{ value: string; label: string }>) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Add representatives" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={representativesAnchorRef}>
+                    <ComboboxEmpty>No representatives found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: { value: string; label: string }) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </FormControl>
               <FormMessage />
             </FormItem>

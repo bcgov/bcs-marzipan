@@ -90,8 +90,10 @@ FormItem.displayName = 'FormItem';
 
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
+    showDirtyIndicator?: boolean;
+  }
+>(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
   const { error, formItemId, isDirty } = useFormField();
 
   return (
@@ -106,7 +108,7 @@ const FormLabel = React.forwardRef<
       {...props}
     >
       <span className="inline-flex items-center">{children}</span>
-      {isDirty && (
+      {showDirtyIndicator && isDirty && (
         <Badge variant="warning" className="ml-2">
           Changed
         </Badge>

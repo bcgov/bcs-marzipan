@@ -169,7 +169,7 @@
     --fluent-primary: #0f6cbd;
     /* BCSDS semantic tokens */
     --sidebar-foreground-active: var(--fluent-primary);
-    --bcsds-button-primary-background: var(--bcsds-bc-blue-95);
+    --bcsds-button-primary-background: var(--fluent-primary);
     --bcsds-button-primary-foreground: var(--bcsds-white-00);
     --bcsds-button-primary-hover-background: var(--bcsds-bc-blue-90);
 

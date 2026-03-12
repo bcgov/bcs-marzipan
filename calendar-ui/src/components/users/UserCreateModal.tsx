@@ -1,12 +1,26 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
-import { useCallback, useState } from 'react';
+import { z } from 'zod';
+import { useEffect, useRef, useState } from 'react';
 
 import type { CreateUserBody } from '@corpcal/shared/api/types';
 import { createUser, fetchRoles, fetchTeams } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
-import { Combobox } from '@/components/ui/combobox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +29,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -24,6 +45,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+const createUserFormSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email is required')
+    .email('Invalid email format'),
+  roleId: z.string().min(1, 'Role is required'),
+  displayName: z.string().trim().default(''),
+  teamIds: z.array(z.number().int()).default([]),
+});
+
+type CreateUserFormData = z.infer<typeof createUserFormSchema>;
+
+const defaultValues: CreateUserFormData = {
+  email: '',
+  roleId: '',
+  displayName: '',
+  teamIds: [],
+};
 
 interface UserCreateModalProps {
   open: boolean;
@@ -40,12 +81,18 @@ export function UserCreateModal({
   onClose,
   onSaved,
 }: UserCreateModalProps) {
-  const [email, setEmail] = useState('');
-  const [roleId, setRoleId] = useState<string>('');
-  const [displayName, setDisplayName] = useState('');
-  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
-
+  const teamsAnchorRef = useComboboxAnchor();
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const form = useForm<CreateUserFormData>({
+    defaultValues,
+
+    resolver: zodResolver(
+      createUserFormSchema as any
+    ) as Resolver<CreateUserFormData>,
+  });
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
@@ -67,12 +114,9 @@ export function UserCreateModal({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('User created');
+      form.reset(defaultValues);
       onSaved?.();
       onClose();
-      setEmail('');
-      setRoleId('');
-      setDisplayName('');
-      setSelectedTeamIds([]);
     },
     onError: (err: Error & { response?: { status?: number } }) => {
       const status = err.response?.status;
@@ -84,51 +128,55 @@ export function UserCreateModal({
     },
   });
 
-  const handleTeamToggle = useCallback((value: string) => {
-    setSelectedTeamIds((prev) =>
-      prev.includes(value)
-        ? prev.filter((id) => id !== value)
-        : [...prev, value]
-    );
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      toast.error('Email is required');
-      return;
+  useEffect(() => {
+    if (!open) {
+      form.reset(defaultValues);
     }
-    const parsedRoleId = parseInt(roleId, 10);
-    if (Number.isNaN(parsedRoleId)) {
-      toast.error('Role is required');
-      return;
-    }
-    const body: CreateUserBody = {
-      email: trimmedEmail,
-      roleId: parsedRoleId,
-      ...(displayName.trim() && { displayName: displayName.trim() }),
-      ...(selectedTeamIds.length > 0 && {
-        teams: selectedTeamIds.map((id) => ({
-          teamId: parseInt(id, 10),
-          role: 'member',
-        })),
-      }),
-    };
-    createMutation.mutate(body);
-  };
+  }, [open, form]);
 
   const teamOptions = teams.map((t) => ({
     value: String(t.id),
     label: t.displayName ?? t.name ?? `Team ${t.id}`,
   }));
 
-  const selectedRole = roles.find((r) => String(r.id) === roleId);
-  const roleDescription = selectedRole?.description?.trim();
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      form.reset(defaultValues);
+      onClose();
+    }
+  };
+
+  const onSubmit = (data: CreateUserFormData) => {
+    const parsedRoleId = parseInt(data.roleId, 10);
+    if (Number.isNaN(parsedRoleId)) {
+      form.setError('roleId', { message: 'Role is required' });
+      return;
+    }
+    const body: CreateUserBody = {
+      email: data.email.trim(),
+      roleId: parsedRoleId,
+      ...(data.displayName?.trim() && {
+        displayName: data.displayName.trim(),
+      }),
+      ...(data.teamIds &&
+        data.teamIds.length > 0 && {
+          teams: data.teamIds.map((teamId) => ({
+            teamId,
+            role: 'member' as const,
+          })),
+        }),
+    };
+    createMutation.mutate(body);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        ref={dialogContentRef}
+        onEscapeKeyDown={(e) => {
+          if (isTeamsComboboxOpen) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Add user</DialogTitle>
           <DialogDescription>
@@ -136,76 +184,160 @@ export function UserCreateModal({
             account.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="create-user-email">
-              Email <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="create-user-email"
-              type="email"
-              required
-              placeholder="user@example.gov.bc.ca"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="create-user-role">
-              Role <span className="text-destructive">*</span>
-            </Label>
-            <Select value={roleId} onValueChange={setRoleId} required>
-              <SelectTrigger id="create-user-role">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((r) => (
-                  <SelectItem key={r.id} value={String(r.id)}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {roleDescription && (
-              <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
-                {roleDescription}
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="create-user-display-name">Display name</Label>
-            <Input
-              id="create-user-display-name"
-              type="text"
-              placeholder="Optional"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Teams</Label>
-            <Combobox
-              options={teamOptions}
-              selectedValues={selectedTeamIds}
-              onSelect={handleTeamToggle}
-              placeholder="Select teams..."
-              searchPlaceholder="Search teams..."
-              emptyMessage="No teams found."
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <Form {...form}>
+          <form
+            onSubmit={(e) => void form.handleSubmit(onSubmit)(e)}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>
+                    Email <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="example@gov.bc.ca"
+                      autoComplete="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              Create user
-            </Button>
-          </DialogFooter>
-        </form>
+            />
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Display name</FormLabel>
+                  <FormControl>
+                    <Input type="text" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="roleId"
+              render={({ field }) => {
+                const selectedRole = roles.find(
+                  (r) => String(r.id) === field.value
+                );
+                const roleDescription = selectedRole?.description?.trim();
+                return (
+                  <FormItem>
+                    <FormLabel showDirtyIndicator={false}>
+                      Role <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl data-field={field.name}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {roles.map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {roleDescription && (
+                      <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
+                        {roleDescription}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            <FormField
+              control={form.control}
+              name="teamIds"
+              render={({ field }) => {
+                const currentValues = Array.isArray(field.value)
+                  ? field.value.map((v) => String(v))
+                  : [];
+                const selectedOptions = teamOptions.filter((o) =>
+                  currentValues.includes(o.value)
+                );
+                return (
+                  <FormItem>
+                    <FormLabel showDirtyIndicator={false}>Teams</FormLabel>
+                    <FormControl data-field={field.name}>
+                      <Combobox
+                        items={teamOptions}
+                        multiple
+                        value={selectedOptions}
+                        onValueChange={(selected) => {
+                          field.onChange(
+                            selected.map((o) => parseInt(o.value, 10))
+                          );
+                        }}
+                        itemToStringValue={(o) => o.label}
+                        onOpenChange={(open) => setIsTeamsComboboxOpen(open)}
+                      >
+                        <ComboboxChips ref={teamsAnchorRef} className="w-full">
+                          <ComboboxValue>
+                            {(
+                              values: Array<{
+                                value: string;
+                                label: string;
+                              }>
+                            ) => (
+                              <>
+                                {values.map((option) => (
+                                  <ComboboxChip key={option.value}>
+                                    {option.label}
+                                  </ComboboxChip>
+                                ))}
+                                <ComboboxChipsInput placeholder="Select teams..." />
+                              </>
+                            )}
+                          </ComboboxValue>
+                        </ComboboxChips>
+                        <ComboboxContent
+                          anchor={teamsAnchorRef}
+                          container={dialogContentRef}
+                          className="max-h-72"
+                        >
+                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                          <ComboboxList>
+                            {(option: { value: string; label: string }) => (
+                              <ComboboxItem key={option.value} value={option}>
+                                {option.label}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            <DialogFooter className="mt-8">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Create user
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
