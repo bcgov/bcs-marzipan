@@ -42,7 +42,7 @@ So URL and sessionStorage are updated together; they are not sources of truth fo
 
 ## Data shape and URL param names
 
-Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](../src/hooks/useActivityTablePreferences.ts):
+Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts):
 
 | Preference    | URL param   | Type                                    | Default     |
 | ------------- | ----------- | --------------------------------------- | ----------- |
@@ -60,7 +60,7 @@ Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](../src/hooks/u
 
 To add a new persisted filter (or any new field in the preferences object), update the hook in one place and the consumer (e.g. ActivityTable) in another.
 
-### 1. Hook: [useActivityTablePreferences.ts](../src/hooks/useActivityTablePreferences.ts)
+### 1. Hook: [useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts)
 
 Do all of the following so the new field is read from URL, read from sessionStorage, validated, and written back to both.
 
@@ -88,7 +88,7 @@ Do all of the following so the new field is read from URL, read from sessionStor
    - In `parseFromSearchParams` and `parseFromStorage`, when the user cannot use the feature, set the field to the safe default (e.g. `false`).
    - In `setPreferences`, when merging `partial`, if the field is in `partial` and the user cannot use it, ignore or override it (same pattern as `showDeleted`).
 
-### 2. Consumer: [ActivityTable.tsx](../src/components/ActivityTable/ActivityTable.tsx)
+### 2. Consumer: [ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx)
 
 1. Read the value from `preferences` (e.g. `preferences.myFilter`).
 2. When the user changes the filter, call `setPreferences({ myFilter: newValue })`.
@@ -96,7 +96,7 @@ Do all of the following so the new field is read from URL, read from sessionStor
 
 ### 3. Breadcrumb (if the list is linked from elsewhere)
 
-The breadcrumb “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` to build the list URL. That function reads from sessionStorage and builds a query string from the same `preferencesToParams` shape. So once the new field is in `ActivityTablePreferences` and `preferencesToParams`, the breadcrumb will include it automatically. No change needed in [ActivityBreadcrumb.tsx](../src/components/ActivityBreadcrumb.tsx) unless the new filter is permission-gated (then ensure `canSeeDeleted` or an equivalent is passed where needed; the breadcrumb already passes `canSeeDeleted` for `showDeleted`).
+The breadcrumb “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` to build the list URL. That function reads from sessionStorage and builds a query string from the same `preferencesToParams` shape. So once the new field is in `ActivityTablePreferences` and `preferencesToParams`, the breadcrumb will include it automatically. No change needed in [ActivityBreadcrumb.tsx](src/components/shared/ActivityBreadcrumb.tsx) unless the new filter is permission-gated (then ensure `canSeeDeleted` or an equivalent is passed where needed; the breadcrumb already passes `canSeeDeleted` for `showDeleted`).
 
 ### Checklist for a new filter
 
@@ -109,11 +109,11 @@ The breadcrumb “Activities list” link uses `getStoredActivityListSearch(canS
 
 ## Key files
 
-| File                                                                                                            | Purpose                                                                                                                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [calendar-ui/src/hooks/useActivityTablePreferences.ts](../src/hooks/useActivityTablePreferences.ts)             | Hook that holds preferences state, reads from URL or sessionStorage on mount, and syncs writes to both. Exports `useActivityTablePreferences`, `getStoredActivityListSearch`, and `ActivityTablePreferences`. |
-| [calendar-ui/src/components/ActivityTable/ActivityTable.tsx](../src/components/ActivityTable/ActivityTable.tsx) | Uses `useActivityTablePreferences(canSeeDeleted)` and passes `preferences` / `setPreferences` into sort and filter UI.                                                                                        |
-| [calendar-ui/src/components/ActivityBreadcrumb.tsx](../src/components/ActivityBreadcrumb.tsx)                   | “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` so View/Edit/Create breadcrumbs return to the list with stored sort/filters in the URL.                                              |
+| File                                                                                                                  | Purpose                                                                                                                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [calendar-ui/src/hooks/useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts)                      | Hook that holds preferences state, reads from URL or sessionStorage on mount, and syncs writes to both. Exports `useActivityTablePreferences`, `getStoredActivityListSearch`, and `ActivityTablePreferences`. |
+| [calendar-ui/src/components/ActivityTable/ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx) | Uses `useActivityTablePreferences(canSeeDeleted)` and passes `preferences` / `setPreferences` into sort and filter UI.                                                                                        |
+| [calendar-ui/src/components/ActivityBreadcrumb.tsx](src/components/shared/ActivityBreadcrumb.tsx)                     | “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` so View/Edit/Create breadcrumbs return to the list with stored sort/filters in the URL.                                              |
 
 ## Edge cases
 

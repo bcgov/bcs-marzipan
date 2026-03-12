@@ -10,14 +10,16 @@ import {
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { ActivityFormBody } from '@/components/activity';
+import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
+import { PageHeader } from '@/components/layout';
+import {
+  ActivityBreadcrumb,
+  AutosaveIndicator,
+  FormErrorFallback,
+  StatusMessage,
+} from '@/components/shared';
 
-import { CreateActivityConfirmModal } from '../components/activities/CreateActivityConfirmModal';
-import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
-import { ActivityFormBody } from '../components/ActivityFormBody';
-import { AutosaveIndicator } from '../components/AutosaveIndicator';
-import { FormErrorFallback } from '../components/FormErrorFallback';
-import { PageHeader } from '../components/PageHeader';
-import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import {

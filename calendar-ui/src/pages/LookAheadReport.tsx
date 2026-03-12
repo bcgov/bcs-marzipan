@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { PageHeader } from '@/components/layout';
+import { StatusMessage } from '@/components/shared';
+
 import {
   fetchLookAheadData,
   type LookAheadSectionData,
 } from '../api/reportsApi';
-import { PageHeader } from '../components/PageHeader';
 import { LookAheadSection } from '../components/reports/LookAheadSection';
-import { StatusMessage } from '../components/StatusMessage';
 import { Button } from '../components/ui/button';
 import {
   Tabs,

@@ -10,7 +10,11 @@ import {
 } from '@fluentui/react-components';
 import { lazy, Suspense } from 'react';
 
-const LazyBarChart = lazy(() => import('./DashboardBarChart'));
+const LazyBarChart = lazy(() =>
+  import('@/components/shared/DashboardBarChart').then((m) => ({
+    default: m.default,
+  }))
+);
 
 // Dummy data for demonstration
 const recentChanges = [

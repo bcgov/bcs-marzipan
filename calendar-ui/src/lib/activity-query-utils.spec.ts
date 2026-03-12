@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/ActivityTable/activityFilterState';
-import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/activity/ActivityTable/activityFilterState';
+import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 
 import {
   buildOptimisticActivity,

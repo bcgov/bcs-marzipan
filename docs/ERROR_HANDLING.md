@@ -315,8 +315,8 @@ For error boundaries (e.g. form render failure), use `getFriendlyErrorMessage(er
 
 ## Key files
 
-| Area       | File(s)                                                                                                                                                                                                                                |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend    | `calendar-service/src/common/filters/http-exception.filter.ts`, `database-error.mapper.ts`, `common/middleware/correlation-id.middleware.ts`, `calendar-service/src/common/logger/logger.service.ts`, `common/logger/logger.module.ts` |
-| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `lib/error-messages.ts`, `lib/logger.ts`, `components/GlobalErrorBoundary.tsx`, `components/ErrorState.tsx`, `components/StatusMessage.tsx`                     |
-| Validation | `calendar-service/src/common/pipes/zod-validation.pipe.ts` (backend); form schemas and `FormMessage` (UI)                                                                                                                              |
+| Area       | File(s)                                                                                                                                                                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend    | `calendar-service/src/common/filters/http-exception.filter.ts`, `database-error.mapper.ts`, `common/middleware/correlation-id.middleware.ts`, `calendar-service/src/common/logger/logger.service.ts`, `common/logger/logger.module.ts`  |
+| Frontend   | `calendar-ui/src/api/errors.ts`, `api/axios.ts`, `lib/error-toast.ts`, `lib/error-messages.ts`, `lib/logger.ts`, `components/layout/GlobalErrorBoundary.tsx`, `components/shared/ErrorState.tsx`, `components/shared/StatusMessage.tsx` |
+| Validation | `calendar-service/src/common/pipes/zod-validation.pipe.ts` (backend); form schemas and `FormMessage` (UI)                                                                                                                               |
