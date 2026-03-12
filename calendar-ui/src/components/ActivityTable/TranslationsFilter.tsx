@@ -122,6 +122,7 @@ export function TranslationsFilterPanel({
           })}
         </ul>
       )}
+      <div className="my-3 border-t" role="separator" />
       <Popover open={languagesOpen} onOpenChange={subPopoverHover.onOpenChange}>
         <PopoverTrigger asChild>
           <button
@@ -132,16 +133,12 @@ export function TranslationsFilterPanel({
             {...subPopoverHover.triggerPointerHandlers}
           >
             <span className="flex items-center gap-2">
-              <span className="text-muted-foreground text-xs font-normal uppercase">
-                Translations
-              </span>
+              <span className="text-sm font-normal">Translations</span>
               {languageCount > 0 && (
-                <span className="text-muted-foreground text-xs">
-                  ({languageCount})
-                </span>
+                <span className="text-sm">({languageCount})</span>
               )}
             </span>
-            <ChevronRight className="text-muted-foreground h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent

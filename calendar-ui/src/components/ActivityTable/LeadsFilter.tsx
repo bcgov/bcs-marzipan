@@ -105,14 +105,10 @@ function LeadSectionPopover({
           {...subPopoverHover.triggerPointerHandlers}
         >
           <span className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs font-normal uppercase">
-              {section.label}
-            </span>
-            {count > 0 && (
-              <span className="text-muted-foreground text-xs">({count})</span>
-            )}
+            <span className="text-sm font-normal">{section.label}</span>
+            {count > 0 && <span className="text-sm">({count})</span>}
           </span>
-          <ChevronRight className="text-muted-foreground h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent

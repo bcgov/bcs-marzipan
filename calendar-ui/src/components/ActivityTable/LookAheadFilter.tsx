@@ -89,7 +89,7 @@ export function LookAheadFilterPanel({
           {opt.label}
         </FilterCheckboxItem>
       ))}
-      <div className="border-t" role="separator" />
+      <div className="my-3 border-t" role="separator" />
       <FilterSectionLabel
         onClearAll={
           lookAheadSectionValues.length > 0
