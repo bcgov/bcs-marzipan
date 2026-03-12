@@ -3,8 +3,8 @@ import type {
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityFilterState } from '@/components/ActivityTable/activityFilterState';
-import type { ActivityTableRow } from '@/components/ActivityTable/activityTableRow';
+import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
+import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
 
 /**

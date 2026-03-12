@@ -3,10 +3,12 @@ import { Route, Routes } from 'react-router-dom';
 import { Suspense } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
+import {
+  GlobalErrorBoundary,
+  Layout,
+  ProtectedRoute,
+} from '@/components/layout';
 
-import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
-import { Layout } from './components/Layout';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { lazyWithRetry } from './lib/lazy-with-retry';
