@@ -1,4 +1,3 @@
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { Route, Routes } from 'react-router-dom';
 import { Suspense } from 'react';
 
@@ -61,88 +60,84 @@ const Users = lazyWithRetry(() =>
 function App() {
   return (
     <AuthProvider>
-      <FluentProvider theme={webLightTheme}>
-        <GlobalErrorBoundary>
-          <Toaster position="top-right" />
-          <Suspense
-            fallback={
-              <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
-                Loading…
-              </div>
-            }
-          >
-            <Routes>
-              {/* Public route - Login */}
-              <Route path="/login" element={<Login />} />
+      <GlobalErrorBoundary>
+        <Toaster position="top-right" />
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">
+              Loading…
+            </div>
+          }
+        >
+          <Routes>
+            {/* Public route - Login */}
+            <Route path="/login" element={<Login />} />
 
-              {/* Protected routes - require authentication */}
+            {/* Protected routes - require authentication */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<ActivityListPage />} />
+              <Route path="dashboard" element={<Dashboard />} />
               <Route
-                path="/"
+                path="create-activity"
                 element={
-                  <ProtectedRoute>
-                    <Layout />
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
+                  >
+                    <CreateActivityForm />
                   </ProtectedRoute>
                 }
-              >
-                <Route index element={<ActivityListPage />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route
-                  path="create-activity"
-                  element={
-                    <ProtectedRoute
-                      requiredPermission={PERMISSIONS.ACTIVITIES.CREATE}
-                    >
-                      <CreateActivityForm />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="activity/:id/*"
-                  element={
-                    <ProtectedRoute
-                      requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
-                    >
-                      <ActivityLayout />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="settings"
-                  element={
-                    <ProtectedRoute
-                      requiredPermission={PERMISSIONS.SETTINGS.VIEW}
-                    >
-                      <Settings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="users"
-                  element={
-                    <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
-                      <Users />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="reports/look-ahead"
-                  element={
-                    <ProtectedRoute
-                      requiredPermission={PERMISSIONS.REPORTS.VIEW}
-                    >
-                      <LookAheadReport />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="global-history" element={<GlobalHistory />} />
-              </Route>
+              />
+              <Route
+                path="activity/:id/*"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
+                  >
+                    <ActivityLayout />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="settings"
+                element={
+                  <ProtectedRoute
+                    requiredPermission={PERMISSIONS.SETTINGS.VIEW}
+                  >
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="users"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
+                    <Users />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="reports/look-ahead"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
+                    <LookAheadReport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="global-history" element={<GlobalHistory />} />
+            </Route>
 
-              {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </GlobalErrorBoundary>
-      </FluentProvider>
+            {/* Catch-all: unknown paths (authed -> return home, unauthed -> return to login) */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </GlobalErrorBoundary>
     </AuthProvider>
   );
 }

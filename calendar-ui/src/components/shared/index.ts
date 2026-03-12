@@ -6,6 +6,5 @@ export { ErrorDetails, StatusMessage } from './StatusMessage';
 export { ErrorState } from './ErrorState';
 export { FormErrorFallback } from './FormErrorFallback';
 export { LockBanner } from './LockBanner';
-export { PaginationFooter } from './PaginationFooter';
 export { ResponsiveFilterRow } from './ResponsiveFilterRow';
 export { UserSwitcher } from './UserSwitcher';
