@@ -1,25 +1,27 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
-import { ResponsiveFilterRow } from '@/components/ResponsiveFilterRow';
+import {
+  ResponsiveFilterRow,
+  type ResponsiveFilterSlot,
+} from '@/components/ResponsiveFilterRow';
 import {
   SortDropdown,
   type SortColumnConfig,
 } from '@/components/Table/SortDropdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FilterCheckboxDropdown } from '@/components/users/FilterCheckboxDropdown';
+import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 
 import type { ActivityFilterState } from './activityFilterState';
-import { ConfirmedFilter } from './ConfirmedFilter';
-import { LeadsFilter, type LeadFilterOption } from './LeadsFilter';
-import { LookAheadFilter } from './LookAheadFilter';
-import { PitchFilter } from './PitchFilter';
-import { ScheduledDateFilter } from './ScheduledDateFilter';
+import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
+import { LookAheadFilterPanel } from './LookAheadFilter';
+import { PitchFilterPanel } from './PitchFilter';
+import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
 import { isDateRangeActive } from './ScheduledDateRangeFields';
-import { TagsFilter, type TagFilterOption } from './TagsFilter';
+import { TagsFilterPanel, type TagFilterOption } from './TagsFilter';
 import {
-  TranslationsFilter,
+  TranslationsFilterPanel,
   type TranslationFilterOption,
   type TranslationStatusFilterOption,
 } from './TranslationsFilter';
@@ -219,67 +221,211 @@ export function ActivityTableFilters({
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
-  const filterSlots = useMemo(
+  const filterSlots = useMemo<ResponsiveFilterSlot[]>(
     () => [
-      <ScheduledDateFilter
-        key="date"
-        value={filterState.dateRange}
-        onChange={handleDateRangeChange}
-      />,
-      <FilterCheckboxDropdown
-        key="category"
-        label="Category"
-        options={categoryOptions}
-        selectedValues={categorySelectedValues}
-        onChange={handleCategoryChange}
-      />,
-      <PitchFilter
-        key="pitch"
-        filterState={filterState}
-        onFilterStateChange={onFilterStateChange}
-        pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-      />,
-      <LookAheadFilter
-        key="lookAhead"
-        filterState={filterState}
-        onFilterStateChange={onFilterStateChange}
-      />,
-      <ConfirmedFilter
-        key="confirmed"
-        filterState={filterState}
-        onFilterStateChange={onFilterStateChange}
-      />,
-      <FilterCheckboxDropdown
-        key="status"
-        label="Status"
-        options={statusOptions}
-        selectedValues={statusSelectedValues}
-        onChange={handleStatusChange}
-      />,
-      <TagsFilter
-        key="tags"
-        tagOptions={tagOptions}
-        selectedTagIds={filterState.tagIds}
-        onTagIdsChange={handleTagIdsChange}
-      />,
-      <TranslationsFilter
-        key="translations"
-        translationStatusOptions={translationStatusOptions}
-        translationOptions={translationOptions}
-        selectedStatusIds={filterState.translationRequiredStatusIds}
-        selectedLanguageIds={filterState.translationLanguageIds}
-        onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
-        onLanguageIdsChange={handleTranslationLanguageIdsChange}
-      />,
-      <LeadsFilter
-        key="leads"
-        filterState={filterState}
-        onFilterStateChange={onFilterStateChange}
-        ministryOptions={ministryOptions}
-        organizationOptions={organizationOptions}
-        commsContactOptions={commsContactOptions}
-        eventPlannerOptions={eventPlannerOptions}
-      />,
+      {
+        key: 'scheduledDate',
+        label: 'Date',
+        panel: (
+          <ScheduledDateFilterPanel
+            value={filterState.dateRange}
+            onChange={handleDateRangeChange}
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+          />
+        ),
+        triggerProps: {
+          active:
+            isDateRangeActive(filterState.dateRange) ||
+            filterState.dateConfirmedFilter !== 'any' ||
+            filterState.timeConfirmedFilter !== 'any',
+          count:
+            (isDateRangeActive(filterState.dateRange) ? 1 : 0) +
+            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
+            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              dateRange: {
+                startDate: '',
+                endDate: '',
+                noStartDate: false,
+                noEndDate: false,
+              },
+              dateConfirmedFilter: 'any',
+              timeConfirmedFilter: 'any',
+            }),
+          clearAriaLabel: 'Clear Datetime filter',
+        },
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        panel: (
+          <FilterCheckboxDropdownPanel
+            options={categoryOptions}
+            selectedValues={categorySelectedValues}
+            onChange={handleCategoryChange}
+            emptyMessage="No results"
+          />
+        ),
+        triggerProps: {
+          active: categorySelectedValues.length > 0,
+          count: categorySelectedValues.length,
+          onClear: () => handleCategoryChange([]),
+          clearAriaLabel: 'Clear Category filter',
+        },
+      },
+      {
+        key: 'pitch',
+        label: 'Pitch',
+        panel: (
+          <PitchFilterPanel
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+            pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.pitchRequiredStatusNames.length > 0 ||
+            filterState.pitchDateFilter.kind !== 'any',
+          count:
+            filterState.pitchRequiredStatusNames.length +
+            (filterState.pitchDateFilter.kind !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              pitchRequiredStatusNames: [],
+              pitchDateFilter: { kind: 'any' },
+            }),
+          clearAriaLabel: 'Clear Pitch filter',
+        },
+      },
+      {
+        key: 'lookAhead',
+        label: 'Look Ahead',
+        panel: (
+          <LookAheadFilterPanel
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.lookAheadStatusValues.length > 0 ||
+            filterState.lookAheadSectionValues.length > 0,
+          count:
+            filterState.lookAheadStatusValues.length +
+            filterState.lookAheadSectionValues.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              lookAheadStatusValues: [],
+              lookAheadSectionValues: [],
+            }),
+          clearAriaLabel: 'Clear Look Ahead filter',
+        },
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        panel: (
+          <FilterCheckboxDropdownPanel
+            options={statusOptions}
+            selectedValues={statusSelectedValues}
+            onChange={handleStatusChange}
+            emptyMessage="No results"
+          />
+        ),
+        triggerProps: {
+          active: statusSelectedValues.length > 0,
+          count: statusSelectedValues.length,
+          onClear: () => handleStatusChange([]),
+          clearAriaLabel: 'Clear Status filter',
+        },
+      },
+      {
+        key: 'tags',
+        label: 'Tags',
+        panel: (
+          <TagsFilterPanel
+            tagOptions={tagOptions}
+            selectedTagIds={filterState.tagIds}
+            onTagIdsChange={handleTagIdsChange}
+          />
+        ),
+        triggerProps: {
+          active: filterState.tagIds.length > 0,
+          count: filterState.tagIds.length,
+          onClear: () => handleTagIdsChange([]),
+          clearAriaLabel: 'Clear Tags filter',
+        },
+      },
+      {
+        key: 'translations',
+        label: 'Translations',
+        panel: (
+          <TranslationsFilterPanel
+            translationStatusOptions={translationStatusOptions}
+            translationOptions={translationOptions}
+            selectedStatusIds={filterState.translationRequiredStatusIds}
+            selectedLanguageIds={filterState.translationLanguageIds}
+            onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
+            onLanguageIdsChange={handleTranslationLanguageIdsChange}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.translationRequiredStatusIds.length > 0 ||
+            filterState.translationLanguageIds.length > 0,
+          count:
+            filterState.translationRequiredStatusIds.length +
+            filterState.translationLanguageIds.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              translationRequiredStatusIds: [],
+              translationLanguageIds: [],
+            }),
+          clearAriaLabel: 'Clear Translations filter',
+        },
+      },
+      {
+        key: 'leads',
+        label: 'Leads',
+        panel: (
+          <LeadsFilterPanel
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+            ministryOptions={ministryOptions}
+            organizationOptions={organizationOptions}
+            commsContactOptions={commsContactOptions}
+            eventPlannerOptions={eventPlannerOptions}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.leadMinistryIds.length > 0 ||
+            filterState.leadOrgIds.length > 0 ||
+            filterState.commsContactLeadUserIds.length > 0 ||
+            filterState.eventPlannerLeadIds.length > 0,
+          count:
+            filterState.leadMinistryIds.length +
+            filterState.leadOrgIds.length +
+            filterState.commsContactLeadUserIds.length +
+            filterState.eventPlannerLeadIds.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              leadMinistryIds: [],
+              leadOrgIds: [],
+              commsContactLeadUserIds: [],
+              eventPlannerLeadIds: [],
+            }),
+          clearAriaLabel: 'Clear Leads filter',
+        },
+      },
     ],
     [
       filterState,
@@ -309,20 +455,21 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, pitch, look ahead, confirmed, status, tags, translations, leads, and keyword"
+      aria-label="Filter activities by datetime, category, pitch, look ahead, status, tags, translations, leads, and keyword"
     >
-      <div className="flex max-w-4xl min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 items-center">
         <ResponsiveFilterRow
-          overflowTriggerLabel="All filters"
+          slots={filterSlots}
           overflowTriggerClassName="h-10"
           reservedWidthForTrailing={120}
+          onClearAll={handleClearAllFilters}
           trailingContent={
             anyActive ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="flex h-10 shrink-0 items-center gap-1"
+                className="flex h-10 shrink-0 items-center gap-1 font-normal"
                 onClick={handleClearAllFilters}
                 aria-label="Clear all filters"
               >
@@ -331,9 +478,7 @@ export function ActivityTableFilters({
               </Button>
             ) : undefined
           }
-        >
-          {filterSlots}
-        </ResponsiveFilterRow>
+        />
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] flex-1">

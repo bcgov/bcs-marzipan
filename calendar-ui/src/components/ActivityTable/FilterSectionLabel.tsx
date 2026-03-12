@@ -1,22 +1,16 @@
-import type { ComponentPropsWithoutRef, MouseEvent } from 'react';
+import type { HTMLAttributes, MouseEvent } from 'react';
 
-import { DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-/**
- * Shared section heading for filter dropdowns (e.g. Pitch, Look Ahead).
- * Use for "Pitch status", "Look Ahead section", etc. to keep styling consistent.
- * Optionally show a "Clear all" button that calls onClearAll when provided.
- */
-const FILTER_SECTION_LABEL_CLASS = 'text-foreground text-xs font-normal';
-
-export interface FilterSectionLabelProps extends ComponentPropsWithoutRef<
-  typeof DropdownMenuLabel
-> {
-  /** When provided, shows a "Clear all" button that calls this when clicked (clears filters in this section). */
+export interface FilterSectionLabelProps extends HTMLAttributes<HTMLDivElement> {
+  /** When provided, shows a "Clear all" button that calls this when clicked. */
   onClearAll?: () => void;
 }
 
+/**
+ * Shared section heading for filter panels (e.g. Pitch, Look Ahead, Translations).
+ * Uses plain markup so it works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
+ */
 export function FilterSectionLabel({
   className,
   onClearAll,
@@ -29,26 +23,39 @@ export function FilterSectionLabel({
     onClearAll?.();
   };
 
+  if (!onClearAll) {
+    return (
+      <div
+        className={cn(
+          'text-muted-foreground px-2 py-1.5 text-xs font-normal uppercase',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+
   return (
-    <DropdownMenuLabel
-      className={cn(FILTER_SECTION_LABEL_CLASS, className)}
+    <div
+      className={cn(
+        'flex w-full items-center justify-between gap-6 px-2 py-1.5',
+        className
+      )}
       {...props}
     >
-      {onClearAll ? (
-        <div className="flex w-full items-center justify-between gap-2">
-          <span>{children}</span>
-          <button
-            type="button"
-            onClick={handleClearClick}
-            className="text-primary shrink-0 text-xs font-normal hover:underline"
-            aria-label="Clear all filters in this section"
-          >
-            Clear all
-          </button>
-        </div>
-      ) : (
-        children
-      )}
-    </DropdownMenuLabel>
+      <span className="text-muted-foreground text-xs font-normal uppercase">
+        {children}
+      </span>
+      <button
+        type="button"
+        onClick={handleClearClick}
+        className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+        aria-label="Clear all filters in this section"
+      >
+        Clear all
+      </button>
+    </div>
   );
 }

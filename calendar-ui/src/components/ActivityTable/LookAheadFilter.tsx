@@ -1,13 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FilterTrigger } from '@/components/users/FilterTrigger';
+import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
 import {
   lookAheadSectionOptions,
   lookAheadStatusOptions,
@@ -16,40 +9,25 @@ import {
 import type { ActivityFilterState } from './activityFilterState';
 import { FilterSectionLabel } from './FilterSectionLabel';
 
-export interface LookAheadFilterProps {
+export interface LookAheadFilterPanelProps {
   filterState: ActivityFilterState;
   onFilterStateChange: (state: ActivityFilterState) => void;
 }
 
-function isLookAheadFilterActive(
+export type LookAheadFilterProps = LookAheadFilterPanelProps;
+
+function _isLookAheadFilterActive(
   lookAheadStatusValues: string[],
   lookAheadSectionValues: string[]
 ): boolean {
   return lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
 }
 
-export function LookAheadFilter({
+export function LookAheadFilterPanel({
   filterState,
   onFilterStateChange,
-}: LookAheadFilterProps) {
+}: LookAheadFilterPanelProps) {
   const { lookAheadStatusValues, lookAheadSectionValues } = filterState;
-
-  const active = useMemo(
-    () =>
-      isLookAheadFilterActive(lookAheadStatusValues, lookAheadSectionValues),
-    [lookAheadStatusValues, lookAheadSectionValues]
-  );
-
-  const lookAheadCount =
-    lookAheadStatusValues.length + lookAheadSectionValues.length;
-
-  const handleClearTrigger = useCallback(() => {
-    onFilterStateChange({
-      ...filterState,
-      lookAheadStatusValues: [],
-      lookAheadSectionValues: [],
-    });
-  }, [filterState, onFilterStateChange]);
 
   const handleStatusToggle = useCallback(
     (value: string) => {
@@ -92,60 +70,91 @@ export function LookAheadFilter({
   }, [filterState, onFilterStateChange]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <FilterTrigger
-          label="Look Ahead"
-          active={active}
-          count={lookAheadCount}
-          onClear={handleClearTrigger}
-          clearAriaLabel="Clear Look Ahead filter"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto"
-        align="start"
+    <>
+      <FilterSectionLabel
+        onClearAll={
+          lookAheadStatusValues.length > 0
+            ? handleClearLookAheadStatus
+            : undefined
+        }
       >
-        <FilterSectionLabel
-          onClearAll={
-            lookAheadStatusValues.length > 0
-              ? handleClearLookAheadStatus
-              : undefined
-          }
+        LA status
+      </FilterSectionLabel>
+      {lookAheadStatusOptions.map((opt) => (
+        <FilterCheckboxItem
+          key={opt.value}
+          checked={lookAheadStatusValues.includes(opt.value)}
+          onCheckedChange={() => handleStatusToggle(opt.value)}
         >
-          Look Ahead status
-        </FilterSectionLabel>
-        {lookAheadStatusOptions.map((opt) => (
-          <DropdownMenuCheckboxItem
-            key={opt.value}
-            checked={lookAheadStatusValues.includes(opt.value)}
-            onCheckedChange={() => handleStatusToggle(opt.value)}
-            onSelect={(e) => e.preventDefault()}
-          >
-            <span className="truncate">{opt.label}</span>
-          </DropdownMenuCheckboxItem>
-        ))}
-        <DropdownMenuSeparator />
-        <FilterSectionLabel
-          onClearAll={
-            lookAheadSectionValues.length > 0
-              ? handleClearLookAheadSection
-              : undefined
-          }
+          {opt.label}
+        </FilterCheckboxItem>
+      ))}
+      <div className="my-3 border-t" role="separator" />
+      <FilterSectionLabel
+        onClearAll={
+          lookAheadSectionValues.length > 0
+            ? handleClearLookAheadSection
+            : undefined
+        }
+      >
+        LA section
+      </FilterSectionLabel>
+      {lookAheadSectionOptions.map((opt) => (
+        <FilterCheckboxItem
+          key={opt.value}
+          checked={lookAheadSectionValues.includes(opt.value)}
+          onCheckedChange={() => handleSectionToggle(opt.value)}
         >
-          Look Ahead section
-        </FilterSectionLabel>
-        {lookAheadSectionOptions.map((opt) => (
-          <DropdownMenuCheckboxItem
-            key={opt.value}
-            checked={lookAheadSectionValues.includes(opt.value)}
-            onCheckedChange={() => handleSectionToggle(opt.value)}
-            onSelect={(e) => e.preventDefault()}
-          >
-            <span className="truncate">{opt.label}</span>
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {opt.label}
+        </FilterCheckboxItem>
+      ))}
+    </>
   );
 }
+
+// export function LookAheadFilter({
+//   filterState,
+//   onFilterStateChange,
+// }: LookAheadFilterProps) {
+//   const { lookAheadStatusValues, lookAheadSectionValues } = filterState;
+//   const active = useMemo(
+//     () =>
+//       isLookAheadFilterActive(lookAheadStatusValues, lookAheadSectionValues),
+//     [lookAheadStatusValues, lookAheadSectionValues]
+//   );
+//   const lookAheadCount =
+//     lookAheadStatusValues.length + lookAheadSectionValues.length;
+//   const handleClearTrigger = useCallback(() => {
+//     onFilterStateChange({
+//       ...filterState,
+//       lookAheadStatusValues: [],
+//       lookAheadSectionValues: [],
+//     });
+//   }, [filterState, onFilterStateChange]);
+
+//   return (
+//     <DropdownMenu>
+//       <DropdownMenuTrigger asChild>
+//         <FilterTrigger
+//           label="Look Ahead"
+//           active={active}
+//           count={lookAheadCount}
+//           onClear={handleClearTrigger}
+//           clearAriaLabel="Clear Look Ahead filter"
+//         />
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent
+//         className={cn(
+//           FILTER_PANEL_MIN_WIDTH,
+//           'max-h-[min(70vh,400px)] min-w-[280px] overflow-y-auto'
+//         )}
+//         align="start"
+//       >
+//         <LookAheadFilterPanel
+//           filterState={filterState}
+//           onFilterStateChange={onFilterStateChange}
+//         />
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }
