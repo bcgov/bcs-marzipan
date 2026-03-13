@@ -26,15 +26,35 @@ import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels'
 
 import { ActivityFormSection } from './ActivityFormSection';
 
+type CommsContactOption = { value: string; label: string };
+
 type ActivityCommsSectionProps = {
   commsMaterialOptions: Array<{
     id: number;
     name: string;
     displayName?: string;
   }>;
-  commsLeadOptions: Array<{ value: string; label: string }>;
+  commsLeadOptions: Array<CommsContactOption>;
   readOnly?: boolean;
 };
+
+function buildCommsContactsFromSelection(
+  selected: CommsContactOption[],
+  currentContacts: Array<{ userId: number; isLead: boolean }> | undefined
+): Array<{ userId: number; isLead: boolean }> {
+  const newIds = selected.map((o) => parseInt(o.value, 10));
+  if (newIds.length === 0) return [];
+
+  const current = currentContacts ?? [];
+  const currentLeadId = current.find((c) => c.isLead)?.userId ?? null;
+  const leadStillPresent =
+    currentLeadId != null && newIds.includes(currentLeadId);
+
+  return newIds.map((userId, i) => ({
+    userId,
+    isLead: leadStillPresent ? userId === currentLeadId : i === 0,
+  }));
+}
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
@@ -42,7 +62,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
-  const commsLeadAnchorRef = useComboboxAnchor();
+  const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
 
   const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
@@ -57,51 +77,99 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     >
       <FormField
         control={form.control}
-        name="commsContactLeadId"
+        name="commsContacts"
         render={({ field }) => {
-          const selectedOption =
-            field.value != null
-              ? commsLeadOptions.find((o) => o.value === String(field.value))
-              : null;
-          const selectedOptions = selectedOption ? [selectedOption] : [];
+          const contacts = field.value ?? [];
+          const leadFirst = [...contacts].sort((a, b) =>
+            a.isLead ? -1 : b.isLead ? 1 : 0
+          );
+          const selectedOptions: CommsContactOption[] = leadFirst.map((c) => {
+            const opt = commsLeadOptions.find(
+              (o) => o.value === String(c.userId)
+            );
+            return {
+              value: String(c.userId),
+              label: opt?.label ?? String(c.userId),
+            };
+          });
+
+          const handleValueChange = (selected: CommsContactOption[]) => {
+            field.onChange(
+              buildCommsContactsFromSelection(selected, field.value)
+            );
+          };
+
+          const setLead = (userId: number) => {
+            const next = (field.value ?? []).map((c) => ({
+              ...c,
+              isLead: c.userId === userId,
+            }));
+            field.onChange(next);
+          };
+
           return (
             <FormItem>
               <FormLabel>
-                Comms Lead <span className="text-destructive">*</span>
+                Comms contacts <span className="text-destructive">*</span>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={commsLeadOptions}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(selected) =>
-                    field.onChange(
-                      selected.length > 0
-                        ? parseInt(selected[0].value, 10)
-                        : null
-                    )
-                  }
+                  onValueChange={handleValueChange}
                   itemToStringValue={(o) => o.label}
                   disabled={readOnly}
                 >
-                  <ComboboxChips ref={commsLeadAnchorRef} className="w-full">
+                  <ComboboxChips
+                    ref={commsContactsAnchorRef}
+                    className="w-full"
+                  >
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: CommsContactOption[]) => (
                         <>
-                          {values.map((option) => (
-                            <ComboboxChip key={option.value}>
-                              {option.label}
-                            </ComboboxChip>
-                          ))}
-                          <ComboboxChipsInput placeholder="Select comms lead" />
+                          {values.map((option) => {
+                            const contact = contacts.find(
+                              (c: { userId: number; isLead: boolean }) =>
+                                String(c.userId) === option.value
+                            );
+                            const isLead = contact?.isLead ?? false;
+                            const userId = parseInt(option.value, 10);
+                            return (
+                              <ComboboxChip key={option.value}>
+                                <span className="flex items-center gap-1.5">
+                                  <span>{option.label}</span>
+                                  {isLead && (
+                                    <span className="bg-primary/15 text-primary rounded px-1.5 py-0.5 text-[10px] font-medium">
+                                      Lead
+                                    </span>
+                                  )}
+                                  {!readOnly && !isLead && (
+                                    <button
+                                      type="button"
+                                      className="text-muted-foreground hover:text-foreground focus:ring-ring ml-0.5 text-[10px] underline focus:ring-1 focus:outline-none"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setLead(userId);
+                                      }}
+                                    >
+                                      Set as lead
+                                    </button>
+                                  )}
+                                </span>
+                              </ComboboxChip>
+                            );
+                          })}
+                          <ComboboxChipsInput placeholder="Select contacts" />
                         </>
                       )}
                     </ComboboxValue>
                   </ComboboxChips>
-                  <ComboboxContent anchor={commsLeadAnchorRef}>
-                    <ComboboxEmpty>No comms leads found.</ComboboxEmpty>
+                  <ComboboxContent anchor={commsContactsAnchorRef}>
+                    <ComboboxEmpty>No contacts found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: CommsContactOption) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

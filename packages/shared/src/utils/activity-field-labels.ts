@@ -29,6 +29,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   leadMinistryId: 'Lead ministry',
   leadOrgId: 'Lead organization',
   commsContactLeadId: 'Comms lead',
+  commsContacts: 'Comms contacts',
   eventPlannerLeadId: 'Event planner',
   categoryIds: 'Categories',
   tagIds: 'Tags',
@@ -55,7 +56,6 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   newsReleaseDistributionId: 'News release distribution',
   premierRequestedId: 'Premier requested',
   reportSettings: 'Report settings',
-  commsContacts: 'Comms contacts',
   representatives: 'Representatives',
   // Venue address nested fields (e.g. when showing validation per field)
   venueName: 'Venue name',

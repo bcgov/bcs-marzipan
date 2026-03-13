@@ -146,7 +146,6 @@ export const ActivityOverviewSection: React.FC<
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
-              <FormDescription>Select all that apply</FormDescription>
               <FormMessage />
             </FormItem>
           );
@@ -185,12 +184,7 @@ export const ActivityOverviewSection: React.FC<
           control={form.control}
           name="leadTeamId"
           render={({ field }) => {
-            const comboboxValue: FreeformComboboxValue =
-              field.value != null
-                ? { type: 'option', value: String(field.value) }
-                : null;
-
-            const handleChange = (value: FreeformComboboxValue) => {
+            const handleValueChange = (value: string) => {
               const previousTeamId = field.value ?? null;
               const previousTeam =
                 previousTeamId != null
@@ -212,16 +206,17 @@ export const ActivityOverviewSection: React.FC<
                   currentLeadOrgId == null &&
                   (currentLeadOrgName == null || currentLeadOrgName === ''));
 
-              if (!value) {
-                field.onChange(undefined);
+              const teamId =
+                value === '' || value == null ? undefined : Number(value);
+              field.onChange(teamId);
+
+              if (teamId == null) {
                 form.setValue('leadMinistryId', undefined);
                 if (leadOrgInSyncWithTeam) {
                   form.setValue('leadOrgId', null);
                   form.setValue('leadOrgName', null);
                 }
-              } else if (value.type === 'option') {
-                const teamId = Number(value.value);
-                field.onChange(teamId);
+              } else {
                 const team = leadTeamOptions.find((t) => t.id === teamId);
                 form.setValue('leadMinistryId', team?.ministryId ?? undefined);
                 if (leadOrgInSyncWithTeam && team) {
@@ -255,17 +250,26 @@ export const ActivityOverviewSection: React.FC<
                   Lead team <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl data-field={field.name}>
-                  <FreeformCombobox
+                  <Select
                     disabled={readOnly}
-                    options={options}
-                    value={comboboxValue}
-                    onChange={handleChange}
-                    placeholder="Select lead team"
-                    searchPlaceholder="Search teams..."
-                    emptyMessage="No teams found."
-                    freeformLabel="Other"
-                    freeformDescription="Can't find the team?"
-                  />
+                    value={
+                      field.value !== undefined && field.value !== null
+                        ? String(field.value)
+                        : undefined
+                    }
+                    onValueChange={handleValueChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select lead team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -317,14 +321,10 @@ export const ActivityOverviewSection: React.FC<
                   placeholder="Select lead organization"
                   searchPlaceholder="Search organizations..."
                   emptyMessage="No organizations found."
-                  freeformLabel="Other"
-                  freeformDescription="Can't find the organization?"
+                  freeformLabel="New org"
+                  freeformDescription=""
                 />
               </FormControl>
-              <FormDescription>
-                Select an organization from the list, or type to enter a custom
-                name
-              </FormDescription>
               <FormMessage />
             </FormItem>
           );

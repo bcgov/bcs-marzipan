@@ -37,7 +37,7 @@ const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
   'title',
   'leadTeamId',
   'summary',
-  'commsContactLeadId',
+  'commsContacts',
   'startDate',
   'endDate',
   'dateStatusId',
@@ -51,7 +51,7 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'title',
   'leadTeamId',
   'summary',
-  'commsContactLeadId',
+  'commsContacts',
   'startDate',
   'endDate',
   'dateStatusId',
@@ -112,9 +112,18 @@ function resolveDisplayValue(
     return ministry?.displayName || ministry?.name || String(value);
   }
 
-  if (field === 'commsContactLeadId' && typeof value === 'number') {
-    const user = lookups.users.find((u) => String(u.value) === String(value));
-    return user?.label || String(value);
+  if (field === 'commsContacts' && Array.isArray(value)) {
+    const contacts = value as Array<{ userId?: number; isLead?: boolean }>;
+    if (contacts.length === 0) return '(none)';
+    return contacts
+      .map((c) => {
+        const user = lookups.users.find(
+          (u) => c.userId != null && String(u.value) === String(c.userId)
+        );
+        const name = user?.label ?? String(c.userId ?? '');
+        return c.isLead ? `${name} (Lead)` : name;
+      })
+      .join(', ');
   }
 
   if (field === 'dateStatusId' && typeof value === 'number' && dateStatuses) {

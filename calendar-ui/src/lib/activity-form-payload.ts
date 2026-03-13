@@ -35,6 +35,7 @@ export function buildPayloadForCreate(
     ),
     representatives: toUndefinedIfEmpty(formValues.representatives),
     sharedWithTeamIds: toUndefinedIfEmpty(formValues.sharedWithTeamIds),
+    commsContacts: toUndefinedIfEmpty(formValues.commsContacts),
   };
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;
@@ -48,7 +49,7 @@ export type UpdatePayloadOptions = {
 
 /**
  * Builds the request payload for updating an activity from form values.
- * Includes commsContacts (from commsContactLeadId) and normalized reportSettings.
+ * Includes commsContacts and normalized reportSettings.
  * Backend computes activityStatusId from markAsReviewed + role; do not send activityStatusId.
  */
 export function buildPayloadForUpdate(
@@ -62,14 +63,7 @@ export function buildPayloadForUpdate(
   const { markAsReviewed } = options ?? {};
   const payload: Record<string, unknown> = {
     ...buildPayloadForCreate(data, formValues),
-    commsContacts: formValues.commsContactLeadId
-      ? [
-          {
-            userId: Number(formValues.commsContactLeadId),
-            isLead: true,
-          },
-        ]
-      : undefined,
+    commsContacts: toUndefinedIfEmpty(formValues.commsContacts),
     reportSettings: normalizedReportSettings,
   };
   if (markAsReviewed !== undefined) {

@@ -13,6 +13,7 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     categoryIds: [],
     tagIds: [],
     commsMaterialIds: [],
+    commsContacts: [],
     translationLanguageIds: [],
     representatives: [],
     sharedWithTeamIds: [],

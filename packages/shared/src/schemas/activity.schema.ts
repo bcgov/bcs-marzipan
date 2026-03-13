@@ -224,7 +224,19 @@ export const createActivityRequestSchema = activityCoreFieldsSchema
     activityHistoryNotes: z.string().max(1000).optional(),
     /** When true and user is admin/sysAdmin, backend sets initial status to reviewed; otherwise new. Ignored for non-admin. */
     markAsReviewed: z.boolean().optional(),
-  });
+  })
+  .refine(
+    (data) => {
+      const contacts = data.commsContacts ?? [];
+      return (
+        contacts.length >= 1 && contacts.filter((c) => c.isLead).length === 1
+      );
+    },
+    {
+      message: 'A lead contact is required.',
+      path: ['commsContacts'],
+    }
+  );
 
 /**
  * Schema for updating an activity via HTTP request
