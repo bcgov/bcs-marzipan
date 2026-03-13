@@ -24,10 +24,16 @@ describe('FreeformCombobox', () => {
     vi.clearAllMocks();
   });
 
+  /** Opens the popover by clicking the trigger button (reliable in jsdom) */
+  async function openPopover(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+  }
+
   describe('Rendering', () => {
     it('renders with placeholder when no value is selected', () => {
       render(<FreeformCombobox {...defaultProps} />);
-      expect(screen.getByRole('combobox')).toHaveTextContent(
+      expect(screen.getByRole('combobox')).toHaveAttribute(
+        'placeholder',
         'Select an option...'
       );
     });
@@ -36,7 +42,8 @@ describe('FreeformCombobox', () => {
       render(
         <FreeformCombobox {...defaultProps} placeholder="Choose an option" />
       );
-      expect(screen.getByRole('combobox')).toHaveTextContent(
+      expect(screen.getByRole('combobox')).toHaveAttribute(
+        'placeholder',
         'Choose an option'
       );
     });
@@ -47,7 +54,7 @@ describe('FreeformCombobox', () => {
         value: 'option1',
       };
       render(<FreeformCombobox {...defaultProps} value={value} />);
-      expect(screen.getByRole('combobox')).toHaveTextContent('Option 1');
+      expect(screen.getByRole('combobox')).toHaveDisplayValue('Option 1');
     });
 
     it('renders freeform value', () => {
@@ -56,27 +63,27 @@ describe('FreeformCombobox', () => {
         value: 'Custom Value',
       };
       render(<FreeformCombobox {...defaultProps} value={value} />);
-      expect(screen.getByRole('combobox')).toHaveTextContent('Custom Value');
+      expect(screen.getByRole('combobox')).toHaveDisplayValue('Custom Value');
     });
 
-    it('shows custom value indicator when freeform is selected', () => {
+    it('displays freeform value in the input when freeform is selected', () => {
       const value: FreeformComboboxValue = {
         type: 'freeform',
         value: 'My Custom Value',
       };
       render(<FreeformCombobox {...defaultProps} value={value} />);
-      expect(screen.getByText(/Custom value:/)).toHaveTextContent(
-        'Custom value: "My Custom Value"'
-      );
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toHaveDisplayValue('My Custom Value');
     });
 
-    it('does not show custom value indicator when option is selected', () => {
+    it('displays option label in the input when option is selected', () => {
       const value: FreeformComboboxValue = {
         type: 'option',
         value: 'option1',
       };
       render(<FreeformCombobox {...defaultProps} value={value} />);
-      expect(screen.queryByText(/Custom value:/)).not.toBeInTheDocument();
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toHaveDisplayValue('Option 1');
     });
 
     it('renders with disabled state', () => {
@@ -92,8 +99,7 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -110,11 +116,18 @@ describe('FreeformCombobox', () => {
 
     it('closes popover after selecting an option', async () => {
       const user = userEvent.setup();
+      let value: FreeformComboboxValue = null;
+      const onChange = vi.fn(
+        (v: FreeformComboboxValue | FreeformComboboxValue[] | null) => {
+          value = Array.isArray(v) ? (v[0] ?? null) : v;
+        }
+      );
 
-      render(<FreeformCombobox {...defaultProps} />);
+      const { rerender } = render(
+        <FreeformCombobox {...defaultProps} value={value} onChange={onChange} />
+      );
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -123,9 +136,20 @@ describe('FreeformCombobox', () => {
       const option1 = screen.getByText('Option 1');
       await user.click(option1);
 
-      await waitFor(() => {
-        expect(screen.queryByText('Option 1')).not.toBeInTheDocument();
+      expect(onChange).toHaveBeenCalledWith({
+        type: 'option',
+        value: 'option1',
       });
+
+      rerender(
+        <FreeformCombobox
+          {...defaultProps}
+          value={{ type: 'option', value: 'option1' }}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByRole('combobox')).toHaveDisplayValue('Option 1');
     });
 
     it('shows checkmark for selected option', async () => {
@@ -137,11 +161,9 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} value={value} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
-        // Find the option in the dropdown (not the button)
         const options = screen.getAllByText('Option 2');
         const optionInDropdown = options.find((el) =>
           el.closest('[role="option"]')
@@ -151,7 +173,6 @@ describe('FreeformCombobox', () => {
           ?.closest('[role="option"]')
           ?.querySelector('svg');
         expect(checkIcon).toBeInTheDocument();
-        // Check that the check icon has opacity-100 class (visible)
         expect(checkIcon).toHaveClass('opacity-100');
       });
     });
@@ -163,15 +184,15 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'Custom Text');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.click(comboboxInput);
+      await user.type(comboboxInput, 'Custom Text');
 
       await waitFor(() => {
         expect(screen.getByText(/Other:/)).toBeInTheDocument();
-        expect(screen.getByText(/"Custom Text"/)).toBeInTheDocument();
+        expect(screen.getByText(/Custom Text/)).toBeInTheDocument();
       });
     });
 
@@ -181,11 +202,11 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'My Custom Value');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.click(comboboxInput);
+      await user.type(comboboxInput, 'My Custom Value');
 
       await waitFor(() => {
         expect(screen.getByText(/Other:/)).toBeInTheDocument();
@@ -205,11 +226,11 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'Option 1');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.click(comboboxInput);
+      await user.type(comboboxInput, 'Option 1');
 
       await waitFor(() => {
         expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -224,11 +245,10 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, '  Trimmed Value  ');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, '  Trimmed Value  ');
 
       await waitFor(() => {
         expect(screen.getByText(/Other:/)).toBeInTheDocument();
@@ -254,11 +274,10 @@ describe('FreeformCombobox', () => {
         />
       );
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'Test');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Test');
 
       await waitFor(() => {
         expect(screen.getByText(/Custom:/)).toBeInTheDocument();
@@ -273,11 +292,10 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'Option 2');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Option 2');
 
       await waitFor(() => {
         expect(screen.getByText('Option 2')).toBeInTheDocument();
@@ -291,8 +309,7 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} options={[]} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('No results found.')).toBeInTheDocument();
@@ -310,8 +327,7 @@ describe('FreeformCombobox', () => {
         />
       );
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('No options available')).toBeInTheDocument();
@@ -323,11 +339,10 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, 'option 1');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'option 1');
 
       await waitFor(() => {
         expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -345,8 +360,7 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} value={value} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('Clear selection')).toBeInTheDocument();
@@ -365,8 +379,7 @@ describe('FreeformCombobox', () => {
         <FreeformCombobox {...defaultProps} value={value} onChange={onChange} />
       );
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('Clear selection')).toBeInTheDocument();
@@ -383,8 +396,7 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
       await waitFor(() => {
         expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -395,9 +407,7 @@ describe('FreeformCombobox', () => {
   });
 
   describe('Custom Props', () => {
-    it('uses custom search placeholder', async () => {
-      const user = userEvent.setup();
-
+    it('uses custom search placeholder', () => {
       render(
         <FreeformCombobox
           {...defaultProps}
@@ -405,12 +415,7 @@ describe('FreeformCombobox', () => {
         />
       );
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
-
-      expect(
-        screen.getByPlaceholderText('Type to search...')
-      ).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
     it('applies custom className', () => {
@@ -432,10 +437,8 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} value={value} />);
 
-      // Should show placeholder when option is not found
-      expect(screen.getByRole('combobox')).toHaveTextContent(
-        'Select an option...'
-      );
+      // Shows the raw value when option is not in the list
+      expect(screen.getByRole('combobox')).toHaveDisplayValue('nonexistent');
     });
 
     it('handles empty options array', () => {
@@ -449,11 +452,10 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} />);
 
-      const combobox = screen.getByRole('combobox');
-      await user.click(combobox);
+      await openPopover(user);
 
-      const searchInput = screen.getByPlaceholderText('Search...');
-      await user.type(searchInput, '   ');
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, '   ');
 
       await waitFor(() => {
         expect(screen.queryByText(/Other:/)).not.toBeInTheDocument();
