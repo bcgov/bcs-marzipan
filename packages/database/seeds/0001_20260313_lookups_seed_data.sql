@@ -387,22 +387,40 @@ ON CONFLICT (id) DO UPDATE
       created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
 
+-- -- ============================================================================
+-- -- TAGS
+-- -- Classification tags for activities (used for subscriptions/news subscribe)
+-- -- Updated with new values
+-- -- ============================================================================
+
+-- INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
+--   (1, 'bc coroners service', 'BC Coroners Service', 1, 'global', true, 'BC Coroners Service subscription tag', 1, 1),
+--   (2, 'cleanbc', 'CleanBC', 2, 'global', true, 'CleanBC subscription tag', 1, 1),
+--   (3, 'connectivity in b c', 'Connectivity in B.C.', 3, 'global', true, 'Connectivity in B.C. subscription tag', 1, 1),
+--   (4, 'covid 19', 'COVID-19', 4, 'global', true, 'COVID-19 subscription tag', 1, 1),
+--   (5, 'ending gender based violence', 'Ending Gender-Based Violence', 5, 'global', true, 'Ending Gender-Based Violence subscription tag', 1, 1),
+--   (6, 'gender equity', 'Gender Equity', 6, 'global', true, 'Gender Equity subscription tag', 1, 1),
+--   (7, 'housing affordability', 'Housing Affordability', 7, 'global', true, 'Housing Affordability subscription tag', 1, 1),
+--   (8, 'natural resources', 'Natural Resources', 8, 'global', true, 'Natural Resources subscription tag', 1, 1),
+--   (9, 'tariffs', 'Tariffs', 9, 'global', true, 'Tariffs subscription tag', 1, 1)
+-- ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================================
 -- TAGS
--- Classification tags for activities (used for subscriptions/news subscribe)
+-- Tags teams can apply to activities; currently limited to use by admin
 -- Updated with new values
 -- ============================================================================
 
 INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
-  (1, 'bc coroners service', 'BC Coroners Service', 1, 'global', true, 'BC Coroners Service subscription tag', 1, 1),
-  (2, 'cleanbc', 'CleanBC', 2, 'global', true, 'CleanBC subscription tag', 1, 1),
-  (3, 'connectivity in b c', 'Connectivity in B.C.', 3, 'global', true, 'Connectivity in B.C. subscription tag', 1, 1),
-  (4, 'covid 19', 'COVID-19', 4, 'global', true, 'COVID-19 subscription tag', 1, 1),
-  (5, 'ending gender based violence', 'Ending Gender-Based Violence', 5, 'global', true, 'Ending Gender-Based Violence subscription tag', 1, 1),
-  (6, 'gender equity', 'Gender Equity', 6, 'global', true, 'Gender Equity subscription tag', 1, 1),
-  (7, 'housing affordability', 'Housing Affordability', 7, 'global', true, 'Housing Affordability subscription tag', 1, 1),
-  (8, 'natural resources', 'Natural Resources', 8, 'global', true, 'Natural Resources subscription tag', 1, 1),
-  (9, 'tariffs', 'Tariffs', 9, 'global', true, 'Tariffs subscription tag', 1, 1)
+  (1, 'HQ-EV', 'HQ-EV', 1, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (2, 'HQ-ECO', 'HQ-ECO', 2, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (3, 'HQ-PR', 'HQ-PR', 3, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (4, 'HQ-1P', 'HQ-1P', 4, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (5, 'HQ-2PT', 'HQ-2PT', 5, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (6, 'HQ-3S', 'HQ-3S', 6, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (7, 'HQ-4W', 'HQ-4W', 7, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (8, 'CAS', 'CAS', 8, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (9, 'LWS', 'LWS', 9, 'global', true, 'CCHQ tag for admin use only', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
