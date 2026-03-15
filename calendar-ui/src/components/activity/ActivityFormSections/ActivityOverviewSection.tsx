@@ -1,8 +1,7 @@
-import { useFormContext, useFormState } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Combobox,
@@ -18,7 +17,6 @@ import {
 } from '@/components/ui/combobox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -37,10 +35,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  usePitchRequiredStatuses,
-  useTranslationRequiredStatuses,
-} from '@/hooks/useLookups';
+import { usePitchRequiredStatuses } from '@/hooks/useLookups';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -85,18 +81,9 @@ export const ActivityOverviewSection: React.FC<
   }));
 
   const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
-  const { data: translationRequiredStatuses = [] } =
-    useTranslationRequiredStatuses();
-
-  // Track dirty fields to show change indicators
-  const { dirtyFields } = useFormState({ control: form.control });
-  const titleChanged = 'title' in dirtyFields && Boolean(dirtyFields.title);
 
   return (
-    <ActivityFormSection
-      title={getActivityFormSectionLabel('overview')}
-      fieldsClassName="space-y-6"
-    >
+    <ActivityFormSection title={getActivityFormSectionLabel('overview')}>
       <FormField
         control={form.control}
         name="categoryIds"
@@ -107,7 +94,8 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel>
-                Categories <span className="text-destructive">*</span>
+                {getActivityFieldLabel(field.name)}{' '}
+                <span className="text-destructive">*</span>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -152,22 +140,18 @@ export const ActivityOverviewSection: React.FC<
         }}
       />
 
-      {/* Title field with change indicator */}
       <FormField
         control={form.control}
         name="title"
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Title <span className="text-destructive">*</span>
-              {titleChanged && (
-                <Badge variant="warning" className="ml-2">
-                  Changed
-                </Badge>
-              )}
+              {getActivityFieldLabel(field.name)}{' '}
+              <span className="text-destructive">*</span>
             </FormLabel>
             <FormControl data-field={field.name}>
-              <Input
+              <Textarea
+                rows={2}
                 placeholder="Enter activity title"
                 readOnly={readOnly}
                 {...field}
@@ -247,7 +231,8 @@ export const ActivityOverviewSection: React.FC<
             return (
               <FormItem>
                 <FormLabel>
-                  Lead team <span className="text-destructive">*</span>
+                  {getActivityFieldLabel(field.name)}{' '}
+                  <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl data-field={field.name}>
                   <Select
@@ -293,22 +278,30 @@ export const ActivityOverviewSection: React.FC<
                 ? { type: 'freeform', value: leadOrgName }
                 : null;
 
-          const handleChange = (value: FreeformComboboxValue) => {
-            if (!value) {
+          const handleChange = (
+            value: FreeformComboboxValue | FreeformComboboxValue[] | null
+          ) => {
+            const single =
+              value == null
+                ? null
+                : Array.isArray(value)
+                  ? (value[0] ?? null)
+                  : value;
+            if (!single) {
               field.onChange(null);
               form.setValue('leadOrgName', null);
-            } else if (value.type === 'option') {
-              field.onChange(Number(value.value));
+            } else if (single.type === 'option') {
+              field.onChange(Number(single.value));
               form.setValue('leadOrgName', null);
             } else {
               field.onChange(null);
-              form.setValue('leadOrgName', value.value);
+              form.setValue('leadOrgName', single.value);
             }
           };
 
           return (
             <FormItem>
-              <FormLabel>Lead Organization</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
                   disabled={readOnly}
@@ -335,7 +328,7 @@ export const ActivityOverviewSection: React.FC<
         name="summary"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Summary</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter activity summary"
@@ -383,7 +376,7 @@ export const ActivityOverviewSection: React.FC<
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Confidential</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
@@ -402,7 +395,7 @@ export const ActivityOverviewSection: React.FC<
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Issue</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
@@ -413,7 +406,7 @@ export const ActivityOverviewSection: React.FC<
         name="significance"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Significance</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter significance"
@@ -428,17 +421,13 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <div className="my-6 border-t border-gray-300"></div>
-
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">Pitch</h3>
-
         <FormField
           control={form.control}
           name="pitchRequiredStatusId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Pitch required status</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <Select
                 disabled={readOnly}
                 value={
@@ -473,7 +462,7 @@ export const ActivityOverviewSection: React.FC<
           name="pitchDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Pitch Date</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Input
                   readOnly={readOnly}
@@ -490,51 +479,12 @@ export const ActivityOverviewSection: React.FC<
 
       <div className="my-6 border-t border-gray-300"></div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Translations</h3>
-
-        <FormField
-          control={form.control}
-          name="translationsRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Translations required status</FormLabel>
-              <Select
-                disabled={readOnly}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
-                onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
-                }
-              >
-                <FormControl data-field={field.name}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {translationRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
       <FormField
         control={form.control}
         name="notes"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Notes</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter notes"
@@ -544,9 +494,6 @@ export const ActivityOverviewSection: React.FC<
                 value={field.value || ''}
               />
             </FormControl>
-            <FormDescription>
-              General notes for admin change log and tracking
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -561,7 +508,7 @@ export const ActivityOverviewSection: React.FC<
           );
           return (
             <FormItem>
-              <FormLabel>Tags</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={tagOptions}
@@ -599,9 +546,6 @@ export const ActivityOverviewSection: React.FC<
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
-              <FormDescription>
-                Select tags to categorize this activity
-              </FormDescription>
               <FormMessage />
             </FormItem>
           );

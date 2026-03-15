@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/combobox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -44,6 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -136,7 +136,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         name="premierRequestedId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Premier</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <Select
               disabled={readOnly}
               onValueChange={(value) => {
@@ -177,7 +177,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
           return (
             <FormItem>
-              <FormLabel>Representatives</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={representativeComboboxOptions}
@@ -282,7 +282,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           return (
             <div className="space-y-4">
               <FormItem>
-                <FormLabel>Venue</FormLabel>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.venueName ?? ''}
@@ -344,7 +344,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               </FormItem>
 
               <FormItem>
-                <FormLabel>City</FormLabel>
+                <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.city ?? ''}
@@ -363,7 +363,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               </FormItem>
 
               <FormItem>
-                <FormLabel>Province/State</FormLabel>
+                <FormLabel>
+                  {getActivityFieldLabel('provinceOrState')}
+                </FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.provinceOrState ?? ''}
@@ -382,7 +384,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               </FormItem>
 
               <FormItem>
-                <FormLabel>Country</FormLabel>
+                <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
                     value={currentVenue.country ?? ''}
@@ -418,23 +420,30 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               ? { type: 'freeform', value: eventPlannerLeadName }
               : null;
 
-          const handleChange = (value: FreeformComboboxValue) => {
-            if (!value) {
+          const handleChange = (
+            value: FreeformComboboxValue | FreeformComboboxValue[] | null
+          ) => {
+            const single =
+              value == null
+                ? null
+                : Array.isArray(value)
+                  ? (value[0] ?? null)
+                  : value;
+            if (!single) {
               field.onChange(null);
               form.setValue('eventPlannerLeadName', null);
-            } else if (value.type === 'option') {
-              // Convert string value to integer for eventPlannerLeadId
-              field.onChange(parseInt(value.value, 10));
+            } else if (single.type === 'option') {
+              field.onChange(parseInt(single.value, 10));
               form.setValue('eventPlannerLeadName', null);
             } else {
               field.onChange(null);
-              form.setValue('eventPlannerLeadName', value.value);
+              form.setValue('eventPlannerLeadName', single.value);
             }
           };
 
           return (
             <FormItem>
-              <FormLabel>Event Planner</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
                   disabled={readOnly}
@@ -448,10 +457,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   freeformDescription="Can't find the event planner?"
                 />
               </FormControl>
-              <FormDescription>
-                Select an event planner from the list, or type to enter a custom
-                name
-              </FormDescription>
+
               <FormMessage />
             </FormItem>
           );

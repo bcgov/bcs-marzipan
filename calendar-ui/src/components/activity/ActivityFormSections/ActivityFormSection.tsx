@@ -20,7 +20,7 @@ export const ActivityFormSection: React.FC<ActivityFormSectionProps> = ({
   title,
   children,
   className,
-  fieldsClassName = 'space-y-4',
+  fieldsClassName = 'space-y-6',
   variant = 'full',
 }) => {
   const borderClasses = {

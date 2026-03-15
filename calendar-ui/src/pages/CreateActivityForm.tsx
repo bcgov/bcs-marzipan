@@ -464,6 +464,7 @@ export const CreateActivityForm: FC = () => {
             form={form}
             lookups={lookups}
             readOnly={false}
+            showChangedBadges={false}
             leadTeamOptions={leadTeamOptions}
           />
 

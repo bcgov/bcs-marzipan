@@ -1,7 +1,6 @@
 import { UseFormReturn, useWatch } from 'react-hook-form';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
   FormControl,
@@ -10,18 +9,22 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimeRangePicker } from '@/components/ui/time-range-picker';
 import { useDateStatuses, useTimeStatuses } from '@/hooks/useLookups';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
-import {
-  CONFIRMED_STATUS_NAMES,
-  findStatusByName,
-  UNCONFIRMED_STATUS_NAMES,
-} from '@/lib/datetime-utils';
 
 import { ActivityFormSection } from './ActivityFormSection';
+
+const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
 
 type ActivityScheduleSectionProps = {
   form: UseFormReturn<ActivityFormData>;
@@ -34,169 +37,106 @@ export const ActivityScheduleSection: React.FC<
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
-  const coerceStatusId = (status?: { id?: string | number }) => {
-    if (status?.id == null) return undefined;
-    const asNumber = Number(status.id);
-    return Number.isNaN(asNumber) ? undefined : asNumber;
-  };
-
-  // Get current status IDs
-  const currentDateStatusId = useWatch({
-    control: form.control,
-    name: 'dateStatusId',
-  });
-  const currentTimeStatusId = useWatch({
-    control: form.control,
-    name: 'timeStatusId',
-  });
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
   const startDateValue = useWatch({ control: form.control, name: 'startDate' });
   const endDateValue = useWatch({ control: form.control, name: 'endDate' });
   const startTimeValue = useWatch({ control: form.control, name: 'startTime' });
   const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
 
-  // Find "confirmed" status by name
-  const confirmedDateStatus = findStatusByName(
-    dateStatuses,
-    CONFIRMED_STATUS_NAMES
-  );
-  const confirmedTimeStatus = findStatusByName(
-    timeStatuses,
-    CONFIRMED_STATUS_NAMES
-  );
-
-  // Check if date/time are confirmed
-  const confirmedDateStatusId = coerceStatusId(confirmedDateStatus);
-  const confirmedTimeStatusId = coerceStatusId(confirmedTimeStatus);
-  const isDateConfirmed =
-    confirmedDateStatusId !== undefined &&
-    Number(currentDateStatusId) === confirmedDateStatusId;
-  const isTimeConfirmed =
-    confirmedTimeStatusId !== undefined &&
-    Number(currentTimeStatusId) === confirmedTimeStatusId;
-
-  // Toggle confirmation status
-  const toggleDateConfirmation = () => {
-    if (!dateStatuses) return;
-    const unconfirmedStatus = findStatusByName(
-      dateStatuses,
-      UNCONFIRMED_STATUS_NAMES
-    );
-    if (isDateConfirmed && unconfirmedStatus) {
-      const unconfirmedId = coerceStatusId(unconfirmedStatus);
-      if (unconfirmedId !== undefined) {
-        form.setValue('dateStatusId', unconfirmedId, {
-          shouldDirty: true,
-          shouldTouch: true,
-        });
-      }
-    } else if (confirmedDateStatusId !== undefined) {
-      form.setValue('dateStatusId', confirmedDateStatusId, {
-        shouldDirty: true,
-        shouldTouch: true,
-      });
-    }
-  };
-
-  const toggleTimeConfirmation = () => {
-    if (!timeStatuses) return;
-    const unconfirmedStatus = findStatusByName(
-      timeStatuses,
-      UNCONFIRMED_STATUS_NAMES
-    );
-    if (isTimeConfirmed && unconfirmedStatus) {
-      const unconfirmedId = coerceStatusId(unconfirmedStatus);
-      if (unconfirmedId !== undefined) {
-        form.setValue('timeStatusId', unconfirmedId, {
-          shouldDirty: true,
-          shouldTouch: true,
-        });
-      }
-    } else if (confirmedTimeStatusId !== undefined) {
-      form.setValue('timeStatusId', confirmedTimeStatusId, {
-        shouldDirty: true,
-        shouldTouch: true,
-      });
-    }
-  };
-
   return (
     <ActivityFormSection title={getActivityFormSectionLabel('date')}>
-      {/* Date Range Input with Confirmation Checkbox */}
+      {/* Date Range and Date Status */}
       <FormField
         control={form.control}
         name="startDate"
         render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center gap-1">
-              Date <span className="text-destructive">*</span>
+              {getActivityFieldLabel(field.name)}{' '}
+              <span className="text-destructive">*</span>
             </FormLabel>
-            <div className="flex items-center gap-4">
-              <FormControl data-field={field.name}>
-                <DateRangePicker
-                  disabled={readOnly}
-                  startDate={String(startDateValue || '')}
-                  endDate={String(endDateValue || '')}
-                  onStartDateChange={(date) => {
-                    form.setValue('startDate', date, {
-                      shouldDirty: true,
-                      shouldTouch: true,
-                    });
-                  }}
-                  onEndDateChange={(date) => {
-                    form.setValue('endDate', date, {
-                      shouldDirty: true,
-                      shouldTouch: true,
-                    });
-                  }}
-                  placeholder="Pick a date"
-                />
-              </FormControl>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={isDateConfirmed}
-                  disabled={readOnly}
-                  onCheckedChange={toggleDateConfirmation}
-                />
-                <FormLabel className="mt-0">Confirmed</FormLabel>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <FormControl data-field={field.name}>
+                  <DateRangePicker
+                    disabled={readOnly}
+                    startDate={String(startDateValue || '')}
+                    endDate={String(endDateValue || '')}
+                    onStartDateChange={(date) => {
+                      form.setValue('startDate', date, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    onEndDateChange={(date) => {
+                      form.setValue('endDate', date, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    placeholder="Pick a date"
+                  />
+                </FormControl>
               </div>
+              <FormField
+                control={form.control}
+                name="dateStatusId"
+                render={({ field: statusField }) => (
+                  <FormItem className="shrink-0">
+                    <FormLabel className="sr-only">
+                      {getActivityFieldLabel(statusField.name)}
+                    </FormLabel>
+                    <Select
+                      disabled={readOnly}
+                      value={
+                        statusField.value !== undefined &&
+                        statusField.value !== null
+                          ? String(statusField.value)
+                          : ''
+                      }
+                      onValueChange={(value) =>
+                        statusField.onChange(
+                          value === '' ? undefined : Number(value)
+                        )
+                      }
+                    >
+                      <FormControl data-field={statusField.name}>
+                        <SelectTrigger
+                          className={STATUS_SELECT_MIN_WIDTH}
+                          aria-label={getActivityFieldLabel(statusField.name)}
+                        >
+                          <SelectValue placeholder="Date status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(dateStatuses ?? []).map((status) => (
+                          <SelectItem key={status.id} value={String(status.id)}>
+                            {status.displayName ?? status.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
             </div>
             <FormMessage />
           </FormItem>
         )}
       />
 
-      {/* All Day Toggle */}
+      {/* Time Range and Time Status (All day toggle is inside TimeRangePicker) */}
       <FormField
         control={form.control}
-        name="isAllDay"
+        name="startTime"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between">
-            <div className="space-y-0.5">
-              <FormLabel>All day</FormLabel>
-            </div>
-            <FormControl data-field={field.name}>
-              <Switch
-                checked={field.value}
-                disabled={readOnly}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      {/* Time Range Input with Confirmation Checkbox */}
-      {!isAllDay && (
-        <FormField
-          control={form.control}
-          name="startTime"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-1">
-                Time <span className="text-destructive">*</span>
-              </FormLabel>
-              <div className="flex items-center gap-4">
+          <FormItem>
+            <FormLabel className="flex items-center gap-1">
+              {getActivityFieldLabel(field.name)}{' '}
+              <span className="text-destructive">*</span>
+            </FormLabel>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="min-w-0 flex-1">
                 <FormControl data-field={field.name}>
                   <TimeRangePicker
                     disabled={readOnly}
@@ -215,22 +155,64 @@ export const ActivityScheduleSection: React.FC<
                       });
                     }}
                     placeholder="Pick a time range"
+                    isAllDay={!!isAllDay}
+                    onAllDayChange={(checked) => {
+                      form.setValue('isAllDay', checked, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                      });
+                    }}
+                    allDayLabel={getActivityFieldLabel('isAllDay')}
+                    allDayDisabled={readOnly}
                   />
                 </FormControl>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={isTimeConfirmed}
-                    disabled={readOnly}
-                    onCheckedChange={toggleTimeConfirmation}
-                  />
-                  <FormLabel className="mt-0">Confirmed</FormLabel>
-                </div>
               </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
+              <FormField
+                control={form.control}
+                name="timeStatusId"
+                render={({ field: statusField }) => (
+                  <FormItem className="shrink-0">
+                    <FormLabel className="sr-only">
+                      {getActivityFieldLabel(statusField.name)}
+                    </FormLabel>
+                    <Select
+                      disabled={readOnly}
+                      value={
+                        statusField.value !== undefined &&
+                        statusField.value !== null
+                          ? String(statusField.value)
+                          : ''
+                      }
+                      onValueChange={(value) =>
+                        statusField.onChange(
+                          value === '' ? undefined : Number(value)
+                        )
+                      }
+                    >
+                      <FormControl data-field={statusField.name}>
+                        <SelectTrigger
+                          className={STATUS_SELECT_MIN_WIDTH}
+                          aria-label={getActivityFieldLabel(statusField.name)}
+                        >
+                          <SelectValue placeholder="Time status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(timeStatuses ?? []).map((status) => (
+                          <SelectItem key={status.id} value={String(status.id)}>
+                            {status.displayName ?? status.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       {/* Scheduling Considerations */}
       <FormField
@@ -239,7 +221,7 @@ export const ActivityScheduleSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center gap-1">
-              Scheduling considerations
+              {getActivityFieldLabel(field.name)}
               <span className="text-muted-foreground ml-1">
                 <svg
                   width="16"

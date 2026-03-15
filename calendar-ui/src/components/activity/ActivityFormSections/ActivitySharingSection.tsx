@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -55,7 +56,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
         name="visibility"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Visibility</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <Select
               disabled={readOnly}
               onValueChange={(value) => {
@@ -97,7 +98,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>Shared With</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={sharedWithTeamOptions}
@@ -140,9 +141,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                 </Combobox>
               </FormControl>
               <FormDescription>
-                These teams can see this activity and it will be marked as
-                important for them. If visibility is Team Only, sharing grants
-                access.
+                Teams selected can see the activity in their Shared with tab.
               </FormDescription>
               <FormMessage />
             </FormItem>

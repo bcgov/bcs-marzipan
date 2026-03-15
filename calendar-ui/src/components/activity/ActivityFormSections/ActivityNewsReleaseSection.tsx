@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -71,7 +72,7 @@ export const ActivityNewsReleaseSection: React.FC<
         name="newsReleaseOriginId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>News Release Origin</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <Select
               disabled={readOnly}
               onValueChange={(value) =>
@@ -102,7 +103,7 @@ export const ActivityNewsReleaseSection: React.FC<
         name="newsReleaseDistributionId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>News Release Distribution</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <Select
               disabled={readOnly}
               onValueChange={(value) =>
@@ -137,7 +138,7 @@ export const ActivityNewsReleaseSection: React.FC<
           );
           return (
             <FormItem>
-              <FormLabel>Translations Required</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={translationLanguageComboboxOptions}

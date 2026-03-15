@@ -20,6 +20,7 @@ import {
   lookAheadStatusOptions,
 } from '@/constants/form-options';
 import { useReports } from '@/hooks/useLookups';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -130,7 +131,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
           name="executiveSummary"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Executive summary</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Textarea
                   {...field}
@@ -151,7 +152,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
           name="lookAheadStatus"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Report Status</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <RadioGroup
                   disabled={readOnly}
@@ -189,7 +190,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
         name="lookAheadSection"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Section</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <div className="flex flex-wrap gap-2">
               {lookAheadSectionOptions.map((option) => {
                 const isSelected = field.value === option.value;

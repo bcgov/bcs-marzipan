@@ -16,6 +16,31 @@ import { Label } from './label';
 
 const Form = FormProvider;
 
+type FormDisplayOptionsContextValue = {
+  showChangedBadges: boolean;
+};
+
+const FormDisplayOptionsContext =
+  React.createContext<FormDisplayOptionsContextValue>({
+    showChangedBadges: true,
+  });
+
+type FormDisplayOptionsProviderProps = {
+  showChangedBadges?: boolean;
+  children: React.ReactNode;
+};
+
+function FormDisplayOptionsProvider({
+  showChangedBadges = true,
+  children,
+}: FormDisplayOptionsProviderProps): React.ReactElement {
+  return (
+    <FormDisplayOptionsContext.Provider value={{ showChangedBadges }}>
+      {children}
+    </FormDisplayOptionsContext.Provider>
+  );
+}
+
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
@@ -95,6 +120,7 @@ const FormLabel = React.forwardRef<
   }
 >(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
   const { error, formItemId, isDirty } = useFormField();
+  const { showChangedBadges } = React.useContext(FormDisplayOptionsContext);
 
   return (
     <Label
@@ -108,7 +134,7 @@ const FormLabel = React.forwardRef<
       {...props}
     >
       <span className="inline-flex items-center">{children}</span>
-      {showDirtyIndicator && isDirty && (
+      {showChangedBadges && showDirtyIndicator && isDirty && (
         <Badge variant="warning" className="ml-2">
           Changed
         </Badge>
@@ -191,4 +217,5 @@ export {
   FormDescription,
   FormMessage,
   FormField,
+  FormDisplayOptionsProvider,
 };

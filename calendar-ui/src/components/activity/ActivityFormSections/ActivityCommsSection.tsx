@@ -15,13 +15,21 @@ import {
 } from '@/components/ui/combobox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslationRequiredStatuses } from '@/hooks/useLookups';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
@@ -64,6 +72,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
+  const { data: translationRequiredStatuses = [] } =
+    useTranslationRequiredStatuses();
 
   const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
     value: String(m.id),
@@ -110,7 +120,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>
-                Comms contacts <span className="text-destructive">*</span>
+                {getActivityFieldLabel(field.name)}{' '}
+                <span className="text-destructive">*</span>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -189,7 +200,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         name="strategy"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Strategy</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter strategy"
@@ -213,7 +224,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>Comms Materials</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={commsMaterialComboboxOptions}
@@ -254,14 +265,48 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
-              <FormDescription>
-                Select comms materials if applicable
-              </FormDescription>
               <FormMessage />
             </FormItem>
           );
         }}
       />
+
+      <div className="space-y-4">
+        <FormField
+          control={form.control}
+          name="translationsRequiredStatusId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <Select
+                disabled={readOnly}
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+              >
+                <FormControl data-field={field.name}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {translationRequiredStatuses.map((status) => (
+                    <SelectItem key={status.id} value={String(status.id)}>
+                      {status.displayName ?? status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </ActivityFormSection>
   );
 };
