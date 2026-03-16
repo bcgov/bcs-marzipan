@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Post,
   Req,
   Res,
@@ -29,6 +30,8 @@ import { loginBodySchema } from './dto/login.dto';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly azureOidcService: AzureOidcService
@@ -78,6 +81,9 @@ export class AuthController {
   @ApiResponse({ status: 302, description: 'Redirect to Azure AD login' })
   async azureLogin(@Req() req: Request, @Res() res: Response) {
     if (!this.azureOidcService.isConfigured()) {
+      this.logger.warn(
+        'Azure login attempted while Azure AD is not configured'
+      );
       return res.redirect('/login?error=azure_not_configured');
     }
 
@@ -97,7 +103,8 @@ export class AuthController {
 
       return res.redirect(redirectUrl.href);
     } catch (error) {
-      console.error('Azure AD login initiation error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Azure AD login initiation failed: ${message}`);
       return res.redirect('/login?error=azure_auth_failed');
     }
   }
@@ -111,6 +118,9 @@ export class AuthController {
   @ApiResponse({ status: 302, description: 'Redirect to app after sign-in' })
   async azureCallback(@Req() req: Request, @Res() res: Response) {
     if (!this.azureOidcService.isConfigured()) {
+      this.logger.warn(
+        'Azure callback received while Azure AD is not configured'
+      );
       return res.redirect('/login?error=azure_not_configured');
     }
 
@@ -118,11 +128,23 @@ export class AuthController {
       const state =
         typeof req.query.state === 'string' ? req.query.state : undefined;
       if (!state) {
+        const oidcError =
+          typeof req.query.error === 'string' ? req.query.error : undefined;
+        const oidcDescription =
+          typeof req.query.error_description === 'string'
+            ? req.query.error_description
+            : undefined;
+        this.logger.warn(
+          `Azure callback missing state${oidcError ? `; oidc_error=${oidcError}` : ''}${oidcDescription ? `; oidc_error_description=${oidcDescription}` : ''}`
+        );
         return res.redirect('/login?error=azure_auth_failed');
       }
 
       const nonce = this.azureOidcService.consumeState(state);
       if (!nonce) {
+        this.logger.warn(
+          'Azure callback rejected due to invalid or expired state'
+        );
         return res.redirect('/login?error=azure_auth_failed');
       }
 
@@ -176,6 +198,9 @@ export class AuthController {
         typeof claims.name === 'string' ? claims.name : username;
 
       if (!externalId) {
+        this.logger.warn(
+          `Azure callback missing external identifier for username=${username || 'unknown'}`
+        );
         return res.redirect('/login?error=azure_auth_failed');
       }
 
@@ -186,10 +211,15 @@ export class AuthController {
         email,
       });
 
+      this.logger.log(
+        `Azure login successful for userId=${result.user.id}, username=${result.user.username}, email=${result.user.email || 'n/a'}`
+      );
+
       this.setAuthCookie(res, result.accessToken, result.expiresIn);
       return res.redirect('/');
     } catch (error) {
-      console.error('Azure AD callback error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Azure login failed during callback: ${message}`);
       return res.redirect('/login?error=azure_no_account');
     }
   }
