@@ -7,7 +7,7 @@ import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem, UserListItem } from '@corpcal/shared/api/types';
 import { updateTeam } from '@/api/teamsApi';
 import { removeUserFromTeam, updateUser } from '@/api/usersApi';
-import { PageHeader } from '@/components/PageHeader';
+import { PageHeader } from '@/components/layout';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { TeamHistoryDrawer } from '@/components/teams/TeamHistoryDrawer';
 import { TeamsTabContent } from '@/components/teams/TeamsTabContent';

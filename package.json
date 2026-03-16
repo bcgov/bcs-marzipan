@@ -13,18 +13,6 @@
   "overrides": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "@fluentui/react": {
-      "react": "^19.2.3",
-      "react-dom": "^19.2.3"
-    },
-    "@fluentui/react-components": {
-      "react": "^19.2.3",
-      "react-dom": "^19.2.3"
-    },
-    "@fluentui/foundation-legacy": {
-      "react": "^19.2.3",
-      "react-dom": "^19.2.3"
-    },
     "drizzle-orm": "^0.44.7",
     "picomatch": "4.0.2",
     "esbuild": ">=0.25.0",

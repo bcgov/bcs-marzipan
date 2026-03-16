@@ -113,11 +113,21 @@ export class LookupsService {
   }
 
   /**
-   * Get all active roles (id, name) for dropdowns
+   * Get all active roles (id, name, description) for dropdowns
    */
-  async getRoles(): Promise<{ id: number; name: string }[]> {
+  async getRoles(): Promise<
+    {
+      id: number;
+      name: string;
+      description: string | null;
+    }[]
+  > {
     const results = await this.databaseService.db
-      .select({ id: roles.id, name: roles.name })
+      .select({
+        id: roles.id,
+        name: roles.name,
+        description: roles.description,
+      })
       .from(roles)
       .where(eq(roles.isActive, true))
       .orderBy(roles.name);

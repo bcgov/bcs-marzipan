@@ -42,17 +42,22 @@ Main entry: **`src/styles/globals.css`**.
 src/
   api/           # API clients (axios, react-query usage)
   components/    # Feature and shared components
-    Table/       # Pagination, summary bar, sort; see README for management-table UX
+    layout/      # App shell (Layout, Sidebar, Header, PageContainer, PageHeader, ProtectedRoute, error boundaries)
+    shared/      # Cross-feature components (ErrorState, StatusMessage, ActivityBreadcrumb, CalendarFilters, DashboardBarChart, etc.)
+    activity/    # Activity-specific UI (form body/sections, table, modals, history)
+    Table/       # Generic table; pagination, summary bar, sort; see README for management-table UX
     ui/          # Shadcn-style primitives (button, dialog, select, etc.)
     users/       # User management (filters, modals, tab content)
     teams/       # Team management
     admin/       # Lookup/admin UIs
+    reports/     # Report-related components
   contexts/      # Auth and other React context
   hooks/         # useAuth, useFormLookups, etc.
   lib/           # utils, form helpers, error handling
   pages/         # Route-level views (UserManagement, Dashboard, etc.)
   schemas/       # Zod schemas
   styles/        # globals.css, App.css
+  test/          # Test setup and test-utils
 ```
 
 ## Azure AD local development

@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
@@ -31,6 +32,7 @@ describe('UsersController', () => {
     findAll: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
+    create: vi.fn(),
     getActivitiesForUser: vi.fn(),
     addUserToTeam: vi.fn(),
     removeUserFromTeam: vi.fn(),
@@ -80,6 +82,41 @@ describe('UsersController', () => {
       await controller.findAll('john');
 
       expect(mockUsersService.findAll).toHaveBeenCalledWith('john', [], []);
+    });
+  });
+
+  describe('create', () => {
+    it('should create user and return 201 with data', async () => {
+      const dto = {
+        email: 'newuser@example.gov.bc.ca',
+        roleId: 2,
+        displayName: 'New User',
+      };
+      const created = createMockUserDetail({
+        id: 99,
+        adEmail: 'newuser@example.gov.bc.ca',
+        roleId: 2,
+        adDisplayName: 'New User',
+      });
+      mockUsersService.create.mockResolvedValue(created);
+
+      const result = await controller.create(dto, mockUser);
+
+      expect(result).toEqual({ success: true, data: created });
+      expect(mockUsersService.create).toHaveBeenCalledWith(dto, mockUser.id);
+      expect(mockUsersService.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw when service throws ConflictException for duplicate email', async () => {
+      const dto = { email: 'existing@example.com', roleId: 1 };
+      mockUsersService.create.mockRejectedValue(
+        new ConflictException('A user with this email already exists.')
+      );
+
+      await expect(controller.create(dto, mockUser)).rejects.toThrow(
+        'A user with this email already exists'
+      );
+      expect(mockUsersService.create).toHaveBeenCalledWith(dto, mockUser.id);
     });
   });
 

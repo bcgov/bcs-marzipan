@@ -3,8 +3,6 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { createApiError } from './errors';
 
 const api = axios.create({
-  // Use /api prefix to go through Vite's proxy in development
-  // In production, set VITE_API_BASE_URL in your environment
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 30000, // 30 seconds - increased to handle complex operations
   withCredentials: true, // Include httpOnly cookies in requests

@@ -7,7 +7,14 @@ import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
 import { fetchMinistries } from '@/api/lookupsApi';
 import { createTeam, fetchTeamById, updateTeam } from '@/api/teamsApi';
 import { Button } from '@/components/ui/button';
-import { Combobox } from '@/components/ui/combobox';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -149,9 +156,9 @@ export function TeamEditModal({
     }
   };
 
-  const handleMinistrySelect = (value: string) => {
-    setMinistryId((prev) => (prev === value ? null : value));
-  };
+  const selectedMinistry = ministryId
+    ? (ministryOptions.find((m) => m.value === ministryId) ?? null)
+    : null;
 
   const isLoading = !isCreate && isLoadingDetail;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -213,13 +220,27 @@ export function TeamEditModal({
             <div className="space-y-2">
               <Label>Ministry</Label>
               <Combobox
-                options={ministryOptions}
-                selectedValues={ministryId ? [ministryId] : []}
-                onSelect={handleMinistrySelect}
-                placeholder="Select ministry..."
-                searchPlaceholder="Search ministries..."
-                emptyMessage="No ministries found."
-              />
+                items={ministryOptions}
+                value={selectedMinistry}
+                onValueChange={(
+                  option: { value: string; label: string } | null
+                ) => setMinistryId(option ? option.value : null)}
+                itemToStringValue={(o: { value: string; label: string }) =>
+                  o.label
+                }
+              >
+                <ComboboxInput placeholder="Select ministry..." />
+                <ComboboxContent>
+                  <ComboboxEmpty>No ministries found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(option: { value: string; label: string }) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>

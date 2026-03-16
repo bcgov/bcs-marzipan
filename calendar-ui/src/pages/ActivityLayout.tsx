@@ -3,10 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityResponse } from '@corpcal/shared/schemas';
+import { ErrorState, StatusMessage } from '@/components/shared';
 
 import { fetchActivity } from '../api/activitiesApi';
-import { ErrorState } from '../components/ErrorState';
-import { StatusMessage } from '../components/StatusMessage';
 import { useAuth } from '../hooks/useAuth';
 import {
   LOAD_ACTIVITY_NO_ID,

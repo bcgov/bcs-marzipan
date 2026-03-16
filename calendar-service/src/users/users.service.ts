@@ -19,6 +19,7 @@ import {
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
   AddUserToTeamBody,
+  CreateUserBody,
   HistoryChange,
   TransferActivitiesBody,
   UpdateUserBody,
@@ -48,6 +49,85 @@ export class UsersService {
       changes: changes ? (changes as unknown) : null,
       notes: notes ?? null,
     });
+  }
+
+  async create(
+    dto: CreateUserBody,
+    createdByUserId: number
+  ): Promise<UserDetail> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+
+    const [existingByEmail] = await this.databaseService.db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        and(
+          sql`lower(${users.adEmail}) = ${normalizedEmail}`,
+          eq(users.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (existingByEmail) {
+      throw new ConflictException('A user with this email already exists.');
+    }
+
+    const [roleRow] = await this.databaseService.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.id, dto.roleId))
+      .limit(1);
+
+    if (!roleRow) {
+      throw new BadRequestException('Invalid role');
+    }
+
+    const [inserted] = await this.databaseService.db
+      .insert(users)
+      .values({
+        roleId: dto.roleId,
+        adEmail: normalizedEmail,
+        adDisplayName: dto.displayName?.trim() || null,
+        isActive: true,
+        createdBy: createdByUserId,
+        createdDateTime: new Date(),
+      })
+      .returning({ id: users.id });
+
+    const userId = inserted.id;
+
+    await this.recordUserHistory(userId, createdByUserId, 'created', [
+      { field: 'roleId', oldValue: null, newValue: dto.roleId },
+    ]);
+
+    if (dto.teams && dto.teams.length > 0) {
+      const uniqueTeams = Array.from(
+        new Map(dto.teams.map((t) => [t.teamId, t])).values()
+      );
+      const teamIds = uniqueTeams.map((t) => t.teamId);
+      const existingTeams = await this.databaseService.db
+        .select({ id: teams.id })
+        .from(teams)
+        .where(inArray(teams.id, teamIds));
+      const existingTeamIds = new Set(existingTeams.map((t) => t.id));
+      const missing = teamIds.filter((id) => !existingTeamIds.has(id));
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `Invalid team ID(s): ${missing.join(', ')}`
+        );
+      }
+      for (const teamEntry of uniqueTeams) {
+        await this.addUserToTeam(
+          userId,
+          { teamId: teamEntry.teamId, role: teamEntry.role },
+          createdByUserId
+        );
+      }
+    }
+
+    const created = await this.findOne(userId);
+    if (!created) throw new NotFoundException('User not found');
+    return created;
   }
 
   async findAll(

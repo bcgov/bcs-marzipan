@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addUserToTeamBodySchema,
+  createUserBodySchema,
   TEAM_ROLES,
   transferActivitiesBodySchema,
   updateUserTeamRoleBodySchema,
@@ -39,6 +40,60 @@ describe('userListItemSchema', () => {
     });
     expect(result.adUsername).toBeNull();
     expect(result.teams).toEqual([]);
+  });
+});
+
+describe('createUserBodySchema', () => {
+  it('accepts valid body with email and roleId', () => {
+    const result = createUserBodySchema.parse({
+      email: 'user@example.gov.bc.ca',
+      roleId: 1,
+    });
+    expect(result.email).toBe('user@example.gov.bc.ca');
+    expect(result.roleId).toBe(1);
+    expect(result.displayName).toBeUndefined();
+    expect(result.teams).toBeUndefined();
+  });
+
+  it('accepts optional displayName and teams', () => {
+    const result = createUserBodySchema.parse({
+      email: 'user@example.com',
+      roleId: 2,
+      displayName: 'Jane Doe',
+      teams: [
+        { teamId: 1, role: 'member' },
+        { teamId: 2, role: 'owner' },
+      ],
+    });
+    expect(result.displayName).toBe('Jane Doe');
+    expect(result.teams).toHaveLength(2);
+    expect(result.teams?.[0].role).toBe('member');
+    expect(result.teams?.[1].role).toBe('owner');
+  });
+
+  it('rejects missing email', () => {
+    expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
+  });
+
+  it('rejects missing roleId', () => {
+    expect(() =>
+      createUserBodySchema.parse({ email: 'u@example.com' })
+    ).toThrow();
+  });
+
+  it('rejects invalid email format', () => {
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'not-an-email',
+        roleId: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects empty email', () => {
+    expect(() =>
+      createUserBodySchema.parse({ email: '   ', roleId: 1 })
+    ).toThrow();
   });
 });
 

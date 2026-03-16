@@ -589,6 +589,10 @@ When `AUTH_STRATEGY=azure`:
 
 If no active local account can be linked, login is denied with `azure_no_account`.
 
+### Adding users
+
+Admins with the `users.create` permission can add users via **Add user** on the User Management page. They provide the user's **email** (required), role, and optionally display name and initial team(s). A local account is created; email is required so the user can be matched when they first sign in with Microsoft. When that person signs in with Azure AD, they are matched by email and their identity is linked. No separate invite email is sent; the user must use the same email address when signing in.
+
 ## Active Directory Integration (Production)
 
 When `AUTH_STRATEGY=ad`, the `ad.strategy.ts` file remains the extension point for direct AD credential validation flows.

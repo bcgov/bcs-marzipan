@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
-import { ActivityTable } from '@/components/ActivityTable';
-import { PageHeader } from '@/components/PageHeader';
+import { ActivityTable } from '@/components/activity/ActivityTable';
+import { PageHeader } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import {
   Popover,

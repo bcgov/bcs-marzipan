@@ -1,4 +1,4 @@
-import { PageContainer } from '../components/PageContainer';
+import { PageContainer } from '@/components/layout';
 
 /**
  * Placeholder page for global history. Full feature TBD.

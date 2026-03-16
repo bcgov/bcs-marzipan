@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { FilterCheckboxItem } from '@/components/ActivityTable/FilterCheckboxItem';
+import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import {
   DropdownMenu,

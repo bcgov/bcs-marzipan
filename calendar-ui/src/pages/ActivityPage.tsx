@@ -12,21 +12,22 @@ import {
   type ActivityResponse,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-
-import { fetchActivityHistory } from '../api/activitiesApi';
-import { ApiError } from '../api/errors';
-import ActivityHistory from '../components/activities/ActivityHistory';
-import { DeleteActivityModal } from '../components/activities/DeleteActivityModal';
-import { EditActivityConfirmModal } from '../components/activities/EditActivityConfirmModal';
-import { RequestDeleteActivityModal } from '../components/activities/RequestDeleteActivityModal';
-import { ActivityBreadcrumb } from '../components/ActivityBreadcrumb';
-import { ActivityFormBody } from '../components/ActivityFormBody';
-import { ActivityPageHeader } from '../components/ActivityPageHeader';
-import { ActivityStatusBanner } from '../components/ActivityStatusBanner';
-import { FormErrorFallback } from '../components/FormErrorFallback';
-import { LockBanner } from '../components/LockBanner';
-import { normalizeActivityStatus } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
+import {
+  ActivityFormBody,
+  ActivityPageHeader,
+  ActivityStatusBanner,
+} from '@/components/activity';
+import ActivityHistory from '@/components/activity/activities/ActivityHistory';
+import { DeleteActivityModal } from '@/components/activity/activities/DeleteActivityModal';
+import { EditActivityConfirmModal } from '@/components/activity/activities/EditActivityConfirmModal';
+import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
+import {
+  ActivityBreadcrumb,
+  FormErrorFallback,
+  LockBanner,
+} from '@/components/shared';
+import { normalizeActivityStatus } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -34,8 +35,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { Form } from '../components/ui/form';
+} from '@/components/ui/dialog';
+import { Form } from '@/components/ui/form';
+
+import { fetchActivityHistory } from '../api/activitiesApi';
+import { ApiError } from '../api/errors';
 import {
   Popover,
   PopoverContent,

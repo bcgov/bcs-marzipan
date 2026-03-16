@@ -56,9 +56,6 @@ export default defineConfig({
           if (normalizedId.includes('node_modules/@tanstack/')) {
             return 'tanstack';
           }
-          if (normalizedId.includes('node_modules/@fluentui/')) {
-            return 'fluent';
-          }
           if (
             normalizedId.includes('node_modules/react-hook-form/') ||
             normalizedId.includes('node_modules/@hookform/') ||
