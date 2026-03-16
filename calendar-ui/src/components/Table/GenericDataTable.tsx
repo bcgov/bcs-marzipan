@@ -8,14 +8,14 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 
-import { SortIndicator } from '@/components/table/SortIndicator';
+import { SortIndicator } from '@/components/Table/SortIndicator';
 import {
   tableBodyRow,
   tableTable,
   tableTd,
   tableTh,
   tableThead,
-} from '@/components/table/tableConstants';
+} from '@/components/Table/tableConstants';
 import { cn } from '@/lib/utils';
 
 interface GenericDataTableProps<T extends object> {

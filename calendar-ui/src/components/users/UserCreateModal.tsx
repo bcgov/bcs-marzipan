@@ -277,13 +277,20 @@ export function UserCreateModal({
                         items={teamOptions}
                         multiple
                         value={selectedOptions}
-                        onValueChange={(selected) => {
+                        onValueChange={(
+                          selected: Array<{ value: string; label: string }>
+                        ) => {
                           field.onChange(
                             selected.map((o) => parseInt(o.value, 10))
                           );
                         }}
-                        itemToStringValue={(o) => o.label}
-                        onOpenChange={(open) => setIsTeamsComboboxOpen(open)}
+                        itemToStringValue={(o: {
+                          value: string;
+                          label: string;
+                        }) => o.label}
+                        onOpenChange={(open: boolean) =>
+                          setIsTeamsComboboxOpen(open)
+                        }
                       >
                         <ComboboxChips ref={teamsAnchorRef} className="w-full">
                           <ComboboxValue>
