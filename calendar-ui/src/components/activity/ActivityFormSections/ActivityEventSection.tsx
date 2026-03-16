@@ -183,14 +183,18 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   items={representativeComboboxOptions}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(selected) => {
+                  onValueChange={(
+                    selected: Array<{ value: string; label: string }>
+                  ) => {
                     field.onChange(
                       selected.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
                     );
                   }}
-                  itemToStringValue={(o) => o.label}
+                  itemToStringValue={(o: { value: string; label: string }) =>
+                    o.label
+                  }
                   disabled={readOnly}
                 >
                   <ComboboxChips

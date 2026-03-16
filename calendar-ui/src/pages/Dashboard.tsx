@@ -6,7 +6,7 @@ import {
   tableTd,
   tableTh,
   tableThead,
-} from '@/components/table/tableConstants';
+} from '@/components/Table/tableConstants';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

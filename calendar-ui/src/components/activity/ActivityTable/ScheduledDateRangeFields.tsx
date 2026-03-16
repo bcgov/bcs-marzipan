@@ -11,7 +11,7 @@ import {
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {

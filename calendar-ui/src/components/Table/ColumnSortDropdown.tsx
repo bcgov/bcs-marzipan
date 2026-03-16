@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 
-import type { SortColumnConfig } from '@/components/table/SortDropdown';
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
+import type { SortColumnConfig } from '@/components/Table/SortDropdown';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

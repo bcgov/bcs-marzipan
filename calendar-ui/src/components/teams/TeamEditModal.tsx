@@ -222,10 +222,12 @@ export function TeamEditModal({
               <Combobox
                 items={ministryOptions}
                 value={selectedMinistry}
-                onValueChange={(option) =>
-                  setMinistryId(option ? option.value : null)
+                onValueChange={(
+                  option: { value: string; label: string } | null
+                ) => setMinistryId(option ? option.value : null)}
+                itemToStringValue={(o: { value: string; label: string }) =>
+                  o.label
                 }
-                itemToStringValue={(o) => o.label}
               >
                 <ComboboxInput placeholder="Select ministry..." />
                 <ComboboxContent>

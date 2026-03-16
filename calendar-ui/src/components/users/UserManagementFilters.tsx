@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   SortDropdown,
   type SortColumnConfig,
-} from '@/components/table/SortDropdown';
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
+} from '@/components/Table/SortDropdown';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
