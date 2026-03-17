@@ -210,45 +210,67 @@ const junctionTableIdsSchema = z.object({
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
+const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required.';
+const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
+
+/** Create: commsContacts must have at least one contact and exactly one lead. */
+function createLeadContactRefine(data: {
+  commsContacts?: Array<{ userId: number; isLead: boolean }>;
+}): boolean {
+  const contacts = data.commsContacts ?? [];
+  return contacts.length >= 1 && contacts.filter((c) => c.isLead).length === 1;
+}
+
+/** Update: when commsContacts is provided and non-empty, exactly one must be lead. */
+function updateLeadContactRefine(data: {
+  commsContacts?: Array<{ userId: number; isLead: boolean }>;
+}): boolean {
+  const contacts = data.commsContacts ?? [];
+  if (contacts.length === 0) return true;
+  return contacts.filter((c) => c.isLead).length === 1;
+}
+
 /**
- * Schema for creating a new activity via HTTP request
- *
- * Includes core activity fields plus junction table ID arrays and venue address.
- * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
+ * Base schema for create (no refinements).
+ * Used to build create and update schemas without calling .partial() on a refined schema (Zod v4).
  */
-// merge is deprecated in favor of extend, but extend causes type inference issues.
-export const createActivityRequestSchema = activityCoreFieldsSchema
+const createBaseSchema = activityCoreFieldsSchema
   .merge(junctionTableIdsSchema)
   .extend({
     venueAddress: venueAddressFieldsSchema,
     activityHistoryNotes: z.string().max(1000).optional(),
     /** When true and user is admin/sysAdmin, backend sets initial status to reviewed; otherwise new. Ignored for non-admin. */
     markAsReviewed: z.boolean().optional(),
-  })
-  .refine(
-    (data) => {
-      const contacts = data.commsContacts ?? [];
-      return (
-        contacts.length >= 1 && contacts.filter((c) => c.isLead).length === 1
-      );
-    },
-    {
-      message: 'A lead contact is required.',
-      path: ['commsContacts'],
-    }
-  );
+  });
+
+/**
+ * Schema for creating a new activity via HTTP request
+ *
+ * Includes core activity fields plus junction table ID arrays and venue address.
+ * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
+ * Requires at least one Comms contact with exactly one marked as lead.
+ */
+export const createActivityRequestSchema = createBaseSchema.refine(
+  createLeadContactRefine,
+  { message: LEAD_CONTACT_REFINE_MESSAGE, path: [...LEAD_CONTACT_REFINE_PATH] }
+);
 
 /**
  * Schema for updating an activity via HTTP request
  *
  * All fields are optional (partial update).
  * ID comes from URL parameter, not request body.
+ * When commsContacts is provided and non-empty, enforces the same lead-contact rule as create.
  *
  * Note: XOR validation (leadOrgId/leadOrgName, etc.) is handled by
  * database CHECK constraints, not duplicated here.
  */
-export const updateActivityRequestSchema =
-  createActivityRequestSchema.partial();
+export const updateActivityRequestSchema = createBaseSchema
+  .partial()
+  .refine(updateLeadContactRefine, {
+    message: LEAD_CONTACT_REFINE_MESSAGE,
+    path: [...LEAD_CONTACT_REFINE_PATH],
+  });
 
 /**
  * Schema for soft deleting an activity

@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/combobox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -178,9 +177,6 @@ export const ActivityNewsReleaseSection: React.FC<
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
-              <FormDescription>
-                Select translation languages if applicable
-              </FormDescription>
               <FormMessage />
             </FormItem>
           );

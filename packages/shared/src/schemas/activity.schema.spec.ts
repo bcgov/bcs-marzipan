@@ -14,6 +14,7 @@ import {
 const validLeadTeamId = 1;
 const validLeadMinistryId = 1;
 
+/** Minimal valid create request; includes required commsContacts with one lead. */
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
   return {
     title: 'Test Activity',
@@ -24,6 +25,7 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     activityStatusId: 1,
     leadTeamId: validLeadTeamId,
     leadMinistryId: validLeadMinistryId,
+    commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
 }
@@ -140,6 +142,80 @@ describe('createActivityRequestSchema', () => {
       minimalCreateRequest({ leadMinistryId: undefined })
     );
   });
+
+  it('accepts create with commsContacts having exactly one lead', () => {
+    const result = createActivityRequestSchema.parse(
+      minimalCreateRequest({ commsContacts: [{ userId: 1, isLead: true }] })
+    );
+    expect(result.commsContacts).toHaveLength(1);
+    expect(result.commsContacts?.[0].isLead).toBe(true);
+  });
+
+  it('rejects create when commsContacts is missing', () => {
+    const withoutComms = minimalCreateRequest();
+    delete (withoutComms as Record<string, unknown>).commsContacts;
+    expect(() => createActivityRequestSchema.parse(withoutComms)).toThrow();
+    const err = createActivityRequestSchema.safeParse(withoutComms);
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+  });
+
+  it('rejects create when commsContacts is empty array', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ commsContacts: [] })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ commsContacts: [] })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('rejects create when no contact is lead', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          commsContacts: [
+            { userId: 1, isLead: false },
+            { userId: 2, isLead: false },
+          ],
+        })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        commsContacts: [{ userId: 1, isLead: false }],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('rejects create when more than one contact is lead', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          commsContacts: [
+            { userId: 1, isLead: true },
+            { userId: 2, isLead: true },
+          ],
+        })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        commsContacts: [
+          { userId: 1, isLead: true },
+          { userId: 2, isLead: true },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
 });
 
 describe('updateActivityRequestSchema', () => {
@@ -150,6 +226,56 @@ describe('updateActivityRequestSchema', () => {
 
   it('accepts empty object', () => {
     updateActivityRequestSchema.parse({});
+  });
+
+  it('accepts update with only title (no commsContacts)', () => {
+    const result = updateActivityRequestSchema.parse({ title: 'Only title' });
+    expect(result.title).toBe('Only title');
+  });
+
+  it('accepts update when commsContacts has exactly one lead', () => {
+    const result = updateActivityRequestSchema.parse({
+      commsContacts: [{ userId: 1, isLead: true }],
+    });
+    expect(result.commsContacts).toHaveLength(1);
+    expect(result.commsContacts?.[0].isLead).toBe(true);
+  });
+
+  it('accepts update when commsContacts is empty array', () => {
+    updateActivityRequestSchema.parse({ commsContacts: [] });
+  });
+
+  it('rejects update when commsContacts has contacts but no lead', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        commsContacts: [{ userId: 1, isLead: false }],
+      })
+    ).toThrow();
+    const err = updateActivityRequestSchema.safeParse({
+      commsContacts: [{ userId: 1, isLead: false }],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+  });
+
+  it('rejects update when commsContacts has two leads', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        commsContacts: [
+          { userId: 1, isLead: true },
+          { userId: 2, isLead: true },
+        ],
+      })
+    ).toThrow();
+    const err = updateActivityRequestSchema.safeParse({
+      commsContacts: [
+        { userId: 1, isLead: true },
+        { userId: 2, isLead: true },
+      ],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
   });
 });
 
