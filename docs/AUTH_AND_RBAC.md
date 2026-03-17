@@ -129,7 +129,8 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | lookups.view/manage                   | view   | view   | view       | view        | view+manage | all       |
 | users.\* (except manage_roles/delete) |        |        |            |             | x           | x         |
 | users.delete, manage_roles            |        |        |            |             |             | x         |
-| teams.\*                              |        |        |            |             | x           | x         |
+| teams.view                            |        | x      | x          | x           | x           | x         |
+| teams.create/edit/delete              |        |        |            |             | x           | x         |
 | settings.\*                           |        |        |            |             | x           | x         |
 | system.\*                             |        |        |            |             |             | x         |
 
