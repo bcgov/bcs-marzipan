@@ -27,9 +27,3 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
   sharing: 'Sharing',
   venue: 'Venue',
 };
-
-export function getActivityFormSectionLabel(
-  sectionId: ActivityFormSectionId
-): string {
-  return ACTIVITY_FORM_SECTION_LABELS[sectionId];
-}

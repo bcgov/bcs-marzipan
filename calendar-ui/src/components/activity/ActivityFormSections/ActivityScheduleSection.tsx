@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TimeRangePicker } from '@/components/ui/time-range-picker';
 import { useDateStatuses, useTimeStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -44,7 +44,7 @@ export const ActivityScheduleSection: React.FC<
   const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
 
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('date')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.date}>
       {/* Date Range and Date Status */}
       <FormField
         control={form.control}

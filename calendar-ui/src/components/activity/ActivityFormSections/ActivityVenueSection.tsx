@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -79,7 +79,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
 
   return (
     <ActivityFormSection
-      title={getActivityFormSectionLabel('venue')}
+      title={ACTIVITY_FORM_SECTION_LABELS.venue}
       variant="bottom-no-divider"
     >
       {/* Venue TBD Toggle */}
@@ -197,16 +197,14 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="eventPlannerLeadId"
+        name="eventPlanners"
         render={({ field }) => {
-          // Derive the combobox value from form state
-          const eventPlannerLeadId = field.value;
-          const eventPlannerLeadName = form.watch('eventPlannerLeadName');
-
-          const comboboxValue: FreeformComboboxValue = eventPlannerLeadId
-            ? { type: 'option', value: eventPlannerLeadId.toString() }
-            : eventPlannerLeadName
-              ? { type: 'freeform', value: eventPlannerLeadName }
+          const list = field.value ?? [];
+          const first = list[0];
+          const comboboxValue: FreeformComboboxValue = first?.eventPlannerLeadId
+            ? { type: 'option', value: String(first.eventPlannerLeadId) }
+            : first?.eventPlannerLeadName
+              ? { type: 'freeform', value: first.eventPlannerLeadName }
               : null;
 
           const handleChange = (
@@ -219,14 +217,13 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                   ? (value[0] ?? null)
                   : value;
             if (!single) {
-              field.onChange(null);
-              form.setValue('eventPlannerLeadName', null);
+              field.onChange([]);
             } else if (single.type === 'option') {
-              field.onChange(parseInt(single.value, 10));
-              form.setValue('eventPlannerLeadName', null);
+              field.onChange([
+                { eventPlannerLeadId: parseInt(single.value, 10) },
+              ]);
             } else {
-              field.onChange(null);
-              form.setValue('eventPlannerLeadName', single.value);
+              field.onChange([{ eventPlannerLeadName: single.value }]);
             }
           };
 

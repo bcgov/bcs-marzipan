@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -63,7 +63,7 @@ export const ActivityNewsReleaseSection: React.FC<
 
   return (
     <ActivityFormSection
-      title={getActivityFormSectionLabel('newsRelease')}
+      title={ACTIVITY_FORM_SECTION_LABELS.newsRelease}
       variant="bottom-no-divider"
     >
       <FormField

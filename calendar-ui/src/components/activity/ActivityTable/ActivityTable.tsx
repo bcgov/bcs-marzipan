@@ -475,7 +475,11 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
     lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
   if (row.commsLeadName)
     lines.push({ label: 'Comms lead', value: row.commsLeadName });
-  if (row.eventLead) lines.push({ label: 'Event lead', value: row.eventLead });
+  if (row.eventPlanners?.length)
+    lines.push({
+      label: 'Event planners',
+      value: row.eventPlanners.join(', '),
+    });
 
   if (lines.length === 0) {
     return <span className="text-slate-400">&mdash;</span>;

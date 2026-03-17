@@ -37,7 +37,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { usePitchRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -83,7 +83,7 @@ export const ActivityOverviewSection: React.FC<
   const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
 
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('overview')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.overview}>
       <FormField
         control={form.control}
         name="categoryIds"

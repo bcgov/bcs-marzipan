@@ -33,7 +33,7 @@ export function filterActivityRowsByKeyword(
       row.leadMinistryAbbreviation ?? '',
       row.leadMinistry ?? '',
       row.commsLeadName ?? '',
-      row.eventLead ?? '',
+      (row.eventPlanners ?? []).join(' '),
       row.activityStatus,
       row.activityRepresentatives.join(' '),
     ];
@@ -212,9 +212,8 @@ export function filterActivityRowsByFilters(
   }
   if (filterState.eventPlannerLeadIds.length > 0) {
     const plannerSet = new Set(filterState.eventPlannerLeadIds);
-    result = result.filter(
-      (row) =>
-        row.eventPlannerLeadId != null && plannerSet.has(row.eventPlannerLeadId)
+    result = result.filter((row) =>
+      (row.eventPlannerLeadIds ?? []).some((id) => plannerSet.has(id))
     );
   }
 

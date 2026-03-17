@@ -21,7 +21,7 @@ import {
 } from '@/constants/form-options';
 import { useReports } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -48,7 +48,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
   );
 
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('reports')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.reports}>
       <FormField
         control={form.control}
         name="reportSettings"

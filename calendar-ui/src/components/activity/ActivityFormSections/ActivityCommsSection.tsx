@@ -30,7 +30,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useTranslationRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -82,7 +82,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   return (
     <ActivityFormSection
-      title={getActivityFormSectionLabel('comms')}
+      title={ACTIVITY_FORM_SECTION_LABELS.comms}
       variant="top"
     >
       <FormField

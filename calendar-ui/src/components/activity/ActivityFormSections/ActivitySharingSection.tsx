@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -50,7 +50,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   const form = useFormContext<ActivityFormData>();
   const sharedWithAnchorRef = useComboboxAnchor();
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('sharing')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.sharing}>
       <FormField
         control={form.control}
         name="visibility"

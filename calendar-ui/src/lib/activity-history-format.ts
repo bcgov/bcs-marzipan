@@ -82,6 +82,19 @@ export function formatHistoryFieldValue(
     return parts.length > 0 ? parts.join(', ') : '(address)';
   }
 
+  if (field === 'eventPlanners') {
+    if (Array.isArray(value)) {
+      const planners = value as Array<{
+        eventPlannerLeadId?: number;
+        eventPlannerLeadName?: string;
+      }>;
+      const names = planners
+        .map((p) => p.eventPlannerLeadName ?? `ID ${p.eventPlannerLeadId}`)
+        .join(', ');
+      return names || '(no event planners)';
+    }
+  }
+
   if (field === 'representatives') {
     if (Array.isArray(value)) {
       const reps = value as Array<{
@@ -159,8 +172,7 @@ const FIELDS_TO_COMPARE = [
   'leadOrgName',
   'leadTeamId',
   'leadMinistryId',
-  'eventPlannerLeadId',
-  'eventPlannerLeadName',
+  'eventPlanners',
   'newsReleaseDistributionId',
   'premierRequestedId',
   'newsReleaseId',

@@ -41,11 +41,11 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     leadMinistryAbbreviation: null,
     commsLeadName: null,
     commsContactsCount: 0,
-    eventLead: null,
+    eventPlanners: [],
+    eventPlannerLeadIds: [],
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
-    eventPlannerLeadId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
     commsMaterials: [],
@@ -504,9 +504,9 @@ describe('filterActivityRowsByFilters', () => {
 
   it('filters by eventPlannerLeadIds', () => {
     const rows = [
-      makeRow({ id: 1, eventPlannerLeadId: 1 }),
-      makeRow({ id: 2, eventPlannerLeadId: 2 }),
-      makeRow({ id: 3, eventPlannerLeadId: null }),
+      makeRow({ id: 1, eventPlannerLeadIds: [1] }),
+      makeRow({ id: 2, eventPlannerLeadIds: [2] }),
+      makeRow({ id: 3, eventPlannerLeadIds: [] }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
@@ -522,14 +522,14 @@ describe('filterActivityRowsByFilters', () => {
         leadMinistryId: 10,
         leadOrgId: 5,
         commsContactLeadUserId: 100,
-        eventPlannerLeadId: 1,
+        eventPlannerLeadIds: [1],
       }),
       makeRow({
         id: 2,
         leadMinistryId: 10,
         leadOrgId: 99,
         commsContactLeadUserId: 100,
-        eventPlannerLeadId: 1,
+        eventPlannerLeadIds: [1],
       }),
     ];
     const result = filterActivityRowsByFilters(rows, {
