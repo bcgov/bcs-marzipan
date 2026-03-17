@@ -148,7 +148,7 @@ export class ActivityJunctionService {
 
   /**
    * Insert event planners into activityEventPlanners table
-   * Backend prefers eventPlannerLeadId when present, else eventPlannerLeadName (one-off).
+   * Backend prefers eventPlannerId when present, else eventPlannerName (one-off). isLead marks the lead planner.
    */
   async insertEventPlanners(
     tx: Parameters<
@@ -157,8 +157,9 @@ export class ActivityJunctionService {
     activityId: number,
     eventPlanners:
       | Array<{
-          eventPlannerLeadId?: number;
-          eventPlannerLeadName?: string;
+          eventPlannerId?: number;
+          eventPlannerName?: string;
+          isLead?: boolean;
         }>
       | undefined,
     now: Date
@@ -172,17 +173,17 @@ export class ActivityJunctionService {
     }
     const valid = eventPlanners.filter(
       (p) =>
-        (typeof p.eventPlannerLeadId === 'number' &&
-          p.eventPlannerLeadId > 0) ||
-        (typeof p.eventPlannerLeadName === 'string' &&
-          p.eventPlannerLeadName.trim().length > 0)
+        (typeof p.eventPlannerId === 'number' && p.eventPlannerId > 0) ||
+        (typeof p.eventPlannerName === 'string' &&
+          p.eventPlannerName.trim().length > 0)
     );
     if (valid.length === 0) return;
     await tx.insert(activityEventPlanners).values(
       valid.map((p) => ({
         activityId,
-        eventPlannerLeadId: p.eventPlannerLeadId ?? null,
-        eventPlannerLeadName: p.eventPlannerLeadName?.trim() ?? null,
+        eventPlannerId: p.eventPlannerId ?? null,
+        eventPlannerName: p.eventPlannerName?.trim() ?? null,
+        isLead: p.isLead ?? false,
         isActive: true,
         timestamp: now,
       }))
@@ -199,8 +200,9 @@ export class ActivityJunctionService {
     activityId: number,
     eventPlanners:
       | Array<{
-          eventPlannerLeadId?: number;
-          eventPlannerLeadName?: string;
+          eventPlannerId?: number;
+          eventPlannerName?: string;
+          isLead?: boolean;
         }>
       | undefined,
     now: Date
@@ -212,17 +214,17 @@ export class ActivityJunctionService {
     if (eventPlanners && eventPlanners.length > 0) {
       const valid = eventPlanners.filter(
         (p) =>
-          (typeof p.eventPlannerLeadId === 'number' &&
-            p.eventPlannerLeadId > 0) ||
-          (typeof p.eventPlannerLeadName === 'string' &&
-            p.eventPlannerLeadName.trim().length > 0)
+          (typeof p.eventPlannerId === 'number' && p.eventPlannerId > 0) ||
+          (typeof p.eventPlannerName === 'string' &&
+            p.eventPlannerName.trim().length > 0)
       );
       if (valid.length > 0) {
         await tx.insert(activityEventPlanners).values(
           valid.map((p) => ({
             activityId,
-            eventPlannerLeadId: p.eventPlannerLeadId ?? null,
-            eventPlannerLeadName: p.eventPlannerLeadName?.trim() ?? null,
+            eventPlannerId: p.eventPlannerId ?? null,
+            eventPlannerName: p.eventPlannerName?.trim() ?? null,
+            isLead: p.isLead ?? false,
             isActive: true,
             timestamp: now,
           }))

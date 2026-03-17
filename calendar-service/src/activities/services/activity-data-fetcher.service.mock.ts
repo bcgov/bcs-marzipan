@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 
+import type { EventPlannerDetail } from '@corpcal/shared/schemas';
+
 /**
  * Default return values for ActivityDataFetcherService methods.
  * When adding a new method to ActivityDataFetcherService, add it here to avoid test drift.
@@ -24,6 +26,10 @@ const DEFAULTS = {
   fetchCommsContactsForActivities: new Map(),
   fetchUserNamesForUserIds: new Map(),
   fetchLeadOrgNamesForActivities: new Map(),
+  fetchEventPlannerDetailsForActivities: new Map() as Map<
+    number,
+    EventPlannerDetail[]
+  >,
   fetchEventPlannersForActivities: new Map() as Map<number, string[]>,
   fetchEventPlannerIdsForActivities: new Map() as Map<number, number[]>,
   fetchReportSettingsForActivities: new Map(),

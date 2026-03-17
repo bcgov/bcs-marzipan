@@ -136,8 +136,7 @@ export class ActivitiesService {
       sharedWithMap,
       commsContactsMap,
       leadOrgNamesMap,
-      eventPlannersMap,
-      eventPlannerIdsMap,
+      eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
@@ -163,8 +162,9 @@ export class ActivitiesService {
       this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
       this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
       this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows),
-      this.dataFetcherService.fetchEventPlannersForActivities(activityIds),
-      this.dataFetcherService.fetchEventPlannerIdsForActivities(activityIds),
+      this.dataFetcherService.fetchEventPlannerDetailsForActivities(
+        activityIds
+      ),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
         activityIds
@@ -182,6 +182,21 @@ export class ActivitiesService {
         activityIds
       ),
     ]);
+    // Derive eventPlannersMap and eventPlannerIdsMap from details for backward compatibility
+    const eventPlannersMap = new Map<number, string[]>();
+    const eventPlannerIdsMap = new Map<number, number[]>();
+    for (const [activityId, details] of eventPlannerDetailsMap) {
+      eventPlannersMap.set(
+        activityId,
+        details.map((d) => d.name)
+      );
+      eventPlannerIdsMap.set(
+        activityId,
+        details
+          .filter((d) => d.eventPlannerId != null)
+          .map((d) => d.eventPlannerId as number)
+      );
+    }
     return {
       categoriesResult,
       tagsMap,
@@ -195,6 +210,7 @@ export class ActivitiesService {
       sharedWithMap,
       commsContactsMap,
       leadOrgNamesMap,
+      eventPlannerDetailsMap,
       eventPlannersMap,
       eventPlannerIdsMap,
       newsReleaseOriginsMap,
@@ -917,6 +933,8 @@ export class ActivitiesService {
           related.representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: related.sharedWithMap.get(activity.id) ?? [],
         commsContacts,
+        eventPlannerDetails:
+          related.eventPlannerDetailsMap.get(activity.id) ?? [],
         eventPlanners: related.eventPlannersMap.get(activity.id) ?? [],
         eventPlannerLeadIds: related.eventPlannerIdsMap.get(activity.id) ?? [],
         leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
@@ -1020,6 +1038,7 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
@@ -1458,8 +1477,7 @@ export class ActivitiesService {
       sharedWith,
       commsContacts,
       leadOrgNamesMap,
-      eventPlannersMap,
-      eventPlannerIdsMap,
+      eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
@@ -1481,8 +1499,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
       this.dataFetcherService.fetchCommsContactsForActivities([id]),
       this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannersForActivities([id]),
-      this.dataFetcherService.fetchEventPlannerIdsForActivities([id]),
+      this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
@@ -1494,6 +1511,8 @@ export class ActivitiesService {
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
       this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
     ]);
+
+    const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       categoriesResult;
@@ -1511,8 +1530,11 @@ export class ActivitiesService {
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
       commsContacts: commsContacts.get(id) ?? [],
-      eventPlanners: eventPlannersMap.get(id) ?? [],
-      eventPlannerLeadIds: eventPlannerIdsMap.get(id) ?? [],
+      eventPlannerDetails,
+      eventPlanners: eventPlannerDetails.map((d) => d.name),
+      eventPlannerLeadIds: eventPlannerDetails
+        .filter((d) => d.eventPlannerId != null)
+        .map((d) => d.eventPlannerId as number),
       leadOrgName: leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
@@ -1860,6 +1882,7 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
@@ -1983,6 +2006,7 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
@@ -2098,6 +2122,7 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,

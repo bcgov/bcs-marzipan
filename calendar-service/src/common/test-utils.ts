@@ -46,7 +46,7 @@ export const createMockActivityRequest = (
     leadMinistryId: 1, // Office of the Premier (from seed)
     visibility: 'global',
     leadOrgName: 'Test Org', // XOR with leadOrgId: exactly one must be set
-    eventPlanners: [{ eventPlannerLeadName: 'Test Lead' }],
+    eventPlanners: [{ eventPlannerName: 'Test Lead', isLead: true }],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };

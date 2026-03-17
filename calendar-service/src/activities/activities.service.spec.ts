@@ -265,7 +265,7 @@ describe('ActivitiesService', () => {
         newsReleaseId: '123e4567-e89b-12d3-a456-426614174001',
         newsReleaseDistributionId: 1,
         premierRequestedId: 2,
-        eventPlanners: [{ eventPlannerLeadId: 3 }],
+        eventPlanners: [{ eventPlannerId: 3, isLead: true }],
         reportSettings: [
           { reportId: 1, omitted: true },
           { reportId: 2, omitted: true },
@@ -317,14 +317,17 @@ describe('ActivitiesService', () => {
       const mockActivity = createMockActivity();
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
-      mockDataFetcherService.fetchEventPlannersForActivities.mockResolvedValue(
-        new Map([[1, ['External Event Lead']]])
+      mockDataFetcherService.fetchEventPlannerDetailsForActivities.mockResolvedValue(
+        new Map([[1, [{ name: 'External Event Lead', isLead: true }]]])
       );
 
       const result = await service.findOne(1);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.eventPlanners).toEqual(['External Event Lead']);
+      expect(result.eventPlannerDetails).toEqual([
+        { name: 'External Event Lead', isLead: true },
+      ]);
     });
 
     it('should format dates correctly in ActivityResponse', async () => {
@@ -1420,7 +1423,7 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchLeadOrgNamesForActivities.mockResolvedValue(
         new Map([[1, null]])
       );
-      mockDataFetcherService.fetchEventPlannersForActivities.mockResolvedValue(
+      mockDataFetcherService.fetchEventPlannerDetailsForActivities.mockResolvedValue(
         new Map([[1, []]])
       );
       mockDataFetcherService.fetchNewsReleaseOriginsForActivities.mockResolvedValue(

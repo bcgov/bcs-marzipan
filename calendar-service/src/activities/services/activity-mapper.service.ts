@@ -9,6 +9,7 @@ import {
   LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
   type ActivityResponse,
+  type EventPlannerDetail,
   type LookAheadSection,
   type LookAheadStatus,
   type Visibility,
@@ -54,6 +55,7 @@ export class ActivityMapperService {
         name: string;
         isLead: boolean;
       }>;
+      eventPlannerDetails?: EventPlannerDetail[];
       eventPlanners?: string[];
       eventPlannerLeadIds?: number[];
       leadOrgName?: string | null;
@@ -135,6 +137,12 @@ export class ActivityMapperService {
       // Event
       representativesAttending: relatedData?.representativesAttending ?? [],
       venueAddress: relatedData?.venueAddress ?? null,
+      eventPlannerDetails: (relatedData?.eventPlannerDetails ?? []).map(
+        (d) => ({
+          ...d,
+          eventPlannerName: d.eventPlannerName ?? undefined,
+        })
+      ),
       eventPlanners: relatedData?.eventPlanners ?? [],
       eventPlannerLeadIds: relatedData?.eventPlannerLeadIds ?? [],
 

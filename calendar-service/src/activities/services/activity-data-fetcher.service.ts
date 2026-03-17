@@ -33,6 +33,7 @@ import {
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
+import type { EventPlannerDetail } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
 
@@ -827,21 +828,22 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch event planner display names for multiple activities
+   * Fetch event planner details for multiple activities (id/name, display name, isLead).
    * Reads from activity_event_planners junction; resolves lookup ids via event_planners table.
-   * Returns activityId -> string[] (ordered list of planner names per activity).
+   * Returns activityId -> Array<EventPlannerDetail>.
    */
-  async fetchEventPlannersForActivities(
+  async fetchEventPlannerDetailsForActivities(
     activityIds: number[]
-  ): Promise<Map<number, string[]>> {
-    const map = new Map<number, string[]>();
+  ): Promise<Map<number, EventPlannerDetail[]>> {
+    const map = new Map<number, EventPlannerDetail[]>();
     if (activityIds.length === 0) return map;
 
     const rows = await this.databaseService.db
       .select({
         activityId: activityEventPlanners.activityId,
-        eventPlannerLeadId: activityEventPlanners.eventPlannerLeadId,
-        eventPlannerLeadName: activityEventPlanners.eventPlannerLeadName,
+        eventPlannerId: activityEventPlanners.eventPlannerId,
+        eventPlannerName: activityEventPlanners.eventPlannerName,
+        isLead: activityEventPlanners.isLead,
         displayName: eventPlanners.displayName,
         name: eventPlanners.name,
       })
@@ -849,7 +851,7 @@ export class ActivityDataFetcherService {
       .leftJoin(
         eventPlanners,
         and(
-          eq(activityEventPlanners.eventPlannerLeadId, eventPlanners.id),
+          eq(activityEventPlanners.eventPlannerId, eventPlanners.id),
           eq(eventPlanners.isActive, true)
         )
       )
@@ -860,21 +862,20 @@ export class ActivityDataFetcherService {
         )
       );
 
-    const idToName = new Map<number, string>();
-    for (const row of rows) {
-      if (row.eventPlannerLeadId && (row.displayName || row.name)) {
-        idToName.set(row.eventPlannerLeadId, row.displayName ?? row.name ?? '');
-      }
-    }
     for (const row of rows) {
       const name =
-        row.eventPlannerLeadName?.trim() ||
-        (row.eventPlannerLeadId
-          ? (idToName.get(row.eventPlannerLeadId) ?? null)
+        row.eventPlannerName?.trim() ||
+        (row.eventPlannerId && (row.displayName || row.name)
+          ? (row.displayName ?? row.name ?? '')
           : null);
       if (name) {
         const list = map.get(row.activityId) ?? [];
-        list.push(name);
+        list.push({
+          eventPlannerId: row.eventPlannerId ?? undefined,
+          eventPlannerName: row.eventPlannerName ?? undefined,
+          name,
+          isLead: row.isLead ?? false,
+        });
         map.set(row.activityId, list);
       }
     }
@@ -882,8 +883,27 @@ export class ActivityDataFetcherService {
   }
 
   /**
+   * Fetch event planner display names for multiple activities (derived from details).
+   * Kept for backward compatibility; prefer building from fetchEventPlannerDetailsForActivities.
+   */
+  async fetchEventPlannersForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string[]>> {
+    const detailsMap =
+      await this.fetchEventPlannerDetailsForActivities(activityIds);
+    const map = new Map<number, string[]>();
+    for (const [activityId, details] of detailsMap) {
+      map.set(
+        activityId,
+        details.map((d) => d.name)
+      );
+    }
+    return map;
+  }
+
+  /**
    * Fetch event planner lookup IDs for multiple activities (for client-side filtering).
-   * Returns activityId -> number[] (only planners that have eventPlannerLeadId set).
+   * Returns activityId -> number[] (only planners that have eventPlannerId set).
    */
   async fetchEventPlannerIdsForActivities(
     activityIds: number[]
@@ -893,7 +913,7 @@ export class ActivityDataFetcherService {
     const rows = await this.databaseService.db
       .select({
         activityId: activityEventPlanners.activityId,
-        eventPlannerLeadId: activityEventPlanners.eventPlannerLeadId,
+        eventPlannerId: activityEventPlanners.eventPlannerId,
       })
       .from(activityEventPlanners)
       .where(
@@ -903,9 +923,9 @@ export class ActivityDataFetcherService {
         )
       );
     for (const row of rows) {
-      if (row.eventPlannerLeadId != null) {
+      if (row.eventPlannerId != null) {
         const list = map.get(row.activityId) ?? [];
-        list.push(row.eventPlannerLeadId);
+        list.push(row.eventPlannerId);
         map.set(row.activityId, list);
       }
     }
