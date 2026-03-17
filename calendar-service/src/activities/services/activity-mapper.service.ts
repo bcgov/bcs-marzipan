@@ -54,7 +54,8 @@ export class ActivityMapperService {
         name: string;
         isLead: boolean;
       }>;
-      eventLeadName?: string | null;
+      eventPlanners?: string[];
+      eventPlannerLeadIds?: number[];
       leadOrgName?: string | null;
       reportSettings?: Array<{
         id: number;
@@ -134,11 +135,8 @@ export class ActivityMapperService {
       // Event
       representativesAttending: relatedData?.representativesAttending ?? [],
       venueAddress: relatedData?.venueAddress ?? null,
-      eventPlannerLeadId: activity.eventPlannerLeadId ?? null,
-      eventLead:
-        // Use free-text name if available, otherwise use fetched user name
-        activity.eventPlannerLeadName ?? relatedData?.eventLeadName ?? null,
-      eventPlannerLeadName: activity.eventPlannerLeadName ?? null,
+      eventPlanners: relatedData?.eventPlanners ?? [],
+      eventPlannerLeadIds: relatedData?.eventPlannerLeadIds ?? [],
 
       // Reports
       executiveSummary: activity.executiveSummary ?? null,

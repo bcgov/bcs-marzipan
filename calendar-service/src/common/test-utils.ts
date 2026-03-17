@@ -46,7 +46,7 @@ export const createMockActivityRequest = (
     leadMinistryId: 1, // Office of the Premier (from seed)
     visibility: 'global',
     leadOrgName: 'Test Org', // XOR with leadOrgId: exactly one must be set
-    eventPlannerLeadName: 'Test Lead', // XOR with eventPlannerLeadId: exactly one must be set
+    eventPlanners: [{ eventPlannerLeadName: 'Test Lead' }],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
@@ -88,8 +88,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     newsReleaseDateTime: null,
     newsReleaseOriginId: null,
     newsReleaseDistributionId: null,
-    eventPlannerLeadId: null,
-    eventPlannerLeadName: null,
     executiveSummary: null,
     lookAheadStatus: 'none',
     lookAheadSection: 'events',

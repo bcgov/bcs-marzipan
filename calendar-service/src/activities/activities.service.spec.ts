@@ -130,6 +130,8 @@ describe('ActivitiesService', () => {
     updateActivityReportSettings: vi.fn().mockResolvedValue(undefined),
     insertCommsContacts: vi.fn().mockResolvedValue(undefined),
     updateCommsContacts: vi.fn().mockResolvedValue(undefined),
+    insertEventPlanners: vi.fn().mockResolvedValue(undefined),
+    updateEventPlanners: vi.fn().mockResolvedValue(undefined),
   };
 
   // Mock data fetcher service (from shared factory to stay in sync with ActivityDataFetcherService)
@@ -263,7 +265,7 @@ describe('ActivitiesService', () => {
         newsReleaseId: '123e4567-e89b-12d3-a456-426614174001',
         newsReleaseDistributionId: 1,
         premierRequestedId: 2,
-        eventPlannerLeadId: 3,
+        eventPlanners: [{ eventPlannerLeadId: 3 }],
         reportSettings: [
           { reportId: 1, omitted: true },
           { reportId: 2, omitted: true },
@@ -311,20 +313,18 @@ describe('ActivitiesService', () => {
       expect(result.endTime).toBeNull();
     });
 
-    it('should map an activity with eventPlannerLeadName instead of eventPlannerLeadId', async () => {
-      const mockActivity = createMockActivity({
-        eventPlannerLeadId: null,
-        eventPlannerLeadName: 'External Event Lead',
-      });
+    it('should map an activity with event planners from junction data', async () => {
+      const mockActivity = createMockActivity();
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
+      mockDataFetcherService.fetchEventPlannersForActivities.mockResolvedValue(
+        new Map([[1, ['External Event Lead']]])
+      );
 
       const result = await service.findOne(1);
 
-      // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
-      expect(result.eventLead).toBe('External Event Lead');
-      expect(result.eventPlannerLeadName).toBe('External Event Lead');
+      expect(result.eventPlanners).toEqual(['External Event Lead']);
     });
 
     it('should format dates correctly in ActivityResponse', async () => {
@@ -1420,8 +1420,8 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchLeadOrgNamesForActivities.mockResolvedValue(
         new Map([[1, null]])
       );
-      mockDataFetcherService.fetchEventPlannerNamesForActivities.mockResolvedValue(
-        new Map([[1, null]])
+      mockDataFetcherService.fetchEventPlannersForActivities.mockResolvedValue(
+        new Map([[1, []]])
       );
       mockDataFetcherService.fetchNewsReleaseOriginsForActivities.mockResolvedValue(
         new Map([[1, null]])

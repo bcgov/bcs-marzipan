@@ -24,7 +24,8 @@ const DEFAULTS = {
   fetchCommsContactsForActivities: new Map(),
   fetchUserNamesForUserIds: new Map(),
   fetchLeadOrgNamesForActivities: new Map(),
-  fetchEventPlannerNamesForActivities: new Map(),
+  fetchEventPlannersForActivities: new Map() as Map<number, string[]>,
+  fetchEventPlannerIdsForActivities: new Map() as Map<number, number[]>,
   fetchReportSettingsForActivities: new Map(),
   fetchPitchRequiredStatusForActivities: new Map() as Map<
     number,

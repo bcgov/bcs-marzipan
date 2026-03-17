@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   activityCommsContacts,
+  activityEventPlanners,
   activityReportSettings,
   activityRepresentatives,
   governmentRepresentatives,
@@ -137,6 +138,91 @@ export class ActivityJunctionService {
           toInsert.map((id) => ({
             activityId,
             ...idMapper(id),
+            isActive: true,
+            timestamp: now,
+          }))
+        );
+      }
+    }
+  }
+
+  /**
+   * Insert event planners into activityEventPlanners table
+   * Backend prefers eventPlannerLeadId when present, else eventPlannerLeadName (one-off).
+   */
+  async insertEventPlanners(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    eventPlanners:
+      | Array<{
+          eventPlannerLeadId?: number;
+          eventPlannerLeadName?: string;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    if (
+      !eventPlanners ||
+      !Array.isArray(eventPlanners) ||
+      eventPlanners.length === 0
+    ) {
+      return;
+    }
+    const valid = eventPlanners.filter(
+      (p) =>
+        (typeof p.eventPlannerLeadId === 'number' &&
+          p.eventPlannerLeadId > 0) ||
+        (typeof p.eventPlannerLeadName === 'string' &&
+          p.eventPlannerLeadName.trim().length > 0)
+    );
+    if (valid.length === 0) return;
+    await tx.insert(activityEventPlanners).values(
+      valid.map((p) => ({
+        activityId,
+        eventPlannerLeadId: p.eventPlannerLeadId ?? null,
+        eventPlannerLeadName: p.eventPlannerLeadName?.trim() ?? null,
+        isActive: true,
+        timestamp: now,
+      }))
+    );
+  }
+
+  /**
+   * Update event planners: replaces all existing with the new set (soft-delete old, insert new).
+   */
+  async updateEventPlanners(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    eventPlanners:
+      | Array<{
+          eventPlannerLeadId?: number;
+          eventPlannerLeadName?: string;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    await tx
+      .update(activityEventPlanners)
+      .set({ isActive: false })
+      .where(eq(activityEventPlanners.activityId, activityId));
+    if (eventPlanners && eventPlanners.length > 0) {
+      const valid = eventPlanners.filter(
+        (p) =>
+          (typeof p.eventPlannerLeadId === 'number' &&
+            p.eventPlannerLeadId > 0) ||
+          (typeof p.eventPlannerLeadName === 'string' &&
+            p.eventPlannerLeadName.trim().length > 0)
+      );
+      if (valid.length > 0) {
+        await tx.insert(activityEventPlanners).values(
+          valid.map((p) => ({
+            activityId,
+            eventPlannerLeadId: p.eventPlannerLeadId ?? null,
+            eventPlannerLeadName: p.eventPlannerLeadName?.trim() ?? null,
             isActive: true,
             timestamp: now,
           }))

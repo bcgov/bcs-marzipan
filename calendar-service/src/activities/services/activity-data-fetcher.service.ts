@@ -6,6 +6,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
@@ -826,69 +827,88 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch event planner names for multiple activities
-   * Returns maps of activityId -> event planner name
-   * Uses free text name if available, otherwise looks up from eventPlanners table
+   * Fetch event planner display names for multiple activities
+   * Reads from activity_event_planners junction; resolves lookup ids via event_planners table.
+   * Returns activityId -> string[] (ordered list of planner names per activity).
    */
-  async fetchEventPlannerNamesForActivities(
-    activities: Activity[]
-  ): Promise<Map<number, string | null>> {
-    const map = new Map<number, string | null>();
+  async fetchEventPlannersForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string[]>> {
+    const map = new Map<number, string[]>();
+    if (activityIds.length === 0) return map;
 
-    // Collect event planner IDs that need to be looked up
-    const eventPlannerLeadIdsToLookup = new Set<number>();
-    const activityIdToEventPlannerLeadId = new Map<number, number>();
-
-    for (const activity of activities) {
-      // If free text name exists, use it
-      if (activity.eventPlannerLeadName) {
-        map.set(activity.id, activity.eventPlannerLeadName);
-      } else if (activity.eventPlannerLeadId) {
-        // Need to look up event planner name
-        eventPlannerLeadIdsToLookup.add(activity.eventPlannerLeadId);
-        activityIdToEventPlannerLeadId.set(
-          activity.id,
-          activity.eventPlannerLeadId
-        );
-      } else {
-        // No event planner
-        map.set(activity.id, null);
-      }
-    }
-
-    // Bulk lookup event planner names
-    if (eventPlannerLeadIdsToLookup.size > 0) {
-      const results = await this.databaseService.db
-        .select({
-          eventPlannerLeadId: eventPlanners.id,
-          eventPlannerLeadName:
-            sql<string>`COALESCE(${eventPlanners.displayName}, ${eventPlanners.name})`.as(
-              'eventPlannerLeadName'
-            ),
-        })
-        .from(eventPlanners)
-        .where(
-          and(
-            inArray(eventPlanners.id, Array.from(eventPlannerLeadIdsToLookup)),
-            eq(eventPlanners.isActive, true)
-          )
-        );
-
-      const eventPlannerLeadIdToName = new Map(
-        results.map((row) => [row.eventPlannerLeadId, row.eventPlannerLeadName])
+    const rows = await this.databaseService.db
+      .select({
+        activityId: activityEventPlanners.activityId,
+        eventPlannerLeadId: activityEventPlanners.eventPlannerLeadId,
+        eventPlannerLeadName: activityEventPlanners.eventPlannerLeadName,
+        displayName: eventPlanners.displayName,
+        name: eventPlanners.name,
+      })
+      .from(activityEventPlanners)
+      .leftJoin(
+        eventPlanners,
+        and(
+          eq(activityEventPlanners.eventPlannerLeadId, eventPlanners.id),
+          eq(eventPlanners.isActive, true)
+        )
+      )
+      .where(
+        and(
+          inArray(activityEventPlanners.activityId, activityIds),
+          eq(activityEventPlanners.isActive, true)
+        )
       );
 
-      // Map event planner names back to activities
-      for (const [
-        activityId,
-        eventPlannerLeadId,
-      ] of activityIdToEventPlannerLeadId.entries()) {
-        const eventPlannerLeadName =
-          eventPlannerLeadIdToName.get(eventPlannerLeadId);
-        map.set(activityId, eventPlannerLeadName ?? null);
+    const idToName = new Map<number, string>();
+    for (const row of rows) {
+      if (row.eventPlannerLeadId && (row.displayName || row.name)) {
+        idToName.set(row.eventPlannerLeadId, row.displayName ?? row.name ?? '');
       }
     }
+    for (const row of rows) {
+      const name =
+        row.eventPlannerLeadName?.trim() ||
+        (row.eventPlannerLeadId
+          ? (idToName.get(row.eventPlannerLeadId) ?? null)
+          : null);
+      if (name) {
+        const list = map.get(row.activityId) ?? [];
+        list.push(name);
+        map.set(row.activityId, list);
+      }
+    }
+    return map;
+  }
 
+  /**
+   * Fetch event planner lookup IDs for multiple activities (for client-side filtering).
+   * Returns activityId -> number[] (only planners that have eventPlannerLeadId set).
+   */
+  async fetchEventPlannerIdsForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, number[]>> {
+    const map = new Map<number, number[]>();
+    if (activityIds.length === 0) return map;
+    const rows = await this.databaseService.db
+      .select({
+        activityId: activityEventPlanners.activityId,
+        eventPlannerLeadId: activityEventPlanners.eventPlannerLeadId,
+      })
+      .from(activityEventPlanners)
+      .where(
+        and(
+          inArray(activityEventPlanners.activityId, activityIds),
+          eq(activityEventPlanners.isActive, true)
+        )
+      );
+    for (const row of rows) {
+      if (row.eventPlannerLeadId != null) {
+        const list = map.get(row.activityId) ?? [];
+        list.push(row.eventPlannerLeadId);
+        map.set(row.activityId, list);
+      }
+    }
     return map;
   }
 
