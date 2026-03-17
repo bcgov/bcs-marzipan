@@ -33,6 +33,7 @@ import {
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
+  type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import {
@@ -408,31 +409,67 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
-          const first = list[0];
-          const comboboxValue: FreeformComboboxValue = first?.eventPlannerLeadId
-            ? { type: 'option', value: String(first.eventPlannerLeadId) }
-            : first?.eventPlannerLeadName
-              ? { type: 'freeform', value: first.eventPlannerLeadName }
-              : null;
+          const comboboxValue: FreeformComboboxValueWithLead[] = list.map(
+            (p) => {
+              const base: FreeformComboboxValueWithLead =
+                p.eventPlannerId != null
+                  ? { type: 'option', value: String(p.eventPlannerId) }
+                  : p.eventPlannerName
+                    ? { type: 'freeform', value: p.eventPlannerName }
+                    : { type: 'freeform', value: '' };
+              return { ...base, isLead: p.isLead ?? false };
+            }
+          );
 
           const handleChange = (
             value: FreeformComboboxValue | FreeformComboboxValue[] | null
           ) => {
-            const single =
+            const arr =
               value == null
-                ? null
+                ? []
                 : Array.isArray(value)
-                  ? (value[0] ?? null)
-                  : value;
-            if (!single) {
+                  ? value.filter(
+                      (v): v is NonNullable<FreeformComboboxValue> => v != null
+                    )
+                  : [value];
+            if (arr.length === 0) {
               field.onChange([]);
-            } else if (single.type === 'option') {
-              field.onChange([
-                { eventPlannerLeadId: parseInt(single.value, 10) },
-              ]);
-            } else {
-              field.onChange([{ eventPlannerLeadName: single.value }]);
+              return;
             }
+            const current = field.value ?? [];
+            const prevLead = current.find((p) => p.isLead);
+            const leadKey =
+              prevLead?.eventPlannerId != null
+                ? `id:${prevLead.eventPlannerId}`
+                : prevLead?.eventPlannerName != null
+                  ? `name:${prevLead.eventPlannerName}`
+                  : null;
+            const next = arr.map((v, i) => {
+              const key =
+                v.type === 'option'
+                  ? `id:${parseInt(v.value, 10)}`
+                  : `name:${v.value}`;
+              const isLead = leadKey != null ? key === leadKey : i === 0;
+              if (v.type === 'option') {
+                return {
+                  eventPlannerId: parseInt(v.value, 10),
+                  isLead,
+                };
+              }
+              return { eventPlannerName: v.value, isLead };
+            });
+            if (next.length > 0 && !next.some((p) => p.isLead)) {
+              next[0] = { ...next[0], isLead: true };
+            }
+            field.onChange(next);
+          };
+
+          const setLead = (index: number) => {
+            const next = (field.value ?? []).map((p, i) => ({
+              ...p,
+              isLead: i === index,
+            }));
+            field.onChange(next);
           };
 
           return (
@@ -444,11 +481,14 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}
-                  placeholder="Select event planner"
+                  placeholder="Select event planners"
                   searchPlaceholder="Search event planners..."
                   emptyMessage="No event planners found."
                   freeformLabel="Other"
                   freeformDescription="Can't find the event planner?"
+                  multiple
+                  useChips
+                  onSetLead={setLead}
                 />
               </FormControl>
 

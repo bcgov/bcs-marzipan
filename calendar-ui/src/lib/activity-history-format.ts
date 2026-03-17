@@ -85,11 +85,12 @@ export function formatHistoryFieldValue(
   if (field === 'eventPlanners') {
     if (Array.isArray(value)) {
       const planners = value as Array<{
-        eventPlannerLeadId?: number;
-        eventPlannerLeadName?: string;
+        eventPlannerId?: number;
+        eventPlannerName?: string;
+        isLead?: boolean;
       }>;
       const names = planners
-        .map((p) => p.eventPlannerLeadName ?? `ID ${p.eventPlannerLeadId}`)
+        .map((p) => p.eventPlannerName ?? `ID ${p.eventPlannerId}`)
         .join(', ');
       return names || '(no event planners)';
     }

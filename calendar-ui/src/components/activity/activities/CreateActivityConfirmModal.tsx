@@ -144,18 +144,19 @@ function resolveDisplayValue(
   if (field === 'eventPlanners' && Array.isArray(value)) {
     if (value.length === 0) return '(none)';
     const items = value as Array<{
-      eventPlannerLeadId?: number;
-      eventPlannerLeadName?: string;
+      eventPlannerId?: number;
+      eventPlannerName?: string;
+      isLead?: boolean;
     }>;
     return items
       .map((p) => {
-        if (p.eventPlannerLeadId != null) {
+        if (p.eventPlannerId != null) {
           const planner = lookups.eventPlanners.find(
-            (ep) => String(ep.value) === String(p.eventPlannerLeadId)
+            (ep) => String(ep.value) === String(p.eventPlannerId)
           );
-          return planner?.label ?? String(p.eventPlannerLeadId);
+          return planner?.label ?? String(p.eventPlannerId);
         }
-        return p.eventPlannerLeadName ?? '(unknown)';
+        return p.eventPlannerName ?? '(unknown)';
       })
       .join(', ');
   }

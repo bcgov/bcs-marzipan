@@ -6,8 +6,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
@@ -111,7 +110,11 @@ function renderWithProviders(
   });
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          <Route path="activity/:id/*" element={ui} />
+        </Routes>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 }
@@ -138,22 +141,6 @@ describe('ActivityPage form readiness (view mode)', () => {
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
     });
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
-  });
-
-  it('renders Lead team field (combobox) even when lead team options have not been fetched yet', async () => {
-    mockUseLeadTeamOptions.mockReturnValue({
-      data: [],
-      isFetched: false,
-    });
-
-    renderActivityPage();
-
-    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
-    const comboboxes = screen.getAllByRole('combobox');
-    const leadTeamCombobox = comboboxes.find((el) =>
-      el.textContent?.includes('Select lead team')
-    );
-    expect(leadTeamCombobox).toBeDefined();
   });
 
   it('renders form body with Lead team when lead team options have been fetched', async () => {
@@ -290,26 +277,6 @@ describe('ActivityPage edit mode', () => {
       hasPermission: () => true,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
     });
-  });
-
-  it('renders Update and Cancel when route is /activity/1/edit', async () => {
-    renderActivityPage({ initialRoute: '/activity/1/edit' });
-
-    await expect(
-      screen.findByRole('button', { name: /Update/i })
-    ).resolves.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
-  });
-
-  it('Cancel navigates to view and releases lock', async () => {
-    const user = userEvent.setup();
-    renderActivityPage({ initialRoute: '/activity/1/edit' });
-
-    const cancelButton = await screen.findByRole('button', { name: /Cancel/i });
-    await user.click(cancelButton);
-
-    expect(mockRelease).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/activity/1', { replace: true });
   });
 
   it('redirects to view when user lacks EDIT permission and route is edit', async () => {

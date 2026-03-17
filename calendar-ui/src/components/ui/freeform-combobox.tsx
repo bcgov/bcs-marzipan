@@ -28,6 +28,11 @@ export type FreeformComboboxValue =
   | { type: 'freeform'; value: string }
   | null;
 
+/** Value with optional isLead for leadable multi-select (e.g. event planners) */
+export type FreeformComboboxValueWithLead = FreeformComboboxValue & {
+  isLead?: boolean;
+};
+
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
   | { kind: 'freeform'; value: string; label: string }
@@ -54,6 +59,12 @@ export interface FreeformComboboxProps {
   multiple?: boolean;
   /** When multiple, show selected values as chips (default true when multiple) */
   useChips?: boolean;
+  /**
+   * When set, chips support a "lead" state: one item can be marked as lead.
+   * Value items may include isLead; chips show a Lead badge and "Set as lead" for non-lead items.
+   * Called with the index of the item to set as lead (parent should update value so only that item has isLead: true).
+   */
+  onSetLead?: (index: number) => void;
 }
 
 export function FreeformCombobox({
@@ -69,6 +80,7 @@ export function FreeformCombobox({
   disabled = false,
   multiple = false,
   useChips = true,
+  onSetLead,
 }: FreeformComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -78,10 +90,10 @@ export function FreeformCombobox({
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const values = multiple
-    ? ((value as FreeformComboboxValue[]) ?? [])
-    : [value as FreeformComboboxValue];
+    ? ((value as FreeformComboboxValueWithLead[]) ?? [])
+    : [value as FreeformComboboxValueWithLead];
   const selectedList = values.filter(
-    (v): v is NonNullable<FreeformComboboxValue> => v != null
+    (v): v is NonNullable<FreeformComboboxValueWithLead> => v != null
   );
   const hasSelection = selectedList.length > 0;
 
@@ -279,30 +291,57 @@ export function FreeformCombobox({
       )}
       onClick={() => !disabled && setOpen(true)}
     >
-      {selectedList.map((v, i) => (
-        <span
-          key={v.type === 'option' ? v.value : `freeform-${v.value}`}
-          data-slot="chip"
-          className="bg-muted text-foreground flex h-5.5 w-fit items-center gap-1 rounded-sm px-1.5 text-xs font-medium whitespace-nowrap"
-        >
-          {getDisplayLabel(v)}
-          <button
-            type="button"
-            className="-mr-1 rounded p-0.5 opacity-50 hover:opacity-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeItem(i);
-            }}
-            aria-label="Remove"
+      {selectedList.map((v, i) => {
+        const isLead = 'isLead' in v && v.isLead === true;
+        return (
+          <span
+            key={v.type === 'option' ? v.value : `freeform-${v.value}`}
+            data-slot="chip"
+            className="bg-muted text-foreground flex h-5.5 w-fit max-w-full items-center gap-1 rounded-sm px-1.5 text-sm font-medium whitespace-nowrap"
           >
-            <X className="size-3.5" />
-          </button>
-        </span>
-      ))}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate">{getDisplayLabel(v)}</span>
+              {onSetLead && (
+                <>
+                  {isLead && (
+                    <span className="bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium">
+                      Lead
+                    </span>
+                  )}
+                  {!disabled && !isLead && (
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground focus:ring-ring shrink-0 text-[10px] underline focus:ring-1 focus:outline-none"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onSetLead(i);
+                      }}
+                    >
+                      Set as lead
+                    </button>
+                  )}
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              className="-mr-1 shrink-0 rounded p-0.5 opacity-50 hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeItem(i);
+              }}
+              aria-label="Remove"
+            >
+              <X className="size-3.5" />
+            </button>
+          </span>
+        );
+      })}
       <input
         ref={inputRef}
         type="text"
-        className="placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent outline-none"
+        className="placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent text-sm outline-none"
         placeholder={
           selectedList.length === 0 ? placeholder : searchPlaceholder
         }
@@ -347,7 +386,10 @@ export function FreeformCombobox({
         disabled={disabled}
         autoComplete="off"
         readOnly={!open && selectedList.length > 0}
-        className={cn(!open && selectedList.length > 0 && 'cursor-pointer')}
+        className={cn(
+          'text-sm',
+          !open && selectedList.length > 0 && 'cursor-pointer'
+        )}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton
