@@ -502,8 +502,9 @@ CREATE TABLE "activity_comms_materials" (
 CREATE TABLE "activity_event_planners" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"activity_id" integer NOT NULL,
-	"event_planner_lead_id" integer,
-	"event_planner_lead_name" varchar(255),
+	"event_planner_id" integer,
+	"event_planner_name" varchar(255),
+	"is_lead" boolean DEFAULT false NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -816,7 +817,7 @@ ALTER TABLE "activity_comms_contacts" ADD CONSTRAINT "activity_comms_contacts_us
 ALTER TABLE "activity_comms_materials" ADD CONSTRAINT "activity_comms_materials_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_comms_materials" ADD CONSTRAINT "activity_comms_materials_comms_material_id_comms_materials_id_fk" FOREIGN KEY ("comms_material_id") REFERENCES "public"."comms_materials"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_event_planners" ADD CONSTRAINT "activity_event_planners_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "activity_event_planners" ADD CONSTRAINT "activity_event_planners_event_planner_lead_id_event_planners_id_fk" FOREIGN KEY ("event_planner_lead_id") REFERENCES "public"."event_planners"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_event_planners" ADD CONSTRAINT "activity_event_planners_event_planner_id_event_planners_id_fk" FOREIGN KEY ("event_planner_id") REFERENCES "public"."event_planners"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_report_settings" ADD CONSTRAINT "activity_report_settings_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_report_settings" ADD CONSTRAINT "activity_report_settings_report_id_reports_id_fk" FOREIGN KEY ("report_id") REFERENCES "public"."reports"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_representatives" ADD CONSTRAINT "activity_representatives_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

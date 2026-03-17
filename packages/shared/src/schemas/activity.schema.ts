@@ -144,12 +144,13 @@ const representativeSchema = z.object({
 
 /**
  * Event planner schema (one entry per planner).
- * eventPlannerLeadId = lookup table; eventPlannerLeadName = one-off free text.
- * Backend prefers id when present.
+ * eventPlannerId = lookup table; eventPlannerName = one-off free text.
+ * Backend prefers id when present. isLead marks the lead planner (exactly one per activity when non-empty).
  */
 const eventPlannerSchema = z.object({
-  eventPlannerLeadId: z.number().int().optional(),
-  eventPlannerLeadName: z.string().max(255).optional(),
+  eventPlannerId: z.number().int().optional(),
+  eventPlannerName: z.string().max(255).optional(),
+  isLead: z.boolean().default(false),
 });
 
 /**
@@ -219,6 +220,23 @@ function updateLeadContactRefine(data: {
   return contacts.filter((c) => c.isLead).length === 1;
 }
 
+const EVENT_PLANNER_LEAD_REFINE_MESSAGE =
+  'When event planners are provided, exactly one must be marked as lead.';
+const EVENT_PLANNER_LEAD_REFINE_PATH = ['eventPlanners'] as const;
+
+/** When eventPlanners is provided and non-empty, exactly one must have isLead true. */
+function eventPlannerLeadRefine(data: {
+  eventPlanners?: Array<{
+    eventPlannerId?: number;
+    eventPlannerName?: string;
+    isLead?: boolean;
+  }>;
+}): boolean {
+  const planners = data.eventPlanners ?? [];
+  if (planners.length === 0) return true;
+  return planners.filter((p) => p.isLead === true).length === 1;
+}
+
 /**
  * Base schema for create (no refinements).
  * Used to build create and update schemas without calling .partial() on a refined schema (Zod v4).
@@ -239,10 +257,15 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
-export const createActivityRequestSchema = createBaseSchema.refine(
-  createLeadContactRefine,
-  { message: LEAD_CONTACT_REFINE_MESSAGE, path: [...LEAD_CONTACT_REFINE_PATH] }
-);
+export const createActivityRequestSchema = createBaseSchema
+  .refine(createLeadContactRefine, {
+    message: LEAD_CONTACT_REFINE_MESSAGE,
+    path: [...LEAD_CONTACT_REFINE_PATH],
+  })
+  .refine(eventPlannerLeadRefine, {
+    message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
+    path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+  });
 
 /**
  * Schema for updating an activity via HTTP request
@@ -259,6 +282,10 @@ export const updateActivityRequestSchema = createBaseSchema
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
+  })
+  .refine(eventPlannerLeadRefine, {
+    message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
+    path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
   });
 
 /**

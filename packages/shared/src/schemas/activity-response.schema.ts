@@ -119,6 +119,20 @@ const reportSettingSchema = z.object({
 });
 
 /**
+ * Event planner detail item (id/name + display name + isLead).
+ * Matches activity_event_planners junction: eventPlannerId and eventPlannerName can be null from DB
+ * (event planner is optional on the form). name is the computed display name for API/UI.
+ */
+export const eventPlannerDetailSchema = z.object({
+  eventPlannerId: z.number().int().optional().nullable(),
+  eventPlannerName: z.string().optional().nullable(),
+  name: z.string(),
+  isLead: z.boolean(),
+});
+
+export type EventPlannerDetail = z.infer<typeof eventPlannerDetailSchema>;
+
+/**
  * Layer 2: Computed Fields Schema
  *
  * These fields are computed from joins and lookups - they don't exist
@@ -153,9 +167,11 @@ export const activityComputedFieldsSchema = z.object({
   // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
   leadOrg: z.string().nullable(),
 
-  // Event planner display names (from activity_event_planners junction + event_planners lookup or free text)
+  // Event planner details (id/name + display name + isLead) for form hydration and display
+  eventPlannerDetails: z.array(eventPlannerDetailSchema).default([]),
+  // Event planner display names (derived from eventPlannerDetails for list/table)
   eventPlanners: z.array(z.string()).default([]),
-  // Event planner lookup IDs for this activity (for client-side filtering)
+  // Event planner lookup IDs for this activity (for client-side filtering; derived from eventPlannerDetails)
   eventPlannerLeadIds: z.array(z.number().int()).default([]),
 
   // Computed status names (from lookup table joins)

@@ -159,17 +159,19 @@ export const activityTranslationsRequired = pgTable(
 
 /**
  * ActivityEventPlanners junction table - Many-to-many relationship between Activities and Event Planners
- * eventPlannerLeadId = lookup table; eventPlannerLeadName = one-off free text. Backend prefers id when present.
+ * eventPlannerId = lookup table; eventPlannerName = one-off free text. Backend prefers id when present.
+ * isLead marks the lead planner (exactly one per activity when planners exist).
  */
 export const activityEventPlanners = pgTable('activity_event_planners', {
   id: serial('id').primaryKey(),
   activityId: integer('activity_id')
     .notNull()
     .references(() => activities.id),
-  eventPlannerLeadId: integer('event_planner_lead_id').references(
+  eventPlannerId: integer('event_planner_id').references(
     () => eventPlanners.id
   ),
-  eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }),
+  eventPlannerName: varchar('event_planner_name', { length: 255 }),
+  isLead: boolean('is_lead').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
   timestamp: timestamp('timestamp', { withTimezone: true })
     .notNull()
@@ -289,7 +291,7 @@ export const activityEventPlannersRelations = relations(
       references: [activities.id],
     }),
     eventPlanner: one(eventPlanners, {
-      fields: [activityEventPlanners.eventPlannerLeadId],
+      fields: [activityEventPlanners.eventPlannerId],
       references: [eventPlanners.id],
     }),
   })

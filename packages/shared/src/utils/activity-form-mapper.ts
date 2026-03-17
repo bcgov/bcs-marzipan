@@ -76,6 +76,20 @@ export function mapResponseToFormData(
         }))
       : undefined;
 
+  const eventPlanners =
+    response.eventPlannerDetails?.length > 0
+      ? response.eventPlannerDetails.map((d) => ({
+          eventPlannerId: d.eventPlannerId ?? undefined,
+          eventPlannerName: d.eventPlannerName ?? undefined,
+          isLead: d.isLead,
+        }))
+      : response.eventPlanners?.length > 0
+        ? response.eventPlanners.map((name, i) => ({
+            eventPlannerName: name,
+            isLead: i === 0,
+          }))
+        : undefined;
+
   return {
     title: response.title,
     summary: response.summary,
@@ -107,10 +121,7 @@ export function mapResponseToFormData(
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
-    eventPlanners:
-      response.eventPlanners?.length > 0
-        ? response.eventPlanners.map((name) => ({ eventPlannerLeadName: name }))
-        : undefined,
+    eventPlanners: eventPlanners?.length ? eventPlanners : undefined,
     newsReleaseDistributionId: response.newsReleaseDistributionId ?? undefined,
     premierRequestedId: response.premierRequestedId ?? undefined,
     categoryIds: categoryIds?.length ? categoryIds : undefined,

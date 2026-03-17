@@ -1,5 +1,5 @@
 {
-  "id": "45aeacd8-654f-40d0-8881-c2879e0b137a",
+  "id": "24c92a77-fa55-41de-af91-35db653e2445",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -3986,17 +3986,24 @@
           "primaryKey": false,
           "notNull": true
         },
-        "event_planner_lead_id": {
-          "name": "event_planner_lead_id",
+        "event_planner_id": {
+          "name": "event_planner_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "event_planner_lead_name": {
-          "name": "event_planner_lead_name",
+        "event_planner_name": {
+          "name": "event_planner_name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_lead": {
+          "name": "is_lead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "is_active": {
           "name": "is_active",
@@ -4024,11 +4031,11 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_event_planners_event_planner_lead_id_event_planners_id_fk": {
-          "name": "activity_event_planners_event_planner_lead_id_event_planners_id_fk",
+        "activity_event_planners_event_planner_id_event_planners_id_fk": {
+          "name": "activity_event_planners_event_planner_id_event_planners_id_fk",
           "tableFrom": "activity_event_planners",
           "tableTo": "event_planners",
-          "columnsFrom": ["event_planner_lead_id"],
+          "columnsFrom": ["event_planner_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"

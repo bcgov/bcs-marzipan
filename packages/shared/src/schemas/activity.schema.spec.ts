@@ -217,21 +217,56 @@ describe('createActivityRequestSchema', () => {
     expect(err.error.issues[0].path).toEqual(['commsContacts']);
   });
 
-  it('accepts create with eventPlanners array (id or name per entry)', () => {
+  it('accepts create with eventPlanners array (id or name per entry, isLead)', () => {
     const withId = createActivityRequestSchema.parse(
       minimalCreateRequest({
-        eventPlanners: [{ eventPlannerLeadId: 1 }],
+        eventPlanners: [{ eventPlannerId: 1, isLead: true }],
       })
     );
-    expect(withId.eventPlanners).toEqual([{ eventPlannerLeadId: 1 }]);
+    expect(withId.eventPlanners).toEqual([
+      { eventPlannerId: 1, eventPlannerName: undefined, isLead: true },
+    ]);
     const withName = createActivityRequestSchema.parse(
       minimalCreateRequest({
-        eventPlanners: [{ eventPlannerLeadName: 'External Lead' }],
+        eventPlanners: [{ eventPlannerName: 'External Lead', isLead: true }],
       })
     );
     expect(withName.eventPlanners).toEqual([
-      { eventPlannerLeadName: 'External Lead' },
+      {
+        eventPlannerId: undefined,
+        eventPlannerName: 'External Lead',
+        isLead: true,
+      },
     ]);
+  });
+
+  it('rejects create when eventPlanners has entries but no lead', () => {
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        eventPlanners: [
+          { eventPlannerId: 1, isLead: false },
+          { eventPlannerName: 'Other', isLead: false },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
+    expect(err.error.issues[0].message).toBe(
+      'When event planners are provided, exactly one must be marked as lead.'
+    );
+  });
+
+  it('rejects create when eventPlanners has two leads', () => {
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        eventPlanners: [
+          { eventPlannerId: 1, isLead: true },
+          { eventPlannerName: 'Other', isLead: true },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
   });
 
   it('accepts create with representatives (no XOR; optional id or name per entry)', () => {
@@ -310,6 +345,29 @@ describe('updateActivityRequestSchema', () => {
     });
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('accepts update when eventPlanners has exactly one lead', () => {
+    const result = updateActivityRequestSchema.parse({
+      eventPlanners: [
+        { eventPlannerId: 1, isLead: true },
+        { eventPlannerName: 'Other', isLead: false },
+      ],
+    });
+    expect(result.eventPlanners).toHaveLength(2);
+    expect(result.eventPlanners?.[0].isLead).toBe(true);
+    expect(result.eventPlanners?.[1].isLead).toBe(false);
+  });
+
+  it('rejects update when eventPlanners has entries but no lead', () => {
+    const err = updateActivityRequestSchema.safeParse({
+      eventPlanners: [
+        { eventPlannerId: 1, isLead: false },
+        { eventPlannerName: 'Other', isLead: false },
+      ],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
   });
 });
 
