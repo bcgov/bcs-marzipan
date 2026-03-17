@@ -30,7 +30,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   leadOrgId: 'Lead organization',
   commsContactLeadId: 'Comms lead',
   commsContacts: 'Comms contacts',
-  eventPlannerLeadId: 'Event planner',
+  eventPlanners: 'Event planners',
   categoryIds: 'Categories',
   tagIds: 'Tags',
   commsMaterialIds: 'Comms materials',

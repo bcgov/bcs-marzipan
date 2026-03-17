@@ -120,10 +120,6 @@ const activityCoreFieldsSchema = z.object({
     z.number().int().nullable().optional()
   ), // Optional; derived from lead team's ministry
 
-  // Optional user ID fields
-  eventPlannerLeadId: z.number().int().nullable().optional(),
-  eventPlannerLeadName: z.string().max(255).nullable().optional(),
-
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable().optional(),
@@ -137,32 +133,24 @@ const activityCoreFieldsSchema = z.object({
 // ============================================================================
 
 /**
- * Representative schema
- * Supports either representativeId (from lookup table) or representativeName (freeform text)
+ * Representative schema.
+ * Array can mix entries by representativeId (lookup) or representativeName (freeform).
+ * Backend uses representativeId when present, else representativeName.
  */
-const representativeSchema = z
-  .object({
-    representativeId: z.number().int().optional(),
-    representativeName: z.string().max(255).optional(),
-  })
-  .refine(
-    (data) =>
-      data.representativeId !== undefined ||
-      data.representativeName !== undefined,
-    {
-      message: 'Either representativeId or representativeName must be provided',
-    }
-  )
-  .refine(
-    (data) =>
-      !(
-        data.representativeId !== undefined &&
-        data.representativeName !== undefined
-      ),
-    {
-      message: 'Cannot provide both representativeId and representativeName',
-    }
-  );
+const representativeSchema = z.object({
+  representativeId: z.number().int().optional(),
+  representativeName: z.string().max(255).optional(),
+});
+
+/**
+ * Event planner schema (one entry per planner).
+ * eventPlannerLeadId = lookup table; eventPlannerLeadName = one-off free text.
+ * Backend prefers id when present.
+ */
+const eventPlannerSchema = z.object({
+  eventPlannerLeadId: z.number().int().optional(),
+  eventPlannerLeadName: z.string().max(255).optional(),
+});
 
 /**
  * Report setting schema
@@ -204,6 +192,7 @@ const junctionTableIdsSchema = z.object({
   tagIds: z.array(z.number().int()).optional(),
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
+  eventPlanners: z.array(eventPlannerSchema).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)

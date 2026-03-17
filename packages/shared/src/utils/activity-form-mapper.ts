@@ -107,8 +107,10 @@ export function mapResponseToFormData(
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
-    eventPlannerLeadId: response.eventPlannerLeadId ?? undefined,
-    eventPlannerLeadName: response.eventPlannerLeadName ?? undefined,
+    eventPlanners:
+      response.eventPlanners?.length > 0
+        ? response.eventPlanners.map((name) => ({ eventPlannerLeadName: name }))
+        : undefined,
     newsReleaseDistributionId: response.newsReleaseDistributionId ?? undefined,
     premierRequestedId: response.premierRequestedId ?? undefined,
     categoryIds: categoryIds?.length ? categoryIds : undefined,

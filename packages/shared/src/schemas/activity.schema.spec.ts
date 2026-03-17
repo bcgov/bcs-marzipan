@@ -216,6 +216,40 @@ describe('createActivityRequestSchema', () => {
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['commsContacts']);
   });
+
+  it('accepts create with eventPlanners array (id or name per entry)', () => {
+    const withId = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        eventPlanners: [{ eventPlannerLeadId: 1 }],
+      })
+    );
+    expect(withId.eventPlanners).toEqual([{ eventPlannerLeadId: 1 }]);
+    const withName = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        eventPlanners: [{ eventPlannerLeadName: 'External Lead' }],
+      })
+    );
+    expect(withName.eventPlanners).toEqual([
+      { eventPlannerLeadName: 'External Lead' },
+    ]);
+  });
+
+  it('accepts create with representatives (no XOR; optional id or name per entry)', () => {
+    const withId = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        representatives: [{ representativeId: 1 }],
+      })
+    );
+    expect(withId.representatives).toEqual([{ representativeId: 1 }]);
+    const withName = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        representatives: [{ representativeName: 'Rep Name' }],
+      })
+    );
+    expect(withName.representatives).toEqual([
+      { representativeName: 'Rep Name' },
+    ]);
+  });
 });
 
 describe('updateActivityRequestSchema', () => {

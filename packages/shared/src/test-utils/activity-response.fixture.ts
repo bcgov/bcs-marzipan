@@ -65,10 +65,6 @@ export function createMockActivityResponse(
     newsReleaseId: null,
     newsReleaseDistributionId: null,
 
-    // Event lead/planner
-    eventPlannerLeadId: null,
-    eventPlannerLeadName: null,
-
     // Look Ahead
     executiveSummary: null,
     lookAheadStatus: null,
@@ -102,7 +98,8 @@ export function createMockActivityResponse(
     sharedWith: [],
     commsContacts: [],
     leadOrg: null,
-    eventLead: null,
+    eventPlanners: [],
+    eventPlannerLeadIds: [],
     dateStatus: 'Set',
     timeStatus: 'Set',
     activityStatus: DEFAULT_ACTIVITY_STATUS,

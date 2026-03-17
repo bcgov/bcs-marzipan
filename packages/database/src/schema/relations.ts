@@ -15,6 +15,7 @@ import { activities } from './activity';
 import {
   categories,
   commsMaterials,
+  eventPlanners,
   reports,
   sectors,
   tags,
@@ -157,6 +158,25 @@ export const activityTranslationsRequired = pgTable(
 );
 
 /**
+ * ActivityEventPlanners junction table - Many-to-many relationship between Activities and Event Planners
+ * eventPlannerLeadId = lookup table; eventPlannerLeadName = one-off free text. Backend prefers id when present.
+ */
+export const activityEventPlanners = pgTable('activity_event_planners', {
+  id: serial('id').primaryKey(),
+  activityId: integer('activity_id')
+    .notNull()
+    .references(() => activities.id),
+  eventPlannerLeadId: integer('event_planner_lead_id').references(
+    () => eventPlanners.id
+  ),
+  eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }),
+  isActive: boolean('is_active').notNull().default(true),
+  timestamp: timestamp('timestamp', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
  * ActivityRepresentatives junction table - Many-to-many relationship between Activities and Representatives
  * Optional free text representativeName for representatives not in the governmentRepresentatives lookup table
  */
@@ -257,6 +277,20 @@ export const activityTranslationsRequiredRelations = relations(
     language: one(translatedLanguages, {
       fields: [activityTranslationsRequired.languageId],
       references: [translatedLanguages.id],
+    }),
+  })
+);
+
+export const activityEventPlannersRelations = relations(
+  activityEventPlanners,
+  ({ one }) => ({
+    activity: one(activities, {
+      fields: [activityEventPlanners.activityId],
+      references: [activities.id],
+    }),
+    eventPlanner: one(eventPlanners, {
+      fields: [activityEventPlanners.eventPlannerLeadId],
+      references: [eventPlanners.id],
     }),
   })
 );

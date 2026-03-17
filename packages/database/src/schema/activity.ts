@@ -17,7 +17,6 @@ import {
 import {
   activityStatuses,
   dateStatuses,
-  eventPlanners,
   newsReleaseDistributions,
   newsReleaseOrigins,
   pitchRequiredStatuses,
@@ -31,6 +30,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityReportSettings,
   activityRepresentatives,
   activitySectors,
@@ -91,12 +91,6 @@ export const activities = pgTable(
       withTimezone: true,
     }), // News release date/time (legacy field)
 
-    // Event
-    eventPlannerLeadId: integer('event_planner_lead_id').references(
-      () => eventPlanners.id
-    ), // FK to EventPlanner (mutually exclusive with eventPlannerLeadName)
-    eventPlannerLeadName: varchar('event_planner_lead_name', { length: 255 }), // Free text for non-user event leads (mutually exclusive with eventPlannerLeadId)
-
     // Look Ahead
     executiveSummary: text('executive_summary'), // maps to legacy HqComments field
     lookAheadStatus: varchar('look_ahead_status', { length: 50 }), // 'none', 'new', 'changed'  maps to legacy HqStatusId field
@@ -155,11 +149,6 @@ export const activities = pgTable(
       'lead_org_at_most_one',
       sql`NOT (${table.leadOrgId} IS NOT NULL AND ${table.leadOrgName} IS NOT NULL)`
     ),
-    // CHECK constraint: at most one of eventPlannerLeadId or eventPlannerLeadName (both null allowed)
-    check(
-      'event_planner_lead_at_most_one',
-      sql`NOT (${table.eventPlannerLeadId} IS NOT NULL AND ${table.eventPlannerLeadName} IS NOT NULL)`
-    ),
   ]
 );
 
@@ -185,11 +174,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.newsReleaseOriginId],
     references: [newsReleaseOrigins.id],
     relationName: 'newsReleaseOrigin',
-  }),
-  eventLead: one(eventPlanners, {
-    fields: [activities.eventPlannerLeadId],
-    references: [eventPlanners.id],
-    relationName: 'eventLead',
   }),
   createdByUser: one(users, {
     fields: [activities.createdBy],
@@ -230,6 +214,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   // Junction tables
   activityCategories: many(activityCategories),
   activityCommsMaterials: many(activityCommsMaterials),
+  activityEventPlanners: many(activityEventPlanners),
   activityTranslationsRequired: many(activityTranslationsRequired),
   activityRepresentatives: many(activityRepresentatives),
   activitySharedWithTeams: many(activitySharedWithTeams),

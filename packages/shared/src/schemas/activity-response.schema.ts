@@ -74,10 +74,6 @@ export const activityDbFieldsSchema = z.object({
   newsReleaseId: z.string().uuid().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
 
-  // Event lead/planner (mutually exclusive: either ID or Name)
-  eventPlannerLeadId: z.number().int().nullable(),
-  eventPlannerLeadName: z.string().nullable(),
-
   // Look Ahead
   executiveSummary: z.string().nullable(),
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable(),
@@ -157,8 +153,10 @@ export const activityComputedFieldsSchema = z.object({
   // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
   leadOrg: z.string().nullable(),
 
-  // Computed user names (from user ID lookups)
-  eventLead: z.string().nullable(),
+  // Event planner display names (from activity_event_planners junction + event_planners lookup or free text)
+  eventPlanners: z.array(z.string()).default([]),
+  // Event planner lookup IDs for this activity (for client-side filtering)
+  eventPlannerLeadIds: z.array(z.number().int()).default([]),
 
   // Computed status names (from lookup table joins)
   dateStatus: z.string(),
