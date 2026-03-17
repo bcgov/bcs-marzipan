@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { REFERENCE_LOOKUP_CACHE_MS } from '@corpcal/shared';
+import type { OptionItem } from '@/schemas/types';
 
 import { fetchTeams } from '../api/usersApi';
 import {
@@ -39,10 +40,10 @@ export interface FormLookupData {
   ministries: Array<{ id: number; name: string; displayName?: string }>;
 
   // Users - for Select/Combobox
-  users: Array<{ value: string; label: string }>;
+  users: OptionItem[];
 
   // Event Planners - for Select/Combobox
-  eventPlanners: Array<{ value: string; label: string }>;
+  eventPlanners: OptionItem[];
 
   // Tags - for Badge components
   tags: Array<{ id: number; text: string }>;
@@ -73,13 +74,13 @@ export interface FormLookupData {
   }>;
 
   // News Release Distributions - for Select
-  newsReleaseDistributions: Array<{ value: string; label: string }>;
+  newsReleaseDistributions: OptionItem[];
 
   // Premier Requested - for Select
-  premierRequested: Array<{ value: string; label: string }>;
+  premierRequested: OptionItem[];
 
   // News Release Origins - for Select
-  newsReleaseOrigins: Array<{ value: string; label: string }>;
+  newsReleaseOrigins: OptionItem[];
 
   // Teams - for Shared With resolution (name to id in mapper) and dropdown options
   sharedWithTeams: Array<{ id: number; name: string; displayName?: string }>;

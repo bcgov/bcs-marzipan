@@ -35,11 +35,12 @@ import {
 } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivitySharingSectionProps = {
-  sharedWithTeamOptions: Array<{ value: string; label: string }>;
+  sharedWithTeamOptions: OptionItem[];
   readOnly?: boolean;
 };
 
@@ -104,19 +105,15 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                   items={sharedWithTeamOptions}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(
-                    selected: Array<{ value: string; label: string }>
-                  ) => {
+                  onValueChange={(selected: OptionItem[]) => {
                     field.onChange(selected.map((o) => parseInt(o.value, 10)));
                   }}
-                  itemToStringValue={(o: { value: string; label: string }) =>
-                    o.label
-                  }
+                  itemToStringValue={(o: OptionItem) => o.label}
                   disabled={readOnly}
                 >
                   <ComboboxChips ref={sharedWithAnchorRef} className="w-full">
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -131,7 +128,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                   <ComboboxContent anchor={sharedWithAnchorRef}>
                     <ComboboxEmpty>No teams found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

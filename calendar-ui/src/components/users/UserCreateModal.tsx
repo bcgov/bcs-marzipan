@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { OptionItem } from '@/schemas/types';
 
 const createUserFormSchema = z.object({
   email: z
@@ -277,29 +278,19 @@ export function UserCreateModal({
                         items={teamOptions}
                         multiple
                         value={selectedOptions}
-                        onValueChange={(
-                          selected: Array<{ value: string; label: string }>
-                        ) => {
+                        onValueChange={(selected: OptionItem[]) => {
                           field.onChange(
                             selected.map((o) => parseInt(o.value, 10))
                           );
                         }}
-                        itemToStringValue={(o: {
-                          value: string;
-                          label: string;
-                        }) => o.label}
+                        itemToStringValue={(o: OptionItem) => o.label}
                         onOpenChange={(open: boolean) =>
                           setIsTeamsComboboxOpen(open)
                         }
                       >
                         <ComboboxChips ref={teamsAnchorRef} className="w-full">
                           <ComboboxValue>
-                            {(
-                              values: Array<{
-                                value: string;
-                                label: string;
-                              }>
-                            ) => (
+                            {(values: OptionItem[]) => (
                               <>
                                 {values.map((option) => (
                                   <ComboboxChip key={option.value}>
@@ -318,7 +309,7 @@ export function UserCreateModal({
                         >
                           <ComboboxEmpty>No teams found.</ComboboxEmpty>
                           <ComboboxList>
-                            {(option: { value: string; label: string }) => (
+                            {(option: OptionItem) => (
                               <ComboboxItem key={option.value} value={option}>
                                 {option.label}
                               </ComboboxItem>

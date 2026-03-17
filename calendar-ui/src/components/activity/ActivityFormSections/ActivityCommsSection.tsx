@@ -31,10 +31,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useTranslationRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
-
-type CommsContactOption = { value: string; label: string };
 
 type ActivityCommsSectionProps = {
   commsMaterialOptions: Array<{
@@ -42,12 +41,12 @@ type ActivityCommsSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  commsLeadOptions: Array<CommsContactOption>;
+  commsLeadOptions: OptionItem[];
   readOnly?: boolean;
 };
 
 function buildCommsContactsFromSelection(
-  selected: CommsContactOption[],
+  selected: OptionItem[],
   currentContacts: Array<{ userId: number; isLead: boolean }> | undefined
 ): Array<{ userId: number; isLead: boolean }> {
   const newIds = selected.map((o) => parseInt(o.value, 10));
@@ -93,7 +92,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           const leadFirst = [...contacts].sort((a, b) =>
             a.isLead ? -1 : b.isLead ? 1 : 0
           );
-          const selectedOptions: CommsContactOption[] = leadFirst.map((c) => {
+          const selectedOptions: OptionItem[] = leadFirst.map((c) => {
             const opt = commsLeadOptions.find(
               (o) => o.value === String(c.userId)
             );
@@ -103,7 +102,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             };
           });
 
-          const handleValueChange = (selected: CommsContactOption[]) => {
+          const handleValueChange = (selected: OptionItem[]) => {
             field.onChange(
               buildCommsContactsFromSelection(selected, field.value)
             );
@@ -137,7 +136,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     className="w-full"
                   >
                     <ComboboxValue>
-                      {(values: CommsContactOption[]) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => {
                             const contact = contacts.find(
@@ -180,7 +179,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   <ComboboxContent anchor={commsContactsAnchorRef}>
                     <ComboboxEmpty>No contacts found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: CommsContactOption) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>
@@ -241,7 +240,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     className="w-full"
                   >
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -256,7 +255,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   <ComboboxContent anchor={commsMaterialsAnchorRef}>
                     <ComboboxEmpty>No comms materials found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

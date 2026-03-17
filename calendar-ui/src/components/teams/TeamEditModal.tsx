@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import type { OptionItem } from '@/schemas/types';
 
 interface TeamEditModalProps {
   /** When null, modal is in create mode. Otherwise edit mode for this team. */
@@ -222,18 +223,16 @@ export function TeamEditModal({
               <Combobox
                 items={ministryOptions}
                 value={selectedMinistry}
-                onValueChange={(
-                  option: { value: string; label: string } | null
-                ) => setMinistryId(option ? option.value : null)}
-                itemToStringValue={(o: { value: string; label: string }) =>
-                  o.label
+                onValueChange={(option: OptionItem | null) =>
+                  setMinistryId(option ? option.value : null)
                 }
+                itemToStringValue={(o: OptionItem) => o.label}
               >
                 <ComboboxInput placeholder="Select ministry..." />
                 <ComboboxContent>
                   <ComboboxEmpty>No ministries found.</ComboboxEmpty>
                   <ComboboxList>
-                    {(option: { value: string; label: string }) => (
+                    {(option: OptionItem) => (
                       <ComboboxItem key={option.value} value={option}>
                         {option.label}
                       </ComboboxItem>

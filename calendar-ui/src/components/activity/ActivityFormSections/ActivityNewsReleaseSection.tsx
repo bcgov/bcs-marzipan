@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -38,8 +39,8 @@ type ActivityNewsReleaseSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  newsReleaseDistributionOptions: Array<{ value: string; label: string }>;
-  newsReleaseOriginOptions: Array<{ value: string; label: string }>;
+  newsReleaseDistributionOptions: OptionItem[];
+  newsReleaseOriginOptions: OptionItem[];
   readOnly?: boolean;
 };
 
@@ -151,7 +152,7 @@ export const ActivityNewsReleaseSection: React.FC<
                 >
                   <ComboboxChips ref={translationsAnchorRef} className="w-full">
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -168,7 +169,7 @@ export const ActivityNewsReleaseSection: React.FC<
                       No translation languages found.
                     </ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

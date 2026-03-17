@@ -45,6 +45,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -95,8 +96,8 @@ type ActivityEventSectionProps = {
     displayName?: string;
     title?: string;
   }>;
-  premierRequestedOptions: Array<{ value: string; label: string }>;
-  eventPlannerOptions: Array<{ value: string; label: string }>;
+  premierRequestedOptions: OptionItem[];
+  eventPlannerOptions: OptionItem[];
   readOnly?: boolean;
 };
 
@@ -183,18 +184,14 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   items={representativeComboboxOptions}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(
-                    selected: Array<{ value: string; label: string }>
-                  ) => {
+                  onValueChange={(selected: OptionItem[]) => {
                     field.onChange(
                       selected.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
                     );
                   }}
-                  itemToStringValue={(o: { value: string; label: string }) =>
-                    o.label
-                  }
+                  itemToStringValue={(o: OptionItem) => o.label}
                   disabled={readOnly}
                 >
                   <ComboboxChips
@@ -202,7 +199,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                     className="w-full"
                   >
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -217,7 +214,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   <ComboboxContent anchor={representativesAnchorRef}>
                     <ComboboxEmpty>No representatives found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

@@ -6,6 +6,7 @@ import type {
 import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
+import type { OptionItem } from '@/schemas/types';
 
 /**
  * Client-side keyword filter for activity table rows.
@@ -61,9 +62,9 @@ function isDateInRange(
 /** Optional context for filterActivityRowsByFilters (e.g. lookup options to resolve IDs to labels). */
 export interface FilterActivityRowsContext {
   /** Options for translation required statuses (value = id, label = displayName matching row.translationsRequiredStatus). */
-  translationRequiredStatusOptions?: Array<{ value: string; label: string }>;
+  translationRequiredStatusOptions?: OptionItem[];
   /** Options for translation languages (value = id, label = string that appears in row.translationsRequired). */
-  translationLanguageOptions?: Array<{ value: string; label: string }>;
+  translationLanguageOptions?: OptionItem[];
 }
 
 /**

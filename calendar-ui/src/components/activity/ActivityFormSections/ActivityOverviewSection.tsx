@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePitchRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -110,7 +111,7 @@ export const ActivityOverviewSection: React.FC<
                 >
                   <ComboboxChips ref={categoriesAnchorRef} className="w-full">
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -125,7 +126,7 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={categoriesAnchorRef}>
                     <ComboboxEmpty>No categories found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>
@@ -522,7 +523,7 @@ export const ActivityOverviewSection: React.FC<
                 >
                   <ComboboxChips ref={tagsAnchorRef} className="w-full">
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -537,7 +538,7 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={tagsAnchorRef}>
                     <ComboboxEmpty>No tags found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>

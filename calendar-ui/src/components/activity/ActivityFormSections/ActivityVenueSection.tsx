@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -32,7 +33,7 @@ const QUICK_PICK_MAX_TOTAL = 4;
 
 type ActivityVenueSectionProps = {
   form: UseFormReturn<ActivityFormData>;
-  eventPlannerOptions: Array<{ value: string; label: string }>;
+  eventPlannerOptions: OptionItem[];
 };
 
 function venueToFormValue(item: VenueQuickPickItem): {
