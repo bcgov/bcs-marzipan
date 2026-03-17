@@ -32,13 +32,13 @@ import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
-} from '@/components/Table/ColumnSortDropdown';
-import { SortableColumnHeader } from '@/components/Table/SortableColumnHeader';
+} from '@/components/table/ColumnSortDropdown';
+import { SortableColumnHeader } from '@/components/table/SortableColumnHeader';
 import type {
   SortColumnConfig,
   SortLevel,
-} from '@/components/Table/SortDropdown';
-import { SortIndicator } from '@/components/Table/SortIndicator';
+} from '@/components/table/SortDropdown';
+import { SortIndicator } from '@/components/table/SortIndicator';
 import {
   getActivityColumnSizes,
   tableBodyRow,
@@ -46,8 +46,8 @@ import {
   tableTd,
   tableTh,
   tableThead,
-} from '@/components/Table/tableConstants';
-import { TablePagination } from '@/components/Table/TablePagination';
+} from '@/components/table/tableConstants';
+import { TablePagination } from '@/components/table/TablePagination';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';

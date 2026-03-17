@@ -8,7 +8,7 @@ import {
 import {
   SortDropdown,
   type SortColumnConfig,
-} from '@/components/Table/SortDropdown';
+} from '@/components/table/SortDropdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';

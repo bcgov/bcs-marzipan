@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { FILTER_PANEL_MIN_WIDTH } from '@/components/Table/tableConstants';
+import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
 import {
   Popover,
   PopoverContent,
