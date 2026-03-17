@@ -1,5 +1,5 @@
 {
-  "id": "9531ec9b-1fbf-4d94-a37e-5cae96cf2a15",
+  "id": "45aeacd8-654f-40d0-8881-c2879e0b137a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -127,18 +127,6 @@
         "news_release_date_time": {
           "name": "news_release_date_time",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_id": {
-          "name": "event_planner_lead_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_name": {
-          "name": "event_planner_lead_name",
-          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -300,15 +288,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activities_event_planner_lead_id_event_planners_id_fk": {
-          "name": "activities_event_planner_lead_id_event_planners_id_fk",
-          "tableFrom": "activities",
-          "tableTo": "event_planners",
-          "columnsFrom": ["event_planner_lead_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "activities_pitch_required_status_id_pitch_required_statuses_id_fk": {
           "name": "activities_pitch_required_status_id_pitch_required_statuses_id_fk",
           "tableFrom": "activities",
@@ -404,10 +383,6 @@
         "lead_org_at_most_one": {
           "name": "lead_org_at_most_one",
           "value": "NOT (\"activities\".\"lead_org_id\" IS NOT NULL AND \"activities\".\"lead_org_name\" IS NOT NULL)"
-        },
-        "event_planner_lead_at_most_one": {
-          "name": "event_planner_lead_at_most_one",
-          "value": "NOT (\"activities\".\"event_planner_lead_id\" IS NOT NULL AND \"activities\".\"event_planner_lead_name\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -3990,6 +3965,76 @@
           "columns": ["activity_id", "comms_material_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_event_planners": {
+      "name": "activity_event_planners",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_planner_lead_id": {
+          "name": "event_planner_lead_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_planner_lead_name": {
+          "name": "event_planner_lead_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_event_planners_activity_id_activities_id_fk": {
+          "name": "activity_event_planners_activity_id_activities_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_event_planners_event_planner_lead_id_event_planners_id_fk": {
+          "name": "activity_event_planners_event_planner_lead_id_event_planners_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "event_planners",
+          "columnsFrom": ["event_planner_lead_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

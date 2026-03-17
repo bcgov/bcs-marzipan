@@ -19,8 +19,6 @@ CREATE TABLE "activities" (
 	"news_release_origin_id" integer,
 	"news_release_id" uuid,
 	"news_release_date_time" timestamp with time zone,
-	"event_planner_lead_id" integer,
-	"event_planner_lead_name" varchar(255),
 	"executive_summary" text,
 	"look_ahead_status" varchar(50),
 	"look_ahead_section" varchar(50),
@@ -41,8 +39,7 @@ CREATE TABLE "activities" (
 	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"row_version" bigint DEFAULT 0 NOT NULL,
 	CONSTRAINT "activities_display_id_unique" UNIQUE("display_id"),
-	CONSTRAINT "lead_org_at_most_one" CHECK (NOT ("activities"."lead_org_id" IS NOT NULL AND "activities"."lead_org_name" IS NOT NULL)),
-	CONSTRAINT "event_planner_lead_at_most_one" CHECK (NOT ("activities"."event_planner_lead_id" IS NOT NULL AND "activities"."event_planner_lead_name" IS NOT NULL))
+	CONSTRAINT "lead_org_at_most_one" CHECK (NOT ("activities"."lead_org_id" IS NOT NULL AND "activities"."lead_org_name" IS NOT NULL))
 );
 --> statement-breakpoint
 CREATE TABLE "activity_history" (
@@ -53,6 +50,14 @@ CREATE TABLE "activity_history" (
 	"changes" jsonb,
 	"notes" text,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "deletion_audit" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"activity_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"reason" text,
+	"deleted_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
@@ -494,6 +499,15 @@ CREATE TABLE "activity_comms_materials" (
 	CONSTRAINT "activity_comms_materials_activity_id_comms_material_id_pk" PRIMARY KEY("activity_id","comms_material_id")
 );
 --> statement-breakpoint
+CREATE TABLE "activity_event_planners" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"activity_id" integer NOT NULL,
+	"event_planner_lead_id" integer,
+	"event_planner_lead_name" varchar(255),
+	"is_active" boolean DEFAULT true NOT NULL,
+	"timestamp" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "activity_report_settings" (
 	"activity_id" integer NOT NULL,
 	"report_id" integer NOT NULL,
@@ -718,7 +732,6 @@ ALTER TABLE "activities" ADD CONSTRAINT "activities_lead_org_id_organizations_id
 ALTER TABLE "activities" ADD CONSTRAINT "activities_date_status_id_date_statuses_id_fk" FOREIGN KEY ("date_status_id") REFERENCES "public"."date_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_time_status_id_time_statuses_id_fk" FOREIGN KEY ("time_status_id") REFERENCES "public"."time_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_news_release_origin_id_news_release_origins_id_fk" FOREIGN KEY ("news_release_origin_id") REFERENCES "public"."news_release_origins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "activities" ADD CONSTRAINT "activities_event_planner_lead_id_event_planners_id_fk" FOREIGN KEY ("event_planner_lead_id") REFERENCES "public"."event_planners"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_pitch_required_status_id_pitch_required_statuses_id_fk" FOREIGN KEY ("pitch_required_status_id") REFERENCES "public"."pitch_required_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_translations_required_status_id_translation_required_statuses_id_fk" FOREIGN KEY ("translations_required_status_id") REFERENCES "public"."translation_required_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_news_release_distribution_id_news_release_distributions_id_fk" FOREIGN KEY ("news_release_distribution_id") REFERENCES "public"."news_release_distributions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -730,6 +743,7 @@ ALTER TABLE "activities" ADD CONSTRAINT "activities_created_by_users_id_fk" FORE
 ALTER TABLE "activities" ADD CONSTRAINT "activities_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_history" ADD CONSTRAINT "activity_history_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_history" ADD CONSTRAINT "activity_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "deletion_audit" ADD CONSTRAINT "deletion_audit_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_history" ADD CONSTRAINT "user_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_history" ADD CONSTRAINT "user_history_changed_by_user_id_users_id_fk" FOREIGN KEY ("changed_by_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -801,6 +815,8 @@ ALTER TABLE "activity_comms_contacts" ADD CONSTRAINT "activity_comms_contacts_ac
 ALTER TABLE "activity_comms_contacts" ADD CONSTRAINT "activity_comms_contacts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_comms_materials" ADD CONSTRAINT "activity_comms_materials_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_comms_materials" ADD CONSTRAINT "activity_comms_materials_comms_material_id_comms_materials_id_fk" FOREIGN KEY ("comms_material_id") REFERENCES "public"."comms_materials"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_event_planners" ADD CONSTRAINT "activity_event_planners_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_event_planners" ADD CONSTRAINT "activity_event_planners_event_planner_lead_id_event_planners_id_fk" FOREIGN KEY ("event_planner_lead_id") REFERENCES "public"."event_planners"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_report_settings" ADD CONSTRAINT "activity_report_settings_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_report_settings" ADD CONSTRAINT "activity_report_settings_report_id_reports_id_fk" FOREIGN KEY ("report_id") REFERENCES "public"."reports"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_representatives" ADD CONSTRAINT "activity_representatives_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
