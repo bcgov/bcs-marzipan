@@ -1230,4 +1230,67 @@ export class ActivityDataFetcherService {
     }
     return resultMap;
   }
+
+  /**
+   * Human-readable lead team label per activity (for clients that cannot call lead-options).
+   */
+  async fetchLeadTeamDisplayForActivities(
+    activityRows: Array<{ id: number; leadTeamId: number }>
+  ): Promise<Map<number, string | null>> {
+    const result = new Map<number, string | null>();
+    if (activityRows.length === 0) {
+      return result;
+    }
+
+    const teamIds = [...new Set(activityRows.map((a) => a.leadTeamId))];
+    const teamRows = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        displayName: teams.displayName,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(inArray(teams.id, teamIds));
+
+    const ministryIds = [
+      ...new Set(
+        teamRows
+          .map((t) => t.ministryId)
+          .filter((id): id is number => id != null)
+      ),
+    ];
+    const ministryNameRows =
+      ministryIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: ministries.id,
+              displayName: ministries.displayName,
+            })
+            .from(ministries)
+            .where(inArray(ministries.id, ministryIds))
+        : [];
+    const ministryMap = new Map(
+      ministryNameRows.map((m) => [m.id, m.displayName ?? ''])
+    );
+
+    const teamIdToLabel = new Map<number, string>();
+    for (const t of teamRows) {
+      const baseRaw = t.displayName?.trim() || t.name?.trim();
+      const base =
+        baseRaw != null && baseRaw.length > 0 ? baseRaw : `Team ${t.id}`;
+      const ministryName =
+        t.ministryId != null ? ministryMap.get(t.ministryId) : undefined;
+      const label =
+        ministryName != null && ministryName.length > 0
+          ? `${base} (${ministryName})`
+          : base;
+      teamIdToLabel.set(t.id, label);
+    }
+
+    for (const a of activityRows) {
+      result.set(a.id, teamIdToLabel.get(a.leadTeamId) ?? null);
+    }
+    return result;
+  }
 }

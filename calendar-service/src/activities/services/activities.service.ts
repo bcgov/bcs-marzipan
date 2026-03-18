@@ -145,6 +145,7 @@ export class ActivitiesService {
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
+      leadTeamDisplayMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities(activityIds),
       this.dataFetcherService.fetchTagsForActivities(activityIds),
@@ -180,6 +181,9 @@ export class ActivitiesService {
       this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
       this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
         activityIds
+      ),
+      this.dataFetcherService.fetchLeadTeamDisplayForActivities(
+        activityRows.map((a) => ({ id: a.id, leadTeamId: a.leadTeamId }))
       ),
     ]);
     // Derive eventPlannersMap and eventPlannerIdsMap from details for backward compatibility
@@ -221,6 +225,7 @@ export class ActivitiesService {
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
+      leadTeamDisplayMap,
     };
   }
 
@@ -951,6 +956,8 @@ export class ActivitiesService {
         leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
         leadMinistryAbbreviation:
           related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
+        leadTeamDisplayName:
+          related.leadTeamDisplayMap.get(activity.id) ?? null,
         canEdit: canEdit ?? undefined,
       });
     });
@@ -1053,6 +1060,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       canEdit: canEdit ?? undefined,
     });
   }
@@ -1486,6 +1494,7 @@ export class ActivitiesService {
       translationsRequiredStatus,
       leadMinistryName,
       leadMinistryAbbreviation,
+      leadTeamDisplayMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
@@ -1510,6 +1519,9 @@ export class ActivitiesService {
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
       this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
+      this.dataFetcherService.fetchLeadTeamDisplayForActivities([
+        { id: updated.id, leadTeamId: updated.leadTeamId },
+      ]),
     ]);
 
     const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
@@ -1544,6 +1556,7 @@ export class ActivitiesService {
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
+      leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1897,6 +1910,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 
@@ -2021,6 +2035,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 
@@ -2137,6 +2152,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 

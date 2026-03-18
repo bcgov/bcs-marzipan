@@ -187,6 +187,8 @@ export const activityComputedFieldsSchema = z.object({
   translationsRequiredStatus: z.string().nullable(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),
+  /** Lead team label for display (team + ministry); independent of lead-options scope. */
+  leadTeamDisplayName: z.string().nullable(),
 
   // Venue address (from venue_addresses table join)
   venueAddress: venueAddressSchema,

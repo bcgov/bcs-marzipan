@@ -69,6 +69,7 @@ export class ActivityMapperService {
       translationsRequiredStatus?: string | null;
       leadMinistry?: string | null;
       leadMinistryAbbreviation?: string | null;
+      leadTeamDisplayName?: string | null;
       canEdit?: boolean;
     }
   ): ActivityResponse {
@@ -185,6 +186,7 @@ export class ActivityMapperService {
         relatedData?.translationsRequiredStatus ?? null,
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
+      leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],

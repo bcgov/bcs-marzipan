@@ -3,13 +3,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -205,23 +199,11 @@ export function ActivityPage({
     getActivityFieldLabel
   );
 
-  /** After reset for this activity; avoids mounting Lead team Select with default leadTeamId 0 before reset (SPA + cached options). */
-  const [leadTeamHydratedForId, setLeadTeamHydratedForId] = useState<
-    number | null
-  >(null);
-
-  useLayoutEffect(() => {
+  useEffect(() => {
     const mapped = activityToFormData(activity, lookups);
     form.reset(mapped);
     initialFormDataRef.current = mapped;
-    setLeadTeamHydratedForId(activity.id);
   }, [activity, lookups, form]);
-
-  const leadTeamSelectDeferred =
-    leadTeamHydratedForId !== activity.id ||
-    (leadTeamFetchEnabled &&
-      leadTeamOptionsFetching &&
-      leadTeamOptions.length === 0);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -536,8 +518,16 @@ export function ActivityPage({
               isEditing={isEditing}
               fieldToActivate={fieldToActivate}
               clearFieldToActivate={clearFieldToActivate}
-              leadTeamOptions={leadTeamOptions}
-              leadTeamSelectDeferred={leadTeamSelectDeferred}
+              leadTeamField={{
+                options: leadTeamOptions,
+                displayLabel:
+                  (
+                    activity as ActivityResponse & {
+                      leadTeamDisplayName?: string | null;
+                    }
+                  ).leadTeamDisplayName ?? null,
+                optionsFetching: leadTeamOptionsFetching,
+              }}
             />
             <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
               <div className="flex gap-2">

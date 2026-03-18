@@ -1,7 +1,6 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { useMemo, type ReactElement } from 'react';
 
-import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
 import type { FormLookupData } from '@/hooks/useFormLookups';
@@ -10,6 +9,10 @@ import {
   ActivityEditProvider,
   type ActivityEditContextValue,
 } from './activity-edit-context';
+import {
+  defaultActivityLeadTeamFieldConfig,
+  type ActivityLeadTeamFieldConfig,
+} from './activity-lead-team-field-config';
 import {
   ActivityCommsSection,
   ActivityEventSection,
@@ -31,10 +34,7 @@ type ActivityFormBodyProps = {
   clearFieldToActivate?: () => void;
   /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
   showChangedBadges?: boolean;
-  /** Teams for lead team dropdown (create/edit). When provided, overview shows lead team field instead of lead ministry only. */
-  leadTeamOptions?: TeamListItem[];
-  /** True until form is reset for activity and options ready; avoids Select before correct leadTeamId (SPA) or empty options (reload). */
-  leadTeamSelectDeferred?: boolean;
+  leadTeamField?: ActivityLeadTeamFieldConfig;
 };
 
 /**
@@ -48,9 +48,12 @@ export function ActivityFormBody({
   fieldToActivate = null,
   clearFieldToActivate = clearNoop,
   showChangedBadges = true,
-  leadTeamOptions,
-  leadTeamSelectDeferred = false,
+  leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
+  const leadTeamField = {
+    ...defaultActivityLeadTeamFieldConfig,
+    ...leadTeamFieldProp,
+  };
   const commsLeadOptions = lookups.users.map((u) => ({
     value: u.value,
     label: u.label,
@@ -76,8 +79,7 @@ export function ActivityFormBody({
               organizations={lookups.organizations}
               tags={lookups.tags}
               readOnly={readOnly}
-              leadTeamOptions={leadTeamOptions}
-              leadTeamSelectDeferred={leadTeamSelectDeferred}
+              leadTeamField={leadTeamField}
             />
 
             <div>

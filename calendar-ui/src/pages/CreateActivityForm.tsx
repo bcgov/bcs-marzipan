@@ -93,11 +93,6 @@ export const CreateActivityForm: FC = () => {
     refetch: refetchLeadTeamOptions,
   } = useLeadTeamOptions(canCreateActivity);
 
-  const leadTeamOptionsLoading =
-    canCreateActivity &&
-    leadTeamOptionsFetching &&
-    leadTeamOptions.length === 0;
-
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
       createActivityRequestSchema
@@ -471,8 +466,11 @@ export const CreateActivityForm: FC = () => {
             lookups={lookups}
             readOnly={false}
             showChangedBadges={false}
-            leadTeamOptions={leadTeamOptions}
-            leadTeamSelectDeferred={leadTeamOptionsLoading}
+            leadTeamField={{
+              options: leadTeamOptions,
+              displayLabel: null,
+              optionsFetching: leadTeamOptionsFetching,
+            }}
           />
 
           <div className="flex justify-end gap-4 pt-6">

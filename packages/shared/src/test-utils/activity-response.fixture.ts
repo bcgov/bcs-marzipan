@@ -111,6 +111,7 @@ export function createMockActivityResponse(
     translationsRequiredStatus: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
+    leadTeamDisplayName: null,
     venueAddress: null,
     reportSettings: [],
 

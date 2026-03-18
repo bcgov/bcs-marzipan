@@ -46,6 +46,7 @@ const DEFAULTS = {
     number,
     string | null
   >,
+  fetchLeadTeamDisplayForActivities: new Map() as Map<number, string | null>,
 } as const;
 
 type MockDataFetcher = {
