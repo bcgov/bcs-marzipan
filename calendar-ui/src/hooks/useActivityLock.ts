@@ -1,105 +1,140 @@
 import type { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   acquireLock,
+  getLockStatus,
   LOCKED_STATUS,
   releaseLock,
   type LockInfo,
 } from '../api/locksApi';
 
+export type LockState =
+  | 'idle'
+  | 'checking'
+  | 'acquiring'
+  | 'owned'
+  | 'locked-by-other';
+
 type UseActivityLockResult = {
   lock: LockInfo | null;
-  isOwnLock: boolean;
-  lockedByOther: boolean;
+  lockState: LockState;
   lockedByUsername: string | null;
-  isLoading: boolean;
-  error: string | null;
   acquire: () => Promise<boolean>;
   release: () => Promise<void>;
+  /** Update lock state from an external source (e.g. WebSocket). */
+  setLockedByOther: (username: string | null) => void;
+  clearLockedByOther: () => void;
 };
 
 /**
- * Hook to acquire, hold, and release an activity edit lock.
- * On mount (or when activityId changes), call acquire(); if 423, form is read-only.
- * Release on unmount, cancel, or save.
+ * Manages an activity edit lock with lazy acquisition.
+ * On mount, checks lock status (does not acquire). Call `acquire()` on first
+ * user edit intent. Releases on unmount if owned.
  */
-export function useActivityLock(
-  activityId: number | null
-): UseActivityLockResult {
+export function useActivityLock(activityId: number): UseActivityLockResult {
   const [lock, setLock] = useState<LockInfo | null>(null);
-  const [lockedByOther, setLockedByOther] = useState(false);
+  const [lockState, setLockState] = useState<LockState>('checking');
   const [lockedByUsername, setLockedByUsername] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const acquiringRef = useRef(false);
+  const lockRef = useRef<LockInfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLockState('checking');
+    setLock(null);
+    setLockedByUsername(null);
+    lockRef.current = null;
+
+    getLockStatus(activityId)
+      .then((status) => {
+        if (cancelled) return;
+        if (status.locked && !status.isOwnLock && status.lockedBy) {
+          setLockState('locked-by-other');
+          setLockedByUsername(status.lockedBy.username);
+        } else {
+          setLockState('idle');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLockState('idle');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activityId]);
 
   const acquire = useCallback(async (): Promise<boolean> => {
-    if (activityId == null) return false;
-    setIsLoading(true);
-    setError(null);
-    setLockedByOther(false);
-    setLockedByUsername(null);
-    setLock(null);
+    if (lockRef.current) return true;
+    if (acquiringRef.current) return false;
+    acquiringRef.current = true;
+    setLockState('acquiring');
     try {
       const acquired = await acquireLock(activityId);
+      lockRef.current = acquired;
       setLock(acquired);
+      setLockState('owned');
+      setLockedByUsername(null);
       return true;
     } catch (err) {
       const axiosError = err as AxiosError<{ lockedBy?: { username: string } }>;
       if (axiosError.response?.status === LOCKED_STATUS) {
-        setLockedByOther(true);
         const data = axiosError.response?.data as
           | { lockedBy?: { username: string } }
           | undefined;
         setLockedByUsername(data?.lockedBy?.username ?? null);
+        setLockState('locked-by-other');
         return false;
       }
-      setError(
-        axiosError instanceof Error
-          ? axiosError.message
-          : 'Failed to acquire lock'
-      );
+      setLockState('idle');
       return false;
     } finally {
-      setIsLoading(false);
+      acquiringRef.current = false;
     }
   }, [activityId]);
 
   const release = useCallback(async (): Promise<void> => {
-    if (lock?.id == null) return;
+    const currentLock = lockRef.current;
+    if (currentLock == null) return;
+    lockRef.current = null;
+    setLock(null);
+    setLockState('idle');
     try {
-      await releaseLock(lock.id);
-    } finally {
-      setLock(null);
+      await releaseLock(currentLock.id);
+    } catch {
+      // Best-effort release; server TTL handles cleanup
     }
-  }, [lock?.id]);
-
-  useEffect(() => {
-    if (activityId == null) {
-      setIsLoading(false);
-      return;
-    }
-    void acquire();
-  }, [activityId]); // eslint-disable-line react-hooks/exhaustive-deps -- acquire on activityId change only
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (lock?.id != null) {
-        void releaseLock(lock.id);
+      const currentLock = lockRef.current;
+      if (currentLock != null) {
+        void releaseLock(currentLock.id);
+        lockRef.current = null;
       }
     };
-  }, [lock?.id]);
+  }, [activityId]);
 
-  const isOwnLock = lock != null && !lockedByOther;
+  const setLockedByOther = useCallback((username: string | null) => {
+    if (lockRef.current) return;
+    setLockState('locked-by-other');
+    setLockedByUsername(username);
+  }, []);
+
+  const clearLockedByOther = useCallback(() => {
+    setLockState((prev) => (prev === 'locked-by-other' ? 'idle' : prev));
+    setLockedByUsername(null);
+  }, []);
 
   return {
     lock,
-    isOwnLock,
-    lockedByOther,
+    lockState,
     lockedByUsername,
-    isLoading,
-    error,
     acquire,
     release,
+    setLockedByOther,
+    clearLockedByOther,
   };
 }

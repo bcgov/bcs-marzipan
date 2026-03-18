@@ -24,6 +24,6 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     ActivityUtilsService,
   ],
   controllers: [ActivitiesController],
-  exports: [ActivitiesService],
+  exports: [ActivitiesService, ActivitiesGateway],
 })
 export class ActivitiesModule {}

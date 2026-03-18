@@ -14,6 +14,7 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import type { AuthUser } from '@corpcal/shared';
 
+import { ActivitiesGateway } from '../activities/activities.gateway';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -27,7 +28,10 @@ import { LocksService } from './locks.service';
 @Controller('locks')
 @UseGuards(JwtAuthGuard)
 export class LocksController {
-  constructor(private readonly locksService: LocksService) {}
+  constructor(
+    private readonly locksService: LocksService,
+    private readonly activitiesGateway: ActivitiesGateway
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Acquire a lock on an entity (e.g. activity)' })
@@ -47,6 +51,12 @@ export class LocksController {
       user.displayName ?? `User ${user.id}`,
       body.lockSessionId
     );
+
+    this.activitiesGateway.notifyLockAcquired(body.entityId, {
+      userId: lock.userId,
+      username: lock.username,
+    });
+
     return {
       id: lock.id,
       entityType: lock.entityType,
@@ -96,9 +106,10 @@ export class LocksController {
     @Param('lockId', ParseIntPipe) lockId: number,
     @CurrentUser() user: AuthUser
   ) {
+    const lock = await this.locksService.getLockById(lockId);
     const released = await this.locksService.releaseLock(lockId, user.id);
-    if (!released) {
-      return; // 204 anyway for idempotency
+    if (released && lock?.entityType === 'activity') {
+      this.activitiesGateway.notifyLockReleased(lock.entityId);
     }
   }
 }

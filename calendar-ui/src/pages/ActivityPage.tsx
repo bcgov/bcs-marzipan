@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -46,6 +46,7 @@ import {
   PopoverTrigger,
 } from '../components/ui/popover';
 import { useActivityLock } from '../hooks/useActivityLock';
+import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
@@ -71,15 +72,6 @@ const logger = createLogger('ActivityPage');
 
 const UNSAVED_MESSAGE = 'You have unsaved changes. Leave anyway?';
 
-/**
- * Grace period (ms) after entering view mode during which form focus/click do not trigger edit.
- * Necessary because on load the browser or React often focuses the form, which would otherwise
- * fire onFocus -> enterEdit and immediately redirect to the edit URL.
- */
-const VIEW_MODE_GRACE_MS = 400;
-
-type PendingAction = 'delete' | 'requestDelete' | undefined;
-
 export type ActivityPageProps = {
   activity: ActivityResponse;
   refreshActivity: () => Promise<void>;
@@ -89,14 +81,9 @@ export function ActivityPage({
   activity,
   refreshActivity,
 }: ActivityPageProps): React.ReactElement {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
-  const viewPath = `/activity/${id}`;
-  const editPath = `/activity/${id}/edit`;
-
-  const isEditMode = location.pathname.endsWith('/edit');
 
   const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
@@ -127,7 +114,6 @@ export function ActivityPage({
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
-  /** Users with delete.any may open/edit when status is delete_requested or deleted. */
   const canEditWhenBlocked = canDeleteAny;
   const canRestore =
     normalizedStatus === 'deleted'
@@ -145,12 +131,16 @@ export function ActivityPage({
     !canDelete;
 
   const {
-    lockedByOther,
+    lockState,
     lockedByUsername,
-    isLoading: lockLoading,
+    acquire,
     release,
-  } = useActivityLock(isEditMode ? id : null);
+    setLockedByOther,
+    clearLockedByOther,
+  } = useActivityLock(id);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [fieldToActivate, setFieldToActivate] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -169,11 +159,7 @@ export function ActivityPage({
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
   );
-  const [pendingAction, setPendingAction] = useState<PendingAction>(undefined);
-  const pendingFocusFieldRef = useRef<string | undefined>(undefined);
   const initialFormDataRef = useRef<ActivityFormData | null>(null);
-  /** Timestamp when we last entered view mode; used to ignore spurious focus/click on load. */
-  const viewModeEnteredAtRef = useRef<number>(0);
 
   const { data: dateStatuses } = useDateStatuses();
   const updateMutation = useUpdateActivity();
@@ -181,6 +167,20 @@ export function ActivityPage({
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
+
+  useActivityWebSocket(id, {
+    onLockAcquired: (lockedBy) => {
+      if (lockState !== 'owned') {
+        setLockedByOther(lockedBy.username);
+      }
+    },
+    onLockReleased: () => {
+      clearLockedByOther();
+    },
+    onDataUpdated: () => {
+      void refreshActivity();
+    },
+  });
 
   const form = useForm<ActivityFormData>({
     resolver: zodResolver(
@@ -203,33 +203,60 @@ export function ActivityPage({
     initialFormDataRef.current = mapped;
   }, [activity, lookups, form]);
 
-  // Redirect: edit mode without EDIT permission -> view
   useEffect(() => {
-    if (isEditMode && !canEditActivity) {
-      void navigate(viewPath, { replace: true });
-    }
-  }, [isEditMode, canEditActivity, navigate, viewPath]);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
-  // Redirect: edit mode + blocked status and no permission to edit when blocked -> view
-  useEffect(() => {
-    if (isEditMode && isBlockedStatus && !canEditWhenBlocked) {
-      void navigate(viewPath, { replace: true });
-    }
-  }, [isEditMode, isBlockedStatus, canEditWhenBlocked, navigate, viewPath]);
+  const mayEdit =
+    canEditActivity &&
+    lockState !== 'locked-by-other' &&
+    (!isBlockedStatus || canEditWhenBlocked);
 
-  // When entering view mode, record time so handleFormInteraction can ignore events within grace period
-  useEffect(() => {
-    if (!isEditMode) {
-      viewModeEnteredAtRef.current = Date.now();
-    }
-  }, [isEditMode]);
+  const readOnly = !isEditing || lockState === 'locked-by-other';
 
-  // Release edit lock when leaving edit mode (e.g. Back button or URL change to view). Cancel/Save already call release() before navigating.
+  const clearFieldToActivate = useCallback(() => setFieldToActivate(null), []);
+
+  const handleFieldClick = useCallback(
+    (e: React.MouseEvent<HTMLFormElement>) => {
+      if (isEditing || !mayEdit) return;
+
+      const target = e.target as HTMLElement;
+      const fieldEl = target.closest('[data-field]');
+      const field = fieldEl?.getAttribute('data-field') ?? undefined;
+
+      setIsEditing(true);
+      setFieldToActivate(field ?? null);
+
+      void acquire().then((ok) => {
+        if (!ok) {
+          setIsEditing(false);
+          setFieldToActivate(null);
+          toast.error(
+            'Cannot edit. Another user has started editing this activity.'
+          );
+        }
+      });
+    },
+    [isEditing, mayEdit, acquire]
+  );
+
+  // Focus / activate the target field after entering edit
   useEffect(() => {
-    if (!isEditMode) {
-      void release();
-    }
-  }, [isEditMode, release]);
+    if (!isEditing || !fieldToActivate) return;
+    requestAnimationFrame(() => {
+      try {
+        form.setFocus(fieldToActivate as keyof ActivityFormData);
+      } catch {
+        // field name may not be focusable via RHF
+      }
+    });
+  }, [isEditing, fieldToActivate, form]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -254,81 +281,25 @@ export function ActivityPage({
     setShowDeleteModal(true);
   }, [id, normalizedStatus]);
 
-  // Pending action/focus after entering edit mode
-  useEffect(() => {
-    if (!isEditMode) return;
-    const field = pendingFocusFieldRef.current;
-    if (field) {
-      pendingFocusFieldRef.current = undefined;
-      requestAnimationFrame(() => {
-        try {
-          form.setFocus(field as keyof ActivityFormData);
-        } catch {
-          // ignore invalid field names
+  const ensureEditThen = useCallback(
+    (action: () => void) => {
+      if (isEditing) {
+        action();
+        return;
+      }
+      setIsEditing(true);
+      void acquire().then((ok) => {
+        if (ok) {
+          action();
+        } else {
+          setIsEditing(false);
+          toast.error(
+            'Cannot edit. Another user has started editing this activity.'
+          );
         }
       });
-    }
-    if (pendingAction === 'delete') {
-      setPendingAction(undefined);
-      void handleOpenDeleteModal();
-    } else if (pendingAction === 'requestDelete') {
-      setPendingAction(undefined);
-      setShowRequestDeleteModal(true);
-    }
-  }, [isEditMode, pendingAction, form, handleOpenDeleteModal]);
-
-  // Warn on tab close/refresh when there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  const readOnly =
-    !isEditMode ||
-    lockedByOther ||
-    lockLoading ||
-    (isBlockedStatus && !canEditWhenBlocked);
-
-  const enterEdit = useCallback(
-    (focusField?: string, action?: PendingAction) => {
-      if (!canEditActivity) return;
-      if (isBlockedStatus && !canEditWhenBlocked) return;
-      if (focusField) pendingFocusFieldRef.current = focusField;
-      if (action) setPendingAction(action);
-      void navigate(editPath, { replace: true });
     },
-    [canEditActivity, isBlockedStatus, canEditWhenBlocked, navigate, editPath]
-  );
-
-  const handleFormInteraction = useCallback(
-    (
-      e: React.FocusEvent<HTMLFormElement> | React.MouseEvent<HTMLFormElement>
-    ) => {
-      const mayEnterEdit = !isBlockedStatus || canEditWhenBlocked;
-      if (!isEditMode && canEditActivity && mayEnterEdit) {
-        // Skip if still in grace period after entering view mode (avoids redirect on load)
-        if (Date.now() - viewModeEnteredAtRef.current < VIEW_MODE_GRACE_MS) {
-          return;
-        }
-        const target = e.target as HTMLElement;
-        const field = target
-          .closest('[data-field]')
-          ?.getAttribute('data-field');
-        enterEdit(field ?? undefined);
-      }
-    },
-    [
-      isEditMode,
-      canEditActivity,
-      isBlockedStatus,
-      canEditWhenBlocked,
-      enterEdit,
-    ]
+    [isEditing, acquire]
   );
 
   const handleCancel = async () => {
@@ -337,23 +308,19 @@ export function ActivityPage({
       return;
     }
     await release();
-    void navigate(viewPath, { replace: true });
+    setIsEditing(false);
+    if (initialFormDataRef.current) {
+      form.reset(initialFormDataRef.current);
+    }
   };
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
     await release();
-    void navigate(viewPath, { replace: true });
-  };
-
-  const handleDeleteFromView = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    enterEdit(undefined, 'delete');
-  };
-
-  const handleRequestDeleteFromView = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    enterEdit(undefined, 'requestDelete');
+    setIsEditing(false);
+    if (initialFormDataRef.current) {
+      form.reset(initialFormDataRef.current);
+    }
   };
 
   const onSubmit = (data: ActivityFormData) => {
@@ -501,9 +468,9 @@ export function ActivityPage({
         activityStatus={activity.activityStatus ?? null}
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
-        onHistoryClick={isEditMode ? () => setHistoryOpen(true) : undefined}
+        onHistoryClick={isEditing ? () => setHistoryOpen(true) : undefined}
       />
-      {isEditMode && lockedByOther && (
+      {lockState === 'locked-by-other' && (
         <LockBanner lockedByUsername={lockedByUsername} />
       )}
       {isBlockedStatus && (
@@ -518,15 +485,14 @@ export function ActivityPage({
       <FormProvider {...form}>
         <Form {...form}>
           <form
-            className={!isEditMode ? 'cursor-pointer' : undefined}
+            className={!isEditing && mayEdit ? 'cursor-pointer' : undefined}
             onSubmit={(e) => {
               e.preventDefault();
-              if (isEditMode) {
+              if (isEditing) {
                 void form.handleSubmit(onSubmit, onError)(e);
               }
             }}
-            onFocus={!isEditMode ? handleFormInteraction : undefined}
-            onClick={!isEditMode ? handleFormInteraction : undefined}
+            onClick={!isEditing ? handleFieldClick : undefined}
           >
             {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
               <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
@@ -547,6 +513,9 @@ export function ActivityPage({
               form={form}
               lookups={lookups}
               readOnly={readOnly}
+              isEditing={isEditing}
+              fieldToActivate={fieldToActivate}
+              clearFieldToActivate={clearFieldToActivate}
               leadTeamOptions={leadTeamOptions}
             />
             <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
@@ -556,11 +525,10 @@ export function ActivityPage({
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={
-                      isEditMode
-                        ? () => setShowRequestDeleteModal(true)
-                        : handleRequestDeleteFromView
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ensureEditThen(() => setShowRequestDeleteModal(true));
+                    }}
                     disabled={isSubmitting}
                   >
                     Request delete
@@ -571,11 +539,10 @@ export function ActivityPage({
                     type="button"
                     variant="outline"
                     className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={
-                      isEditMode
-                        ? () => void handleOpenDeleteModal()
-                        : handleDeleteFromView
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ensureEditThen(() => void handleOpenDeleteModal());
+                    }}
                     disabled={isSubmitting}
                   >
                     Delete
@@ -583,7 +550,7 @@ export function ActivityPage({
                 )}
               </div>
               <div className="flex gap-4">
-                {isEditMode ? (
+                {isEditing ? (
                   <>
                     <Button
                       type="button"
@@ -639,28 +606,30 @@ export function ActivityPage({
                     )}
                   </>
                 ) : (
-                  <>
-                    <Button type="button" variant="outline">
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => enterEdit()}
-                      disabled={
-                        !canEditActivity ||
-                        (isBlockedStatus && !canEditWhenBlocked)
-                      }
-                    >
-                      Edit
-                    </Button>
-                  </>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(true);
+                      void acquire().then((ok) => {
+                        if (!ok) {
+                          setIsEditing(false);
+                          toast.error(
+                            'Cannot edit. Another user has started editing this activity.'
+                          );
+                        }
+                      });
+                    }}
+                    disabled={!mayEdit}
+                  >
+                    Edit
+                  </Button>
                 )}
               </div>
             </div>
           </form>
         </Form>
       </FormProvider>
-      {isEditMode && (
+      {isEditing && (
         <ActivityHistory
           activityId={id}
           open={historyOpen}

@@ -129,6 +129,13 @@ export class LocksService {
     return (row ?? null) as LockForEntity | null;
   }
 
+  async getLockById(lockId: number): Promise<LockForEntity | null> {
+    const row = await this.databaseService.db.query.editLocks.findFirst({
+      where: eq(editLocks.id, lockId),
+    });
+    return (row ?? null) as LockForEntity | null;
+  }
+
   async releaseLock(lockId: number, userId: number): Promise<boolean> {
     const result = await this.databaseService.db
       .delete(editLocks)

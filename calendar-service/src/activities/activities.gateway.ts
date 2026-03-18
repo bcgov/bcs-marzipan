@@ -118,4 +118,35 @@ export class ActivitiesGateway
     this.logger.log(`Broadcasting activity updated: ${data.id}`);
     this.server.to('activities-table').emit('activityUpdated', data);
   }
+
+  /**
+   * Notify all clients viewing a specific activity that a lock was acquired.
+   */
+  notifyLockAcquired(
+    activityId: number,
+    lockedBy: { userId: number; username: string }
+  ) {
+    this.logger.log(
+      `Notifying viewers of activity ${activityId}: lock acquired by ${lockedBy.username}`
+    );
+    for (const [clientId, activityIds] of this.viewingActivities.entries()) {
+      if (activityIds.has(activityId)) {
+        this.server.to(clientId).emit('lockAcquired', { activityId, lockedBy });
+      }
+    }
+  }
+
+  /**
+   * Notify all clients viewing a specific activity that the lock was released.
+   */
+  notifyLockReleased(activityId: number) {
+    this.logger.log(
+      `Notifying viewers of activity ${activityId}: lock released`
+    );
+    for (const [clientId, activityIds] of this.viewingActivities.entries()) {
+      if (activityIds.has(activityId)) {
+        this.server.to(clientId).emit('lockReleased', { activityId });
+      }
+    }
+  }
 }

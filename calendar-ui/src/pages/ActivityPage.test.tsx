@@ -1,11 +1,11 @@
 /**
- * ActivityPage form and lead team field tests (view mode), and edit-mode behavior.
- * Form always renders; Lead team uses a combobox (same as Lead Organization)
- * so the selected team label displays once options are available.
+ * ActivityPage form and lead team field tests, restore button visibility,
+ * and client-side edit toggle behavior.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -43,7 +43,10 @@ const mockLookupsReady = {
   sharedWithTeams: [],
 };
 
+const mockAcquire = vi.fn().mockResolvedValue(true);
 const mockRelease = vi.fn().mockResolvedValue(undefined);
+const mockSetLockedByOther = vi.fn();
+const mockClearLockedByOther = vi.fn();
 const mockRefreshActivity = vi.fn().mockResolvedValue(undefined);
 
 const mockNavigate = vi.fn();
@@ -74,11 +77,18 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
 
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
-    lockedByOther: false,
+    lock: null,
+    lockState: 'idle',
     lockedByUsername: null,
-    isLoading: false,
+    acquire: mockAcquire,
     release: mockRelease,
+    setLockedByOther: mockSetLockedByOther,
+    clearLockedByOther: mockClearLockedByOther,
   }),
+}));
+
+vi.mock('../hooks/useActivityWebSocket', () => ({
+  useActivityWebSocket: vi.fn(),
 }));
 
 vi.mock('../hooks/useLookups', async (importOriginal) => {
@@ -112,7 +122,7 @@ function renderWithProviders(
     <MemoryRouter initialEntries={[initialRoute]}>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="activity/:id/*" element={ui} />
+          <Route path="activity/:id" element={ui} />
         </Routes>
       </QueryClientProvider>
     </MemoryRouter>
@@ -132,10 +142,11 @@ function renderActivityPage(overrides?: {
   );
 }
 
-describe('ActivityPage form readiness (view mode)', () => {
+describe('ActivityPage form readiness', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
+    mockAcquire.mockClear();
     mockUseAuth.mockReturnValue({
       hasPermission: () => true,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
@@ -180,7 +191,7 @@ describe('ActivityPage form readiness (view mode)', () => {
   });
 });
 
-describe('ActivityPage restore button visibility (view mode)', () => {
+describe('ActivityPage restore button visibility', () => {
   beforeEach(() => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
@@ -255,10 +266,11 @@ describe('ActivityPage restore button visibility (view mode)', () => {
   });
 });
 
-describe('ActivityPage edit mode', () => {
+describe('ActivityPage edit toggle', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
+    mockAcquire.mockClear().mockResolvedValue(true);
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -279,40 +291,42 @@ describe('ActivityPage edit mode', () => {
     });
   });
 
-  it('redirects to view when user lacks EDIT permission and route is edit', async () => {
+  it('shows Edit button in view state and hides Cancel/Update', async () => {
+    renderActivityPage();
+
+    await expect(
+      screen.findByRole('button', { name: /^Edit$/i })
+    ).resolves.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^Update$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('clicking Edit acquires lock and shows Cancel/Update buttons', async () => {
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const editButton = await screen.findByRole('button', { name: /^Edit$/i });
+    await user.click(editButton);
+
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalledTimes(1));
+    await expect(
+      screen.findByRole('button', { name: /^Cancel$/i })
+    ).resolves.toBeInTheDocument();
+    await expect(
+      screen.findByRole('button', { name: /^Update$/i })
+    ).resolves.toBeInTheDocument();
+  });
+
+  it('disables Edit button when user lacks EDIT permission', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.EDIT,
       user: { id: 1, roleName: 'Viewer', teamIds: [5] },
     });
 
-    renderActivityPage({ initialRoute: '/activity/1/edit' });
+    renderActivityPage();
 
-    await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/activity/1', {
-        replace: true,
-      })
-    );
-  });
-
-  it('redirects to view when user has EDIT permission but activity canEdit is false', async () => {
-    const activityViewOnly = createMockActivityResponse({
-      id: 1,
-      displayId: 'ACT-1',
-      title: 'Shared activity',
-      leadTeamId: 5,
-      activityStatus: 'Draft',
-      canEdit: false,
-    });
-
-    renderActivityPage({
-      activity: activityViewOnly,
-      initialRoute: '/activity/1/edit',
-    });
-
-    await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/activity/1', {
-        replace: true,
-      })
-    );
+    const editButton = await screen.findByRole('button', { name: /^Edit$/i });
+    expect(editButton).toBeDisabled();
   });
 });
