@@ -4,6 +4,8 @@ This guide standardizes how we theme and extend base Shadcn components so update
 
 **Mental model:** Shadcn/ui is a starter kit you own, not a packaged library. Treat it as a design system: keep branding and layout decisions in tokens and variants, not scattered across component markup.
 
+**Fork-level UI deltas:** See [UI_CUSTOMIZE_LOG.md](./UI_CUSTOMIZE_LOG.md) for documented divergences from stock primitives (e.g. popover list scrollbars, Select).
+
 ---
 
 ## 1. Theme via CSS variables (design tokens)

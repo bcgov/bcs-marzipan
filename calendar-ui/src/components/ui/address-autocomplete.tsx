@@ -239,7 +239,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       </div>
 
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-300 bg-white shadow-lg">
+        <div className="popover-list-scroll absolute z-50 mt-1 max-h-[var(--popover-list-max-height)] w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
           {isLoading && (
             <div className="p-2 text-center text-sm text-gray-500">
               Loading...

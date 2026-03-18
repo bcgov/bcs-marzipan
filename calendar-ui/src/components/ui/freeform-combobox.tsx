@@ -427,7 +427,7 @@ export function FreeformCombobox({
         >
           <div
             className={cn(
-              'bg-popover text-popover-foreground ring-foreground/10 max-h-96 overflow-hidden rounded-md shadow-md ring-1'
+              'bg-popover text-popover-foreground ring-foreground/10 max-h-[var(--popover-list-max-height)] overflow-hidden rounded-md shadow-md ring-1'
             )}
           >
             {listEntries.length === 0 ? (
@@ -439,7 +439,7 @@ export function FreeformCombobox({
                 ref={listRef}
                 id="freeform-combobox-list"
                 role="listbox"
-                className="max-h-96 scroll-py-1 overflow-y-auto p-1"
+                className="popover-list-scroll max-h-[var(--popover-list-max-height)] scroll-py-1 overflow-y-auto p-1"
                 aria-multiselectable={multiple}
               >
                 {listEntries.map((entry, index) => {
