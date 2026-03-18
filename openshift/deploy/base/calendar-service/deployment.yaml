@@ -54,6 +54,41 @@ spec:
                 configMapKeyRef:
                   name: calendar-service-config
                   key: NODE_ENV
+            - name: AUTH_STRATEGY
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: AUTH_STRATEGY
+            - name: AUTH_COOKIE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: AUTH_COOKIE_DOMAIN
+            - name: POST_LOGIN_REDIRECT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: POST_LOGIN_REDIRECT_URL
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: AZURE_TENANT_ID
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: AZURE_CLIENT_ID
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: AZURE_CLIENT_SECRET
+            - name: AZURE_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: AZURE_REDIRECT_URI
           readinessProbe:
             httpGet:
               path: /ready

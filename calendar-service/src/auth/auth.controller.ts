@@ -16,7 +16,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
 import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
@@ -48,6 +48,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() body: unknown,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const parsed = loginBodySchema.safeParse(body);
@@ -56,7 +57,7 @@ export class AuthController {
     }
     const result = await this.authService.login(parsed.data);
 
-    this.setAuthCookie(res, result.accessToken, result.expiresIn);
+    this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
 
     return result;
   }
@@ -215,8 +216,8 @@ export class AuthController {
         `Azure login successful for userId=${result.user.id}, username=${result.user.username}, email=${result.user.email || 'n/a'}`
       );
 
-      this.setAuthCookie(res, result.accessToken, result.expiresIn);
-      return res.redirect('/');
+      this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
+      return res.redirect(this.getPostLoginRedirectUrl());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Azure login failed during callback: ${message}`);
@@ -244,14 +245,9 @@ export class AuthController {
     description: 'Log out and clear auth cookie',
   })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  logout(@Res({ passthrough: true }) res: Response) {
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     // Clear the httpOnly auth cookie
-    res.clearCookie(ACCESS_TOKEN_COOKIE, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    res.clearCookie(ACCESS_TOKEN_COOKIE, this.getAuthCookieOptions(req));
     return this.authService.logout();
   }
 
@@ -269,16 +265,36 @@ export class AuthController {
   }
 
   private setAuthCookie(
+    req: Request,
     res: Response,
     accessToken: string,
     expiresIn?: number
   ): void {
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      ...this.getAuthCookieOptions(req),
       maxAge: (expiresIn ?? 3600) * 1000,
     });
+  }
+
+  private getAuthCookieOptions(req: Request): CookieOptions {
+    const forwardedProto = req.get('X-Forwarded-Proto');
+    const isSecureRequest =
+      forwardedProto === 'https' ||
+      req.protocol === 'https' ||
+      process.env.NODE_ENV === 'production';
+    const configuredCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim();
+
+    return {
+      httpOnly: true,
+      secure: isSecureRequest,
+      sameSite: isSecureRequest ? 'none' : 'lax',
+      domain: configuredCookieDomain || undefined,
+      path: '/',
+    };
+  }
+
+  private getPostLoginRedirectUrl(): string {
+    const configuredRedirect = process.env.POST_LOGIN_REDIRECT_URL?.trim();
+    return configuredRedirect || '/';
   }
 }
