@@ -71,12 +71,30 @@ AZURE_CLIENT_SECRET=your-app-client-secret
 # Optional callback override; if omitted, callback is derived from request host
 AZURE_REDIRECT_URI=
 
+# Optional cookie domain for proxy-based deployments. Use the public UI host,
+# not the internal calendar-service host, when auth flows through /api.
+AUTH_COOKIE_DOMAIN=
+
+# Optional post-login redirect URL. Use the public UI host or a UI route.
+POST_LOGIN_REDIRECT_URL=
+
 # JWT secret key (required in production - use a strong random value)
 JWT_SECRET=your-jwt-secret-change-in-production
 
 # JWT token expiration in seconds (default: 3600 = 1 hour)
 JWT_EXPIRES_IN=3600
 ```
+
+When the UI proxies backend requests through `/api`, the auth cookie should be
+scoped to the public UI hostname, for example
+`calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca`. Do not set the cookie
+domain to the backend service hostname, because the browser does not navigate to
+that host directly during normal app use.
+
+If Azure sign-in should land on a specific UI page after the callback, set
+`POST_LOGIN_REDIRECT_URL` to the public UI URL, for example
+`https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca/`. If left blank,
+the backend redirects to `/` after successful sign-in.
 
 ### Token content and policy changes
 
