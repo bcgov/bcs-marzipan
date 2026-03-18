@@ -474,7 +474,7 @@ export const ActivityOverviewSection: React.FC<
           </FormItem>
         )}
       />
-
+      <div className="my-6 border-t border-gray-300"></div>
       <FormField
         control={form.control}
         name="significance"

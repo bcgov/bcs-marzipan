@@ -2,11 +2,9 @@ import { UseFormReturn } from 'react-hook-form';
 import { useMemo } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -183,43 +181,44 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
             </FormItem>
           )}
         />
-      </div>
 
-      <FormField
-        control={form.control}
-        name="lookAheadSection"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <div className="flex flex-wrap gap-2">
-              {lookAheadSectionOptions.map((option) => {
-                const isSelected = field.value === option.value;
-                return (
-                  <Badge
-                    key={option.value}
-                    variant={isSelected ? 'default' : 'outline'}
-                    className="cursor-pointer px-4 py-2 text-sm"
-                    onClick={
-                      readOnly
-                        ? undefined
-                        : () => {
-                            const newValue = isSelected ? null : option.value;
-                            field.onChange(newValue);
-                          }
-                    }
-                  >
-                    {option.label}
-                  </Badge>
-                );
-              })}
-            </div>
-            <FormDescription className="mt-2">
-              Select the look ahead section
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="lookAheadSection"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormControl data-field={field.name}>
+                <RadioGroup
+                  disabled={readOnly}
+                  onValueChange={field.onChange}
+                  value={field.value ?? ''}
+                  className="flex flex-row space-x-4"
+                >
+                  {lookAheadSectionOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className="flex items-center space-x-2"
+                    >
+                      <RadioGroupItem
+                        value={option.value}
+                        id={`lookAhead-section-${option.value}`}
+                      />
+                      <Label
+                        htmlFor={`lookAhead-section-${option.value}`}
+                        className="cursor-pointer font-normal"
+                      >
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
     </ActivityFormSection>
   );
 };
