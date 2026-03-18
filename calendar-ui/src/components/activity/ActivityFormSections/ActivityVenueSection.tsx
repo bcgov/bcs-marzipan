@@ -127,7 +127,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
           };
 
           return (
-            <div className="space-y-4">
+            <>
               <FormItem>
                 <AddressAutocomplete
                   label="Street Address"
@@ -155,7 +155,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 <FormMessage />
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
@@ -167,7 +167,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 </FormControl>
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>
                   {getActivityFieldLabel('provinceOrState')}
                 </FormLabel>
@@ -181,7 +181,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                 </FormControl>
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
@@ -192,7 +192,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
                   />
                 </FormControl>
               </FormItem>
-            </div>
+            </>
           );
         }}
       />

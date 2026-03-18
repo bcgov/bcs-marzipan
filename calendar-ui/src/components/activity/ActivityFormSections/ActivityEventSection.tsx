@@ -30,6 +30,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
@@ -230,7 +231,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         }}
       />
 
-      <div className="my-6 border-t border-gray-300"></div>
+      <FormSectionDivider />
 
       <h2 className="text-xl font-semibold">Venue</h2>
 
@@ -278,7 +279,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           };
 
           return (
-            <div className="space-y-4">
+            <>
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
                 <FormControl data-field={field.name}>
@@ -328,7 +329,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormMessage />
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <AddressAutocomplete
                   label="Street Address"
                   placeholder="Start typing an address..."
@@ -341,7 +342,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormMessage />
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
@@ -360,7 +361,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 </FormControl>
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>
                   {getActivityFieldLabel('provinceOrState')}
                 </FormLabel>
@@ -381,7 +382,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 </FormControl>
               </FormItem>
 
-              <FormItem>
+              <FormItem className="mt-6">
                 <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
                 <FormControl data-field={field.name}>
                   <Input
@@ -399,7 +400,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   />
                 </FormControl>
               </FormItem>
-            </div>
+            </>
           );
         }}
       />

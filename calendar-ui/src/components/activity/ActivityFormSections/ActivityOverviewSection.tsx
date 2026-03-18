@@ -25,6 +25,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
@@ -482,7 +483,7 @@ export const ActivityOverviewSection: React.FC<
           </FormItem>
         )}
       />
-      <div className="my-6 border-t border-gray-300"></div>
+      <FormSectionDivider />
       <FormField
         control={form.control}
         name="significance"
@@ -503,87 +504,85 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <div className="space-y-4">
-        <FormField
-          control={form.control}
-          name="pitchRequiredStatusId"
-          render={({ field }) => (
+      <FormField
+        control={form.control}
+        name="pitchRequiredStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <Select
+              disabled={readOnly}
+              value={
+                field.value !== undefined && field.value !== null
+                  ? String(field.value)
+                  : ''
+              }
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+            >
+              <FormControl data-field={field.name}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {pitchRequiredStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.displayName ?? status.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="pitchDate"
+        render={({ field }) => {
+          const raw = field.value ?? '';
+          const pitchLabel = raw
+            ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
+            : 'Select pitch date';
+          return (
             <FormItem>
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <Select
-                disabled={readOnly}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
-                onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
-                }
-              >
-                <FormControl data-field={field.name}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {pitchRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl className="w-full" data-field={field.name}>
+                <ScheduledDatePopoverField
+                  triggerVariant="form"
+                  value={raw}
+                  onChange={(iso) => field.onChange(iso || undefined)}
+                  label={pitchLabel}
+                  triggerMuted={!raw}
+                  disabled={readOnly}
+                  popoverTitle="Select pitch date"
+                  presets={PRESETS_FUTURE_SHORT}
+                  getPresetAnchor={anchorToday}
+                  headerRight={
+                    raw && !readOnly ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary text-sm"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    ) : null
+                  }
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
-          )}
-        />
+          );
+        }}
+      />
 
-        <FormField
-          control={form.control}
-          name="pitchDate"
-          render={({ field }) => {
-            const raw = field.value ?? '';
-            const pitchLabel = raw
-              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-              : 'Select pitch date';
-            return (
-              <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormControl className="w-full" data-field={field.name}>
-                  <ScheduledDatePopoverField
-                    triggerVariant="form"
-                    value={raw}
-                    onChange={(iso) => field.onChange(iso || undefined)}
-                    label={pitchLabel}
-                    triggerMuted={!raw}
-                    disabled={readOnly}
-                    popoverTitle="Select pitch date"
-                    presets={PRESETS_FUTURE_SHORT}
-                    getPresetAnchor={anchorToday}
-                    headerRight={
-                      raw && !readOnly ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary text-sm"
-                          onClick={() => field.onChange(undefined)}
-                        >
-                          Clear
-                        </Button>
-                      ) : null
-                    }
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-      </div>
-
-      <div className="my-6 border-t border-gray-300"></div>
+      <FormSectionDivider />
 
       <FormField
         control={form.control}

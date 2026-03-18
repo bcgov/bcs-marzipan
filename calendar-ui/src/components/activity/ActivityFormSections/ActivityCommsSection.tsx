@@ -270,42 +270,40 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         }}
       />
 
-      <div className="space-y-4">
-        <FormField
-          control={form.control}
-          name="translationsRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <Select
-                disabled={readOnly}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
-                onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
-                }
-              >
-                <FormControl data-field={field.name}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {translationRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+      <FormField
+        control={form.control}
+        name="translationsRequiredStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <Select
+              disabled={readOnly}
+              value={
+                field.value !== undefined && field.value !== null
+                  ? String(field.value)
+                  : ''
+              }
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+            >
+              <FormControl data-field={field.name}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {translationRequiredStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.displayName ?? status.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </ActivityFormSection>
   );
 };
