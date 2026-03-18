@@ -3,7 +3,13 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -91,11 +97,13 @@ export function ActivityPage({
     .canEdit;
   const canEditActivity =
     hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
+  const leadTeamFetchEnabled = canCreateActivity || canEditActivity;
   const {
     data: leadTeamOptions = [],
     isError: leadTeamOptionsError,
+    isFetching: leadTeamOptionsFetching,
     refetch: refetchLeadTeamOptions,
-  } = useLeadTeamOptions(canCreateActivity || canEditActivity);
+  } = useLeadTeamOptions(leadTeamFetchEnabled);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -197,11 +205,23 @@ export function ActivityPage({
     getActivityFieldLabel
   );
 
-  useEffect(() => {
+  /** After reset for this activity; avoids mounting Lead team Select with default leadTeamId 0 before reset (SPA + cached options). */
+  const [leadTeamHydratedForId, setLeadTeamHydratedForId] = useState<
+    number | null
+  >(null);
+
+  useLayoutEffect(() => {
     const mapped = activityToFormData(activity, lookups);
     form.reset(mapped);
     initialFormDataRef.current = mapped;
+    setLeadTeamHydratedForId(activity.id);
   }, [activity, lookups, form]);
+
+  const leadTeamSelectDeferred =
+    leadTeamHydratedForId !== activity.id ||
+    (leadTeamFetchEnabled &&
+      leadTeamOptionsFetching &&
+      leadTeamOptions.length === 0);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -517,6 +537,7 @@ export function ActivityPage({
               fieldToActivate={fieldToActivate}
               clearFieldToActivate={clearFieldToActivate}
               leadTeamOptions={leadTeamOptions}
+              leadTeamSelectDeferred={leadTeamSelectDeferred}
             />
             <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
               <div className="flex gap-2">

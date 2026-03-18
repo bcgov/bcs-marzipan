@@ -57,6 +57,8 @@ type ActivityOverviewSectionProps = {
   readOnly?: boolean;
   /** When provided, show Lead team combobox. Ministry is derived from the selected team. */
   leadTeamOptions?: TeamListItem[];
+  /** While true, show placeholder instead of Select (pre-reset SPA or options loading). */
+  leadTeamSelectDeferred?: boolean;
 };
 
 export const ActivityOverviewSection: React.FC<
@@ -67,6 +69,7 @@ export const ActivityOverviewSection: React.FC<
   tags,
   readOnly = false,
   leadTeamOptions,
+  leadTeamSelectDeferred = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
   const categoriesAnchorRef = useComboboxAnchor();
@@ -165,103 +168,123 @@ export const ActivityOverviewSection: React.FC<
       />
 
       {leadTeamOptions ? (
-        <FormField
-          control={form.control}
-          name="leadTeamId"
-          render={({ field }) => {
-            const handleValueChange = (value: string) => {
-              const previousTeamId = field.value ?? null;
-              const previousTeam =
-                previousTeamId != null
-                  ? leadTeamOptions.find((t) => t.id === previousTeamId)
-                  : null;
-              const syncedOrgId =
-                previousTeam?.ministryId != null
-                  ? (organizations.find(
-                      (o) => o.ministryId === previousTeam.ministryId
-                    )?.value ?? null)
-                  : null;
-              const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
-              const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
-              const leadOrgInSyncWithTeam =
-                (syncedOrgId != null &&
-                  currentLeadOrgId === syncedOrgId &&
-                  (currentLeadOrgName == null || currentLeadOrgName === '')) ||
-                (syncedOrgId == null &&
-                  currentLeadOrgId == null &&
-                  (currentLeadOrgName == null || currentLeadOrgName === ''));
+        leadTeamSelectDeferred ? (
+          <FormItem>
+            <FormLabel>
+              {getActivityFieldLabel('leadTeamId')}{' '}
+              <span className="text-destructive">*</span>
+            </FormLabel>
+            <div
+              className="bg-muted/30 text-muted-foreground border-input flex h-10 w-full items-center rounded-md border px-3 text-sm"
+              aria-busy="true"
+            >
+              Loading teams…
+            </div>
+          </FormItem>
+        ) : (
+          <FormField
+            control={form.control}
+            name="leadTeamId"
+            render={({ field }) => {
+              const handleValueChange = (value: string) => {
+                const previousTeamId = field.value ?? null;
+                const previousTeam =
+                  previousTeamId != null
+                    ? leadTeamOptions.find((t) => t.id === previousTeamId)
+                    : null;
+                const syncedOrgId =
+                  previousTeam?.ministryId != null
+                    ? (organizations.find(
+                        (o) => o.ministryId === previousTeam.ministryId
+                      )?.value ?? null)
+                    : null;
+                const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
+                const currentLeadOrgName =
+                  form.getValues('leadOrgName') ?? null;
+                const leadOrgInSyncWithTeam =
+                  (syncedOrgId != null &&
+                    currentLeadOrgId === syncedOrgId &&
+                    (currentLeadOrgName == null ||
+                      currentLeadOrgName === '')) ||
+                  (syncedOrgId == null &&
+                    currentLeadOrgId == null &&
+                    (currentLeadOrgName == null || currentLeadOrgName === ''));
 
-              const teamId =
-                value === '' || value == null ? undefined : Number(value);
-              field.onChange(teamId);
+                const teamId =
+                  value === '' || value == null ? undefined : Number(value);
+                field.onChange(teamId);
 
-              if (teamId == null) {
-                form.setValue('leadMinistryId', undefined);
-                if (leadOrgInSyncWithTeam) {
-                  form.setValue('leadOrgId', null);
-                  form.setValue('leadOrgName', null);
-                }
-              } else {
-                const team = leadTeamOptions.find((t) => t.id === teamId);
-                form.setValue('leadMinistryId', team?.ministryId ?? undefined);
-                if (leadOrgInSyncWithTeam && team) {
-                  const orgForMinistry =
-                    team.ministryId != null
-                      ? organizations.find(
-                          (o) => o.ministryId === team.ministryId
-                        )
-                      : undefined;
-                  if (orgForMinistry) {
-                    form.setValue('leadOrgId', orgForMinistry.value);
-                    form.setValue('leadOrgName', null);
-                  } else {
+                if (teamId == null) {
+                  form.setValue('leadMinistryId', undefined);
+                  if (leadOrgInSyncWithTeam) {
                     form.setValue('leadOrgId', null);
                     form.setValue('leadOrgName', null);
                   }
-                }
-              }
-            };
-
-            const options = leadTeamOptions.map((t) => ({
-              value: String(t.id),
-              label: t.ministryName
-                ? `${t.displayName || t.name} (${t.ministryName})`
-                : t.displayName || t.name,
-            }));
-
-            return (
-              <FormItem>
-                <FormLabel>
-                  {getActivityFieldLabel(field.name)}{' '}
-                  <span className="text-destructive">*</span>
-                </FormLabel>
-                <FormControl data-field={field.name}>
-                  <Select
-                    disabled={readOnly}
-                    value={
-                      field.value !== undefined && field.value !== null
-                        ? String(field.value)
-                        : undefined
+                } else {
+                  const team = leadTeamOptions.find((t) => t.id === teamId);
+                  form.setValue(
+                    'leadMinistryId',
+                    team?.ministryId ?? undefined
+                  );
+                  if (leadOrgInSyncWithTeam && team) {
+                    const orgForMinistry =
+                      team.ministryId != null
+                        ? organizations.find(
+                            (o) => o.ministryId === team.ministryId
+                          )
+                        : undefined;
+                    if (orgForMinistry) {
+                      form.setValue('leadOrgId', orgForMinistry.value);
+                      form.setValue('leadOrgName', null);
+                    } else {
+                      form.setValue('leadOrgId', null);
+                      form.setValue('leadOrgName', null);
                     }
-                    onValueChange={handleValueChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select lead team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
+                  }
+                }
+              };
+
+              const options = leadTeamOptions.map((t) => ({
+                value: String(t.id),
+                label: t.ministryName
+                  ? `${t.displayName || t.name} (${t.ministryName})`
+                  : t.displayName || t.name,
+              }));
+
+              return (
+                <FormItem>
+                  <FormLabel>
+                    {getActivityFieldLabel(field.name)}{' '}
+                    <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl data-field={field.name}>
+                    <Select
+                      disabled={readOnly}
+                      value={
+                        field.value !== undefined && field.value !== null
+                          ? String(field.value)
+                          : undefined
+                      }
+                      onValueChange={handleValueChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select lead team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {options.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+        )
       ) : null}
 
       <FormField

@@ -33,6 +33,8 @@ type ActivityFormBodyProps = {
   showChangedBadges?: boolean;
   /** Teams for lead team dropdown (create/edit). When provided, overview shows lead team field instead of lead ministry only. */
   leadTeamOptions?: TeamListItem[];
+  /** True until form is reset for activity and options ready; avoids Select before correct leadTeamId (SPA) or empty options (reload). */
+  leadTeamSelectDeferred?: boolean;
 };
 
 /**
@@ -47,6 +49,7 @@ export function ActivityFormBody({
   clearFieldToActivate = clearNoop,
   showChangedBadges = true,
   leadTeamOptions,
+  leadTeamSelectDeferred = false,
 }: ActivityFormBodyProps): ReactElement {
   const commsLeadOptions = lookups.users.map((u) => ({
     value: u.value,
@@ -74,6 +77,7 @@ export function ActivityFormBody({
               tags={lookups.tags}
               readOnly={readOnly}
               leadTeamOptions={leadTeamOptions}
+              leadTeamSelectDeferred={leadTeamSelectDeferred}
             />
 
             <div>
