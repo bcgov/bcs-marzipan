@@ -1,7 +1,8 @@
-import { UseFormReturn, useWatch } from 'react-hook-form';
+import { format, startOfDay } from 'date-fns';
+import { Controller, UseFormReturn, useWatch } from 'react-hook-form';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Button } from '@/components/ui/button';
 import {
   FormControl,
   FormField,
@@ -9,6 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import {
   Select,
   SelectContent,
@@ -21,19 +23,33 @@ import { TimeRangePicker } from '@/components/ui/time-range-picker';
 import { useDateStatuses, useTimeStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import {
+  parseIsoDateLocal,
+  PRESETS_FUTURE_FROM_ANCHOR,
+  PRESETS_PAST_FROM_ANCHOR,
+} from '@/lib/scheduled-date-presets';
 
 import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
+
+const setDateOpts = {
+  shouldDirty: true,
+  shouldTouch: true,
+  shouldValidate: true,
+} as const;
+
+const anchorToday = () => startOfDay(new Date());
 
 type ActivityScheduleSectionProps = {
   form: UseFormReturn<ActivityFormData>;
   readOnly?: boolean;
 };
 
-export const ActivityScheduleSection: React.FC<
-  ActivityScheduleSectionProps
-> = ({ form, readOnly = false }) => {
+export function ActivityScheduleSection({
+  form,
+  readOnly = false,
+}: ActivityScheduleSectionProps) {
   const { data: dateStatuses } = useDateStatuses();
   const { data: timeStatuses } = useTimeStatuses();
 
@@ -43,89 +59,169 @@ export const ActivityScheduleSection: React.FC<
   const startTimeValue = useWatch({ control: form.control, name: 'startTime' });
   const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
 
+  const startStr = String(startDateValue ?? '');
+  const endStr = String(endDateValue ?? '');
+
+  const endPresetAnchor = () =>
+    startStr ? startOfDay(parseIsoDateLocal(startStr)) : startOfDay(new Date());
+
+  const startButtonLabel = startStr
+    ? format(parseIsoDateLocal(startStr), 'MMM d, yyyy')
+    : 'Select start date';
+  const endButtonLabel = endStr
+    ? format(parseIsoDateLocal(endStr), 'MMM d, yyyy')
+    : 'Select end date';
+
+  const isEndBeforeStart = (date: Date) =>
+    Boolean(startStr && date < new Date(startStr + 'T00:00:00'));
+
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.date}>
-      {/* Date Range and Date Status */}
-      <FormField
-        control={form.control}
-        name="startDate"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-1">
-              {getActivityFieldLabel(field.name)}{' '}
-              <span className="text-destructive">*</span>
-            </FormLabel>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="min-w-0 flex-1">
-                <FormControl data-field={field.name}>
-                  <DateRangePicker
+      <FormItem>
+        <FormLabel className="flex items-center gap-1">
+          Date <span className="text-destructive">*</span>
+        </FormLabel>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Controller
+              name="startDate"
+              control={form.control}
+              render={({ field }) => (
+                <FormControl className="min-w-0 flex-1" data-field="startDate">
+                  <ScheduledDatePopoverField
+                    value={field.value ?? ''}
+                    onChange={(iso) => {
+                      field.onChange(iso || undefined);
+                      const end = form.getValues('endDate');
+                      if (
+                        end &&
+                        iso &&
+                        String(end).slice(0, 10) < iso.slice(0, 10)
+                      ) {
+                        form.setValue('endDate', iso, setDateOpts);
+                      }
+                    }}
+                    label={startButtonLabel}
+                    triggerMuted={!startStr}
                     disabled={readOnly}
-                    startDate={String(startDateValue || '')}
-                    endDate={String(endDateValue || '')}
-                    onStartDateChange={(date) => {
-                      form.setValue('startDate', date, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                      });
-                    }}
-                    onEndDateChange={(date) => {
-                      form.setValue('endDate', date, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                      });
-                    }}
-                    placeholder="Pick a date"
+                    popoverTitle="Select start date"
+                    presets={PRESETS_PAST_FROM_ANCHOR}
+                    getPresetAnchor={anchorToday}
+                    triggerAriaLabel="Activity start date"
+                    triggerVariant="form"
+                    headerRight={
+                      startStr && !readOnly ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary text-sm"
+                          onClick={() => field.onChange(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      ) : null
+                    }
                   />
                 </FormControl>
-              </div>
-              <FormField
-                control={form.control}
-                name="dateStatusId"
-                render={({ field: statusField }) => (
-                  <FormItem className="shrink-0">
-                    <FormLabel className="sr-only">
-                      {getActivityFieldLabel(statusField.name)}
-                    </FormLabel>
-                    <Select
-                      disabled={readOnly}
-                      value={
-                        statusField.value !== undefined &&
-                        statusField.value !== null
-                          ? String(statusField.value)
-                          : ''
-                      }
-                      onValueChange={(value) =>
-                        statusField.onChange(
-                          value === '' ? undefined : Number(value)
-                        )
-                      }
-                    >
-                      <FormControl data-field={statusField.name}>
-                        <SelectTrigger
-                          className={STATUS_SELECT_MIN_WIDTH}
-                          aria-label={getActivityFieldLabel(statusField.name)}
+              )}
+            />
+            <span className="text-muted-foreground shrink-0" aria-hidden>
+              →
+            </span>
+            <Controller
+              name="endDate"
+              control={form.control}
+              render={({ field }) => (
+                <FormControl className="min-w-0 flex-1" data-field="endDate">
+                  {/**
+                   * End-date presets are relative to the selected start date when set;
+                   * otherwise the anchor is today (calendar-style default).
+                   */}
+                  <ScheduledDatePopoverField
+                    value={field.value ?? ''}
+                    onChange={(iso) => field.onChange(iso || undefined)}
+                    label={endButtonLabel}
+                    triggerMuted={!endStr}
+                    disabled={readOnly}
+                    popoverTitle="Select end date"
+                    presets={PRESETS_FUTURE_FROM_ANCHOR}
+                    getPresetAnchor={endPresetAnchor}
+                    isDateDisabled={isEndBeforeStart}
+                    triggerAriaLabel="Activity end date"
+                    triggerVariant="form"
+                    headerRight={
+                      endStr && !readOnly ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary text-sm"
+                          onClick={() => field.onChange(undefined)}
                         >
-                          <SelectValue placeholder="Date status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(dateStatuses ?? []).map((status) => (
-                          <SelectItem key={status.id} value={String(status.id)}>
-                            {status.displayName ?? status.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+                          Clear
+                        </Button>
+                      ) : null
+                    }
+                  />
+                </FormControl>
+              )}
+            />
+          </div>
+          <FormField
+            control={form.control}
+            name="dateStatusId"
+            render={({ field: statusField }) => (
+              <FormItem className="shrink-0">
+                <FormLabel className="sr-only">
+                  {getActivityFieldLabel(statusField.name)}
+                </FormLabel>
+                <Select
+                  disabled={readOnly}
+                  value={
+                    statusField.value !== undefined &&
+                    statusField.value !== null
+                      ? String(statusField.value)
+                      : ''
+                  }
+                  onValueChange={(value) =>
+                    statusField.onChange(
+                      value === '' ? undefined : Number(value)
+                    )
+                  }
+                >
+                  <FormControl data-field={statusField.name}>
+                    <SelectTrigger
+                      className={STATUS_SELECT_MIN_WIDTH}
+                      aria-label={getActivityFieldLabel(statusField.name)}
+                    >
+                      <SelectValue placeholder="Date status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {(dateStatuses ?? []).map((status) => (
+                      <SelectItem key={status.id} value={String(status.id)}>
+                        {status.displayName ?? status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+        </div>
+        {form.formState.errors.startDate?.message ? (
+          <p className="text-destructive text-sm font-medium">
+            {String(form.formState.errors.startDate.message)}
+          </p>
+        ) : null}
+        {form.formState.errors.endDate?.message ? (
+          <p className="text-destructive text-sm font-medium">
+            {String(form.formState.errors.endDate.message)}
+          </p>
+        ) : null}
+      </FormItem>
 
-      {/* Time Range and Time Status (All day toggle is inside TimeRangePicker) */}
       <FormField
         control={form.control}
         name="startTime"
@@ -214,7 +310,6 @@ export const ActivityScheduleSection: React.FC<
         )}
       />
 
-      {/* Scheduling Considerations */}
       <FormField
         control={form.control}
         name="schedulingNotes"
@@ -262,4 +357,4 @@ export const ActivityScheduleSection: React.FC<
       />
     </ActivityFormSection>
   );
-};
+}

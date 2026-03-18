@@ -1,8 +1,10 @@
+import { format, startOfDay } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Combobox,
@@ -27,7 +29,7 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { Input } from '@/components/ui/input';
+import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import {
   Select,
   SelectContent,
@@ -39,6 +41,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePitchRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import {
+  parseIsoDateLocal,
+  PRESETS_FUTURE_SHORT,
+} from '@/lib/scheduled-date-presets';
 import type { OptionItem } from '@/schemas/types';
 
 import {
@@ -46,6 +52,8 @@ import {
   type ActivityLeadTeamFieldConfig,
 } from '../activity-lead-team-field-config';
 import { ActivityFormSection } from './ActivityFormSection';
+
+const anchorToday = () => startOfDay(new Date());
 
 type ActivityOverviewSectionProps = {
   categories: Array<{
@@ -534,20 +542,44 @@ export const ActivityOverviewSection: React.FC<
         <FormField
           control={form.control}
           name="pitchDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <FormControl data-field={field.name}>
-                <Input
-                  readOnly={readOnly}
-                  type="date"
-                  {...field}
-                  value={field.value || ''}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          render={({ field }) => {
+            const raw = field.value ?? '';
+            const pitchLabel = raw
+              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
+              : 'Select pitch date';
+            return (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormControl className="w-full" data-field={field.name}>
+                  <ScheduledDatePopoverField
+                    triggerVariant="form"
+                    value={raw}
+                    onChange={(iso) => field.onChange(iso || undefined)}
+                    label={pitchLabel}
+                    triggerMuted={!raw}
+                    disabled={readOnly}
+                    popoverTitle="Select pitch date"
+                    presets={PRESETS_FUTURE_SHORT}
+                    getPresetAnchor={anchorToday}
+                    headerRight={
+                      raw && !readOnly ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary text-sm"
+                          onClick={() => field.onChange(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      ) : null
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
       </div>
 
