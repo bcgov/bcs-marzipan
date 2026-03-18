@@ -13,6 +13,9 @@ import { setupGracefulShutdown } from './common/utils/graceful-shutdown';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // Trust the reverse proxy so forwarded host/proto headers are honored.
+  app.set('trust proxy', 1);
+
   // Enable cookie parsing for httpOnly auth cookies
   app.use(cookieParser());
 

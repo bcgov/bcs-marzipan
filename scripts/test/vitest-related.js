@@ -73,7 +73,7 @@ const fileArgs = sourceFiles
   })
   .join(' ');
 
-const cmd = `cd ${workspacePath} && npx vitest run ${fileArgs}`;
+const cmd = `cd ${workspacePath} && npx vitest run --passWithNoTests ${fileArgs}`;
 
 console.log(`[${workspace}] Running tests for: ${sourceFiles.join(', ')}`);
 

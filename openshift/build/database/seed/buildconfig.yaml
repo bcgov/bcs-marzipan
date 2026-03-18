@@ -13,7 +13,7 @@ spec:
     type: Git
     git:
       uri: https://github.com/bcgov/bcs-marzipan.git
-      ref: develop
+      ref: feat/CORPCAL-193-implement-azure-ad
     contextDir: .
   strategy:
     type: Docker
