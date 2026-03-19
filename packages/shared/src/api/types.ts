@@ -41,6 +41,7 @@ export type {
   TeamListItem,
   TeamMember,
   TeamDetail,
+  CommsContactCandidate,
   CreateTeamBody,
   UpdateTeamBody,
 } from '../schemas/team.schema';

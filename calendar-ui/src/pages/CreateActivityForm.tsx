@@ -38,6 +38,8 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCreateActivity } from '../hooks/useCalendar';
+import { useCommsContactCandidates } from '../hooks/useCommsContactCandidates';
+import { useCommsContactSync } from '../hooks/useCommsContactSync';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
@@ -97,10 +99,21 @@ export const CreateActivityForm: FC = () => {
     resolver: zodResolver(
       createActivityRequestSchema
     ) as Resolver<ActivityFormData>,
-    mode: 'onChange', // Validate on change to enable real-time validation
+    mode: 'onChange',
     defaultValues: {
       ...getDefaultFormValues(),
     },
+  });
+
+  const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
+  const { data: commsContactCandidates } =
+    useCommsContactCandidates(watchedLeadTeamId);
+
+  useCommsContactSync({
+    form,
+    candidates: commsContactCandidates,
+    userId: user?.id,
+    isCreate: true,
   });
 
   // Set default date and time statuses to "unknown" when they're loaded

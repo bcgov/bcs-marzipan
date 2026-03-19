@@ -3,7 +3,9 @@ import { useMemo, type ReactElement } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
+import { useCommsContactCandidates } from '@/hooks/useCommsContactCandidates';
 import type { FormLookupData } from '@/hooks/useFormLookups';
+import type { OptionItem } from '@/schemas/types';
 
 import {
   ActivityEditProvider,
@@ -54,10 +56,29 @@ export function ActivityFormBody({
     ...defaultActivityLeadTeamFieldConfig,
     ...leadTeamFieldProp,
   };
-  const commsLeadOptions = lookups.users.map((u) => ({
-    value: u.value,
-    label: u.label,
-  }));
+
+  const leadTeamId: number | undefined = form.watch('leadTeamId');
+  const { data: candidates } = useCommsContactCandidates(leadTeamId);
+
+  const commsLeadOptions = useMemo<OptionItem[]>(() => {
+    const candidateOptions: OptionItem[] = (candidates ?? []).map((c) => ({
+      value: String(c.id),
+      label: c.label,
+    }));
+    const candidateIds = new Set(candidateOptions.map((o) => o.value));
+    const currentContacts: Array<{ userId: number }> =
+      form.getValues('commsContacts') ?? [];
+    const fallbacks = currentContacts
+      .filter((c) => !candidateIds.has(String(c.userId)))
+      .map((c) => {
+        const u = lookups.users.find((u) => u.value === String(c.userId));
+        return {
+          value: String(c.userId),
+          label: u?.label ?? `User ${c.userId}`,
+        };
+      });
+    return [...candidateOptions, ...fallbacks];
+  }, [candidates, form, lookups.users]);
 
   const editContextValue = useMemo<ActivityEditContextValue>(
     () => ({

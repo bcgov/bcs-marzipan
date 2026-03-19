@@ -55,6 +55,7 @@ import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
+import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -74,7 +75,8 @@ export class ActivitiesService {
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService,
     private readonly locksService: LocksService,
-    private readonly policyService: PolicyService
+    private readonly policyService: PolicyService,
+    private readonly teamsService: TeamsService
   ) {}
 
   /**
@@ -113,6 +115,27 @@ export class ActivitiesService {
           ? venue.country.trim() || null
           : (venue.country ?? null),
     };
+  }
+
+  /**
+   * Validate that every comms contact userId is an active member of the lead
+   * team and has a role that grants activities.edit.
+   */
+  private async validateCommsContactsForTeam(
+    commsContacts: Array<{ userId: number; isLead: boolean }> | undefined,
+    leadTeamId: number
+  ): Promise<void> {
+    if (!commsContacts || commsContacts.length === 0) return;
+    const eligible =
+      await this.teamsService.getEligibleCommsUserIds(leadTeamId);
+    const invalid = commsContacts.filter((c) => !eligible.has(c.userId));
+    if (invalid.length > 0) {
+      const ids = invalid.map((c) => c.userId).join(', ');
+      throw new BadRequestException(
+        `Comms contact(s) [${ids}] are not eligible for lead team ${leadTeamId}. ` +
+          'Contacts must be active members of the lead team with activities.edit permission.'
+      );
+    }
   }
 
   /**
@@ -426,6 +449,11 @@ export class ActivitiesService {
     if (categoryIds && categoryIds.length > 0) {
       await this.utilsService.validateCategoryIds(categoryIds);
     }
+
+    await this.validateCommsContactsForTeam(
+      commsContactsArray,
+      activityData.leadTeamId
+    );
 
     const now = new Date();
 
@@ -1187,6 +1215,17 @@ export class ActivitiesService {
           eq(activityCommsContacts.isActive, true)
         )
       );
+
+    // Validate comms contacts belong to the (possibly updated) lead team
+    const effectiveLeadTeamId =
+      (activityUpdateData as Partial<Activity>).leadTeamId ??
+      oldActivity.leadTeamId;
+    if (effectiveLeadTeamId != null) {
+      await this.validateCommsContactsForTeam(
+        commsContactsArray,
+        effectiveLeadTeamId
+      );
+    }
 
     const existingRepresentatives = await this.databaseService.db
       .select({

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import {
@@ -379,6 +379,91 @@ describe('TeamsService', () => {
         changedByUserId: 2,
       });
       expect(result[0].changedByUserName).toBeDefined();
+    });
+  });
+
+  describe('findCommsContactCandidates', () => {
+    const createJoinChain = (resolvedValue: unknown) => {
+      const chain = {
+        from: vi.fn(),
+        innerJoin: vi.fn(),
+        where: vi.fn(),
+        orderBy: vi.fn(),
+      };
+      chain.from.mockReturnValue(chain);
+      chain.innerJoin.mockReturnValue(chain);
+      chain.where.mockReturnValue(chain);
+      chain.orderBy.mockResolvedValue(
+        Array.isArray(resolvedValue) ? resolvedValue : [resolvedValue]
+      );
+      return chain;
+    };
+
+    it('should throw ForbiddenException when caller is not on team and lacks create.any', async () => {
+      await expect(
+        service.findCommsContactCandidates(5, [1, 2], false)
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should allow when caller is on the requested team', async () => {
+      const userRows = [
+        { id: 10, adDisplayName: 'Editor A', adUsername: 'editora' },
+      ];
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createJoinChain(userRows));
+
+      const result = await service.findCommsContactCandidates(5, [5, 6], false);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        id: 10,
+        label: 'Editor A',
+        value: 10,
+      });
+    });
+
+    it('should allow any team when hasCreateAny is true', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createJoinChain([]));
+
+      const result = await service.findCommsContactCandidates(99, [], true);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should fall back to adUsername when adDisplayName is null', async () => {
+      const userRows = [{ id: 7, adDisplayName: null, adUsername: 'user7' }];
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createJoinChain(userRows));
+
+      const result = await service.findCommsContactCandidates(3, [3], false);
+
+      expect(result[0].label).toBe('user7');
+    });
+  });
+
+  describe('getEligibleCommsUserIds', () => {
+    it('should return a Set of eligible user IDs', async () => {
+      const rows = [{ userId: 2 }, { userId: 5 }];
+      const chain = {
+        from: vi.fn(),
+        innerJoin: vi.fn(),
+        where: vi.fn(),
+      };
+      chain.from.mockReturnValue(chain);
+      chain.innerJoin.mockReturnValue(chain);
+      chain.where.mockResolvedValue(rows);
+      mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(chain);
+
+      const result = await service.getEligibleCommsUserIds(5);
+
+      expect(result).toBeInstanceOf(Set);
+      expect(result.has(2)).toBe(true);
+      expect(result.has(5)).toBe(true);
+      expect(result.has(99)).toBe(false);
     });
   });
 });

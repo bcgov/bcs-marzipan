@@ -2041,6 +2041,42 @@ ON CONFLICT (activity_id, report_id) DO UPDATE
       timestamp = now();
 
 -- ============================================================================
+-- ACTIVITY COMMS CONTACTS
+-- Each contact must be an active member of the activity's lead team and have
+-- a role that grants activities.edit (Editor, Advanced Editor, Admin, System Admin).
+-- First contact per activity is the lead (is_lead = true).
+-- ============================================================================
+
+INSERT INTO activity_comms_contacts (activity_id, user_id, is_lead, is_active, timestamp) VALUES
+  -- Activity 1  lead_team=9  (AF Comms): user 2 (Editor)
+  (1, 2, true, true, now()),
+  -- Activity 2  lead_team=10 (AG Comms): user 3 (Editor)
+  (2, 3, true, true, now()),
+  -- Activity 3  lead_team=11 (MCFD Comms): user 4 (Editor)
+  (3, 4, true, true, now()),
+  -- Activity 4  lead_team=12 (CITZ Comms): user 2 (Editor, also on team 12)
+  (4, 2, true, true, now()),
+  -- Activity 5  lead_team=13 (ECC Comms): user 3 (Editor, also on team 13)
+  (5, 3, true, true, now()),
+  -- Activity 6  lead_team=14 (EMCR Comms): user 5 (Editor)
+  (6, 5, true, true, now()),
+  -- Activity 7  lead_team=15 (ECS Comms): user 6 (Editor)
+  (7, 6, true, true, now()),
+  -- Activity 8  lead_team=16 (EP Comms): user 7 (Editor)
+  (8, 7, true, true, now()),
+  -- Activity 9  lead_team=17 (FIN Comms): user 8 (Editor)
+  (9, 8, true, true, now()),
+  -- Activity 10 lead_team=18 (FOR Comms): user 9 (Editor)
+  (10, 9, true, true, now()),
+  -- Activity 11 lead_team=19 (HLTH Comms): user 10 (Editor)
+  (11, 10, true, true, now()),
+  -- Activity 12 lead_team=20 (HMA Comms): user 11 (Editor)
+  (12, 11, true, true, now()),
+  -- Activity 13 lead_team=21 (IRR Comms): user 12 (Editor)
+  (13, 12, true, true, now())
+ON CONFLICT (activity_id, user_id) DO NOTHING;
+
+-- ============================================================================
 -- UPDATE SEQUENCES
 -- ============================================================================
 

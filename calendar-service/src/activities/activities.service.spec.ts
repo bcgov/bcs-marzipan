@@ -18,6 +18,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { LocksService } from '../locks/locks.service';
 import { PolicyService } from '../policy/policy.service';
+import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
@@ -167,6 +168,12 @@ describe('ActivitiesService', () => {
     getLeadTeamIdForActivity: vi.fn().mockResolvedValue(null),
   };
 
+  // Mock teams service (for comms contact validation)
+  const mockTeamsService = {
+    getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set([1])),
+    findCommsContactCandidates: vi.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -203,6 +210,10 @@ describe('ActivitiesService', () => {
         {
           provide: PolicyService,
           useValue: mockPolicyService,
+        },
+        {
+          provide: TeamsService,
+          useValue: mockTeamsService,
         },
       ],
     }).compile();
@@ -1692,6 +1703,90 @@ describe('ActivitiesService', () => {
         1,
         10
       );
+    });
+  });
+
+  describe('comms contacts validation against lead team', () => {
+    it('should reject create when commsContacts userId is not eligible for lead team', async () => {
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(
+        new Set([2, 3])
+      );
+
+      const dto = createMockActivityRequest({
+        leadTeamId: 5,
+        commsContacts: [{ userId: 99, isLead: true }],
+      });
+
+      const statusRow = [{ id: 3, name: 'new' }];
+      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+
+      mockDatabaseService.db.select = vi.fn(() => {
+        const chain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn(),
+        };
+        chain.limit
+          .mockResolvedValueOnce(statusRow)
+          .mockResolvedValueOnce(teamRow);
+        return chain;
+      });
+
+      await expect(
+        service.create(dto, 1, {
+          permissions: [
+            PERMISSIONS.ACTIVITIES.CREATE,
+            PERMISSIONS.ACTIVITIES.EDIT,
+            PERMISSIONS.ACTIVITIES.CREATE_ANY,
+          ],
+          teamIds: [5],
+        })
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockTeamsService.getEligibleCommsUserIds).toHaveBeenCalledWith(5);
+    });
+
+    it('should not reject create when commsContacts are all eligible for lead team', async () => {
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(
+        new Set([1, 2])
+      );
+
+      const dto = createMockActivityRequest({
+        leadTeamId: 5,
+        commsContacts: [{ userId: 1, isLead: true }],
+      });
+
+      const statusRow = [{ id: 3, name: 'new' }];
+      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+
+      mockDatabaseService.db.select = vi.fn(() => {
+        const chain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn(),
+        };
+        chain.limit
+          .mockResolvedValueOnce(statusRow)
+          .mockResolvedValueOnce(teamRow);
+        return chain;
+      });
+
+      mockDatabaseService.db.transaction.mockRejectedValue(
+        new Error('STOP: validation passed')
+      );
+
+      await expect(
+        service.create(dto, 1, {
+          permissions: [
+            PERMISSIONS.ACTIVITIES.CREATE,
+            PERMISSIONS.ACTIVITIES.EDIT,
+            PERMISSIONS.ACTIVITIES.CREATE_ANY,
+          ],
+          teamIds: [5],
+        })
+      ).rejects.toThrow('STOP: validation passed');
+
+      expect(mockTeamsService.getEligibleCommsUserIds).toHaveBeenCalledWith(5);
     });
   });
 });
