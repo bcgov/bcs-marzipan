@@ -18,6 +18,10 @@ jobs:
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
       APP_VERSION: ${{ vars.APP_VERSION }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_REDIRECT_URI: ${{ secrets.AZURE_REDIRECT_URI }}
 
     steps:
       - name: Checkout code
