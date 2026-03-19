@@ -55,6 +55,8 @@ import {
   useSoftDeleteActivity,
   useUpdateActivity,
 } from '../hooks/useCalendar';
+import { useCommsContactCandidates } from '../hooks/useCommsContactCandidates';
+import { useCommsContactSync } from '../hooks/useCommsContactSync';
 import { useFormLookups } from '../hooks/useFormLookups';
 import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
 import { useDateStatuses } from '../hooks/useLookups';
@@ -162,6 +164,8 @@ export function ActivityPage({
     null
   );
   const initialFormDataRef = useRef<ActivityFormData | null>(null);
+  /** Same field key as last pointerdown inside the activity form (guards SPA ghost clicks after navigate). */
+  const pointerDownFieldKeyRef = useRef<string | null>(null);
 
   const { data: dateStatuses } = useDateStatuses();
   const updateMutation = useUpdateActivity();
@@ -172,6 +176,9 @@ export function ActivityPage({
 
   useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
+      if (user?.id != null && lockedBy.userId === user?.id) {
+        return;
+      }
       if (lockState !== 'owned') {
         setLockedByOther(lockedBy.username);
       }
@@ -190,6 +197,17 @@ export function ActivityPage({
     ) as Resolver<ActivityFormData>,
     mode: 'onChange',
     defaultValues: getDefaultFormValues(),
+  });
+
+  const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
+  const { data: commsContactCandidates } =
+    useCommsContactCandidates(watchedLeadTeamId);
+
+  useCommsContactSync({
+    form,
+    candidates: commsContactCandidates,
+    userId: user?.id,
+    isCreate: false,
   });
 
   const isDirty = form.formState.isDirty;
@@ -224,17 +242,32 @@ export function ActivityPage({
 
   const clearFieldToActivate = useCallback(() => setFieldToActivate(null), []);
 
-  const handleFieldClick = useCallback(
-    (e: React.MouseEvent<HTMLFormElement>) => {
+  const resolveDataFieldEl = useCallback((target: HTMLElement) => {
+    const direct = target.closest('[data-field]');
+    if (direct) return direct;
+    if (target instanceof HTMLLabelElement && target.control) {
+      return target.control.closest('[data-field]');
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    pointerDownFieldKeyRef.current = null;
+  }, [id]);
+
+  const handleFormPointerDownCapture = useCallback(
+    (e: React.PointerEvent<HTMLFormElement>) => {
       if (isEditing || !mayEdit) return;
+      const el = resolveDataFieldEl(e.target as HTMLElement);
+      pointerDownFieldKeyRef.current = el?.getAttribute('data-field') ?? null;
+    },
+    [isEditing, mayEdit, resolveDataFieldEl]
+  );
 
-      const target = e.target as HTMLElement;
-      const fieldEl = target.closest('[data-field]');
-      const field = fieldEl?.getAttribute('data-field') ?? undefined;
-
+  const beginEditFromField = useCallback(
+    (fieldName: string | null) => {
       setIsEditing(true);
-      setFieldToActivate(field ?? null);
-
+      setFieldToActivate(fieldName);
       void acquire().then((ok) => {
         if (!ok) {
           setIsEditing(false);
@@ -245,7 +278,58 @@ export function ActivityPage({
         }
       });
     },
-    [isEditing, mayEdit, acquire]
+    [acquire, id]
+  );
+
+  const handleFieldClick = useCallback(
+    (e: React.MouseEvent<HTMLFormElement>) => {
+      if (isEditing || !mayEdit) return;
+
+      const target = e.target as HTMLElement;
+      const fieldEl = resolveDataFieldEl(target);
+      if (!fieldEl) return;
+
+      const field = fieldEl.getAttribute('data-field') ?? null;
+      if (field == null || field !== pointerDownFieldKeyRef.current) {
+        return;
+      }
+      pointerDownFieldKeyRef.current = null;
+      beginEditFromField(field);
+    },
+    [isEditing, mayEdit, resolveDataFieldEl, beginEditFromField]
+  );
+
+  const handleFormKeyDownIntent = useCallback(
+    (e: React.KeyboardEvent<HTMLFormElement>) => {
+      if (isEditing || !mayEdit) return;
+      if (e.key === 'Tab' || e.key === 'Escape' || e.repeat) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const t = e.target as HTMLElement;
+      if (t.closest('button, a, [role="button"]')) return;
+
+      const fieldEl = resolveDataFieldEl(t);
+      if (!fieldEl) return;
+
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement
+      ) {
+        if (active.disabled) return;
+      }
+
+      const isPrintable = e.key.length === 1;
+      const isEditKey =
+        e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete';
+      if (!isPrintable && !isEditKey) return;
+
+      e.preventDefault();
+      const field = fieldEl.getAttribute('data-field');
+      beginEditFromField(field);
+    },
+    [isEditing, mayEdit, resolveDataFieldEl, beginEditFromField]
   );
 
   // Focus / activate the target field after entering edit
@@ -487,7 +571,7 @@ export function ActivityPage({
       <FormProvider {...form}>
         <Form {...form}>
           <form
-            className={!isEditing && mayEdit ? 'cursor-pointer' : undefined}
+            onPointerDownCapture={handleFormPointerDownCapture}
             onSubmit={(e) => {
               e.preventDefault();
               if (isEditing) {
@@ -495,6 +579,7 @@ export function ActivityPage({
               }
             }}
             onClick={!isEditing ? handleFieldClick : undefined}
+            onKeyDown={!isEditing ? handleFormKeyDownIntent : undefined}
           >
             {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
               <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
@@ -619,7 +704,8 @@ export function ActivityPage({
                 ) : (
                   <Button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setIsEditing(true);
                       void acquire().then((ok) => {
                         if (!ok) {

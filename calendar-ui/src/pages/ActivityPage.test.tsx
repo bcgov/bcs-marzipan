@@ -110,6 +110,14 @@ vi.mock('../hooks/useLeadTeamOptions', () => ({
   useLeadTeamOptions: () => mockUseLeadTeamOptions(),
 }));
 
+vi.mock('../hooks/useCommsContactCandidates', () => ({
+  useCommsContactCandidates: () => ({ data: undefined }),
+}));
+
+vi.mock('../hooks/useCommsContactSync', () => ({
+  useCommsContactSync: () => {},
+}));
+
 function renderWithProviders(
   ui: React.ReactElement,
   options?: { initialRoute?: string }

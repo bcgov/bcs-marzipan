@@ -30,14 +30,15 @@ type UseActivityLockResult = {
 /**
  * Manages an activity edit lock with lazy acquisition.
  * On mount, checks lock status (does not acquire). Call `acquire()` on first
- * user edit intent. Releases on unmount if owned.
+ * user edit intent. Concurrent acquire() calls share one in-flight request.
+ * Releases on unmount if owned.
  */
 export function useActivityLock(activityId: number): UseActivityLockResult {
   const [lock, setLock] = useState<LockInfo | null>(null);
   const [lockState, setLockState] = useState<LockState>('checking');
   const [lockedByUsername, setLockedByUsername] = useState<string | null>(null);
-  const acquiringRef = useRef(false);
   const lockRef = useRef<LockInfo | null>(null);
+  const acquireInFlightRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,31 +68,41 @@ export function useActivityLock(activityId: number): UseActivityLockResult {
 
   const acquire = useCallback(async (): Promise<boolean> => {
     if (lockRef.current) return true;
-    if (acquiringRef.current) return false;
-    acquiringRef.current = true;
-    setLockState('acquiring');
-    try {
-      const acquired = await acquireLock(activityId);
-      lockRef.current = acquired;
-      setLock(acquired);
-      setLockState('owned');
-      setLockedByUsername(null);
-      return true;
-    } catch (err) {
-      const axiosError = err as AxiosError<{ lockedBy?: { username: string } }>;
-      if (axiosError.response?.status === LOCKED_STATUS) {
-        const data = axiosError.response?.data as
-          | { lockedBy?: { username: string } }
-          | undefined;
-        setLockedByUsername(data?.lockedBy?.username ?? null);
-        setLockState('locked-by-other');
-        return false;
-      }
-      setLockState('idle');
-      return false;
-    } finally {
-      acquiringRef.current = false;
+    const existing = acquireInFlightRef.current;
+    if (existing) {
+      return existing;
     }
+
+    const promise = (async (): Promise<boolean> => {
+      setLockState('acquiring');
+      try {
+        const acquired = await acquireLock(activityId);
+        lockRef.current = acquired;
+        setLock(acquired);
+        setLockState('owned');
+        setLockedByUsername(null);
+        return true;
+      } catch (err) {
+        const axiosError = err as AxiosError<{
+          lockedBy?: { username: string };
+        }>;
+        if (axiosError.response?.status === LOCKED_STATUS) {
+          const data = axiosError.response?.data as
+            | { lockedBy?: { userId?: number; username: string } }
+            | undefined;
+          setLockedByUsername(data?.lockedBy?.username ?? null);
+          setLockState('locked-by-other');
+          return false;
+        }
+        setLockState('idle');
+        return false;
+      } finally {
+        acquireInFlightRef.current = null;
+      }
+    })();
+
+    acquireInFlightRef.current = promise;
+    return promise;
   }, [activityId]);
 
   const release = useCallback(async (): Promise<void> => {
