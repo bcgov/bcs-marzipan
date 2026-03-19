@@ -45,6 +45,10 @@ type ActivityCommsSectionProps = {
   readOnly?: boolean;
 };
 
+function optionItemsEqual(a: OptionItem, b: OptionItem): boolean {
+  return String(a.value) === String(b.value);
+}
+
 function buildCommsContactsFromSelection(
   selected: OptionItem[],
   currentContacts: Array<{ userId: number; isLead: boolean }> | undefined
@@ -96,10 +100,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             const opt = commsLeadOptions.find(
               (o) => o.value === String(c.userId)
             );
-            return {
-              value: String(c.userId),
-              label: opt?.label ?? String(c.userId),
-            };
+            return (
+              opt ?? {
+                value: String(c.userId),
+                label: `User ${c.userId}`,
+              }
+            );
           });
 
           const handleValueChange = (selected: OptionItem[]) => {
@@ -128,7 +134,10 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={handleValueChange}
-                  itemToStringValue={(o) => o.label}
+                  itemToStringValue={(o) => o.value}
+                  isItemEqualToValue={(item, value) =>
+                    optionItemsEqual(item, value)
+                  }
                   disabled={readOnly}
                 >
                   <ComboboxChips

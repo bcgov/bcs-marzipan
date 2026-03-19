@@ -477,6 +477,7 @@ export const CreateActivityForm: FC = () => {
           <ActivityFormBody
             form={form}
             lookups={lookups}
+            commsContactCandidates={commsContactCandidates}
             readOnly={false}
             showChangedBadges={false}
             leadTeamField={{

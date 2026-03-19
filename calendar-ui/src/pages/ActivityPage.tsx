@@ -599,6 +599,7 @@ export function ActivityPage({
             <ActivityFormBody
               form={form}
               lookups={lookups}
+              commsContactCandidates={commsContactCandidates}
               readOnly={readOnly}
               isEditing={isEditing}
               fieldToActivate={fieldToActivate}

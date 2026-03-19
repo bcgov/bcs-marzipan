@@ -1,9 +1,9 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { useMemo, type ReactElement } from 'react';
 
+import type { CommsContactCandidate } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
-import { useCommsContactCandidates } from '@/hooks/useCommsContactCandidates';
 import type { FormLookupData } from '@/hooks/useFormLookups';
 import type { OptionItem } from '@/schemas/types';
 
@@ -30,6 +30,8 @@ const clearNoop = () => {};
 type ActivityFormBodyProps = {
   form: UseFormReturn<ActivityFormData>;
   lookups: FormLookupData;
+  /** From parent `useCommsContactCandidates` — avoids a duplicate query and stale option lists. */
+  commsContactCandidates: CommsContactCandidate[] | undefined;
   readOnly?: boolean;
   isEditing?: boolean;
   fieldToActivate?: string | null;
@@ -45,6 +47,7 @@ type ActivityFormBodyProps = {
 export function ActivityFormBody({
   form,
   lookups,
+  commsContactCandidates,
   readOnly = false,
   isEditing = false,
   fieldToActivate = null,
@@ -57,17 +60,17 @@ export function ActivityFormBody({
     ...leadTeamFieldProp,
   };
 
-  const leadTeamId: number | undefined = form.watch('leadTeamId');
-  const { data: candidates } = useCommsContactCandidates(leadTeamId);
+  const commsContacts = form.watch('commsContacts');
 
   const commsLeadOptions = useMemo<OptionItem[]>(() => {
-    const candidateOptions: OptionItem[] = (candidates ?? []).map((c) => ({
-      value: String(c.id),
-      label: c.label,
-    }));
+    const candidateOptions: OptionItem[] = (commsContactCandidates ?? []).map(
+      (c) => ({
+        value: String(c.id),
+        label: c.label,
+      })
+    );
     const candidateIds = new Set(candidateOptions.map((o) => o.value));
-    const currentContacts: Array<{ userId: number }> =
-      form.getValues('commsContacts') ?? [];
+    const currentContacts: Array<{ userId: number }> = commsContacts ?? [];
     const fallbacks = currentContacts
       .filter((c) => !candidateIds.has(String(c.userId)))
       .map((c) => {
@@ -78,7 +81,7 @@ export function ActivityFormBody({
         };
       });
     return [...candidateOptions, ...fallbacks];
-  }, [candidates, form, lookups.users]);
+  }, [commsContactCandidates, commsContacts, lookups.users]);
 
   const editContextValue = useMemo<ActivityEditContextValue>(
     () => ({
