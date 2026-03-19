@@ -114,6 +114,7 @@ export const CreateActivityForm: FC = () => {
     candidates: commsContactCandidates,
     userId: user?.id,
     isCreate: true,
+    candidatesTeamId: watchedLeadTeamId,
   });
 
   // Set default date and time statuses to "unknown" when they're loaded

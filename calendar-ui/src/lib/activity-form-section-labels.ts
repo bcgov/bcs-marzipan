@@ -6,7 +6,7 @@ export type ActivityFormSectionId =
   | 'comms'
   | 'newsRelease'
   | 'reports'
-  | 'date'
+  | 'schedule'
   | 'event'
   | 'sharing'
   | 'venue';
@@ -22,7 +22,7 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
   comms: 'Comms',
   newsRelease: 'News release',
   reports: 'Reports',
-  date: 'Date',
+  schedule: 'Schedule',
   event: 'Event',
   sharing: 'Sharing',
   venue: 'Venue',

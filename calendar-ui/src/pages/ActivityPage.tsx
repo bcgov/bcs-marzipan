@@ -208,6 +208,7 @@ export function ActivityPage({
     candidates: commsContactCandidates,
     userId: user?.id,
     isCreate: false,
+    candidatesTeamId: watchedLeadTeamId,
   });
 
   const isDirty = form.formState.isDirty;

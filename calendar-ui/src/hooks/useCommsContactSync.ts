@@ -16,25 +16,29 @@ export function useCommsContactSync({
   candidates,
   userId,
   isCreate,
+  /** Same value passed to `useCommsContactCandidates` — guards sync against stale `watch('leadTeamId')` when React Query updates. */
+  candidatesTeamId,
 }: {
   form: UseFormReturn<ActivityFormData>;
   candidates: CommsContactCandidate[] | undefined;
   userId: number | undefined;
   isCreate: boolean;
+  candidatesTeamId: number | undefined;
 }) {
   const prevLeadTeamRef = useRef<number | undefined>(undefined);
   const didPrefillRef = useRef(false);
 
-  const leadTeamId: number | undefined = form.watch('leadTeamId');
-
   useEffect(() => {
-    if (!candidates || leadTeamId == null || leadTeamId === 0) return;
+    const formLeadTeamId = form.getValues('leadTeamId');
+
+    if (!candidates || candidatesTeamId == null || candidatesTeamId === 0)
+      return;
 
     const eligibleIds = new Set(candidates.map((c) => c.id));
 
     const isInitialMount = prevLeadTeamRef.current === undefined;
-    const teamChanged = prevLeadTeamRef.current !== leadTeamId;
-    prevLeadTeamRef.current = leadTeamId;
+    const teamChanged = prevLeadTeamRef.current !== formLeadTeamId;
+    prevLeadTeamRef.current = formLeadTeamId;
 
     if (teamChanged && !isInitialMount) {
       const contacts = form.getValues('commsContacts') ?? [];
@@ -61,5 +65,5 @@ export function useCommsContactSync({
         didPrefillRef.current = true;
       }
     }
-  }, [leadTeamId, candidates, form, userId, isCreate]);
+  }, [candidatesTeamId, candidates, form, userId, isCreate]);
 }

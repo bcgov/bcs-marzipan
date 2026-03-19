@@ -33,6 +33,12 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
 
+/** Inline status next to date/time: FormItem's default space-y-2 adds margin above the control when an sr-only label is present; disable vertical gap so rows align. */
+const INLINE_STATUS_FORM_ITEM_CLASS = 'shrink-0 space-y-0';
+
+const PRIMARY_AND_STATUS_ROW_CLASS =
+  'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
+
 const setDateOpts = {
   shouldDirty: true,
   shouldTouch: true,
@@ -76,13 +82,13 @@ export function ActivityScheduleSection({
     Boolean(startStr && date < new Date(startStr + 'T00:00:00'));
 
   return (
-    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.date}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
         <FormLabel className="flex items-center gap-1">
           Date <span className="text-destructive">*</span>
         </FormLabel>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
+          <div className="flex min-w-0 items-center gap-2">
             <Controller
               name="startDate"
               control={form.control}
@@ -172,7 +178,7 @@ export function ActivityScheduleSection({
             control={form.control}
             name="dateStatusId"
             render={({ field: statusField }) => (
-              <FormItem className="shrink-0">
+              <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
                 <FormLabel className="sr-only">
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
@@ -231,8 +237,8 @@ export function ActivityScheduleSection({
               {getActivityFieldLabel(field.name)}{' '}
               <span className="text-destructive">*</span>
             </FormLabel>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="min-w-0 flex-1">
+            <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
+              <div className="min-w-0">
                 <FormControl data-field={field.name}>
                   <TimeRangePicker
                     disabled={readOnly}
@@ -267,7 +273,7 @@ export function ActivityScheduleSection({
                 control={form.control}
                 name="timeStatusId"
                 render={({ field: statusField }) => (
-                  <FormItem className="shrink-0">
+                  <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
                     <FormLabel className="sr-only">
                       {getActivityFieldLabel(statusField.name)}
                     </FormLabel>
