@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
+import type { FormLookupData } from '../hooks/useFormLookups';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
 
 const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
@@ -23,7 +24,7 @@ const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
     activityStatus: 'Draft',
   });
 
-const mockLookupsReady = {
+const mockLookupsReady: FormLookupData = {
   isLoading: false,
   hasError: false,
   categories: [],
@@ -33,14 +34,18 @@ const mockLookupsReady = {
   eventPlanners: [],
   tags: [],
   pitchStatuses: [],
+  pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
+  translationRequiredStatuses: [],
   governmentRepresentatives: [],
   newsReleaseDistributions: [],
   premierRequested: [],
   newsReleaseOrigins: [],
   sharedWithTeams: [],
+  dateStatuses: [],
+  timeStatuses: [],
 };
 
 const mockAcquire = vi.fn().mockResolvedValue(true);
@@ -99,7 +104,7 @@ vi.mock('../hooks/useLookups', async (importOriginal) => {
   };
 });
 
-const mockUseFormLookups = vi.fn();
+const mockUseFormLookups = vi.fn<() => FormLookupData>();
 const mockUseLeadTeamOptions = vi.fn();
 
 vi.mock('../hooks/useFormLookups', () => ({
