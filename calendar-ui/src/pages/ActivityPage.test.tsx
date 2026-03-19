@@ -326,19 +326,17 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('hides Cancel/Update buttons before any edit interaction', async () => {
+  it('always shows Cancel/Update but keeps them disabled until edit lock', async () => {
     renderActivityPage();
 
     await screen.findByText(/Lead team/);
-    expect(
-      screen.queryByRole('button', { name: /^Cancel$/i })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /^Update$/i })
-    ).not.toBeInTheDocument();
+    const cancel = screen.getByRole('button', { name: /^Cancel$/i });
+    const update = screen.getByRole('button', { name: /^Update$/i });
+    expect(cancel).toBeDisabled();
+    expect(update).toBeDisabled();
   });
 
-  it('typing in a text field triggers lock acquisition and shows Cancel/Update', async () => {
+  it('typing in a text field triggers lock acquisition', async () => {
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -349,9 +347,6 @@ describe('ActivityPage optimistic inline edit', () => {
     await user.type(titleTextarea, 'X');
 
     await waitFor(() => expect(mockAcquire).toHaveBeenCalledTimes(1));
-    await expect(
-      screen.findByRole('button', { name: /^Cancel$/i })
-    ).resolves.toBeInTheDocument();
   });
 
   it('resets form and shows error toast when lock acquisition fails', async () => {

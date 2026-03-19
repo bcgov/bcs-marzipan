@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -42,6 +42,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityLock } from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
@@ -53,8 +54,11 @@ import {
   useSoftDeleteActivity,
   useUpdateActivity,
 } from '../hooks/useCalendar';
+import {
+  EDIT_LOCK_CONFLICT_TOAST,
+  useEditLockIntent,
+} from '../hooks/useEditLockIntent';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
-import { activityToFormData } from '../lib/activity-form-mapper';
 import { buildPayloadForUpdate } from '../lib/activity-form-payload';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
@@ -161,21 +165,8 @@ export function ActivityPage({
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
   );
-  const initialFormDataRef = useRef<ActivityFormData | null>(null);
-  const [lockEnabled, setLockEnabled] = useState(false);
-  const hasUserInteractedRef = useRef(false);
-  const autoAcquireAttemptedRef = useRef(false);
-  const resetHydrateDepsRef = useRef<{
-    activity: ActivityResponse;
-    lookups: unknown;
-    form: unknown;
-  } | null>(null);
-  const resetEffectDepDeltaRef = useRef<{
-    activityRefChanged: boolean;
-    lookupsRefChanged: boolean;
-    formRefChanged: boolean;
-  } | null>(null);
-  const resetEffectRunCountRef = useRef(0);
+  const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
+    useActivityEditFormHydration(activity, lookups, form);
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -209,91 +200,6 @@ export function ActivityPage({
     getActivityFieldLabel
   );
 
-  // #region agent log
-  {
-    const prev = resetHydrateDepsRef.current;
-    const activityRefChanged = !prev || prev.activity !== activity;
-    const lookupsRefChanged = !prev || prev.lookups !== lookups;
-    const formRefChanged = !prev || prev.form !== form;
-    resetEffectDepDeltaRef.current = {
-      activityRefChanged,
-      lookupsRefChanged,
-      formRefChanged,
-    };
-    resetHydrateDepsRef.current = { activity, lookups, form };
-    fetch('http://127.0.0.1:7242/ingest/1e76ab1c-9a8c-4cec-a557-b3c6516e9cba', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '92c8f7',
-      },
-      body: JSON.stringify({
-        sessionId: '92c8f7',
-        runId: 'pre-fix',
-        hypothesisId: 'H1-H5',
-        location: 'ActivityPage.tsx:render',
-        message: 'reset effect deps reference check',
-        data: {
-          activityRefChanged,
-          lookupsRefChanged,
-          formRefChanged,
-          isDirty,
-          dirtyFieldsCount,
-          activityId: activity.id,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
-
-  useEffect(() => {
-    // #region agent log
-    resetEffectRunCountRef.current += 1;
-    const d = resetEffectDepDeltaRef.current;
-    fetch('http://127.0.0.1:7242/ingest/1e76ab1c-9a8c-4cec-a557-b3c6516e9cba', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '92c8f7',
-      },
-      body: JSON.stringify({
-        sessionId: '92c8f7',
-        runId: 'pre-fix',
-        hypothesisId: 'H1',
-        location: 'ActivityPage.tsx:resetHydrateEffect',
-        message: 'reset/hydrate effect ran',
-        data: {
-          runCount: resetEffectRunCountRef.current,
-          activityRefChanged: d?.activityRefChanged ?? null,
-          lookupsRefChanged: d?.lookupsRefChanged ?? null,
-          formRefChanged: d?.formRefChanged ?? null,
-          activityId: activity.id,
-          isDirtySnapshot: form.formState.isDirty,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-    hasUserInteractedRef.current = false;
-    autoAcquireAttemptedRef.current = false;
-    setLockEnabled(false);
-    const mapped = activityToFormData(activity, lookups);
-    form.reset(mapped);
-    initialFormDataRef.current = mapped;
-    // Controlled components (Select, etc.) may fire onChange during their
-    // first render after reset, spuriously marking the form as dirty.
-    // A deferred second reset cleans up dirty state, then enables the lock
-    // gate so the isDirty effect only responds to real user edits.
-    const id = setTimeout(() => {
-      if (initialFormDataRef.current) {
-        form.reset(initialFormDataRef.current);
-      }
-      setLockEnabled(true);
-    }, 0);
-    return () => clearTimeout(id);
-  }, [activity, lookups, form]);
-
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -319,53 +225,25 @@ export function ActivityPage({
     !isSubmitting &&
     !readOnly;
 
-  // Optimistic lock: acquire on first user-initiated value change.
-  // lockEnabled gates the effect so it only runs after initialization
-  // stabilizes (controlled component side effects clear).
-  useEffect(() => {
-    if (
-      !lockEnabled ||
-      !isDirty ||
-      dirtyFieldsCount === 0 ||
-      isEditing ||
-      !mayEdit ||
-      !hasUserInteractedRef.current ||
-      autoAcquireAttemptedRef.current
-    ) {
-      return;
-    }
-    autoAcquireAttemptedRef.current = true;
-    setIsEditing(true);
-    void acquire().then((ok) => {
-      if (!ok) {
-        setIsEditing(false);
-        if (initialFormDataRef.current) {
-          form.reset(initialFormDataRef.current);
-        }
-        toast.error(
-          'Cannot edit. Another user has started editing this activity.'
-        );
-      } else {
-        autoAcquireAttemptedRef.current = false;
-      }
-    });
-  }, [
-    lockEnabled,
+  const onEditLockAcquireConflict = useCallback(() => {
+    toast.error(EDIT_LOCK_CONFLICT_TOAST);
+  }, []);
+
+  useEditLockIntent({
+    formHydrated: isFormHydrated,
+    hydrationGeneration,
     isDirty,
     dirtyFieldsCount,
     dirtyFieldsSignature,
-    isEditing,
     mayEdit,
-    form,
+    isEditing,
+    setIsEditing,
     acquire,
     lockState,
-  ]);
-
-  useEffect(() => {
-    if (lockState === 'idle' && !isDirty) {
-      autoAcquireAttemptedRef.current = false;
-    }
-  }, [lockState, isDirty]);
+    form,
+    initialFormDataRef,
+    onAcquireConflict: onEditLockAcquireConflict,
+  });
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -402,9 +280,7 @@ export function ActivityPage({
           action();
         } else {
           setIsEditing(false);
-          toast.error(
-            'Cannot edit. Another user has started editing this activity.'
-          );
+          toast.error(EDIT_LOCK_CONFLICT_TOAST);
         }
       });
     },
@@ -597,12 +473,6 @@ export function ActivityPage({
       )}
       <Form {...form}>
         <form
-          onPointerDownCapture={() => {
-            hasUserInteractedRef.current = true;
-          }}
-          onKeyDownCapture={() => {
-            hasUserInteractedRef.current = true;
-          }}
           onSubmit={(e) => {
             e.preventDefault();
             if (hasEditLock) {

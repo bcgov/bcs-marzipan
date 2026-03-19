@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import { REFERENCE_LOOKUP_CACHE_MS } from '@corpcal/shared';
 import type {
@@ -181,169 +182,195 @@ export function useFormLookups(): FormLookupData {
     pitchRequiredStatusesQuery.isError ||
     translationRequiredStatusesQuery.isError;
 
-  // Transform categories for Badge components
-  const categories =
-    categoriesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-    })) || [];
+  // Memoized so consumers (e.g. ActivityPage hydration) only see a new
+  // object when underlying query data changes, not on every parent re-render.
+  return useMemo((): FormLookupData => {
+    // Transform categories for Badge components
+    const categories =
+      categoriesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+      })) || [];
 
-  // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
-  const organizations =
-    organizationsQuery.data?.map((item) => ({
-      value: item.value,
-      label: item.label,
-      ministryId: item.ministryId ?? undefined,
-    })) || [];
+    // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
+    const organizations =
+      organizationsQuery.data?.map((item) => ({
+        value: item.value,
+        label: item.label,
+        ministryId: item.ministryId ?? undefined,
+      })) || [];
 
-  // Transform ministries for Select
-  const ministries =
-    ministriesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.label,
-      displayName: item.displayName ?? undefined,
-    })) || [];
+    // Transform ministries for Select
+    const ministries =
+      ministriesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.label,
+        displayName: item.displayName ?? undefined,
+      })) || [];
 
-  // Transform users for Select/Combobox (serial IDs need to be strings for Select components)
-  const users =
-    usersQuery.data?.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    })) || [];
+    // Transform users for Select/Combobox (serial IDs need to be strings for Select components)
+    const users =
+      usersQuery.data?.map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      })) || [];
 
-  // Transform event planners for Select/Combobox (serial IDs need to be strings for Select components)
-  const eventPlanners =
-    eventPlannersQuery.data?.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    })) || [];
+    // Transform event planners for Select/Combobox (serial IDs need to be strings for Select components)
+    const eventPlanners =
+      eventPlannersQuery.data?.map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      })) || [];
 
-  // Transform tags for Badge components
-  const tags =
-    tagsQuery.data?.map((item) => ({
-      id: item.id,
-      text: item.displayName || item.name || item.label,
-    })) || [];
+    // Transform tags for Badge components
+    const tags =
+      tagsQuery.data?.map((item) => ({
+        id: item.id,
+        text: item.displayName || item.name || item.label,
+      })) || [];
 
-  // Transform pitch statuses for Select
-  const pitchStatuses =
-    pitchStatusesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-    })) || [];
+    // Transform pitch statuses for Select
+    const pitchStatuses =
+      pitchStatusesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+      })) || [];
 
-  // Transform activity statuses for Select
-  const activityStatuses =
-    activityStatusesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-    })) || [];
+    // Transform activity statuses for Select
+    const activityStatuses =
+      activityStatusesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+      })) || [];
 
-  // Transform comms materials for Badge components
-  const commsMaterials =
-    commsMaterialsQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-    })) || [];
+    // Transform comms materials for Badge components
+    const commsMaterials =
+      commsMaterialsQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+      })) || [];
 
-  // Transform translation languages for Badge components
-  const translationLanguages =
-    translationLanguagesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-      shortcode: item.shortcode ?? null,
-    })) || [];
+    // Transform translation languages for Badge components
+    const translationLanguages =
+      translationLanguagesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+        shortcode: item.shortcode ?? null,
+      })) || [];
 
-  // Transform government representatives for Badge components
-  const governmentRepresentatives =
-    governmentRepresentativesQuery.data?.map((item) => ({
-      id: item.id,
-      name: item.name || item.label,
-      displayName: item.displayName || item.label,
-      title: item.title as string | undefined,
-    })) || [];
+    // Transform government representatives for Badge components
+    const governmentRepresentatives =
+      governmentRepresentativesQuery.data?.map((item) => ({
+        id: item.id,
+        name: item.name || item.label,
+        displayName: item.displayName || item.label,
+        title: item.title as string | undefined,
+      })) || [];
 
-  // Transform news release distributions for Select (serial IDs need to be strings for Select components)
-  const newsReleaseDistributions =
-    newsReleaseDistributionsQuery.data?.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    })) || [];
+    // Transform news release distributions for Select (serial IDs need to be strings for Select components)
+    const newsReleaseDistributions =
+      newsReleaseDistributionsQuery.data?.map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      })) || [];
 
-  // Transform premier requested for Select (serial IDs need to be strings for Select components)
-  const premierRequested =
-    premierRequestedQuery.data?.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    })) || [];
+    // Transform premier requested for Select (serial IDs need to be strings for Select components)
+    const premierRequested =
+      premierRequestedQuery.data?.map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      })) || [];
 
-  // Transform news release origins for Select (serial IDs need to be strings for Select components)
-  const newsReleaseOrigins =
-    newsReleaseOriginsQuery.data?.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    })) || [];
+    // Transform news release origins for Select (serial IDs need to be strings for Select components)
+    const newsReleaseOrigins =
+      newsReleaseOriginsQuery.data?.map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      })) || [];
 
-  // Teams for Shared With dropdown and response->form mapping (name to id)
-  const sharedWithTeams =
-    teamsQuery.data?.map((t) => ({
-      id: t.id,
-      name: t.name,
-      displayName: t.displayName ?? undefined,
-    })) ?? [];
+    // Teams for Shared With dropdown and response->form mapping (name to id)
+    const sharedWithTeams =
+      teamsQuery.data?.map((t) => ({
+        id: t.id,
+        name: t.name,
+        displayName: t.displayName ?? undefined,
+      })) ?? [];
 
-  return {
-    categories: categories as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-    }>,
-    organizations,
-    ministries,
-    users,
-    eventPlanners,
-    tags: tags as Array<{ id: number; text: string }>,
-    pitchStatuses: pitchStatuses as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-    }>,
-    activityStatuses: activityStatuses as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-    }>,
-    commsMaterials: commsMaterials as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-    }>,
-    translationLanguages: translationLanguages as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-      shortcode?: string | null;
-    }>,
-    governmentRepresentatives: governmentRepresentatives as Array<{
-      id: number;
-      name: string;
-      displayName?: string;
-      title?: string;
-    }>,
-    newsReleaseDistributions,
-    premierRequested,
-    newsReleaseOrigins,
-    sharedWithTeams,
-    dateStatuses: dateStatusesQuery.data ?? [],
-    timeStatuses: timeStatusesQuery.data ?? [],
-    pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
-    translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
-    isLoading,
+    return {
+      categories: categories as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+      }>,
+      organizations,
+      ministries,
+      users,
+      eventPlanners,
+      tags: tags as Array<{ id: number; text: string }>,
+      pitchStatuses: pitchStatuses as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+      }>,
+      activityStatuses: activityStatuses as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+      }>,
+      commsMaterials: commsMaterials as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+      }>,
+      translationLanguages: translationLanguages as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+        shortcode?: string | null;
+      }>,
+      governmentRepresentatives: governmentRepresentatives as Array<{
+        id: number;
+        name: string;
+        displayName?: string;
+        title?: string;
+      }>,
+      newsReleaseDistributions,
+      premierRequested,
+      newsReleaseOrigins,
+      sharedWithTeams,
+      dateStatuses: dateStatusesQuery.data ?? [],
+      timeStatuses: timeStatusesQuery.data ?? [],
+      pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
+      translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
+      isLoading,
+      hasError,
+    };
+  }, [
+    activityStatusesQuery.data,
+    categoriesQuery.data,
+    commsMaterialsQuery.data,
+    dateStatusesQuery.data,
+    eventPlannersQuery.data,
+    governmentRepresentativesQuery.data,
     hasError,
-  };
+    isLoading,
+    ministriesQuery.data,
+    newsReleaseDistributionsQuery.data,
+    newsReleaseOriginsQuery.data,
+    organizationsQuery.data,
+    pitchRequiredStatusesQuery.data,
+    pitchStatusesQuery.data,
+    premierRequestedQuery.data,
+    tagsQuery.data,
+    teamsQuery.data,
+    timeStatusesQuery.data,
+    translationLanguagesQuery.data,
+    translationRequiredStatusesQuery.data,
+    usersQuery.data,
+  ]);
 }

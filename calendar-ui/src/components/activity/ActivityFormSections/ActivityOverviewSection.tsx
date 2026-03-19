@@ -289,7 +289,7 @@ export const ActivityOverviewSection: React.FC<
                     field.value !== null &&
                     Number(field.value) > 0
                       ? String(field.value)
-                      : undefined
+                      : ''
                   }
                   onValueChange={handleValueChange}
                 >
