@@ -143,7 +143,6 @@ export function ActivityPage({
   } = useActivityLock(id);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [fieldToActivate, setFieldToActivate] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -163,8 +162,7 @@ export function ActivityPage({
     null
   );
   const initialFormDataRef = useRef<ActivityFormData | null>(null);
-  /** Same field key as last pointerdown inside the activity form (guards SPA ghost clicks after navigate). */
-  const pointerDownFieldKeyRef = useRef<string | null>(null);
+  const [lockEnabled, setLockEnabled] = useState(false);
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -197,9 +195,21 @@ export function ActivityPage({
   );
 
   useEffect(() => {
+    setLockEnabled(false);
     const mapped = activityToFormData(activity, lookups);
     form.reset(mapped);
     initialFormDataRef.current = mapped;
+    // Controlled components (Select, etc.) may fire onChange during their
+    // first render after reset, spuriously marking the form as dirty.
+    // A deferred second reset cleans up dirty state, then enables the lock
+    // gate so the isDirty effect only responds to real user edits.
+    const id = setTimeout(() => {
+      if (initialFormDataRef.current) {
+        form.reset(initialFormDataRef.current);
+      }
+      setLockEnabled(true);
+    }, 0);
+    return () => clearTimeout(id);
   }, [activity, lookups, form]);
 
   useEffect(() => {
@@ -217,111 +227,26 @@ export function ActivityPage({
     lockState !== 'locked-by-other' &&
     (!isBlockedStatus || canEditWhenBlocked);
 
-  const readOnly = !isEditing || lockState === 'locked-by-other';
+  const readOnly = lockState === 'locked-by-other';
 
-  const clearFieldToActivate = useCallback(() => setFieldToActivate(null), []);
-
-  const resolveDataFieldEl = useCallback((target: HTMLElement) => {
-    const direct = target.closest('[data-field]');
-    if (direct) return direct;
-    if (target instanceof HTMLLabelElement && target.control) {
-      return target.control.closest('[data-field]');
-    }
-    return null;
-  }, []);
-
+  // Optimistic lock: acquire on first user-initiated value change.
+  // lockEnabled gates the effect so it only runs after initialization
+  // stabilizes (controlled component side effects clear).
   useEffect(() => {
-    pointerDownFieldKeyRef.current = null;
-  }, [id]);
-
-  const handleFormPointerDownCapture = useCallback(
-    (e: React.PointerEvent<HTMLFormElement>) => {
-      if (isEditing || !mayEdit) return;
-      const el = resolveDataFieldEl(e.target as HTMLElement);
-      pointerDownFieldKeyRef.current = el?.getAttribute('data-field') ?? null;
-    },
-    [isEditing, mayEdit, resolveDataFieldEl]
-  );
-
-  const beginEditFromField = useCallback(
-    (fieldName: string | null) => {
-      setIsEditing(true);
-      setFieldToActivate(fieldName);
-      void acquire().then((ok) => {
-        if (!ok) {
-          setIsEditing(false);
-          setFieldToActivate(null);
-          toast.error(
-            'Cannot edit. Another user has started editing this activity.'
-          );
+    if (!lockEnabled || !isDirty || isEditing || !mayEdit) return;
+    setIsEditing(true);
+    void acquire().then((ok) => {
+      if (!ok) {
+        setIsEditing(false);
+        if (initialFormDataRef.current) {
+          form.reset(initialFormDataRef.current);
         }
-      });
-    },
-    [acquire]
-  );
-
-  const handleFieldClick = useCallback(
-    (e: React.MouseEvent<HTMLFormElement>) => {
-      if (isEditing || !mayEdit) return;
-
-      const target = e.target as HTMLElement;
-      const fieldEl = resolveDataFieldEl(target);
-      if (!fieldEl) return;
-
-      const field = fieldEl.getAttribute('data-field') ?? null;
-      if (field == null || field !== pointerDownFieldKeyRef.current) {
-        return;
-      }
-      pointerDownFieldKeyRef.current = null;
-      beginEditFromField(field);
-    },
-    [isEditing, mayEdit, resolveDataFieldEl, beginEditFromField]
-  );
-
-  const handleFormKeyDownIntent = useCallback(
-    (e: React.KeyboardEvent<HTMLFormElement>) => {
-      if (isEditing || !mayEdit) return;
-      if (e.key === 'Tab' || e.key === 'Escape' || e.repeat) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      const t = e.target as HTMLElement;
-      if (t.closest('button, a, [role="button"]')) return;
-
-      const fieldEl = resolveDataFieldEl(t);
-      if (!fieldEl) return;
-
-      const active = document.activeElement;
-      if (
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement ||
-        active instanceof HTMLSelectElement
-      ) {
-        if (active.disabled) return;
-      }
-
-      const isPrintable = e.key.length === 1;
-      const isEditKey =
-        e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete';
-      if (!isPrintable && !isEditKey) return;
-
-      e.preventDefault();
-      const field = fieldEl.getAttribute('data-field');
-      beginEditFromField(field);
-    },
-    [isEditing, mayEdit, resolveDataFieldEl, beginEditFromField]
-  );
-
-  // Focus / activate the target field after entering edit
-  useEffect(() => {
-    if (!isEditing || !fieldToActivate) return;
-    requestAnimationFrame(() => {
-      try {
-        form.setFocus(fieldToActivate as keyof ActivityFormData);
-      } catch {
-        // field name may not be focusable via RHF
+        toast.error(
+          'Cannot edit. Another user has started editing this activity.'
+        );
       }
     });
-  }, [isEditing, fieldToActivate, form]);
+  }, [lockEnabled, isDirty, isEditing, mayEdit, form, acquire]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -533,7 +458,7 @@ export function ActivityPage({
         activityStatus={activity.activityStatus ?? null}
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
-        onHistoryClick={isEditing ? () => setHistoryOpen(true) : undefined}
+        onHistoryClick={() => setHistoryOpen(true)}
       />
       {lockState === 'locked-by-other' && (
         <LockBanner lockedByUsername={lockedByUsername} />
@@ -549,15 +474,12 @@ export function ActivityPage({
       )}
       <Form {...form}>
         <form
-          onPointerDownCapture={handleFormPointerDownCapture}
           onSubmit={(e) => {
             e.preventDefault();
             if (isEditing) {
               void form.handleSubmit(onSubmit, onError)(e);
             }
           }}
-          onClick={!isEditing ? handleFieldClick : undefined}
-          onKeyDown={!isEditing ? handleFormKeyDownIntent : undefined}
         >
           {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
             <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
@@ -578,9 +500,6 @@ export function ActivityPage({
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
-            isEditing={isEditing}
-            fieldToActivate={fieldToActivate}
-            clearFieldToActivate={clearFieldToActivate}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel:
@@ -624,7 +543,7 @@ export function ActivityPage({
               )}
             </div>
             <div className="flex gap-4">
-              {isEditing ? (
+              {isEditing && (
                 <>
                   <Button
                     type="button"
@@ -675,38 +594,17 @@ export function ActivityPage({
                     </Button>
                   )}
                 </>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsEditing(true);
-                    void acquire().then((ok) => {
-                      if (!ok) {
-                        setIsEditing(false);
-                        toast.error(
-                          'Cannot edit. Another user has started editing this activity.'
-                        );
-                      }
-                    });
-                  }}
-                  disabled={!mayEdit}
-                >
-                  Edit
-                </Button>
               )}
             </div>
           </div>
         </form>
       </Form>
-      {isEditing && (
-        <ActivityHistory
-          activityId={id}
-          open={historyOpen}
-          onOpenChange={(v) => setHistoryOpen(!!v)}
-          dateStatuses={lookups.dateStatuses}
-        />
-      )}
+      <ActivityHistory
+        activityId={id}
+        open={historyOpen}
+        onOpenChange={(v) => setHistoryOpen(!!v)}
+        dateStatuses={lookups.dateStatuses}
+      />
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <DialogContent>
           <DialogHeader>

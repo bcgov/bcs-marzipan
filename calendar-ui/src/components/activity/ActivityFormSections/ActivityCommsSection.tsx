@@ -33,6 +33,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityCommsSectionProps = {
@@ -43,7 +44,6 @@ type ActivityCommsSectionProps = {
   }>;
   commsLeadOptions: OptionItem[];
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
-  readOnly?: boolean;
 };
 
 function optionItemsEqual(a: OptionItem, b: OptionItem): boolean {
@@ -72,8 +72,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
   translationRequiredStatuses,
-  readOnly = false,
 }) => {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();

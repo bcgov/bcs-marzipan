@@ -32,6 +32,7 @@ import {
   PRESETS_PAST_FROM_ANCHOR,
 } from '@/lib/scheduled-date-presets';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
@@ -53,14 +54,13 @@ const anchorToday = () => startOfDay(new Date());
 type ActivityScheduleSectionProps = {
   dateStatuses: DateStatusLookupItem[];
   timeStatuses: TimeStatusLookupItem[];
-  readOnly?: boolean;
 };
 
 export function ActivityScheduleSection({
   dateStatuses,
   timeStatuses,
-  readOnly = false,
 }: ActivityScheduleSectionProps) {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
 
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });

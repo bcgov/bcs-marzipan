@@ -49,6 +49,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const QUICK_PICK_MAX_TOTAL = 4;
@@ -100,15 +101,14 @@ type ActivityEventSectionProps = {
   }>;
   premierRequestedOptions: OptionItem[];
   eventPlannerOptions: OptionItem[];
-  readOnly?: boolean;
 };
 
 export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   representativeOptions,
   premierRequestedOptions,
   eventPlannerOptions,
-  readOnly = false,
 }) => {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
   const representativesAnchorRef = useComboboxAnchor();

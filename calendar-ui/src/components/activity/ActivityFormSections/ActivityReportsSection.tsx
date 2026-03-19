@@ -22,15 +22,11 @@ import { useReports } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type ActivityReportsSectionProps = {
-  readOnly?: boolean;
-};
-
-export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
-  readOnly = false,
-}) => {
+export const ActivityReportsSection: React.FC = () => {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
 

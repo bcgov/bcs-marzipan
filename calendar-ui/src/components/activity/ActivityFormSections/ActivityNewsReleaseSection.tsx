@@ -31,6 +31,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityNewsReleaseSectionProps = {
@@ -41,7 +42,6 @@ type ActivityNewsReleaseSectionProps = {
   }>;
   newsReleaseDistributionOptions: OptionItem[];
   newsReleaseOriginOptions: OptionItem[];
-  readOnly?: boolean;
 };
 
 export const ActivityNewsReleaseSection: React.FC<
@@ -50,8 +50,8 @@ export const ActivityNewsReleaseSection: React.FC<
   translationLanguageOptions,
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
-  readOnly = false,
 }) => {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const translationsAnchorRef = useComboboxAnchor();
 

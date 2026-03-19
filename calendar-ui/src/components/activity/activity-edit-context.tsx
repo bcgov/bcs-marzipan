@@ -1,25 +1,27 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  type ReactNode,
-} from 'react';
+/**
+ * Inline Edit Pattern for Activity Forms
+ *
+ * The activity form is always interactive -- controls must NOT use `disabled`
+ * for edit-gating. The edit lock is acquired optimistically on the first value
+ * change detected by `form.watch()` in ActivityPage.
+ *
+ * `readOnly` from this context is `true` only when another user holds the
+ * edit lock (`lockState === 'locked-by-other'`). Use it to prevent
+ * interaction in that case.
+ *
+ * For new fields: add the field normally with no special disabled/readOnly
+ * wiring. If you need to disable a field for a business rule (e.g. venue
+ * fields disabled when "Venue TBD" is checked), use a local `disabled` prop
+ * unrelated to edit state.
+ */
+import { createContext, useContext, type ReactNode } from 'react';
 
 export type ActivityEditContextValue = {
-  isEditing: boolean;
   readOnly: boolean;
-  fieldToActivate: string | null;
-  clearFieldToActivate: () => void;
 };
 
-const noop = () => {};
-
 const defaultValue: ActivityEditContextValue = {
-  isEditing: false,
-  readOnly: true,
-  fieldToActivate: null,
-  clearFieldToActivate: noop,
+  readOnly: false,
 };
 
 const ActivityEditContext =
@@ -41,34 +43,4 @@ export function ActivityEditProvider({
 
 export function useActivityEdit(): ActivityEditContextValue {
   return useContext(ActivityEditContext);
-}
-
-/**
- * Returns true once when fieldToActivate matches, then auto-clears.
- * Components that need to open a popover/select after click-to-edit consume this.
- */
-export function useFieldActivation(
-  fieldName: string,
-  onActivate: () => void,
-  options?: { enabled?: boolean }
-): void {
-  const { isEditing, readOnly, fieldToActivate, clearFieldToActivate } =
-    useActivityEdit();
-  const enabled = options?.enabled ?? true;
-  const onActivateRef = useRef(onActivate);
-  onActivateRef.current = onActivate;
-
-  useEffect(() => {
-    if (!enabled || !isEditing || readOnly) return;
-    if (fieldToActivate !== fieldName) return;
-    onActivateRef.current();
-    clearFieldToActivate();
-  }, [
-    fieldName,
-    fieldToActivate,
-    isEditing,
-    readOnly,
-    enabled,
-    clearFieldToActivate,
-  ]);
 }

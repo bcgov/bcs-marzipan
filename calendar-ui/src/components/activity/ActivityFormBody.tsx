@@ -25,16 +25,11 @@ import {
   ActivitySharingSection,
 } from './ActivityFormSections';
 
-const clearNoop = () => {};
-
 type ActivityFormBodyProps = {
   lookups: FormLookupData;
-  /** From parent `useCommsContactCandidates` — avoids a duplicate query and stale option lists. */
+  /** From parent `useCommsContactCandidates` -- avoids a duplicate query and stale option lists. */
   commsContactCandidates: CommsContactCandidate[] | undefined;
   readOnly?: boolean;
-  isEditing?: boolean;
-  fieldToActivate?: string | null;
-  clearFieldToActivate?: () => void;
   /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
   showChangedBadges?: boolean;
   leadTeamField?: ActivityLeadTeamFieldConfig;
@@ -47,9 +42,6 @@ export function ActivityFormBody({
   lookups,
   commsContactCandidates,
   readOnly = false,
-  isEditing = false,
-  fieldToActivate = null,
-  clearFieldToActivate = clearNoop,
   showChangedBadges = true,
   leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
@@ -83,13 +75,8 @@ export function ActivityFormBody({
   }, [commsContactCandidates, commsContacts, lookups.users]);
 
   const editContextValue = useMemo<ActivityEditContextValue>(
-    () => ({
-      isEditing,
-      readOnly,
-      fieldToActivate,
-      clearFieldToActivate,
-    }),
-    [isEditing, readOnly, fieldToActivate, clearFieldToActivate]
+    () => ({ readOnly }),
+    [readOnly]
   );
 
   return (
@@ -102,7 +89,6 @@ export function ActivityFormBody({
               organizations={lookups.organizations}
               tags={lookups.tags}
               pitchRequiredStatuses={lookups.pitchRequiredStatuses}
-              readOnly={readOnly}
               leadTeamField={leadTeamField}
             />
 
@@ -113,7 +99,6 @@ export function ActivityFormBody({
                 translationRequiredStatuses={
                   lookups.translationRequiredStatuses
                 }
-                readOnly={readOnly}
               />
               <ActivityNewsReleaseSection
                 translationLanguageOptions={lookups.translationLanguages}
@@ -121,25 +106,22 @@ export function ActivityFormBody({
                   lookups.newsReleaseDistributions
                 }
                 newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-                readOnly={readOnly}
               />
             </div>
           </div>
 
           <div className="space-y-12">
-            <ActivityReportsSection readOnly={readOnly} />
+            <ActivityReportsSection />
 
             <ActivityScheduleSection
               dateStatuses={lookups.dateStatuses}
               timeStatuses={lookups.timeStatuses}
-              readOnly={readOnly}
             />
 
             <ActivityEventSection
               representativeOptions={lookups.governmentRepresentatives}
               premierRequestedOptions={lookups.premierRequested}
               eventPlannerOptions={lookups.eventPlanners}
-              readOnly={readOnly}
             />
 
             <ActivitySharingSection
@@ -147,7 +129,6 @@ export function ActivityFormBody({
                 value: String(t.id),
                 label: t.displayName ?? t.name,
               }))}
-              readOnly={readOnly}
             />
           </div>
         </div>

@@ -1,12 +1,13 @@
 /**
- * ActivityPage form and lead team field tests, restore button visibility,
- * and client-side edit toggle behavior.
+ * ActivityPage form readiness, restore button visibility,
+ * and optimistic inline-edit lock behavior.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
@@ -14,6 +15,14 @@ import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
+
+vi.mock('sonner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('sonner')>();
+  return {
+    ...actual,
+    toast: { ...actual.toast, error: vi.fn(), success: vi.fn() },
+  };
+});
 
 const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
   createMockActivityResponse({
@@ -80,11 +89,12 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
   };
 });
 
+let mockLockState = 'idle';
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
     lock: null,
-    lockState: 'idle',
-    lockedByUsername: null,
+    lockState: mockLockState,
+    lockedByUsername: mockLockState === 'locked-by-other' ? 'Other User' : null,
     acquire: mockAcquire,
     release: mockRelease,
     setLockedByOther: mockSetLockedByOther,
@@ -160,6 +170,7 @@ describe('ActivityPage form readiness', () => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
     mockAcquire.mockClear();
+    mockLockState = 'idle';
     mockUseAuth.mockReturnValue({
       hasPermission: () => true,
       user: { id: 1, roleName: 'Editor', teamIds: [5] },
@@ -206,6 +217,7 @@ describe('ActivityPage form readiness', () => {
 
 describe('ActivityPage restore button visibility', () => {
   beforeEach(() => {
+    mockLockState = 'idle';
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -279,11 +291,12 @@ describe('ActivityPage restore button visibility', () => {
   });
 });
 
-describe('ActivityPage edit toggle', () => {
+describe('ActivityPage optimistic inline edit', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
     mockAcquire.mockClear().mockResolvedValue(true);
+    mockLockState = 'idle';
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -304,42 +317,76 @@ describe('ActivityPage edit toggle', () => {
     });
   });
 
-  it('shows Edit button in view state and hides Cancel/Update', async () => {
+  it('does not show Edit button (removed in optimistic model)', async () => {
     renderActivityPage();
 
-    await expect(
-      screen.findByRole('button', { name: /^Edit$/i })
-    ).resolves.toBeInTheDocument();
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Edit$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides Cancel/Update buttons before any edit interaction', async () => {
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Cancel$/i })
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /^Update$/i })
     ).not.toBeInTheDocument();
   });
 
-  it('clicking Edit acquires lock and shows Cancel/Update buttons', async () => {
+  it('typing in a text field triggers lock acquisition and shows Cancel/Update', async () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const editButton = await screen.findByRole('button', { name: /^Edit$/i });
-    await user.click(editButton);
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
 
     await waitFor(() => expect(mockAcquire).toHaveBeenCalledTimes(1));
     await expect(
       screen.findByRole('button', { name: /^Cancel$/i })
     ).resolves.toBeInTheDocument();
-    await expect(
-      screen.findByRole('button', { name: /^Update$/i })
-    ).resolves.toBeInTheDocument();
   });
 
-  it('disables Edit button when user lacks EDIT permission', async () => {
-    mockUseAuth.mockReturnValue({
-      hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.EDIT,
-      user: { id: 1, roleName: 'Viewer', teamIds: [5] },
-    });
-
+  it('resets form and shows error toast when lock acquisition fails', async () => {
+    mockAcquire.mockResolvedValue(false);
+    const user = userEvent.setup();
     renderActivityPage();
 
-    const editButton = await screen.findByRole('button', { name: /^Edit$/i });
-    expect(editButton).toBeDisabled();
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Cannot edit. Another user has started editing this activity.'
+      )
+    );
+  });
+
+  it('form controls are not disabled in view mode', async () => {
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    expect(titleTextarea).not.toBeDisabled();
+  });
+
+  it('form is read-only when locked by another user', async () => {
+    mockLockState = 'locked-by-other';
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(screen.getByText(/Other User/)).toBeInTheDocument();
   });
 });
