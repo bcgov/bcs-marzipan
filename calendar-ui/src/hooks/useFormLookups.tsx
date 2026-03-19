@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { REFERENCE_LOOKUP_CACHE_MS } from '@corpcal/shared';
+import type {
+  DateStatusLookupItem,
+  PitchRequiredStatusLookupItem,
+  TimeStatusLookupItem,
+  TranslationRequiredStatusLookupItem,
+} from '@corpcal/shared/api/types';
 import type { OptionItem } from '@/schemas/types';
 
 import { fetchTeams } from '../api/usersApi';
@@ -8,16 +14,20 @@ import {
   useActivityStatuses,
   useCategories,
   useCommsMaterials,
+  useDateStatuses,
   useEventPlanners,
   useGovernmentRepresentatives,
   useMinistries,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   useOrganizations,
+  usePitchRequiredStatuses,
   usePitchStatuses,
   usePremierRequested,
   useTags,
+  useTimeStatuses,
   useTranslationLanguages,
+  useTranslationRequiredStatuses,
   useUsers,
 } from './useLookups';
 
@@ -85,6 +95,18 @@ export interface FormLookupData {
   // Teams - for Shared With resolution (name to id in mapper) and dropdown options
   sharedWithTeams: Array<{ id: number; name: string; displayName?: string }>;
 
+  // Date Statuses - for Schedule section and confirm modals
+  dateStatuses: DateStatusLookupItem[];
+
+  // Time Statuses - for Schedule section and confirm modals
+  timeStatuses: TimeStatusLookupItem[];
+
+  // Pitch Required Statuses - for Overview section
+  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
+
+  // Translation Required Statuses - for Comms section
+  translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
+
   // Loading state
   isLoading: boolean;
 
@@ -112,6 +134,10 @@ export function useFormLookups(): FormLookupData {
     queryFn: fetchTeams,
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
+  const dateStatusesQuery = useDateStatuses();
+  const timeStatusesQuery = useTimeStatuses();
+  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
+  const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
 
   const isLoading =
     categoriesQuery.isLoading ||
@@ -128,7 +154,11 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.isLoading ||
     premierRequestedQuery.isLoading ||
     newsReleaseOriginsQuery.isLoading ||
-    teamsQuery.isLoading;
+    teamsQuery.isLoading ||
+    dateStatusesQuery.isLoading ||
+    timeStatusesQuery.isLoading ||
+    pitchRequiredStatusesQuery.isLoading ||
+    translationRequiredStatusesQuery.isLoading;
 
   const hasError =
     categoriesQuery.isError ||
@@ -145,7 +175,11 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.isError ||
     premierRequestedQuery.isError ||
     newsReleaseOriginsQuery.isError ||
-    teamsQuery.isError;
+    teamsQuery.isError ||
+    dateStatusesQuery.isError ||
+    timeStatusesQuery.isError ||
+    pitchRequiredStatusesQuery.isError ||
+    translationRequiredStatusesQuery.isError;
 
   // Transform categories for Badge components
   const categories =
@@ -305,6 +339,10 @@ export function useFormLookups(): FormLookupData {
     premierRequested,
     newsReleaseOrigins,
     sharedWithTeams,
+    dateStatuses: dateStatusesQuery.data ?? [],
+    timeStatuses: timeStatusesQuery.data ?? [],
+    pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
+    translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
     isLoading,
     hasError,
   };

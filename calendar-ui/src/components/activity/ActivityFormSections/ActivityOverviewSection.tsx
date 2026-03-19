@@ -2,7 +2,10 @@ import { format, startOfDay } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
-import type { TeamListItem } from '@corpcal/shared/api/types';
+import type {
+  PitchRequiredStatusLookupItem,
+  TeamListItem,
+} from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -39,7 +42,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { usePitchRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
@@ -68,6 +70,7 @@ type ActivityOverviewSectionProps = {
     ministryId?: number | null;
   }>;
   tags: Array<{ id: number; text: string }>;
+  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
   readOnly?: boolean;
   leadTeamField?: ActivityLeadTeamFieldConfig;
 };
@@ -78,6 +81,7 @@ export const ActivityOverviewSection: React.FC<
   categories,
   organizations,
   tags,
+  pitchRequiredStatuses,
   readOnly = false,
   leadTeamField: leadTeamFieldProp,
 }) => {
@@ -101,8 +105,6 @@ export const ActivityOverviewSection: React.FC<
     value: String(t.id),
     label: t.text,
   }));
-
-  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.overview}>

@@ -1,12 +1,9 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import React, { useEffect, useRef, useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
-  createActivityRequestSchema,
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
@@ -35,14 +32,10 @@ import {
   DialogTitle,
   ResumeDialog,
 } from '../components/ui/resumeDraftDialog';
+import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useAuth } from '../hooks/useAuth';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCreateActivity } from '../hooks/useCalendar';
-import { useCommsContactCandidates } from '../hooks/useCommsContactCandidates';
-import { useCommsContactSync } from '../hooks/useCommsContactSync';
-import { useFormLookups } from '../hooks/useFormLookups';
-import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
-import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
 import {
   DEFAULT_FORM_VALUES,
   getDefaultFormValues,
@@ -82,137 +75,42 @@ export const CreateActivityForm: FC = () => {
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
 
-  // Fetch date and time statuses
-  const { data: dateStatuses } = useDateStatuses();
-  const { data: timeStatuses } = useTimeStatuses();
-
-  // Fetch all lookup data
-  const lookups = useFormLookups();
   const {
-    data: leadTeamOptions = [],
-    isError: leadTeamOptionsError,
-    isFetching: leadTeamOptionsFetching,
-    refetch: refetchLeadTeamOptions,
-  } = useLeadTeamOptions(canCreateActivity);
-
-  const form = useForm<ActivityFormData>({
-    resolver: zodResolver(
-      createActivityRequestSchema
-    ) as Resolver<ActivityFormData>,
-    mode: 'onChange',
-    defaultValues: {
-      ...getDefaultFormValues(),
-    },
-  });
-
-  const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
-  const { data: commsContactCandidates } =
-    useCommsContactCandidates(watchedLeadTeamId);
-
-  useCommsContactSync({
     form,
-    candidates: commsContactCandidates,
+    lookups,
+    leadTeamOptions,
+    leadTeamOptionsError,
+    leadTeamOptionsFetching,
+    refetchLeadTeamOptions,
+    commsContactCandidates,
+  } = useActivityFormSetup({
+    mode: 'create',
+    leadTeamFetchEnabled: canCreateActivity,
     userId: user?.id,
-    isCreate: true,
-    candidatesTeamId: watchedLeadTeamId,
+    userTeamIds: user?.teamIds,
   });
 
-  // Set default date and time statuses to "unknown" when they're loaded
-  useEffect(() => {
-    if (dateStatuses && !form.getValues('dateStatusId')) {
-      const unknownStatus = dateStatuses.find((s) => s.name === 'unknown');
-      if (unknownStatus) {
-        form.setValue('dateStatusId', unknownStatus.id);
-      }
-    }
-  }, [dateStatuses, form]);
+  const autosaveEnabled = false;
 
-  useEffect(() => {
-    if (timeStatuses && !form.getValues('timeStatusId')) {
-      const unknownStatus = timeStatuses.find((s) => s.name === 'unknown');
-      if (unknownStatus) {
-        form.setValue('timeStatusId', unknownStatus.id);
-      }
-    }
-  }, [timeStatuses, form]);
-
-  // Default lead team to user's first team when options load (only if form has no leadTeamId yet).
-  // One-way sync: also set Lead Org from the team's ministry (first org with matching ministryId, or leave unfilled).
-  useEffect(() => {
-    if (leadTeamOptions.length === 0) return;
-    const currentLeadTeamId = form.getValues('leadTeamId');
-    if (currentLeadTeamId != null && currentLeadTeamId !== 0) return;
-    const firstUserTeamId = user?.teamIds?.[0];
-    const defaultTeam =
-      (firstUserTeamId != null &&
-        leadTeamOptions.find((t) => t.id === firstUserTeamId)) ||
-      leadTeamOptions[0];
-    if (defaultTeam) {
-      form.setValue('leadTeamId', defaultTeam.id);
-      form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
-      const ministryId = defaultTeam.ministryId ?? null;
-      const orgForMinistry = lookups.organizations.find(
-        (o) => o.ministryId != null && o.ministryId === ministryId
-      );
-      if (orgForMinistry) {
-        form.setValue('leadOrgId', orgForMinistry.value);
-        form.setValue('leadOrgName', null);
-      }
-      // If no org has this ministryId, leave Lead Org unfilled (defaults already null)
-    }
-  }, [leadTeamOptions, user?.teamIds, lookups.organizations, form]);
-
-  // When organizations load after default team was set, populate Lead Org from that team's ministry (one-time sync).
-  useEffect(() => {
-    if (lookups.organizations.length === 0 || leadTeamOptions.length === 0)
-      return;
-    const leadTeamId = form.getValues('leadTeamId');
-    const leadOrgId = form.getValues('leadOrgId');
-    const leadOrgName = form.getValues('leadOrgName');
-    if (
-      leadTeamId == null ||
-      leadTeamId === 0 ||
-      (leadOrgId != null && leadOrgId !== 0) ||
-      (leadOrgName != null && leadOrgName !== '')
-    )
-      return;
-    const team = leadTeamOptions.find((t) => t.id === leadTeamId);
-    if (!team?.ministryId) return;
-    const orgForMinistry = lookups.organizations.find(
-      (o) => o.ministryId != null && o.ministryId === team.ministryId
-    );
-    if (orgForMinistry) {
-      form.setValue('leadOrgId', orgForMinistry.value);
-      form.setValue('leadOrgName', null);
-    }
-  }, [lookups.organizations, leadTeamOptions, form]);
-
-  // Get form values for autosave - use subscription pattern to avoid infinite loops
   const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
     form.getValues()
   );
   const previousValuesRef = useRef<string>('');
 
   useEffect(() => {
-    // Subscribe to form changes and only update state when values actually change
+    if (!autosaveEnabled) return;
     const subscription = form.watch((values) => {
       const newValues = values as Partial<ActivityFormData>;
       const newValuesStr = JSON.stringify(newValues);
-
-      // Only update if values actually changed
       if (newValuesStr !== previousValuesRef.current) {
         previousValuesRef.current = newValuesStr;
         setFormValues(newValues);
       }
     });
-
-    // Initialize previous values ref
     previousValuesRef.current = JSON.stringify(form.getValues());
-
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [form, autosaveEnabled]);
 
-  // Autosave integration: userId comes from auth context inside useAutoSave
   const initialDraftExistsRef = useRef(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
 
@@ -228,11 +126,8 @@ export const CreateActivityForm: FC = () => {
     formValues,
     undefined,
     {
-      debounceMs: 3000, // Save 3 seconds after user stops typing
-      // enabled: !isSubmitting, // Disable during submission
-
-      // Temporarily disabling while polishing other form features
-      enabled: false,
+      debounceMs: 3000,
+      enabled: autosaveEnabled,
       onSaveError: (err) => {
         logger.error('Draft save failed', err);
         showErrorToast(err, 'Draft could not be saved.');
@@ -476,7 +371,6 @@ export const CreateActivityForm: FC = () => {
             </div>
           )}
           <ActivityFormBody
-            form={form}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={false}
@@ -550,8 +444,8 @@ export const CreateActivityForm: FC = () => {
         }}
         formData={form.getValues()}
         lookups={lookups}
-        dateStatuses={dateStatuses}
-        timeStatuses={timeStatuses}
+        dateStatuses={lookups.dateStatuses}
+        timeStatuses={lookups.timeStatuses}
         leadTeamOptions={leadTeamOptions}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)

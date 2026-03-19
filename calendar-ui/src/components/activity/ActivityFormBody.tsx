@@ -1,4 +1,4 @@
-import type { UseFormReturn } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { useMemo, type ReactElement } from 'react';
 
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
@@ -28,7 +28,6 @@ import {
 const clearNoop = () => {};
 
 type ActivityFormBodyProps = {
-  form: UseFormReturn<ActivityFormData>;
   lookups: FormLookupData;
   /** From parent `useCommsContactCandidates` — avoids a duplicate query and stale option lists. */
   commsContactCandidates: CommsContactCandidate[] | undefined;
@@ -45,7 +44,6 @@ type ActivityFormBodyProps = {
  * Shared two-column form body used by create, view, and edit activity pages.
  */
 export function ActivityFormBody({
-  form,
   lookups,
   commsContactCandidates,
   readOnly = false,
@@ -55,6 +53,7 @@ export function ActivityFormBody({
   showChangedBadges = true,
   leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
+  const form = useFormContext<ActivityFormData>();
   const leadTeamField = {
     ...defaultActivityLeadTeamFieldConfig,
     ...leadTeamFieldProp,
@@ -102,6 +101,7 @@ export function ActivityFormBody({
               categories={lookups.categories}
               organizations={lookups.organizations}
               tags={lookups.tags}
+              pitchRequiredStatuses={lookups.pitchRequiredStatuses}
               readOnly={readOnly}
               leadTeamField={leadTeamField}
             />
@@ -110,6 +110,9 @@ export function ActivityFormBody({
               <ActivityCommsSection
                 commsMaterialOptions={lookups.commsMaterials}
                 commsLeadOptions={commsLeadOptions}
+                translationRequiredStatuses={
+                  lookups.translationRequiredStatuses
+                }
                 readOnly={readOnly}
               />
               <ActivityNewsReleaseSection
@@ -124,9 +127,13 @@ export function ActivityFormBody({
           </div>
 
           <div className="space-y-12">
-            <ActivityReportsSection form={form} readOnly={readOnly} />
+            <ActivityReportsSection readOnly={readOnly} />
 
-            <ActivityScheduleSection form={form} readOnly={readOnly} />
+            <ActivityScheduleSection
+              dateStatuses={lookups.dateStatuses}
+              timeStatuses={lookups.timeStatuses}
+              readOnly={readOnly}
+            />
 
             <ActivityEventSection
               representativeOptions={lookups.governmentRepresentatives}

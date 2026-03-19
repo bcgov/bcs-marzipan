@@ -1,4 +1,4 @@
-import { UseFormReturn } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
@@ -25,14 +25,13 @@ import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityReportsSectionProps = {
-  form: UseFormReturn<ActivityFormData>;
   readOnly?: boolean;
 };
 
 export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
-  form,
   readOnly = false,
 }) => {
+  const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
 
   // Find report IDs for Look Ahead and 30/60/90 reports

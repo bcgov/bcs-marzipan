@@ -1,5 +1,6 @@
 import { useFormContext } from 'react-hook-form';
 
+import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   Combobox,
@@ -28,7 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useTranslationRequiredStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
@@ -42,6 +42,7 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: OptionItem[];
+  translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
   readOnly?: boolean;
 };
 
@@ -70,13 +71,12 @@ function buildCommsContactsFromSelection(
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
+  translationRequiredStatuses,
   readOnly = false,
 }) => {
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
-  const { data: translationRequiredStatuses = [] } =
-    useTranslationRequiredStatuses();
 
   const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
     value: String(m.id),

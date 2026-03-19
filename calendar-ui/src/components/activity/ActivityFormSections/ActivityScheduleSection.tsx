@@ -1,6 +1,10 @@
 import { format, startOfDay } from 'date-fns';
-import { Controller, UseFormReturn, useWatch } from 'react-hook-form';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
+import type {
+  DateStatusLookupItem,
+  TimeStatusLookupItem,
+} from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimeRangePicker } from '@/components/ui/time-range-picker';
-import { useDateStatuses, useTimeStatuses } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
@@ -48,16 +51,17 @@ const setDateOpts = {
 const anchorToday = () => startOfDay(new Date());
 
 type ActivityScheduleSectionProps = {
-  form: UseFormReturn<ActivityFormData>;
+  dateStatuses: DateStatusLookupItem[];
+  timeStatuses: TimeStatusLookupItem[];
   readOnly?: boolean;
 };
 
 export function ActivityScheduleSection({
-  form,
+  dateStatuses,
+  timeStatuses,
   readOnly = false,
 }: ActivityScheduleSectionProps) {
-  const { data: dateStatuses } = useDateStatuses();
-  const { data: timeStatuses } = useTimeStatuses();
+  const form = useFormContext<ActivityFormData>();
 
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
   const startDateValue = useWatch({ control: form.control, name: 'startDate' });
@@ -205,7 +209,7 @@ export function ActivityScheduleSection({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {(dateStatuses ?? []).map((status) => (
+                    {dateStatuses.map((status) => (
                       <SelectItem key={status.id} value={String(status.id)}>
                         {status.displayName ?? status.name}
                       </SelectItem>
@@ -300,7 +304,7 @@ export function ActivityScheduleSection({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {(timeStatuses ?? []).map((status) => (
+                        {timeStatuses.map((status) => (
                           <SelectItem key={status.id} value={String(status.id)}>
                             {status.displayName ?? status.name}
                           </SelectItem>

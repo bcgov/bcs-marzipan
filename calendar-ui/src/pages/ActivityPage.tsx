@@ -1,13 +1,10 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
-import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
-  createActivityRequestSchema,
   type ActivityFormData,
   type ActivityResponse,
   type UpdateActivityRequest,
@@ -45,6 +42,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityLock } from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
@@ -55,12 +53,6 @@ import {
   useSoftDeleteActivity,
   useUpdateActivity,
 } from '../hooks/useCalendar';
-import { useCommsContactCandidates } from '../hooks/useCommsContactCandidates';
-import { useCommsContactSync } from '../hooks/useCommsContactSync';
-import { useFormLookups } from '../hooks/useFormLookups';
-import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
-import { useDateStatuses } from '../hooks/useLookups';
-import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { activityToFormData } from '../lib/activity-form-mapper';
 import { buildPayloadForUpdate } from '../lib/activity-form-payload';
@@ -87,19 +79,26 @@ export function ActivityPage({
   const { user, hasPermission } = useAuth();
   const id = activity.id;
 
-  const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const apiCanEdit = (activity as ActivityResponse & { canEdit?: boolean })
     .canEdit;
   const canEditActivity =
     hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
   const leadTeamFetchEnabled = canCreateActivity || canEditActivity;
+
   const {
-    data: leadTeamOptions = [],
-    isError: leadTeamOptionsError,
-    isFetching: leadTeamOptionsFetching,
-    refetch: refetchLeadTeamOptions,
-  } = useLeadTeamOptions(leadTeamFetchEnabled);
+    form,
+    lookups,
+    leadTeamOptions,
+    leadTeamOptionsError,
+    leadTeamOptionsFetching,
+    refetchLeadTeamOptions,
+    commsContactCandidates,
+  } = useActivityFormSetup({
+    mode: 'edit',
+    leadTeamFetchEnabled,
+    userId: user?.id,
+  });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -167,7 +166,6 @@ export function ActivityPage({
   /** Same field key as last pointerdown inside the activity form (guards SPA ghost clicks after navigate). */
   const pointerDownFieldKeyRef = useRef<string | null>(null);
 
-  const { data: dateStatuses } = useDateStatuses();
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
   const restoreMutation = useRestoreActivity();
@@ -189,26 +187,6 @@ export function ActivityPage({
     onDataUpdated: () => {
       void refreshActivity();
     },
-  });
-
-  const form = useForm<ActivityFormData>({
-    resolver: zodResolver(
-      createActivityRequestSchema
-    ) as Resolver<ActivityFormData>,
-    mode: 'onChange',
-    defaultValues: getDefaultFormValues(),
-  });
-
-  const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
-  const { data: commsContactCandidates } =
-    useCommsContactCandidates(watchedLeadTeamId);
-
-  useCommsContactSync({
-    form,
-    candidates: commsContactCandidates,
-    userId: user?.id,
-    isCreate: false,
-    candidatesTeamId: watchedLeadTeamId,
   });
 
   const isDirty = form.formState.isDirty;
@@ -279,7 +257,7 @@ export function ActivityPage({
         }
       });
     },
-    [acquire, id]
+    [acquire]
   );
 
   const handleFieldClick = useCallback(
@@ -569,171 +547,164 @@ export function ActivityPage({
           isRestoring={isRestoring}
         />
       )}
-      <FormProvider {...form}>
-        <Form {...form}>
-          <form
-            onPointerDownCapture={handleFormPointerDownCapture}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (isEditing) {
-                void form.handleSubmit(onSubmit, onError)(e);
-              }
+      <Form {...form}>
+        <form
+          onPointerDownCapture={handleFormPointerDownCapture}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (isEditing) {
+              void form.handleSubmit(onSubmit, onError)(e);
+            }
+          }}
+          onClick={!isEditing ? handleFieldClick : undefined}
+          onKeyDown={!isEditing ? handleFormKeyDownIntent : undefined}
+        >
+          {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
+            <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <span>Could not load lead team options.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void refetchLeadTeamOptions();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          <ActivityFormBody
+            lookups={lookups}
+            commsContactCandidates={commsContactCandidates}
+            readOnly={readOnly}
+            isEditing={isEditing}
+            fieldToActivate={fieldToActivate}
+            clearFieldToActivate={clearFieldToActivate}
+            leadTeamField={{
+              options: leadTeamOptions,
+              displayLabel:
+                (
+                  activity as ActivityResponse & {
+                    leadTeamDisplayName?: string | null;
+                  }
+                ).leadTeamDisplayName ?? null,
+              optionsFetching: leadTeamOptionsFetching,
             }}
-            onClick={!isEditing ? handleFieldClick : undefined}
-            onKeyDown={!isEditing ? handleFormKeyDownIntent : undefined}
-          >
-            {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
-              <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                <span>Could not load lead team options.</span>
+          />
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
+            <div className="flex gap-2">
+              {showRequestDeleteButton && (
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void refetchLeadTeamOptions();
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    ensureEditThen(() => setShowRequestDeleteModal(true));
                   }}
+                  disabled={isSubmitting}
                 >
-                  Retry
+                  Request delete
                 </Button>
-              </div>
-            )}
-            <ActivityFormBody
-              form={form}
-              lookups={lookups}
-              commsContactCandidates={commsContactCandidates}
-              readOnly={readOnly}
-              isEditing={isEditing}
-              fieldToActivate={fieldToActivate}
-              clearFieldToActivate={clearFieldToActivate}
-              leadTeamField={{
-                options: leadTeamOptions,
-                displayLabel:
-                  (
-                    activity as ActivityResponse & {
-                      leadTeamDisplayName?: string | null;
-                    }
-                  ).leadTeamDisplayName ?? null,
-                optionsFetching: leadTeamOptionsFetching,
-              }}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
-              <div className="flex gap-2">
-                {showRequestDeleteButton && (
+              )}
+              {showDeleteButton && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    ensureEditThen(() => void handleOpenDeleteModal());
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-4">
+              {isEditing ? (
+                <>
                   <Button
                     type="button"
                     variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => setShowRequestDeleteModal(true));
-                    }}
+                    onClick={() => void handleCancel()}
                     disabled={isSubmitting}
                   >
-                    Request delete
+                    Cancel
                   </Button>
-                )}
-                {showDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => void handleOpenDeleteModal());
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    Delete
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-4">
-                {isEditing ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleCancel()}
-                      disabled={isSubmitting}
-                    >
-                      Cancel
-                    </Button>
-                    {!isFormValid && missingFields.length > 0 ? (
-                      <Popover open={showMissingFieldsPopover}>
-                        <PopoverTrigger asChild>
-                          <div
-                            onMouseEnter={() =>
-                              setShowMissingFieldsPopover(true)
-                            }
-                            onMouseLeave={() =>
-                              setShowMissingFieldsPopover(false)
-                            }
-                          >
-                            <Button
-                              type="submit"
-                              disabled={true}
-                              className="cursor-not-allowed"
-                            >
-                              {isSubmitting ? 'Updating...' : 'Update'}
-                            </Button>
-                          </div>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="w-80"
+                  {!isFormValid && missingFields.length > 0 ? (
+                    <Popover open={showMissingFieldsPopover}>
+                      <PopoverTrigger asChild>
+                        <div
                           onMouseEnter={() => setShowMissingFieldsPopover(true)}
                           onMouseLeave={() =>
                             setShowMissingFieldsPopover(false)
                           }
                         >
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-medium">
-                              Required fields missing:
-                            </h4>
-                            <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                              {missingFields.map((field) => (
-                                <li key={field}>{field}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <Button type="submit" disabled={isSubmitting || readOnly}>
-                        {isSubmitting ? 'Updating...' : 'Update'}
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsEditing(true);
-                      void acquire().then((ok) => {
-                        if (!ok) {
-                          setIsEditing(false);
-                          toast.error(
-                            'Cannot edit. Another user has started editing this activity.'
-                          );
-                        }
-                      });
-                    }}
-                    disabled={!mayEdit}
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
+                          <Button
+                            type="submit"
+                            disabled={true}
+                            className="cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Updating...' : 'Update'}
+                          </Button>
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80"
+                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                      >
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium">
+                            Required fields missing:
+                          </h4>
+                          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                            {missingFields.map((field) => (
+                              <li key={field}>{field}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button type="submit" disabled={isSubmitting || readOnly}>
+                      {isSubmitting ? 'Updating...' : 'Update'}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                    void acquire().then((ok) => {
+                      if (!ok) {
+                        setIsEditing(false);
+                        toast.error(
+                          'Cannot edit. Another user has started editing this activity.'
+                        );
+                      }
+                    });
+                  }}
+                  disabled={!mayEdit}
+                >
+                  Edit
+                </Button>
+              )}
             </div>
-          </form>
-        </Form>
-      </FormProvider>
+          </div>
+        </form>
+      </Form>
       {isEditing && (
         <ActivityHistory
           activityId={id}
           open={historyOpen}
           onOpenChange={(v) => setHistoryOpen(!!v)}
-          dateStatuses={dateStatuses}
+          dateStatuses={lookups.dateStatuses}
         />
       )}
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
@@ -763,7 +734,7 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        dateStatuses={dateStatuses}
+        dateStatuses={lookups.dateStatuses}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }
