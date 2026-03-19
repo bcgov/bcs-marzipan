@@ -96,6 +96,11 @@ If Azure sign-in should land on a specific UI page after the callback, set
 `https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca/`. If left blank,
 the backend redirects to `/` after successful sign-in.
 
+For OpenShift deployments, treat `AUTH_COOKIE_DOMAIN` and
+`POST_LOGIN_REDIRECT_URL` as environment-specific values. They should be
+supplied at deploy time rather than hardcoded into the base manifests so dev,
+staging, and prod can each use their own public UI hostname.
+
 ### Token content and policy changes
 
 The JWT embeds the user's **permissions** and **teamIds** at login time. As a result:

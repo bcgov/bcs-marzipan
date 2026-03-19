@@ -21,7 +21,8 @@ RUN NODE_OPTIONS=--max-old-space-size=4096 \
 
 FROM docker.io/library/nginx:alpine
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html
-COPY --from=build /app/calendar-ui/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx.conf as a template so the entrypoint can render API_PROXY_UPSTREAM at startup.
+COPY --from=build /app/calendar-ui/nginx.conf /etc/nginx/templates/default.conf.template
 RUN chmod -R g+rwX /var/cache/nginx /var/run /usr/share/nginx/html \
     && chgrp -R 0 /var/cache/nginx /var/run /usr/share/nginx/html
 EXPOSE 8080
