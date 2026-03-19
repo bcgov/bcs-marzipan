@@ -228,6 +228,14 @@ export function ActivityPage({
     (!isBlockedStatus || canEditWhenBlocked);
 
   const readOnly = lockState === 'locked-by-other';
+  const hasEditLock = lockState === 'owned';
+  const canSubmitWithoutValidationErrors =
+    isFormValid || missingFields.length === 0;
+  const canSubmitUpdate =
+    hasEditLock &&
+    canSubmitWithoutValidationErrors &&
+    !isSubmitting &&
+    !readOnly;
 
   // Optimistic lock: acquire on first user-initiated value change.
   // lockEnabled gates the effect so it only runs after initialization
@@ -345,7 +353,11 @@ export function ActivityPage({
       void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
-      showErrorToast(err, 'Your changes could not be saved.');
+      const message =
+        err instanceof ApiError && err.status === 409
+          ? 'The entry is locked by another user. Your changes could not be saved.'
+          : 'Your changes could not be saved.';
+      showErrorToast(err, message);
     } finally {
       setIsSubmitting(false);
       setShowConfirmModal(false);
@@ -476,7 +488,7 @@ export function ActivityPage({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (isEditing) {
+            if (hasEditLock) {
               void form.handleSubmit(onSubmit, onError)(e);
             }
           }}
@@ -511,7 +523,7 @@ export function ActivityPage({
               optionsFetching: leadTeamOptionsFetching,
             }}
           />
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
+          <div className="bg-background/90 supports-backdrop-filter:bg-background/80 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4 backdrop-blur">
             <div className="flex gap-2">
               {showRequestDeleteButton && (
                 <Button
@@ -522,7 +534,7 @@ export function ActivityPage({
                     e.stopPropagation();
                     ensureEditThen(() => setShowRequestDeleteModal(true));
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasEditLock}
                 >
                   Request delete
                 </Button>
@@ -536,64 +548,58 @@ export function ActivityPage({
                     e.stopPropagation();
                     ensureEditThen(() => void handleOpenDeleteModal());
                   }}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !hasEditLock}
                 >
                   Delete
                 </Button>
               )}
             </div>
             <div className="flex gap-4">
-              {isEditing && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void handleCancel()}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  {!isFormValid && missingFields.length > 0 ? (
-                    <Popover open={showMissingFieldsPopover}>
-                      <PopoverTrigger asChild>
-                        <div
-                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                          onMouseLeave={() =>
-                            setShowMissingFieldsPopover(false)
-                          }
-                        >
-                          <Button
-                            type="submit"
-                            disabled={true}
-                            className="cursor-not-allowed"
-                          >
-                            {isSubmitting ? 'Updating...' : 'Update'}
-                          </Button>
-                        </div>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-80"
-                        onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                        onMouseLeave={() => setShowMissingFieldsPopover(false)}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleCancel()}
+                disabled={isSubmitting || !hasEditLock}
+              >
+                Cancel
+              </Button>
+              {!canSubmitWithoutValidationErrors ? (
+                <Popover open={showMissingFieldsPopover}>
+                  <PopoverTrigger asChild>
+                    <div
+                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                    >
+                      <Button
+                        type="submit"
+                        disabled={true}
+                        className="cursor-not-allowed"
                       >
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-medium">
-                            Required fields missing:
-                          </h4>
-                          <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                            {missingFields.map((field) => (
-                              <li key={field}>{field}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <Button type="submit" disabled={isSubmitting || readOnly}>
-                      {isSubmitting ? 'Updating...' : 'Update'}
-                    </Button>
-                  )}
-                </>
+                        {isSubmitting ? 'Updating...' : 'Update'}
+                      </Button>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80"
+                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                  >
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">
+                        Required fields missing:
+                      </h4>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                        {missingFields.map((field) => (
+                          <li key={field}>{field}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Button type="submit" disabled={!canSubmitUpdate}>
+                  {isSubmitting ? 'Updating...' : 'Update'}
+                </Button>
               )}
             </div>
           </div>
