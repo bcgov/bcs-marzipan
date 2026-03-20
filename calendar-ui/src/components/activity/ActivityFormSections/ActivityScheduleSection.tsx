@@ -1,5 +1,6 @@
 import { format, startOfDay } from 'date-fns';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { useState } from 'react';
 
 import type {
   DateStatusLookupItem,
@@ -17,8 +18,9 @@ import {
 } from '@/components/ui/form';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { TimeRangePicker } from '@/components/ui/time-range-picker';
+import { TwelveHourTimeField } from '@/components/ui/twelve-hour-time-field';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
@@ -57,13 +59,13 @@ export function ActivityScheduleSection({
 }: ActivityScheduleSectionProps) {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
+  const [activeTimePopover, setActiveTimePopover] = useState<
+    'start' | 'end' | null
+  >(null);
 
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
   const startDateValue = useWatch({ control: form.control, name: 'startDate' });
   const endDateValue = useWatch({ control: form.control, name: 'endDate' });
-  const startTimeValue = useWatch({ control: form.control, name: 'startTime' });
-  const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
-
   const startStr = String(startDateValue ?? '');
   const endStr = String(endDateValue ?? '');
 
@@ -230,91 +232,161 @@ export function ActivityScheduleSection({
 
       <FormField
         control={form.control}
-        name="startTime"
+        name="isAllDay"
         render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-1">
-              {getActivityFieldLabel(field.name)}{' '}
-              <span className="text-destructive">*</span>
-            </FormLabel>
-            <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
-              <div className="min-w-0">
-                <FormControl data-field={field.name}>
-                  <TimeRangePicker
-                    readOnly={readOnly}
-                    startTime={String(startTimeValue || '')}
-                    endTime={String(endTimeValue || '')}
-                    onStartTimeChange={(time) => {
-                      form.setValue('startTime', time, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                      });
-                    }}
-                    onEndTimeChange={(time) => {
-                      form.setValue('endTime', time, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                      });
-                    }}
-                    placeholder="Pick a time range"
-                    isAllDay={!!isAllDay}
-                    onAllDayChange={(checked) => {
-                      form.setValue('isAllDay', checked, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                      });
-                    }}
-                    allDayLabel={getActivityFieldLabel('isAllDay')}
-                  />
-                </FormControl>
-              </div>
-              <FormField
-                control={form.control}
-                name="timeStatusId"
-                render={({ field: statusField }) => (
-                  <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
-                    <FormLabel className="sr-only">
-                      {getActivityFieldLabel(statusField.name)}
-                    </FormLabel>
-                    <FormSelect
-                      readOnly={readOnly}
-                      value={
-                        statusField.value !== undefined &&
-                        statusField.value !== null
-                          ? String(statusField.value)
-                          : ''
-                      }
-                      onValueChange={(value) =>
-                        statusField.onChange(
-                          value === '' ? undefined : Number(value)
-                        )
-                      }
-                    >
-                      <FormControl data-field={statusField.name}>
-                        <FormSelectTrigger
-                          readOnly={readOnly}
-                          className={STATUS_SELECT_MIN_WIDTH}
-                          aria-label={getActivityFieldLabel(statusField.name)}
-                        >
-                          <SelectValue placeholder="Time status" />
-                        </FormSelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {timeStatuses.map((status) => (
-                          <SelectItem key={status.id} value={String(status.id)}>
-                            {status.displayName ?? status.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </FormSelect>
-                  </FormItem>
-                )}
-              />
+          <FormItem className="space-y-0">
+            <div className="flex flex-row items-center gap-2">
+              <FormControl>
+                <Switch
+                  id="activity-schedule-all-day"
+                  checked={!!field.value}
+                  readOnly={readOnly}
+                  onCheckedChange={(checked) => {
+                    field.onChange(checked);
+                  }}
+                />
+              </FormControl>
+              <FormLabel
+                className="mt-0! cursor-pointer font-normal"
+                htmlFor="activity-schedule-all-day"
+              >
+                {getActivityFieldLabel('isAllDay')}
+              </FormLabel>
             </div>
-            <FormMessage />
           </FormItem>
         )}
       />
+
+      {!isAllDay ? (
+        <FormItem>
+          <FormLabel className="flex items-center gap-1">
+            Time <span className="text-destructive">*</span>
+          </FormLabel>
+          <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
+            <div className="flex min-w-0 items-center gap-2">
+              <Controller
+                name="startTime"
+                control={form.control}
+                render={({ field }) => (
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <FormLabel className="sr-only">
+                      {getActivityFieldLabel('startTime')}
+                    </FormLabel>
+                    <FormControl data-field="startTime">
+                      <TwelveHourTimeField
+                        ariaLabel="Activity start time"
+                        readOnly={readOnly}
+                        placeholderMuted={!String(field.value ?? '').trim()}
+                        value={String(field.value ?? '')}
+                        onChange={(next) =>
+                          field.onChange(
+                            next === undefined || next === '' ? undefined : next
+                          )
+                        }
+                        popoverOpen={activeTimePopover === 'start'}
+                        onPopoverOpenChange={(open) => {
+                          if (open) setActiveTimePopover('start');
+                          else
+                            setActiveTimePopover((prev) =>
+                              prev === 'start' ? null : prev
+                            );
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                )}
+              />
+              <span className="text-muted-foreground shrink-0" aria-hidden>
+                →
+              </span>
+              <Controller
+                name="endTime"
+                control={form.control}
+                render={({ field }) => (
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <FormLabel className="sr-only">
+                      {getActivityFieldLabel('endTime')}
+                    </FormLabel>
+                    <FormControl data-field="endTime">
+                      <TwelveHourTimeField
+                        ariaLabel="Activity end time"
+                        readOnly={readOnly}
+                        placeholderMuted={!String(field.value ?? '').trim()}
+                        value={String(field.value ?? '')}
+                        onChange={(next) =>
+                          field.onChange(
+                            next === undefined || next === '' ? undefined : next
+                          )
+                        }
+                        popoverOpen={activeTimePopover === 'end'}
+                        onPopoverOpenChange={(open) => {
+                          if (open) setActiveTimePopover('end');
+                          else
+                            setActiveTimePopover((prev) =>
+                              prev === 'end' ? null : prev
+                            );
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="timeStatusId"
+              render={({ field: statusField }) => (
+                <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
+                  <FormLabel className="sr-only">
+                    {getActivityFieldLabel(statusField.name)}
+                  </FormLabel>
+                  <FormSelect
+                    readOnly={readOnly}
+                    value={
+                      statusField.value !== undefined &&
+                      statusField.value !== null
+                        ? String(statusField.value)
+                        : ''
+                    }
+                    onValueChange={(value) =>
+                      statusField.onChange(
+                        value === '' ? undefined : Number(value)
+                      )
+                    }
+                  >
+                    <FormControl data-field={statusField.name}>
+                      <FormSelectTrigger
+                        readOnly={readOnly}
+                        className={STATUS_SELECT_MIN_WIDTH}
+                        aria-label={getActivityFieldLabel(statusField.name)}
+                      >
+                        <SelectValue placeholder="Time status" />
+                      </FormSelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {timeStatuses.map((status) => (
+                        <SelectItem key={status.id} value={String(status.id)}>
+                          {status.displayName ?? status.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </FormSelect>
+                </FormItem>
+              )}
+            />
+          </div>
+          {form.formState.errors.startTime?.message ? (
+            <p className="text-destructive text-sm font-medium">
+              {String(form.formState.errors.startTime.message)}
+            </p>
+          ) : null}
+          {form.formState.errors.endTime?.message ? (
+            <p className="text-destructive text-sm font-medium">
+              {String(form.formState.errors.endTime.message)}
+            </p>
+          ) : null}
+        </FormItem>
+      ) : null}
 
       <FormField
         control={form.control}
