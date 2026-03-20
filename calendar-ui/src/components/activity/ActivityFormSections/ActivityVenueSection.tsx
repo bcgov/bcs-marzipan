@@ -19,8 +19,8 @@ import {
 } from '@/components/ui/form';
 import {
   FreeformCombobox,
+  type FreeformComboboxItemWithLead,
   type FreeformComboboxValue,
-  type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -204,9 +204,9 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
-          const comboboxValue: FreeformComboboxValueWithLead[] = list.map(
+          const comboboxValue: FreeformComboboxItemWithLead[] = list.map(
             (p) => {
-              const base: FreeformComboboxValueWithLead =
+              const base: FreeformComboboxItemWithLead =
                 p.eventPlannerId != null
                   ? { type: 'option', value: String(p.eventPlannerId) }
                   : p.eventPlannerName

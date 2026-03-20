@@ -5,6 +5,7 @@ import type { CommsContactCandidate } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
 import type { FormLookupData } from '@/hooks/useFormLookups';
+import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
 import {
@@ -24,6 +25,17 @@ import {
   ActivityScheduleSection,
   ActivitySharingSection,
 } from './ActivityFormSections';
+
+/** Strip default `shadow-xs` / outline-button shadow on form controls inside the activity form only. */
+const ACTIVITY_FORM_FIELD_SHADOW_RESET = cn(
+  '[&_[data-slot=input]]:shadow-none',
+  '[&_[data-slot=textarea]]:shadow-none',
+  '[&_[data-slot=combobox-chips]]:shadow-none',
+  '[&_[data-slot=input-group]]:shadow-none',
+  '[&_[data-slot=freeform-combobox-chips]]:shadow-none',
+  '[&_button[data-variant=outline]]:shadow-none',
+  '[&_[data-slot=switch]]:shadow-none'
+);
 
 type ActivityFormBodyProps = {
   lookups: FormLookupData;
@@ -82,7 +94,12 @@ export function ActivityFormBody({
   return (
     <ActivityEditProvider value={editContextValue}>
       <FormDisplayOptionsProvider showChangedBadges={showChangedBadges}>
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-12 lg:grid-cols-2',
+            ACTIVITY_FORM_FIELD_SHADOW_RESET
+          )}
+        >
           <div className="space-y-12">
             <ActivityOverviewSection
               categories={lookups.categories}

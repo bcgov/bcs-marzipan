@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   FreeformCombobox,
+  type FreeformComboboxItemWithLead,
   type FreeformComboboxValue,
 } from './freeform-combobox';
 
@@ -98,15 +99,20 @@ describe('FreeformCombobox', () => {
       expect(combobox).toHaveAttribute('readonly');
     });
 
-    it('readOnly does not open the option list when the open button is clicked', async () => {
-      const user = userEvent.setup();
+    it('readOnly hides the dropdown chevron and does not show the option list', () => {
       render(<FreeformCombobox {...defaultProps} readOnly />);
-      await user.click(screen.getByRole('button', { name: 'Open' }));
+      // Interactive mode renders a chevron with aria-label Open/Close; read-only omits it.
+      expect(
+        screen.queryByRole('button', { name: 'Open' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Close' })
+      ).not.toBeInTheDocument();
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
     it('readOnly hides chip remove buttons in multiple mode', () => {
-      const value: FreeformComboboxValue[] = [
+      const value: FreeformComboboxItemWithLead[] = [
         { type: 'option', value: 'option1', isLead: true },
       ];
       render(

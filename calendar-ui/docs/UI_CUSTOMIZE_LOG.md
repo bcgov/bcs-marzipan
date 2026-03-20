@@ -59,3 +59,20 @@ Append-only notes for fork-level UI changes that diverge from stock Shadcn/Radix
 **Base UI Combobox:** Root already supports `readOnly` (distinct from `disabled`). Activity forms pass `readOnly={readOnly}` instead of `disabled={readOnly}` for chip multiselects — no fork in [combobox.tsx](../src/components/ui/combobox.tsx) required for that behavior.
 
 **Static-field look (stricter read-only):** Shared Tailwind fragments in [read-only-static-field.ts](../src/lib/read-only-static-field.ts) — hide placeholders, dropdown chevrons, and hover/focus affordances on read-only triggers; [combobox.tsx](../src/components/ui/combobox.tsx) wraps Root with a read-only context for chips/chip-remove/chevron.
+
+---
+
+## Activity form: no shadow on field surfaces
+
+**Date:** 2026-03-19
+
+**Goal:** Activity create/edit/view forms use a single visual rule: native inputs, textareas, chip comboboxes, input groups, outline triggers (date/time popovers), and switches do not show the stock `shadow-xs` / outline-button shadow.
+
+**Files:**
+
+| File                                                                                            | Change                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [src/components/activity/ActivityFormBody.tsx](../src/components/activity/ActivityFormBody.tsx) | Wrapper applies descendant `shadow-none` via `data-slot` / `button[data-variant=outline]` selectors (`ACTIVITY_FORM_FIELD_SHADOW_RESET`).           |
+| [src/components/ui/freeform-combobox.tsx](../src/components/ui/freeform-combobox.tsx)           | Chips-mode trigger `div` gets `data-slot="freeform-combobox-chips"` so the activity form scope can remove its shadow without affecting other pages. |
+
+**Rationale:** Stock Shadcn-style inputs use `shadow-xs`; read-only fields already used `shadow-none`, which looked inconsistent next to editable fields. Scoping under `ActivityFormBody` avoids changing global `Input` / `Textarea` / combobox defaults for the rest of the app.

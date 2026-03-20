@@ -34,8 +34,8 @@ import {
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
+  type FreeformComboboxItemWithLead,
   type FreeformComboboxValue,
-  type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -406,9 +406,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
-          const comboboxValue: FreeformComboboxValueWithLead[] = list.map(
+          const comboboxValue: FreeformComboboxItemWithLead[] = list.map(
             (p) => {
-              const base: FreeformComboboxValueWithLead =
+              const base: FreeformComboboxItemWithLead =
                 p.eventPlannerId != null
                   ? { type: 'option', value: String(p.eventPlannerId) }
                   : p.eventPlannerName

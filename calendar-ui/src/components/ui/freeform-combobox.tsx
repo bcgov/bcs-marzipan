@@ -33,10 +33,13 @@ export type FreeformComboboxValue =
   | { type: 'freeform'; value: string }
   | null;
 
-/** Value with optional isLead for leadable multi-select (e.g. event planners) */
-export type FreeformComboboxValueWithLead = FreeformComboboxValue & {
-  isLead?: boolean;
-};
+/** Single item with optional isLead for leadable multi-select (e.g. event planners) */
+export type FreeformComboboxItemWithLead =
+  | { type: 'option'; value: string; isLead?: boolean }
+  | { type: 'freeform'; value: string; isLead?: boolean };
+
+/** Single-mode value (empty or one item); includes optional isLead on items */
+export type FreeformComboboxValueWithLead = FreeformComboboxItemWithLead | null;
 
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
@@ -46,10 +49,10 @@ type ListEntry =
 export interface FreeformComboboxProps {
   options: FreeformComboboxOption[];
   /** The current selection - single value or array when multiple */
-  value: FreeformComboboxValue | FreeformComboboxValue[];
+  value: FreeformComboboxValueWithLead | FreeformComboboxItemWithLead[];
   /** Called when selection changes */
   onChange: (
-    value: FreeformComboboxValue | FreeformComboboxValue[] | null
+    value: FreeformComboboxValueWithLead | FreeformComboboxItemWithLead[] | null
   ) => void;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -104,10 +107,10 @@ export function FreeformCombobox({
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const values = multiple
-    ? ((value as FreeformComboboxValueWithLead[]) ?? [])
+    ? (value as FreeformComboboxItemWithLead[])
     : [value as FreeformComboboxValueWithLead];
   const selectedList = values.filter(
-    (v): v is NonNullable<FreeformComboboxValueWithLead> => v != null
+    (v): v is FreeformComboboxItemWithLead => v != null
   );
   const hasSelection = selectedList.length > 0;
 
@@ -199,15 +202,13 @@ export function FreeformCombobox({
     (entry: ListEntry) => {
       if (isLocked) return;
       if (entry.kind === 'clear') {
-        onChange(
-          multiple ? (null as unknown as FreeformComboboxValue[]) : null
-        );
+        onChange(null);
         setInputValue('');
         if (!multiple) setOpen(false);
         return;
       }
       if (entry.kind === 'freeform') {
-        const newItem: FreeformComboboxValue = {
+        const newItem: FreeformComboboxItemWithLead = {
           type: 'freeform',
           value: entry.value,
         };
@@ -221,7 +222,7 @@ export function FreeformCombobox({
         setInputValue('');
         return;
       }
-      const newItem: FreeformComboboxValue = {
+      const newItem: FreeformComboboxItemWithLead = {
         type: 'option',
         value: entry.value,
       };
@@ -241,13 +242,7 @@ export function FreeformCombobox({
     (index: number) => {
       if (isLocked) return;
       const next = selectedList.filter((_, i) => i !== index);
-      onChange(
-        next.length
-          ? next
-          : multiple
-            ? (null as unknown as FreeformComboboxValue[])
-            : null
-      );
+      onChange(next.length ? next : null);
     },
     [selectedList, multiple, onChange, isLocked]
   );
@@ -315,6 +310,7 @@ export function FreeformCombobox({
 
   const triggerContent = showChips ? (
     <div
+      data-slot="freeform-combobox-chips"
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
         isMuted && 'cursor-not-allowed opacity-50',
