@@ -73,6 +73,7 @@ export const CreateActivityForm: FC = () => {
     user,
   } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
 
   const {
@@ -88,6 +89,7 @@ export const CreateActivityForm: FC = () => {
     leadTeamFetchEnabled: canCreateActivity,
     userId: user?.id,
     userTeamIds: user?.teamIds,
+    hasCreateAny,
   });
 
   const autosaveEnabled = false;

@@ -55,6 +55,12 @@ export interface FreeformComboboxProps {
   freeformDescription?: string;
   className?: string;
   disabled?: boolean;
+  /**
+   * When true, the control is non-interactive (no dropdown, no chip remove, no typing)
+   * but keeps normal (non-muted) styling. Prefer this over `disabled` for view-only
+   * forms where the field should look like an active input.
+   */
+  readOnly?: boolean;
   /** Allow multiple selections. When true, value/onChange use arrays. */
   multiple?: boolean;
   /** When multiple, show selected values as chips (default true when multiple) */
@@ -78,10 +84,13 @@ export function FreeformCombobox({
   freeformDescription = 'Use custom value',
   className,
   disabled = false,
+  readOnly = false,
   multiple = false,
   useChips = true,
   onSetLead,
 }: FreeformComboboxProps) {
+  const isLocked = disabled || readOnly;
+  const isMuted = disabled;
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -157,11 +166,17 @@ export function FreeformCombobox({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (isLocked) {
+      setOpen(false);
+    }
+  }, [isLocked]);
+
+  useEffect(() => {
+    if (!open || isLocked) return;
     setHighlightedIndex(0);
     setInputValue('');
     inputRef.current?.focus();
-  }, [open]);
+  }, [open, isLocked]);
 
   useEffect(() => {
     setHighlightedIndex((i) =>
@@ -177,6 +192,7 @@ export function FreeformCombobox({
 
   const selectEntry = useCallback(
     (entry: ListEntry) => {
+      if (isLocked) return;
       if (entry.kind === 'clear') {
         onChange(
           multiple ? (null as unknown as FreeformComboboxValue[]) : null
@@ -213,11 +229,12 @@ export function FreeformCombobox({
       }
       setInputValue('');
     },
-    [multiple, onChange, selectedList]
+    [multiple, onChange, selectedList, isLocked]
   );
 
   const removeItem = useCallback(
     (index: number) => {
+      if (isLocked) return;
       const next = selectedList.filter((_, i) => i !== index);
       onChange(
         next.length
@@ -227,11 +244,12 @@ export function FreeformCombobox({
             : null
       );
     },
-    [selectedList, multiple, onChange]
+    [selectedList, multiple, onChange, isLocked]
   );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (isLocked) return;
       if (!open) {
         if (e.key === 'ArrowDown' || e.key === 'Enter') {
           e.preventDefault();
@@ -267,7 +285,14 @@ export function FreeformCombobox({
         selectEntry(listEntries[highlightedIndex]);
       }
     },
-    [open, listEntries, highlightedIndex, selectEntry, scrollHighlightIntoView]
+    [
+      open,
+      listEntries,
+      highlightedIndex,
+      selectEntry,
+      scrollHighlightIntoView,
+      isLocked,
+    ]
   );
 
   const showChips = multiple && useChips;
@@ -287,9 +312,10 @@ export function FreeformCombobox({
     <div
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
-        disabled && 'cursor-not-allowed opacity-50'
+        isMuted && 'cursor-not-allowed opacity-50',
+        readOnly && !disabled && 'cursor-default'
       )}
-      onClick={() => !disabled && setOpen(true)}
+      onClick={() => !isLocked && setOpen(true)}
     >
       {selectedList.map((v, i) => {
         const isLead = 'isLead' in v && v.isLead === true;
@@ -308,7 +334,7 @@ export function FreeformCombobox({
                       Lead
                     </span>
                   )}
-                  {!disabled && !isLead && (
+                  {!isLocked && !isLead && (
                     <button
                       type="button"
                       className="text-muted-foreground hover:text-foreground focus:ring-ring shrink-0 text-[10px] underline focus:ring-1 focus:outline-none"
@@ -324,17 +350,19 @@ export function FreeformCombobox({
                 </>
               )}
             </span>
-            <button
-              type="button"
-              className="-mr-1 shrink-0 rounded p-0.5 opacity-50 hover:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeItem(i);
-              }}
-              aria-label="Remove"
-            >
-              <X className="size-3.5" />
-            </button>
+            {!isLocked ? (
+              <button
+                type="button"
+                className="-mr-1 shrink-0 rounded p-0.5 opacity-50 hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeItem(i);
+                }}
+                aria-label="Remove"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
           </span>
         );
       })}
@@ -349,6 +377,7 @@ export function FreeformCombobox({
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
+        readOnly={readOnly}
         autoComplete="off"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -379,16 +408,17 @@ export function FreeformCombobox({
         placeholder={placeholder}
         value={inputDisplayValue}
         onChange={(e) => {
+          if (readOnly) return;
           setInputValue(e.target.value);
           setOpen(true);
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         autoComplete="off"
-        readOnly={!open && selectedList.length > 0}
+        readOnly={readOnly || (!open && selectedList.length > 0)}
         className={cn(
           'text-sm',
-          !open && selectedList.length > 0 && 'cursor-pointer'
+          !open && selectedList.length > 0 && !readOnly && 'cursor-pointer'
         )}
       />
       <InputGroupAddon align="inline-end">
@@ -397,7 +427,13 @@ export function FreeformCombobox({
           variant="ghost"
           size="icon-xs"
           disabled={disabled}
-          onClick={() => setOpen((o) => !o)}
+          tabIndex={isLocked && !disabled ? -1 : undefined}
+          aria-disabled={isLocked}
+          className={cn(isLocked && !disabled && 'pointer-events-none')}
+          onClick={() => {
+            if (isLocked) return;
+            setOpen((o) => !o);
+          }}
           aria-label={open ? 'Close' : 'Open'}
         >
           <ChevronDown className="text-muted-foreground size-4" />
@@ -408,9 +444,21 @@ export function FreeformCombobox({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (isLocked) {
+            setOpen(false);
+            return;
+          }
+          setOpen(next);
+        }}
+      >
         <PopoverTrigger asChild>
-          <div ref={triggerRef} className="w-full cursor-text">
+          <div
+            ref={triggerRef}
+            className={cn('w-full', !isLocked && 'cursor-text')}
+          >
             {triggerContent}
           </div>
         </PopoverTrigger>

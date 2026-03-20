@@ -31,6 +31,7 @@ const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
     title: 'Test Activity',
     leadTeamId: 5,
     activityStatus: 'Draft',
+    canEdit: true,
   });
 
 const mockLookupsReady: FormLookupData = {
@@ -368,13 +369,27 @@ describe('ActivityPage optimistic inline edit', () => {
     );
   });
 
-  it('form controls are not disabled in view mode', async () => {
+  it('form controls are enabled for optimistic edit when user may edit', async () => {
     renderActivityPage();
 
     const titleTextarea = await screen.findByPlaceholderText(
       'Enter activity title'
     );
     expect(titleTextarea).not.toBeDisabled();
+  });
+
+  it('disables form fields when API canEdit is false', async () => {
+    renderActivityPage({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        canEdit: false,
+      },
+    });
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    expect(titleTextarea).toHaveAttribute('readonly');
   });
 
   it('form is read-only when locked by another user', async () => {

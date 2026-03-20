@@ -33,6 +33,8 @@ export interface UseActivityFormSetupOptions {
   leadTeamFetchEnabled: boolean;
   userId: number | undefined;
   userTeamIds?: number[];
+  /** When true, comms candidates may be loaded for any lead team (mirrors activities.create.any). */
+  hasCreateAny?: boolean;
 }
 
 export interface ActivityFormSetupResult {
@@ -56,6 +58,7 @@ export function useActivityFormSetup({
   leadTeamFetchEnabled,
   userId,
   userTeamIds,
+  hasCreateAny = false,
 }: UseActivityFormSetupOptions): ActivityFormSetupResult {
   const lookups = useFormLookups();
 
@@ -75,8 +78,15 @@ export function useActivityFormSetup({
   });
 
   const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
-  const { data: commsContactCandidates } =
-    useCommsContactCandidates(watchedLeadTeamId);
+  const canFetchCommsForLeadTeam =
+    hasCreateAny ||
+    (watchedLeadTeamId != null &&
+      watchedLeadTeamId > 0 &&
+      (userTeamIds?.includes(watchedLeadTeamId) ?? false));
+  const { data: commsContactCandidates } = useCommsContactCandidates(
+    watchedLeadTeamId,
+    canFetchCommsForLeadTeam
+  );
 
   useCommsContactSync({
     form,

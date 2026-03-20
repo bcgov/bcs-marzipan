@@ -90,6 +90,33 @@ describe('FreeformCombobox', () => {
       render(<FreeformCombobox {...defaultProps} disabled />);
       expect(screen.getByRole('combobox')).toBeDisabled();
     });
+
+    it('readOnly keeps native control enabled but sets readonly (no muted disabled styling)', () => {
+      render(<FreeformCombobox {...defaultProps} readOnly />);
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).not.toBeDisabled();
+      expect(combobox).toHaveAttribute('readonly');
+    });
+
+    it('readOnly does not open the option list when the open button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<FreeformCombobox {...defaultProps} readOnly />);
+      await user.click(screen.getByRole('button', { name: 'Open' }));
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    it('readOnly hides chip remove buttons in multiple mode', () => {
+      const value: FreeformComboboxValue[] = [
+        { type: 'option', value: 'option1', isLead: true },
+      ];
+      render(
+        <FreeformCombobox {...defaultProps} multiple value={value} readOnly />
+      );
+      expect(screen.queryByLabelText('Remove')).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Search...')).toHaveAttribute(
+        'readonly'
+      );
+    });
   });
 
   describe('Option Selection', () => {

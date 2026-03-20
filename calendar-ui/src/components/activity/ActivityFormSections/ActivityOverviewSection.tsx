@@ -213,6 +213,8 @@ export const ActivityOverviewSection: React.FC<
           })();
 
           const handleValueChange = (value: string) => {
+            if (readOnly) return;
+
             const previousTeamId = field.value ?? null;
             const previousTeam =
               previousTeamId != null
@@ -365,7 +367,7 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
-                  disabled={readOnly}
+                  readOnly={readOnly}
                   options={organizations.map((o) => ({
                     value: String(o.value),
                     label: o.label,

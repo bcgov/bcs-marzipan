@@ -1,18 +1,19 @@
 /**
- * Inline Edit Pattern for Activity Forms
+ * Inline edit pattern for activity forms (edit page).
  *
- * The activity form is always interactive -- controls must NOT use `disabled`
- * for edit-gating. The edit lock is acquired optimistically on the first value
- * change detected by `form.watch()` in ActivityPage.
+ * On {@link ActivityPage}, users who are allowed to edit may change values
+ * before holding the edit lock; the lock is acquired optimistically on the
+ * first real change ({@link useEditLockIntent}).
  *
- * `readOnly` from this context is `true` only when another user holds the
- * edit lock (`lockState === 'locked-by-other'`). Use it to prevent
- * interaction in that case.
+ * `readOnly` is true when:
+ * - Another user holds the edit lock, or
+ * - The current user may not edit this activity (API `canEdit` false, or
+ *   delete-requested/deleted without permission to edit in that state), or
+ * - The activity is in a blocked status and the user cannot edit in that state.
  *
- * For new fields: add the field normally with no special disabled/readOnly
- * wiring. If you need to disable a field for a business rule (e.g. venue
- * fields disabled when "Venue TBD" is checked), use a local `disabled` prop
- * unrelated to edit state.
+ * For new fields: wire `readOnly` from {@link useActivityEdit} for standard
+ * controls. Use a local `disabled` for field-specific rules (e.g. venue when
+ * "Venue TBD").
  */
 import { createContext, useContext, type ReactNode } from 'react';
 

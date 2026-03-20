@@ -28,6 +28,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const QUICK_PICK_MAX_TOTAL = 4;
@@ -63,6 +64,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
   form,
   eventPlannerOptions,
 }) => {
+  const { readOnly } = useActivityEdit();
   const [isVenueTbd, setIsVenueTbd] = useState(false);
 
   const { data: fixedQuickPicks = [] } = useQuery({
@@ -270,6 +272,7 @@ export const ActivityVenueSection: React.FC<ActivityVenueSectionProps> = ({
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
+                  readOnly={readOnly}
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}

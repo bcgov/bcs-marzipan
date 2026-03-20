@@ -478,7 +478,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
-                  disabled={readOnly}
+                  readOnly={readOnly}
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}

@@ -84,10 +84,12 @@ export function ActivityPage({
   const id = activity.id;
 
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const apiCanEdit = (activity as ActivityResponse & { canEdit?: boolean })
     .canEdit;
+  /** API omits canEdit only for unauthenticated responses; treat missing as not editable. */
   const canEditActivity =
-    hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
+    hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && (apiCanEdit ?? false);
   const leadTeamFetchEnabled = canCreateActivity || canEditActivity;
 
   const {
@@ -102,6 +104,8 @@ export function ActivityPage({
     mode: 'edit',
     leadTeamFetchEnabled,
     userId: user?.id,
+    userTeamIds: user?.teamIds,
+    hasCreateAny,
   });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
@@ -215,7 +219,9 @@ export function ActivityPage({
     lockState !== 'locked-by-other' &&
     (!isBlockedStatus || canEditWhenBlocked);
 
-  const readOnly = lockState === 'locked-by-other';
+  const mayEditFormFields =
+    canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
+  const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
   const canSubmitWithoutValidationErrors =
     isFormValid || missingFields.length === 0;
