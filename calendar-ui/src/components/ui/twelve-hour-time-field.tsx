@@ -16,6 +16,7 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { formatTime12h } from '@/lib/datetime-utils';
 import { READ_ONLY_STATIC_TRIGGER } from '@/lib/read-only-static-field';
 import {
@@ -49,10 +50,19 @@ const TYPING_COMMIT_DEBOUNCE_MS = 150;
 
 /** Hour/minute columns: shared width, padding, and scrollbar styling (see globals `.popover-list-scroll`). */
 const TIME_PICKER_SCROLL_COL_CLASS =
-  'popover-list-scroll flex flex-row gap-0 overflow-x-auto px-3 py-2.5 sm:h-full sm:min-h-0 sm:min-w-[4.5rem] sm:flex-col sm:overflow-y-scroll sm:[scrollbar-gutter:stable]';
+  'popover-list-scroll flex flex-row gap-0 overflow-x-auto px-3 py-2.5 sm:h-full sm:min-h-0 sm:min-w-[3.25rem] sm:flex-col sm:overflow-y-scroll sm:[scrollbar-gutter:stable]';
 
 const TIME_PICKER_PERIOD_COL_CLASS =
-  'flex flex-row gap-0 overflow-x-auto px-3 py-2.5 sm:h-full sm:min-h-0 sm:min-w-[3.75rem] sm:flex-col sm:justify-center';
+  'flex flex-row gap-0 overflow-x-auto px-3 py-2.5 sm:h-full sm:min-h-0 sm:min-w-[2.75rem] sm:flex-col sm:justify-center';
+
+const TIME_PICKER_GRID_CLASS =
+  'flex max-h-[min(320px,70vh)] w-[min(22rem,calc(100vw-2rem))] flex-col divide-y overflow-y-auto sm:h-[min(320px,70vh)] sm:min-h-0 sm:w-auto sm:flex-row sm:divide-x sm:divide-y-0';
+
+export type TwelveHourTimeFieldAllDayProps = {
+  isAllDay: boolean;
+  onAllDayChange: (checked: boolean) => void;
+  label: string;
+};
 
 export type TwelveHourTimeFieldProps = {
   value: string;
@@ -64,6 +74,10 @@ export type TwelveHourTimeFieldProps = {
   ariaLabel: string;
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
+  /**
+   * All-day switch at top of popover; when true, trigger shows `label` instead of segments and the picker is disabled (no selection highlight).
+   */
+  allDay?: TwelveHourTimeFieldAllDayProps;
 };
 
 export function TwelveHourTimeField({
@@ -74,8 +88,10 @@ export function TwelveHourTimeField({
   ariaLabel,
   popoverOpen,
   onPopoverOpenChange,
+  allDay,
 }: TwelveHourTimeFieldProps) {
   const baseId = useId();
+  const allDaySwitchId = `${baseId}-all-day`;
 
   const [hourDraft, setHourDraft] = useState('');
   const [minDraft, setMinDraft] = useState('');
@@ -193,6 +209,14 @@ export function TwelveHourTimeField({
     }
   }, [onPopoverOpenChange, readOnly]);
 
+  const handleAllDayCheckedChange = useCallback(
+    (checked: boolean) => {
+      if (!allDay) return;
+      allDay.onAllDayChange(checked);
+    },
+    [allDay]
+  );
+
   const focusSegment = (seg: 'hour' | 'minute' | 'period') => {
     if (seg === 'hour') hourRef.current?.focus();
     if (seg === 'minute') minRef.current?.focus();
@@ -294,10 +318,15 @@ export function TwelveHourTimeField({
   };
 
   const viewOnly = readOnly;
-  const showMuted = placeholderMuted && !value && !viewOnly;
+  const showMuted =
+    placeholderMuted && !value && !viewOnly && !allDay?.isAllDay;
 
   if (viewOnly) {
-    const label = value ? formatTime12h(value) : '\u00a0';
+    const label = allDay?.isAllDay
+      ? allDay.label
+      : value
+        ? formatTime12h(value)
+        : '\u00a0';
     return (
       <div
         className={cn(
@@ -351,85 +380,96 @@ export function TwelveHourTimeField({
             >
               <Clock className="size-4" aria-hidden />
             </button>
-            <div className="flex min-w-0 flex-1 items-center justify-start gap-0">
-              <input
-                id={`${baseId}-hour`}
-                ref={hourRef}
-                data-slot="time-segment"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={2}
-                aria-label={`${ariaLabel}, hour`}
-                className={HOUR_SEGMENT_CLASS}
-                value={hourDraft}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                  draftsRef.current = { hourDraft: v, minDraft, isPm };
-                  setHourDraft(v);
-                  scheduleDebouncedCommit();
-                }}
-                onFocus={(e) => e.target.select()}
-                onBlur={handleBlurCommit}
-                onKeyDown={onHourKeyDown}
-              />
-              <span className="text-muted-foreground shrink-0" aria-hidden>
-                :
-              </span>
-              <input
-                id={`${baseId}-minute`}
-                ref={minRef}
-                data-slot="time-segment"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                maxLength={2}
-                aria-label={`${ariaLabel}, minutes`}
-                className={MINUTE_SEGMENT_CLASS}
-                value={minDraft}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                  draftsRef.current = { hourDraft, minDraft: v, isPm };
-                  setMinDraft(v);
-                  scheduleDebouncedCommit();
-                }}
-                onFocus={(e) => e.target.select()}
-                onBlur={handleBlurCommit}
-                onKeyDown={onMinKeyDown}
-              />
+            {allDay?.isAllDay ? (
               <button
                 type="button"
-                id={`${baseId}-period`}
-                ref={periodRef}
-                data-slot="time-segment"
-                aria-label={`${ariaLabel}, am or pm`}
-                className={cn(
-                  SEGMENT_BASE_CLASS,
-                  'w-9 shrink-0 cursor-pointer px-0.5 text-left lowercase'
-                )}
-                onClick={() => {
-                  clearCommitTimer();
-                  const next = !isPm;
-                  setIsPm(next);
-                  commitFromDrafts(hourDraft, minDraft, next);
-                }}
-                onFocus={() => {
-                  onPopoverOpenChange(true);
-                }}
-                onKeyDown={(e) => {
-                  onPeriodKeyDown(e);
-                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                    e.preventDefault();
+                className="text-foreground hover:text-foreground/90 focus-visible:ring-ring min-w-0 flex-1 truncate rounded-sm text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                aria-label={`${ariaLabel}, open time picker`}
+                onClick={() => onPopoverOpenChange(true)}
+              >
+                {allDay.label}
+              </button>
+            ) : (
+              <div className="flex min-w-0 flex-1 items-center justify-start gap-0">
+                <input
+                  id={`${baseId}-hour`}
+                  ref={hourRef}
+                  data-slot="time-segment"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={2}
+                  aria-label={`${ariaLabel}, hour`}
+                  className={HOUR_SEGMENT_CLASS}
+                  value={hourDraft}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                    draftsRef.current = { hourDraft: v, minDraft, isPm };
+                    setHourDraft(v);
+                    scheduleDebouncedCommit();
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleBlurCommit}
+                  onKeyDown={onHourKeyDown}
+                />
+                <span className="text-muted-foreground shrink-0" aria-hidden>
+                  :
+                </span>
+                <input
+                  id={`${baseId}-minute`}
+                  ref={minRef}
+                  data-slot="time-segment"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={2}
+                  aria-label={`${ariaLabel}, minutes`}
+                  className={MINUTE_SEGMENT_CLASS}
+                  value={minDraft}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                    draftsRef.current = { hourDraft, minDraft: v, isPm };
+                    setMinDraft(v);
+                    scheduleDebouncedCommit();
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleBlurCommit}
+                  onKeyDown={onMinKeyDown}
+                />
+                <button
+                  type="button"
+                  id={`${baseId}-period`}
+                  ref={periodRef}
+                  data-slot="time-segment"
+                  aria-label={`${ariaLabel}, am or pm`}
+                  className={cn(
+                    SEGMENT_BASE_CLASS,
+                    'w-9 shrink-0 cursor-pointer px-0.5 text-left lowercase'
+                  )}
+                  onClick={() => {
                     clearCommitTimer();
                     const next = !isPm;
                     setIsPm(next);
                     commitFromDrafts(hourDraft, minDraft, next);
-                  }
-                }}
-              >
-                {isPm ? 'pm' : 'am'}
-              </button>
-            </div>
+                  }}
+                  onFocus={() => {
+                    onPopoverOpenChange(true);
+                  }}
+                  onKeyDown={(e) => {
+                    onPeriodKeyDown(e);
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      clearCommitTimer();
+                      const next = !isPm;
+                      setIsPm(next);
+                      commitFromDrafts(hourDraft, minDraft, next);
+                    }
+                  }}
+                >
+                  {isPm ? 'pm' : 'am'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </PopoverAnchor>
@@ -446,63 +486,92 @@ export function TwelveHourTimeField({
           }
         }}
       >
-        <div className="flex max-h-[min(320px,70vh)] w-[min(22rem,calc(100vw-2rem))] flex-col divide-y overflow-y-auto sm:h-[min(320px,70vh)] sm:min-h-0 sm:w-auto sm:flex-row sm:divide-x sm:divide-y-0">
-          <div className={TIME_PICKER_SCROLL_COL_CLASS}>
-            {HOUR12_OPTIONS.map((h) => (
-              <Button
-                key={h}
-                type="button"
-                size="icon-lg"
-                variant={
-                  pickerPreviewParts && pickerPreviewParts.hour12 === h
-                    ? 'default'
-                    : 'ghost'
-                }
-                className="shrink-0 sm:aspect-square sm:w-full"
-                onClick={() => handlePickerHour(h)}
-              >
-                {h}
-              </Button>
-            ))}
-          </div>
-          <div className={TIME_PICKER_SCROLL_COL_CLASS}>
-            {FIVE_MINUTE_OPTIONS.map((m) => (
-              <Button
-                key={m}
-                type="button"
-                size="icon-lg"
-                variant={
-                  pickerPreviewParts != null && displayMinuteForPicker === m
-                    ? 'default'
-                    : 'ghost'
-                }
-                className="shrink-0 sm:aspect-square sm:w-full"
-                onClick={() => handlePickerMinute(m)}
-              >
-                {String(m).padStart(2, '0')}
-              </Button>
-            ))}
-          </div>
-          <div className={TIME_PICKER_PERIOD_COL_CLASS}>
-            {(['am', 'pm'] as const).map((p) => {
-              const pm = p === 'pm';
-              return (
+        <div className="flex w-full flex-col">
+          {allDay ? (
+            <div className="border-border w-full border-b px-3 py-3">
+              <div className="flex flex-row items-center gap-2">
+                <Switch
+                  id={allDaySwitchId}
+                  checked={allDay.isAllDay}
+                  readOnly={readOnly}
+                  onCheckedChange={handleAllDayCheckedChange}
+                />
+                <label
+                  htmlFor={allDaySwitchId}
+                  className="cursor-pointer text-sm leading-none font-medium"
+                >
+                  {allDay.label}
+                </label>
+              </div>
+            </div>
+          ) : null}
+          <div className={TIME_PICKER_GRID_CLASS}>
+            <div className={TIME_PICKER_SCROLL_COL_CLASS}>
+              {HOUR12_OPTIONS.map((h) => (
                 <Button
-                  key={p}
+                  key={h}
                   type="button"
-                  size="icon-lg"
+                  size="icon"
+                  disabled={Boolean(allDay?.isAllDay)}
                   variant={
-                    pickerPreviewParts && pickerPreviewParts.isPm === pm
+                    !allDay?.isAllDay &&
+                    pickerPreviewParts &&
+                    pickerPreviewParts.hour12 === h
                       ? 'default'
                       : 'ghost'
                   }
-                  className="shrink-0 lowercase sm:aspect-square sm:w-full"
-                  onClick={() => handlePickerPeriod(pm)}
+                  className="shrink-0 sm:aspect-square sm:w-full"
+                  onClick={() => handlePickerHour(h)}
                 >
-                  {p}
+                  {h}
                 </Button>
-              );
-            })}
+              ))}
+            </div>
+            <div className={TIME_PICKER_SCROLL_COL_CLASS}>
+              {FIVE_MINUTE_OPTIONS.map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  size="icon"
+                  disabled={Boolean(allDay?.isAllDay)}
+                  variant={
+                    !allDay?.isAllDay &&
+                    pickerPreviewParts != null &&
+                    displayMinuteForPicker === m
+                      ? 'default'
+                      : 'ghost'
+                  }
+                  className="shrink-0 sm:aspect-square sm:w-full"
+                  onClick={() => handlePickerMinute(m)}
+                >
+                  {String(m).padStart(2, '0')}
+                </Button>
+              ))}
+            </div>
+            <div className={TIME_PICKER_PERIOD_COL_CLASS}>
+              {(['am', 'pm'] as const).map((p) => {
+                const pm = p === 'pm';
+                return (
+                  <Button
+                    key={p}
+                    type="button"
+                    size="icon"
+                    disabled={Boolean(allDay?.isAllDay)}
+                    variant={
+                      !allDay?.isAllDay &&
+                      pickerPreviewParts &&
+                      pickerPreviewParts.isPm === pm
+                        ? 'default'
+                        : 'ghost'
+                    }
+                    className="shrink-0 lowercase sm:aspect-square sm:w-full"
+                    onClick={() => handlePickerPeriod(pm)}
+                  >
+                    {p}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </PopoverContent>
