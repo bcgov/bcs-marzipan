@@ -19,7 +19,7 @@ import {
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { TwelveHourTimeField } from '@/components/ui/twelve-hour-time-field';
+import { TimePicker } from '@/components/ui/time-picker';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
@@ -249,7 +249,7 @@ export function ActivityScheduleSection({
                     {getActivityFieldLabel('startTime')}
                   </FormLabel>
                   <FormControl data-field="startTime">
-                    <TwelveHourTimeField
+                    <TimePicker
                       allDay={{
                         isAllDay: !!isAllDay,
                         onAllDayChange: (checked) => {
@@ -295,7 +295,7 @@ export function ActivityScheduleSection({
                         {getActivityFieldLabel('endTime')}
                       </FormLabel>
                       <FormControl data-field="endTime">
-                        <TwelveHourTimeField
+                        <TimePicker
                           allDay={{
                             isAllDay: !!isAllDay,
                             onAllDayChange: (checked) => {
