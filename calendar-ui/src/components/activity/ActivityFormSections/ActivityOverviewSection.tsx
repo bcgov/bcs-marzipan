@@ -7,6 +7,7 @@ import type {
   TeamListItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -34,13 +35,7 @@ import {
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -130,7 +125,7 @@ export const ActivityOverviewSection: React.FC<
                     field.onChange(selected.map((o) => Number(o.value)))
                   }
                   itemToStringValue={(o) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips ref={categoriesAnchorRef} className="w-full">
                     <ComboboxValue>
@@ -213,6 +208,7 @@ export const ActivityOverviewSection: React.FC<
           })();
 
           const handleValueChange = (value: string) => {
+            // Radix may still call onValueChange with '' during option load/reset; never apply when view-only.
             if (readOnly) return;
 
             const previousTeamId = field.value ?? null;
@@ -284,8 +280,8 @@ export const ActivityOverviewSection: React.FC<
                 <span className="text-destructive">*</span>
               </FormLabel>
               <FormControl data-field={field.name}>
-                <Select
-                  disabled={readOnly}
+                <FormSelect
+                  readOnly={readOnly}
                   value={
                     field.value !== undefined &&
                     field.value !== null &&
@@ -295,7 +291,7 @@ export const ActivityOverviewSection: React.FC<
                   }
                   onValueChange={handleValueChange}
                 >
-                  <SelectTrigger className="w-full">
+                  <FormSelectTrigger readOnly={readOnly} className="w-full">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       {showOptionsLoading ? (
                         <Loader2
@@ -305,7 +301,7 @@ export const ActivityOverviewSection: React.FC<
                       ) : null}
                       <SelectValue placeholder="Select lead team" />
                     </div>
-                  </SelectTrigger>
+                  </FormSelectTrigger>
                   <SelectContent>
                     {options.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
@@ -319,7 +315,7 @@ export const ActivityOverviewSection: React.FC<
                       </div>
                     ) : null}
                   </SelectContent>
-                </Select>
+                </FormSelect>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -414,7 +410,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
-                disabled={readOnly}
+                readOnly={readOnly}
                 onCheckedChange={(checked) => {
                   field.onChange(checked);
                   if (checked) {
@@ -453,7 +449,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
-                disabled={readOnly}
+                readOnly={readOnly}
                 onCheckedChange={field.onChange}
               />
             </FormControl>
@@ -490,8 +486,8 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               value={
                 field.value !== undefined && field.value !== null
                   ? String(field.value)
@@ -502,9 +498,9 @@ export const ActivityOverviewSection: React.FC<
               }
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select status" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 {pitchRequiredStatuses.map((status) => (
@@ -513,7 +509,7 @@ export const ActivityOverviewSection: React.FC<
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -537,7 +533,7 @@ export const ActivityOverviewSection: React.FC<
                   onChange={(iso) => field.onChange(iso || undefined)}
                   label={pitchLabel}
                   triggerMuted={!raw}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                   popoverTitle="Select pitch date"
                   presets={PRESETS_FUTURE_SHORT}
                   getPresetAnchor={anchorToday}
@@ -603,7 +599,7 @@ export const ActivityOverviewSection: React.FC<
                     field.onChange(selected.map((o) => Number(o.value)))
                   }
                   itemToStringValue={(o) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips ref={tagsAnchorRef} className="w-full">
                     <ComboboxValue>

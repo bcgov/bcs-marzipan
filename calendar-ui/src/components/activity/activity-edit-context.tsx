@@ -14,6 +14,11 @@
  * For new fields: wire `readOnly` from {@link useActivityEdit} for standard
  * controls. Use a local `disabled` for field-specific rules (e.g. venue when
  * "Venue TBD").
+ *
+ * **Props:** Pass `readOnly={readOnly}` to primitives that support it
+ * (`FormSelect`, `Combobox`, `Checkbox`, `ScheduledDatePopoverField`, etc.) so
+ * view-only users see full-contrast fields. Use `disabled={...}` only when the
+ * control should look muted (true disable), not for context read-only alone.
  */
 import { createContext, useContext, type ReactNode } from 'react';
 

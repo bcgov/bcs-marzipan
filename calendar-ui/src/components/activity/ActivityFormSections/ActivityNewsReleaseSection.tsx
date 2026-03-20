@@ -1,6 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -20,13 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
@@ -73,17 +68,17 @@ export const ActivityNewsReleaseSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
               value={field.value?.toString() || ''}
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select news release origin" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 {newsReleaseOriginOptions.map((option) => (
@@ -92,7 +87,7 @@ export const ActivityNewsReleaseSection: React.FC<
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -104,17 +99,17 @@ export const ActivityNewsReleaseSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
               value={field.value?.toString() || ''}
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select news release distribution" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 {newsReleaseDistributionOptions.map((option) => (
@@ -123,7 +118,7 @@ export const ActivityNewsReleaseSection: React.FC<
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -148,7 +143,7 @@ export const ActivityNewsReleaseSection: React.FC<
                     field.onChange(selected.map((o) => Number(o.value)))
                   }
                   itemToStringValue={(o) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips ref={translationsAnchorRef} className="w-full">
                     <ComboboxValue>

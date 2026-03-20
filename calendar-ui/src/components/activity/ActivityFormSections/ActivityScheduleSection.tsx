@@ -6,6 +6,7 @@ import type {
   TimeStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -15,13 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimeRangePicker } from '@/components/ui/time-range-picker';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
@@ -113,7 +108,7 @@ export function ActivityScheduleSection({
                     }}
                     label={startButtonLabel}
                     triggerMuted={!startStr}
-                    disabled={readOnly}
+                    readOnly={readOnly}
                     popoverTitle="Select start date"
                     presets={PRESETS_PAST_FROM_ANCHOR}
                     getPresetAnchor={anchorToday}
@@ -153,7 +148,7 @@ export function ActivityScheduleSection({
                     onChange={(iso) => field.onChange(iso || undefined)}
                     label={endButtonLabel}
                     triggerMuted={!endStr}
-                    disabled={readOnly}
+                    readOnly={readOnly}
                     popoverTitle="Select end date"
                     presets={PRESETS_FUTURE_FROM_ANCHOR}
                     getPresetAnchor={endPresetAnchor}
@@ -186,8 +181,8 @@ export function ActivityScheduleSection({
                 <FormLabel className="sr-only">
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
-                <Select
-                  disabled={readOnly}
+                <FormSelect
+                  readOnly={readOnly}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -201,12 +196,13 @@ export function ActivityScheduleSection({
                   }
                 >
                   <FormControl data-field={statusField.name}>
-                    <SelectTrigger
+                    <FormSelectTrigger
+                      readOnly={readOnly}
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
                       <SelectValue placeholder="Date status" />
-                    </SelectTrigger>
+                    </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {dateStatuses.map((status) => (
@@ -215,7 +211,7 @@ export function ActivityScheduleSection({
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </FormSelect>
               </FormItem>
             )}
           />
@@ -245,7 +241,7 @@ export function ActivityScheduleSection({
               <div className="min-w-0">
                 <FormControl data-field={field.name}>
                   <TimeRangePicker
-                    disabled={readOnly}
+                    readOnly={readOnly}
                     startTime={String(startTimeValue || '')}
                     endTime={String(endTimeValue || '')}
                     onStartTimeChange={(time) => {
@@ -269,7 +265,6 @@ export function ActivityScheduleSection({
                       });
                     }}
                     allDayLabel={getActivityFieldLabel('isAllDay')}
-                    allDayDisabled={readOnly}
                   />
                 </FormControl>
               </div>
@@ -281,8 +276,8 @@ export function ActivityScheduleSection({
                     <FormLabel className="sr-only">
                       {getActivityFieldLabel(statusField.name)}
                     </FormLabel>
-                    <Select
-                      disabled={readOnly}
+                    <FormSelect
+                      readOnly={readOnly}
                       value={
                         statusField.value !== undefined &&
                         statusField.value !== null
@@ -296,12 +291,13 @@ export function ActivityScheduleSection({
                       }
                     >
                       <FormControl data-field={statusField.name}>
-                        <SelectTrigger
+                        <FormSelectTrigger
+                          readOnly={readOnly}
                           className={STATUS_SELECT_MIN_WIDTH}
                           aria-label={getActivityFieldLabel(statusField.name)}
                         >
                           <SelectValue placeholder="Time status" />
-                        </SelectTrigger>
+                        </FormSelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {timeStatuses.map((status) => (
@@ -310,7 +306,7 @@ export function ActivityScheduleSection({
                           </SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                    </FormSelect>
                   </FormItem>
                 )}
               />

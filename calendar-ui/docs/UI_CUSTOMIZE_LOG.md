@@ -35,3 +35,27 @@ Append-only notes for fork-level UI changes that diverge from stock Shadcn/Radix
 | address-autocomplete | Suggestions panel: token + `popover-list-scroll`                                                                          |
 
 **Rationale:** One visual and height story for scrollable overlay lists; long submenu panels can scroll instead of clipping.
+
+---
+
+## Read-only vs disabled (form surfaces)
+
+**Date:** 2026-03-19
+
+**Goal:** Context-driven view-only forms should keep full-contrast “editable” surfaces; reserve `disabled` for field-level muting (e.g. venue TBD).
+
+**Files:**
+
+| File                                                                                                        | Change                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [src/components/app/form-select.tsx](../src/components/app/form-select.tsx)                                 | `FormSelect` / `FormSelectTrigger`: Radix Select stays non-`disabled` for view-only; controlled `open={false}`; trigger `pointer-events-none` + `aria-readonly` when read-only. |
+| [src/components/ui/checkbox.tsx](../src/components/ui/checkbox.tsx)                                         | Optional `readOnly`: sets `disabled` for interaction, `data-readonly`, `opacity-100!` to avoid muted look.                                                                      |
+| [src/components/ui/switch.tsx](../src/components/ui/switch.tsx)                                             | Optional `readOnly`: same pattern as Checkbox.                                                                                                                                  |
+| [src/components/ui/radio-group.tsx](../src/components/ui/radio-group.tsx)                                   | Optional `readOnly` on root + context; items use `opacity-100!` when read-only.                                                                                                 |
+| [src/components/ui/scheduled-date-popover-field.tsx](../src/components/ui/scheduled-date-popover-field.tsx) | Optional `readOnly`: popover does not open; trigger not `disabled` for view-only.                                                                                               |
+| [src/components/ui/time-range-picker.tsx](../src/components/ui/time-range-picker.tsx)                       | Optional `readOnly`: same as scheduled date field; all-day `Switch` uses read-only vs disabled split.                                                                           |
+| [src/components/ui/address-autocomplete.tsx](../src/components/ui/address-autocomplete.tsx)                 | Optional `readOnly`: native `readOnly` on input; no dropdown.                                                                                                                   |
+
+**Base UI Combobox:** Root already supports `readOnly` (distinct from `disabled`). Activity forms pass `readOnly={readOnly}` instead of `disabled={readOnly}` for chip multiselects — no fork in [combobox.tsx](../src/components/ui/combobox.tsx) required for that behavior.
+
+**Static-field look (stricter read-only):** Shared Tailwind fragments in [read-only-static-field.ts](../src/lib/read-only-static-field.ts) — hide placeholders, dropdown chevrons, and hover/focus affordances on read-only triggers; [combobox.tsx](../src/components/ui/combobox.tsx) wraps Root with a read-only context for chips/chip-remove/chevron.

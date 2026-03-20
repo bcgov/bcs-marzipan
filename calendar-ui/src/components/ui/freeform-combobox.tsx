@@ -8,6 +8,11 @@ import {
   type KeyboardEvent,
 } from 'react';
 
+import {
+  READ_ONLY_STATIC_COMBOBOX_CHIPS,
+  READ_ONLY_STATIC_PLACEHOLDER,
+  READ_ONLY_STATIC_TRIGGER,
+} from '../../lib/read-only-static-field';
 import { cn } from '../../lib/utils';
 import {
   InputGroup,
@@ -313,7 +318,8 @@ export function FreeformCombobox({
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
         isMuted && 'cursor-not-allowed opacity-50',
-        readOnly && !disabled && 'cursor-default'
+        readOnly && !disabled && READ_ONLY_STATIC_COMBOBOX_CHIPS,
+        readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
       )}
       onClick={() => !isLocked && setOpen(true)}
     >
@@ -369,7 +375,10 @@ export function FreeformCombobox({
       <input
         ref={inputRef}
         type="text"
-        className="placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent text-sm outline-none"
+        className={cn(
+          'placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent text-sm outline-none',
+          readOnly && READ_ONLY_STATIC_PLACEHOLDER
+        )}
         placeholder={
           selectedList.length === 0 ? placeholder : searchPlaceholder
         }
@@ -390,7 +399,12 @@ export function FreeformCombobox({
       />
     </div>
   ) : (
-    <InputGroup className="w-full">
+    <InputGroup
+      className={cn(
+        'w-full',
+        readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
+      )}
+    >
       <InputGroupInput
         ref={inputRef}
         data-slot="input-group-control"
@@ -418,26 +432,29 @@ export function FreeformCombobox({
         readOnly={readOnly || (!open && selectedList.length > 0)}
         className={cn(
           'text-sm',
+          readOnly && READ_ONLY_STATIC_PLACEHOLDER,
           !open && selectedList.length > 0 && !readOnly && 'cursor-pointer'
         )}
       />
       <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          disabled={disabled}
-          tabIndex={isLocked && !disabled ? -1 : undefined}
-          aria-disabled={isLocked}
-          className={cn(isLocked && !disabled && 'pointer-events-none')}
-          onClick={() => {
-            if (isLocked) return;
-            setOpen((o) => !o);
-          }}
-          aria-label={open ? 'Close' : 'Open'}
-        >
-          <ChevronDown className="text-muted-foreground size-4" />
-        </InputGroupButton>
+        {!readOnly ? (
+          <InputGroupButton
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            disabled={disabled}
+            tabIndex={isLocked && !disabled ? -1 : undefined}
+            aria-disabled={isLocked}
+            className={cn(isLocked && !disabled && 'pointer-events-none')}
+            onClick={() => {
+              if (isLocked) return;
+              setOpen((o) => !o);
+            }}
+            aria-label={open ? 'Close' : 'Open'}
+          >
+            <ChevronDown className="text-muted-foreground size-4" />
+          </InputGroupButton>
+        ) : null}
       </InputGroupAddon>
     </InputGroup>
   );
@@ -457,7 +474,11 @@ export function FreeformCombobox({
         <PopoverTrigger asChild>
           <div
             ref={triggerRef}
-            className={cn('w-full', !isLocked && 'cursor-text')}
+            className={cn(
+              'w-full',
+              readOnly && !disabled && READ_ONLY_STATIC_TRIGGER,
+              !isLocked && 'cursor-text'
+            )}
           >
             {triggerContent}
           </div>

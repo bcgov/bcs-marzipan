@@ -2,6 +2,7 @@ import { useFormContext } from 'react-hook-form';
 
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -21,13 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -138,7 +133,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   isItemEqualToValue={(item, value) =>
                     optionItemsEqual(item, value)
                   }
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips
                     ref={commsContactsAnchorRef}
@@ -242,7 +237,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     field.onChange(selected.map((o) => Number(o.value)))
                   }
                   itemToStringValue={(o) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips
                     ref={commsMaterialsAnchorRef}
@@ -285,8 +280,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               value={
                 field.value !== undefined && field.value !== null
                   ? String(field.value)
@@ -297,9 +292,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               }
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select status" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 {translationRequiredStatuses.map((status) => (
@@ -308,7 +303,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}

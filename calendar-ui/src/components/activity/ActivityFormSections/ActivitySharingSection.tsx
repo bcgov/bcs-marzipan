@@ -6,6 +6,7 @@ import {
   type Visibility,
 } from '@corpcal/shared/constants/constants';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -26,13 +27,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
@@ -58,8 +53,8 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               onValueChange={(value) => {
                 const visibility: Visibility = (
                   VISIBILITY as readonly string[]
@@ -71,15 +66,15 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
               value={field.value || DEFAULT_VISIBILITY}
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select visibility" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 <SelectItem value="global">All ministries</SelectItem>
                 <SelectItem value="team">My team only</SelectItem>
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -109,7 +104,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                     field.onChange(selected.map((o) => parseInt(o.value, 10)));
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips ref={sharedWithAnchorRef} className="w-full">
                     <ComboboxValue>

@@ -89,7 +89,7 @@ export const ActivityReportsSection: React.FC = () => {
                       <Checkbox
                         id="thirty-sixty-ninety"
                         checked={!thirtySixtyNinetyOmitted}
-                        disabled={readOnly}
+                        readOnly={readOnly}
                         onCheckedChange={(checked) => {
                           updateReportSetting(
                             thirtySixtyNinetyReport.id,
@@ -100,7 +100,7 @@ export const ActivityReportsSection: React.FC = () => {
                     </FormControl>
                     <label
                       htmlFor="thirty-sixty-ninety"
-                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70 peer-data-readonly:opacity-100!"
                     >
                       30-60-90
                     </label>
@@ -145,7 +145,7 @@ export const ActivityReportsSection: React.FC = () => {
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <RadioGroup
-                disabled={readOnly}
+                readOnly={readOnly}
                 onValueChange={field.onChange}
                 value={field.value || ''}
                 className="flex flex-row space-x-4"
@@ -182,7 +182,7 @@ export const ActivityReportsSection: React.FC = () => {
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <RadioGroup
-                disabled={readOnly}
+                readOnly={readOnly}
                 onValueChange={field.onChange}
                 value={field.value ?? ''}
                 className="flex flex-row space-x-4"

@@ -11,9 +11,26 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import {
+  READ_ONLY_STATIC_COMBOBOX_CHIPS,
+  READ_ONLY_STATIC_PLACEHOLDER,
+  READ_ONLY_STATIC_TRIGGER,
+} from '@/lib/read-only-static-field';
 import { cn } from '@/lib/utils';
 
-const Combobox = ComboboxPrimitive.Root;
+const ComboboxReadOnlyContext = React.createContext(false);
+
+/** Base UI root supports `readOnly` (non-muted) vs `disabled` (muted). */
+function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxPrimitive.Root.Props<Value, Multiple>
+) {
+  const { readOnly, ...rest } = props;
+  return (
+    <ComboboxReadOnlyContext.Provider value={Boolean(readOnly)}>
+      <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+    </ComboboxReadOnlyContext.Provider>
+  );
+}
 
 function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
   return <ComboboxPrimitive.Value data-slot="combobox-value" {...props} />;
@@ -24,17 +41,24 @@ function ComboboxTrigger({
   children,
   ...props
 }: ComboboxPrimitive.Trigger.Props) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
-      className={cn("[&_svg:not([class*='size-'])]:size-4", className)}
+      className={cn(
+        "[&_svg:not([class*='size-'])]:size-4",
+        readOnly && READ_ONLY_STATIC_TRIGGER,
+        className
+      )}
       {...props}
     >
       {children}
-      <ChevronDownIcon
-        data-slot="combobox-trigger-icon"
-        className="text-muted-foreground pointer-events-none size-4"
-      />
+      {!readOnly ? (
+        <ChevronDownIcon
+          data-slot="combobox-trigger-icon"
+          className="text-muted-foreground pointer-events-none size-4"
+        />
+      ) : null}
     </ComboboxPrimitive.Trigger>
   );
 }
@@ -235,11 +259,14 @@ function ComboboxChips({
   ...props
 }: React.ComponentPropsWithRef<typeof ComboboxPrimitive.Chips> &
   ComboboxPrimitive.Chips.Props) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
+      data-readonly={readOnly ? '' : undefined}
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-aria-invalid:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',
+        readOnly && READ_ONLY_STATIC_COMBOBOX_CHIPS,
         className
       )}
       {...props}
@@ -255,17 +282,20 @@ function ComboboxChip({
 }: ComboboxPrimitive.Chip.Props & {
   showRemove?: boolean;
 }) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
+  const showRemoveButton = showRemove && !readOnly;
   return (
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
       className={cn(
         'bg-muted text-foreground flex h-[calc(--spacing(6))] w-fit items-center justify-center gap-1 rounded-sm px-1.5 text-sm font-medium whitespace-nowrap has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0',
+        readOnly && 'pointer-events-none',
         className
       )}
       {...props}
     >
       {children}
-      {showRemove && (
+      {showRemoveButton && (
         <ComboboxPrimitive.ChipRemove
           render={<Button variant="ghost" size="icon-xs" />}
           className="-ml-1 opacity-50 hover:opacity-100"
@@ -283,10 +313,15 @@ function ComboboxChipsInput({
   children: _children,
   ...props
 }: ComboboxPrimitive.Input.Props) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
   return (
     <ComboboxPrimitive.Input
       data-slot="combobox-chip-input"
-      className={cn('min-w-16 flex-1 outline-none', className)}
+      className={cn(
+        'min-w-16 flex-1 outline-none',
+        readOnly && READ_ONLY_STATIC_PLACEHOLDER,
+        className
+      )}
       {...props}
     />
   );

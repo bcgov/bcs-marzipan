@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { VenueQuickPickItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { fetchLastUsedAddresses, fetchVenueQuickPicks } from '@/api/lookupsApi';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   AddressAutocomplete,
   type AddressData,
@@ -37,13 +38,7 @@ import {
   type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -140,8 +135,8 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormSelect
+              readOnly={readOnly}
               onValueChange={(value) => {
                 const parsed = value ? parseInt(value, 10) : null;
                 field.onChange(isNaN(parsed as number) ? null : parsed);
@@ -149,9 +144,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               value={field.value ? field.value.toString() : ''}
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select premier requested option" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
                 {premierRequestedOptions.map((option) => (
@@ -160,7 +155,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -194,7 +189,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                     );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips
                     ref={representativesAnchorRef}
@@ -240,7 +235,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
         <Switch
           id="venue-tbd"
           checked={isVenueTbd}
-          disabled={readOnly}
+          readOnly={readOnly}
           onCheckedChange={setIsVenueTbd}
         />
         <label
@@ -337,7 +332,8 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                   value={currentVenue.street ?? ''}
                   onAddressSelect={handleAddressSelect}
                   required={!isVenueTbd}
-                  disabled={readOnly || isVenueTbd}
+                  readOnly={readOnly}
+                  disabled={isVenueTbd}
                 />
                 <FormMessage />
               </FormItem>

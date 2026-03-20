@@ -1,6 +1,7 @@
 import { Clock } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { READ_ONLY_STATIC_TRIGGER } from '../../lib/read-only-static-field';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
 import { Input } from './input';
@@ -13,6 +14,11 @@ export interface TimeRangePickerProps {
   onStartTimeChange: (time: string) => void;
   onEndTimeChange: (time: string) => void;
   disabled?: boolean;
+  /**
+   * View-only: full-contrast trigger; popover does not open. All-day switch uses
+   * read-only styling instead of muted disabled.
+   */
+  readOnly?: boolean;
   placeholder?: string;
   /** When provided, shows an "All day" row at the top with switch left of label */
   isAllDay?: boolean;
@@ -27,6 +33,7 @@ export function TimeRangePicker({
   onStartTimeChange,
   onEndTimeChange,
   disabled = false,
+  readOnly = false,
   placeholder = 'Pick a time range',
   isAllDay = false,
   onAllDayChange,
@@ -34,6 +41,16 @@ export function TimeRangePicker({
   allDayDisabled = false,
 }: TimeRangePickerProps) {
   const [open, setOpen] = useState(false);
+  const isMuted = Boolean(disabled);
+  const viewOnly = Boolean(readOnly) && !isMuted;
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (viewOnly && next) return;
+      setOpen(next);
+    },
+    [viewOnly]
+  );
   const [localStartTime, setLocalStartTime] = useState(startTime || '');
   const [localEndTime, setLocalEndTime] = useState(endTime || '');
 
@@ -63,25 +80,30 @@ export function TimeRangePicker({
       return allDayLabel;
     }
     if (!startTime && !endTime) {
-      return placeholder;
+      return viewOnly ? '\u00a0' : placeholder;
     }
     const parts = [];
     if (startTime) parts.push(startTime);
     if (endTime) parts.push(endTime);
     return parts.join(' - ');
-  }, [isAllDay, allDayLabel, startTime, endTime, placeholder]);
+  }, [isAllDay, allDayLabel, startTime, endTime, placeholder, viewOnly]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="input"
+          disabled={isMuted}
+          aria-readonly={viewOnly || undefined}
+          tabIndex={viewOnly ? -1 : undefined}
           className={cn(
             'w-full justify-start text-left font-normal',
-            (isAllDay || (!startTime && !endTime)) && 'text-muted-foreground'
+            (isAllDay || (!startTime && !endTime)) &&
+              !viewOnly &&
+              'text-muted-foreground',
+            viewOnly && READ_ONLY_STATIC_TRIGGER
           )}
-          disabled={disabled}
         >
           <Clock className="mr-2 h-4 w-4" />
           {displayText}
@@ -94,7 +116,8 @@ export function TimeRangePicker({
               <Switch
                 id="time-range-picker-all-day"
                 checked={isAllDay}
-                disabled={allDayDisabled}
+                disabled={allDayDisabled || isMuted}
+                readOnly={viewOnly && !(allDayDisabled || isMuted)}
                 onCheckedChange={onAllDayChange}
               />
               <label

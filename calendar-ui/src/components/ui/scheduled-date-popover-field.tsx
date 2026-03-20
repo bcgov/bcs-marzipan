@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { READ_ONLY_STATIC_TRIGGER } from '@/lib/read-only-static-field';
 import {
   parseIsoDateLocal,
   type ScheduledDatePreset,
@@ -89,6 +90,11 @@ export interface ScheduledDatePopoverFieldProps {
   /** Muted trigger text when no concrete date (form empty state). */
   triggerMuted?: boolean;
   disabled?: boolean;
+  /**
+   * View-only: full-contrast trigger; popover does not open. Use for context
+   * read-only. Prefer over `disabled` when the control should not look muted.
+   */
+  readOnly?: boolean;
   popoverTitle: string;
   /** e.g. filter "Clear" / "No end date" ghost action */
   headerRight?: ReactNode;
@@ -117,6 +123,7 @@ export function ScheduledDatePopoverField({
   label,
   triggerMuted = false,
   disabled = false,
+  readOnly = false,
   popoverTitle,
   headerRight,
   presets,
@@ -132,6 +139,16 @@ export function ScheduledDatePopoverField({
   const isFormTrigger = triggerVariant === 'form';
   const calendarRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const isMuted = Boolean(disabled);
+  const viewOnly = Boolean(readOnly) && !isMuted;
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (viewOnly && next) return;
+      setOpen(next);
+    },
+    [viewOnly]
+  );
 
   const effectivePresets = presets ?? [];
   const showPresetSection =
@@ -196,34 +213,42 @@ export function ScheduledDatePopoverField({
         isFormTrigger ? 'w-full max-w-full min-w-0 flex-1' : 'min-w-0 flex-1'
       )}
     >
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size={isFormTrigger ? 'input' : 'sm'}
-            disabled={disabled}
+            disabled={isMuted}
+            aria-readonly={viewOnly || undefined}
+            tabIndex={viewOnly ? -1 : undefined}
             aria-label={triggerAriaLabel}
             className={cn(
               'justify-start text-left font-normal',
               isFormTrigger ? 'w-full min-w-0' : 'w-full min-w-[160px] flex-1',
               triggerMuted && 'text-muted-foreground',
+              viewOnly && READ_ONLY_STATIC_TRIGGER,
               triggerClassName
             )}
           >
             <CalendarIcon
               className={cn(
                 'mr-2 shrink-0',
-                isFormTrigger ? 'size-4' : 'h-3.5 w-3.5'
+                isFormTrigger ? 'size-4' : 'h-3.5 w-3.5',
+                viewOnly && 'text-foreground'
               )}
             />
-            <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-            <ChevronDown
-              className={cn(
-                'ml-2 shrink-0 opacity-50',
-                isFormTrigger ? 'size-4' : 'h-3.5 w-3.5'
-              )}
-            />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {viewOnly && triggerMuted ? '\u00a0' : label}
+            </span>
+            {!viewOnly ? (
+              <ChevronDown
+                className={cn(
+                  'ml-2 shrink-0 opacity-50',
+                  isFormTrigger ? 'size-4' : 'h-3.5 w-3.5'
+                )}
+              />
+            ) : null}
           </Button>
         </PopoverTrigger>
         <PopoverContent

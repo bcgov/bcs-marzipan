@@ -40,6 +40,11 @@ interface AddressAutocompleteProps {
   label?: string;
   required?: boolean;
   disabled?: boolean;
+  /**
+   * View-only: full-contrast input; no search/dropdown. Prefer over `disabled`
+   * when the field should not look muted.
+   */
+  readOnly?: boolean;
   className?: string;
 }
 
@@ -51,8 +56,11 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   label = 'Address',
   required = false,
   disabled = false,
+  readOnly = false,
   className = '',
 }) => {
+  const isMuted = Boolean(disabled);
+  const viewOnly = Boolean(readOnly) && !isMuted;
   const [searchTerm, setSearchTerm] = useState(
     valueProp !== undefined ? valueProp : defaultValue
   );
@@ -130,6 +138,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   // Handle input change with debouncing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (viewOnly) return;
     const value = e.target.value;
     setSearchTerm(value);
 
@@ -188,6 +197,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (viewOnly) return;
     if (!showDropdown || suggestions.length === 0) return;
 
     switch (e.key) {
@@ -231,14 +241,15 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={disabled}
-          className="w-full"
+          readOnly={viewOnly}
+          disabled={isMuted}
           autoComplete="off"
+          className="w-full"
         />
         {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
       </div>
 
-      {showDropdown && suggestions.length > 0 && (
+      {!viewOnly && showDropdown && suggestions.length > 0 && (
         <div className="popover-list-scroll absolute z-50 mt-1 max-h-[var(--popover-list-max-height)] w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
           {isLoading && (
             <div className="p-2 text-center text-sm text-gray-500">
