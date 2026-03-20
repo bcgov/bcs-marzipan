@@ -19,7 +19,6 @@ import {
 import {
   ActivityCommsSection,
   ActivityEventSection,
-  ActivityNewsReleaseSection,
   ActivityOverviewSection,
   ActivityReportsSection,
   ActivityScheduleSection,
@@ -109,22 +108,14 @@ export function ActivityFormBody({
               leadTeamField={leadTeamField}
             />
 
-            <div>
-              <ActivityCommsSection
-                commsMaterialOptions={lookups.commsMaterials}
-                commsLeadOptions={commsLeadOptions}
-                translationRequiredStatuses={
-                  lookups.translationRequiredStatuses
-                }
-              />
-              <ActivityNewsReleaseSection
-                translationLanguageOptions={lookups.translationLanguages}
-                newsReleaseDistributionOptions={
-                  lookups.newsReleaseDistributions
-                }
-                newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-              />
-            </div>
+            <ActivityCommsSection
+              commsMaterialOptions={lookups.commsMaterials}
+              commsLeadOptions={commsLeadOptions}
+              translationLanguageOptions={lookups.translationLanguages}
+              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
+              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+              translationRequiredStatuses={lookups.translationRequiredStatuses}
+            />
           </div>
 
           <div className="space-y-12">

@@ -38,6 +38,13 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: OptionItem[];
+  translationLanguageOptions: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
+  newsReleaseDistributionOptions: OptionItem[];
+  newsReleaseOriginOptions: OptionItem[];
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
 };
 
@@ -66,23 +73,30 @@ function buildCommsContactsFromSelection(
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
+  translationLanguageOptions,
+  newsReleaseDistributionOptions,
+  newsReleaseOriginOptions,
   translationRequiredStatuses,
 }) => {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
+  const translationsAnchorRef = useComboboxAnchor();
 
   const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
     value: String(m.id),
     label: m.displayName ?? m.name,
   }));
+  const translationLanguageComboboxOptions = translationLanguageOptions.map(
+    (l) => ({
+      value: String(l.id),
+      label: l.displayName ?? l.name,
+    })
+  );
 
   return (
-    <ActivityFormSection
-      title={ACTIVITY_FORM_SECTION_LABELS.comms}
-      variant="top"
-    >
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.comms}>
       <FormField
         control={form.control}
         name="commsContacts"
@@ -307,6 +321,123 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormMessage />
           </FormItem>
         )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseOriginId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormSelect
+              readOnly={readOnly}
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl data-field={field.name}>
+                <FormSelectTrigger readOnly={readOnly}>
+                  <SelectValue placeholder="Select news release origin" />
+                </FormSelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {newsReleaseOriginOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </FormSelect>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="newsReleaseDistributionId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormSelect
+              readOnly={readOnly}
+              onValueChange={(value) =>
+                field.onChange(value ? parseInt(value, 10) : null)
+              }
+              value={field.value?.toString() || ''}
+            >
+              <FormControl data-field={field.name}>
+                <FormSelectTrigger readOnly={readOnly}>
+                  <SelectValue placeholder="Select news release distribution" />
+                </FormSelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {newsReleaseDistributionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </FormSelect>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="translationLanguageIds"
+        render={({ field }) => {
+          const selectedOptions = translationLanguageComboboxOptions.filter(
+            (o) => (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={translationLanguageComboboxOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  readOnly={readOnly}
+                >
+                  <ComboboxChips ref={translationsAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: OptionItem[]) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select translation languages" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={translationsAnchorRef}>
+                    <ComboboxEmpty>
+                      No translation languages found.
+                    </ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: OptionItem) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
     </ActivityFormSection>
   );
