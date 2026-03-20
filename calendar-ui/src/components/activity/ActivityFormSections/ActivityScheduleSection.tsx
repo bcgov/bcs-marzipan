@@ -47,6 +47,23 @@ const setDateOpts = {
 
 const anchorToday = () => startOfDay(new Date());
 
+const parseTimeToMinutes = (value: string): number | null => {
+  const [hourPart, minutePart] = value.trim().split(':');
+  const hours = Number.parseInt(hourPart ?? '', 10);
+  const minutes = Number.parseInt(minutePart ?? '', 10);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
 type ActivityScheduleSectionProps = {
   dateStatuses: DateStatusLookupItem[];
   timeStatuses: TimeStatusLookupItem[];
@@ -70,8 +87,12 @@ export function ActivityScheduleSection({
   }, [isAllDay]);
   const startDateValue = useWatch({ control: form.control, name: 'startDate' });
   const endDateValue = useWatch({ control: form.control, name: 'endDate' });
+  const startTimeValue = useWatch({ control: form.control, name: 'startTime' });
+  const endTimeValue = useWatch({ control: form.control, name: 'endTime' });
   const startStr = String(startDateValue ?? '');
   const endStr = String(endDateValue ?? '');
+  const startTimeStr = String(startTimeValue ?? '').trim();
+  const endTimeStr = String(endTimeValue ?? '').trim();
 
   const endPresetAnchor = () =>
     startStr ? startOfDay(parseIsoDateLocal(startStr)) : startOfDay(new Date());
@@ -85,6 +106,23 @@ export function ActivityScheduleSection({
 
   const isEndBeforeStart = (date: Date) =>
     Boolean(startStr && date < new Date(startStr + 'T00:00:00'));
+
+  const hasDateOrderWarning =
+    Boolean(startStr) &&
+    Boolean(endStr) &&
+    endStr.slice(0, 10) < startStr.slice(0, 10);
+  const isSameDayOrDateUnspecified =
+    !startStr || !endStr || startStr.slice(0, 10) === endStr.slice(0, 10);
+  const startTimeMinutes = parseTimeToMinutes(startTimeStr);
+  const endTimeMinutes = parseTimeToMinutes(endTimeStr);
+  const hasTimeOrderWarning =
+    !isAllDay &&
+    isSameDayOrDateUnspecified &&
+    startTimeStr.length > 0 &&
+    endTimeStr.length > 0 &&
+    startTimeMinutes !== null &&
+    endTimeMinutes !== null &&
+    endTimeMinutes <= startTimeMinutes;
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
@@ -230,6 +268,11 @@ export function ActivityScheduleSection({
         {form.formState.errors.endDate?.message ? (
           <p className="text-destructive text-sm font-medium">
             {String(form.formState.errors.endDate.message)}
+          </p>
+        ) : null}
+        {hasDateOrderWarning ? (
+          <p className="text-sm font-medium text-amber-700">
+            End date must be later than or equal to start date.
           </p>
         ) : null}
       </FormItem>
@@ -381,6 +424,11 @@ export function ActivityScheduleSection({
         {form.formState.errors.endTime?.message ? (
           <p className="text-destructive text-sm font-medium">
             {String(form.formState.errors.endTime.message)}
+          </p>
+        ) : null}
+        {hasTimeOrderWarning ? (
+          <p className="text-sm font-medium text-amber-700">
+            End time must be later than start time.
           </p>
         ) : null}
       </FormItem>
