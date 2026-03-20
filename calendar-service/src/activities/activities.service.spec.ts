@@ -113,6 +113,7 @@ describe('ActivitiesService', () => {
   const mockActivityHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
     getActivityHistory: vi.fn().mockResolvedValue([]),
+    getHistoryEntryById: vi.fn().mockResolvedValue(null),
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
@@ -995,6 +996,10 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.title).toBe('Updated Activity');
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('updated');
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -1053,6 +1058,10 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.activityStatusId).toBe(2);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('reviewed');
     });
 
     it('should set status to changed on update when user lacks activities.review even if markAsReviewed is true', async () => {
@@ -1111,6 +1120,10 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.activityStatusId).toBe(1);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('updated');
     });
 
     it('should throw ConflictException when activity status is delete_requested', async () => {
@@ -1360,6 +1373,45 @@ describe('ActivitiesService', () => {
   });
 
   describe('restore', () => {
+    it('should add a standalone history note', async () => {
+      mockDatabaseService.db.select = vi.fn(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+      }));
+      mockActivityHistoryService.recordChange.mockResolvedValueOnce({ id: 25 });
+      mockActivityHistoryService.getHistoryEntryById.mockResolvedValueOnce({
+        id: 25,
+        activityId: 1,
+        userId: 10,
+        actionType: 'note_added',
+        changes: null,
+        notes: 'A note for history',
+        timestamp: new Date().toISOString(),
+        actor: {
+          id: 10,
+          displayName: 'Test User',
+          username: 'test.user',
+        },
+        userName: 'Test User',
+      });
+
+      const result = await service.addHistoryNote(1, 'A note for history', 10);
+
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        10,
+        'note_added',
+        undefined,
+        'A note for history'
+      );
+      expect(
+        mockActivityHistoryService.getHistoryEntryById
+      ).toHaveBeenCalledWith(25);
+      expect(result.actionType).toBe('note_added');
+      expect(result.notes).toBe('A note for history');
+    });
+
     it('should restore activity using previous status from history', async () => {
       const existingActivity = createMockActivity({
         id: 1,

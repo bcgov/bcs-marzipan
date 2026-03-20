@@ -19,6 +19,72 @@ import { DatabaseService } from '../../database/database.service';
 export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
 
+  private async getUserMap(userIds: number[]): Promise<
+    Map<
+      number,
+      {
+        displayName: string;
+        username: string | null;
+      }
+    >
+  > {
+    const userRows =
+      userIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: users.id,
+              adDisplayName: users.adDisplayName,
+              adUsername: users.adUsername,
+            })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
+
+    return new Map(
+      userRows.map((user) => [
+        user.id,
+        {
+          displayName:
+            user.adDisplayName || user.adUsername || `User ${user.id}`,
+          username: user.adUsername ?? null,
+        },
+      ])
+    );
+  }
+
+  private mapEntriesToResponse(
+    entries: Array<{
+      id: number;
+      activityId: number;
+      userId: number;
+      actionType: string;
+      changes: unknown;
+      notes: string | null;
+      timestamp: Date | string;
+    }>,
+    userMap: Map<number, { displayName: string; username: string | null }>
+  ): ActivityHistoryEntry[] {
+    return entries.map((entry) => {
+      const actor = userMap.get(entry.userId);
+      const displayName = actor?.displayName ?? `User ${entry.userId}`;
+
+      return {
+        ...entry,
+        changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
+        timestamp:
+          entry.timestamp instanceof Date
+            ? entry.timestamp.toISOString()
+            : String(entry.timestamp),
+        actor: {
+          id: entry.userId,
+          displayName,
+          username: actor?.username ?? null,
+        },
+        userName: displayName,
+      };
+    });
+  }
+
   /**
    * Record a change to an activity
    * @param activityId - ID of the activity being changed
@@ -72,33 +138,32 @@ export class ActivityHistoryService {
       .orderBy(desc(activityHistory.timestamp));
 
     const userIds = [...new Set(historyEntries.map((e) => e.userId))];
-    const userRows =
-      userIds.length > 0
-        ? await this.databaseService.db
-            .select({
-              id: users.id,
-              adDisplayName: users.adDisplayName,
-              adUsername: users.adUsername,
-            })
-            .from(users)
-            .where(inArray(users.id, userIds))
-        : [];
-    const userMap = new Map(
-      userRows.map((u) => [
-        u.id,
-        u.adDisplayName || u.adUsername || `User ${u.id}`,
-      ])
-    );
+    const userMap = await this.getUserMap(userIds);
 
-    return historyEntries.map((entry) => ({
-      ...entry,
-      changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
-      timestamp:
-        entry.timestamp instanceof Date
-          ? entry.timestamp.toISOString()
-          : String(entry.timestamp),
-      userName: userMap.get(entry.userId) ?? `User ${entry.userId}`,
-    }));
+    return this.mapEntriesToResponse(historyEntries, userMap);
+  }
+
+  async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {
+    const [entry] = await this.databaseService.db
+      .select({
+        id: activityHistory.id,
+        activityId: activityHistory.activityId,
+        userId: activityHistory.userId,
+        actionType: activityHistory.actionType,
+        changes: activityHistory.changes,
+        notes: activityHistory.notes,
+        timestamp: activityHistory.timestamp,
+      })
+      .from(activityHistory)
+      .where(eq(activityHistory.id, id))
+      .limit(1);
+
+    if (!entry) {
+      return null;
+    }
+
+    const userMap = await this.getUserMap([entry.userId]);
+    return this.mapEntriesToResponse([entry], userMap)[0] ?? null;
   }
 
   /**

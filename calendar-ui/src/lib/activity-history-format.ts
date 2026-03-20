@@ -13,7 +13,12 @@ import {
 const ACTION_TEXT_MAP: Record<string, string> = {
   created: 'Created',
   updated: 'Updated',
+  reviewed: 'Reviewed',
   deleted: 'Deleted',
+  delete_requested: 'Delete requested',
+  soft_deleted: 'Deleted',
+  restored: 'Restored',
+  changes_cancelled: 'Changes cancelled',
   note_added: 'Note added',
   'note added': 'Note added',
   comment_added: 'Comment added',

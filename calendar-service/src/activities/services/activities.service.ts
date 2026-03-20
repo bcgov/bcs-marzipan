@@ -1573,13 +1573,21 @@ export class ActivitiesService {
       // ignore debug log failure
     }
 
+    const reviewedByUser = canReview && dto.markAsReviewed === true;
+    const historyActionType = reviewedByUser ? 'reviewed' : 'updated';
+    const defaultHistoryNote = reviewedByUser
+      ? allChanges.length > 0
+        ? 'Activity reviewed and updated'
+        : 'Activity reviewed'
+      : 'Activity updated';
+
     // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
       id,
       userId,
-      'updated',
+      historyActionType,
       allChanges.length > 0 ? allChanges : undefined,
-      activityHistoryNotes || 'Activity updated'
+      activityHistoryNotes || defaultHistoryNote
     );
 
     // Notify connected clients viewing this activity
@@ -1682,6 +1690,43 @@ export class ActivitiesService {
     // Verify activity exists
     await this.findOne(id);
     return this.activityHistoryService.getActivityHistory(id);
+  }
+
+  async addHistoryNote(id: number, note: string, userId: number) {
+    const trimmedNote = note.trim();
+    if (trimmedNote.length === 0) {
+      throw new BadRequestException('Note is required');
+    }
+
+    const [existing] = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!existing) {
+      throw new NotFoundException(`Activity with id ${id} not found`);
+    }
+
+    const createdEntry = await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'note_added',
+      undefined,
+      trimmedNote
+    );
+
+    const hydratedEntry = await this.activityHistoryService.getHistoryEntryById(
+      createdEntry.id
+    );
+
+    if (!hydratedEntry) {
+      throw new NotFoundException(
+        `History entry ${createdEntry.id} not found after creation`
+      );
+    }
+
+    return hydratedEntry;
   }
 
   /**

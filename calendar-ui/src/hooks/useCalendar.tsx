@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
+  AddActivityHistoryNoteRequest,
   RequestDeleteRequest,
   RestoreRequest,
   SoftDeleteRequest,
@@ -10,6 +11,7 @@ import type {
 } from '@corpcal/shared/schemas';
 
 import {
+  addActivityHistoryNote,
   createActivity,
   deleteActivity,
   fetchActivities,
@@ -172,6 +174,22 @@ export function useRequestDeleteActivity() {
       requestDeleteActivity(id, body),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+    },
+  });
+}
+
+export function useAddActivityHistoryNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: number;
+      body: AddActivityHistoryNoteRequest;
+    }) => addActivityHistoryNote(id, body),
+    onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
     },
   });
