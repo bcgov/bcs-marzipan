@@ -10,9 +10,21 @@ import {
   reports,
   venueAddresses,
 } from '@corpcal/database/schema';
-import type { VenueAddress } from '@corpcal/shared/schemas';
+import type { VenueAddress, VenueAddressBase } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
+
+/** Maps API venue fields to DB column values (null for unset). */
+function venueAddressToRowFields(venueAddress: VenueAddressBase) {
+  return {
+    venueName: venueAddress.venueName ?? null,
+    addressLine1: venueAddress.addressLine1 ?? null,
+    addressLine2: venueAddress.addressLine2 ?? null,
+    city: venueAddress.city ?? null,
+    provinceOrState: venueAddress.provinceOrState ?? null,
+    country: venueAddress.country ?? null,
+  };
+}
 
 /**
  * Service for managing activity junction table relationships
@@ -417,11 +429,7 @@ export class ActivityJunctionService {
 
     await tx.insert(venueAddresses).values({
       activityId,
-      venueName: venueAddress.venueName,
-      street: venueAddress.street,
-      city: venueAddress.city,
-      provinceOrState: venueAddress.provinceOrState,
-      country: venueAddress.country,
+      ...venueAddressToRowFields(venueAddress),
     });
   }
 
@@ -463,23 +471,13 @@ export class ActivityJunctionService {
       // Update existing address
       await tx
         .update(venueAddresses)
-        .set({
-          venueName: venueAddress.venueName,
-          street: venueAddress.street,
-          city: venueAddress.city,
-          provinceOrState: venueAddress.provinceOrState,
-          country: venueAddress.country,
-        })
+        .set(venueAddressToRowFields(venueAddress))
         .where(eq(venueAddresses.activityId, activityId));
     } else {
       // Insert new address
       await tx.insert(venueAddresses).values({
         activityId,
-        venueName: venueAddress.venueName,
-        street: venueAddress.street,
-        city: venueAddress.city,
-        provinceOrState: venueAddress.provinceOrState,
-        country: venueAddress.country,
+        ...venueAddressToRowFields(venueAddress),
       });
     }
   }

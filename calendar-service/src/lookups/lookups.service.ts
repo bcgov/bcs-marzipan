@@ -382,7 +382,7 @@ export class LookupsService {
 
     const item = items[0];
     return {
-      street: `${item.Line1}${item.Line2 ? ' ' + item.Line2 : ''}`.trim(),
+      addressLine1: `${item.Line1}${item.Line2 ? ' ' + item.Line2 : ''}`.trim(),
       city: item.City,
       province: item.ProvinceName,
       provinceCode: item.ProvinceCode,
@@ -400,7 +400,8 @@ export class LookupsService {
       .select({
         id: venueQuickPicks.id,
         venueName: venueQuickPicks.venueName,
-        street: venueQuickPicks.street,
+        addressLine1: venueQuickPicks.addressLine1,
+        addressLine2: venueQuickPicks.addressLine2,
         city: venueQuickPicks.city,
         provinceOrState: venueQuickPicks.provinceOrState,
         country: venueQuickPicks.country,
@@ -411,7 +412,8 @@ export class LookupsService {
     return results.map((row) => ({
       id: row.id,
       venueName: row.venueName,
-      street: row.street,
+      addressLine1: row.addressLine1,
+      addressLine2: row.addressLine2,
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
@@ -425,7 +427,8 @@ export class LookupsService {
     const rows = await this.databaseService.db
       .select({
         venueName: venueAddresses.venueName,
-        street: venueAddresses.street,
+        addressLine1: venueAddresses.addressLine1,
+        addressLine2: venueAddresses.addressLine2,
         city: venueAddresses.city,
         provinceOrState: venueAddresses.provinceOrState,
         country: venueAddresses.country,
@@ -439,18 +442,20 @@ export class LookupsService {
     const seen = new Set<string>();
     const out: Array<{
       venueName: string | null;
-      street: string | null;
+      addressLine1: string | null;
+      addressLine2: string | null;
       city: string | null;
       provinceOrState: string | null;
       country: string | null;
     }> = [];
     for (const row of rows) {
-      const key = `${row.street ?? ''}|${row.city ?? ''}|${row.country ?? ''}`;
+      const key = `${row.addressLine1 ?? ''}|${row.addressLine2 ?? ''}|${row.city ?? ''}|${row.country ?? ''}`;
       if (seen.has(key) || out.length >= 2) continue;
       seen.add(key);
       out.push({
         venueName: row.venueName,
-        street: row.street,
+        addressLine1: row.addressLine1,
+        addressLine2: row.addressLine2,
         city: row.city,
         provinceOrState: row.provinceOrState,
         country: row.country,
@@ -465,7 +470,8 @@ export class LookupsService {
   async createVenueQuickPick(
     data: {
       venueName: string;
-      street?: string | null;
+      addressLine1?: string | null;
+      addressLine2?: string | null;
       city?: string | null;
       provinceOrState?: string | null;
       country?: string | null;
@@ -486,7 +492,8 @@ export class LookupsService {
       .insert(venueQuickPicks)
       .values({
         venueName: data.venueName,
-        street: data.street ?? undefined,
+        addressLine1: data.addressLine1 ?? undefined,
+        addressLine2: data.addressLine2 ?? undefined,
         city: data.city ?? undefined,
         provinceOrState: data.provinceOrState ?? undefined,
         country: data.country ?? undefined,
@@ -501,7 +508,8 @@ export class LookupsService {
     return {
       id: result.id,
       venueName: result.venueName,
-      street: result.street,
+      addressLine1: result.addressLine1,
+      addressLine2: result.addressLine2,
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
@@ -515,7 +523,8 @@ export class LookupsService {
     id: number,
     data: {
       venueName?: string;
-      street?: string | null;
+      addressLine1?: string | null;
+      addressLine2?: string | null;
       city?: string | null;
       provinceOrState?: string | null;
       country?: string | null;
@@ -544,7 +553,12 @@ export class LookupsService {
       .update(venueQuickPicks)
       .set({
         ...(data.venueName !== undefined && { venueName: data.venueName }),
-        ...(data.street !== undefined && { street: data.street }),
+        ...(data.addressLine1 !== undefined && {
+          addressLine1: data.addressLine1,
+        }),
+        ...(data.addressLine2 !== undefined && {
+          addressLine2: data.addressLine2,
+        }),
         ...(data.city !== undefined && { city: data.city }),
         ...(data.provinceOrState !== undefined && {
           provinceOrState: data.provinceOrState,
@@ -561,7 +575,8 @@ export class LookupsService {
     return {
       id: result.id,
       venueName: result.venueName,
-      street: result.street,
+      addressLine1: result.addressLine1,
+      addressLine2: result.addressLine2,
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
@@ -823,7 +838,8 @@ export class LookupsService {
         id: cities.id,
         name: cities.name,
         displayName: cities.displayName,
-        province: cities.province,
+        provinceOrState: cities.provinceOrState,
+        country: cities.country,
         sortOrder: cities.sortOrder,
         isActive: cities.isActive,
       })
@@ -836,7 +852,8 @@ export class LookupsService {
       value: city.id,
       name: city.name,
       displayName: city.displayName,
-      province: city.province,
+      provinceOrState: city.provinceOrState,
+      country: city.country,
       sortOrder: city.sortOrder,
       isActive: city.isActive,
     }));
@@ -964,7 +981,8 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      province?: string | null;
+      provinceOrState?: string | null;
+      country?: string | null;
       sortOrder: number;
       isActive?: boolean;
     },
@@ -976,7 +994,8 @@ export class LookupsService {
       .values({
         name: data.name,
         displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
-        province: data.province ?? undefined,
+        provinceOrState: data.provinceOrState ?? undefined,
+        country: data.country ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         createdBy: currentUserId,
@@ -1224,7 +1243,8 @@ export class LookupsService {
     data: Partial<{
       name: string;
       displayName: string;
-      province: string | null;
+      provinceOrState: string | null;
+      country: string | null;
       sortOrder: number;
       isActive: boolean;
     }>,
@@ -1239,8 +1259,10 @@ export class LookupsService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
-    if (data.province !== undefined)
-      updateData.province = data.province ?? undefined;
+    if (data.provinceOrState !== undefined)
+      updateData.provinceOrState = data.provinceOrState ?? undefined;
+    if (data.country !== undefined)
+      updateData.country = data.country ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 

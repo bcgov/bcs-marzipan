@@ -41,7 +41,8 @@ export class ActivityMapperService {
       premierRequested?: string | null;
       venueAddress?: {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;

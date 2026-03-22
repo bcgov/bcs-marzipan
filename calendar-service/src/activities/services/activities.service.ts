@@ -98,10 +98,14 @@ export class ActivitiesService {
         typeof venue.venueName === 'string'
           ? venue.venueName.trim() || null
           : (venue.venueName ?? null),
-      street:
-        typeof venue.street === 'string'
-          ? venue.street.trim() || null
-          : (venue.street ?? null),
+      addressLine1:
+        typeof venue.addressLine1 === 'string'
+          ? venue.addressLine1.trim() || null
+          : (venue.addressLine1 ?? null),
+      addressLine2:
+        typeof venue.addressLine2 === 'string'
+          ? venue.addressLine2.trim() || null
+          : (venue.addressLine2 ?? null),
       city:
         typeof venue.city === 'string'
           ? venue.city.trim() || null

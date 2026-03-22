@@ -28,7 +28,8 @@ describe('LookupsController', () => {
   const mockVenueQuickPick: VenueQuickPickItem = {
     id: 1,
     venueName: 'BC Legislature',
-    street: '501 Belleville St',
+    addressLine1: '501 Belleville St',
+    addressLine2: null,
     city: 'Victoria',
     provinceOrState: 'British Columbia',
     country: 'Canada',
@@ -217,7 +218,7 @@ describe('LookupsController', () => {
     it('should create a venue quick-pick and pass user id to service', async () => {
       const body = {
         venueName: 'Vancouver Convention Centre',
-        street: '1055 Canada Pl',
+        addressLine1: '1055 Canada Pl',
         city: 'Vancouver',
         provinceOrState: 'British Columbia',
         country: 'Canada',

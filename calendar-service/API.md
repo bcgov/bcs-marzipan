@@ -46,7 +46,8 @@ Creates a new calendar activity with related junction table records.
   "premierRequestedId": 2,
   "venueAddress": {
     "venueName": null,
-    "street": "123 Main St",
+    "addressLine1": "123 Main St",
+    "addressLine2": null,
     "city": "Victoria",
     "provinceOrState": "BC",
     "country": "Canada"
@@ -55,6 +56,8 @@ Creates a new calendar activity with related junction table records.
   "tagIds": [1, 2]
 }
 ```
+
+**`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue quick-picks** do not store `addressLine2` (see lookups below).
 
 **Response:** `201 Created`
 
@@ -543,7 +546,7 @@ Simplified activity list for "Related Activities" dropdowns.
 
 **GET** `/lookups/venue-quick-picks`
 
-Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input.
+Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input. Each item includes the same venue address fields as activity payloads (`venueName`, `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`).
 
 **Cache:** 1 hour
 
@@ -554,7 +557,8 @@ Returns admin-configured quick-pick venues for the activity form (max 4 active).
     {
       "id": 1,
       "venueName": "BC Legislature",
-      "street": "501 Belleville St",
+      "addressLine1": "501 Belleville St",
+      "addressLine2": null,
       "city": "Victoria",
       "provinceOrState": "British Columbia",
       "country": "Canada"
@@ -578,7 +582,8 @@ Returns the last 2 distinct venue addresses used by the current user (from activ
     {
       "id": -1,
       "venueName": "Conference Room A",
-      "street": "123 Main St",
+      "addressLine1": "123 Main St",
+      "addressLine2": "Room 101",
       "city": "Victoria",
       "provinceOrState": "British Columbia",
       "country": "Canada"
@@ -595,7 +600,7 @@ Returns the last 2 distinct venue addresses used by the current user (from activ
 
 **Permission:** `lookups.manage`
 
-**Body:** `venueName` (required), `street`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
+**Body:** `venueName` (required), `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
 
 ---
 

@@ -430,7 +430,8 @@ export class ActivityDataFetcherService {
       number,
       {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;
@@ -445,7 +446,8 @@ export class ActivityDataFetcherService {
       .select({
         activityId: venueAddresses.activityId,
         venueName: venueAddresses.venueName,
-        street: venueAddresses.street,
+        addressLine1: venueAddresses.addressLine1,
+        addressLine2: venueAddresses.addressLine2,
         city: venueAddresses.city,
         provinceOrState: venueAddresses.provinceOrState,
         country: venueAddresses.country,
@@ -457,7 +459,8 @@ export class ActivityDataFetcherService {
       number,
       {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;
@@ -473,7 +476,8 @@ export class ActivityDataFetcherService {
     for (const address of venueAddressResults) {
       resultMap.set(address.activityId, {
         venueName: address.venueName,
-        street: address.street,
+        addressLine1: address.addressLine1,
+        addressLine2: address.addressLine2,
         city: address.city,
         provinceOrState: address.provinceOrState,
         country: address.country,
