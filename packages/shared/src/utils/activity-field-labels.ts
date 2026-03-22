@@ -60,9 +60,10 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   premierRequestedId: 'Premier requested',
   reportSettings: 'Report settings',
   representatives: 'Representatives',
-  // Venue address nested fields (e.g. when showing validation per field)
+  // Venue row nested fields (DB `venue_name`, etc.)
   venueName: 'Venue name',
-  street: 'Street address',
+  addressLine1: 'Address',
+  addressLine2: 'Address details',
   city: 'City',
   provinceOrState: 'Province/state',
   country: 'Country',
@@ -84,7 +85,8 @@ function sentenceCaseFromFieldName(field: string): string {
  * Use for form validation messages, history/changelog display, confirm modals, and anywhere
  * activity field names are shown in the app.
  *
- * @param fieldName - Field key (e.g. from ActivityFormData or path like "venueAddress.street")
+ * @param fieldName - Field key (e.g. from ActivityFormData or path like "venueAddress.addressLine1";
+ *   use `venueName` for the venue display name field, `venueAddress` for the whole row)
  * @returns Label from map, or sentence-case fallback from the last path segment
  */
 export function getActivityFieldLabel(fieldName: string): string {

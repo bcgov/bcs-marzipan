@@ -339,13 +339,17 @@ export const cityResponseSchema = z.object({
   displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
-  province: z.string().nullable(),
+  provinceOrState: z.string().nullable(),
+  country: z.string().nullable(),
 });
 
 export const cityLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
-  province: z.string().nullable(),
+  provinceOrState: z.string().nullable(),
+  country: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
 });
 
 // ============================================
@@ -623,7 +627,8 @@ export const updateTagRequestSchema = createTagRequestSchema.partial();
 export const createCityRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  province: z.string().max(255).nullable().optional(),
+  provinceOrState: z.string().max(255).nullable().optional(),
+  country: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
 });
@@ -730,7 +735,8 @@ export const updateActivityStatusRequestSchema =
  */
 export const createVenueQuickPickRequestSchema = z.object({
   venueName: z.string().min(1).max(255),
-  street: z.string().max(255).nullable().optional(),
+  addressLine1: z.string().max(255).nullable().optional(),
+  addressLine2: z.string().max(255).nullable().optional(),
   city: z.string().max(255).nullable().optional(),
   provinceOrState: z.string().max(255).nullable().optional(),
   country: z.string().max(255).nullable().optional(),

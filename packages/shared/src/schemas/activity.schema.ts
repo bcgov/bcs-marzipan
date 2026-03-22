@@ -24,11 +24,12 @@ import {
  * Use with appropriate modifiers (.nullable(), .optional()) as needed.
  */
 export const venueAddressSchema = z.object({
-  venueName: z.string().nullable(),
-  street: z.string().nullable(),
-  city: z.string().nullable(),
-  provinceOrState: z.string().nullable(),
-  country: z.string().nullable(),
+  venueName: z.string().nullable().optional(),
+  addressLine1: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  provinceOrState: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
 });
 
 /**
@@ -39,8 +40,8 @@ export const venueAddressFieldsSchema = venueAddressSchema
   .optional();
 
 /**
- * Base venue address object shape (all fields string | null).
- * Use this for normalization and when the value is known to be present.
+ * Base venue address object shape: each field is optional and may be `string | null`.
+ * Clients may send only the fields they set (e.g. city and country only).
  */
 export type VenueAddressBase = z.infer<typeof venueAddressSchema>;
 

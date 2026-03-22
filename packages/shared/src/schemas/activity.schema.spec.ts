@@ -94,11 +94,17 @@ describe('createActivityRequestSchema', () => {
       minimalCreateRequest({
         venueAddress: {
           venueName: 'Hall',
-          street: null,
+          addressLine1: null,
+          addressLine2: null,
           city: null,
           provinceOrState: null,
           country: null,
         },
+      })
+    );
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        venueAddress: { city: 'Victoria', country: 'Canada' },
       })
     );
   });
@@ -383,11 +389,29 @@ describe('venueAddressFieldsSchema', () => {
   it('accepts valid venue object with nullables', () => {
     const v = {
       venueName: 'Hall',
-      street: null,
+      addressLine1: null,
+      addressLine2: null,
       city: 'Victoria',
       provinceOrState: null,
       country: 'Canada',
     };
     expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('accepts addressLine2 (floor, room, etc.)', () => {
+    const v = {
+      venueName: 'Convention Centre',
+      addressLine1: '123 Main St',
+      addressLine2: 'Suite 400',
+      city: 'Victoria',
+      provinceOrState: 'BC',
+      country: 'Canada',
+    };
+    expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('accepts partial venue object (independent fields)', () => {
+    const partial = { city: 'Victoria', country: 'Canada' };
+    expect(venueAddressFieldsSchema.parse(partial)).toEqual(partial);
   });
 });
