@@ -1,6 +1,8 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
+
+import { ActivityFormHeading } from './ActivityFormHeading';
 
 type ActivityFormSectionProps = {
   title: string;
@@ -22,7 +24,7 @@ export const ActivityFormSection: React.FC<ActivityFormSectionProps> = ({
         className
       )}
     >
-      <h2 className="pb-2 text-xl font-semibold">{title}</h2>
+      <ActivityFormHeading>{title}</ActivityFormHeading>
       <div className={fieldsClassName}>{children}</div>
     </div>
   );

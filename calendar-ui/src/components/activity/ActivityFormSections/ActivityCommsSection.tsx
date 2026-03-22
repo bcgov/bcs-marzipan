@@ -29,6 +29,7 @@ import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityCommsSectionProps = {
@@ -322,6 +323,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           </FormItem>
         )}
       />
+
+      <ActivityFormHeading>Release</ActivityFormHeading>
 
       <FormField
         control={form.control}

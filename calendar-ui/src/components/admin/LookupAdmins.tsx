@@ -35,7 +35,8 @@ type Category = LookupItem & {
 type City = LookupItem & {
   name?: string;
   displayName?: string | null;
-  province?: string | null;
+  provinceOrState?: string | null;
+  country?: string | null;
 };
 
 type CommsMaterial = LookupItem & {
@@ -66,7 +67,8 @@ type ActivityStatus = LookupItem & {
 
 type VenueQuickPick = LookupItem & {
   venueName?: string | null;
-  street?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
   city?: string | null;
   provinceOrState?: string | null;
   country?: string | null;
@@ -112,7 +114,18 @@ const cityFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'province', label: 'Province', type: 'text', placeholder: 'BC' },
+  {
+    name: 'provinceOrState',
+    label: 'Province / state',
+    type: 'text',
+    placeholder: 'BC',
+  },
+  {
+    name: 'country',
+    label: 'Country',
+    type: 'text',
+    placeholder: 'Canada',
+  },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
@@ -324,11 +337,20 @@ export function CitiesAdmin() {
       formFields={cityFields}
       additionalColumns={[
         {
-          accessorKey: 'province',
-          header: 'Province',
+          accessorKey: 'provinceOrState',
+          header: 'Province / state',
           cell: ({ row }) => (
             <span className="text-slate-600">
-              {row.original.province || '—'}
+              {row.original.provinceOrState || '—'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'country',
+          header: 'Country',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.country || '—'}
             </span>
           ),
         },
@@ -459,10 +481,17 @@ export function ThemesAdmin() {
 
 const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
   {
-    accessorKey: 'street',
+    accessorKey: 'addressLine1',
     header: 'Street Address',
     cell: ({ row }) => (
-      <span className="text-slate-600">{row.original.street || '—'}</span>
+      <span className="text-slate-600">{row.original.addressLine1 || '—'}</span>
+    ),
+  },
+  {
+    accessorKey: 'addressLine2',
+    header: 'Line 2',
+    cell: ({ row }) => (
+      <span className="text-slate-600">{row.original.addressLine2 || '—'}</span>
     ),
   },
   {

@@ -7,10 +7,12 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 
 export interface VenueQuickPickFormData {
   venueName?: string | null;
-  street?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
   city?: string | null;
   provinceOrState?: string | null;
   country?: string | null;
@@ -26,7 +28,8 @@ interface VenueQuickPickFormProps {
 
 const defaultFormData: VenueQuickPickFormData = {
   venueName: '',
-  street: null,
+  addressLine1: null,
+  addressLine2: null,
   city: null,
   provinceOrState: null,
   country: null,
@@ -37,7 +40,10 @@ const defaultFormData: VenueQuickPickFormData = {
 function toFormData(initial: Record<string, unknown>): VenueQuickPickFormData {
   return {
     venueName: (initial.venueName as string) ?? defaultFormData.venueName ?? '',
-    street: (initial.street as string | null) ?? defaultFormData.street,
+    addressLine1:
+      (initial.addressLine1 as string | null) ?? defaultFormData.addressLine1,
+    addressLine2:
+      (initial.addressLine2 as string | null) ?? defaultFormData.addressLine2,
     city: (initial.city as string | null) ?? defaultFormData.city,
     provinceOrState:
       (initial.provinceOrState as string | null) ??
@@ -57,7 +63,7 @@ function toFormData(initial: Record<string, unknown>): VenueQuickPickFormData {
 /**
  * Form for adding/editing a Venue Quick Pick in Settings.
  * Uses AddressAutocomplete for real-address search (same UX as Create Activity venue).
- * Calls onChange with full payload: venueName, street, city, provinceOrState, country, sortOrder, isActive.
+ * Calls onChange with full payload: venueName, addressLine1, addressLine2, city, provinceOrState, country, sortOrder, isActive.
  */
 export function VenueQuickPickForm({
   initialData,
@@ -73,7 +79,8 @@ export function VenueQuickPickForm({
     setFormData(next);
     onChange({
       venueName: next.venueName ?? '',
-      street: next.street ?? null,
+      addressLine1: next.addressLine1 ?? null,
+      addressLine2: next.addressLine2 ?? null,
       city: next.city ?? null,
       provinceOrState: next.provinceOrState ?? null,
       country: next.country ?? null,
@@ -86,7 +93,8 @@ export function VenueQuickPickForm({
     setFormData(next);
     onChange({
       venueName: next.venueName ?? '',
-      street: next.street ?? null,
+      addressLine1: next.addressLine1 ?? null,
+      addressLine2: next.addressLine2 ?? null,
       city: next.city ?? null,
       provinceOrState: next.provinceOrState ?? null,
       country: next.country ?? null,
@@ -98,7 +106,8 @@ export function VenueQuickPickForm({
   const handleAddressSelect = (addressData: AddressData) => {
     notifyChange({
       ...formData,
-      street: addressData.street,
+      addressLine1: addressData.addressLine1,
+      addressLine2: null,
       city: addressData.city,
       provinceOrState: addressData.province,
       country: addressData.country,
@@ -128,14 +137,46 @@ export function VenueQuickPickForm({
         />
       </div>
 
-      <AddressAutocomplete
-        label="Street Address"
-        placeholder="Start typing an address..."
-        value={formData.street ?? ''}
-        onAddressSelect={handleAddressSelect}
-        required
-        disabled={isSubmitting}
-      />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+        <div className="space-y-2">
+          <Label
+            htmlFor="venue-quick-pick-address-line1"
+            className="text-sm font-medium"
+          >
+            Street Address
+            <span className="text-destructive ml-1">*</span>
+          </Label>
+          <AddressAutocomplete
+            id="venue-quick-pick-address-line1"
+            placeholder="Start typing an address..."
+            value={formData.addressLine1 ?? ''}
+            onAddressSelect={handleAddressSelect}
+            disabled={isSubmitting}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label
+            htmlFor="venue-quick-pick-address-line2"
+            className="text-sm font-medium"
+          >
+            {getActivityFieldLabel('addressLine2')}
+          </Label>
+          <Input
+            id="venue-quick-pick-address-line2"
+            type="text"
+            value={formData.addressLine2 ?? ''}
+            onChange={(e) =>
+              notifyChange({
+                ...formData,
+                addressLine2: e.target.value || null,
+              })
+            }
+            disabled={isSubmitting}
+            placeholder="Floor, room, etc."
+            className="w-full"
+          />
+        </div>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="venue-quick-pick-city" className="text-sm font-medium">

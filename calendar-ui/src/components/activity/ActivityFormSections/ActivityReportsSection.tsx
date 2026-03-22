@@ -23,6 +23,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 export const ActivityReportsSection: React.FC = () => {
@@ -115,7 +116,7 @@ export const ActivityReportsSection: React.FC = () => {
 
       <FormSectionDivider />
 
-      <h2 className="text-xl font-semibold">Look ahead</h2>
+      <ActivityFormHeading>Look ahead</ActivityFormHeading>
 
       <FormField
         control={form.control}

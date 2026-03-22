@@ -1,18 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ComponentPropsWithoutRef,
+  type KeyboardEvent,
+} from 'react';
 
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   ADDRESS_RETRIEVE_FAILED,
   ADDRESS_SEARCH_FAILED,
 } from '@/lib/error-messages';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 
 const logger = createLogger('AddressAutocomplete');
 
 export interface AddressData {
-  street: string;
+  addressLine1: string;
   city: string;
   province: string;
   provinceCode: string;
@@ -30,35 +39,41 @@ interface AddressSuggestion {
   Next: string;
 }
 
-interface AddressAutocompleteProps {
+export type AddressAutocompleteProps = Omit<
+  ComponentPropsWithoutRef<'input'>,
+  'type' | 'onChange' | 'value' | 'defaultValue' | 'onKeyDown'
+> & {
   onAddressSelect: (address: AddressData) => void;
-  /** Initial value when uncontrolled */
   defaultValue?: string;
-  /** When provided, syncs the input display from parent (e.g. after quick-pick selection). Uncontrolled when omitted. */
+  /** When set, keeps the text field in sync with parent (e.g. quick-pick). */
   value?: string;
   placeholder?: string;
-  label?: string;
-  required?: boolean;
-  disabled?: boolean;
   /**
    * View-only: full-contrast input; no search/dropdown. Prefer over `disabled`
    * when the field should not look muted.
    */
   readOnly?: boolean;
+  /** Root wrapper (dropdown is absolutely positioned under the input). */
   className?: string;
-}
+};
 
-export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
-  onAddressSelect,
-  defaultValue = '',
-  value: valueProp,
-  placeholder = 'Start typing an address...',
-  label = 'Address',
-  required = false,
-  disabled = false,
-  readOnly = false,
-  className = '',
-}) => {
+export const AddressAutocomplete = forwardRef<
+  HTMLInputElement,
+  AddressAutocompleteProps
+>(function AddressAutocomplete(
+  {
+    onAddressSelect,
+    defaultValue = '',
+    value: valueProp,
+    placeholder = 'Start typing an address...',
+    disabled = false,
+    readOnly = false,
+    className,
+    id = 'address-autocomplete',
+    ...restInputProps
+  },
+  ref
+) {
   const isMuted = Boolean(disabled);
   const viewOnly = Boolean(readOnly) && !isMuted;
   const [searchTerm, setSearchTerm] = useState(
@@ -72,16 +87,25 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const setInputRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    },
+    [ref]
+  );
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // When parent provides value (e.g. after quick-pick), sync the input display
   useEffect(() => {
     if (valueProp !== undefined) {
       setSearchTerm(valueProp);
     }
   }, [valueProp]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -96,7 +120,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced search function
   const searchAddresses = async (term: string) => {
     if (term.length < 3) {
       setSuggestions([]);
@@ -136,8 +159,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }
   };
 
-  // Handle input change with debouncing
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (viewOnly) return;
     const value = e.target.value;
     setSearchTerm(value);
@@ -151,8 +173,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }, 300);
   };
 
-  // Retrieve full address details
-  const retrieveAddress = async (id: string) => {
+  const retrieveAddress = async (retrieveId: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -162,7 +183,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: retrieveId }),
       });
 
       if (!response.ok) {
@@ -173,7 +194,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       const addressData: AddressData = result.data;
 
       onAddressSelect(addressData);
-      setSearchTerm(addressData.street);
+      setSearchTerm(addressData.addressLine1);
       setShowDropdown(false);
       setSuggestions([]);
     } catch (err) {
@@ -184,19 +205,16 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }
   };
 
-  // Handle suggestion click or selection
   const handleSuggestionSelect = async (suggestion: AddressSuggestion) => {
     if (suggestion.Next === 'Retrieve') {
       await retrieveAddress(suggestion.Id);
     } else {
-      // This is a container (like a street name that needs further refinement)
       setSearchTerm(suggestion.Text);
       await searchAddresses(suggestion.Text);
     }
   };
 
-  // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (viewOnly) return;
     if (!showDropdown || suggestions.length === 0) return;
 
@@ -225,32 +243,25 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   };
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
-      <div className="space-y-2">
-        {label && (
-          <Label htmlFor="address-autocomplete">
-            {label}
-            {required && <span className="ml-1 text-red-500">*</span>}
-          </Label>
-        )}
-        <Input
-          ref={inputRef}
-          id="address-autocomplete"
-          type="text"
-          value={searchTerm}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          readOnly={viewOnly}
-          disabled={isMuted}
-          autoComplete="off"
-          className="w-full"
-        />
-        {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-      </div>
+    <div ref={wrapperRef} className={cn('relative', className)}>
+      <Input
+        {...restInputProps}
+        ref={setInputRef}
+        id={id}
+        type="text"
+        value={searchTerm}
+        onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        readOnly={viewOnly}
+        disabled={isMuted}
+        autoComplete="off"
+        className="w-full"
+      />
+      {error ? <p className="text-destructive mt-2 text-sm">{error}</p> : null}
 
       {!viewOnly && showDropdown && suggestions.length > 0 && (
-        <div className="popover-list-scroll absolute z-50 mt-1 max-h-[var(--popover-list-max-height)] w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
+        <div className="popover-list-scroll absolute z-50 mt-1 max-h-(--popover-list-max-height) w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
           {isLoading && (
             <div className="p-2 text-center text-sm text-gray-500">
               Loading...
@@ -260,24 +271,27 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
             suggestions.map((suggestion, index) => (
               <div
                 key={suggestion.Id}
-                className={`cursor-pointer p-2 hover:bg-gray-100 ${
-                  index === selectedIndex ? 'bg-gray-100' : ''
-                }`}
+                className={cn(
+                  'cursor-pointer p-2 hover:bg-gray-100',
+                  index === selectedIndex && 'bg-gray-100'
+                )}
                 onClick={() => {
                   void handleSuggestionSelect(suggestion);
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="text-sm font-medium">{suggestion.Text}</div>
-                {suggestion.Description && (
+                {suggestion.Description ? (
                   <div className="text-xs text-gray-500">
                     {suggestion.Description}
                   </div>
-                )}
+                ) : null}
               </div>
             ))}
         </div>
       )}
     </div>
   );
-};
+});
+
+AddressAutocomplete.displayName = 'AddressAutocomplete';

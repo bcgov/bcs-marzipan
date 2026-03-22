@@ -176,7 +176,10 @@ function resolveDisplayValue(
     const parts: string[] = [];
     if (typeof addr.venueName === 'string' && addr.venueName)
       parts.push(addr.venueName);
-    if (typeof addr.street === 'string' && addr.street) parts.push(addr.street);
+    if (typeof addr.addressLine1 === 'string' && addr.addressLine1)
+      parts.push(addr.addressLine1);
+    if (typeof addr.addressLine2 === 'string' && addr.addressLine2)
+      parts.push(addr.addressLine2);
     if (typeof addr.city === 'string' && addr.city) parts.push(addr.city);
     if (typeof addr.provinceOrState === 'string' && addr.provinceOrState)
       parts.push(addr.provinceOrState);

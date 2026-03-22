@@ -3,7 +3,7 @@
  * disabled styling. Compose with SelectValue, SelectContent, SelectItem from
  * `@/components/ui/select`.
  *
- * Use `disabled` only for field-level rules (e.g. venue TBD). When both apply,
+ * Use `disabled` only for field-level rules that should look muted. When both apply,
  * `disabled` wins (muted). When only `readOnly` is true, the trigger keeps
  * full-contrast styling and the menu stays closed.
  */

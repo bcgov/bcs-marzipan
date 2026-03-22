@@ -74,7 +74,8 @@ export function formatHistoryFieldValue(
     const addr = value as Record<string, unknown>;
     const parts = [];
     if (typeof addr.venueName === 'string') parts.push(addr.venueName);
-    if (typeof addr.street === 'string') parts.push(addr.street);
+    if (typeof addr.addressLine1 === 'string') parts.push(addr.addressLine1);
+    if (typeof addr.addressLine2 === 'string') parts.push(addr.addressLine2);
     if (typeof addr.city === 'string') parts.push(addr.city);
     if (typeof addr.provinceOrState === 'string')
       parts.push(addr.provinceOrState);

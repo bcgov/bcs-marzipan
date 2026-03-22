@@ -77,7 +77,8 @@ function formatVenueAddress(
   const parts: string[] = [];
 
   if (venueAddress.venueName) parts.push(venueAddress.venueName);
-  if (venueAddress.street) parts.push(venueAddress.street);
+  if (venueAddress.addressLine1) parts.push(venueAddress.addressLine1);
+  if (venueAddress.addressLine2) parts.push(venueAddress.addressLine2);
   if (venueAddress.city) parts.push(venueAddress.city);
   if (venueAddress.provinceOrState) parts.push(venueAddress.provinceOrState);
 

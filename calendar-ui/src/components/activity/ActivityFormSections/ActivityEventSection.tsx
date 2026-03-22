@@ -1,11 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { useState } from 'react';
+import { useMemo } from 'react';
 
-import type { VenueQuickPickItem } from '@corpcal/shared/api/types';
+import type {
+  CityLookupItem,
+  VenueQuickPickItem,
+} from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { fetchLastUsedAddresses, fetchVenueQuickPicks } from '@/api/lookupsApi';
+import {
+  fetchCities,
+  fetchLastUsedAddresses,
+  fetchVenueQuickPicks,
+} from '@/api/lookupsApi';
 import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   AddressAutocomplete,
@@ -35,32 +42,48 @@ import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
   type FreeformComboboxItemWithLead,
+  type FreeformComboboxOption,
   type FreeformComboboxValue,
+  type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const QUICK_PICK_MAX_TOTAL = 4;
 
+const VENUE_TBC_OPTION_VALUE = '__venue_tbc__';
+const VENUE_TBC_DISPLAY = 'Venue TBC';
+
 type VenueFormValue = {
   venueName: string | null;
-  street: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
   city: string | null;
   provinceOrState: string | null;
   country: string | null;
 };
 
+const EMPTY_VENUE: VenueFormValue = {
+  venueName: null,
+  addressLine1: null,
+  addressLine2: null,
+  city: null,
+  provinceOrState: null,
+  country: null,
+};
+
 function venueToFormValue(item: VenueQuickPickItem): VenueFormValue {
   return {
     venueName: item.venueName ?? null,
-    street: item.street ?? null,
+    addressLine1: item.addressLine1 ?? null,
+    addressLine2: item.addressLine2 ?? null,
     city: item.city ?? null,
     provinceOrState: item.provinceOrState ?? null,
     country: item.country ?? null,
@@ -69,7 +92,7 @@ function venueToFormValue(item: VenueQuickPickItem): VenueFormValue {
 
 function venueTagLabel(item: VenueQuickPickItem): string {
   if (item.venueName) return item.venueName;
-  const parts = [item.street, item.city].filter(Boolean);
+  const parts = [item.addressLine1, item.city].filter(Boolean);
   return parts.length > 0 ? parts.join(', ') : 'Address';
 }
 
@@ -80,11 +103,57 @@ function addressMatchesQuickPick(
   const n = (v: string | null | undefined) => v ?? null;
   return (
     n(currentVenue.venueName) === n(item.venueName) &&
-    n(currentVenue.street) === n(item.street) &&
+    n(currentVenue.addressLine1) === n(item.addressLine1) &&
+    n(currentVenue.addressLine2) === n(item.addressLine2) &&
     n(currentVenue.city) === n(item.city) &&
     n(currentVenue.provinceOrState) === n(item.provinceOrState) &&
     n(currentVenue.country) === n(item.country)
   );
+}
+
+function venueComboboxValueFromForm(
+  currentVenue: VenueFormValue,
+  quickPickTags: VenueQuickPickItem[]
+): FreeformComboboxValueWithLead {
+  const matches = quickPickTags.filter((item) =>
+    addressMatchesQuickPick(currentVenue, item)
+  );
+  if (matches.length > 0) {
+    const pick = matches[0];
+    return { type: 'option', value: String(pick.id) };
+  }
+  if (currentVenue.venueName === VENUE_TBC_DISPLAY) {
+    return { type: 'option', value: VENUE_TBC_OPTION_VALUE };
+  }
+  if (currentVenue.venueName) {
+    return { type: 'freeform', value: currentVenue.venueName };
+  }
+  return null;
+}
+
+function cityComboboxValueFromVenue(
+  currentVenue: VenueFormValue,
+  citiesList: CityLookupItem[]
+): FreeformComboboxValueWithLead {
+  const cityText = currentVenue.city?.trim() ?? '';
+  if (!cityText) return null;
+  const active = citiesList.filter((c) => c.isActive);
+  const triple = active.filter(
+    (c) =>
+      (c.displayName === cityText || c.name === cityText) &&
+      (c.provinceOrState ?? '') === (currentVenue.provinceOrState ?? '') &&
+      (c.country ?? '') === (currentVenue.country ?? '')
+  );
+  if (triple.length === 1) {
+    return { type: 'option', value: String(triple[0].id) };
+  }
+  const byName = active.filter(
+    (c) => c.displayName === cityText || c.name === cityText
+  );
+  if (byName.length === 1) {
+    return { type: 'option', value: String(byName[0].id) };
+  }
+  return { type: 'freeform', value: cityText };
 }
 
 type ActivityEventSectionProps = {
@@ -105,7 +174,6 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 }) => {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
-  const [isVenueTbd, setIsVenueTbd] = useState(false);
   const representativesAnchorRef = useComboboxAnchor();
 
   const { data: fixedQuickPicks = [] } = useQuery({
@@ -117,10 +185,37 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
     queryFn: fetchLastUsedAddresses,
   });
 
+  const { data: citiesList = [] } = useQuery({
+    queryKey: ['cities'],
+    queryFn: fetchCities,
+  });
+
+  const cityComboboxOptions: FreeformComboboxOption[] = useMemo(
+    () =>
+      citiesList
+        .filter((c) => c.isActive)
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName,
+        })),
+    [citiesList]
+  );
+
   const lastUsedSlots = QUICK_PICK_MAX_TOTAL - fixedQuickPicks.length;
   const lastUsedDisplay =
     lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
   const quickPickTags = [...fixedQuickPicks, ...lastUsedDisplay];
+
+  const venueNameComboboxOptions: FreeformComboboxOption[] = useMemo(
+    () => [
+      { value: VENUE_TBC_OPTION_VALUE, label: VENUE_TBC_DISPLAY },
+      ...quickPickTags.map((item) => ({
+        value: String(item.id),
+        label: venueTagLabel(item),
+      })),
+    ],
+    [quickPickTags]
+  );
 
   // Convert representative options to combobox format
   const representativeComboboxOptions = representativeOptions.map((rep) => ({
@@ -228,40 +323,22 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
       <FormSectionDivider />
 
-      <h2 className="text-xl font-semibold">Venue</h2>
-
-      {/* Venue TBD Toggle */}
-      <div className="mb-4 flex items-center space-x-3">
-        <Switch
-          id="venue-tbd"
-          checked={isVenueTbd}
-          readOnly={readOnly}
-          onCheckedChange={setIsVenueTbd}
-        />
-        <label
-          htmlFor="venue-tbd"
-          className="cursor-pointer text-sm leading-none font-medium"
-        >
-          Venue TBD
-        </label>
-      </div>
+      <ActivityFormHeading>Location</ActivityFormHeading>
 
       <FormField
         control={form.control}
         name="venueAddress"
         render={({ field }) => {
-          const currentVenue: VenueFormValue = field.value || {
-            venueName: null,
-            street: null,
-            city: null,
-            provinceOrState: null,
-            country: null,
+          const currentVenue: VenueFormValue = {
+            ...EMPTY_VENUE,
+            ...(field.value ?? {}),
           };
 
           const handleAddressSelect = (addressData: AddressData) => {
             const updated = {
               ...currentVenue,
-              street: addressData.street,
+              addressLine1: addressData.addressLine1,
+              addressLine2: null,
               city: addressData.city,
               provinceOrState: addressData.province,
               country: addressData.country,
@@ -273,26 +350,85 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
             field.onChange(venueToFormValue(item));
           };
 
+          const handleCityComboboxChange = (
+            v:
+              | FreeformComboboxValueWithLead
+              | FreeformComboboxItemWithLead[]
+              | null
+          ) => {
+            if (Array.isArray(v)) return;
+            if (v == null) {
+              field.onChange({ ...currentVenue, city: null });
+              return;
+            }
+            if (v.type === 'option') {
+              const item = citiesList.find((c) => String(c.id) === v.value);
+              if (item) {
+                field.onChange({
+                  ...currentVenue,
+                  city: item.displayName,
+                  provinceOrState: item.provinceOrState ?? null,
+                  country: item.country ?? null,
+                });
+              }
+              return;
+            }
+            field.onChange({
+              ...currentVenue,
+              city: v.value ? v.value : null,
+            });
+          };
+
+          const handleVenueNameComboboxChange = (
+            v:
+              | FreeformComboboxValueWithLead
+              | FreeformComboboxItemWithLead[]
+              | null
+          ) => {
+            if (Array.isArray(v)) return;
+            if (v == null) {
+              field.onChange({ ...currentVenue, venueName: null });
+              return;
+            }
+            if (v.type === 'option' && v.value === VENUE_TBC_OPTION_VALUE) {
+              field.onChange({
+                ...currentVenue,
+                venueName: VENUE_TBC_DISPLAY,
+              });
+              return;
+            }
+            if (v.type === 'option') {
+              const item = quickPickTags.find((t) => String(t.id) === v.value);
+              if (item) field.onChange(venueToFormValue(item));
+              return;
+            }
+            field.onChange({
+              ...currentVenue,
+              venueName: v.value ? v.value : null,
+            });
+          };
+
           return (
             <>
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>{getActivityFieldLabel('venueName')}</FormLabel>
                 <FormControl data-field={field.name}>
-                  <Input
-                    value={currentVenue.venueName ?? ''}
+                  <FreeformCombobox
                     readOnly={readOnly}
-                    onChange={(e) =>
-                      field.onChange({
-                        ...currentVenue,
-                        venueName: e.target.value || null,
-                      })
-                    }
-                    placeholder="Venue name"
-                    disabled={isVenueTbd}
-                    className={isVenueTbd ? 'opacity-50' : ''}
+                    multiple={false}
+                    useChips={false}
+                    options={venueNameComboboxOptions}
+                    value={venueComboboxValueFromForm(
+                      currentVenue,
+                      quickPickTags
+                    )}
+                    onChange={handleVenueNameComboboxChange}
+                    placeholder="Search or enter venue name"
+                    searchPlaceholder="Search venues..."
+                    emptyMessage="No venues found."
                   />
                 </FormControl>
-                {quickPickTags.length > 0 && !isVenueTbd && (
+                {quickPickTags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {quickPickTags.map((item) => {
                       const isSelected = addressMatchesQuickPick(
@@ -324,59 +460,77 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormMessage />
               </FormItem>
 
-              <FormItem className="mt-6">
-                <AddressAutocomplete
-                  label="Street Address"
-                  placeholder="Start typing an address..."
-                  defaultValue={currentVenue.street || ''}
-                  value={currentVenue.street ?? ''}
-                  onAddressSelect={handleAddressSelect}
-                  required={!isVenueTbd}
-                  readOnly={readOnly}
-                  disabled={isVenueTbd}
-                />
-                <FormMessage />
-              </FormItem>
+              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+                <FormItem>
+                  <FormLabel>{getActivityFieldLabel('addressLine1')}</FormLabel>
+                  <FormControl data-field={field.name}>
+                    <AddressAutocomplete
+                      placeholder="Start typing an address..."
+                      defaultValue={currentVenue.addressLine1 || ''}
+                      value={currentVenue.addressLine1 ?? ''}
+                      onAddressSelect={handleAddressSelect}
+                      readOnly={readOnly}
+                    />
+                  </FormControl>
+                </FormItem>
+                <FormItem>
+                  <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
+                  <FormControl data-field={field.name}>
+                    <Input
+                      value={currentVenue.addressLine2 ?? ''}
+                      readOnly={readOnly}
+                      onChange={(e) =>
+                        field.onChange({
+                          ...currentVenue,
+                          addressLine2: e.target.value || null,
+                        })
+                      }
+                      placeholder="Floor, room, etc."
+                    />
+                  </FormControl>
+                </FormItem>
+              </div>
 
-              <FormItem className="mt-6">
-                <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <Input
-                    value={currentVenue.city ?? ''}
-                    readOnly={readOnly}
-                    onChange={(e) =>
-                      field.onChange({
-                        ...currentVenue,
-                        city: e.target.value || null,
-                      })
-                    }
-                    placeholder="City"
-                    disabled={isVenueTbd}
-                    className={isVenueTbd ? 'opacity-50' : ''}
-                  />
-                </FormControl>
-              </FormItem>
+              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormItem>
+                  <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
+                  <FormControl data-field={field.name}>
+                    <FreeformCombobox
+                      readOnly={readOnly}
+                      multiple={false}
+                      useChips={false}
+                      options={cityComboboxOptions}
+                      value={cityComboboxValueFromVenue(
+                        currentVenue,
+                        citiesList
+                      )}
+                      onChange={handleCityComboboxChange}
+                      searchPlaceholder="Search cities..."
+                      emptyMessage="No cities found."
+                      freeformLabel="Other"
+                      freeformDescription="Enter a city not in the list"
+                    />
+                  </FormControl>
+                </FormItem>
 
-              <FormItem className="mt-6">
-                <FormLabel>
-                  {getActivityFieldLabel('provinceOrState')}
-                </FormLabel>
-                <FormControl data-field={field.name}>
-                  <Input
-                    value={currentVenue.provinceOrState ?? ''}
-                    readOnly={readOnly}
-                    onChange={(e) =>
-                      field.onChange({
-                        ...currentVenue,
-                        provinceOrState: e.target.value || null,
-                      })
-                    }
-                    placeholder="Province/State"
-                    disabled={isVenueTbd}
-                    className={isVenueTbd ? 'opacity-50' : ''}
-                  />
-                </FormControl>
-              </FormItem>
+                <FormItem>
+                  <FormLabel>
+                    {getActivityFieldLabel('provinceOrState')}
+                  </FormLabel>
+                  <FormControl data-field={field.name}>
+                    <Input
+                      value={currentVenue.provinceOrState ?? ''}
+                      readOnly={readOnly}
+                      onChange={(e) =>
+                        field.onChange({
+                          ...currentVenue,
+                          provinceOrState: e.target.value || null,
+                        })
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
+              </div>
 
               <FormItem className="mt-6">
                 <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
@@ -390,9 +544,6 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                         country: e.target.value || null,
                       })
                     }
-                    placeholder="Country"
-                    disabled={isVenueTbd}
-                    className={isVenueTbd ? 'opacity-50' : ''}
                   />
                 </FormControl>
               </FormItem>
@@ -400,6 +551,8 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
           );
         }}
       />
+
+      <FormSectionDivider />
 
       <FormField
         control={form.control}

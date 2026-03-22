@@ -456,7 +456,7 @@ export function FreeformCombobox({
   );
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('w-full min-w-0', className)}>
       <Popover
         open={open}
         onOpenChange={(next) => {
