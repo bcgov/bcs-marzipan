@@ -127,6 +127,7 @@ export function ActivityFormBody({
             />
 
             <ActivityEventSection
+              venueStatuses={lookups.venueStatuses}
               representativeOptions={lookups.governmentRepresentatives}
               premierRequestedOptions={lookups.premierRequested}
               eventPlannerOptions={lookups.eventPlanners}

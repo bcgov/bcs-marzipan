@@ -24,6 +24,7 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     pitchRequiredStatusId: 1,
     translationsRequiredStatusId: 1,
     leadTeamId: 0,
+    venueStatusId: undefined,
   };
 }
 

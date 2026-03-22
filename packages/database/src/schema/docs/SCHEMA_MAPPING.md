@@ -50,7 +50,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 11. [Sessions](#sessions)
 12. [UserTeams](#userteams)
 13. [Venue addresses](#venue-addresses)
-14. [Venue Quick Picks](#venue-quick-picks)
+14. [Venue Presets](#venue-presets)
 
 ---
 
@@ -197,7 +197,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 - `Strategy` → `strategy` (text)
 - `HqComments` → `executiveSummary` (text)
 
-5. **Venue Management**: Venue-related fields (`Venue`, `CityId`, `OtherCity`) have been moved to a separate `venueAddresses` table for better normalization.
+5. **Venue Management**: Venue-related fields (`Venue`, `CityId`, `OtherCity`) have been moved to a separate `venueAddresses` table for better normalization. Per-activity **venue status** (TBC/TBD/tentative/confirmed) is stored as nullable `venue_status_id` on `activities` (FK to `venue_statuses`); it is null when the activity has no venue or no status is set.
 6. **Audit Fields**:
 
 - `TimeStamp` → `rowVersion` (bigint for optimistic concurrency control)
@@ -215,7 +215,6 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 - `pitchStatusId` (removed - pitch workflow simplified)
 - `pitchComments` (removed - pitch workflow simplified)
 - `calendarVisibility` (removed)
-- `venueStatusId` (removed)
 - `eventLeadOrgId` and `eventLeadOrgName` (removed)
 
 8. **New Features**:
@@ -231,7 +230,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
 - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
 - `visibility`: Activity visibility control - 'global' (visible to all teams) or 'team' (visible only to creator's team + special teams), default 'global' (mapped from legacy IsCrossGovernment)
-- `venue_quick_picks`: Lookup table for admin-configured quick-pick venues shown as tags on the activity form (see [Venue Quick Picks](#venue-quick-picks))
+- `venue_presets`: Admin-defined named venues for the activity form; active rows appear in the combobox, pinned rows as badges (see [Venue Presets](#venue-presets))
 
 ### Visibility and Sharing
 
@@ -288,35 +287,37 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ---
 
-## Venue Quick Picks
+## Venue Presets
 
 **Legacy Table Name:** _N/A (New table, no legacy mapping)_  
-**New Table Name:** `venue_quick_picks`
+**New Table Name:** `venue_presets`
 
-**Description:** Admin-configurable quick-pick venues for the activity form. Stores 2-4 fixed venue options (e.g. BC Legislature, Vancouver Convention Centre) that appear as tags under the venue name control. Managed via the admin UI; not migrated from legacy.
+**Description:** Admin-defined named venues for the activity form. All active presets appear in the Venue Name combobox; pinned presets are also shown as quick-select badges beneath the input. Managed via the admin UI; not migrated from legacy.
 
 ### Field Mappings
 
-| New Field Name        | New Type                   | New Constraints            | Description                                                       |
-| --------------------- | -------------------------- | -------------------------- | ----------------------------------------------------------------- |
-| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                       |
-| `venueName`           | `varchar(255)`             | `notNull`                  | Display name for the venue (e.g. "BC Legislature")                |
-| `addressLine1`        | `varchar(255)`             | nullable                   | Primary address line (DB: `address_line1`; renamed from `street`) |
-| `addressLine2`        | `varchar(255)`             | nullable                   | Secondary line (suite, floor, room; DB: `address_line2`)          |
-| `city`                | `varchar(255)`             | nullable                   | City                                                              |
-| `provinceOrState`     | `varchar(255)`             | nullable                   | Province or state                                                 |
-| `country`             | `varchar(255)`             | nullable                   | Country                                                           |
-| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Display order (lower first)                                       |
-| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the quick-pick is shown (max 4 active enforced in app)    |
-| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was created                                       |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to users - user who created the record                         |
-| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was last updated                                  |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to users - user who last updated the record                    |
+| New Field Name        | New Type                   | New Constraints             | Description                                                       |
+| --------------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key      | Primary key                                                       |
+| `venueName`           | `varchar(255)`             | `notNull`                   | Display name for the venue (e.g. "BC Legislature")                |
+| `addressLine1`        | `varchar(255)`             | nullable                    | Primary address line (DB: `address_line1`; renamed from `street`) |
+| `addressLine2`        | `varchar(255)`             | nullable                    | Secondary line (suite, floor, room; DB: `address_line2`)          |
+| `city`                | `varchar(255)`             | nullable                    | City                                                              |
+| `provinceOrState`     | `varchar(255)`             | nullable                    | Province or state                                                 |
+| `country`             | `varchar(255)`             | nullable                    | Country                                                           |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`     | Display order in combobox (lower first)                           |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)`  | Whether the preset is shown in the combobox                       |
+| `isPinned`            | `boolean`                  | `notNull`, `default(false)` | Whether the preset is shown as a quick-select badge               |
+| `pinnedSortOrder`     | `integer`                  | `notNull`, `default(0)`     | Badge display order among pinned presets (lower first)            |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`   | When the record was created                                       |
+| `createdBy`           | `integer`                  | `notNull`, FK               | FK to users - user who created the record                         |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`   | When the record was last updated                                  |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK               | FK to users - user who last updated the record                    |
 
 ### Notes
 
 - **No legacy mapping**: This table is new; data is entered via the admin UI.
-- **Purpose**: Enables "quick pick" venue tags on the Create/Edit Activity form so users can one-click fill the venue address (including optional line 2, same semantics as `venue_addresses`).
+- **Purpose**: Provides admin-defined venue presets for the Create/Edit Activity form. All active presets populate the Venue Name combobox. Pinned presets additionally appear as one-click badges that auto-fill the full venue address (including optional line 2, same semantics as `venue_addresses`). Duplicate addresses (`address_line1` + `address_line2`) are rejected.
 
 ---
 

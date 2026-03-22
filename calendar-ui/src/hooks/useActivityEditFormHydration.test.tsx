@@ -31,6 +31,7 @@ const mockLookups: FormLookupData = {
   sharedWithTeams: [],
   dateStatuses: [],
   timeStatuses: [],
+  venueStatuses: [],
 };
 
 describe('useActivityEditFormHydration', () => {

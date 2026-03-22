@@ -98,6 +98,7 @@ export function mapResponseToFormData(
     strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId,
     timeStatusId: response.timeStatusId,
+    venueStatusId: response.venueStatusId ?? undefined,
     activityStatusId: response.activityStatusId,
     isIssue: response.isIssue,
     isAllDay: response.isAllDay,

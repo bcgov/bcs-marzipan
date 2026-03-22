@@ -11,12 +11,13 @@ import {
 import { users } from './user';
 
 /**
- * Venue Quick Picks table - Admin-configurable quick-pick venues for the activity form.
- * Stores up to 4 active fixed venue options (e.g. BC Legislature, Vancouver Convention Centre)
- * that appear as tags under the Venue address input. Address fields align with `venue_addresses`
- * (including optional `address_line2`). No legacy mapping.
+ * Venue Presets table - Admin-defined named venues for the activity form.
+ * All active rows appear in the Venue Name combobox dropdown.
+ * Rows with `is_pinned = true` are displayed as quick-select badges beneath
+ * the input, ordered by `pinned_sort_order`.
+ * Address fields align with `venue_addresses` (including optional `address_line2`).
  */
-export const venueQuickPicks = pgTable('venue_quick_picks', {
+export const venuePresets = pgTable('venue_presets', {
   id: serial('id').primaryKey().notNull(),
   venueName: varchar('venue_name', { length: 255 }).notNull(),
   addressLine1: varchar('address_line1', { length: 255 }),
@@ -26,6 +27,8 @@ export const venueQuickPicks = pgTable('venue_quick_picks', {
   country: varchar('country', { length: 255 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  isPinned: boolean('is_pinned').notNull().default(false),
+  pinnedSortOrder: integer('pinned_sort_order').notNull().default(0),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -42,18 +45,15 @@ export const venueQuickPicks = pgTable('venue_quick_picks', {
     .references(() => users.id),
 });
 
-export const venueQuickPicksRelations = relations(
-  venueQuickPicks,
-  ({ one }) => ({
-    createdByUser: one(users, {
-      fields: [venueQuickPicks.createdBy],
-      references: [users.id],
-      relationName: 'venueQuickPicksCreatedBy',
-    }),
-    lastUpdatedByUser: one(users, {
-      fields: [venueQuickPicks.lastUpdatedBy],
-      references: [users.id],
-      relationName: 'venueQuickPicksLastUpdatedBy',
-    }),
-  })
-);
+export const venuePresetsRelations = relations(venuePresets, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [venuePresets.createdBy],
+    references: [users.id],
+    relationName: 'venuePresetsCreatedBy',
+  }),
+  lastUpdatedByUser: one(users, {
+    fields: [venuePresets.lastUpdatedBy],
+    references: [users.id],
+    relationName: 'venuePresetsLastUpdatedBy',
+  }),
+}));

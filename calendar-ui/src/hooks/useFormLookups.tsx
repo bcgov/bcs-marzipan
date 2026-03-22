@@ -7,6 +7,7 @@ import type {
   PitchRequiredStatusLookupItem,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
+  VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { OptionItem } from '@/schemas/types';
 
@@ -30,6 +31,7 @@ import {
   useTranslationLanguages,
   useTranslationRequiredStatuses,
   useUsers,
+  useVenueStatuses,
 } from './useLookups';
 
 export interface FormLookupData {
@@ -102,6 +104,9 @@ export interface FormLookupData {
   // Time Statuses - for Schedule section and confirm modals
   timeStatuses: TimeStatusLookupItem[];
 
+  // Venue Statuses - Event section (next to venue name)
+  venueStatuses: VenueStatusLookupItem[];
+
   // Pitch Required Statuses - for Overview section
   pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
 
@@ -137,6 +142,7 @@ export function useFormLookups(): FormLookupData {
   });
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
+  const venueStatusesQuery = useVenueStatuses();
   const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
   const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
 
@@ -158,6 +164,7 @@ export function useFormLookups(): FormLookupData {
     teamsQuery.isLoading ||
     dateStatusesQuery.isLoading ||
     timeStatusesQuery.isLoading ||
+    venueStatusesQuery.isLoading ||
     pitchRequiredStatusesQuery.isLoading ||
     translationRequiredStatusesQuery.isLoading;
 
@@ -179,6 +186,7 @@ export function useFormLookups(): FormLookupData {
     teamsQuery.isError ||
     dateStatusesQuery.isError ||
     timeStatusesQuery.isError ||
+    venueStatusesQuery.isError ||
     pitchRequiredStatusesQuery.isError ||
     translationRequiredStatusesQuery.isError;
 
@@ -345,6 +353,7 @@ export function useFormLookups(): FormLookupData {
       sharedWithTeams,
       dateStatuses: dateStatusesQuery.data ?? [],
       timeStatuses: timeStatusesQuery.data ?? [],
+      venueStatuses: venueStatusesQuery.data ?? [],
       pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
       translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
       isLoading,
@@ -369,6 +378,7 @@ export function useFormLookups(): FormLookupData {
     tagsQuery.data,
     teamsQuery.data,
     timeStatusesQuery.data,
+    venueStatusesQuery.data,
     translationLanguagesQuery.data,
     translationRequiredStatusesQuery.data,
     usersQuery.data,

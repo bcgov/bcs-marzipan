@@ -24,6 +24,7 @@ Creates a new calendar activity with related junction table records.
   "isAllDay": false,
   "dateStatusId": 1,
   "timeStatusId": 1,
+  "venueStatusId": null,
   "activityStatusId": 1,
   "leadMinistryId": 1,
   "isIssue": false,
@@ -56,6 +57,8 @@ Creates a new calendar activity with related junction table records.
   "tagIds": [1, 2]
 }
 ```
+
+**`venueStatusId`:** Optional. Id from the venue-status lookup (`/lookups/venue-statuses`), or `null` / omit when the activity has no venue or no venue status.
 
 **`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue quick-picks** do not store `addressLine2` (see lookups below).
 
@@ -542,11 +545,11 @@ Simplified activity list for "Related Activities" dropdowns.
 
 ---
 
-### Get Venue Quick-Picks
+### Get Venue Presets
 
-**GET** `/lookups/venue-quick-picks`
+**GET** `/lookups/venue-presets`
 
-Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input. Each item includes the same venue address fields as activity payloads (`venueName`, `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`).
+Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; pinned presets are also shown as quick-select badges. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
 
 **Cache:** 1 hour
 
@@ -561,7 +564,9 @@ Returns admin-configured quick-pick venues for the activity form (max 4 active).
       "addressLine2": null,
       "city": "Victoria",
       "provinceOrState": "British Columbia",
-      "country": "Canada"
+      "country": "Canada",
+      "isPinned": true,
+      "pinnedSortOrder": 1
     }
   ]
 }
@@ -573,7 +578,7 @@ Returns admin-configured quick-pick venues for the activity form (max 4 active).
 
 **GET** `/lookups/venue-last-used`
 
-Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication.
+Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication. Returns same shape as venue presets (with `isPinned: false`).
 
 ```json
 {
@@ -586,7 +591,9 @@ Returns the last 2 distinct venue addresses used by the current user (from activ
       "addressLine2": "Room 101",
       "city": "Victoria",
       "provinceOrState": "British Columbia",
-      "country": "Canada"
+      "country": "Canada",
+      "isPinned": false,
+      "pinnedSortOrder": 0
     }
   ]
 }
@@ -594,29 +601,29 @@ Returns the last 2 distinct venue addresses used by the current user (from activ
 
 ---
 
-### Create Venue Quick-Pick
+### Create Venue Preset
 
-**POST** `/lookups/venue-quick-picks`
-
-**Permission:** `lookups.manage`
-
-**Body:** `venueName` (required), `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
-
----
-
-### Update Venue Quick-Pick
-
-**PATCH** `/lookups/venue-quick-picks/:id`
+**POST** `/lookups/venue-presets`
 
 **Permission:** `lookups.manage`
 
-**Body:** Same as create (all optional for partial update).
+**Body:** `venueName` (required), `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true), `isPinned` (default false), `pinnedSortOrder` (default 0). Duplicate addresses (same `addressLine1` + `addressLine2`) are rejected.
 
 ---
 
-### Delete Venue Quick-Pick
+### Update Venue Preset
 
-**DELETE** `/lookups/venue-quick-picks/:id`
+**PATCH** `/lookups/venue-presets/:id`
+
+**Permission:** `lookups.manage`
+
+**Body:** Same as create (all optional for partial update). Duplicate address check applies when address fields change.
+
+---
+
+### Delete Venue Preset
+
+**DELETE** `/lookups/venue-presets/:id`
 
 **Permission:** `lookups.manage`
 

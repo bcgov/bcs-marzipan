@@ -26,7 +26,8 @@ import {
   translationRequiredStatuses,
   users,
   venueAddresses,
-  venueQuickPicks,
+  venuePresets,
+  venueStatuses,
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
@@ -43,7 +44,7 @@ import type {
   ThemeLookupItem,
   TranslationLanguageLookupItem,
   UserLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../database/database.service';
@@ -276,6 +277,29 @@ export class LookupsService {
   }
 
   /**
+   * Get all active venue statuses (e.g. TBC, TBD, tentative, confirmed)
+   */
+  async getVenueStatuses(): Promise<LookupItem[]> {
+    const results = await this.databaseService.db
+      .select({
+        id: venueStatuses.id,
+        name: venueStatuses.name,
+        displayName: venueStatuses.displayName,
+      })
+      .from(venueStatuses)
+      .where(eq(venueStatuses.isActive, true))
+      .orderBy(venueStatuses.sortOrder);
+
+    return results.map((status) => ({
+      id: status.id,
+      label: status.displayName,
+      value: status.id,
+      name: status.name,
+      displayName: status.displayName,
+    }));
+  }
+
+  /**
    * Get all active pitch required statuses (pending, required, not_required)
    */
   async getPitchRequiredStatuses(): Promise<LookupItem[]> {
@@ -393,22 +417,24 @@ export class LookupsService {
   }
 
   /**
-   * Get active venue quick-picks for the activity form (admin-configured, max 4).
+   * Get all active venue presets for the activity form.
    */
-  async getVenueQuickPicks(): Promise<VenueQuickPickItem[]> {
+  async getVenuePresets(): Promise<VenuePresetItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: venueQuickPicks.id,
-        venueName: venueQuickPicks.venueName,
-        addressLine1: venueQuickPicks.addressLine1,
-        addressLine2: venueQuickPicks.addressLine2,
-        city: venueQuickPicks.city,
-        provinceOrState: venueQuickPicks.provinceOrState,
-        country: venueQuickPicks.country,
+        id: venuePresets.id,
+        venueName: venuePresets.venueName,
+        addressLine1: venuePresets.addressLine1,
+        addressLine2: venuePresets.addressLine2,
+        city: venuePresets.city,
+        provinceOrState: venuePresets.provinceOrState,
+        country: venuePresets.country,
+        isPinned: venuePresets.isPinned,
+        pinnedSortOrder: venuePresets.pinnedSortOrder,
       })
-      .from(venueQuickPicks)
-      .where(eq(venueQuickPicks.isActive, true))
-      .orderBy(venueQuickPicks.sortOrder);
+      .from(venuePresets)
+      .where(eq(venuePresets.isActive, true))
+      .orderBy(venuePresets.sortOrder);
     return results.map((row) => ({
       id: row.id,
       venueName: row.venueName,
@@ -417,13 +443,15 @@ export class LookupsService {
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
+      isPinned: row.isPinned,
+      pinnedSortOrder: row.pinnedSortOrder,
     }));
   }
 
   /**
    * Get last 2 distinct venue addresses used by the current user (from activities they last updated).
    */
-  async getVenueLastUsed(userId: number): Promise<VenueQuickPickItem[]> {
+  async getVenueLastUsed(userId: number): Promise<VenuePresetItem[]> {
     const rows = await this.databaseService.db
       .select({
         venueName: venueAddresses.venueName,
@@ -461,13 +489,55 @@ export class LookupsService {
         country: row.country,
       });
     }
-    return out.map((item, index) => ({ id: -(index + 1), ...item }));
+    return out.map((item, index) => ({
+      id: -(index + 1),
+      isPinned: false,
+      pinnedSortOrder: 0,
+      ...item,
+    }));
+  }
+
+  private normalizeAddress(val: string | null | undefined): string {
+    return (val ?? '').trim().toLowerCase();
   }
 
   /**
-   * Create a venue quick-pick. Enforce max 4 active.
+   * Check for duplicate address (addressLine1 + addressLine2) among existing presets.
+   * Throws if a duplicate is found (excludes the row with `excludeId` on update).
    */
-  async createVenueQuickPick(
+  private async assertNoDuplicateAddress(
+    addressLine1: string | null | undefined,
+    addressLine2: string | null | undefined,
+    excludeId?: number
+  ): Promise<void> {
+    const normLine1 = this.normalizeAddress(addressLine1);
+    const normLine2 = this.normalizeAddress(addressLine2);
+
+    const existing = await this.databaseService.db
+      .select({
+        id: venuePresets.id,
+        addressLine1: venuePresets.addressLine1,
+        addressLine2: venuePresets.addressLine2,
+      })
+      .from(venuePresets);
+
+    const duplicate = existing.find((row) => {
+      if (excludeId !== undefined && row.id === excludeId) return false;
+      return (
+        this.normalizeAddress(row.addressLine1) === normLine1 &&
+        this.normalizeAddress(row.addressLine2) === normLine2
+      );
+    });
+
+    if (duplicate) {
+      throw new Error('A venue preset with this address already exists');
+    }
+  }
+
+  /**
+   * Create a venue preset.
+   */
+  async createVenuePreset(
     data: {
       venueName: string;
       addressLine1?: string | null;
@@ -477,19 +547,16 @@ export class LookupsService {
       country?: string | null;
       sortOrder?: number;
       isActive?: boolean;
+      isPinned?: boolean;
+      pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenueQuickPickItem> {
-    const activeList = await this.databaseService.db
-      .select({ id: venueQuickPicks.id })
-      .from(venueQuickPicks)
-      .where(eq(venueQuickPicks.isActive, true));
-    if (activeList.length >= 4) {
-      throw new Error('Maximum 4 active venue quick-picks allowed');
-    }
+  ): Promise<VenuePresetItem> {
+    await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
+
     const now = new Date();
     const [result] = await this.databaseService.db
-      .insert(venueQuickPicks)
+      .insert(venuePresets)
       .values({
         venueName: data.venueName,
         addressLine1: data.addressLine1 ?? undefined,
@@ -499,6 +566,8 @@ export class LookupsService {
         country: data.country ?? undefined,
         sortOrder: data.sortOrder ?? 0,
         isActive: data.isActive ?? true,
+        isPinned: data.isPinned ?? false,
+        pinnedSortOrder: data.pinnedSortOrder ?? 0,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
         createdDateTime: now,
@@ -513,13 +582,15 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      isPinned: result.isPinned,
+      pinnedSortOrder: result.pinnedSortOrder,
     };
   }
 
   /**
-   * Update a venue quick-pick. Enforce max 4 active when setting isActive to true.
+   * Update a venue preset.
    */
-  async updateVenueQuickPick(
+  async updateVenuePreset(
     id: number,
     data: {
       venueName?: string;
@@ -530,27 +601,34 @@ export class LookupsService {
       country?: string | null;
       sortOrder?: number;
       isActive?: boolean;
+      isPinned?: boolean;
+      pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenueQuickPickItem> {
-    if (data.isActive === true) {
-      const activeCount = await this.databaseService.db
-        .select({ id: venueQuickPicks.id })
-        .from(venueQuickPicks)
-        .where(eq(venueQuickPicks.isActive, true));
+  ): Promise<VenuePresetItem> {
+    if (data.addressLine1 !== undefined || data.addressLine2 !== undefined) {
       const current = await this.databaseService.db
-        .select({ isActive: venueQuickPicks.isActive })
-        .from(venueQuickPicks)
-        .where(eq(venueQuickPicks.id, id))
+        .select({
+          addressLine1: venuePresets.addressLine1,
+          addressLine2: venuePresets.addressLine2,
+        })
+        .from(venuePresets)
+        .where(eq(venuePresets.id, id))
         .limit(1);
-      const wasAlreadyActive = current[0]?.isActive ?? false;
-      if (!wasAlreadyActive && activeCount.length >= 4) {
-        throw new Error('Maximum 4 active venue quick-picks allowed');
-      }
+      const line1 =
+        data.addressLine1 !== undefined
+          ? data.addressLine1
+          : current[0]?.addressLine1;
+      const line2 =
+        data.addressLine2 !== undefined
+          ? data.addressLine2
+          : current[0]?.addressLine2;
+      await this.assertNoDuplicateAddress(line1, line2, id);
     }
+
     const now = new Date();
     const [result] = await this.databaseService.db
-      .update(venueQuickPicks)
+      .update(venuePresets)
       .set({
         ...(data.venueName !== undefined && { venueName: data.venueName }),
         ...(data.addressLine1 !== undefined && {
@@ -566,12 +644,16 @@ export class LookupsService {
         ...(data.country !== undefined && { country: data.country }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+        ...(data.pinnedSortOrder !== undefined && {
+          pinnedSortOrder: data.pinnedSortOrder,
+        }),
         lastUpdatedBy: currentUserId,
         lastUpdatedDateTime: now,
       })
-      .where(eq(venueQuickPicks.id, id))
+      .where(eq(venuePresets.id, id))
       .returning();
-    if (!result) throw new Error('Venue quick-pick not found');
+    if (!result) throw new Error('Venue preset not found');
     return {
       id: result.id,
       venueName: result.venueName,
@@ -580,18 +662,20 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      isPinned: result.isPinned,
+      pinnedSortOrder: result.pinnedSortOrder,
     };
   }
 
   /**
-   * Delete a venue quick-pick (hard delete).
+   * Delete a venue preset (hard delete).
    */
-  async deleteVenueQuickPick(id: number): Promise<void> {
+  async deleteVenuePreset(id: number): Promise<void> {
     const deleted = await this.databaseService.db
-      .delete(venueQuickPicks)
-      .where(eq(venueQuickPicks.id, id))
-      .returning({ id: venueQuickPicks.id });
-    if (deleted.length === 0) throw new Error('Venue quick-pick not found');
+      .delete(venuePresets)
+      .where(eq(venuePresets.id, id))
+      .returning({ id: venuePresets.id });
+    if (deleted.length === 0) throw new Error('Venue preset not found');
   }
 
   /**

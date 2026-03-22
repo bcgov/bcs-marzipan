@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 
 import type {
   CityLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
+  VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   fetchCities,
   fetchLastUsedAddresses,
-  fetchVenueQuickPicks,
+  fetchVenuePresets,
 } from '@/api/lookupsApi';
 import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
@@ -56,10 +57,13 @@ import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
-const QUICK_PICK_MAX_TOTAL = 4;
+const PINNED_BADGE_MAX_TOTAL = 4;
 
-const VENUE_TBC_OPTION_VALUE = '__venue_tbc__';
-const VENUE_TBC_DISPLAY = 'Venue TBC';
+const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
+
+/** Venue name row: combobox + status on one row; venue-status error message spans full width below (see sm:contents on FormItem). */
+const VENUE_NAME_AND_STATUS_INPUTS_ROW_CLASS =
+  'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4';
 
 type VenueFormValue = {
   venueName: string | null;
@@ -79,7 +83,7 @@ const EMPTY_VENUE: VenueFormValue = {
   country: null,
 };
 
-function venueToFormValue(item: VenueQuickPickItem): VenueFormValue {
+function venueToFormValue(item: VenuePresetItem): VenueFormValue {
   return {
     venueName: item.venueName ?? null,
     addressLine1: item.addressLine1 ?? null,
@@ -90,7 +94,7 @@ function venueToFormValue(item: VenueQuickPickItem): VenueFormValue {
   };
 }
 
-function venueTagLabel(item: VenueQuickPickItem): string {
+function venueTagLabel(item: VenuePresetItem): string {
   if (item.venueName) return item.venueName;
   const parts = [item.addressLine1, item.city].filter(Boolean);
   return parts.length > 0 ? parts.join(', ') : 'Address';
@@ -98,7 +102,7 @@ function venueTagLabel(item: VenueQuickPickItem): string {
 
 function addressMatchesQuickPick(
   currentVenue: VenueFormValue,
-  item: VenueQuickPickItem
+  item: VenuePresetItem
 ): boolean {
   const n = (v: string | null | undefined) => v ?? null;
   return (
@@ -113,7 +117,7 @@ function addressMatchesQuickPick(
 
 function venueComboboxValueFromForm(
   currentVenue: VenueFormValue,
-  quickPickTags: VenueQuickPickItem[]
+  quickPickTags: VenuePresetItem[]
 ): FreeformComboboxValueWithLead {
   const matches = quickPickTags.filter((item) =>
     addressMatchesQuickPick(currentVenue, item)
@@ -121,9 +125,6 @@ function venueComboboxValueFromForm(
   if (matches.length > 0) {
     const pick = matches[0];
     return { type: 'option', value: String(pick.id) };
-  }
-  if (currentVenue.venueName === VENUE_TBC_DISPLAY) {
-    return { type: 'option', value: VENUE_TBC_OPTION_VALUE };
   }
   if (currentVenue.venueName) {
     return { type: 'freeform', value: currentVenue.venueName };
@@ -157,6 +158,7 @@ function cityComboboxValueFromVenue(
 }
 
 type ActivityEventSectionProps = {
+  venueStatuses: VenueStatusLookupItem[];
   representativeOptions: Array<{
     id: number;
     name: string;
@@ -167,7 +169,8 @@ type ActivityEventSectionProps = {
   eventPlannerOptions: OptionItem[];
 };
 
-export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
+export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
+  venueStatuses,
   representativeOptions,
   premierRequestedOptions,
   eventPlannerOptions,
@@ -176,9 +179,9 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
   const form = useFormContext<ActivityFormData>();
   const representativesAnchorRef = useComboboxAnchor();
 
-  const { data: fixedQuickPicks = [] } = useQuery({
-    queryKey: ['venueQuickPicks'],
-    queryFn: fetchVenueQuickPicks,
+  const { data: allPresets = [] } = useQuery({
+    queryKey: ['venuePresets'],
+    queryFn: fetchVenuePresets,
   });
   const { data: lastUsed = [] } = useQuery({
     queryKey: ['venueLastUsed'],
@@ -201,20 +204,29 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
     [citiesList]
   );
 
-  const lastUsedSlots = QUICK_PICK_MAX_TOTAL - fixedQuickPicks.length;
+  const pinnedPresets = useMemo(
+    () =>
+      allPresets
+        .filter((p) => p.isPinned)
+        .sort((a, b) => a.pinnedSortOrder - b.pinnedSortOrder),
+    [allPresets]
+  );
+
+  const lastUsedSlots = PINNED_BADGE_MAX_TOTAL - pinnedPresets.length;
   const lastUsedDisplay =
     lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
-  const quickPickTags = [...fixedQuickPicks, ...lastUsedDisplay];
+  const quickPickTags = [...pinnedPresets, ...lastUsedDisplay];
 
   const venueNameComboboxOptions: FreeformComboboxOption[] = useMemo(
-    () => [
-      { value: VENUE_TBC_OPTION_VALUE, label: VENUE_TBC_DISPLAY },
-      ...quickPickTags.map((item) => ({
-        value: String(item.id),
-        label: venueTagLabel(item),
-      })),
-    ],
-    [quickPickTags]
+    () =>
+      allPresets
+        .slice()
+        .sort((a, b) => (a.venueName ?? '').localeCompare(b.venueName ?? ''))
+        .map((item) => ({
+          value: String(item.id),
+          label: venueTagLabel(item),
+        })),
+    [allPresets]
   );
 
   // Convert representative options to combobox format
@@ -346,7 +358,7 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
             field.onChange(updated);
           };
 
-          const handleQuickPickSelect = (item: VenueQuickPickItem) => {
+          const handleQuickPickSelect = (item: VenuePresetItem) => {
             field.onChange(venueToFormValue(item));
           };
 
@@ -390,15 +402,8 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
               field.onChange({ ...currentVenue, venueName: null });
               return;
             }
-            if (v.type === 'option' && v.value === VENUE_TBC_OPTION_VALUE) {
-              field.onChange({
-                ...currentVenue,
-                venueName: VENUE_TBC_DISPLAY,
-              });
-              return;
-            }
             if (v.type === 'option') {
-              const item = quickPickTags.find((t) => String(t.id) === v.value);
+              const item = allPresets.find((t) => String(t.id) === v.value);
               if (item) field.onChange(venueToFormValue(item));
               return;
             }
@@ -410,24 +415,77 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
 
           return (
             <>
-              <FormItem>
+              <FormItem className="mb-8">
                 <FormLabel>{getActivityFieldLabel('venueName')}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <FreeformCombobox
-                    readOnly={readOnly}
-                    multiple={false}
-                    useChips={false}
-                    options={venueNameComboboxOptions}
-                    value={venueComboboxValueFromForm(
-                      currentVenue,
-                      quickPickTags
+                <div className={VENUE_NAME_AND_STATUS_INPUTS_ROW_CLASS}>
+                  <div className="min-w-0 sm:col-start-1 sm:row-start-1">
+                    <FormControl data-field={field.name}>
+                      <FreeformCombobox
+                        readOnly={readOnly}
+                        multiple={false}
+                        useChips={false}
+                        options={venueNameComboboxOptions}
+                        value={venueComboboxValueFromForm(
+                          currentVenue,
+                          quickPickTags
+                        )}
+                        onChange={handleVenueNameComboboxChange}
+                        placeholder="e.g. BC Legislature"
+                        searchPlaceholder="Search venues..."
+                        emptyMessage="No venues found."
+                      />
+                    </FormControl>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="venueStatusId"
+                    render={({ field: statusField }) => (
+                      <FormItem className="flex w-full flex-col gap-2 space-y-0 sm:contents sm:gap-0">
+                        <div className="w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:w-auto">
+                          <FormSelect
+                            readOnly={readOnly}
+                            value={
+                              statusField.value != null
+                                ? String(statusField.value)
+                                : ''
+                            }
+                            onValueChange={(value) => {
+                              if (value === '') {
+                                statusField.onChange(null);
+                                return;
+                              }
+                              const n = Number(value);
+                              statusField.onChange(Number.isNaN(n) ? null : n);
+                            }}
+                          >
+                            <FormControl data-field={statusField.name}>
+                              <FormSelectTrigger
+                                readOnly={readOnly}
+                                className={STATUS_SELECT_MIN_WIDTH}
+                                aria-label={getActivityFieldLabel(
+                                  statusField.name
+                                )}
+                              >
+                                <SelectValue placeholder="Venue status" />
+                              </FormSelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {venueStatuses.map((status) => (
+                                <SelectItem
+                                  key={status.id}
+                                  value={String(status.id)}
+                                >
+                                  {status.displayName ?? status.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </FormSelect>
+                        </div>
+                        <FormMessage className="sm:col-span-2 sm:col-start-1 sm:row-start-2" />
+                      </FormItem>
                     )}
-                    onChange={handleVenueNameComboboxChange}
-                    placeholder="Search or enter venue name"
-                    searchPlaceholder="Search venues..."
-                    emptyMessage="No venues found."
                   />
-                </FormControl>
+                </div>
                 {quickPickTags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {quickPickTags.map((item) => {
@@ -460,12 +518,11 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                 <FormMessage />
               </FormItem>
 
-              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
                 <FormItem>
                   <FormLabel>{getActivityFieldLabel('addressLine1')}</FormLabel>
                   <FormControl data-field={field.name}>
                     <AddressAutocomplete
-                      placeholder="Start typing an address..."
                       defaultValue={currentVenue.addressLine1 || ''}
                       value={currentVenue.addressLine1 ?? ''}
                       onAddressSelect={handleAddressSelect}
@@ -505,7 +562,6 @@ export const ActivityEventSection: React.FC<ActivityEventSectionProps> = ({
                         citiesList
                       )}
                       onChange={handleCityComboboxChange}
-                      searchPlaceholder="Search cities..."
                       emptyMessage="No cities found."
                       freeformLabel="Other"
                       freeformDescription="Enter a city not in the list"

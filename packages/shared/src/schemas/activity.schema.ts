@@ -71,12 +71,13 @@ const activityCoreFieldsSchema = z.object({
   schedulingNotes: z.string().max(500).optional().nullable(),
   strategy: z.string().nullable().optional(),
 
-  // Status IDs (required, numbers for database)
+  // Status IDs (numbers for database; venue optional when activity has no venue)
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
   // activityStatusId is optional on create; backend sets it from markAsReviewed + role (new or reviewed).
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
+  venueStatusId: z.number().int().nullable().optional(),
   activityStatusId: z.number().int().optional(),
 
   // Boolean flags

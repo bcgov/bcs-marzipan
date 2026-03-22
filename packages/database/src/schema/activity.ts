@@ -23,6 +23,7 @@ import {
   premierRequested,
   timeStatuses,
   translationRequiredStatuses,
+  venueStatuses,
 } from './lookups';
 import { ministries } from './ministry';
 import { organizations } from './organizations';
@@ -81,6 +82,10 @@ export const activities = pgTable(
 
     schedulingNotes: text('scheduling_notes'), // (500 char limit) maps to legacy Schedule field
     strategy: text('strategy'), // Strategic information (legacy field)
+
+    venueStatusId: integer('venue_status_id').references(
+      () => venueStatuses.id
+    ), // FK to VenueStatus (TBC/TBD/tentative/confirmed)
 
     // News Release
     newsReleaseOriginId: integer('news_release_origin_id').references(
@@ -165,6 +170,10 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   timeStatus: one(timeStatuses, {
     fields: [activities.timeStatusId],
     references: [timeStatuses.id],
+  }),
+  venueStatus: one(venueStatuses, {
+    fields: [activities.venueStatusId],
+    references: [venueStatuses.id],
   }),
   leadOrg: one(organizations, {
     fields: [activities.leadOrgId],

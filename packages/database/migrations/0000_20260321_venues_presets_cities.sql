@@ -16,6 +16,7 @@ CREATE TABLE "activities" (
 	"time_status_id" integer NOT NULL,
 	"scheduling_notes" text,
 	"strategy" text,
+	"venue_status_id" integer,
 	"news_release_origin_id" integer,
 	"news_release_id" uuid,
 	"news_release_date_time" timestamp with time zone,
@@ -639,7 +640,7 @@ CREATE TABLE "venue_addresses" (
 	CONSTRAINT "venue_addresses_activity_id_unique" UNIQUE("activity_id")
 );
 --> statement-breakpoint
-CREATE TABLE "venue_quick_picks" (
+CREATE TABLE "venue_presets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"venue_name" varchar(255) NOT NULL,
 	"address_line1" varchar(255),
@@ -649,6 +650,8 @@ CREATE TABLE "venue_quick_picks" (
 	"country" varchar(255),
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
+	"is_pinned" boolean DEFAULT false NOT NULL,
+	"pinned_sort_order" integer DEFAULT 0 NOT NULL,
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" integer NOT NULL,
 	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
@@ -722,6 +725,7 @@ CREATE TABLE "sessions" (
 ALTER TABLE "activities" ADD CONSTRAINT "activities_lead_org_id_organizations_id_fk" FOREIGN KEY ("lead_org_id") REFERENCES "public"."organizations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_date_status_id_date_statuses_id_fk" FOREIGN KEY ("date_status_id") REFERENCES "public"."date_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_time_status_id_time_statuses_id_fk" FOREIGN KEY ("time_status_id") REFERENCES "public"."time_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activities" ADD CONSTRAINT "activities_venue_status_id_venue_statuses_id_fk" FOREIGN KEY ("venue_status_id") REFERENCES "public"."venue_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_news_release_origin_id_news_release_origins_id_fk" FOREIGN KEY ("news_release_origin_id") REFERENCES "public"."news_release_origins"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_pitch_required_status_id_pitch_required_statuses_id_fk" FOREIGN KEY ("pitch_required_status_id") REFERENCES "public"."pitch_required_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_translations_required_status_id_translation_required_statuses_id_fk" FOREIGN KEY ("translations_required_status_id") REFERENCES "public"."translation_required_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -837,8 +841,8 @@ ALTER TABLE "teams" ADD CONSTRAINT "teams_ministry_id_ministries_id_fk" FOREIGN 
 ALTER TABLE "teams" ADD CONSTRAINT "teams_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "teams" ADD CONSTRAINT "teams_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "venue_addresses" ADD CONSTRAINT "venue_addresses_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "venue_quick_picks" ADD CONSTRAINT "venue_quick_picks_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "venue_quick_picks" ADD CONSTRAINT "venue_quick_picks_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "venue_presets" ADD CONSTRAINT "venue_presets_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "venue_presets" ADD CONSTRAINT "venue_presets_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permissions" ADD CONSTRAINT "permissions_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permissions" ADD CONSTRAINT "permissions_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

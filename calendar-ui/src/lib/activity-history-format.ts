@@ -48,7 +48,8 @@ export type StatusLookupMap = Map<number | string, string>;
 export function formatHistoryFieldValue(
   field: string,
   value: unknown,
-  dateStatusMap?: StatusLookupMap
+  dateStatusMap?: StatusLookupMap,
+  venueStatusMap?: StatusLookupMap
 ): string {
   if (value === null || value === undefined) {
     return '(empty)';
@@ -56,6 +57,14 @@ export function formatHistoryFieldValue(
 
   if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {
     return dateStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'venueStatusId' &&
+    typeof value === 'number' &&
+    venueStatusMap
+  ) {
+    return venueStatusMap.get(value) || String(value);
   }
 
   if (
@@ -154,6 +163,7 @@ const FIELDS_TO_COMPARE = [
   'strategy',
   'dateStatusId',
   'timeStatusId',
+  'venueStatusId',
   'activityStatusId',
   'isIssue',
   'isAllDay',

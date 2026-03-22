@@ -1413,6 +1413,9 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchTimeStatusesForActivities.mockResolvedValue(
         new Map([[1, 'confirmed']])
       );
+      mockDataFetcherService.fetchVenueStatusesForActivities.mockResolvedValue(
+        new Map([[1, 'TBD']])
+      );
       mockDataFetcherService.fetchVenueAddressesForActivities.mockResolvedValue(
         new Map([[1, null]])
       );

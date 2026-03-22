@@ -17,6 +17,7 @@ const DEFAULTS = {
   fetchPremierRequestedForActivities: new Map(),
   fetchDateStatusesForActivities: new Map(),
   fetchTimeStatusesForActivities: new Map(),
+  fetchVenueStatusesForActivities: new Map(),
   fetchVenueAddressesForActivities: new Map(),
   fetchActivityStatusesForActivities: new Map(),
   fetchCommsMaterialsForActivities: new Map(),

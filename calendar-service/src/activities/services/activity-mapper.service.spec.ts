@@ -41,6 +41,32 @@ describe('ActivityMapperService', () => {
       expect(result.leadMinistryId).toBeNull();
     });
 
+    it('should map null venueStatusId and omit computed venueStatus when not provided', () => {
+      const activity = createMockActivity({
+        id: 1,
+        venueStatusId: null,
+      });
+
+      const result = mapper.mapToResponseDto(activity);
+
+      expect(result.venueStatusId).toBeNull();
+      expect(result.venueStatus).toBeNull();
+    });
+
+    it('should map venueStatus from relatedData when venueStatusId is set', () => {
+      const activity = createMockActivity({
+        id: 1,
+        venueStatusId: 2,
+      });
+
+      const result = mapper.mapToResponseDto(activity, {
+        venueStatus: 'Confirmed',
+      });
+
+      expect(result.venueStatusId).toBe(2);
+      expect(result.venueStatus).toBe('Confirmed');
+    });
+
     it('should include canEdit when relatedData.canEdit is true', () => {
       const activity = createMockActivity({ id: 1 });
       const result = mapper.mapToResponseDto(activity, { canEdit: true });

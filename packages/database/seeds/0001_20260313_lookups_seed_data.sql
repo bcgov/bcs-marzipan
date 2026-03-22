@@ -124,7 +124,7 @@ INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, descripti
 SELECT * FROM (VALUES
   ('pending', 'Pending', 1, true, 'Pitch approval is pending', 1, 1),
   ('required', 'Required', 2, true, 'Pitch approval is required', 1, 1),
-  ('not required', 'Not Required', 3, true, 'Pitch approval is not required', 1, 1)
+  ('not required', 'Not required', 3, true, 'Pitch approval is not required', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.name);
 
@@ -136,7 +136,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.nam
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not Confirmed', 1, true, 'Date is not confirmed', 1, 1),
+  ('not_confirmed', 'Not confirmed', 1, true, 'Date is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -150,7 +150,7 @@ WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name)
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not Confirmed', 1, true, 'Time is not confirmed', 1, 1),
+  ('not_confirmed', 'Not confirmed', 1, true, 'Time is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -158,15 +158,15 @@ WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name)
 
 -- ============================================================================
 -- VENUE STATUSES
--- Venue statuses for activities
--- Values: 'unknown', 'tentative', 'confirmed'
+-- Linked to activities.venue_status_id (same pattern as date/time status).
 -- ============================================================================
 
 INSERT INTO venue_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('tbd', 'TBD', 1, true, 'Venue is to be determined', 1, 1),
-  ('tentative', 'Tentative', 2, true, 'Venue is tentatively scheduled', 1, 1),
-  ('confirmed', 'Confirmed', 3, true, 'Venue is confirmed', 1, 1)
+  ('not_confirmed', 'Not confirmed', 1, true, 'Venue is not confirmed', 1, 1),
+  ('TBD', 'TBD', 2, true, 'Venue is to be determined', 1, 1),
+  ('TBC', 'TBC', 3, true, 'Venue is to be confirmed', 1, 1),
+  ('confirmed', 'Confirmed', 4, true, 'Venue is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
@@ -187,7 +187,7 @@ INSERT INTO translation_required_statuses (id, name, display_name, sort_order, i
 VALUES
   (1, 'pending', 'Pending review', 1, true, 1, 1),
   (2, 'required', 'Required', 2, true, 1, 1),
-  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+  (3, 'not_required', 'Not required', 3, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -201,7 +201,7 @@ VALUES
   (1, 'event', 'Event', 1, 'global', true, 'Event category', 1, 1),
   (2, 'release', 'Release', 2, 'global', true, 'Release category', 1, 1),
   (3, 'awareness', 'Awareness date', 3, 'global', true, 'Awareness category', 1, 1),
-  (4, 'conference', 'Conference', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
+  (4, 'conference', 'Conference / AGM / Forum', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
   (5, 'fyi', 'FYI', 5, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
   (6, 'social media', 'Social media', 6, 'global', true, 'Social media category', 1, 1),
   (7, 'speech', 'Speech', 7, 'global', true, 'Speech category', 1, 1),
@@ -690,16 +690,18 @@ SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ============================================================================
--- VENUE QUICK PICKS
--- Admin-configured quick-pick venues for the activity form (max 4 active)
+-- VENUE PRESETS
+-- Admin-defined named venues for the activity form.
+-- Pinned presets appear as quick-select badges beneath the Venue Name input.
 -- ============================================================================
 
-INSERT INTO venue_quick_picks (venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+INSERT INTO venue_presets (venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, 1, 1),
-  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, 1, 1)
-) AS v(venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
-WHERE NOT EXISTS (SELECT 1 FROM venue_quick_picks LIMIT 1);
+  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, true, 1, 1, 1),
+  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, true, 2, 1, 1),
+  ('Government House', '1401 Rockland Ave', 'Victoria', 'British Columbia', 'Canada', 3, true, true, 3, 1, 1)
+) AS v(venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
+WHERE NOT EXISTS (SELECT 1 FROM venue_presets LIMIT 1);
 
--- Venue quick picks sequence
-SELECT setval('venue_quick_picks_id_seq', COALESCE((SELECT MAX(id) FROM venue_quick_picks), 1), true);
+-- Venue presets sequence
+SELECT setval('venue_presets_id_seq', COALESCE((SELECT MAX(id) FROM venue_presets), 1), true);

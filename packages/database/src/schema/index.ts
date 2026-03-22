@@ -11,7 +11,7 @@ export * from './relations';
 export * from './formDrafts';
 export * from './teams';
 export * from './venue-address';
-export * from './venue-quick-picks';
+export * from './venue-presets';
 export * from './rbac';
 export * from './editLocks';
 export * from './sessions';

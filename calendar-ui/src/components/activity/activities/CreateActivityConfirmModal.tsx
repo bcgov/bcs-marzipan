@@ -44,6 +44,7 @@ const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
   'startTime',
   'endTime',
   'timeStatusId',
+  'venueStatusId',
 ];
 
 const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
@@ -58,6 +59,7 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'startTime',
   'endTime',
   'timeStatusId',
+  'venueStatusId',
   'significance',
   'schedulingNotes',
   'strategy',
@@ -134,6 +136,11 @@ function resolveDisplayValue(
   if (field === 'timeStatusId' && typeof value === 'number' && timeStatuses) {
     const status = timeStatuses.find((s) => s.id === value);
     return status?.label || status?.name || String(value);
+  }
+
+  if (field === 'venueStatusId' && typeof value === 'number') {
+    const status = lookups.venueStatuses.find((s) => s.id === value);
+    return status?.displayName ?? status?.name ?? String(value);
   }
 
   if (field === 'leadOrgId' && typeof value === 'number') {

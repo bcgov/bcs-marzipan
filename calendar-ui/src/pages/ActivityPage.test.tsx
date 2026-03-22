@@ -56,6 +56,7 @@ const mockLookupsReady: FormLookupData = {
   sharedWithTeams: [],
   dateStatuses: [],
   timeStatuses: [],
+  venueStatuses: [],
 };
 
 const mockAcquire = vi.fn().mockResolvedValue(true);

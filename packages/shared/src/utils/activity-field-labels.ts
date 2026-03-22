@@ -24,6 +24,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   significance: 'Significance',
   dateStatusId: 'Date status',
   timeStatusId: 'Time status',
+  venueStatusId: 'Venue status',
   activityStatusId: 'Activity status',
   leadTeamId: 'Lead team',
   leadMinistryId: 'Lead ministry',

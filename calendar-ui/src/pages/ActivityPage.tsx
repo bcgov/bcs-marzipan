@@ -603,6 +603,7 @@ export function ActivityPage({
         open={historyOpen}
         onOpenChange={(v) => setHistoryOpen(!!v)}
         dateStatuses={lookups.dateStatuses}
+        venueStatuses={lookups.venueStatuses}
       />
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <DialogContent>
@@ -632,6 +633,7 @@ export function ActivityPage({
         }}
         changes={confirmModalChanges}
         dateStatuses={lookups.dateStatuses}
+        venueStatuses={lookups.venueStatuses}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }

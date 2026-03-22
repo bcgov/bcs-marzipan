@@ -66,6 +66,7 @@ export const activityDbFieldsSchema = z.object({
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
   timeStatusId: z.number().int(),
+  venueStatusId: z.number().int().nullable(),
   schedulingNotes: z.string().nullable(),
   strategy: z.string().nullable(),
 
@@ -177,6 +178,7 @@ export const activityComputedFieldsSchema = z.object({
   // Computed status names (from lookup table joins)
   dateStatus: z.string(),
   timeStatus: z.string(),
+  venueStatus: z.string().nullable(),
   activityStatus: z.string(),
 
   // Computed lookup names

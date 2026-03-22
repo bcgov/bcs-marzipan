@@ -1,5 +1,5 @@
 {
-  "id": "73994025-9039-478c-b4f7-610c679fa190",
+  "id": "9a1d4d96-21f6-4833-931c-57d1779fa053",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -109,6 +109,12 @@
         "strategy": {
           "name": "strategy",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "venue_status_id": {
+          "name": "venue_status_id",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -275,6 +281,15 @@
           "tableFrom": "activities",
           "tableTo": "time_statuses",
           "columnsFrom": ["time_status_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activities_venue_status_id_venue_statuses_id_fk": {
+          "name": "activities_venue_status_id_venue_statuses_id_fk",
+          "tableFrom": "activities",
+          "tableTo": "venue_statuses",
+          "columnsFrom": ["venue_status_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -5206,8 +5221,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.venue_quick_picks": {
-      "name": "venue_quick_picks",
+    "public.venue_presets": {
+      "name": "venue_presets",
       "schema": "",
       "columns": {
         "id": {
@@ -5266,6 +5281,20 @@
           "notNull": true,
           "default": true
         },
+        "is_pinned": {
+          "name": "is_pinned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pinned_sort_order": {
+          "name": "pinned_sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "created_date_time": {
           "name": "created_date_time",
           "type": "timestamp with time zone",
@@ -5295,18 +5324,18 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "venue_quick_picks_created_by_users_id_fk": {
-          "name": "venue_quick_picks_created_by_users_id_fk",
-          "tableFrom": "venue_quick_picks",
+        "venue_presets_created_by_users_id_fk": {
+          "name": "venue_presets_created_by_users_id_fk",
+          "tableFrom": "venue_presets",
           "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "venue_quick_picks_last_updated_by_users_id_fk": {
-          "name": "venue_quick_picks_last_updated_by_users_id_fk",
-          "tableFrom": "venue_quick_picks",
+        "venue_presets_last_updated_by_users_id_fk": {
+          "name": "venue_presets_last_updated_by_users_id_fk",
+          "tableFrom": "venue_presets",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],

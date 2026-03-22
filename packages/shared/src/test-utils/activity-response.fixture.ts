@@ -57,6 +57,7 @@ export function createMockActivityResponse(
     startTime: '10:00',
     endTime: '12:00',
     timeStatusId: 1,
+    venueStatusId: 1,
     schedulingNotes: null,
     strategy: null,
 
@@ -103,6 +104,7 @@ export function createMockActivityResponse(
     eventPlannerLeadIds: [],
     dateStatus: 'Set',
     timeStatus: 'Set',
+    venueStatus: 'TBD',
     activityStatus: DEFAULT_ACTIVITY_STATUS,
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,

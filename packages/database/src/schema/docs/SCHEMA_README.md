@@ -330,13 +330,13 @@ Each log entry should include:
 - Consider backfilling default preferences for existing users
 ```
 
-#### 2026-02-12 - Add venue_quick_picks table
+#### 2026-02-12 - Add venue_presets table
 
 **Migration File(s):** `0005_20260212_venue_quick_picks.sql`
 
 **Changes:**
 
-- Created new `venue_quick_picks` table with columns: id, venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
+- Created `venue_presets` table (originally `venue_quick_picks`, renamed 2026-03-21) with columns: id, venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
 - Added foreign key constraints: created_by and last_updated_by reference users.id
 
 **Breaking Changes:**
@@ -345,15 +345,15 @@ Each log entry should include:
 
 **Notes:**
 
-- Used for admin-configured quick-pick venues on the activity form (max 4 active). No legacy data; populated via admin UI or seeds.
+- Admin-defined named venues for the activity form. No legacy data; populated via admin UI or seeds.
 
-#### 2026-03-20 - Add address_line2 to venue_quick_picks
+#### 2026-03-20 - Add address_line2 to venue_presets
 
 **Migration File(s):** `0003_venue_quick_picks_address_line2.sql`
 
 **Changes:**
 
-- Added nullable `address_line2` (`varchar(255)`) to `venue_quick_picks`, matching `venue_addresses` and `VenueQuickPickItem` / `venueAddressSchema`.
+- Added nullable `address_line2` (`varchar(255)`) to `venue_presets`, matching `venue_addresses` and `VenuePresetItem` / `venueAddressSchema`.
 
 **Breaking Changes:**
 
@@ -369,7 +369,26 @@ Each log entry should include:
 
 **Changes:**
 
-- Removed `venues` (unused seeded lookup; activity venue data lives in `venue_addresses`, form presets in `venue_quick_picks`).
+- Removed `venues` (unused seeded lookup; activity venue data lives in `venue_addresses`, form presets in `venue_presets`).
+
+#### 2026-03-21 - Rename venue_quick_picks to venue_presets, add pin columns
+
+**Changes:**
+
+- Renamed table from `venue_quick_picks` to `venue_presets`.
+- Added `is_pinned` (`boolean`, not null, default false) - controls whether preset appears as a quick-select badge.
+- Added `pinned_sort_order` (`integer`, not null, default 0) - badge display order among pinned presets.
+- Removed max-4-active enforcement; all active presets now appear in the combobox dropdown.
+- Added address deduplication (addressLine1 + addressLine2) on create/update.
+
+**Breaking Changes:**
+
+- API routes changed from `/lookups/venue-quick-picks` to `/lookups/venue-presets`.
+- Response shape includes new fields `isPinned` and `pinnedSortOrder`.
+
+**Notes:**
+
+- Table semantics broadened: presets serve both as combobox options (all active) and badge quick-picks (pinned only).
 
 **Breaking Changes:**
 

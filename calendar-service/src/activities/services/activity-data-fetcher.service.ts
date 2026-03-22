@@ -31,6 +31,7 @@ import {
   translationRequiredStatuses,
   users,
   venueAddresses,
+  venueStatuses,
 } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
 import type { EventPlannerDetail } from '@corpcal/shared/schemas';
@@ -359,6 +360,61 @@ export class ActivityDataFetcherService {
     for (const activity of activityResults) {
       if (activity.dateStatusId) {
         const statusName = statusMap.get(activity.dateStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
+   * Fetch venue statuses for multiple activities
+   */
+  async fetchVenueStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        venueStatusId: activities.venueStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const venueStatusIds = activityResults
+      .map((a) => a.venueStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (venueStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const venueStatusResults = await this.databaseService.db
+      .select({
+        id: venueStatuses.id,
+        name: venueStatuses.displayName,
+      })
+      .from(venueStatuses)
+      .where(
+        and(
+          inArray(venueStatuses.id, venueStatusIds),
+          eq(venueStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      venueStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.venueStatusId) {
+        const statusName = statusMap.get(activity.venueStatusId);
         if (statusName) {
           resultMap.set(activity.id, statusName);
         }

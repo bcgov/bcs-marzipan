@@ -77,7 +77,8 @@ export type {
   ReportResponse,
   DateStatusLookupItem,
   TimeStatusLookupItem,
+  VenueStatusLookupItem,
   PitchRequiredStatusLookupItem,
   TranslationRequiredStatusLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 } from '../schemas/lookup.schema';

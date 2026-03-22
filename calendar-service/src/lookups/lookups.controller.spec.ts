@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
-import type { LookupItem, VenueQuickPickItem } from '@corpcal/shared/api/types';
+import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
 
 import { LookupsController } from './lookups.controller';
 import { LookupsService } from './lookups.service';
@@ -25,7 +25,7 @@ describe('LookupsController', () => {
     { id: 2, label: 'Category 2', value: 2 },
   ];
 
-  const mockVenueQuickPick: VenueQuickPickItem = {
+  const mockVenuePreset: VenuePresetItem = {
     id: 1,
     venueName: 'BC Legislature',
     addressLine1: '501 Belleville St',
@@ -33,6 +33,8 @@ describe('LookupsController', () => {
     city: 'Victoria',
     provinceOrState: 'British Columbia',
     country: 'Canada',
+    isPinned: true,
+    pinnedSortOrder: 1,
   };
 
   const mockLookupsService = {
@@ -40,11 +42,11 @@ describe('LookupsController', () => {
     getOrganizations: vi.fn(),
     createCategory: vi.fn(),
     updateCategory: vi.fn(),
-    getVenueQuickPicks: vi.fn(),
+    getVenuePresets: vi.fn(),
     getVenueLastUsed: vi.fn(),
-    createVenueQuickPick: vi.fn(),
-    updateVenueQuickPick: vi.fn(),
-    deleteVenueQuickPick: vi.fn(),
+    createVenuePreset: vi.fn(),
+    updateVenuePreset: vi.fn(),
+    deleteVenuePreset: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -179,33 +181,29 @@ describe('LookupsController', () => {
     });
   });
 
-  describe('getVenueQuickPicks', () => {
-    it('should return venue quick-picks', async () => {
-      mockLookupsService.getVenueQuickPicks.mockResolvedValue([
-        mockVenueQuickPick,
-      ]);
+  describe('getVenuePresets', () => {
+    it('should return venue presets', async () => {
+      mockLookupsService.getVenuePresets.mockResolvedValue([mockVenuePreset]);
 
-      const result = await controller.getVenueQuickPicks();
+      const result = await controller.getVenuePresets();
 
       expect(result).toEqual({
         success: true,
-        data: [mockVenueQuickPick],
+        data: [mockVenuePreset],
       });
-      expect(mockLookupsService.getVenueQuickPicks).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.getVenuePresets).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('getVenueLastUsed', () => {
     it('should return last-used venues for current user', async () => {
-      mockLookupsService.getVenueLastUsed.mockResolvedValue([
-        mockVenueQuickPick,
-      ]);
+      mockLookupsService.getVenueLastUsed.mockResolvedValue([mockVenuePreset]);
 
       const result = await controller.getVenueLastUsed(mockUser);
 
       expect(result).toEqual({
         success: true,
-        data: [mockVenueQuickPick],
+        data: [mockVenuePreset],
       });
       expect(mockLookupsService.getVenueLastUsed).toHaveBeenCalledWith(
         mockUser.id
@@ -214,8 +212,8 @@ describe('LookupsController', () => {
     });
   });
 
-  describe('createVenueQuickPick', () => {
-    it('should create a venue quick-pick and pass user id to service', async () => {
+  describe('createVenuePreset', () => {
+    it('should create a venue preset and pass user id to service', async () => {
       const body = {
         venueName: 'Vancouver Convention Centre',
         addressLine1: '1055 Canada Pl',
@@ -223,52 +221,50 @@ describe('LookupsController', () => {
         provinceOrState: 'British Columbia',
         country: 'Canada',
       };
-      mockLookupsService.createVenueQuickPick.mockResolvedValue(
-        mockVenueQuickPick
-      );
+      mockLookupsService.createVenuePreset.mockResolvedValue(mockVenuePreset);
 
-      const result = await controller.createVenueQuickPick(body, mockUser);
+      const result = await controller.createVenuePreset(body, mockUser);
 
-      expect(result).toEqual({ success: true, data: mockVenueQuickPick });
-      expect(mockLookupsService.createVenueQuickPick).toHaveBeenCalledWith(
+      expect(result).toEqual({ success: true, data: mockVenuePreset });
+      expect(mockLookupsService.createVenuePreset).toHaveBeenCalledWith(
         body,
         mockUser.id
       );
-      expect(mockLookupsService.createVenueQuickPick).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.createVenuePreset).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('updateVenueQuickPick', () => {
-    it('should update a venue quick-pick and pass user id to service', async () => {
+  describe('updateVenuePreset', () => {
+    it('should update a venue preset and pass user id to service', async () => {
       const id = '1';
       const body = { venueName: 'Updated Venue Name' };
-      mockLookupsService.updateVenueQuickPick.mockResolvedValue({
-        ...mockVenueQuickPick,
+      mockLookupsService.updateVenuePreset.mockResolvedValue({
+        ...mockVenuePreset,
         venueName: body.venueName,
       });
 
-      const result = await controller.updateVenueQuickPick(id, body, mockUser);
+      const result = await controller.updateVenuePreset(id, body, mockUser);
 
       expect(result.success).toBe(true);
       expect(result.data.venueName).toBe(body.venueName);
-      expect(mockLookupsService.updateVenueQuickPick).toHaveBeenCalledWith(
+      expect(mockLookupsService.updateVenuePreset).toHaveBeenCalledWith(
         1,
         body,
         mockUser.id
       );
-      expect(mockLookupsService.updateVenueQuickPick).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.updateVenuePreset).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('deleteVenueQuickPick', () => {
-    it('should delete a venue quick-pick', async () => {
-      mockLookupsService.deleteVenueQuickPick.mockResolvedValue(undefined);
+  describe('deleteVenuePreset', () => {
+    it('should delete a venue preset', async () => {
+      mockLookupsService.deleteVenuePreset.mockResolvedValue(undefined);
 
-      const result = await controller.deleteVenueQuickPick('1');
+      const result = await controller.deleteVenuePreset('1');
 
       expect(result).toEqual({ success: true });
-      expect(mockLookupsService.deleteVenueQuickPick).toHaveBeenCalledWith(1);
-      expect(mockLookupsService.deleteVenueQuickPick).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.deleteVenuePreset).toHaveBeenCalledWith(1);
+      expect(mockLookupsService.deleteVenuePreset).toHaveBeenCalledTimes(1);
     });
   });
 });

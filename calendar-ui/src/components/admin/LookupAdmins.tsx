@@ -16,7 +16,7 @@ import {
   fetchMinistries,
   fetchTags,
   fetchThemes,
-  fetchVenueQuickPicks,
+  fetchVenuePresets,
   type LookupItem,
   type MinistryLookupItem,
   type ThemeLookupItem,
@@ -24,7 +24,7 @@ import {
 
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
-import { VenueQuickPickForm } from './VenueQuickPickForm';
+import { VenuePresetForm } from './VenuePresetForm';
 
 // Type definitions - these extend the base LookupItem from the API
 type Category = LookupItem & {
@@ -65,7 +65,7 @@ type ActivityStatus = LookupItem & {
   displayName?: string | null;
 };
 
-type VenueQuickPick = LookupItem & {
+type VenuePreset = LookupItem & {
   venueName?: string | null;
   addressLine1?: string | null;
   addressLine2?: string | null;
@@ -74,6 +74,8 @@ type VenueQuickPick = LookupItem & {
   country?: string | null;
   sortOrder?: number;
   isActive?: boolean;
+  isPinned?: boolean;
+  pinnedSortOrder?: number;
 };
 
 // Form field configurations
@@ -293,7 +295,7 @@ const themeFields: FormField[] = [
   },
 ];
 
-const venueQuickPickFields: FormField[] = [
+const venuePresetFields: FormField[] = [
   {
     name: 'venueName',
     label: 'Venue Name',
@@ -303,10 +305,22 @@ const venueQuickPickFields: FormField[] = [
   },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
   {
+    name: 'pinnedSortOrder',
+    label: 'Pinned Sort Order',
+    type: 'number',
+    placeholder: '0',
+  },
+  {
     name: 'isActive',
     label: 'Active',
     type: 'checkbox',
     placeholder: 'Item is active',
+  },
+  {
+    name: 'isPinned',
+    label: 'Pinned',
+    type: 'checkbox',
+    placeholder: 'Show as badge',
   },
 ];
 
@@ -479,7 +493,7 @@ export function ThemesAdmin() {
   );
 }
 
-const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
+const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
   {
     accessorKey: 'addressLine1',
     header: 'Street Address',
@@ -501,24 +515,33 @@ const venueQuickPicksAdditionalColumns: ColumnDef<VenueQuickPick>[] = [
       <span className="text-slate-600">{row.original.city || '—'}</span>
     ),
   },
+  {
+    accessorKey: 'isPinned',
+    header: 'Pinned',
+    cell: ({ row }) => (
+      <span className="text-slate-600">
+        {row.original.isPinned ? 'Yes' : '—'}
+      </span>
+    ),
+  },
 ];
 
-export function VenueQuickPicksAdmin() {
+export function VenuePresetsAdmin() {
   return (
-    <GenericLookupAdmin<VenueQuickPick>
-      title="Venue Quick Picks"
-      description="Manage venue quick picks for the activity form"
-      entityType="Venue Quick Pick"
-      apiEndpoint="/lookups/venue-quick-picks"
-      queryKey="venueQuickPicks"
-      queryFn={fetchVenueQuickPicks as () => Promise<VenueQuickPick[]>}
-      formFields={venueQuickPickFields}
-      additionalColumns={venueQuickPicksAdditionalColumns}
+    <GenericLookupAdmin<VenuePreset>
+      title="Venue Presets"
+      description="Manage venue presets for the activity form"
+      entityType="Venue Preset"
+      apiEndpoint="/lookups/venue-presets"
+      queryKey="venuePresets"
+      queryFn={fetchVenuePresets as () => Promise<VenuePreset[]>}
+      formFields={venuePresetFields}
+      additionalColumns={venuePresetAdditionalColumns}
       getItemName={(item) =>
         (item.venueName as string) || String(item.id ?? '')
       }
       renderModalContent={({ initialData, onChange, isSubmitting }) => (
-        <VenueQuickPickForm
+        <VenuePresetForm
           initialData={initialData}
           onChange={onChange}
           isSubmitting={isSubmitting}

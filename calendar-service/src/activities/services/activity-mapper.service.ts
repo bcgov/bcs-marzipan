@@ -36,6 +36,7 @@ export class ActivityMapperService {
       activityStatus?: string;
       dateStatus?: string;
       timeStatus?: string;
+      venueStatus?: string;
       newsReleaseOrigin?: string | null;
       newsReleaseDistribution?: string | null;
       premierRequested?: string | null;
@@ -98,6 +99,7 @@ export class ActivityMapperService {
       activityStatusId: activity.activityStatusId ?? 0,
       dateStatusId: activity.dateStatusId ?? 0,
       timeStatusId: activity.timeStatusId ?? 0,
+      venueStatusId: activity.venueStatusId ?? null,
       category: relatedData?.categories ?? [],
 
       // Basic info
@@ -121,6 +123,7 @@ export class ActivityMapperService {
       // Scheduling
       dateStatus: relatedData?.dateStatus ?? DEFAULT_STATUS,
       timeStatus: relatedData?.timeStatus ?? DEFAULT_STATUS,
+      venueStatus: relatedData?.venueStatus ?? null,
       isAllDay: activity.isAllDay ?? false,
       startDate: formatDate(activity.startDate),
       startTime: formatTime(activity.startTime),
