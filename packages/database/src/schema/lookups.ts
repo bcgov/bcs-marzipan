@@ -227,34 +227,8 @@ export const cities = pgTable('cities', {
   displayName: varchar('display_name', { length: 255 }).notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
-  province: varchar('province', { length: 100 }),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
-
-/**
- * Venue lookup table - Venues for activities
- * TODO: Consider address complete common component
- */
-export const venues = pgTable('venues', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  address: jsonb('address'), // {street, city, provinceOrState, country}
+  provinceOrState: varchar('province_or_state', { length: 255 }),
+  country: varchar('country', { length: 255 }),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -336,7 +336,7 @@ Each log entry should include:
 
 **Changes:**
 
-- Created new `venue_quick_picks` table with columns: id, venue_name, street, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
+- Created new `venue_quick_picks` table with columns: id, venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
 - Added foreign key constraints: created_by and last_updated_by reference users.id
 
 **Breaking Changes:**
@@ -346,6 +346,34 @@ Each log entry should include:
 **Notes:**
 
 - Used for admin-configured quick-pick venues on the activity form (max 4 active). No legacy data; populated via admin UI or seeds.
+
+#### 2026-03-20 - Add address_line2 to venue_quick_picks
+
+**Migration File(s):** `0003_venue_quick_picks_address_line2.sql`
+
+**Changes:**
+
+- Added nullable `address_line2` (`varchar(255)`) to `venue_quick_picks`, matching `venue_addresses` and `VenueQuickPickItem` / `venueAddressSchema`.
+
+**Breaking Changes:**
+
+- None (new nullable column; existing rows default to NULL).
+
+**Notes:**
+
+- Admin UI and API create/update accept optional `addressLine2`; list/detail responses include it for parity with last-used and activity venue payloads.
+
+#### 2026-03-20 - Drop unused `venues` lookup table
+
+**Migration File(s):** `0004_drop_venues.sql`
+
+**Changes:**
+
+- Removed `venues` (unused seeded lookup; activity venue data lives in `venue_addresses`, form presets in `venue_quick_picks`).
+
+**Breaking Changes:**
+
+- None for the app (table was not referenced by services or APIs).
 
 #### Benefits
 

@@ -12,13 +12,15 @@ import { users } from './user';
 
 /**
  * Venue Quick Picks table - Admin-configurable quick-pick venues for the activity form.
- * Stores 2-4 fixed venue options (e.g. BC Legislature, Vancouver Convention Centre)
- * that appear as tags under the Venue address input. No legacy mapping.
+ * Stores up to 4 active fixed venue options (e.g. BC Legislature, Vancouver Convention Centre)
+ * that appear as tags under the Venue address input. Address fields align with `venue_addresses`
+ * (including optional `address_line2`). No legacy mapping.
  */
 export const venueQuickPicks = pgTable('venue_quick_picks', {
   id: serial('id').primaryKey().notNull(),
   venueName: varchar('venue_name', { length: 255 }).notNull(),
-  street: varchar('street', { length: 255 }),
+  addressLine1: varchar('address_line1', { length: 255 }),
+  addressLine2: varchar('address_line2', { length: 255 }),
   city: varchar('city', { length: 255 }),
   provinceOrState: varchar('province_or_state', { length: 255 }),
   country: varchar('country', { length: 255 }),

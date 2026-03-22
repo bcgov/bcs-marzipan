@@ -1,5 +1,5 @@
 {
-  "id": "73994025-9039-478c-b4f7-610c679fa190",
+  "id": "24c92a77-fa55-41de-af91-35db653e2445",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1818,15 +1818,9 @@
           "notNull": true,
           "default": true
         },
-        "province_or_state": {
-          "name": "province_or_state",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "country": {
-          "name": "country",
-          "type": "varchar(255)",
+        "province": {
+          "name": "province",
+          "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false
         },

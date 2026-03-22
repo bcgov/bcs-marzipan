@@ -188,7 +188,7 @@ ON CONFLICT (id) DO UPDATE
 -- VENUE ADDRESSES
 -- ============================================================================
 
-INSERT INTO venue_addresses (activity_id, venue_name, street, city, province_or_state, country) VALUES
+INSERT INTO venue_addresses (activity_id, venue_name, address_line1, city, province_or_state, country) VALUES
   (1, 'Nanaimo Conference Centre', '2522 Main Street', 'Nanaimo', 'BC', 'Canada'),
   (3, 'Nanaimo Conference Centre', '1197 Main Street', 'Nanaimo', 'BC', 'Canada'),
   (4, 'Kamloops Conference Centre', '6610 Main Street', 'Kamloops', 'BC', 'Canada'),
@@ -261,7 +261,7 @@ INSERT INTO venue_addresses (activity_id, venue_name, street, city, province_or_
   (100, 'Victoria Conference Centre', '5714 Main Street', 'Victoria', 'BC', 'Canada')
 ON CONFLICT (activity_id) DO UPDATE
   SET venue_name = EXCLUDED.venue_name,
-      street = EXCLUDED.street,
+      address_line1 = EXCLUDED.address_line1,
       city = EXCLUDED.city,
       province_or_state = EXCLUDED.province_or_state,
       country = EXCLUDED.country;

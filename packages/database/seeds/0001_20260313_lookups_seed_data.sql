@@ -280,18 +280,32 @@ ON CONFLICT (id) DO NOTHING;
 -- Cities for activities
 -- ============================================================================
 
-INSERT INTO cities (id, name, display_name, sort_order, is_active, province, created_by, last_updated_by) VALUES
-  (1, 'Victoria', 'Victoria', 1, true, 'BC', 1, 1),
-  (2, 'Vancouver', 'Vancouver', 2, true, 'BC', 1, 1),
-  (3, 'Kelowna', 'Kelowna', 3, true, 'BC', 1, 1),
-  (4, 'Nanaimo', 'Nanaimo', 4, true, 'BC', 1, 1),
-  (5, 'Kamloops', 'Kamloops', 5, true, 'BC', 1, 1),
-  (6, 'Prince George', 'Prince George', 6, true, 'BC', 1, 1),
-  (7, 'Terrace', 'Terrace', 7, true, 'BC', 1, 1),
-  (8, 'Vernon', 'Vernon', 8, true, 'BC', 1, 1),
-  (9, 'Williams Lake', 'Williams Lake', 9, true, 'BC', 1, 1),
-  (10, 'Prince Rupert', 'Prince Rupert', 10, true, 'BC', 1, 1),
-  (11, 'Smithers', 'Smithers', 11, true, 'BC', 1, 1)
+INSERT INTO cities (id, name, display_name, sort_order, is_active, province_or_state, country, created_by, last_updated_by) VALUES
+  (1, 'Victoria', 'Victoria', 1, true, 'BC', 'Canada', 1, 1),
+  (2, 'Vancouver', 'Vancouver', 2, true, 'BC', 'Canada', 1, 1),
+  (3, 'Kelowna', 'Kelowna', 3, true, 'BC', 'Canada', 1, 1),
+  (4, 'Nanaimo', 'Nanaimo', 4, true, 'BC', 'Canada', 1, 1),
+  (5, 'Kamloops', 'Kamloops', 5, true, 'BC', 'Canada', 1, 1),
+  (6, 'Prince George', 'Prince George', 6, true, 'BC', 'Canada', 1, 1),
+  (7, 'Terrace', 'Terrace', 7, true, 'BC', 'Canada', 1, 1),
+  (8, 'Vernon', 'Vernon', 8, true, 'BC', 'Canada', 1, 1),
+  (9, 'Williams Lake', 'Williams Lake', 9, true, 'BC', 'Canada', 1, 1),
+  (10, 'Prince Rupert', 'Prince Rupert', 10, true, 'BC', 'Canada', 1, 1),
+  (11, 'Smithers', 'Smithers', 11, true, 'BC', 'Canada', 1, 1),
+  (12, 'Surrey', 'Surrey', 12, true, 'BC', 'Canada', 1, 1),
+  (13, 'Burnaby', 'Burnaby', 13, true, 'BC', 'Canada', 1, 1),
+  (14, 'Richmond', 'Richmond', 14, true, 'BC', 'Canada', 1, 1),
+  (15, 'Abbotsford', 'Abbotsford', 15, true, 'BC', 'Canada', 1, 1),
+  (16, 'Coquitlam', 'Coquitlam', 16, true, 'BC', 'Canada', 1, 1),
+  (17, 'Delta', 'Delta', 17, true, 'BC', 'Canada', 1, 1),
+  (18, 'Toronto', 'Toronto', 18, true, 'ON', 'Canada', 1, 1),
+  (19, 'Ottawa', 'Ottawa', 19, true, 'ON', 'Canada', 1, 1),
+  (20, 'Montreal', 'Montreal', 20, true, 'QC', 'Canada', 1, 1),
+  (21, 'Calgary', 'Calgary', 21, true, 'AB', 'Canada', 1, 1),
+  (22, 'Edmonton', 'Edmonton', 22, true, 'AB', 'Canada', 1, 1),
+  (23, 'Winnipeg', 'Winnipeg', 23, true, 'MB', 'Canada', 1, 1),
+  (24, 'Halifax', 'Halifax', 24, true, 'NS', 'Canada', 1, 1),
+  (25, 'Quebec City', 'Quebec City', 25, true, 'QC', 'Canada', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -497,20 +511,6 @@ INSERT INTO comms_contacts (id, name, display_name, sort_order, is_active, email
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- VENUES
--- Venues for activities
--- ============================================================================
-
-INSERT INTO venues (id, name, display_name, sort_order, is_active, address, created_by, last_updated_by) VALUES
-  (1, 'Victoria Conference Centre', 'Victoria Conference Centre', 1, true, NULL, 1, 1),
-  (2, 'Vancouver Convention Centre', 'Vancouver Convention Centre', 2, true, NULL, 1, 1),
-  (3, 'Parliament Buildings', 'Parliament Buildings', 3, true, NULL, 1, 1),
-  (4, 'Placeholder Venue 1', 'Placeholder Venue 1', 4, true, NULL, 1, 1),
-  (5, 'Placeholder Venue 2', 'Placeholder Venue 2', 5, true, NULL, 1, 1),
-  (6, 'Placeholder Venue 3', 'Placeholder Venue 3', 6, true, NULL, 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================================
 -- EVENT PLANNERS
 -- Event planners for activities
 -- ============================================================================
@@ -671,9 +671,6 @@ SELECT setval('tags_id_seq', COALESCE((SELECT MAX(id) FROM tags), 1), true);
 -- Comms contacts sequence
 SELECT setval('comms_contacts_id_seq', COALESCE((SELECT MAX(id) FROM comms_contacts), 1), true);
 
--- Venues sequence
-SELECT setval('venues_id_seq', COALESCE((SELECT MAX(id) FROM venues), 1), true);
-
 -- Event planners sequence
 SELECT setval('event_planners_id_seq', COALESCE((SELECT MAX(id) FROM event_planners), 1), true);
 
@@ -697,11 +694,11 @@ SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 -- Admin-configured quick-pick venues for the activity form (max 4 active)
 -- ============================================================================
 
-INSERT INTO venue_quick_picks (venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+INSERT INTO venue_quick_picks (venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, 1, 1),
   ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, 1, 1)
-) AS v(venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+) AS v(venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_quick_picks LIMIT 1);
 
 -- Venue quick picks sequence

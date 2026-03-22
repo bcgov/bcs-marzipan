@@ -49,7 +49,8 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 10. [RolePermissions](#rolepermissions)
 11. [Sessions](#sessions)
 12. [UserTeams](#userteams)
-13. [Venue Quick Picks](#venue-quick-picks)
+13. [Venue addresses](#venue-addresses)
+14. [Venue Quick Picks](#venue-quick-picks)
 
 ---
 
@@ -260,34 +261,62 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ---
 
+## Venue addresses
+
+**Legacy Table Name:** _N/A (venue data was split from legacy `Activity` fields `Venue`, `CityId`, `OtherCity`; see [Activity](#activity) Field Mappings)_  
+**New Table Name:** `venue_addresses`
+
+**Description:** One-to-one with `activities`. Stores venue display name and structured address lines for event activities. API and app use camelCase (`venueName`, `addressLine1`, `addressLine2`, …); database columns use snake_case (`venue_name`, `address_line1`, `address_line2`, …).
+
+### Field Mappings
+
+| DB column (`snake_case`) | Type           | Nullable          | Description                                                                                        |
+| ------------------------ | -------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                     | `serial`       | PK                | Surrogate key                                                                                      |
+| `activity_id`            | `integer`      | `notNull`, unique | FK to `activities.id` (one row per activity)                                                       |
+| `venue_name`             | `varchar(255)` | yes               | Venue / building name shown to users                                                               |
+| `address_line1`          | `varchar(255)` | yes               | Primary address line (street; aligns with API `addressLine1`; renamed from legacy column `street`) |
+| `address_line2`          | `varchar(255)` | yes               | Secondary line (suite, floor, room; aligns with API `addressLine2`)                                |
+| `city`                   | `varchar(255)` | yes               | City                                                                                               |
+| `province_or_state`      | `varchar(255)` | yes               | Province or state                                                                                  |
+| `country`                | `varchar(255)` | yes               | Country                                                                                            |
+
+### Notes
+
+- **Activity form**: The venue name control uses the `venueName` label (DB `venue_name`). The nested object for the full `venue_addresses` row is `venueAddress` in API payloads; confirm/history labels that whole object as "Venue address". Users can pick quick picks, enter a custom venue name, or choose "Venue TBC"; address lines are edited separately.
+- **Migrations**: `address_line2` was added in migration `0001_venue_address_line2`; `street` was renamed to `address_line1` in `0002_rename_street_to_address_line1` for naming parity with `address_line2`.
+
+---
+
 ## Venue Quick Picks
 
 **Legacy Table Name:** _N/A (New table, no legacy mapping)_  
 **New Table Name:** `venue_quick_picks`
 
-**Description:** Admin-configurable quick-pick venues for the activity form. Stores 2-4 fixed venue options (e.g. BC Legislature, Vancouver Convention Centre) that appear as tags under the Venue address input. Managed via the admin UI; not migrated from legacy.
+**Description:** Admin-configurable quick-pick venues for the activity form. Stores 2-4 fixed venue options (e.g. BC Legislature, Vancouver Convention Centre) that appear as tags under the venue name control. Managed via the admin UI; not migrated from legacy.
 
 ### Field Mappings
 
-| New Field Name        | New Type                   | New Constraints            | Description                                                    |
-| --------------------- | -------------------------- | -------------------------- | -------------------------------------------------------------- |
-| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                    |
-| `venueName`           | `varchar(255)`             | `notNull`                  | Display name for the venue (e.g. "BC Legislature")             |
-| `street`              | `varchar(255)`             | nullable                   | Street address                                                 |
-| `city`                | `varchar(255)`             | nullable                   | City                                                           |
-| `provinceOrState`     | `varchar(255)`             | nullable                   | Province or state                                              |
-| `country`             | `varchar(255)`             | nullable                   | Country                                                        |
-| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Display order (lower first)                                    |
-| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the quick-pick is shown (max 4 active enforced in app) |
-| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was created                                    |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to users - user who created the record                      |
-| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was last updated                               |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to users - user who last updated the record                 |
+| New Field Name        | New Type                   | New Constraints            | Description                                                       |
+| --------------------- | -------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                       |
+| `venueName`           | `varchar(255)`             | `notNull`                  | Display name for the venue (e.g. "BC Legislature")                |
+| `addressLine1`        | `varchar(255)`             | nullable                   | Primary address line (DB: `address_line1`; renamed from `street`) |
+| `addressLine2`        | `varchar(255)`             | nullable                   | Secondary line (suite, floor, room; DB: `address_line2`)          |
+| `city`                | `varchar(255)`             | nullable                   | City                                                              |
+| `provinceOrState`     | `varchar(255)`             | nullable                   | Province or state                                                 |
+| `country`             | `varchar(255)`             | nullable                   | Country                                                           |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Display order (lower first)                                       |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the quick-pick is shown (max 4 active enforced in app)    |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was created                                       |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to users - user who created the record                         |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | When the record was last updated                                  |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to users - user who last updated the record                    |
 
 ### Notes
 
 - **No legacy mapping**: This table is new; data is entered via the admin UI.
-- **Purpose**: Enables "quick pick" venue tags on the Create/Edit Activity form so users can one-click fill the venue address.
+- **Purpose**: Enables "quick pick" venue tags on the Create/Edit Activity form so users can one-click fill the venue address (including optional line 2, same semantics as `venue_addresses`).
 
 ---
 
