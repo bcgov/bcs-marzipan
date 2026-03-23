@@ -27,6 +27,12 @@ export interface FreeformComboboxOption {
   label: string;
 }
 
+/** Grouped options with visual separators between non-empty sections (dropdown only). */
+export interface FreeformComboboxSection {
+  id: string;
+  options: FreeformComboboxOption[];
+}
+
 /** Represents either a selected option or a custom freeform value */
 export type FreeformComboboxValue =
   | { type: 'option'; value: string }
@@ -44,10 +50,17 @@ export type FreeformComboboxValueWithLead = FreeformComboboxItemWithLead | null;
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
   | { kind: 'freeform'; value: string; label: string }
-  | { kind: 'clear' };
+  | { kind: 'clear' }
+  | { kind: 'separator' };
 
 export interface FreeformComboboxProps {
-  options: FreeformComboboxOption[];
+  /** Flat options (default). Ignored for listing when `sections` is set. */
+  options?: FreeformComboboxOption[];
+  /**
+   * When set, options are shown in order with a divider between consecutive
+   * sections that each have at least one visible (filtered) row.
+   */
+  sections?: FreeformComboboxSection[];
   /** The current selection - single value or array when multiple */
   value: FreeformComboboxValueWithLead | FreeformComboboxItemWithLead[];
   /** Called when selection changes */
@@ -81,8 +94,23 @@ export interface FreeformComboboxProps {
   onSetLead?: (index: number) => void;
 }
 
+function nextSelectableIndex(
+  current: number,
+  direction: 1 | -1,
+  entries: ListEntry[]
+): number {
+  if (entries.length === 0) return 0;
+  let idx = current;
+  for (let step = 0; step < entries.length; step++) {
+    idx = (idx + direction + entries.length) % entries.length;
+    if (entries[idx].kind !== 'separator') return idx;
+  }
+  return current;
+}
+
 export function FreeformCombobox({
-  options,
+  options: optionsProp,
+  sections,
   value,
   onChange,
   placeholder = 'Select an option...',
@@ -97,6 +125,15 @@ export function FreeformCombobox({
   useChips = true,
   onSetLead,
 }: FreeformComboboxProps) {
+  const options = optionsProp ?? [];
+  const flatOptions = useMemo(
+    () =>
+      sections && sections.length > 0
+        ? sections.flatMap((s) => s.options)
+        : options,
+    [sections, options]
+  );
+
   const isLocked = disabled || readOnly;
   const isMuted = disabled;
   const [open, setOpen] = useState(false);
@@ -118,33 +155,61 @@ export function FreeformCombobox({
     (v: FreeformComboboxValue): string => {
       if (!v) return '';
       if (v.type === 'option') {
-        const opt = options.find((o) => o.value === v.value);
+        const opt = flatOptions.find((o) => o.value === v.value);
         return opt?.label ?? v.value;
       }
       return v.value;
     },
-    [options]
+    [flatOptions]
   );
 
   const filteredOptions = useMemo(
     () =>
-      options.filter((o) =>
+      flatOptions.filter((o) =>
         o.label.toLowerCase().includes(inputValue.trim().toLowerCase())
       ),
-    [options, inputValue]
+    [flatOptions, inputValue]
   );
 
-  const hasExactMatch = options.some(
+  const filteredSections = useMemo(() => {
+    if (!sections?.length) return null;
+    const q = inputValue.trim().toLowerCase();
+    return sections.map((s) => ({
+      id: s.id,
+      options: s.options.filter((o) => o.label.toLowerCase().includes(q)),
+    }));
+  }, [sections, inputValue]);
+
+  const hasExactMatch = flatOptions.some(
     (o) => o.label.toLowerCase() === inputValue.trim().toLowerCase()
   );
   const showFreeform = inputValue.trim().length > 0 && !hasExactMatch;
 
   const listEntries: ListEntry[] = useMemo(() => {
-    const entries: ListEntry[] = filteredOptions.map((o) => ({
-      kind: 'option' as const,
-      value: o.value,
-      label: o.label,
-    }));
+    const entries: ListEntry[] = [];
+    if (filteredSections) {
+      for (const sec of filteredSections) {
+        if (sec.options.length === 0) continue;
+        if (entries.length > 0) {
+          entries.push({ kind: 'separator' });
+        }
+        for (const o of sec.options) {
+          entries.push({
+            kind: 'option',
+            value: o.value,
+            label: o.label,
+          });
+        }
+      }
+    } else {
+      entries.push(
+        ...filteredOptions.map((o) => ({
+          kind: 'option' as const,
+          value: o.value,
+          label: o.label,
+        }))
+      );
+    }
     if (showFreeform) {
       entries.push({
         kind: 'freeform',
@@ -156,10 +221,18 @@ export function FreeformCombobox({
       entries.push({ kind: 'clear' });
     }
     return entries;
-  }, [filteredOptions, showFreeform, inputValue, freeformLabel, hasSelection]);
+  }, [
+    filteredSections,
+    filteredOptions,
+    showFreeform,
+    inputValue,
+    freeformLabel,
+    hasSelection,
+  ]);
 
   const isSelected = useCallback(
     (entry: ListEntry): boolean => {
+      if (entry.kind === 'separator') return false;
       if (entry.kind === 'clear') return false;
       if (entry.kind === 'option') {
         return selectedList.some(
@@ -187,10 +260,14 @@ export function FreeformCombobox({
   }, [open, isLocked]);
 
   useEffect(() => {
-    setHighlightedIndex((i) =>
-      listEntries.length === 0 ? 0 : Math.min(i, listEntries.length - 1)
-    );
-  }, [listEntries.length]);
+    setHighlightedIndex((i) => {
+      if (listEntries.length === 0) return 0;
+      const clamped = Math.min(i, listEntries.length - 1);
+      if (listEntries[clamped]?.kind !== 'separator') return clamped;
+      const first = listEntries.findIndex((e) => e.kind !== 'separator');
+      return first >= 0 ? first : 0;
+    });
+  }, [listEntries]);
 
   const scrollHighlightIntoView = useCallback(() => {
     const list = listRef.current;
@@ -201,6 +278,7 @@ export function FreeformCombobox({
   const selectEntry = useCallback(
     (entry: ListEntry) => {
       if (isLocked) return;
+      if (entry.kind === 'separator') return;
       if (entry.kind === 'clear') {
         onChange(null);
         setInputValue('');
@@ -265,7 +343,7 @@ export function FreeformCombobox({
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setHighlightedIndex((i) =>
-          listEntries.length === 0 ? 0 : (i + 1) % listEntries.length
+          listEntries.length === 0 ? 0 : nextSelectableIndex(i, 1, listEntries)
         );
         setTimeout(scrollHighlightIntoView, 0);
         return;
@@ -273,9 +351,7 @@ export function FreeformCombobox({
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         setHighlightedIndex((i) =>
-          listEntries.length === 0
-            ? 0
-            : (i - 1 + listEntries.length) % listEntries.length
+          listEntries.length === 0 ? 0 : nextSelectableIndex(i, -1, listEntries)
         );
         setTimeout(scrollHighlightIntoView, 0);
         return;
@@ -511,6 +587,18 @@ export function FreeformCombobox({
                   const highlighted = index === highlightedIndex;
                   const selected = isSelected(entry);
                   const isClear = entry.kind === 'clear';
+                  if (entry.kind === 'separator') {
+                    return (
+                      <li
+                        key={`sep-${index}`}
+                        role="separator"
+                        aria-hidden
+                        className="pointer-events-none my-1 px-2"
+                      >
+                        <div className="bg-border h-px w-full" />
+                      </li>
+                    );
+                  }
                   return (
                     <li
                       key={

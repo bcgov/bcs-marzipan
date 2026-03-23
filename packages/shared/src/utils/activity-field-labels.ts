@@ -62,7 +62,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   reportSettings: 'Report settings',
   representatives: 'Representatives',
   // Venue row nested fields (DB `venue_name`, etc.)
-  venueName: 'Venue name',
+  venueName: 'Venue',
   addressLine1: 'Address',
   addressLine2: 'Address details',
   city: 'City',

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useMemo, type FC } from 'react';
 
 import type {
@@ -44,6 +44,7 @@ import {
   FreeformCombobox,
   type FreeformComboboxItemWithLead,
   type FreeformComboboxOption,
+  type FreeformComboboxSection,
   type FreeformComboboxValue,
   type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
@@ -59,11 +60,16 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 const PINNED_BADGE_MAX_TOTAL = 4;
 
-const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
+const VENUE_OPTION_STATUS_PREFIX = 'vs:' as const;
+const VENUE_OPTION_PRESET_PREFIX = 'vp:' as const;
 
-/** Venue name row: combobox + status on one row; venue-status error message spans full width below (see sm:contents on FormItem). */
-const VENUE_NAME_AND_STATUS_INPUTS_ROW_CLASS =
-  'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4';
+function venueStatusOptionValue(id: number): string {
+  return `${VENUE_OPTION_STATUS_PREFIX}${id}`;
+}
+
+function venuePresetOptionValue(id: number): string {
+  return `${VENUE_OPTION_PRESET_PREFIX}${id}`;
+}
 
 type VenueFormValue = {
   venueName: string | null;
@@ -117,14 +123,18 @@ function addressMatchesQuickPick(
 
 function venueComboboxValueFromForm(
   currentVenue: VenueFormValue,
-  quickPickTags: VenuePresetItem[]
+  quickPickTags: VenuePresetItem[],
+  venueStatusId: number | null | undefined
 ): FreeformComboboxValueWithLead {
   const matches = quickPickTags.filter((item) =>
     addressMatchesQuickPick(currentVenue, item)
   );
   if (matches.length > 0) {
     const pick = matches[0];
-    return { type: 'option', value: String(pick.id) };
+    return { type: 'option', value: venuePresetOptionValue(pick.id) };
+  }
+  if (venueStatusId != null && !Number.isNaN(Number(venueStatusId))) {
+    return { type: 'option', value: venueStatusOptionValue(venueStatusId) };
   }
   if (currentVenue.venueName) {
     return { type: 'freeform', value: currentVenue.venueName };
@@ -177,6 +187,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 }) => {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
+  const venueStatusIdWatched = useWatch({
+    control: form.control,
+    name: 'venueStatusId',
+  });
   const representativesAnchorRef = useComboboxAnchor();
 
   const { data: allPresets = [] } = useQuery({
@@ -217,17 +231,27 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
   const quickPickTags = [...pinnedPresets, ...lastUsedDisplay];
 
-  const venueNameComboboxOptions: FreeformComboboxOption[] = useMemo(
-    () =>
-      allPresets
-        .slice()
-        .sort((a, b) => (a.venueName ?? '').localeCompare(b.venueName ?? ''))
-        .map((item) => ({
-          value: String(item.id),
-          label: venueTagLabel(item),
-        })),
-    [allPresets]
-  );
+  const venueNameComboboxSections: FreeformComboboxSection[] = useMemo(() => {
+    const statusOptions: FreeformComboboxOption[] = [...venueStatuses]
+      .sort((a, b) =>
+        (a.displayName ?? a.name).localeCompare(b.displayName ?? b.name)
+      )
+      .map((s) => ({
+        value: venueStatusOptionValue(s.id),
+        label: s.displayName ?? s.name,
+      }));
+    const presetOptions: FreeformComboboxOption[] = allPresets
+      .slice()
+      .sort((a, b) => (a.venueName ?? '').localeCompare(b.venueName ?? ''))
+      .map((item) => ({
+        value: venuePresetOptionValue(item.id),
+        label: venueTagLabel(item),
+      }));
+    return [
+      { id: 'venue-status', options: statusOptions },
+      { id: 'venue-presets', options: presetOptions },
+    ];
+  }, [venueStatuses, allPresets]);
 
   // Convert representative options to combobox format
   const representativeComboboxOptions = representativeOptions.map((rep) => ({
@@ -359,6 +383,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           };
 
           const handleQuickPickSelect = (item: VenuePresetItem) => {
+            form.setValue('venueStatusId', null);
             field.onChange(venueToFormValue(item));
           };
 
@@ -399,14 +424,33 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           ) => {
             if (Array.isArray(v)) return;
             if (v == null) {
+              form.setValue('venueStatusId', null);
               field.onChange({ ...currentVenue, venueName: null });
               return;
             }
             if (v.type === 'option') {
-              const item = allPresets.find((t) => String(t.id) === v.value);
-              if (item) field.onChange(venueToFormValue(item));
+              if (v.value.startsWith(VENUE_OPTION_STATUS_PREFIX)) {
+                const id = Number(
+                  v.value.slice(VENUE_OPTION_STATUS_PREFIX.length)
+                );
+                if (!Number.isNaN(id)) {
+                  form.setValue('venueStatusId', id);
+                  field.onChange({ ...EMPTY_VENUE });
+                }
+                return;
+              }
+              if (v.value.startsWith(VENUE_OPTION_PRESET_PREFIX)) {
+                const idStr = v.value.slice(VENUE_OPTION_PRESET_PREFIX.length);
+                const item = allPresets.find((t) => String(t.id) === idStr);
+                if (item) {
+                  form.setValue('venueStatusId', null);
+                  field.onChange(venueToFormValue(item));
+                }
+                return;
+              }
               return;
             }
+            form.setValue('venueStatusId', null);
             field.onChange({
               ...currentVenue,
               venueName: v.value ? v.value : null,
@@ -417,75 +461,28 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <>
               <FormItem className="mb-8">
                 <FormLabel>{getActivityFieldLabel('venueName')}</FormLabel>
-                <div className={VENUE_NAME_AND_STATUS_INPUTS_ROW_CLASS}>
-                  <div className="min-w-0 sm:col-start-1 sm:row-start-1">
-                    <FormControl data-field={field.name}>
-                      <FreeformCombobox
-                        readOnly={readOnly}
-                        multiple={false}
-                        useChips={false}
-                        options={venueNameComboboxOptions}
-                        value={venueComboboxValueFromForm(
-                          currentVenue,
-                          quickPickTags
-                        )}
-                        onChange={handleVenueNameComboboxChange}
-                        placeholder="e.g. BC Legislature"
-                        searchPlaceholder="Search venues..."
-                        emptyMessage="No venues found."
-                      />
-                    </FormControl>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="venueStatusId"
-                    render={({ field: statusField }) => (
-                      <FormItem className="flex w-full flex-col gap-2 space-y-0 sm:contents sm:gap-0">
-                        <div className="w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:w-auto">
-                          <FormSelect
-                            readOnly={readOnly}
-                            value={
-                              statusField.value != null
-                                ? String(statusField.value)
-                                : ''
-                            }
-                            onValueChange={(value) => {
-                              if (value === '') {
-                                statusField.onChange(null);
-                                return;
-                              }
-                              const n = Number(value);
-                              statusField.onChange(Number.isNaN(n) ? null : n);
-                            }}
-                          >
-                            <FormControl data-field={statusField.name}>
-                              <FormSelectTrigger
-                                readOnly={readOnly}
-                                className={STATUS_SELECT_MIN_WIDTH}
-                                aria-label={getActivityFieldLabel(
-                                  statusField.name
-                                )}
-                              >
-                                <SelectValue placeholder="Venue status" />
-                              </FormSelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {venueStatuses.map((status) => (
-                                <SelectItem
-                                  key={status.id}
-                                  value={String(status.id)}
-                                >
-                                  {status.displayName ?? status.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </FormSelect>
-                        </div>
-                        <FormMessage className="sm:col-span-2 sm:col-start-1 sm:row-start-2" />
-                      </FormItem>
+                <FormControl data-field={field.name}>
+                  <FreeformCombobox
+                    readOnly={readOnly}
+                    multiple={false}
+                    useChips={false}
+                    sections={venueNameComboboxSections}
+                    value={venueComboboxValueFromForm(
+                      currentVenue,
+                      quickPickTags,
+                      venueStatusIdWatched
                     )}
+                    onChange={handleVenueNameComboboxChange}
+                    placeholder="Venue TBD, TBC, or a venue name…"
+                    searchPlaceholder="Search venue status or venues…"
+                    emptyMessage="No venues found."
                   />
-                </div>
+                </FormControl>
+                <FormField
+                  control={form.control}
+                  name="venueStatusId"
+                  render={() => <FormMessage className="mt-1" />}
+                />
                 {quickPickTags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {quickPickTags.map((item) => {
