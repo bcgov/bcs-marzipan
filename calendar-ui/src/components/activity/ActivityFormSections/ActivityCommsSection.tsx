@@ -224,8 +224,14 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 placeholder="Enter strategy"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />

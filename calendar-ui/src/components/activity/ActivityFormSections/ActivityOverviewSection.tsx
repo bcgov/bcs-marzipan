@@ -393,8 +393,11 @@ export const ActivityOverviewSection: React.FC<
                 placeholder="Enter activity summary"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value)}
               />
             </FormControl>
             <FormMessage />
@@ -471,8 +474,14 @@ export const ActivityOverviewSection: React.FC<
                 placeholder="Enter significance"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -571,8 +580,14 @@ export const ActivityOverviewSection: React.FC<
                 placeholder="Enter notes"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />

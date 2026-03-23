@@ -126,11 +126,17 @@ export const ActivityReportsSection: React.FC = () => {
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
-                {...field}
-                value={field.value || ''}
                 placeholder="Enter executive summary"
                 readOnly={readOnly}
                 rows={4}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />

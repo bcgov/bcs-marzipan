@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { useFormContext, useWatch } from 'react-hook-form';
+import {
+  useFormContext,
+  useFormState,
+  useWatch,
+  type UseFormReturn,
+} from 'react-hook-form';
 import { useMemo, type FC } from 'react';
 
 import type {
@@ -38,7 +43,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormDisplayOptions,
 } from '@/components/ui/form';
+import { FormFieldChangedIndicator } from '@/components/ui/form-field-changed-indicator';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
@@ -52,6 +59,7 @@ import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -88,6 +96,70 @@ const EMPTY_VENUE: VenueFormValue = {
   provinceOrState: null,
   country: null,
 };
+
+const VENUE_ADDRESS_KEYS = [
+  'venueName',
+  'addressLine1',
+  'addressLine2',
+  'city',
+  'provinceOrState',
+  'country',
+] as const;
+
+/** Maps undefined / '' / whitespace-only to `null` so RHF dirty matches other venue fields. */
+function normVenueScalar(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
+  if (typeof v === 'string') return v;
+  return null;
+}
+
+function getVenueCurrent(
+  form: UseFormReturn<ActivityFormData>
+): VenueFormValue {
+  const raw = form.getValues('venueAddress') ?? {};
+  const merged = { ...EMPTY_VENUE, ...raw };
+  return {
+    venueName: normVenueScalar(merged.venueName),
+    addressLine1: normVenueScalar(merged.addressLine1),
+    addressLine2: normVenueScalar(merged.addressLine2),
+    city: normVenueScalar(merged.city),
+    provinceOrState: normVenueScalar(merged.provinceOrState),
+    country: normVenueScalar(merged.country),
+  };
+}
+
+/**
+ * Writes only `venueAddress.*` leaves that actually change (normalized). Avoids marking
+ * untouched address rows dirty when e.g. only venue status / venueName changes.
+ * `shouldDirty: true` lets RHF recompute vs `reset()` defaults.
+ */
+function applyVenueAddress(
+  form: UseFormReturn<ActivityFormData>,
+  next: VenueFormValue
+) {
+  const prev = getVenueCurrent(form);
+  for (const key of VENUE_ADDRESS_KEYS) {
+    const nk = normVenueScalar(next[key]);
+    if (prev[key] === nk) continue;
+    form.setValue(`venueAddress.${key}`, nk, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  }
+}
+
+const venueStatusClearOpts = {
+  shouldDirty: true,
+  shouldTouch: true,
+} as const;
+
+function clearVenueStatusIdIfSet(form: UseFormReturn<ActivityFormData>) {
+  if (form.getValues('venueStatusId') !== undefined) {
+    form.setValue('venueStatusId', undefined, venueStatusClearOpts);
+  }
+}
 
 function venueToFormValue(item: VenuePresetItem): VenueFormValue {
   return {
@@ -186,6 +258,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   eventPlannerOptions,
 }) => {
   const { readOnly } = useActivityEdit();
+  const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
   const venueStatusIdWatched = useWatch({
     control: form.control,
@@ -230,6 +303,112 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   const lastUsedDisplay =
     lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
   const quickPickTags = [...pinnedPresets, ...lastUsedDisplay];
+
+  const venueAddressWatched = useWatch({
+    control: form.control,
+    name: 'venueAddress',
+  });
+
+  const currentVenue = useMemo(
+    () => ({ ...EMPTY_VENUE, ...(venueAddressWatched ?? {}) }),
+    [venueAddressWatched]
+  );
+
+  const { dirtyFields } = useFormState({
+    control: form.control,
+  });
+
+  /** Heading badge: venue *name* or *status* only — not street/city/country (intentional). */
+  const venueLocationHeadingDirty = useMemo(() => {
+    const va = dirtyFields?.venueAddress as { venueName?: boolean } | undefined;
+    return Boolean(dirtyFields?.venueStatusId) || Boolean(va?.venueName);
+  }, [dirtyFields]);
+
+  const handleVenueAddressAutofill = (addressData: AddressData) => {
+    const current = getVenueCurrent(form);
+    applyVenueAddress(form, {
+      ...current,
+      addressLine1: addressData.addressLine1,
+      addressLine2: null,
+      city: addressData.city,
+      provinceOrState: addressData.province,
+      country: addressData.country,
+    });
+  };
+
+  const handleQuickPickSelect = (item: VenuePresetItem) => {
+    clearVenueStatusIdIfSet(form);
+    applyVenueAddress(form, venueToFormValue(item));
+  };
+
+  const handleCityComboboxChange = (
+    v: FreeformComboboxValueWithLead | FreeformComboboxItemWithLead[] | null
+  ) => {
+    if (Array.isArray(v)) return;
+    const liveVenue = getVenueCurrent(form);
+    if (v == null) {
+      applyVenueAddress(form, { ...liveVenue, city: null });
+      return;
+    }
+    if (v.type === 'option') {
+      const item = citiesList.find((c) => String(c.id) === v.value);
+      if (item) {
+        applyVenueAddress(form, {
+          ...liveVenue,
+          city: item.displayName,
+          provinceOrState: item.provinceOrState ?? null,
+          country: item.country ?? null,
+        });
+      }
+      return;
+    }
+    applyVenueAddress(form, {
+      ...liveVenue,
+      city: v.value ? v.value : null,
+    });
+  };
+
+  const handleVenueNameComboboxChange = (
+    v: FreeformComboboxValueWithLead | FreeformComboboxItemWithLead[] | null
+  ) => {
+    if (Array.isArray(v)) return;
+    if (v == null) {
+      const live = getVenueCurrent(form);
+      applyVenueAddress(form, { ...live, venueName: null });
+      clearVenueStatusIdIfSet(form);
+      return;
+    }
+    if (v.type === 'option') {
+      if (v.value.startsWith(VENUE_OPTION_STATUS_PREFIX)) {
+        const id = Number(v.value.slice(VENUE_OPTION_STATUS_PREFIX.length));
+        if (!Number.isNaN(id)) {
+          form.setValue('venueStatusId', id, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          });
+          applyVenueAddress(form, EMPTY_VENUE);
+        }
+        return;
+      }
+      if (v.value.startsWith(VENUE_OPTION_PRESET_PREFIX)) {
+        const idStr = v.value.slice(VENUE_OPTION_PRESET_PREFIX.length);
+        const item = allPresets.find((t) => String(t.id) === idStr);
+        if (item) {
+          clearVenueStatusIdIfSet(form);
+          applyVenueAddress(form, venueToFormValue(item));
+        }
+        return;
+      }
+      return;
+    }
+    clearVenueStatusIdIfSet(form);
+    const live = getVenueCurrent(form);
+    applyVenueAddress(form, {
+      ...live,
+      venueName: normVenueScalar(v.value),
+    });
+  };
 
   const venueNameComboboxSections: FreeformComboboxSection[] = useMemo(() => {
     const statusOptions: FreeformComboboxOption[] = [...venueStatuses]
@@ -363,246 +542,191 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 
       <FormField
         control={form.control}
-        name="venueAddress"
-        render={({ field }) => {
-          const currentVenue: VenueFormValue = {
-            ...EMPTY_VENUE,
-            ...(field.value ?? {}),
-          };
-
-          const handleAddressSelect = (addressData: AddressData) => {
-            const updated = {
-              ...currentVenue,
-              addressLine1: addressData.addressLine1,
-              addressLine2: null,
-              city: addressData.city,
-              provinceOrState: addressData.province,
-              country: addressData.country,
-            };
-            field.onChange(updated);
-          };
-
-          const handleQuickPickSelect = (item: VenuePresetItem) => {
-            form.setValue('venueStatusId', null);
-            field.onChange(venueToFormValue(item));
-          };
-
-          const handleCityComboboxChange = (
-            v:
-              | FreeformComboboxValueWithLead
-              | FreeformComboboxItemWithLead[]
-              | null
-          ) => {
-            if (Array.isArray(v)) return;
-            if (v == null) {
-              field.onChange({ ...currentVenue, city: null });
-              return;
-            }
-            if (v.type === 'option') {
-              const item = citiesList.find((c) => String(c.id) === v.value);
-              if (item) {
-                field.onChange({
-                  ...currentVenue,
-                  city: item.displayName,
-                  provinceOrState: item.provinceOrState ?? null,
-                  country: item.country ?? null,
-                });
-              }
-              return;
-            }
-            field.onChange({
-              ...currentVenue,
-              city: v.value ? v.value : null,
-            });
-          };
-
-          const handleVenueNameComboboxChange = (
-            v:
-              | FreeformComboboxValueWithLead
-              | FreeformComboboxItemWithLead[]
-              | null
-          ) => {
-            if (Array.isArray(v)) return;
-            if (v == null) {
-              form.setValue('venueStatusId', null);
-              field.onChange({ ...currentVenue, venueName: null });
-              return;
-            }
-            if (v.type === 'option') {
-              if (v.value.startsWith(VENUE_OPTION_STATUS_PREFIX)) {
-                const id = Number(
-                  v.value.slice(VENUE_OPTION_STATUS_PREFIX.length)
-                );
-                if (!Number.isNaN(id)) {
-                  form.setValue('venueStatusId', id);
-                  field.onChange({ ...EMPTY_VENUE });
-                }
-                return;
-              }
-              if (v.value.startsWith(VENUE_OPTION_PRESET_PREFIX)) {
-                const idStr = v.value.slice(VENUE_OPTION_PRESET_PREFIX.length);
-                const item = allPresets.find((t) => String(t.id) === idStr);
-                if (item) {
-                  form.setValue('venueStatusId', null);
-                  field.onChange(venueToFormValue(item));
-                }
-                return;
-              }
-              return;
-            }
-            form.setValue('venueStatusId', null);
-            field.onChange({
-              ...currentVenue,
-              venueName: v.value ? v.value : null,
-            });
-          };
-
-          return (
-            <>
-              <FormItem className="mb-8">
-                <FormLabel>{getActivityFieldLabel('venueName')}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <FreeformCombobox
-                    readOnly={readOnly}
-                    multiple={false}
-                    useChips={false}
-                    sections={venueNameComboboxSections}
-                    value={venueComboboxValueFromForm(
-                      currentVenue,
-                      quickPickTags,
-                      venueStatusIdWatched
-                    )}
-                    onChange={handleVenueNameComboboxChange}
-                    placeholder="Venue TBD, TBC, or a venue name…"
-                    searchPlaceholder="Search venue status or venues…"
-                    emptyMessage="No venues found."
-                  />
-                </FormControl>
-                <FormField
-                  control={form.control}
-                  name="venueStatusId"
-                  render={() => <FormMessage className="mt-1" />}
-                />
-                {quickPickTags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {quickPickTags.map((item) => {
-                      const isSelected = addressMatchesQuickPick(
-                        currentVenue,
-                        item
-                      );
-                      return (
-                        <Badge
-                          key={item.id}
-                          variant={isSelected ? 'selected' : 'outline'}
-                          className={
-                            readOnly
-                              ? 'gap-1 font-normal'
-                              : 'cursor-pointer gap-1 font-normal'
-                          }
-                          onClick={
-                            readOnly
-                              ? undefined
-                              : () => handleQuickPickSelect(item)
-                          }
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          {venueTagLabel(item)}
-                        </Badge>
-                      );
-                    })}
-                  </div>
+        name="venueAddress.venueName"
+        render={({ field: _field }) => (
+          <FormItem className="mb-8">
+            <FormLabel showDirtyIndicator={false}>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-2',
+                  showChangedBadges && 'min-h-[18px]'
                 )}
-                <FormMessage />
-              </FormItem>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
-                <FormItem>
-                  <FormLabel>{getActivityFieldLabel('addressLine1')}</FormLabel>
-                  <FormControl data-field={field.name}>
-                    <AddressAutocomplete
-                      defaultValue={currentVenue.addressLine1 || ''}
-                      value={currentVenue.addressLine1 ?? ''}
-                      onAddressSelect={handleAddressSelect}
-                      readOnly={readOnly}
-                    />
-                  </FormControl>
-                </FormItem>
-                <FormItem>
-                  <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
-                  <FormControl data-field={field.name}>
-                    <Input
-                      value={currentVenue.addressLine2 ?? ''}
-                      readOnly={readOnly}
-                      onChange={(e) =>
-                        field.onChange({
-                          ...currentVenue,
-                          addressLine2: e.target.value || null,
-                        })
+              >
+                {getActivityFieldLabel('venueName')}
+                {showChangedBadges && venueLocationHeadingDirty ? (
+                  <FormFieldChangedIndicator />
+                ) : null}
+              </span>
+            </FormLabel>
+            <FormControl data-field={_field.name}>
+              <FreeformCombobox
+                readOnly={readOnly}
+                multiple={false}
+                useChips={false}
+                sections={venueNameComboboxSections}
+                value={venueComboboxValueFromForm(
+                  currentVenue,
+                  quickPickTags,
+                  venueStatusIdWatched
+                )}
+                onChange={handleVenueNameComboboxChange}
+                placeholder="Venue TBD, TBC, or a venue name…"
+                searchPlaceholder="Search venue status or venues…"
+                emptyMessage="No venues found."
+              />
+            </FormControl>
+            <FormField
+              control={form.control}
+              name="venueStatusId"
+              render={() => <FormMessage className="mt-1" />}
+            />
+            {quickPickTags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {quickPickTags.map((item) => {
+                  const isSelected = addressMatchesQuickPick(
+                    currentVenue,
+                    item
+                  );
+                  return (
+                    <Badge
+                      key={item.id}
+                      variant={isSelected ? 'selected' : 'outline'}
+                      className={
+                        readOnly
+                          ? 'gap-1 font-normal'
+                          : 'cursor-pointer gap-1 font-normal'
                       }
-                      placeholder="Floor, room, etc."
-                    />
-                  </FormControl>
-                </FormItem>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormItem>
-                  <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
-                  <FormControl data-field={field.name}>
-                    <FreeformCombobox
-                      readOnly={readOnly}
-                      multiple={false}
-                      useChips={false}
-                      options={cityComboboxOptions}
-                      value={cityComboboxValueFromVenue(
-                        currentVenue,
-                        citiesList
-                      )}
-                      onChange={handleCityComboboxChange}
-                      emptyMessage="No cities found."
-                      freeformLabel="Other"
-                      freeformDescription="Enter a city not in the list"
-                    />
-                  </FormControl>
-                </FormItem>
-
-                <FormItem>
-                  <FormLabel>
-                    {getActivityFieldLabel('provinceOrState')}
-                  </FormLabel>
-                  <FormControl data-field={field.name}>
-                    <Input
-                      value={currentVenue.provinceOrState ?? ''}
-                      readOnly={readOnly}
-                      onChange={(e) =>
-                        field.onChange({
-                          ...currentVenue,
-                          provinceOrState: e.target.value || null,
-                        })
+                      onClick={
+                        readOnly ? undefined : () => handleQuickPickSelect(item)
                       }
-                    />
-                  </FormControl>
-                </FormItem>
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {venueTagLabel(item)}
+                    </Badge>
+                  );
+                })}
               </div>
+            )}
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-              <FormItem className="mt-6">
-                <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <Input
-                    value={currentVenue.country ?? ''}
-                    readOnly={readOnly}
-                    onChange={(e) =>
-                      field.onChange({
-                        ...currentVenue,
-                        country: e.target.value || null,
-                      })
-                    }
-                  />
-                </FormControl>
-              </FormItem>
-            </>
-          );
-        }}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:items-start">
+        <FormField
+          control={form.control}
+          name="venueAddress.addressLine1"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel('addressLine1')}</FormLabel>
+              <FormControl data-field={field.name}>
+                <AddressAutocomplete
+                  defaultValue={field.value || ''}
+                  value={field.value ?? ''}
+                  onAddressSelect={handleVenueAddressAutofill}
+                  onInputValueChange={(value) =>
+                    field.onChange(value === '' ? null : value)
+                  }
+                  onBlurCommit={(v) => {
+                    field.onChange(v);
+                    void field.onBlur();
+                  }}
+                  readOnly={readOnly}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="venueAddress.addressLine2"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
+              <FormControl data-field={field.name}>
+                <Input
+                  value={field.value ?? ''}
+                  readOnly={readOnly}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    field.onChange(raw.trim() === '' ? null : raw);
+                  }}
+                  placeholder="Floor, room, etc."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <FormField
+          control={form.control}
+          name="venueAddress.city"
+          render={({ field: _field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
+              <FormControl data-field={_field.name}>
+                <FreeformCombobox
+                  readOnly={readOnly}
+                  multiple={false}
+                  useChips={false}
+                  options={cityComboboxOptions}
+                  value={cityComboboxValueFromVenue(currentVenue, citiesList)}
+                  onChange={handleCityComboboxChange}
+                  emptyMessage="No cities found."
+                  freeformLabel="Other"
+                  freeformDescription="Enter a city not in the list"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="venueAddress.provinceOrState"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel('provinceOrState')}</FormLabel>
+              <FormControl data-field={field.name}>
+                <Input
+                  value={field.value ?? ''}
+                  readOnly={readOnly}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    field.onChange(raw.trim() === '' ? null : raw);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <FormField
+        control={form.control}
+        name="venueAddress.country"
+        render={({ field }) => (
+          <FormItem className="mt-6">
+            <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
+            <FormControl data-field={field.name}>
+              <Input
+                value={field.value ?? ''}
+                readOnly={readOnly}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  field.onChange(raw.trim() === '' ? null : raw);
+                }}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
       />
 
       <FormSectionDivider />

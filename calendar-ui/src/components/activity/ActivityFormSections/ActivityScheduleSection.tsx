@@ -1,5 +1,5 @@
 import { format, startOfDay } from 'date-fns';
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
 import type {
@@ -10,13 +10,16 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import {
+  FormAggregateDirtyIndicator,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
   RequiredFieldIndicator,
+  useFormDisplayOptions,
 } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +31,7 @@ import {
   PRESETS_FUTURE_FROM_ANCHOR,
   PRESETS_PAST_FROM_ANCHOR,
 } from '@/lib/scheduled-date-presets';
+import { cn } from '@/lib/utils';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -45,6 +49,14 @@ const setDateOpts = {
   shouldTouch: true,
   shouldValidate: true,
 } as const;
+
+const DATE_GROUP_FIELDS = ['startDate', 'endDate', 'dateStatusId'] as const;
+const TIME_GROUP_FIELDS = [
+  'startTime',
+  'endTime',
+  'isAllDay',
+  'timeStatusId',
+] as const;
 
 const anchorToday = () => startOfDay(new Date());
 
@@ -75,6 +87,7 @@ export function ActivityScheduleSection({
   timeStatuses,
 }: ActivityScheduleSectionProps) {
   const { readOnly } = useActivityEdit();
+  const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
   const [activeTimePopover, setActiveTimePopover] = useState<
     'start' | 'end' | null
@@ -128,93 +141,114 @@ export function ActivityScheduleSection({
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
-        <FormLabel className="flex items-center gap-1">
-          Date <RequiredFieldIndicator className="inline" />
-        </FormLabel>
+        <Label
+          className={cn(
+            'flex items-center gap-2',
+            showChangedBadges && 'min-h-[18px]'
+          )}
+        >
+          <span className="inline-flex items-center gap-1">
+            Date <RequiredFieldIndicator className="inline" />
+          </span>
+          <FormAggregateDirtyIndicator names={DATE_GROUP_FIELDS} />
+        </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
-            <Controller
-              name="startDate"
+            <FormField
               control={form.control}
+              name="startDate"
               render={({ field }) => (
-                <FormControl className="min-w-0 flex-1" data-field="startDate">
-                  <ScheduledDatePopoverField
-                    value={field.value ?? ''}
-                    onChange={(iso) => {
-                      field.onChange(iso || undefined);
-                      const end = form.getValues('endDate');
-                      if (
-                        end &&
-                        iso &&
-                        String(end).slice(0, 10) < iso.slice(0, 10)
-                      ) {
-                        form.setValue('endDate', iso, setDateOpts);
+                <FormItem className="min-w-0 flex-1 space-y-0">
+                  <FormLabel className="sr-only" showDirtyIndicator={false}>
+                    {getActivityFieldLabel(field.name)}
+                  </FormLabel>
+                  <FormControl
+                    className="min-w-0 flex-1"
+                    data-field="startDate"
+                  >
+                    <ScheduledDatePopoverField
+                      value={field.value ?? ''}
+                      onChange={(iso) => {
+                        field.onChange(iso || undefined);
+                        const end = form.getValues('endDate');
+                        if (
+                          end &&
+                          iso &&
+                          String(end).slice(0, 10) < iso.slice(0, 10)
+                        ) {
+                          form.setValue('endDate', iso, setDateOpts);
+                        }
+                      }}
+                      label={startButtonLabel}
+                      triggerMuted={!startStr}
+                      readOnly={readOnly}
+                      popoverTitle="Select start date"
+                      presets={PRESETS_PAST_FROM_ANCHOR}
+                      getPresetAnchor={anchorToday}
+                      triggerAriaLabel="Activity start date"
+                      triggerVariant="form"
+                      headerRight={
+                        startStr && !readOnly ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary text-sm"
+                            onClick={() => field.onChange(undefined)}
+                          >
+                            Clear
+                          </Button>
+                        ) : null
                       }
-                    }}
-                    label={startButtonLabel}
-                    triggerMuted={!startStr}
-                    readOnly={readOnly}
-                    popoverTitle="Select start date"
-                    presets={PRESETS_PAST_FROM_ANCHOR}
-                    getPresetAnchor={anchorToday}
-                    triggerAriaLabel="Activity start date"
-                    triggerVariant="form"
-                    headerRight={
-                      startStr && !readOnly ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary text-sm"
-                          onClick={() => field.onChange(undefined)}
-                        >
-                          Clear
-                        </Button>
-                      ) : null
-                    }
-                  />
-                </FormControl>
+                    />
+                  </FormControl>
+                </FormItem>
               )}
             />
             <span className="text-muted-foreground shrink-0" aria-hidden>
               →
             </span>
-            <Controller
-              name="endDate"
+            <FormField
               control={form.control}
+              name="endDate"
               render={({ field }) => (
-                <FormControl className="min-w-0 flex-1" data-field="endDate">
-                  {/**
-                   * End-date presets are relative to the selected start date when set;
-                   * otherwise the anchor is today (calendar-style default).
-                   */}
-                  <ScheduledDatePopoverField
-                    value={field.value ?? ''}
-                    onChange={(iso) => field.onChange(iso || undefined)}
-                    label={endButtonLabel}
-                    triggerMuted={!endStr}
-                    readOnly={readOnly}
-                    popoverTitle="Select end date"
-                    presets={PRESETS_FUTURE_FROM_ANCHOR}
-                    getPresetAnchor={endPresetAnchor}
-                    isDateDisabled={isEndBeforeStart}
-                    triggerAriaLabel="Activity end date"
-                    triggerVariant="form"
-                    headerRight={
-                      endStr && !readOnly ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary text-sm"
-                          onClick={() => field.onChange(undefined)}
-                        >
-                          Clear
-                        </Button>
-                      ) : null
-                    }
-                  />
-                </FormControl>
+                <FormItem className="min-w-0 flex-1 space-y-0">
+                  <FormLabel className="sr-only" showDirtyIndicator={false}>
+                    {getActivityFieldLabel(field.name)}
+                  </FormLabel>
+                  <FormControl className="min-w-0 flex-1" data-field="endDate">
+                    {/**
+                     * End-date presets are relative to the selected start date when set;
+                     * otherwise the anchor is today (calendar-style default).
+                     */}
+                    <ScheduledDatePopoverField
+                      value={field.value ?? ''}
+                      onChange={(iso) => field.onChange(iso || undefined)}
+                      label={endButtonLabel}
+                      triggerMuted={!endStr}
+                      readOnly={readOnly}
+                      popoverTitle="Select end date"
+                      presets={PRESETS_FUTURE_FROM_ANCHOR}
+                      getPresetAnchor={endPresetAnchor}
+                      isDateDisabled={isEndBeforeStart}
+                      triggerAriaLabel="Activity end date"
+                      triggerVariant="form"
+                      headerRight={
+                        endStr && !readOnly ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary text-sm"
+                            onClick={() => field.onChange(undefined)}
+                          >
+                            Clear
+                          </Button>
+                        ) : null
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
               )}
             />
           </div>
@@ -223,7 +257,7 @@ export function ActivityScheduleSection({
             name="dateStatusId"
             render={({ field: statusField }) => (
               <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
-                <FormLabel className="sr-only">
+                <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
@@ -279,50 +313,63 @@ export function ActivityScheduleSection({
       </FormItem>
 
       <FormItem>
-        <FormLabel className="flex items-center gap-1">
-          Time <RequiredFieldIndicator className="inline" />
-        </FormLabel>
+        <Label
+          className={cn(
+            'flex items-center gap-2',
+            showChangedBadges && 'min-h-[18px]'
+          )}
+        >
+          <span className="inline-flex items-center gap-1">
+            Time <RequiredFieldIndicator className="inline" />
+          </span>
+          <FormAggregateDirtyIndicator names={TIME_GROUP_FIELDS} />
+        </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
-            <Controller
-              name="startTime"
+            <FormField
               control={form.control}
+              name="startTime"
               render={({ field }) => (
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <FormLabel className="sr-only">
+                <FormItem className="min-w-0 flex-1 space-y-0">
+                  <FormLabel className="sr-only" showDirtyIndicator={false}>
                     {getActivityFieldLabel('startTime')}
                   </FormLabel>
-                  <FormControl data-field="startTime">
-                    <TimePicker
-                      allDay={{
-                        isAllDay: !!isAllDay,
-                        onAllDayChange: (checked) => {
-                          form.setValue('isAllDay', checked, setDateOpts);
-                        },
-                        label: getActivityFieldLabel('isAllDay'),
-                      }}
-                      ariaLabel="Activity start time"
-                      readOnly={readOnly}
-                      placeholderMuted={
-                        !isAllDay && !String(field.value ?? '').trim()
-                      }
-                      value={String(field.value ?? '')}
-                      onChange={(next) =>
-                        field.onChange(
-                          next === undefined || next === '' ? undefined : next
-                        )
-                      }
-                      popoverOpen={activeTimePopover === 'start'}
-                      onPopoverOpenChange={(open) => {
-                        if (open) setActiveTimePopover('start');
-                        else
-                          setActiveTimePopover((prev) =>
-                            prev === 'start' ? null : prev
-                          );
-                      }}
-                    />
-                  </FormControl>
-                </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <FormControl
+                      className="min-w-0 flex-1"
+                      data-field="startTime"
+                    >
+                      <TimePicker
+                        allDay={{
+                          isAllDay: !!isAllDay,
+                          onAllDayChange: (checked) => {
+                            form.setValue('isAllDay', checked, setDateOpts);
+                          },
+                          label: getActivityFieldLabel('isAllDay'),
+                        }}
+                        ariaLabel="Activity start time"
+                        readOnly={readOnly}
+                        placeholderMuted={
+                          !isAllDay && !String(field.value ?? '').trim()
+                        }
+                        value={String(field.value ?? '')}
+                        onChange={(next) =>
+                          field.onChange(
+                            next === undefined || next === '' ? undefined : next
+                          )
+                        }
+                        popoverOpen={activeTimePopover === 'start'}
+                        onPopoverOpenChange={(open) => {
+                          if (open) setActiveTimePopover('start');
+                          else
+                            setActiveTimePopover((prev) =>
+                              prev === 'start' ? null : prev
+                            );
+                        }}
+                      />
+                    </FormControl>
+                  </div>
+                </FormItem>
               )}
             />
             {!isAllDay ? (
@@ -330,45 +377,50 @@ export function ActivityScheduleSection({
                 <span className="text-muted-foreground shrink-0" aria-hidden>
                   →
                 </span>
-                <Controller
-                  name="endTime"
+                <FormField
                   control={form.control}
+                  name="endTime"
                   render={({ field }) => (
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <FormLabel className="sr-only">
+                    <FormItem className="min-w-0 flex-1 space-y-0">
+                      <FormLabel className="sr-only" showDirtyIndicator={false}>
                         {getActivityFieldLabel('endTime')}
                       </FormLabel>
-                      <FormControl data-field="endTime">
-                        <TimePicker
-                          allDay={{
-                            isAllDay: !!isAllDay,
-                            onAllDayChange: (checked) => {
-                              form.setValue('isAllDay', checked, setDateOpts);
-                            },
-                            label: getActivityFieldLabel('isAllDay'),
-                          }}
-                          ariaLabel="Activity end time"
-                          readOnly={readOnly}
-                          placeholderMuted={!String(field.value ?? '').trim()}
-                          value={String(field.value ?? '')}
-                          onChange={(next) =>
-                            field.onChange(
-                              next === undefined || next === ''
-                                ? undefined
-                                : next
-                            )
-                          }
-                          popoverOpen={activeTimePopover === 'end'}
-                          onPopoverOpenChange={(open) => {
-                            if (open) setActiveTimePopover('end');
-                            else
-                              setActiveTimePopover((prev) =>
-                                prev === 'end' ? null : prev
-                              );
-                          }}
-                        />
-                      </FormControl>
-                    </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <FormControl
+                          className="min-w-0 flex-1"
+                          data-field="endTime"
+                        >
+                          <TimePicker
+                            allDay={{
+                              isAllDay: !!isAllDay,
+                              onAllDayChange: (checked) => {
+                                form.setValue('isAllDay', checked, setDateOpts);
+                              },
+                              label: getActivityFieldLabel('isAllDay'),
+                            }}
+                            ariaLabel="Activity end time"
+                            readOnly={readOnly}
+                            placeholderMuted={!String(field.value ?? '').trim()}
+                            value={String(field.value ?? '')}
+                            onChange={(next) =>
+                              field.onChange(
+                                next === undefined || next === ''
+                                  ? undefined
+                                  : next
+                              )
+                            }
+                            popoverOpen={activeTimePopover === 'end'}
+                            onPopoverOpenChange={(open) => {
+                              if (open) setActiveTimePopover('end');
+                              else
+                                setActiveTimePopover((prev) =>
+                                  prev === 'end' ? null : prev
+                                );
+                            }}
+                          />
+                        </FormControl>
+                      </div>
+                    </FormItem>
                   )}
                 />
               </>
@@ -379,7 +431,7 @@ export function ActivityScheduleSection({
             name="timeStatusId"
             render={({ field: statusField }) => (
               <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
-                <FormLabel className="sr-only">
+                <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
@@ -471,8 +523,14 @@ export function ActivityScheduleSection({
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />
