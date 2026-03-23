@@ -5,7 +5,20 @@ import { useMemo, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
-import { fetchCategories } from '@/api/lookupsApi';
+import {
+  fetchActivityStatuses,
+  fetchCategories,
+  fetchDateStatuses,
+  fetchMinistries,
+  fetchNewsReleaseDistributions,
+  fetchNewsReleaseOrigins,
+  fetchOrganizations,
+  fetchPitchRequiredStatuses,
+  fetchPremierRequested,
+  fetchTimeStatuses,
+  fetchTranslationRequiredStatuses,
+  fetchUsers,
+} from '@/api/lookupsApi';
 import { fetchTeams } from '@/api/usersApi';
 import {
   isDateRangeActive,
@@ -272,6 +285,9 @@ export function GlobalHistory() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLeadTeamIds, setSelectedLeadTeamIds] = useState<string[]>([]);
+  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
+    () => new Set()
+  );
 
   const historyQuery = useQuery({
     queryKey: ['activities', 'global-history'],
@@ -287,6 +303,72 @@ export function GlobalHistory() {
   const categoriesQuery = useQuery({
     queryKey: ['lookups', 'categories', 'history-filters'],
     queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ['lookups', 'users', 'history-filters'],
+    queryFn: () => fetchUsers(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const organizationsQuery = useQuery({
+    queryKey: ['lookups', 'organizations', 'history-filters'],
+    queryFn: () => fetchOrganizations(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const ministriesQuery = useQuery({
+    queryKey: ['lookups', 'ministries', 'history-filters'],
+    queryFn: fetchMinistries,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const activityStatusesQuery = useQuery({
+    queryKey: ['lookups', 'activity-statuses', 'history-filters'],
+    queryFn: fetchActivityStatuses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const dateStatusesQuery = useQuery({
+    queryKey: ['lookups', 'date-statuses', 'history-filters'],
+    queryFn: fetchDateStatuses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const timeStatusesQuery = useQuery({
+    queryKey: ['lookups', 'time-statuses', 'history-filters'],
+    queryFn: fetchTimeStatuses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pitchRequiredStatusesQuery = useQuery({
+    queryKey: ['lookups', 'pitch-required-statuses', 'history-filters'],
+    queryFn: fetchPitchRequiredStatuses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const translationRequiredStatusesQuery = useQuery({
+    queryKey: ['lookups', 'translation-required-statuses', 'history-filters'],
+    queryFn: fetchTranslationRequiredStatuses,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const newsReleaseOriginsQuery = useQuery({
+    queryKey: ['lookups', 'news-release-origins', 'history-filters'],
+    queryFn: fetchNewsReleaseOrigins,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const newsReleaseDistributionsQuery = useQuery({
+    queryKey: ['lookups', 'news-release-distributions', 'history-filters'],
+    queryFn: fetchNewsReleaseDistributions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const premierRequestedQuery = useQuery({
+    queryKey: ['lookups', 'premier-requested', 'history-filters'],
+    queryFn: fetchPremierRequested,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -345,6 +427,174 @@ export function GlobalHistory() {
       ),
     [teamsQuery.data]
   );
+
+  const activityStatusLabelMap = useMemo(
+    () =>
+      new Map(
+        (activityStatusesQuery.data ?? []).map((status) => [
+          status.id,
+          status.displayName || status.label || status.name,
+        ])
+      ),
+    [activityStatusesQuery.data]
+  );
+
+  const userLabelMap = useMemo(
+    () =>
+      new Map(
+        (usersQuery.data ?? []).map((user) => [
+          user.id,
+          user.label || user.name,
+        ])
+      ),
+    [usersQuery.data]
+  );
+
+  const organizationLabelMap = useMemo(
+    () =>
+      new Map(
+        (organizationsQuery.data ?? []).map((organization) => [
+          organization.id,
+          organization.displayName || organization.label || organization.name,
+        ])
+      ),
+    [organizationsQuery.data]
+  );
+
+  const ministryLabelMap = useMemo(
+    () =>
+      new Map(
+        (ministriesQuery.data ?? []).map((ministry) => [
+          ministry.id,
+          ministry.displayName || ministry.label || ministry.name,
+        ])
+      ),
+    [ministriesQuery.data]
+  );
+
+  const dateStatusLabelMap = useMemo(
+    () =>
+      new Map(
+        (dateStatusesQuery.data ?? []).map((status) => [
+          status.id,
+          status.displayName || status.label || status.name,
+        ])
+      ),
+    [dateStatusesQuery.data]
+  );
+
+  const timeStatusLabelMap = useMemo(
+    () =>
+      new Map(
+        (timeStatusesQuery.data ?? []).map((status) => [
+          status.id,
+          status.displayName || status.label || status.name,
+        ])
+      ),
+    [timeStatusesQuery.data]
+  );
+
+  const pitchRequiredStatusLabelMap = useMemo(
+    () =>
+      new Map(
+        (pitchRequiredStatusesQuery.data ?? []).map((status) => [
+          status.id,
+          status.displayName || status.label || status.name,
+        ])
+      ),
+    [pitchRequiredStatusesQuery.data]
+  );
+
+  const translationRequiredStatusLabelMap = useMemo(
+    () =>
+      new Map(
+        (translationRequiredStatusesQuery.data ?? []).map((status) => [
+          status.id,
+          status.displayName || status.label || status.name,
+        ])
+      ),
+    [translationRequiredStatusesQuery.data]
+  );
+
+  const newsReleaseOriginLabelMap = useMemo(
+    () =>
+      new Map(
+        (newsReleaseOriginsQuery.data ?? []).map((item) => [
+          item.id,
+          item.label,
+        ])
+      ),
+    [newsReleaseOriginsQuery.data]
+  );
+
+  const newsReleaseDistributionLabelMap = useMemo(
+    () =>
+      new Map(
+        (newsReleaseDistributionsQuery.data ?? []).map((item) => [
+          item.id,
+          item.label,
+        ])
+      ),
+    [newsReleaseDistributionsQuery.data]
+  );
+
+  const premierRequestedLabelMap = useMemo(
+    () =>
+      new Map(
+        (premierRequestedQuery.data ?? []).map((item) => [item.id, item.label])
+      ),
+    [premierRequestedQuery.data]
+  );
+
+  const toggleExpandedEntry = (entryId: number) => {
+    setExpandedEntries((prev) => {
+      const next = new Set(prev);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  };
+
+  const formatChangeValue = (field: string, value: unknown): string => {
+    if (typeof value === 'number') {
+      switch (field) {
+        case 'activityStatusId':
+          return activityStatusLabelMap.get(value) || String(value);
+        case 'createdBy':
+        case 'lastUpdatedBy':
+        case 'eventPlannerLeadId':
+        case 'commsContactLeadId':
+          return userLabelMap.get(value) || String(value);
+        case 'leadTeamId':
+          return leadTeamLabelMap.get(value) || String(value);
+        case 'leadMinistryId':
+          return ministryLabelMap.get(value) || String(value);
+        case 'leadOrgId':
+          return organizationLabelMap.get(value) || String(value);
+        case 'dateStatusId':
+          return dateStatusLabelMap.get(value) || String(value);
+        case 'timeStatusId':
+          return timeStatusLabelMap.get(value) || String(value);
+        case 'pitchRequiredStatusId':
+          return pitchRequiredStatusLabelMap.get(value) || String(value);
+        case 'translationsRequiredStatusId':
+          return translationRequiredStatusLabelMap.get(value) || String(value);
+        case 'newsReleaseOriginId':
+          return newsReleaseOriginLabelMap.get(value) || String(value);
+        case 'newsReleaseDistributionId':
+          return newsReleaseDistributionLabelMap.get(value) || String(value);
+        case 'premierRequestedId':
+          return premierRequestedLabelMap.get(value) || String(value);
+        default:
+          break;
+      }
+    }
+
+    return formatHistoryFieldValue(field, value);
+  };
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
@@ -509,11 +759,12 @@ export function GlobalHistory() {
                       entry.activity.leadTeamId
                     );
                     const hasChanges = (entry.changes?.length ?? 0) > 0;
+                    const isExpanded = expandedEntries.has(entry.id);
 
                     return (
                       <article
                         key={entry.id}
-                        className="flex items-start justify-between gap-6 rounded-lg border border-slate-200 bg-white px-5 py-4"
+                        className="flex items-start justify-between gap-6 rounded-lg bg-white px-5 py-4"
                       >
                         <div className="flex min-w-0 flex-1 gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
@@ -541,7 +792,7 @@ export function GlobalHistory() {
                               </Link>
                             </div>
 
-                            <div className="text-sm text-slate-900">
+                            <div className="text-sm font-bold text-slate-900">
                               {entry.activity.title}
                             </div>
 
@@ -553,37 +804,52 @@ export function GlobalHistory() {
 
                             {hasChanges ? (
                               <div className="space-y-1 pt-1">
-                                {entry.changes
-                                  ?.slice(0, 3)
-                                  .map((change, index) => (
-                                    <div
-                                      key={`${entry.id}-${index}`}
-                                      className="text-sm text-slate-600"
+                                {isExpanded ? (
+                                  <>
+                                    {entry.changes?.map((change, index) => (
+                                      <div
+                                        key={`${entry.id}-${index}`}
+                                        className="text-sm text-slate-600"
+                                      >
+                                        <span className="font-medium text-slate-700">
+                                          {getHistoryFieldLabel(change.field)}:
+                                        </span>{' '}
+                                        <span>
+                                          {formatChangeValue(
+                                            change.field,
+                                            change.oldValue
+                                          )}
+                                        </span>{' '}
+                                        <span aria-hidden>→</span>{' '}
+                                        <span>
+                                          {formatChangeValue(
+                                            change.field,
+                                            change.newValue
+                                          )}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        toggleExpandedEntry(entry.id)
+                                      }
+                                      className="text-sm font-medium text-blue-700 hover:underline"
                                     >
-                                      <span className="font-medium text-slate-700">
-                                        {getHistoryFieldLabel(change.field)}:
-                                      </span>{' '}
-                                      <span>
-                                        {formatHistoryFieldValue(
-                                          change.field,
-                                          change.oldValue
-                                        )}
-                                      </span>{' '}
-                                      <span aria-hidden>→</span>{' '}
-                                      <span>
-                                        {formatHistoryFieldValue(
-                                          change.field,
-                                          change.newValue
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
-                                {(entry.changes?.length ?? 0) > 3 ? (
-                                  <div className="text-sm text-blue-700">
-                                    {entry.changes!.length - 3} more change
-                                    {entry.changes!.length - 3 === 1 ? '' : 's'}
-                                  </div>
-                                ) : null}
+                                      Show less
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleExpandedEntry(entry.id)
+                                    }
+                                    className="text-sm font-medium text-blue-700 hover:underline"
+                                  >
+                                    Show more
+                                  </button>
+                                )}
                               </div>
                             ) : null}
 
