@@ -275,7 +275,9 @@ The application uses SQL seed files to populate lookup tables and initial data. 
 
 ### Migration Logging
 
-All schema changes must be documented in `packages/database/migrations/MIGRATION_LOG.md`. This log serves as a historical record of database schema evolution and helps track breaking changes.
+Document notable database and constraint changes in [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (append-only). The subsection below is an **additional** narrative log; keep it aligned with the actual files under `packages/database/migrations/` on your branch.
+
+**Current generated baseline (this branch):** `packages/database/migrations/0000_20260322_venue_and_activity.sql` (replaces `0000_20260305_delete_audit.sql` on `main`). Older dated entries below describe logical evolution; incremental filenames may not exist if history was squashed into that baseline.
 
 #### When to Update the Migration Log
 
@@ -319,7 +321,7 @@ Each log entry should include:
 
 #### 2026-02-12 - Add venue_presets table
 
-**Migration File(s):** `0005_20260212_venue_quick_picks.sql`
+**Migration File(s):** Historical incremental: `0005_20260212_venue_quick_picks.sql` (if present in older branches). **Current repo:** see `0000_20260322_venue_and_activity.sql`.
 
 **Changes:**
 
@@ -336,7 +338,7 @@ Each log entry should include:
 
 #### 2026-03-20 - Add address_line2 to venue_presets
 
-**Migration File(s):** `0003_venue_quick_picks_address_line2.sql`
+**Migration File(s):** Historical incremental: `0003_venue_quick_picks_address_line2.sql`. **Current repo:** rolled into `0000_20260322_venue_and_activity.sql`.
 
 **Changes:**
 
@@ -352,13 +354,19 @@ Each log entry should include:
 
 #### 2026-03-20 - Drop unused `venues` lookup table
 
-**Migration File(s):** `0004_drop_venues.sql`
+**Migration File(s):** Historical incremental: `0004_drop_venues.sql`. **Current repo:** rolled into `0000_20260322_venue_and_activity.sql`.
 
 **Changes:**
 
 - Removed `venues` (unused seeded lookup; activity venue data lives in `venue_addresses`, form presets in `venue_presets`).
 
+**Breaking Changes:**
+
+- None for the app (table was not referenced by services or APIs).
+
 #### 2026-03-21 - Rename venue_quick_picks to venue_presets, add pin columns
+
+**Migration File(s):** **Current repo:** `0000_20260322_venue_and_activity.sql`.
 
 **Changes:**
 
@@ -377,10 +385,6 @@ Each log entry should include:
 
 - Table semantics broadened: presets serve both as combobox options (all active) and badge quick-picks (pinned only).
 
-**Breaking Changes:**
-
-- None for the app (table was not referenced by services or APIs).
-
 #### Benefits
 
 - **Historical Record**: Track when and why schema changes were made
@@ -392,7 +396,7 @@ Each log entry should include:
 
 ### Type Assertion Errors
 
-If you see type assertion errors with `z.ZodType & typeof schema`, this is expected. The drizzle-zod library's type definitions require this pattern. The types are still safe - the assertion just helps TypeScript recognize the compatibility.
+If you see type assertion errors with `z.ZodType & typeof schema`, that often comes from **drizzle-zod** where it is still used. Activity request/response shapes are hand-maintained Zod; prefer `validate-types` and mapper checks for those.
 
 ### Schema Drift
 
