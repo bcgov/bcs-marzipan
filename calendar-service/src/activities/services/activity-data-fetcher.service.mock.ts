@@ -31,8 +31,6 @@ const DEFAULTS = {
     number,
     EventPlannerDetail[]
   >,
-  fetchEventPlannersForActivities: new Map() as Map<number, string[]>,
-  fetchEventPlannerIdsForActivities: new Map() as Map<number, number[]>,
   fetchReportSettingsForActivities: new Map(),
   fetchPitchRequiredStatusForActivities: new Map() as Map<
     number,

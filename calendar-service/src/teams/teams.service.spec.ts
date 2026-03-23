@@ -388,12 +388,10 @@ describe('TeamsService', () => {
         from: vi.fn(),
         innerJoin: vi.fn(),
         where: vi.fn(),
-        orderBy: vi.fn(),
       };
       chain.from.mockReturnValue(chain);
       chain.innerJoin.mockReturnValue(chain);
-      chain.where.mockReturnValue(chain);
-      chain.orderBy.mockResolvedValue(
+      chain.where.mockResolvedValue(
         Array.isArray(resolvedValue) ? resolvedValue : [resolvedValue]
       );
       return chain;
@@ -447,7 +445,10 @@ describe('TeamsService', () => {
 
   describe('getEligibleCommsUserIds', () => {
     it('should return a Set of eligible user IDs', async () => {
-      const rows = [{ userId: 2 }, { userId: 5 }];
+      const rows = [
+        { id: 2, adDisplayName: null, adUsername: null },
+        { id: 5, adDisplayName: null, adUsername: null },
+      ];
       const chain = {
         from: vi.fn(),
         innerJoin: vi.fn(),

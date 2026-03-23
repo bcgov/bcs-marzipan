@@ -106,10 +106,9 @@ export class LocksController {
     @Param('lockId', ParseIntPipe) lockId: number,
     @CurrentUser() user: AuthUser
   ) {
-    const lock = await this.locksService.getLockById(lockId);
     const released = await this.locksService.releaseLock(lockId, user.id);
-    if (released && lock?.entityType === 'activity') {
-      this.activitiesGateway.notifyLockReleased(lock.entityId);
+    if (released?.entityType === 'activity') {
+      this.activitiesGateway.notifyLockReleased(released.entityId);
     }
   }
 }

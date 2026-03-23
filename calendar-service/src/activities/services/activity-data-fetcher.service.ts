@@ -923,71 +923,26 @@ export class ActivityDataFetcherService {
       );
 
     for (const row of rows) {
+      const fromFreeform = row.eventPlannerName?.trim() ?? '';
+      const fromLookup =
+        row.eventPlannerId != null && (row.displayName || row.name)
+          ? (row.displayName ?? row.name ?? '').trim()
+          : '';
       const name =
-        row.eventPlannerName?.trim() ||
-        (row.eventPlannerId && (row.displayName || row.name)
-          ? (row.displayName ?? row.name ?? '')
-          : null);
-      if (name) {
-        const list = map.get(row.activityId) ?? [];
-        list.push({
-          eventPlannerId: row.eventPlannerId ?? undefined,
-          eventPlannerName: row.eventPlannerName ?? undefined,
-          name,
-          isLead: row.isLead ?? false,
-        });
-        map.set(row.activityId, list);
-      }
-    }
-    return map;
-  }
+        fromFreeform ||
+        fromLookup ||
+        (row.eventPlannerId != null
+          ? `Planner #${row.eventPlannerId}`
+          : 'Unknown planner');
 
-  /**
-   * Fetch event planner display names for multiple activities (derived from details).
-   * Kept for backward compatibility; prefer building from fetchEventPlannerDetailsForActivities.
-   */
-  async fetchEventPlannersForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
-    const detailsMap =
-      await this.fetchEventPlannerDetailsForActivities(activityIds);
-    const map = new Map<number, string[]>();
-    for (const [activityId, details] of detailsMap) {
-      map.set(
-        activityId,
-        details.map((d) => d.name)
-      );
-    }
-    return map;
-  }
-
-  /**
-   * Fetch event planner lookup IDs for multiple activities (for client-side filtering).
-   * Returns activityId -> number[] (only planners that have eventPlannerId set).
-   */
-  async fetchEventPlannerIdsForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, number[]>> {
-    const map = new Map<number, number[]>();
-    if (activityIds.length === 0) return map;
-    const rows = await this.databaseService.db
-      .select({
-        activityId: activityEventPlanners.activityId,
-        eventPlannerId: activityEventPlanners.eventPlannerId,
-      })
-      .from(activityEventPlanners)
-      .where(
-        and(
-          inArray(activityEventPlanners.activityId, activityIds),
-          eq(activityEventPlanners.isActive, true)
-        )
-      );
-    for (const row of rows) {
-      if (row.eventPlannerId != null) {
-        const list = map.get(row.activityId) ?? [];
-        list.push(row.eventPlannerId);
-        map.set(row.activityId, list);
-      }
+      const list = map.get(row.activityId) ?? [];
+      list.push({
+        eventPlannerId: row.eventPlannerId ?? undefined,
+        eventPlannerName: row.eventPlannerName ?? undefined,
+        name,
+        isLead: row.isLead ?? false,
+      });
+      map.set(row.activityId, list);
     }
     return map;
   }

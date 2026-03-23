@@ -70,21 +70,17 @@ export class TeamsService {
   }
 
   /**
-   * Active members of a team whose role grants activities.edit.
-   * Used to populate the Comms contacts dropdown.
+   * Active members of a team whose role grants `activities.edit`.
+   * Shared by comms candidate list and eligible-id set.
    */
-  async findCommsContactCandidates(
-    teamId: number,
-    callerTeamIds: number[],
-    hasCreateAny: boolean
-  ): Promise<CommsContactCandidate[]> {
-    if (!hasCreateAny && !callerTeamIds.includes(teamId)) {
-      throw new ForbiddenException(
-        'You may only view comms contact candidates for teams you belong to.'
-      );
-    }
-
-    const rows = await this.databaseService.db
+  private async fetchCommsEligibleUsersForTeam(teamId: number): Promise<
+    Array<{
+      id: number;
+      adDisplayName: string | null;
+      adUsername: string | null;
+    }>
+  > {
+    return this.databaseService.db
       .select({
         id: users.id,
         adDisplayName: users.adDisplayName,
@@ -112,10 +108,34 @@ export class TeamsService {
           eq(userTeams.isActive, true),
           eq(users.isActive, true)
         )
-      )
-      .orderBy(users.adDisplayName, users.adUsername);
+      );
+  }
 
-    return rows.map((u) => {
+  /**
+   * Active members of a team whose role grants activities.edit.
+   * Used to populate the Comms contacts dropdown.
+   */
+  async findCommsContactCandidates(
+    teamId: number,
+    callerTeamIds: number[],
+    hasCreateAny: boolean
+  ): Promise<CommsContactCandidate[]> {
+    if (!hasCreateAny && !callerTeamIds.includes(teamId)) {
+      throw new ForbiddenException(
+        'You may only view comms contact candidates for teams you belong to.'
+      );
+    }
+
+    const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
+    const sorted = [...rows].sort((a, b) => {
+      const sa = a.adDisplayName ?? a.adUsername ?? '';
+      const sb = b.adDisplayName ?? b.adUsername ?? '';
+      const byName = sa.localeCompare(sb, undefined, { sensitivity: 'base' });
+      if (byName !== 0) return byName;
+      return a.id - b.id;
+    });
+
+    return sorted.map((u) => {
       const label = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
       return { id: u.id, label, value: u.id };
     });
@@ -126,32 +146,8 @@ export class TeamsService {
    * (active team member + role grants activities.edit).
    */
   async getEligibleCommsUserIds(teamId: number): Promise<Set<number>> {
-    const rows = await this.databaseService.db
-      .select({ userId: userTeams.userId })
-      .from(userTeams)
-      .innerJoin(users, eq(users.id, userTeams.userId))
-      .innerJoin(
-        rolePermissions,
-        and(
-          eq(rolePermissions.roleId, users.roleId),
-          eq(rolePermissions.isActive, true)
-        )
-      )
-      .innerJoin(
-        permissions,
-        and(
-          eq(permissions.id, rolePermissions.permissionId),
-          eq(permissions.key, 'activities.edit')
-        )
-      )
-      .where(
-        and(
-          eq(userTeams.teamId, teamId),
-          eq(userTeams.isActive, true),
-          eq(users.isActive, true)
-        )
-      );
-    return new Set(rows.map((r) => r.userId));
+    const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
+    return new Set(rows.map((r) => r.id));
   }
 
   private async findManyByIds(teamIds: number[]): Promise<TeamListItem[]> {
