@@ -25,6 +25,14 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     translationsRequiredStatusId: 1,
     leadTeamId: 0,
     venueStatusId: undefined,
+    venueAddress: {
+      venueName: null,
+      addressLine1: null,
+      addressLine2: null,
+      city: null,
+      provinceOrState: null,
+      country: null,
+    },
   };
 }
 

@@ -7,6 +7,7 @@ import {
   FieldValues,
   FormProvider,
   useFormContext,
+  useFormState,
 } from 'react-hook-form';
 import {
   createContext,
@@ -35,6 +36,10 @@ const FormDisplayOptionsContext = createContext<FormDisplayOptionsContextValue>(
     showChangedBadges: true,
   }
 );
+
+export function useFormDisplayOptions(): FormDisplayOptionsContextValue {
+  return useContext(FormDisplayOptionsContext);
+}
 
 type FormDisplayOptionsProviderProps = {
   showChangedBadges?: boolean;
@@ -130,7 +135,7 @@ const FormLabel = forwardRef<
   }
 >(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
   const { error, formItemId, isDirty } = useFormField();
-  const { showChangedBadges } = useContext(FormDisplayOptionsContext);
+  const { showChangedBadges } = useFormDisplayOptions();
 
   return (
     <Label
@@ -138,7 +143,8 @@ const FormLabel = forwardRef<
       className={cn(
         error && 'text-destructive',
         className,
-        'flex items-center gap-2'
+        'flex items-center gap-2',
+        showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
       )}
       htmlFor={formItemId}
       {...props}
@@ -151,6 +157,60 @@ const FormLabel = forwardRef<
   );
 });
 FormLabel.displayName = 'FormLabel';
+
+/** Walks RHF `dirtyFields` for dotted paths (e.g. `venueAddress.city`). */
+function dirtyFieldAtPath(dirty: unknown, path: string): boolean {
+  const parts = path.split('.');
+  let cur: unknown = dirty;
+  for (const p of parts) {
+    if (cur == null || typeof cur !== 'object') return false;
+    cur = (cur as Record<string, unknown>)[p];
+  }
+  return cur === true;
+}
+
+/**
+ * Shows the changed marker for a field name without nesting the control under {@link FormLabel}
+ * (e.g. composite date/time rows, sr-only labels).
+ */
+function FormFieldDirtyIndicator({
+  name,
+  className,
+}: {
+  name: string;
+  className?: string;
+}) {
+  const { showChangedBadges } = useFormDisplayOptions();
+  const { control } = useFormContext();
+  const { dirtyFields } = useFormState({ control });
+  if (!showChangedBadges || !dirtyFieldAtPath(dirtyFields, name)) {
+    return null;
+  }
+  return <FormFieldChangedIndicator className={className} />;
+}
+
+/**
+ * One “Changed” marker when any of the given RHF paths is dirty (e.g. Date / Time groups).
+ */
+function FormAggregateDirtyIndicator({
+  names,
+  className,
+}: {
+  names: readonly string[];
+  className?: string;
+}) {
+  const { showChangedBadges } = useFormDisplayOptions();
+  const { control } = useFormContext();
+  const { dirtyFields } = useFormState({ control });
+  if (!showChangedBadges) {
+    return null;
+  }
+  const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
+  if (!anyDirty) {
+    return null;
+  }
+  return <FormFieldChangedIndicator className={className} />;
+}
 
 const FormControl = forwardRef<
   ElementRef<typeof Slot>,
@@ -244,6 +304,8 @@ export {
   FormDescription,
   FormMessage,
   FormField,
+  FormFieldDirtyIndicator,
+  FormAggregateDirtyIndicator,
   FormDisplayOptionsProvider,
   RequiredFieldIndicator,
 };

@@ -1,6 +1,7 @@
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
+  canonicalizeActivityFormData,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
 } from '@corpcal/shared/utils';
@@ -51,7 +52,7 @@ export function formatHistoryFieldValue(
   dateStatusMap?: StatusLookupMap,
   venueStatusMap?: StatusLookupMap
 ): string {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === '') {
     return '(empty)';
   }
 
@@ -218,10 +219,12 @@ export function computeFormChanges(
   current: ActivityFormData
 ): HistoryChange[] {
   const changes: HistoryChange[] = [];
+  const initialC = canonicalizeActivityFormData(initial);
+  const currentC = canonicalizeActivityFormData(current);
 
   for (const field of FIELDS_TO_COMPARE) {
-    const oldVal = initial[field];
-    const newVal = current[field];
+    const oldVal = initialC[field];
+    const newVal = currentC[field];
     if (!isDeepEqual(oldVal, newVal)) {
       changes.push({
         field,

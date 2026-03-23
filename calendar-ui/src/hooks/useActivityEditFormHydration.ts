@@ -5,6 +5,7 @@ import type {
   ActivityFormData,
   ActivityResponse,
 } from '@corpcal/shared/schemas';
+import { canonicalizeActivityFormData } from '@corpcal/shared/utils';
 
 import { activityToFormData } from '../lib/activity-form-mapper';
 import type { FormLookupData } from './useFormLookups';
@@ -35,7 +36,9 @@ export function useActivityEditFormHydration(
 
   useEffect(() => {
     setIsFormHydrated(false);
-    const mapped = activityToFormData(activityRef.current, lookups);
+    const mapped = canonicalizeActivityFormData(
+      activityToFormData(activityRef.current, lookups)
+    );
     form.reset(mapped);
     initialFormDataRef.current = mapped;
 

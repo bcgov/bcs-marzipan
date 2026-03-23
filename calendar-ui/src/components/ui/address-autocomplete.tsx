@@ -55,6 +55,13 @@ export type AddressAutocompleteProps = Omit<
   readOnly?: boolean;
   /** Root wrapper (dropdown is absolutely positioned under the input). */
   className?: string;
+  /**
+   * Called on input blur with the trimmed value, or `null` when empty.
+   * Use to sync free typing / clear-without-pick to controlled parents (e.g. RHF).
+   */
+  onBlurCommit?: (value: string | null) => void;
+  /** Raw input value on each change (after local state updates). Keeps RHF in sync before blur. */
+  onInputValueChange?: (value: string) => void;
 };
 
 export const AddressAutocomplete = forwardRef<
@@ -70,6 +77,9 @@ export const AddressAutocomplete = forwardRef<
     readOnly = false,
     className,
     id = 'address-autocomplete',
+    onBlurCommit,
+    onInputValueChange,
+    onBlur: onBlurFromProps,
     ...restInputProps
   },
   ref
@@ -163,6 +173,7 @@ export const AddressAutocomplete = forwardRef<
     if (viewOnly) return;
     const value = e.target.value;
     setSearchTerm(value);
+    onInputValueChange?.(value);
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -252,6 +263,11 @@ export const AddressAutocomplete = forwardRef<
         value={searchTerm}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
+        onBlur={(e) => {
+          onBlurFromProps?.(e);
+          const trimmed = searchTerm.trim();
+          onBlurCommit?.(trimmed === '' ? null : trimmed);
+        }}
         placeholder={placeholder}
         readOnly={viewOnly}
         disabled={isMuted}

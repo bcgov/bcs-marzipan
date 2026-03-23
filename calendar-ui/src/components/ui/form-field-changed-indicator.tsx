@@ -3,8 +3,8 @@ import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Dirty-field marker: 16px yellow circle with inner black ring; on hover expands to a pill
- * with 12px "Changed" text (activity Changed colour).
+ * Dirty-field marker: 18px yellow circle with inner black ring; on hover expands to a pill
+ * with 11px "Changed" text (activity Changed colour).
  */
 export function FormFieldChangedIndicator({
   className,
@@ -15,7 +15,7 @@ export function FormFieldChangedIndicator({
       role="status"
       aria-label="Changed"
       className={cn(
-        'group bg-status-yellow hover:bg-status-yellow/90 relative inline-flex h-4 w-4 shrink-0 cursor-default overflow-hidden rounded-full border border-transparent transition-[width] duration-200 ease-out outline-none',
+        'group bg-status-yellow hover:bg-status-yellow/90 relative inline-flex size-[18px] shrink-0 cursor-default items-center justify-center overflow-hidden rounded-full border border-transparent transition-[width] duration-200 ease-out outline-none',
         'hover:w-17',
         className
       )}
