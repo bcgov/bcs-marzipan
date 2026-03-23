@@ -57,8 +57,8 @@ import {
  */
 type AssertDbFieldsExist = {
   [K in keyof ActivityDbFields]: K extends keyof Activity
-  ? true
-  : `Field '${K & string}' in API schema does not exist in Activity database type`;
+    ? true
+    : `Field '${K & string}' in API schema does not exist in Activity database type`;
 };
 
 /**
@@ -70,8 +70,8 @@ type AssertDbFieldsExist = {
 type DbFieldsToExpose = Exclude<keyof Activity, 'rowVersion'>;
 type AssertDbFieldsExposed = {
   [K in DbFieldsToExpose]: K extends keyof ActivityDbFields
-  ? true
-  : `Database field '${K & string}' is not exposed in API - add to activityDbFieldsSchema`;
+    ? true
+    : `Database field '${K & string}' is not exposed in API - add to activityDbFieldsSchema`;
 };
 
 // Execute compile-time checks
@@ -106,8 +106,8 @@ const _updateActivityRequestCheck: UpdateActivityRequest =
  */
 type ComputedFieldsShouldNotBeInDb = {
   [K in keyof ActivityComputedFields]: K extends keyof Activity
-  ? `Computed field '${K & string}' found in Activity type - should be computed, not stored`
-  : true;
+    ? `Computed field '${K & string}' found in Activity type - should be computed, not stored`
+    : true;
 };
 
 const _computedFieldsNotInDb: ComputedFieldsShouldNotBeInDb =

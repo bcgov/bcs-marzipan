@@ -531,7 +531,6 @@ export class ActivityJunctionService {
     reportSettings: Map<number, boolean>
   ): Promise<void> {
     for (const [reportId, omitted] of reportSettings.entries()) {
-      // Check if row exists
       const [existing] = await tx
         .select()
         .from(activityReportSettings)
@@ -544,7 +543,6 @@ export class ActivityJunctionService {
         .limit(1);
 
       if (existing) {
-        // Update existing row
         await tx
           .update(activityReportSettings)
           .set({ omitted })
@@ -555,7 +553,6 @@ export class ActivityJunctionService {
             )
           );
       } else {
-        // Insert new row
         await tx.insert(activityReportSettings).values({
           activityId,
           reportId,

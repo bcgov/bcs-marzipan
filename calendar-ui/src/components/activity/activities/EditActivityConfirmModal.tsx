@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
@@ -198,7 +199,14 @@ export function EditActivityConfirmModal({
             Return to edit
           </Button>
           <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
-            {isSubmitting ? 'Updating...' : 'Confirm'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Updating...
+              </>
+            ) : (
+              'Confirm'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

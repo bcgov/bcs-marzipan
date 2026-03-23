@@ -436,6 +436,7 @@ export class ActivitiesService {
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed,
+      commsContactLeadId: _commsContactLeadIdCreateIgnored,
       ...activityData
     } = dto;
 
@@ -1237,6 +1238,7 @@ export class ActivitiesService {
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed: _markAsReviewedIgnored,
+      commsContactLeadId: _commsContactLeadIdUiIgnored,
       ...activityUpdateData
     } = dto;
 
@@ -1336,6 +1338,12 @@ export class ActivitiesService {
           'You may only set lead team to a team you belong to.'
         );
       }
+    }
+
+    // Validate categories outside the transaction so we do not hold a txn
+    // connection while borrowing another from the pool (pool starvation under load).
+    if (categoryIds !== undefined) {
+      await this.utilsService.validateCategoryIds(categoryIds);
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
@@ -1452,7 +1460,6 @@ export class ActivitiesService {
       // Handle junction table updates if provided
       // Update categories
       if (categoryIds !== undefined) {
-        await this.utilsService.validateCategoryIds(categoryIds);
         await this.junctionService.updateJunctionRecords(
           tx,
           activityCategories,
@@ -1758,8 +1765,21 @@ export class ActivitiesService {
       activityHistoryNotes || 'Activity updated'
     );
 
-    // Notify connected clients viewing this activity
-    this.activitiesGateway.notifyActivityUpdate(id, result);
+    // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
+    // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
+    const gateway = this.activitiesGateway;
+    const notifyPayload = result;
+    const notifyActivityId = id;
+    setImmediate(() => {
+      try {
+        gateway.notifyActivityUpdate(notifyActivityId, notifyPayload);
+      } catch (err: unknown) {
+        this.logger.error(
+          'notifyActivityUpdate failed (deferred)',
+          err instanceof Error ? err.stack : String(err)
+        );
+      }
+    });
 
     return result;
   }

@@ -81,8 +81,8 @@ export class ActivitiesGateway
    */
   notifyActivityUpdate(activityId: number, data: ActivityResponseDto) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
-    this.logger.log(
-      `Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`
+    this.logger.debug(
+      `viewingActivities map size=${this.viewingActivities.size} (deferred from PATCH handler)`
     );
 
     // Find all clients viewing this activity
