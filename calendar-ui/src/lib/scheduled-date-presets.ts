@@ -20,6 +20,11 @@ export function parseIsoDateLocal(iso: string): Date {
   return new Date(iso + 'T12:00:00');
 }
 
+/** Local start of today; use as `getPresetAnchor` for scheduled-date presets. */
+export function getPresetAnchorToday(): Date {
+  return startOfDay(new Date());
+}
+
 /** Past-oriented from anchor (filter start, form start when anchor = today). */
 export const PRESETS_PAST_FROM_ANCHOR: ScheduledDatePreset[] = [
   {

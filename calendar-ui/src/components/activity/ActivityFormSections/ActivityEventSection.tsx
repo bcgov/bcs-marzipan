@@ -88,6 +88,23 @@ type VenueFormValue = {
   country: string | null;
 };
 
+/**
+ * RHF may mark `venueAddress` as `true` (whole object) or nested field flags.
+ */
+function isVenueNameMarkedDirty(venueAddressDirty: unknown): boolean {
+  if (venueAddressDirty === true) return true;
+  if (
+    venueAddressDirty &&
+    typeof venueAddressDirty === 'object' &&
+    !Array.isArray(venueAddressDirty)
+  ) {
+    return Boolean(
+      (venueAddressDirty as Record<string, boolean | undefined>).venueName
+    );
+  }
+  return false;
+}
+
 const EMPTY_VENUE: VenueFormValue = {
   venueName: null,
   addressLine1: null,
@@ -320,8 +337,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 
   /** Heading badge: venue *name* or *status* only — not street/city/country (intentional). */
   const venueLocationHeadingDirty = useMemo(() => {
-    const va = dirtyFields?.venueAddress as { venueName?: boolean } | undefined;
-    return Boolean(dirtyFields?.venueStatusId) || Boolean(va?.venueName);
+    return (
+      Boolean(dirtyFields?.venueStatusId) ||
+      isVenueNameMarkedDirty(dirtyFields?.venueAddress)
+    );
   }, [dirtyFields]);
 
   const handleVenueAddressAutofill = (addressData: AddressData) => {

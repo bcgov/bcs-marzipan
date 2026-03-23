@@ -1,9 +1,10 @@
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { useCallback, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import {
+  getPresetAnchorToday,
   PRESETS_FUTURE_FROM_ANCHOR,
   PRESETS_PAST_FROM_ANCHOR,
 } from '@/lib/scheduled-date-presets';
@@ -35,8 +36,6 @@ export interface ScheduledDateRangeFieldsProps {
   showClearButton?: boolean;
   onAfterClear?: () => void;
 }
-
-const anchorToday = () => startOfDay(new Date());
 
 export function ScheduledDateRangeFields({
   value,
@@ -133,7 +132,7 @@ export function ScheduledDateRangeFields({
           triggerMuted={!value.startDate && !value.noStartDate}
           popoverTitle="Select start date"
           presets={PRESETS_PAST_FROM_ANCHOR}
-          getPresetAnchor={anchorToday}
+          getPresetAnchor={getPresetAnchorToday}
           isDateDisabled={isStartDisabled}
           headerRight={
             <Button
@@ -158,7 +157,7 @@ export function ScheduledDateRangeFields({
           triggerMuted={!value.endDate && !value.noEndDate}
           popoverTitle="Select end date"
           presets={PRESETS_FUTURE_FROM_ANCHOR}
-          getPresetAnchor={anchorToday}
+          getPresetAnchor={getPresetAnchorToday}
           isDateDisabled={isEndDisabled}
           headerRight={
             <Button

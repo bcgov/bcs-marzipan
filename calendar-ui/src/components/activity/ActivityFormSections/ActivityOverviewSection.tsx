@@ -1,4 +1,4 @@
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
@@ -41,6 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
+  getPresetAnchorToday,
   parseIsoDateLocal,
   PRESETS_FUTURE_SHORT,
 } from '@/lib/scheduled-date-presets';
@@ -52,8 +53,6 @@ import {
   type ActivityLeadTeamFieldConfig,
 } from '../activity-lead-team-field-config';
 import { ActivityFormSection } from './ActivityFormSection';
-
-const anchorToday = () => startOfDay(new Date());
 
 /** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
 const DIRTY_CASCADE = { shouldDirty: true } as const;
@@ -584,7 +583,7 @@ export const ActivityOverviewSection: React.FC<
                   readOnly={readOnly}
                   popoverTitle="Select pitch date"
                   presets={PRESETS_FUTURE_SHORT}
-                  getPresetAnchor={anchorToday}
+                  getPresetAnchor={getPresetAnchorToday}
                   headerRight={
                     raw && !readOnly ? (
                       <Button

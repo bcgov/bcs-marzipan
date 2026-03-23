@@ -322,7 +322,7 @@ export function FreeformCombobox({
       const next = selectedList.filter((_, i) => i !== index);
       onChange(next.length ? next : null);
     },
-    [selectedList, multiple, onChange, isLocked]
+    [selectedList, onChange, isLocked]
   );
 
   const handleKeyDown = useCallback(

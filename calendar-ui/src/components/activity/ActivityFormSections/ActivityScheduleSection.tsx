@@ -27,6 +27,7 @@ import { TimePicker } from '@/components/ui/time-picker';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
+  getPresetAnchorToday,
   parseIsoDateLocal,
   PRESETS_FUTURE_FROM_ANCHOR,
   PRESETS_PAST_FROM_ANCHOR,
@@ -57,8 +58,6 @@ const TIME_GROUP_FIELDS = [
   'isAllDay',
   'timeStatusId',
 ] as const;
-
-const anchorToday = () => startOfDay(new Date());
 
 const parseTimeToMinutes = (value: string): number | null => {
   const [hourPart, minutePart] = value.trim().split(':');
@@ -184,7 +183,7 @@ export function ActivityScheduleSection({
                       readOnly={readOnly}
                       popoverTitle="Select start date"
                       presets={PRESETS_PAST_FROM_ANCHOR}
-                      getPresetAnchor={anchorToday}
+                      getPresetAnchor={getPresetAnchorToday}
                       triggerAriaLabel="Activity start date"
                       triggerVariant="form"
                       headerRight={
