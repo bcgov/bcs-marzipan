@@ -200,6 +200,9 @@
     --activity-status-deleted: var(--status-red);
     --activity-status-on-hold: var(--status-grey);
     --activity-status-completed: var(--status-dark);
+
+    /* Required field asterisk — matches Deleted activity status badge background */
+    --required-field-indicator: var(--activity-status-deleted);
   }
 
   .dark {
@@ -276,6 +279,7 @@
   --color-status-grey: var(--status-grey);
   --color-status-dark: var(--status-dark);
   --color-status-purple: var(--status-purple);
+  --color-required-field-indicator: var(--required-field-indicator);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -473,6 +477,7 @@
   --activity-status-deleted: var(--status-red);
   --activity-status-on-hold: var(--status-grey);
   --activity-status-completed: var(--status-dark);
+  --required-field-indicator: var(--activity-status-deleted);
 }
 
 .dark {

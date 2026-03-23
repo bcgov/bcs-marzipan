@@ -28,6 +28,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  RequiredFieldIndicator,
 } from '@/components/ui/form';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
@@ -113,8 +114,7 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel>
-                {getActivityFieldLabel(field.name)}{' '}
-                <span className="text-destructive">*</span>
+                {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -165,8 +165,7 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              {getActivityFieldLabel(field.name)}{' '}
-              <span className="text-destructive">*</span>
+              {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
@@ -276,8 +275,7 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel>
-                {getActivityFieldLabel(field.name)}{' '}
-                <span className="text-destructive">*</span>
+                {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
               </FormLabel>
               <FormControl data-field={field.name}>
                 <FormSelect
@@ -387,7 +385,9 @@ export const ActivityOverviewSection: React.FC<
         name="summary"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
+            </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter activity summary"

@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  RequiredFieldIndicator,
 } from '@/components/ui/form';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -135,8 +136,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           return (
             <FormItem>
               <FormLabel>
-                {getActivityFieldLabel(field.name)}{' '}
-                <span className="text-destructive">*</span>
+                {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox

@@ -78,3 +78,15 @@ Append-only notes for fork-level UI changes that diverge from stock Shadcn/Radix
 | [src/components/ui/freeform-combobox.tsx](../src/components/ui/freeform-combobox.tsx)           | Chips-mode trigger `div` gets `data-slot="freeform-combobox-chips"` so the activity form scope can remove its shadow without affecting other pages. |
 
 **Rationale:** Stock Shadcn-style inputs use `shadow-xs`; read-only fields already used `shadow-none`, which looked inconsistent next to editable fields. Scoping under `ActivityFormBody` avoids changing global `Input` / `Textarea` / combobox defaults for the rest of the app.
+
+---
+
+## Required-field asterisk colour (activity form)
+
+**Date:** 2026-03-22
+
+**Tokens:** In [globals.css](../src/styles/globals.css), `--required-field-indicator` points at `--activity-status-deleted` (same as Deleted activity status badge background / `--status-red`). Exposed to Tailwind as `--color-required-field-indicator` in `@theme`.
+
+**Component:** [form.tsx](../src/components/ui/form.tsx) exports `RequiredFieldIndicator` (asterisk using `text-[var(--color-required-field-indicator)]`).
+
+**Activity sections using it:** [ActivityOverviewSection.tsx](../src/components/activity/ActivityFormSections/ActivityOverviewSection.tsx) (category, title, lead team, summary), [ActivityScheduleSection.tsx](../src/components/activity/ActivityFormSections/ActivityScheduleSection.tsx) (Date / Time row labels), [ActivityCommsSection.tsx](../src/components/activity/ActivityFormSections/ActivityCommsSection.tsx) (comms lead). Visibility intentionally has no required asterisk (API defaults `global`).

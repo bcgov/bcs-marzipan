@@ -15,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  RequiredFieldIndicator,
 } from '@/components/ui/form';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -128,7 +129,7 @@ export function ActivityScheduleSection({
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
         <FormLabel className="flex items-center gap-1">
-          Date <span className="text-destructive">*</span>
+          Date <RequiredFieldIndicator className="inline" />
         </FormLabel>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
@@ -279,7 +280,7 @@ export function ActivityScheduleSection({
 
       <FormItem>
         <FormLabel className="flex items-center gap-1">
-          Time <span className="text-destructive">*</span>
+          Time <RequiredFieldIndicator className="inline" />
         </FormLabel>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
