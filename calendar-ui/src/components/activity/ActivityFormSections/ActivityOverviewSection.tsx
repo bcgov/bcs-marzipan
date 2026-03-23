@@ -1,6 +1,6 @@
 import { format, startOfDay } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import type {
   PitchRequiredStatusLookupItem,
@@ -55,17 +55,98 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 const anchorToday = () => startOfDay(new Date());
 
+/** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
+const DIRTY_CASCADE = { shouldDirty: true } as const;
+
+type LeadOrganizationOption = {
+  value: number;
+  label: string;
+  ministryId?: number | null;
+};
+
+/**
+ * Isolated so `useWatch('leadOrgName')` only re-renders this subtree when that
+ * field changes, not the entire overview section.
+ */
+function LeadOrganizationField({
+  organizations,
+  readOnly,
+}: {
+  organizations: LeadOrganizationOption[];
+  readOnly: boolean;
+}) {
+  const form = useFormContext<ActivityFormData>();
+  const leadOrgName = useWatch({ control: form.control, name: 'leadOrgName' });
+
+  return (
+    <FormField
+      control={form.control}
+      name="leadOrgId"
+      render={({ field }) => {
+        const leadOrgId = field.value;
+
+        const comboboxValue: FreeformComboboxValue =
+          leadOrgId != null
+            ? { type: 'option', value: String(leadOrgId) }
+            : leadOrgName
+              ? { type: 'freeform', value: leadOrgName }
+              : null;
+
+        const handleChange = (
+          value: FreeformComboboxValue | FreeformComboboxValue[] | null
+        ) => {
+          const single =
+            value == null
+              ? null
+              : Array.isArray(value)
+                ? (value[0] ?? null)
+                : value;
+          if (!single) {
+            field.onChange(null);
+            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+          } else if (single.type === 'option') {
+            field.onChange(Number(single.value));
+            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+          } else {
+            field.onChange(null);
+            form.setValue('leadOrgName', single.value, DIRTY_CASCADE);
+          }
+        };
+
+        return (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormControl data-field={field.name}>
+              <FreeformCombobox
+                readOnly={readOnly}
+                options={organizations.map((o) => ({
+                  value: String(o.value),
+                  label: o.label,
+                }))}
+                value={comboboxValue}
+                onChange={handleChange}
+                placeholder="Select lead organization"
+                searchPlaceholder="Search organizations..."
+                emptyMessage="No organizations found."
+                freeformLabel="New org"
+                freeformDescription=""
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
 type ActivityOverviewSectionProps = {
   categories: Array<{
     id: number;
     name: string;
     displayName?: string;
   }>;
-  organizations: Array<{
-    value: number;
-    label: string;
-    ministryId?: number | null;
-  }>;
+  organizations: LeadOrganizationOption[];
   tags: Array<{ id: number; text: string }>;
   pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
   leadTeamField?: ActivityLeadTeamFieldConfig;
@@ -236,14 +317,18 @@ export const ActivityOverviewSection: React.FC<
             field.onChange(teamId);
 
             if (teamId == null) {
-              form.setValue('leadMinistryId', undefined);
+              form.setValue('leadMinistryId', undefined, DIRTY_CASCADE);
               if (leadOrgInSyncWithTeam) {
-                form.setValue('leadOrgId', null);
-                form.setValue('leadOrgName', null);
+                form.setValue('leadOrgId', null, DIRTY_CASCADE);
+                form.setValue('leadOrgName', null, DIRTY_CASCADE);
               }
             } else {
               const team = mergedTeams.find((t) => t.id === teamId);
-              form.setValue('leadMinistryId', team?.ministryId ?? undefined);
+              form.setValue(
+                'leadMinistryId',
+                team?.ministryId ?? undefined,
+                DIRTY_CASCADE
+              );
               if (leadOrgInSyncWithTeam && team) {
                 const orgForMinistry =
                   team.ministryId != null
@@ -252,11 +337,15 @@ export const ActivityOverviewSection: React.FC<
                       )
                     : undefined;
                 if (orgForMinistry) {
-                  form.setValue('leadOrgId', orgForMinistry.value);
-                  form.setValue('leadOrgName', null);
+                  form.setValue(
+                    'leadOrgId',
+                    orgForMinistry.value,
+                    DIRTY_CASCADE
+                  );
+                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
                 } else {
-                  form.setValue('leadOrgId', null);
-                  form.setValue('leadOrgName', null);
+                  form.setValue('leadOrgId', null, DIRTY_CASCADE);
+                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
                 }
               }
             }
@@ -321,65 +410,11 @@ export const ActivityOverviewSection: React.FC<
         }}
       />
 
-      <FormField
-        control={form.control}
-        name="leadOrgId"
-        render={({ field }) => {
-          const leadOrgId = field.value;
-          const leadOrgName = form.watch('leadOrgName');
-
-          const comboboxValue: FreeformComboboxValue =
-            leadOrgId != null
-              ? { type: 'option', value: String(leadOrgId) }
-              : leadOrgName
-                ? { type: 'freeform', value: leadOrgName }
-                : null;
-
-          const handleChange = (
-            value: FreeformComboboxValue | FreeformComboboxValue[] | null
-          ) => {
-            const single =
-              value == null
-                ? null
-                : Array.isArray(value)
-                  ? (value[0] ?? null)
-                  : value;
-            if (!single) {
-              field.onChange(null);
-              form.setValue('leadOrgName', null);
-            } else if (single.type === 'option') {
-              field.onChange(Number(single.value));
-              form.setValue('leadOrgName', null);
-            } else {
-              field.onChange(null);
-              form.setValue('leadOrgName', single.value);
-            }
-          };
-
-          return (
-            <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <FormControl data-field={field.name}>
-                <FreeformCombobox
-                  readOnly={readOnly}
-                  options={organizations.map((o) => ({
-                    value: String(o.value),
-                    label: o.label,
-                  }))}
-                  value={comboboxValue}
-                  onChange={handleChange}
-                  placeholder="Select lead organization"
-                  searchPlaceholder="Search organizations..."
-                  emptyMessage="No organizations found."
-                  freeformLabel="New org"
-                  freeformDescription=""
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          );
-        }}
+      <LeadOrganizationField
+        organizations={organizations}
+        readOnly={readOnly}
       />
+      {/* summary is required `z.string()` on ActivityFormData; keep '' not undefined (optional fields use empty-to-undefined). */}
       <FormField
         control={form.control}
         name="summary"
@@ -417,7 +452,7 @@ export const ActivityOverviewSection: React.FC<
                 onCheckedChange={(checked) => {
                   field.onChange(checked);
                   if (checked) {
-                    form.setValue('visibility', 'team');
+                    form.setValue('visibility', 'team', DIRTY_CASCADE);
                     const executiveSummary = form.getValues('executiveSummary');
                     if (!executiveSummary?.trim()) {
                       const leadTeamId = form.getValues('leadTeamId');
@@ -431,7 +466,11 @@ export const ActivityOverviewSection: React.FC<
                           team.name ||
                           'team'
                         : 'team';
-                      form.setValue('executiveSummary', `Hold for ${holdFor}.`);
+                      form.setValue(
+                        'executiveSummary',
+                        `Hold for ${holdFor}.`,
+                        DIRTY_CASCADE
+                      );
                     }
                   }
                 }}

@@ -153,8 +153,12 @@ export function formatHistoryFieldValue(
  * Keys intentionally excluded from form comparison.
  * activityHistoryNotes is edit metadata (the "reason for change" note),
  * not a user-editable data field.
+ * commsContactLeadId is legacy UI convenience; lead is represented via commsContacts.
  */
-type ExcludedFromCompare = 'activityHistoryNotes' | 'markAsReviewed';
+type ExcludedFromCompare =
+  | 'activityHistoryNotes'
+  | 'markAsReviewed'
+  | 'commsContactLeadId';
 
 const FIELDS_TO_COMPARE = [
   'title',
@@ -190,7 +194,6 @@ const FIELDS_TO_COMPARE = [
   'premierRequestedId',
   'newsReleaseId',
   'newsReleaseOriginId',
-  'commsContactLeadId',
   'categoryIds',
   'tagIds',
   'commsMaterialIds',

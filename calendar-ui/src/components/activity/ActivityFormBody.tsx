@@ -1,4 +1,4 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useMemo, type ReactElement } from 'react';
 
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
@@ -62,7 +62,10 @@ export function ActivityFormBody({
     ...leadTeamFieldProp,
   };
 
-  const commsContacts = form.watch('commsContacts');
+  const commsContacts = useWatch({
+    control: form.control,
+    name: 'commsContacts',
+  });
 
   const commsLeadOptions = useMemo<OptionItem[]>(() => {
     const candidateOptions: OptionItem[] = (commsContactCandidates ?? []).map(
@@ -76,10 +79,12 @@ export function ActivityFormBody({
     const fallbacks = currentContacts
       .filter((c) => !candidateIds.has(String(c.userId)))
       .map((c) => {
-        const u = lookups.users.find((u) => u.value === String(c.userId));
+        const userOption = lookups.users.find(
+          (opt) => opt.value === String(c.userId)
+        );
         return {
           value: String(c.userId),
-          label: u?.label ?? `User ${c.userId}`,
+          label: userOption?.label ?? `User ${c.userId}`,
         };
       });
     return [...candidateOptions, ...fallbacks];

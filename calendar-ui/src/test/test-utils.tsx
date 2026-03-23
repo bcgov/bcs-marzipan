@@ -38,7 +38,6 @@ function AllTheProviders({ children, form }: AllTheProvidersProps) {
     defaultValues: {
       isAllDay: false,
       isIssue: false,
-      commsContactLeadId: 8,
       categoryIds: [],
       tagIds: [],
       commsMaterialIds: [],

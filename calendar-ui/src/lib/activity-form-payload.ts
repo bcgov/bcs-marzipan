@@ -63,7 +63,6 @@ export function buildPayloadForUpdate(
   const { markAsReviewed } = options ?? {};
   const payload: Record<string, unknown> = {
     ...buildPayloadForCreate(data, formValues),
-    commsContacts: toUndefinedIfEmpty(formValues.commsContacts),
     reportSettings: normalizedReportSettings,
   };
   if (markAsReviewed !== undefined) {
