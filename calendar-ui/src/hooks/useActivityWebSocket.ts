@@ -1,6 +1,11 @@
 import { io } from 'socket.io-client';
 import { useEffect, useRef } from 'react';
 
+import {
+  CALENDAR_SOCKET_IO_OPTIONS,
+  getCalendarSocketUrl,
+} from '@/lib/calendar-socket';
+
 interface UseActivityWebSocketOptions {
   onLockAcquired?: (lockedBy: { userId: number; username: string }) => void;
   onLockReleased?: () => void;
@@ -20,12 +25,15 @@ export function useActivityWebSocket(
   optionsRef.current = options;
 
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const socket = io(apiUrl);
+    const socket = io(getCalendarSocketUrl(), CALENDAR_SOCKET_IO_OPTIONS);
 
-    socket.on('connect', () => {
+    const emitViewActivity = () => {
       socket.emit('viewActivity', activityId);
-    });
+    };
+
+    socket.on('connect', emitViewActivity);
+    // `connect` usually fires after transport reconnect too; this is explicit for Manager retries.
+    socket.io.on('reconnect', emitViewActivity);
 
     socket.on(
       'lockAcquired',
@@ -53,6 +61,8 @@ export function useActivityWebSocket(
 
     return () => {
       socket.emit('leaveActivity', activityId);
+      socket.off('connect', emitViewActivity);
+      socket.io.off('reconnect', emitViewActivity);
       socket.off('lockAcquired');
       socket.off('lockReleased');
       socket.off('dataUpdated');

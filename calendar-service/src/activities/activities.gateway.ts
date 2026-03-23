@@ -7,13 +7,14 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+import { getCorsAllowedOrigins } from '../common/config/cors-allowed-origins';
 import type { ActivityResponseDto } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 
 @WebSocketGateway({
   cors: {
-    // TODO: In production, restrict to frontend domain
-    origin: '*',
+    origin: getCorsAllowedOrigins(),
+    credentials: true,
   },
 })
 export class ActivitiesGateway
