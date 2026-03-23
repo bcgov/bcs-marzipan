@@ -1,6 +1,37 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 
+function trimVenueNullable(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const t = v.trim();
+  return t === '' ? null : t;
+}
+
+/** Stable empty venue object so RHF nested defaults use explicit `null` (not missing keys / undefined). */
+export function normalizeVenueAddressForForm(
+  input: ActivityResponse['venueAddress']
+): NonNullable<ActivityFormData['venueAddress']> {
+  const empty = {
+    venueName: null as string | null,
+    addressLine1: null as string | null,
+    addressLine2: null as string | null,
+    city: null as string | null,
+    provinceOrState: null as string | null,
+    country: null as string | null,
+  };
+  if (input == null || typeof input !== 'object') {
+    return empty;
+  }
+  return {
+    venueName: trimVenueNullable(input.venueName),
+    addressLine1: trimVenueNullable(input.addressLine1),
+    addressLine2: trimVenueNullable(input.addressLine2),
+    city: trimVenueNullable(input.city),
+    provinceOrState: trimVenueNullable(input.provinceOrState),
+    country: trimVenueNullable(input.country),
+  };
+}
+
 /**
  * Optional lookups to resolve response display names to IDs for form fields.
  * Pass these when mapping an ActivityResponse to form data so junction arrays are populated.
@@ -137,6 +168,6 @@ export function mapResponseToFormData(
       : undefined,
     commsContacts: commsContacts?.length ? commsContacts : undefined,
     reportSettings: reportSettings?.length ? reportSettings : undefined,
-    venueAddress: response.venueAddress ?? undefined,
+    venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }
