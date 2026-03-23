@@ -104,7 +104,7 @@ export function createMockActivityResponse(
     eventPlannerLeadIds: [],
     dateStatus: 'Set',
     timeStatus: 'Set',
-    venueStatus: 'TBD',
+    venueStatus: 'Venue TBD',
     activityStatus: DEFAULT_ACTIVITY_STATUS,
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,

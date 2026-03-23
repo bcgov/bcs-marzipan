@@ -277,7 +277,7 @@ export class LookupsService {
   }
 
   /**
-   * Get all active venue statuses (e.g. TBC, TBD, tentative, confirmed)
+   * Get all active venue statuses (TBC, TBD)
    */
   async getVenueStatuses(): Promise<LookupItem[]> {
     const results = await this.databaseService.db

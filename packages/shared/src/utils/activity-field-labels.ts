@@ -12,6 +12,21 @@ export type ActivityFieldLabelKey =
   | keyof VenueAddressBase;
 
 /**
+ * Form/API field keys that are required on create (matches createActivityRequestSchema
+ * and comms lead rule). Visibility is omitted — it defaults to global in the schema.
+ * Use for required indicators in the UI; keep in sync when validation changes.
+ */
+export const ACTIVITY_CREATE_REQUIRED_FIELD_KEYS = [
+  'categoryIds',
+  'title',
+  'summary',
+  'leadTeamId',
+  'dateStatusId',
+  'timeStatusId',
+  'commsContacts',
+] as const satisfies readonly (keyof ActivityFormData)[];
+
+/**
  * User-facing labels for activity form/history field names.
  * Single source of truth for form validation messages, history changelog, confirm modals, etc.
  * Sentence case.
@@ -19,6 +34,7 @@ export type ActivityFieldLabelKey =
 export const ACTIVITY_FIELD_LABELS: Partial<
   Record<ActivityFieldLabelKey, string>
 > = {
+  categoryIds: 'Category',
   title: 'Title',
   summary: 'Summary',
   significance: 'Significance',
@@ -32,7 +48,6 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   commsContactLeadId: 'Comms lead',
   commsContacts: 'Comms contacts',
   eventPlanners: 'Event planners',
-  categoryIds: 'Categories',
   tagIds: 'Tags',
   commsMaterialIds: 'Comms materials',
   translationLanguageIds: 'Translation languages',

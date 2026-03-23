@@ -57,8 +57,8 @@ SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ----------------------------------------------------------------------------
 -- TEAM MINISTRY (teams.ministry_id)
--- Ministry Comms (8-32): PREM=1, AGRI=2, ... WLRS=25.
--- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->ENV(9).
+-- Ministry Comms (8-32): PREM=1, AF=2, ... WLRS=25 (ministry id matches org id 1-25).
+-- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->EP(9).
 -- ----------------------------------------------------------------------------
 
 UPDATE teams SET ministry_id = 1 WHERE id = 8;
@@ -113,7 +113,7 @@ UPDATE teams SET role_id = 1 WHERE id IN (33, 34, 36);
 -- ----------------------------------------------------------------------------
 
 INSERT INTO user_teams (user_id, team_id, role, is_active) VALUES
-  -- View Only (user 1): one Ministry Comms team other than PREM (e.g. INFRA Comms, 22)
+  -- View Only (user 1): one Ministry Comms team other than PREM (e.g. INF Comms, 22)
   (1, 22, 'member', true),
   -- Editors (2-12): each in one Ministry Comms; users 2 and 3 in two teams each
   (2, 9, 'member', true),

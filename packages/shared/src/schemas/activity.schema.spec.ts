@@ -25,6 +25,7 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     activityStatusId: 1,
     leadTeamId: validLeadTeamId,
     leadMinistryId: validLeadMinistryId,
+    categoryIds: [1],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
@@ -59,6 +60,28 @@ describe('createActivityRequestSchema', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({ significance: 'a'.repeat(1001) })
+      )
+    ).toThrow();
+  });
+
+  it('accepts create without significance or with null significance', () => {
+    const without = createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: undefined })
+    );
+    expect(without.significance).toBeUndefined();
+    const explicitNull = createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: null })
+    );
+    expect(explicitNull.significance).toBeNull();
+  });
+
+  it('rejects create when categoryIds is missing or empty', () => {
+    const missing = minimalCreateRequest();
+    delete (missing as Record<string, unknown>).categoryIds;
+    expect(() => createActivityRequestSchema.parse(missing)).toThrow();
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ categoryIds: [] })
       )
     ).toThrow();
   });
@@ -374,6 +397,19 @@ describe('updateActivityRequestSchema', () => {
     });
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['eventPlanners']);
+  });
+
+  it('rejects update when categoryIds is empty array', () => {
+    const err = updateActivityRequestSchema.safeParse({ categoryIds: [] });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['categoryIds']);
+    expect(err.error.issues[0].message).toBe(
+      'At least one category is required.'
+    );
+  });
+
+  it('accepts update when categoryIds is omitted', () => {
+    updateActivityRequestSchema.parse({ title: 'x' });
   });
 });
 

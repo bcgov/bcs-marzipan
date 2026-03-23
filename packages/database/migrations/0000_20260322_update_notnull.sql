@@ -5,7 +5,7 @@ CREATE TABLE "activities" (
 	"lead_org_id" integer,
 	"lead_org_name" varchar(255),
 	"summary" text NOT NULL,
-	"significance" text NOT NULL,
+	"significance" text,
 	"is_issue" boolean DEFAULT false NOT NULL,
 	"is_all_day" boolean DEFAULT false NOT NULL,
 	"start_date" date,

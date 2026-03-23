@@ -67,7 +67,10 @@ const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.string().min(1).max(255),
   summary: z.string().max(1000),
-  significance: z.string().max(1000),
+  significance: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.union([z.string().max(1000), z.null()]).optional()
+  ),
   schedulingNotes: z.string().max(500).optional().nullable(),
   strategy: z.string().nullable().optional(),
 
@@ -202,6 +205,15 @@ const junctionTableIdsSchema = z.object({
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
+const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required.';
+
+/** Create requests require at least one category ID. */
+const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
+  categoryIds: z
+    .array(z.number().int())
+    .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
+});
+
 const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required.';
 const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
 
@@ -244,7 +256,7 @@ function eventPlannerLeadRefine(data: {
  * Used to build create and update schemas without calling .partial() on a refined schema (Zod v4).
  */
 const createBaseSchema = activityCoreFieldsSchema
-  .merge(junctionTableIdsSchema)
+  .merge(createJunctionTableIdsSchema)
   .extend({
     venueAddress: venueAddressFieldsSchema,
     activityHistoryNotes: z.string().max(1000).optional(),

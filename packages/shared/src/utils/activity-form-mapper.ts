@@ -93,7 +93,7 @@ export function mapResponseToFormData(
   return {
     title: response.title,
     summary: response.summary,
-    significance: response.significance,
+    significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
     strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId,
@@ -125,7 +125,7 @@ export function mapResponseToFormData(
     eventPlanners: eventPlanners?.length ? eventPlanners : undefined,
     newsReleaseDistributionId: response.newsReleaseDistributionId ?? undefined,
     premierRequestedId: response.premierRequestedId ?? undefined,
-    categoryIds: categoryIds?.length ? categoryIds : undefined,
+    categoryIds: categoryIds?.length ? categoryIds : [],
     tagIds: tagIds?.length ? tagIds : undefined,
     commsMaterialIds: commsMaterialIds?.length ? commsMaterialIds : undefined,
     translationLanguageIds: translationLanguageIds?.length

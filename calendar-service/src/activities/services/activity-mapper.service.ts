@@ -117,7 +117,7 @@ export class ActivityMapperService {
       tags: relatedData?.tags ?? [],
 
       // Approvals
-      significance: activity.significance ?? '',
+      significance: activity.significance ?? null,
       activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,
 
       // Scheduling

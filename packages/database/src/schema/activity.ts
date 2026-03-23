@@ -64,7 +64,7 @@ export const activities = pgTable(
     leadOrgId: integer('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
     leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
     summary: text('summary').notNull(),
-    significance: text('significance').notNull(),
+    significance: text('significance'),
     isIssue: boolean('is_issue').notNull().default(false),
 
     // Scheduling
@@ -85,7 +85,7 @@ export const activities = pgTable(
 
     venueStatusId: integer('venue_status_id').references(
       () => venueStatuses.id
-    ), // FK to VenueStatus (TBC/TBD/tentative/confirmed)
+    ), // FK to VenueStatus (TBC / TBD)
 
     // News Release
     newsReleaseOriginId: integer('news_release_origin_id').references(

@@ -191,7 +191,7 @@ export const translationRequiredStatuses = pgTable(
 
 /**
  * VenueStatus lookup table — linked from activities.venue_status_id
- * Typical values: tbc, tbd, tentative, confirmed
+ * Values: TBC, TBD (see seed data for `name` / `display_name`)
  */
 export const venueStatuses = pgTable('venue_statuses', {
   id: serial('id').primaryKey(),

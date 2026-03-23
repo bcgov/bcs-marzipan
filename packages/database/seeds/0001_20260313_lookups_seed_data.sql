@@ -158,13 +158,13 @@ WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name)
 
 -- ============================================================================
 -- VENUE STATUSES
--- Linked to activities.venue_status_id (same pattern as date/time status).
+-- Linked to activities.venue_status_id (TBC / TBD only).
 -- ============================================================================
 
 INSERT INTO venue_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('TBD', 'Venue TBD', 1, true, 'Venue to be determined', 1, 1),
-  ('TBC', 'Venue TBC', 2, true, 'Venue to be confirmed', 1, 1),
+  ('TBC', 'Venue TBC', 2, true, 'Venue to be confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
@@ -331,8 +331,8 @@ INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviat
   (15, 15, true, 'INF', 'Infrastructure', 'INF', 1, 1),
   (16, 16, true, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
   (17, 17, true, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 1),
-  (18, 18, true, 'LBR', 'Labour', 'LBR', 1, 1),
-  (19, 19, true, 'MCM', 'Mining and Critical Minerals', 'MCM', 1, 1),
+  (18, 18, true, 'LAB', 'Labour', 'LAB', 1, 1),
+  (19, 19, true, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 1),
   (20, 20, true, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
   (21, 21, true, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 1),
   (22, 22, true, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
@@ -366,8 +366,8 @@ INSERT INTO organizations (id, name, display_name, organization_type, ministry_i
   (15, 'INF', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
   (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
   (17, 'JEG', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
-  (18, 'LBR', 'Labour', 'bcgov', 18, true, 18, 1, 1),
-  (19, 'MCM', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
+  (18, 'LAB', 'Labour', 'bcgov', 18, true, 18, 1, 1),
+  (19, 'MIN', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
   (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
   (21, 'PSSG', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
   (22, 'SDPR', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),

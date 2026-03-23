@@ -52,7 +52,7 @@ export const activityDbFieldsSchema = z.object({
   // Overview
   title: z.string(),
   summary: z.string(),
-  significance: z.string(),
+  significance: z.string().nullable(),
 
   // Lead organization (mutually exclusive: either ID or Name)
   leadOrgId: z.number().int().nullable(),

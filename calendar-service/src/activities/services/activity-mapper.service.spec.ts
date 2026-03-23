@@ -60,11 +60,11 @@ describe('ActivityMapperService', () => {
       });
 
       const result = mapper.mapToResponseDto(activity, {
-        venueStatus: 'Confirmed',
+        venueStatus: 'Venue TBC',
       });
 
       expect(result.venueStatusId).toBe(2);
-      expect(result.venueStatus).toBe('Confirmed');
+      expect(result.venueStatus).toBe('Venue TBC');
     });
 
     it('should include canEdit when relatedData.canEdit is true', () => {

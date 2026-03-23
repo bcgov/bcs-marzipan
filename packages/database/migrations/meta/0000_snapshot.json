@@ -1,5 +1,5 @@
 {
-  "id": "9a1d4d96-21f6-4833-931c-57d1779fa053",
+  "id": "305b4cb2-0009-40f6-917c-9555b73cc2c5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -48,7 +48,7 @@
           "name": "significance",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "is_issue": {
           "name": "is_issue",

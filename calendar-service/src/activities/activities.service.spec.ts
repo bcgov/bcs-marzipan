@@ -1414,7 +1414,7 @@ describe('ActivitiesService', () => {
         new Map([[1, 'confirmed']])
       );
       mockDataFetcherService.fetchVenueStatusesForActivities.mockResolvedValue(
-        new Map([[1, 'TBD']])
+        new Map([[1, 'Venue TBD']])
       );
       mockDataFetcherService.fetchVenueAddressesForActivities.mockResolvedValue(
         new Map([[1, null]])
@@ -1731,7 +1731,9 @@ describe('ActivitiesService', () => {
         };
         chain.limit
           .mockResolvedValueOnce(statusRow)
-          .mockResolvedValueOnce(teamRow);
+          .mockResolvedValueOnce(teamRow)
+          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce([{ id: 1 }]);
         return chain;
       });
 
@@ -1770,7 +1772,9 @@ describe('ActivitiesService', () => {
         };
         chain.limit
           .mockResolvedValueOnce(statusRow)
-          .mockResolvedValueOnce(teamRow);
+          .mockResolvedValueOnce(teamRow)
+          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce([{ id: 1 }]);
         return chain;
       });
 

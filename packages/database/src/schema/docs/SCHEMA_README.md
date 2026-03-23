@@ -7,7 +7,7 @@ This document describes the schema flow and type safety architecture in the appl
 The application uses a layered approach to ensure type safety from the database to the frontend:
 
 ```
-Database → Drizzle → Zod (auto-generated) → API Response (derived) → DTO (implements) → Frontend
+Database → Drizzle → Zod (hand-maintained request/response) → API → Frontend
 ```
 
 ## Key Components
@@ -21,31 +21,18 @@ Database → Drizzle → Zod (auto-generated) → API Response (derived) → DTO
 
 ### 2. Zod Schemas (`packages/shared/src/schemas/`)
 
-#### Activity Schema (`activity.schema.ts`)
+#### Activity request / response (`activity.schema.ts`, `activity-response.schema.ts`)
 
-Automatically generated from Drizzle schema using `drizzle-zod`:
+These are **hand-maintained** (see file headers in `packages/shared`). They define HTTP create/update payloads and `ActivityResponse`. When you change Drizzle columns for `activities`, update the Zod layers and run `packages/shared/scripts/validate-types.ts`.
 
-- `activitySchema`: Generated from `createSelectSchema(activities)` - matches database select queries
-- `createActivitySchema`: Generated from `createInsertSchema(activities)` - for database inserts
-- `updateActivitySchema`: Generated from `createUpdateSchema(activities)` - for database updates
-- `createActivityRequestSchema`: Extends `createActivitySchema` with HTTP request transformations
-- `updateActivityRequestSchema`: Extends `updateActivitySchema` for HTTP update requests
-- `filterActivitiesSchema`: Custom schema for query parameter validation
+- **`createActivityRequestSchema` / `updateActivityRequestSchema`**: API body validation (junction fields, refinements for comms lead and event planners, etc.).
+- **`activityResponseSchema`**: DB-shaped fields plus computed fields (`category`, tags, status names, etc.) built in the calendar service.
 
-#### Activity Response Schema (`activity-response.schema.ts`)
+Field transformations (dates/times as ISO strings, etc.) are implemented in the service mapper, not by a generated `drizzle-zod` pipeline.
 
-**Derived from Drizzle schema** using `createSelectSchema` and transformations:
+#### Recent database-facing changes
 
-- Base schema generated from `createSelectSchema(activities)`
-- Fields omitted: internal fields (rowVersion, deprecated fields)
-- Fields transformed:
-  - Date/time fields: `Date` → ISO string (`YYYY-MM-DD`), `time` → `HH:mm` string
-  - Foreign key IDs: Serial IDs remain `number` (matches database type), UUID IDs remain `string`
-  - Timestamps: `Date` → ISO datetime string
-- Fields renamed: `leadOrgId` → `leadOrg`, `isConfidential` → `confidential`, etc.
-- Computed fields added: `category`, `tags`, etc. (from relatedData)
-
-This ensures the API response schema automatically stays in sync with database schema changes.
+See [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (e.g. nullable `significance`, category rules on create).
 
 ### 3. DTOs (`packages/shared/src/dto/`)
 
@@ -82,7 +69,7 @@ This ensures the API response schema automatically stays in sync with database s
 
 ### 1. Compile-time Safety
 
-- **Schema Generation**: Zod schemas automatically generated from Drizzle
+- **Schema alignment**: Activity Zod schemas are maintained next to Drizzle; `validate-types.ts` and `schema-helpers.ts` help catch drift
 - **Type Inference**: TypeScript types inferred from Zod schemas
 - **Mapping Validation**: `ensureMatchesSchema()` ensures mapping produces valid types
 - **DTO Type Check**: Compile-time check that DTO class matches type

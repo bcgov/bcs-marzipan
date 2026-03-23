@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -29,13 +30,16 @@ import {
   deletionAudit,
   favoriteActivities,
   ministries,
+  pitchRequiredStatuses,
   teams,
+  translationRequiredStatuses,
   userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
   PERMISSIONS,
+  PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
@@ -362,6 +366,46 @@ export class ActivitiesService {
   }
 
   /**
+   * Resolve DB IDs for tri-state "pending" row (display "Pending review") used as create defaults.
+   */
+  private async resolvePendingPitchAndTranslationStatusIds(): Promise<{
+    pitchRequiredStatusId: number;
+    translationsRequiredStatusId: number;
+  }> {
+    const [pitchRow] = await this.databaseService.db
+      .select({ id: pitchRequiredStatuses.id })
+      .from(pitchRequiredStatuses)
+      .where(
+        eq(pitchRequiredStatuses.name, PITCH_TRANSLATION_PENDING_LOOKUP_NAME)
+      )
+      .limit(1);
+    const [translationRow] = await this.databaseService.db
+      .select({ id: translationRequiredStatuses.id })
+      .from(translationRequiredStatuses)
+      .where(
+        eq(
+          translationRequiredStatuses.name,
+          PITCH_TRANSLATION_PENDING_LOOKUP_NAME
+        )
+      )
+      .limit(1);
+    if (pitchRow?.id == null) {
+      throw new InternalServerErrorException(
+        'Pitch required status "pending" is not configured in lookups.'
+      );
+    }
+    if (translationRow?.id == null) {
+      throw new InternalServerErrorException(
+        'Translation required status "pending" is not configured in lookups.'
+      );
+    }
+    return {
+      pitchRequiredStatusId: pitchRow.id,
+      translationsRequiredStatusId: translationRow.id,
+    };
+  }
+
+  /**
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
@@ -452,10 +496,28 @@ export class ActivitiesService {
       leadMinistryId: resolvedLeadMinistryId,
     };
 
-    // Validate category IDs if provided
-    if (categoryIds && categoryIds.length > 0) {
-      await this.utilsService.validateCategoryIds(categoryIds);
+    if (!categoryIds?.length) {
+      throw new BadRequestException('At least one category is required.');
     }
+    await this.utilsService.validateCategoryIds(categoryIds);
+
+    const pendingStatuses =
+      await this.resolvePendingPitchAndTranslationStatusIds();
+    const {
+      pitchRequiredStatusId: dtoPitchStatus,
+      translationsRequiredStatusId: dtoTranslationStatus,
+      significance: dtoSignificance,
+      ...activityRowWithoutDefaults
+    } = activityDataWithResolvedMinistry;
+
+    const activityRowForInsert = {
+      ...activityRowWithoutDefaults,
+      significance: dtoSignificance ?? null,
+      pitchRequiredStatusId:
+        dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
+      translationsRequiredStatusId:
+        dtoTranslationStatus ?? pendingStatuses.translationsRequiredStatusId,
+    };
 
     await this.validateCommsContactsForTeam(
       commsContactsArray,
@@ -485,7 +547,7 @@ export class ActivitiesService {
         createdDateTime: Date;
         lastUpdatedDateTime: Date;
       } = {
-        ...activityDataWithResolvedMinistry,
+        ...activityRowForInsert,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
@@ -1390,6 +1452,7 @@ export class ActivitiesService {
       // Handle junction table updates if provided
       // Update categories
       if (categoryIds !== undefined) {
+        await this.utilsService.validateCategoryIds(categoryIds);
         await this.junctionService.updateJunctionRecords(
           tx,
           activityCategories,
@@ -2239,12 +2302,12 @@ export class ActivitiesService {
     // Verify activity exists
     await this.findOne(id);
 
-    const now = new Date();
-
-    // Validate category IDs if provided
-    if (categoryIds.length > 0) {
-      await this.utilsService.validateCategoryIds(categoryIds);
+    if (categoryIds.length === 0) {
+      throw new BadRequestException('At least one category is required.');
     }
+    await this.utilsService.validateCategoryIds(categoryIds);
+
+    const now = new Date();
 
     // Get existing category IDs for history
     const existingCategories = await this.databaseService.db
