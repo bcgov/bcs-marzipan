@@ -191,6 +191,28 @@ export class ActivitiesController {
   }
 
   @ApiOperation({
+    summary: 'Get global activity history',
+    description:
+      'Retrieves activity history entries across all activities visible to the current user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Global activity history retrieved successfully',
+  })
+  @RequirePermission('activities.view')
+  @Get('global-history')
+  async getGlobalHistory(@RequestContext() ctx: RequestContextType): Promise<{
+    success: boolean;
+    data: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
+  }> {
+    const result = await this.activitiesService.getGlobalHistory(ctx);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
     summary: 'Get activity by ID',
     description: 'Retrieves a single activity by its ID with all related data.',
   })

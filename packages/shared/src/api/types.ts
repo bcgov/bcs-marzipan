@@ -19,6 +19,7 @@ export type { LookupQueryParams } from '../schemas/query-params.schema';
 export type {
   HistoryChange,
   ActivityHistoryEntry,
+  GlobalActivityHistoryEntry,
   UserHistoryEntry,
   TeamHistoryEntry,
 } from '../schemas/history.schema';

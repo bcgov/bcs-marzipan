@@ -224,9 +224,21 @@ export default function ActivityHistory({
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
 
-            <div>
-              <h2 className="text-2xl font-semibold">History</h2>
-              <div className="mt-3 flex items-center gap-3">
+            <div className="border-b border-slate-200 pb-4">
+              <div className="pr-8">
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-slate-500 uppercase">
+                  Activity timeline
+                </p>
+                <h2 className="mt-1 text-[28px] font-semibold tracking-tight text-slate-900">
+                  History
+                </h2>
+                <p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-500">
+                  {entries.length === 0
+                    ? 'Track updates, reviews, and notes for this activity.'
+                    : `${entries.length} event${entries.length === 1 ? '' : 's'} recorded for this activity.`}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
                 <input
                   placeholder="Search"
                   aria-label="Search history"

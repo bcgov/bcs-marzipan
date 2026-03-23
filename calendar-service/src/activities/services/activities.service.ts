@@ -43,6 +43,7 @@ import type {
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
+  GlobalActivityHistoryEntry,
   UpdateActivityRequest,
   VenueAddress,
   VenueAddressBase,
@@ -1690,6 +1691,58 @@ export class ActivitiesService {
     // Verify activity exists
     await this.findOne(id);
     return this.activityHistoryService.getActivityHistory(id);
+  }
+
+  async getGlobalHistory(
+    ctx?: RequestContextType
+  ): Promise<GlobalActivityHistoryEntry[]> {
+    let activityRows = await this.databaseService.db.select().from(activities);
+
+    const dataScope = ctx?.dataScope;
+    if (dataScope && !dataScope.bypass) {
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        dataScope.teamIds
+      );
+      activityRows = activityRows.filter((activity) =>
+        visibleIds.has(activity.id)
+      );
+    }
+
+    const activityIds = activityRows.map((activity) => activity.id);
+    if (activityIds.length === 0) {
+      return [];
+    }
+
+    const historyEntries =
+      await this.activityHistoryService.getActivityHistoryForActivityIds(
+        activityIds
+      );
+
+    if (historyEntries.length === 0) {
+      return [];
+    }
+
+    const { namesMap: categoriesMap } = (
+      await this.fetchRelatedForActivityIds(activityIds, activityRows)
+    ).categoriesResult;
+
+    const activityMap = new Map(
+      activityRows.map((activity) => [
+        activity.id,
+        {
+          id: activity.id,
+          displayId: activity.displayId,
+          title: activity.title,
+          leadTeamId: activity.leadTeamId,
+          categories: categoriesMap.get(activity.id) ?? [],
+        },
+      ])
+    );
+
+    return historyEntries.flatMap((entry) => {
+      const activity = activityMap.get(entry.activityId);
+      return activity ? [{ ...entry, activity }] : [];
+    });
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {

@@ -46,6 +46,27 @@ export const activityHistoryEntrySchema = z.object({
 
 export type ActivityHistoryEntry = z.infer<typeof activityHistoryEntrySchema>;
 
+export const globalActivityHistoryActivitySchema = z.object({
+  id: z.number().int(),
+  displayId: z.string().nullable(),
+  title: z.string(),
+  leadTeamId: z.number().int(),
+  categories: z.array(z.string()).default([]),
+});
+
+export type GlobalActivityHistoryActivity = z.infer<
+  typeof globalActivityHistoryActivitySchema
+>;
+
+export const globalActivityHistoryEntrySchema =
+  activityHistoryEntrySchema.extend({
+    activity: globalActivityHistoryActivitySchema,
+  });
+
+export type GlobalActivityHistoryEntry = z.infer<
+  typeof globalActivityHistoryEntrySchema
+>;
+
 // ============================================
 // User History
 // ============================================

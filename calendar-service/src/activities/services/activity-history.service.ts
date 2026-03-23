@@ -143,6 +143,33 @@ export class ActivityHistoryService {
     return this.mapEntriesToResponse(historyEntries, userMap);
   }
 
+  async getActivityHistoryForActivityIds(
+    activityIds: number[]
+  ): Promise<ActivityHistoryEntry[]> {
+    if (activityIds.length === 0) {
+      return [];
+    }
+
+    const historyEntries = await this.databaseService.db
+      .select({
+        id: activityHistory.id,
+        activityId: activityHistory.activityId,
+        userId: activityHistory.userId,
+        actionType: activityHistory.actionType,
+        changes: activityHistory.changes,
+        notes: activityHistory.notes,
+        timestamp: activityHistory.timestamp,
+      })
+      .from(activityHistory)
+      .where(inArray(activityHistory.activityId, activityIds))
+      .orderBy(desc(activityHistory.timestamp), desc(activityHistory.id));
+
+    const userIds = [...new Set(historyEntries.map((entry) => entry.userId))];
+    const userMap = await this.getUserMap(userIds);
+
+    return this.mapEntriesToResponse(historyEntries, userMap);
+  }
+
   async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {
     const [entry] = await this.databaseService.db
       .select({

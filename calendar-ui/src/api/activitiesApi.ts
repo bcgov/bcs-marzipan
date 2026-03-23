@@ -1,6 +1,7 @@
 import type {
   ActivityHistoryEntry,
   ActivityResponse,
+  GlobalActivityHistoryEntry,
 } from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
@@ -133,6 +134,17 @@ export async function fetchActivityHistory(
     success: boolean;
     data: ActivityHistoryEntry[];
   }>(`/activities/${id}/history`);
+  if (res.data && res.data.data) return res.data.data;
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+export async function fetchGlobalActivityHistory(): Promise<
+  GlobalActivityHistoryEntry[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: GlobalActivityHistoryEntry[];
+  }>('/activities/global-history');
   if (res.data && res.data.data) return res.data.data;
   return Array.isArray(res.data) ? res.data : [];
 }
