@@ -141,11 +141,27 @@ const activityCoreFieldsSchema = z.object({
  * Representative schema.
  * Array can mix entries by representativeId (lookup) or representativeName (freeform).
  * Backend uses representativeId when present, else representativeName.
+ * Each non-empty array entry must include a positive id or a non-empty name.
  */
-const representativeSchema = z.object({
-  representativeId: z.number().int().optional(),
-  representativeName: z.string().max(255).optional(),
-});
+const representativeSchema = z
+  .object({
+    representativeId: z.number().int().optional(),
+    representativeName: z.string().max(255).optional(),
+  })
+  .refine(
+    (data) => {
+      const hasId =
+        data.representativeId !== undefined && data.representativeId > 0;
+      const hasName =
+        typeof data.representativeName === 'string' &&
+        data.representativeName.trim().length > 0;
+      return hasId || hasName;
+    },
+    {
+      message:
+        'Each representative must have a representativeId or a non-empty representativeName',
+    }
+  );
 
 /**
  * Event planner schema (one entry per planner).

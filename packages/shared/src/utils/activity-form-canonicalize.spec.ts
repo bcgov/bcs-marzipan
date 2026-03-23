@@ -67,6 +67,20 @@ describe('canonicalizeActivityFormData', () => {
     expect(isDeepEqual(a.venueAddress, b.venueAddress)).toBe(true);
   });
 
+  it('drops non-object entries from representatives when canonicalizing', () => {
+    const dirty = canonicalizeActivityFormData(
+      minimalForm({
+        representatives: [
+          { representativeId: 1 },
+          null,
+          'x',
+          1,
+        ] as unknown as ActivityFormData['representatives'],
+      })
+    );
+    expect(dirty.representatives).toEqual([{ representativeId: 1 }]);
+  });
+
   it('stabilizes summary null, undefined, and empty string to the same value', () => {
     const withUndefined = canonicalizeActivityFormData(
       minimalForm({ summary: undefined })

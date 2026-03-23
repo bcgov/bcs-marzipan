@@ -298,7 +298,7 @@ describe('createActivityRequestSchema', () => {
     expect(err.error.issues[0].path).toEqual(['eventPlanners']);
   });
 
-  it('accepts create with representatives (no XOR; optional id or name per entry)', () => {
+  it('accepts create with representatives (id or non-empty name per entry)', () => {
     const withId = createActivityRequestSchema.parse(
       minimalCreateRequest({
         representatives: [{ representativeId: 1 }],
@@ -314,6 +314,34 @@ describe('createActivityRequestSchema', () => {
       { representativeName: 'Rep Name' },
     ]);
   });
+
+  it('rejects create when a representative entry has no id and no name', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ representatives: [{}] })
+      )
+    ).toThrow();
+  });
+
+  it('rejects create when representativeId is zero and name is missing', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          representatives: [{ representativeId: 0 }],
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects create when representativeName is only whitespace', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          representatives: [{ representativeName: '   ' }],
+        })
+      )
+    ).toThrow();
+  });
 });
 
 describe('updateActivityRequestSchema', () => {
@@ -324,6 +352,12 @@ describe('updateActivityRequestSchema', () => {
 
   it('accepts empty object', () => {
     updateActivityRequestSchema.parse({});
+  });
+
+  it('rejects update when representatives contains an empty entry', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({ representatives: [{}] })
+    ).toThrow();
   });
 
   it('accepts update with only title (no commsContacts)', () => {

@@ -15,9 +15,20 @@ function canonIdArray(v: unknown): number[] {
   return v.filter((x): x is number => typeof x === 'number');
 }
 
-function canonObjectArray<T>(v: unknown): T[] {
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Keep only plain objects; drop null, arrays, and primitives so compare/dirty stays stable. */
+function canonObjectArray<T extends Record<string, unknown>>(v: unknown): T[] {
   if (!Array.isArray(v) || v.length === 0) return [];
-  return v as T[];
+  const out: T[] = [];
+  for (const item of v) {
+    if (isPlainRecord(item)) {
+      out.push(item as T);
+    }
+  }
+  return out;
 }
 
 /**
