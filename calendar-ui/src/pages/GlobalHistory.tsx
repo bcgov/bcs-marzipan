@@ -394,13 +394,21 @@ export function GlobalHistory() {
 
   const categoryOptions = useMemo<FilterOption[]>(() => {
     const categories =
-      categoriesQuery.data?.map((category) => ({
-        value: category.name,
-        label: category.displayName || category.name,
-      })) ?? [];
+      categoriesQuery.data?.map((category) => {
+        const displayValue = category.displayName || category.name;
+
+        return {
+          value: displayValue,
+          label: displayValue,
+        };
+      }) ?? [];
 
     if (categories.length > 0) {
-      return categories.sort((a, b) => a.label.localeCompare(b.label));
+      return [
+        ...new Map(
+          categories.map((category) => [category.value, category])
+        ).values(),
+      ].sort((a, b) => a.label.localeCompare(b.label));
     }
 
     return [...new Set(entries.flatMap((entry) => entry.activity.categories))]
