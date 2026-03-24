@@ -45,7 +45,7 @@ export type AddressAutocompleteProps = Omit<
 > & {
   onAddressSelect: (address: AddressData) => void;
   defaultValue?: string;
-  /** When set, keeps the text field in sync with parent (e.g. quick-pick). */
+  /** When set, keeps the text field in sync with parent (e.g. venue preset). */
   value?: string;
   placeholder?: string;
   /**

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -25,7 +25,6 @@ import {
   translatedLanguages,
   translationRequiredStatuses,
   users,
-  venueAddresses,
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
@@ -445,55 +444,6 @@ export class LookupsService {
       country: row.country,
       isPinned: row.isPinned,
       pinnedSortOrder: row.pinnedSortOrder,
-    }));
-  }
-
-  /**
-   * Get last 2 distinct venue addresses used by the current user (from activities they last updated).
-   */
-  async getVenueLastUsed(userId: number): Promise<VenuePresetItem[]> {
-    const rows = await this.databaseService.db
-      .select({
-        venueName: venueAddresses.venueName,
-        addressLine1: venueAddresses.addressLine1,
-        addressLine2: venueAddresses.addressLine2,
-        city: venueAddresses.city,
-        provinceOrState: venueAddresses.provinceOrState,
-        country: venueAddresses.country,
-        lastUpdated: activities.lastUpdatedDateTime,
-      })
-      .from(venueAddresses)
-      .innerJoin(activities, eq(venueAddresses.activityId, activities.id))
-      .where(eq(activities.lastUpdatedBy, userId))
-      .orderBy(desc(activities.lastUpdatedDateTime))
-      .limit(10);
-    const seen = new Set<string>();
-    const out: Array<{
-      venueName: string | null;
-      addressLine1: string | null;
-      addressLine2: string | null;
-      city: string | null;
-      provinceOrState: string | null;
-      country: string | null;
-    }> = [];
-    for (const row of rows) {
-      const key = `${row.addressLine1 ?? ''}|${row.addressLine2 ?? ''}|${row.city ?? ''}|${row.country ?? ''}`;
-      if (seen.has(key) || out.length >= 2) continue;
-      seen.add(key);
-      out.push({
-        venueName: row.venueName,
-        addressLine1: row.addressLine1,
-        addressLine2: row.addressLine2,
-        city: row.city,
-        provinceOrState: row.provinceOrState,
-        country: row.country,
-      });
-    }
-    return out.map((item, index) => ({
-      id: -(index + 1),
-      isPinned: false,
-      pinnedSortOrder: 0,
-      ...item,
     }));
   }
 

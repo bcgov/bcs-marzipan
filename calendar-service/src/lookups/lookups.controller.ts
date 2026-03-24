@@ -918,24 +918,6 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({
-    summary: 'Get last-used venue addresses',
-    description:
-      'Returns the last 2 distinct venue addresses used by the current user.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Last-used venues retrieved successfully',
-    type: VenuePresetArrayResponseWrapperDto,
-  })
-  @Get('venue-last-used')
-  async getVenueLastUsed(
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem[] }> {
-    const data = await this.lookupsService.getVenueLastUsed(user.id);
-    return { success: true, data };
-  }
-
   @ApiOperation({ summary: 'Create a venue preset' })
   @ApiResponse({
     status: 201,

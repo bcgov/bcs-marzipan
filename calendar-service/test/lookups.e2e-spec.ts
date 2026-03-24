@@ -161,22 +161,6 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/venue-last-used (GET)', () => {
-    it('should return last-used venues for authenticated user', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/lookups/venue-last-used')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(Array.isArray(res.body.data)).toBe(true);
-          if (res.body.data.length > 0) {
-            expect(res.body.data[0]).toHaveProperty('venueName');
-          }
-        });
-    });
-  });
-
   describe('Lookup Response Structure', () => {
     it('should return consistent structure across all lookup endpoints', async () => {
       const endpoints = [

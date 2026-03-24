@@ -383,7 +383,7 @@ Each log entry should include:
 
 **Notes:**
 
-- Table semantics broadened: presets serve both as combobox options (all active) and badge quick-picks (pinned only).
+- Table semantics broadened: presets serve both as combobox options (all active) and pinned preset badges.
 
 #### Benefits
 

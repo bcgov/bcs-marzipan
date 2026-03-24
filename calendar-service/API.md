@@ -60,7 +60,7 @@ Creates a new calendar activity with related junction table records.
 
 **`venueStatusId`:** Optional. Id from the venue-status lookup (`/lookups/venue-statuses`), or `null` / omit when the activity has no venue or no venue status.
 
-**`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue quick-picks** do not store `addressLine2` (see lookups below).
+**`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue presets** also store `addressLine2` (see lookups below).
 
 **Response:** `201 Created`
 
@@ -549,7 +549,7 @@ Simplified activity list for "Related Activities" dropdowns.
 
 **GET** `/lookups/venue-presets`
 
-Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; pinned presets are also shown as quick-select badges. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
+Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; up to 4 pinned presets are shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
 
 **Cache:** 1 hour
 
@@ -567,33 +567,6 @@ Returns admin-defined venue presets for the activity form. All active presets ap
       "country": "Canada",
       "isPinned": true,
       "pinnedSortOrder": 1
-    }
-  ]
-}
-```
-
----
-
-### Get Venue Last-Used
-
-**GET** `/lookups/venue-last-used`
-
-Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication. Returns same shape as venue presets (with `isPinned: false`).
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": -1,
-      "venueName": "Conference Room A",
-      "addressLine1": "123 Main St",
-      "addressLine2": "Room 101",
-      "city": "Victoria",
-      "provinceOrState": "British Columbia",
-      "country": "Canada",
-      "isPinned": false,
-      "pinnedSortOrder": 0
     }
   ]
 }

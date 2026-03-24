@@ -43,7 +43,6 @@ describe('LookupsController', () => {
     createCategory: vi.fn(),
     updateCategory: vi.fn(),
     getVenuePresets: vi.fn(),
-    getVenueLastUsed: vi.fn(),
     createVenuePreset: vi.fn(),
     updateVenuePreset: vi.fn(),
     deleteVenuePreset: vi.fn(),
@@ -192,23 +191,6 @@ describe('LookupsController', () => {
         data: [mockVenuePreset],
       });
       expect(mockLookupsService.getVenuePresets).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getVenueLastUsed', () => {
-    it('should return last-used venues for current user', async () => {
-      mockLookupsService.getVenueLastUsed.mockResolvedValue([mockVenuePreset]);
-
-      const result = await controller.getVenueLastUsed(mockUser);
-
-      expect(result).toEqual({
-        success: true,
-        data: [mockVenuePreset],
-      });
-      expect(mockLookupsService.getVenueLastUsed).toHaveBeenCalledWith(
-        mockUser.id
-      );
-      expect(mockLookupsService.getVenueLastUsed).toHaveBeenCalledTimes(1);
     });
   });
 

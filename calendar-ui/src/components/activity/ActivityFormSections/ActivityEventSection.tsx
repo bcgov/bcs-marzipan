@@ -14,11 +14,7 @@ import type {
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import {
-  fetchCities,
-  fetchLastUsedAddresses,
-  fetchVenuePresets,
-} from '@/api/lookupsApi';
+import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   AddressAutocomplete,
@@ -195,7 +191,7 @@ function venueTagLabel(item: VenuePresetItem): string {
   return parts.length > 0 ? parts.join(', ') : 'Address';
 }
 
-function addressMatchesQuickPick(
+function addressMatchesVenuePreset(
   currentVenue: VenueFormValue,
   item: VenuePresetItem
 ): boolean {
@@ -212,11 +208,11 @@ function addressMatchesQuickPick(
 
 function venueComboboxValueFromForm(
   currentVenue: VenueFormValue,
-  quickPickTags: VenuePresetItem[],
+  pinnedPresetBadges: VenuePresetItem[],
   venueStatusId: number | null | undefined
 ): FreeformComboboxValueWithLead {
-  const matches = quickPickTags.filter((item) =>
-    addressMatchesQuickPick(currentVenue, item)
+  const matches = pinnedPresetBadges.filter((item) =>
+    addressMatchesVenuePreset(currentVenue, item)
   );
   if (matches.length > 0) {
     const pick = matches[0];
@@ -287,11 +283,6 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     queryKey: ['venuePresets'],
     queryFn: fetchVenuePresets,
   });
-  const { data: lastUsed = [] } = useQuery({
-    queryKey: ['venueLastUsed'],
-    queryFn: fetchLastUsedAddresses,
-  });
-
   const { data: citiesList = [] } = useQuery({
     queryKey: ['cities'],
     queryFn: fetchCities,
@@ -316,10 +307,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     [allPresets]
   );
 
-  const lastUsedSlots = PINNED_BADGE_MAX_TOTAL - pinnedPresets.length;
-  const lastUsedDisplay =
-    lastUsedSlots > 0 ? lastUsed.slice(0, lastUsedSlots) : [];
-  const quickPickTags = [...pinnedPresets, ...lastUsedDisplay];
+  const pinnedPresetBadges = pinnedPresets.slice(0, PINNED_BADGE_MAX_TOTAL);
 
   const venueAddressWatched = useWatch({
     control: form.control,
@@ -355,7 +343,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     });
   };
 
-  const handleQuickPickSelect = (item: VenuePresetItem) => {
+  const handlePinnedPresetSelect = (item: VenuePresetItem) => {
     clearVenueStatusIdIfSet(form);
     applyVenueAddress(form, venueToFormValue(item));
   };
@@ -585,7 +573,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 sections={venueNameComboboxSections}
                 value={venueComboboxValueFromForm(
                   currentVenue,
-                  quickPickTags,
+                  pinnedPresetBadges,
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
@@ -599,10 +587,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               name="venueStatusId"
               render={() => <FormMessage className="mt-1" />}
             />
-            {quickPickTags.length > 0 && (
+            {pinnedPresetBadges.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {quickPickTags.map((item) => {
-                  const isSelected = addressMatchesQuickPick(
+                {pinnedPresetBadges.map((item) => {
+                  const isSelected = addressMatchesVenuePreset(
                     currentVenue,
                     item
                   );
@@ -616,7 +604,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                           : 'cursor-pointer gap-1 font-normal'
                       }
                       onClick={
-                        readOnly ? undefined : () => handleQuickPickSelect(item)
+                        readOnly
+                          ? undefined
+                          : () => handlePinnedPresetSelect(item)
                       }
                     >
                       <Plus className="h-3.5 w-3.5" />

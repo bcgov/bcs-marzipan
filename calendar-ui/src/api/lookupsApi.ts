@@ -258,14 +258,6 @@ export async function fetchVenuePresets(): Promise<VenuePresetItem[]> {
   return res.data.data;
 }
 
-export async function fetchLastUsedAddresses(): Promise<VenuePresetItem[]> {
-  const res = await api.get<{
-    success: boolean;
-    data: VenuePresetItem[];
-  }>('/lookups/venue-last-used');
-  return res.data.data;
-}
-
 // ============================================
 // Admin CRUD Functions
 // ============================================
