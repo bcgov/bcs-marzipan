@@ -757,10 +757,10 @@ export function GlobalHistory() {
           <div className="space-y-8">
             {groupedEntries.map(([heading, dayEntries]) => (
               <section key={heading} className="space-y-4">
-                <h2 className="text-base font-semibold text-slate-700">
+                <h2 className="text-base font-normal text-slate-700">
                   {heading}
                 </h2>
-                <div className="space-y-5">
+                <div className="space-y-2.5">
                   {dayEntries.map((entry) => {
                     const timestamp = new Date(entry.timestamp);
                     const teamName = leadTeamLabelMap.get(
