@@ -1,5 +1,5 @@
 {
-  "id": "78005845-2faa-4467-8e21-58dbde59e9bc",
+  "id": "282bf892-ad72-4eb6-88eb-8be3dbf65f62",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -221,19 +221,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "reviewed_field_snapshot": {
-          "name": "reviewed_field_snapshot",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_field_snapshot_version": {
-          "name": "reviewed_field_snapshot_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
         },
         "created_by": {
           "name": "created_by",
