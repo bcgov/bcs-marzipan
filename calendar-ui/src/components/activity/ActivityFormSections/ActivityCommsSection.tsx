@@ -295,41 +295,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         }}
       />
 
-      <FormField
-        control={form.control}
-        name="translationsRequiredStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
-              readOnly={readOnly}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
-              onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
-              }
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select status" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {translationRequiredStatuses.map((status) => (
-                  <SelectItem key={status.id} value={String(status.id)}>
-                    {status.displayName ?? status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelect>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <ActivityFormHeading>Release</ActivityFormHeading>
 
       <FormField
@@ -385,6 +350,41 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 {newsReleaseDistributionOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </FormSelect>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="translationsRequiredStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormSelect
+              readOnly={readOnly}
+              value={
+                field.value !== undefined && field.value !== null
+                  ? String(field.value)
+                  : ''
+              }
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+            >
+              <FormControl data-field={field.name}>
+                <FormSelectTrigger readOnly={readOnly}>
+                  <SelectValue placeholder="Select status" />
+                </FormSelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {translationRequiredStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.displayName ?? status.name}
                   </SelectItem>
                 ))}
               </SelectContent>
