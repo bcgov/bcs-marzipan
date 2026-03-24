@@ -9,7 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, lte, ne, type SQL } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lte, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -40,10 +40,12 @@ import type { Activity, Category } from '@corpcal/database/types';
 import {
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
+  REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
 import type {
+  ActivityFormData,
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
@@ -52,7 +54,14 @@ import type {
   VenueAddress,
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
-import { isDeepEqual } from '@corpcal/shared/utils';
+import {
+  buildReviewSnapshot,
+  diffReviewFields,
+  getEmptyReviewBaseline,
+  isDeepEqual,
+  mapResponseToFormData,
+  normalizeVenueAddressForForm,
+} from '@corpcal/shared/utils';
 
 import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
@@ -124,6 +133,325 @@ export class ActivitiesService {
           ? venue.country.trim() || null
           : (venue.country ?? null),
     };
+  }
+
+  /**
+   * Build the canonical review snapshot from a fully-hydrated ActivityResponse.
+   * Maps the response back to form-data shape (ID-based), then canonicalizes
+   * so comparison uses the same normalisation as dirty-field detection.
+   */
+  private buildSnapshotFromResponse(response: ActivityResponse): unknown {
+    const formData = mapResponseToFormData(response);
+    return buildReviewSnapshot(formData);
+  }
+
+  /**
+   * Persist the review snapshot for an activity.
+   * Called inside a transaction when status transitions to 'reviewed'.
+   */
+  private async persistReviewSnapshot(
+    db: Database,
+    activityId: number,
+    response: ActivityResponse
+  ): Promise<void> {
+    const snapshot = this.buildSnapshotFromResponse(response);
+    await db
+      .update(activities)
+      .set({
+        reviewedFieldSnapshot: snapshot,
+        reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+      })
+      .where(eq(activities.id, activityId));
+  }
+
+  /**
+   * Clear the review snapshot (e.g. on soft delete).
+   */
+  private async clearReviewSnapshot(
+    db: Database,
+    activityId: number
+  ): Promise<void> {
+    await db
+      .update(activities)
+      .set({
+        reviewedFieldSnapshot: null,
+        reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+      })
+      .where(eq(activities.id, activityId));
+  }
+
+  /**
+   * Compute changedFieldsSinceReview from the stored snapshot vs current response.
+   * Returns the diff paths array, or undefined when snapshot is absent / version mismatch.
+   */
+  computeChangedFieldsSinceReview(
+    response: ActivityResponse,
+    snapshot: unknown,
+    snapshotVersion: number
+  ): string[] | undefined {
+    if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
+      return undefined;
+    }
+    const currentFormData = mapResponseToFormData(response);
+    const baseline = snapshot
+      ? (snapshot as ReturnType<typeof buildReviewSnapshot>)
+      : getEmptyReviewBaseline();
+    return diffReviewFields(currentFormData, baseline);
+  }
+
+  /**
+   * One-time deploy backfill: set `reviewed_field_snapshot` to the canonical
+   * current form state for **Reviewed** activities that still have a NULL
+   * snapshot (e.g. after shipping the review-diff feature).
+   */
+  async backfillReviewedFieldSnapshotsWhereNull(): Promise<number> {
+    const reviewedId = await this.getActivityStatusIdByName('reviewed');
+    const targets = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(
+        and(
+          eq(activities.activityStatusId, reviewedId),
+          isNull(activities.reviewedFieldSnapshot)
+        )
+      );
+
+    let updated = 0;
+    for (const { id } of targets) {
+      const [row] = await this.databaseService.db
+        .select()
+        .from(activities)
+        .where(eq(activities.id, id))
+        .limit(1);
+      if (!row) continue;
+      const related = await this.fetchRelatedForActivityIds([id], [row]);
+      const response = this.mapFetchedActivityToResponseDto(row, related);
+      const snapshot = this.buildSnapshotFromResponse(response);
+      await this.databaseService.db
+        .update(activities)
+        .set({
+          reviewedFieldSnapshot: snapshot,
+          reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+        })
+        .where(eq(activities.id, id));
+      updated++;
+    }
+    return updated;
+  }
+
+  /**
+   * Mock / local DB: for **Changed** activities, persist a synthetic
+   * prior-reviewed snapshot so `changedFieldsSinceReview` is non-empty for
+   * reviewers (deterministic 1–6 field deltas, weighted toward summary,
+   * schedule, and venue).
+   */
+  async seedMockReviewSnapshotsForChangedActivities(): Promise<number> {
+    const changedId = await this.getActivityStatusIdByName('changed');
+    const targets = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.activityStatusId, changedId));
+
+    let updated = 0;
+    for (const row of targets) {
+      const related = await this.fetchRelatedForActivityIds([row.id], [row]);
+      const response = this.mapFetchedActivityToResponseDto(row, related);
+      const currentForm = mapResponseToFormData(response);
+      const priorForm = this.buildMockPriorReviewForm(currentForm, row.id);
+      const snapshot = buildReviewSnapshot(priorForm);
+      const diff = diffReviewFields(currentForm, snapshot);
+      if (diff.length === 0) {
+        continue;
+      }
+      await this.databaseService.db
+        .update(activities)
+        .set({
+          reviewedFieldSnapshot: snapshot,
+          reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+        })
+        .where(eq(activities.id, row.id));
+      updated++;
+    }
+    return updated;
+  }
+
+  private shiftIsoDateString(
+    isoDate: string | undefined,
+    deltaDays: number
+  ): string | undefined {
+    if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return undefined;
+    }
+    const d = new Date(`${isoDate}T12:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + deltaDays);
+    return d.toISOString().slice(0, 10);
+  }
+
+  private tweakClockTime(
+    clock: string | undefined,
+    deltaMinutes: number
+  ): string | undefined {
+    if (!clock || !/^\d{2}:\d{2}$/.test(clock)) {
+      return undefined;
+    }
+    const [h, m] = clock.split(':').map((x) => parseInt(x, 10));
+    let total = h * 60 + m + deltaMinutes;
+    total = ((total % 1440) + 1440) % 1440;
+    const nh = Math.floor(total / 60);
+    const nm = total % 60;
+    return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
+  }
+
+  /**
+   * Builds a fake "last reviewed" form state that differs from `current` in
+   * 1–6 fields (deterministic per activity id).
+   */
+  private buildMockPriorReviewForm(
+    current: ActivityFormData,
+    activityId: number
+  ): ActivityFormData {
+    const prior = structuredClone(current);
+    const targetCount = 1 + (activityId % 6);
+    const pool = [
+      'summary',
+      'summary',
+      'summary',
+      'startDate',
+      'startDate',
+      'endDate',
+      'startTime',
+      'endTime',
+      'venueAddress.venueName',
+      'venueAddress.city',
+      'venueAddress.addressLine1',
+      'venueAddress.addressLine2',
+      'title',
+    ] as const;
+
+    const selected = new Set<string>();
+    let h = activityId * 0x9e3779b9;
+    while (selected.size < targetCount) {
+      h = Math.imul(h ^ (h >>> 16), 0x21f0aaad);
+      h ^= h >>> 15;
+      selected.add(pool[Math.abs(h) % pool.length]);
+    }
+
+    for (const key of selected) {
+      if (key.startsWith('venueAddress.')) {
+        const sub = key.slice('venueAddress.'.length) as
+          | 'venueName'
+          | 'addressLine1'
+          | 'addressLine2'
+          | 'city'
+          | 'provinceOrState'
+          | 'country';
+        prior.venueAddress =
+          prior.venueAddress ?? normalizeVenueAddressForForm(null);
+        const curVal = prior.venueAddress[sub];
+        const base =
+          curVal != null && String(curVal).trim() !== ''
+            ? String(curVal).trim()
+            : 'Venue (prior)';
+        (prior.venueAddress as Record<string, string | null>)[sub] =
+          base.includes('(prior review)') ? base : `${base} (prior review)`;
+        continue;
+      }
+      if (key === 'summary') {
+        prior.summary =
+          current.summary.length > 48
+            ? current.summary.slice(0, current.summary.length - 24).trimEnd()
+            : `[Prior reviewed text] ${current.summary}`;
+        continue;
+      }
+      if (key === 'title') {
+        const t = current.title;
+        prior.title = t.endsWith('(prior title)')
+          ? t
+          : `${t.slice(0, Math.min(120, t.length))} (prior title)`;
+        continue;
+      }
+      if (key === 'startDate') {
+        const next = this.shiftIsoDateString(
+          current.startDate ?? undefined,
+          -7
+        );
+        if (next) prior.startDate = next;
+        continue;
+      }
+      if (key === 'endDate') {
+        const next = this.shiftIsoDateString(current.endDate ?? undefined, -4);
+        if (next) prior.endDate = next;
+        continue;
+      }
+      if (key === 'startTime') {
+        const next = this.tweakClockTime(current.startTime ?? undefined, -45);
+        if (next) prior.startTime = next;
+        continue;
+      }
+      if (key === 'endTime') {
+        const next = this.tweakClockTime(current.endTime ?? undefined, -30);
+        if (next) prior.endTime = next;
+        continue;
+      }
+    }
+
+    const snap = buildReviewSnapshot(prior);
+    const diff = diffReviewFields(current, snap);
+    if (diff.length === 0) {
+      prior.summary = `[Prior reviewed text] ${current.summary}`;
+    }
+
+    return prior;
+  }
+
+  /**
+   * Map a row plus bulk-fetched relations to an {@link ActivityResponse}
+   * (no permission-derived flags except optional `canEdit`).
+   */
+  private mapFetchedActivityToResponseDto(
+    activity: Activity,
+    related: Awaited<
+      ReturnType<ActivitiesService['fetchRelatedForActivityIds']>
+    >,
+    opts?: { canEdit?: boolean }
+  ): ActivityResponse {
+    const id = activity.id;
+    const { namesMap: categoriesList, idsMap: categoryIdsList } =
+      related.categoriesResult;
+    const commsContacts = related.commsContactsMap.get(id) ?? [];
+    return this.mapperService.mapToResponseDto(activity, {
+      categories: categoriesList.get(id) ?? [],
+      categoryIds: categoryIdsList.get(id) ?? [],
+      tags: related.tagsMap.get(id) ?? [],
+      activityStatus: related.activityStatusesMap.get(id),
+      dateStatus: related.dateStatusesMap.get(id),
+      timeStatus: related.timeStatusesMap.get(id),
+      venueStatus: related.venueStatusesMap.get(id),
+      venueAddress: related.venueAddressesMap.get(id) ?? null,
+      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
+      representativesAttending:
+        related.representativesAttendingMap.get(id) ?? [],
+      sharedWith: related.sharedWithMap.get(id) ?? [],
+      commsContacts,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
+      eventPlanners: related.eventPlannersMap.get(id) ?? [],
+      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
+      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
+      newsReleaseDistribution:
+        related.newsReleaseDistributionsMap.get(id) ?? null,
+      premierRequested: related.premierRequestedMap.get(id) ?? null,
+      reportSettings: related.reportSettingsMap.get(id) ?? [],
+      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
+      translationsRequiredStatus:
+        related.translationsRequiredStatusMap.get(id) ?? null,
+      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
+      leadMinistryAbbreviation:
+        related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...(opts?.canEdit !== undefined ? { canEdit: opts.canEdit } : {}),
+    });
   }
 
   /**
@@ -729,6 +1057,15 @@ export class ActivitiesService {
       activityHistoryNotes || 'Activity created'
     );
 
+    // When created as Reviewed, persist the review snapshot so the diff starts empty.
+    if (initialStatusName === 'reviewed' && createdActivity) {
+      await this.persistReviewSnapshot(
+        this.databaseService.db,
+        result.id,
+        createdActivity
+      );
+    }
+
     // Broadcast to all clients that a new activity was created
     // Only broadcast if the activity was successfully fetched
     if (createdActivity) {
@@ -1009,6 +1346,8 @@ export class ActivitiesService {
 
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+    const canReview =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
 
     return activityResults.map((activity) => {
       const commsContacts = related.commsContactsMap.get(activity.id) ?? [];
@@ -1022,7 +1361,7 @@ export class ActivitiesService {
           ctx.user.teamIds,
           dataScope?.bypass ?? false
         );
-      return this.mapperService.mapToResponseDto(activity, {
+      const response = this.mapperService.mapToResponseDto(activity, {
         categories: categoriesMap.get(activity.id) ?? [],
         categoryIds: categoryIdsMap.get(activity.id) ?? [],
         tags: related.tagsMap.get(activity.id) ?? [],
@@ -1060,6 +1399,15 @@ export class ActivitiesService {
           related.leadTeamDisplayMap.get(activity.id) ?? null,
         canEdit: canEdit ?? undefined,
       });
+      if (canReview) {
+        response.changedFieldsSinceReview =
+          this.computeChangedFieldsSinceReview(
+            response,
+            activity.reviewedFieldSnapshot,
+            activity.reviewedFieldSnapshotVersion
+          );
+      }
+      return response;
     });
   }
 
@@ -1115,8 +1463,6 @@ export class ActivitiesService {
 
     // Fetch related data
     const related = await this.fetchRelatedForActivityIds([id], [activity]);
-    const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      related.categoriesResult;
     const commsContacts = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
@@ -1131,39 +1477,21 @@ export class ActivitiesService {
         dataScope?.bypass ?? false
       );
 
-    return this.mapperService.mapToResponseDto(activity, {
-      categories: categoriesList.get(id) ?? [],
-      categoryIds: categoryIdsList.get(id) ?? [],
-      tags: related.tagsMap.get(id) ?? [],
-      activityStatus: related.activityStatusesMap.get(id),
-      dateStatus: related.dateStatusesMap.get(id),
-      timeStatus: related.timeStatusesMap.get(id),
-      venueStatus: related.venueStatusesMap.get(id),
-      venueAddress: related.venueAddressesMap.get(id) ?? null,
-      commsMaterials: related.commsMaterialsMap.get(id) ?? [],
-      translationsRequired: related.translationsRequiredMap.get(id) ?? [],
-      representativesAttending:
-        related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
-      commsContacts,
-      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
-      eventPlanners: related.eventPlannersMap.get(id) ?? [],
-      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
-      newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution:
-        related.newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
-      translationsRequiredStatus:
-        related.translationsRequiredStatusMap.get(id) ?? null,
-      leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
-      leadMinistryAbbreviation:
-        related.leadMinistryAbbreviationsMap.get(id) ?? null,
-      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+    const response = this.mapFetchedActivityToResponseDto(activity, related, {
       canEdit: canEdit ?? undefined,
     });
+
+    const canReview =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+    if (canReview) {
+      response.changedFieldsSinceReview = this.computeChangedFieldsSinceReview(
+        response,
+        activity.reviewedFieldSnapshot,
+        activity.reviewedFieldSnapshotVersion
+      );
+    }
+
+    return response;
   }
 
   /**
@@ -1774,6 +2102,11 @@ export class ActivitiesService {
       activityHistoryNotes || defaultHistoryNote
     );
 
+    // When status becomes Reviewed, capture the current state as the review snapshot.
+    if (newStatusName === 'reviewed') {
+      await this.persistReviewSnapshot(this.databaseService.db, id, result);
+    }
+
     // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
     // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
     const gateway = this.activitiesGateway;
@@ -2076,6 +2409,9 @@ export class ActivitiesService {
     }
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
+      // Clear snapshot before the status update so `.returning()` matches DB state.
+      await this.clearReviewSnapshot(tx as unknown as Database, id);
+
       const [updatedActivity] = await tx
         .update(activities)
         .set({

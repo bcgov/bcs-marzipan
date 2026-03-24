@@ -23,17 +23,21 @@ import {
 
 import { cn } from '../../lib/utils';
 import { FormFieldChangedIndicator } from './form-field-changed-indicator';
+import { FormFieldReviewIndicator } from './form-field-review-indicator';
 import { Label } from './label';
 
 const Form = FormProvider;
 
 type FormDisplayOptionsContextValue = {
   showChangedBadges: boolean;
+  /** Dotted field paths flagged as changed since the last Reviewed snapshot. Empty set = no review diff. */
+  reviewerChangedPaths: ReadonlySet<string>;
 };
 
 const FormDisplayOptionsContext = createContext<FormDisplayOptionsContextValue>(
   {
     showChangedBadges: true,
+    reviewerChangedPaths: new Set(),
   }
 );
 
@@ -43,15 +47,21 @@ export function useFormDisplayOptions(): FormDisplayOptionsContextValue {
 
 type FormDisplayOptionsProviderProps = {
   showChangedBadges?: boolean;
+  reviewerChangedPaths?: ReadonlySet<string>;
   children: ReactNode;
 };
 
 function FormDisplayOptionsProvider({
   showChangedBadges = true,
+  reviewerChangedPaths,
   children,
 }: FormDisplayOptionsProviderProps): ReactElement {
+  const value = {
+    showChangedBadges,
+    reviewerChangedPaths: reviewerChangedPaths ?? new Set<string>(),
+  };
   return (
-    <FormDisplayOptionsContext.Provider value={{ showChangedBadges }}>
+    <FormDisplayOptionsContext.Provider value={value}>
       {children}
     </FormDisplayOptionsContext.Provider>
   );
@@ -134,8 +144,9 @@ const FormLabel = forwardRef<
     showDirtyIndicator?: boolean;
   }
 >(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
-  const { error, formItemId, isDirty } = useFormField();
-  const { showChangedBadges } = useFormDisplayOptions();
+  const { error, formItemId, name, isDirty } = useFormField();
+  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
+  const hasReviewDiff = reviewerChangedPaths.has(name);
 
   return (
     <Label
@@ -152,6 +163,9 @@ const FormLabel = forwardRef<
       <span className="inline-flex items-center">{children}</span>
       {showChangedBadges && showDirtyIndicator && isDirty && (
         <FormFieldChangedIndicator />
+      )}
+      {showChangedBadges && showDirtyIndicator && !isDirty && hasReviewDiff && (
+        <FormFieldReviewIndicator />
       )}
     </Label>
   );
@@ -172,6 +186,7 @@ function dirtyFieldAtPath(dirty: unknown, path: string): boolean {
 /**
  * Shows the changed marker for a field name without nesting the control under {@link FormLabel}
  * (e.g. composite date/time rows, sr-only labels).
+ * Prioritises the RHF dirty indicator; falls back to review-diff indicator when not dirty.
  */
 function FormFieldDirtyIndicator({
   name,
@@ -180,13 +195,17 @@ function FormFieldDirtyIndicator({
   name: string;
   className?: string;
 }) {
-  const { showChangedBadges } = useFormDisplayOptions();
+  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
   const { control } = useFormContext();
   const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges || !dirtyFieldAtPath(dirtyFields, name)) {
-    return null;
+  if (!showChangedBadges) return null;
+  if (dirtyFieldAtPath(dirtyFields, name)) {
+    return <FormFieldChangedIndicator className={className} />;
   }
-  return <FormFieldChangedIndicator className={className} />;
+  if (reviewerChangedPaths.has(name)) {
+    return <FormFieldReviewIndicator className={className} />;
+  }
+  return null;
 }
 
 /**
@@ -199,17 +218,19 @@ function FormAggregateDirtyIndicator({
   names: readonly string[];
   className?: string;
 }) {
-  const { showChangedBadges } = useFormDisplayOptions();
+  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
   const { control } = useFormContext();
   const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges) {
-    return null;
-  }
+  if (!showChangedBadges) return null;
   const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
-  if (!anyDirty) {
-    return null;
+  if (anyDirty) {
+    return <FormFieldChangedIndicator className={className} />;
   }
-  return <FormFieldChangedIndicator className={className} />;
+  const anyReview = names.some((path) => reviewerChangedPaths.has(path));
+  if (anyReview) {
+    return <FormFieldReviewIndicator className={className} />;
+  }
+  return null;
 }
 
 const FormControl = forwardRef<

@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -108,6 +108,12 @@ export function ActivityPage({
     hasCreateAny,
   });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
+  const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
+    const paths = canReviewActivities
+      ? activity.changedFieldsSinceReview
+      : undefined;
+    return paths ? new Set(paths) : new Set<string>();
+  }, [canReviewActivities, activity.changedFieldsSinceReview]);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -505,6 +511,7 @@ export function ActivityPage({
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
+            reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel:

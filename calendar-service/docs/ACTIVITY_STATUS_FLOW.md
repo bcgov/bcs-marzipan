@@ -40,6 +40,10 @@ When status is **Delete requested** or **Deleted**, edits to the activity are no
 
 Only **Admin** or **System Admin** may open the edit page when status is **Delete requested** or **Deleted**. Other users (including those with edit permission) can view the activity and, if allowed, use Restore from the banner; they are redirected to the view page if they navigate directly to the edit URL.
 
+## Review Snapshot (Changed Since Last Review)
+
+When status transitions to **Reviewed**, a canonical snapshot of the activity's form data is persisted. Reviewers see per-field "changed since last review" badges by comparing the current state to this snapshot. **Deleted** clears the snapshot; **Delete requested** does not. See [ACTIVITY_REVIEW_SNAPSHOT.md](./ACTIVITY_REVIEW_SNAPSHOT.md) for full details.
+
 ## Activity History
 
 All status changes are recorded in activity history (e.g. `activityStatusId` in the changes array and the appropriate action type). This supports restore logic (previous status) and audit (who requested delete, who performed soft/hard delete).
