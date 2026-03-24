@@ -125,14 +125,12 @@ export function FreeformCombobox({
   useChips = true,
   onSetLead,
 }: FreeformComboboxProps) {
-  const options = optionsProp ?? [];
-  const flatOptions = useMemo(
-    () =>
-      sections && sections.length > 0
-        ? sections.flatMap((s) => s.options)
-        : options,
-    [sections, options]
-  );
+  const flatOptions = useMemo(() => {
+    if (sections && sections.length > 0) {
+      return sections.flatMap((s) => s.options);
+    }
+    return optionsProp ?? [];
+  }, [sections, optionsProp]);
 
   const isLocked = disabled || readOnly;
   const isMuted = disabled;
