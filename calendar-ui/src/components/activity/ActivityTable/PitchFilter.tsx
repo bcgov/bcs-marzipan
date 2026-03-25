@@ -1,5 +1,7 @@
 import { useCallback, type MouseEvent } from 'react';
 
+import type { OptionItem } from '@/schemas/types';
+
 import {
   DEFAULT_PITCH_DATE_RANGE,
   type ActivityFilterState,
@@ -15,7 +17,7 @@ import {
 export interface PitchFilterPanelProps {
   filterState: ActivityFilterState;
   onFilterStateChange: (state: ActivityFilterState) => void;
-  pitchRequiredStatusOptions: { value: string; label: string }[];
+  pitchRequiredStatusOptions: OptionItem[];
 }
 
 export type PitchFilterProps = PitchFilterPanelProps;

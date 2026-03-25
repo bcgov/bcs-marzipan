@@ -6,6 +6,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
@@ -30,8 +31,10 @@ import {
   translationRequiredStatuses,
   users,
   venueAddresses,
+  venueStatuses,
 } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
+import type { EventPlannerDetail } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
 
@@ -366,6 +369,61 @@ export class ActivityDataFetcherService {
   }
 
   /**
+   * Fetch venue statuses for multiple activities
+   */
+  async fetchVenueStatusesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, string>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const activityResults = await this.databaseService.db
+      .select({
+        id: activities.id,
+        venueStatusId: activities.venueStatusId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const venueStatusIds = activityResults
+      .map((a) => a.venueStatusId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    if (venueStatusIds.length === 0) {
+      return new Map();
+    }
+
+    const venueStatusResults = await this.databaseService.db
+      .select({
+        id: venueStatuses.id,
+        name: venueStatuses.displayName,
+      })
+      .from(venueStatuses)
+      .where(
+        and(
+          inArray(venueStatuses.id, venueStatusIds),
+          eq(venueStatuses.isActive, true)
+        )
+      );
+
+    const statusMap = new Map<number, string>(
+      venueStatusResults.map((s) => [s.id, s.name])
+    );
+
+    const resultMap = new Map<number, string>();
+    for (const activity of activityResults) {
+      if (activity.venueStatusId) {
+        const statusName = statusMap.get(activity.venueStatusId);
+        if (statusName) {
+          resultMap.set(activity.id, statusName);
+        }
+      }
+    }
+    return resultMap;
+  }
+
+  /**
    * Fetch time statuses for multiple activities
    */
   async fetchTimeStatusesForActivities(
@@ -428,7 +486,8 @@ export class ActivityDataFetcherService {
       number,
       {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;
@@ -443,7 +502,8 @@ export class ActivityDataFetcherService {
       .select({
         activityId: venueAddresses.activityId,
         venueName: venueAddresses.venueName,
-        street: venueAddresses.street,
+        addressLine1: venueAddresses.addressLine1,
+        addressLine2: venueAddresses.addressLine2,
         city: venueAddresses.city,
         provinceOrState: venueAddresses.provinceOrState,
         country: venueAddresses.country,
@@ -455,7 +515,8 @@ export class ActivityDataFetcherService {
       number,
       {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;
@@ -471,7 +532,8 @@ export class ActivityDataFetcherService {
     for (const address of venueAddressResults) {
       resultMap.set(address.activityId, {
         venueName: address.venueName,
-        street: address.street,
+        addressLine1: address.addressLine1,
+        addressLine2: address.addressLine2,
         city: address.city,
         provinceOrState: address.provinceOrState,
         country: address.country,
@@ -826,69 +888,62 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch event planner names for multiple activities
-   * Returns maps of activityId -> event planner name
-   * Uses free text name if available, otherwise looks up from eventPlanners table
+   * Fetch event planner details for multiple activities (id/name, display name, isLead).
+   * Reads from activity_event_planners junction; resolves lookup ids via event_planners table.
+   * Returns activityId -> Array<EventPlannerDetail>.
    */
-  async fetchEventPlannerNamesForActivities(
-    activities: Activity[]
-  ): Promise<Map<number, string | null>> {
-    const map = new Map<number, string | null>();
+  async fetchEventPlannerDetailsForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, EventPlannerDetail[]>> {
+    const map = new Map<number, EventPlannerDetail[]>();
+    if (activityIds.length === 0) return map;
 
-    // Collect event planner IDs that need to be looked up
-    const eventPlannerLeadIdsToLookup = new Set<number>();
-    const activityIdToEventPlannerLeadId = new Map<number, number>();
-
-    for (const activity of activities) {
-      // If free text name exists, use it
-      if (activity.eventPlannerLeadName) {
-        map.set(activity.id, activity.eventPlannerLeadName);
-      } else if (activity.eventPlannerLeadId) {
-        // Need to look up event planner name
-        eventPlannerLeadIdsToLookup.add(activity.eventPlannerLeadId);
-        activityIdToEventPlannerLeadId.set(
-          activity.id,
-          activity.eventPlannerLeadId
-        );
-      } else {
-        // No event planner
-        map.set(activity.id, null);
-      }
-    }
-
-    // Bulk lookup event planner names
-    if (eventPlannerLeadIdsToLookup.size > 0) {
-      const results = await this.databaseService.db
-        .select({
-          eventPlannerLeadId: eventPlanners.id,
-          eventPlannerLeadName:
-            sql<string>`COALESCE(${eventPlanners.displayName}, ${eventPlanners.name})`.as(
-              'eventPlannerLeadName'
-            ),
-        })
-        .from(eventPlanners)
-        .where(
-          and(
-            inArray(eventPlanners.id, Array.from(eventPlannerLeadIdsToLookup)),
-            eq(eventPlanners.isActive, true)
-          )
-        );
-
-      const eventPlannerLeadIdToName = new Map(
-        results.map((row) => [row.eventPlannerLeadId, row.eventPlannerLeadName])
+    const rows = await this.databaseService.db
+      .select({
+        activityId: activityEventPlanners.activityId,
+        eventPlannerId: activityEventPlanners.eventPlannerId,
+        eventPlannerName: activityEventPlanners.eventPlannerName,
+        isLead: activityEventPlanners.isLead,
+        displayName: eventPlanners.displayName,
+        name: eventPlanners.name,
+      })
+      .from(activityEventPlanners)
+      .leftJoin(
+        eventPlanners,
+        and(
+          eq(activityEventPlanners.eventPlannerId, eventPlanners.id),
+          eq(eventPlanners.isActive, true)
+        )
+      )
+      .where(
+        and(
+          inArray(activityEventPlanners.activityId, activityIds),
+          eq(activityEventPlanners.isActive, true)
+        )
       );
 
-      // Map event planner names back to activities
-      for (const [
-        activityId,
-        eventPlannerLeadId,
-      ] of activityIdToEventPlannerLeadId.entries()) {
-        const eventPlannerLeadName =
-          eventPlannerLeadIdToName.get(eventPlannerLeadId);
-        map.set(activityId, eventPlannerLeadName ?? null);
-      }
-    }
+    for (const row of rows) {
+      const fromFreeform = row.eventPlannerName?.trim() ?? '';
+      const fromLookup =
+        row.eventPlannerId != null && (row.displayName || row.name)
+          ? (row.displayName ?? row.name ?? '').trim()
+          : '';
+      const name =
+        fromFreeform ||
+        fromLookup ||
+        (row.eventPlannerId != null
+          ? `Planner #${row.eventPlannerId}`
+          : 'Unknown planner');
 
+      const list = map.get(row.activityId) ?? [];
+      list.push({
+        eventPlannerId: row.eventPlannerId ?? undefined,
+        eventPlannerName: row.eventPlannerName ?? undefined,
+        name,
+        isLead: row.isLead ?? false,
+      });
+      map.set(row.activityId, list);
+    }
     return map;
   }
 
@@ -1189,5 +1244,68 @@ export class ActivityDataFetcherService {
       }
     }
     return resultMap;
+  }
+
+  /**
+   * Human-readable lead team label per activity (for clients that cannot call lead-options).
+   */
+  async fetchLeadTeamDisplayForActivities(
+    activityRows: Array<{ id: number; leadTeamId: number }>
+  ): Promise<Map<number, string | null>> {
+    const result = new Map<number, string | null>();
+    if (activityRows.length === 0) {
+      return result;
+    }
+
+    const teamIds = [...new Set(activityRows.map((a) => a.leadTeamId))];
+    const teamRows = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        displayName: teams.displayName,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(inArray(teams.id, teamIds));
+
+    const ministryIds = [
+      ...new Set(
+        teamRows
+          .map((t) => t.ministryId)
+          .filter((id): id is number => id != null)
+      ),
+    ];
+    const ministryNameRows =
+      ministryIds.length > 0
+        ? await this.databaseService.db
+            .select({
+              id: ministries.id,
+              displayName: ministries.displayName,
+            })
+            .from(ministries)
+            .where(inArray(ministries.id, ministryIds))
+        : [];
+    const ministryMap = new Map(
+      ministryNameRows.map((m) => [m.id, m.displayName ?? ''])
+    );
+
+    const teamIdToLabel = new Map<number, string>();
+    for (const t of teamRows) {
+      const baseRaw = t.displayName?.trim() || t.name?.trim();
+      const base =
+        baseRaw != null && baseRaw.length > 0 ? baseRaw : `Team ${t.id}`;
+      const ministryName =
+        t.ministryId != null ? ministryMap.get(t.ministryId) : undefined;
+      const label =
+        ministryName != null && ministryName.length > 0
+          ? `${base} (${ministryName})`
+          : base;
+      teamIdToLabel.set(t.id, label);
+    }
+
+    for (const a of activityRows) {
+      result.set(a.id, teamIdToLabel.get(a.leadTeamId) ?? null);
+    }
+    return result;
   }
 }

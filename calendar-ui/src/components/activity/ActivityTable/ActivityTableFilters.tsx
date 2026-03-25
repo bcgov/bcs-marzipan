@@ -8,10 +8,11 @@ import {
 import {
   SortDropdown,
   type SortColumnConfig,
-} from '@/components/Table/SortDropdown';
+} from '@/components/table/SortDropdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import type { OptionItem } from '@/schemas/types';
 
 import type { ActivityFilterState } from './activityFilterState';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
@@ -37,9 +38,9 @@ export interface ActivityTableFiltersProps {
   defaultSortKey: string;
   defaultSortDirection: 'asc' | 'desc';
   sortColumns: SortColumnConfig[];
-  categoryOptions: { value: string; label: string }[];
-  pitchRequiredStatusOptions: { value: string; label: string }[];
-  statusOptions: { value: string; label: string }[];
+  categoryOptions: OptionItem[];
+  pitchRequiredStatusOptions: OptionItem[];
+  statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
   ministryOptions: LeadFilterOption[];
   organizationOptions: LeadFilterOption[];

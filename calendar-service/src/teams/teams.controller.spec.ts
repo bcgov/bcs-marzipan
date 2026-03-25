@@ -32,6 +32,8 @@ describe('TeamsController', () => {
     create: vi.fn(),
     update: vi.fn(),
     getTeamHistory: vi.fn(),
+    findLeadOptions: vi.fn(),
+    findCommsContactCandidates: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -134,6 +136,50 @@ describe('TeamsController', () => {
       expect(result).toEqual({ success: true, data: updated });
       expect(mockTeamsService.update).toHaveBeenCalledWith(1, dto, mockUser.id);
       expect(mockTeamsService.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getCommsContactCandidates', () => {
+    it('should return candidates from service for team the user belongs to', async () => {
+      const candidates = [{ id: 2, label: 'Editor User', value: 2 }];
+      mockTeamsService.findCommsContactCandidates.mockResolvedValue(candidates);
+
+      const user: AuthUser = {
+        ...mockUser,
+        permissions: ['activities.create', 'activities.edit'],
+        teamIds: [5],
+      };
+
+      const result = await controller.getCommsContactCandidates(5, user);
+
+      expect(result).toEqual({ success: true, data: candidates });
+      expect(mockTeamsService.findCommsContactCandidates).toHaveBeenCalledWith(
+        5,
+        [5],
+        false
+      );
+    });
+
+    it('should pass hasCreateAny true when user has activities.create.any', async () => {
+      mockTeamsService.findCommsContactCandidates.mockResolvedValue([]);
+
+      const adminUser: AuthUser = {
+        ...mockUser,
+        permissions: [
+          'activities.create',
+          'activities.edit',
+          'activities.create.any',
+        ],
+        teamIds: [2],
+      };
+
+      await controller.getCommsContactCandidates(99, adminUser);
+
+      expect(mockTeamsService.findCommsContactCandidates).toHaveBeenCalledWith(
+        99,
+        [2],
+        true
+      );
     });
   });
 

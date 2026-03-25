@@ -1,14 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   ministries,
+  permissions,
+  rolePermissions,
   teamHistory,
   teams,
   users,
   userTeams,
 } from '@corpcal/database/schema';
 import type {
+  CommsContactCandidate,
   CreateTeamBody,
   HistoryChange,
   TeamDetail,
@@ -60,6 +67,87 @@ export class TeamsService {
     }
     if (teamIds.length === 0) return [];
     return this.findManyByIds(teamIds);
+  }
+
+  /**
+   * Active members of a team whose role grants `activities.edit`.
+   * Shared by comms candidate list and eligible-id set.
+   */
+  private async fetchCommsEligibleUsersForTeam(teamId: number): Promise<
+    Array<{
+      id: number;
+      adDisplayName: string | null;
+      adUsername: string | null;
+    }>
+  > {
+    return this.databaseService.db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(userTeams)
+      .innerJoin(users, eq(users.id, userTeams.userId))
+      .innerJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.roleId, users.roleId),
+          eq(rolePermissions.isActive, true)
+        )
+      )
+      .innerJoin(
+        permissions,
+        and(
+          eq(permissions.id, rolePermissions.permissionId),
+          eq(permissions.key, 'activities.edit')
+        )
+      )
+      .where(
+        and(
+          eq(userTeams.teamId, teamId),
+          eq(userTeams.isActive, true),
+          eq(users.isActive, true)
+        )
+      );
+  }
+
+  /**
+   * Active members of a team whose role grants activities.edit.
+   * Used to populate the Comms contacts dropdown.
+   */
+  async findCommsContactCandidates(
+    teamId: number,
+    callerTeamIds: number[],
+    hasCreateAny: boolean
+  ): Promise<CommsContactCandidate[]> {
+    if (!hasCreateAny && !callerTeamIds.includes(teamId)) {
+      throw new ForbiddenException(
+        'You may only view comms contact candidates for teams you belong to.'
+      );
+    }
+
+    const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
+    const sorted = [...rows].sort((a, b) => {
+      const sa = a.adDisplayName ?? a.adUsername ?? '';
+      const sb = b.adDisplayName ?? b.adUsername ?? '';
+      const byName = sa.localeCompare(sb, undefined, { sensitivity: 'base' });
+      if (byName !== 0) return byName;
+      return a.id - b.id;
+    });
+
+    return sorted.map((u) => {
+      const label = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
+      return { id: u.id, label, value: u.id };
+    });
+  }
+
+  /**
+   * Returns the set of user IDs that are eligible comms contacts for the given team
+   * (active team member + role grants activities.edit).
+   */
+  async getEligibleCommsUserIds(teamId: number): Promise<Set<number>> {
+    const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
+    return new Set(rows.map((r) => r.id));
   }
 
   private async findManyByIds(teamIds: number[]): Promise<TeamListItem[]> {

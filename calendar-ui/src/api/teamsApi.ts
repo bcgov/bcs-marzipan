@@ -2,6 +2,7 @@
  * Teams CRUD API for admin (list all including inactive, get, create, update, history).
  */
 import type {
+  CommsContactCandidate,
   CreateTeamBody,
   TeamDetail,
   TeamHistoryEntry,
@@ -69,5 +70,19 @@ export async function fetchLeadTeamOptions(): Promise<TeamListItem[]> {
     success: boolean;
     data: TeamListItem[];
   }>('/teams/lead-options');
+  return response.data.data;
+}
+
+/**
+ * Eligible comms contact candidates for a given lead team.
+ * Active members of the team whose role grants activities.edit.
+ */
+export async function fetchCommsContactCandidates(
+  teamId: number
+): Promise<CommsContactCandidate[]> {
+  const response = await api.get<{
+    success: boolean;
+    data: CommsContactCandidate[];
+  }>(`/teams/${teamId}/comms-contact-candidates`);
   return response.data.data;
 }

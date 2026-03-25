@@ -95,7 +95,7 @@ function App() {
                 }
               />
               <Route
-                path="activity/:id/*"
+                path="activity/:id"
                 element={
                   <ProtectedRoute
                     requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}

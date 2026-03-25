@@ -1,91 +1,152 @@
-import type { UseFormReturn } from 'react-hook-form';
-import type { ReactElement } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { useMemo, type ReactElement } from 'react';
 
-import type { TeamListItem } from '@corpcal/shared/api/types';
+import type { CommsContactCandidate } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormDisplayOptionsProvider } from '@/components/ui/form';
 import type { FormLookupData } from '@/hooks/useFormLookups';
+import { cn } from '@/lib/utils';
+import type { OptionItem } from '@/schemas/types';
 
+import {
+  ActivityEditProvider,
+  type ActivityEditContextValue,
+} from './activity-edit-context';
+import {
+  defaultActivityLeadTeamFieldConfig,
+  type ActivityLeadTeamFieldConfig,
+} from './activity-lead-team-field-config';
 import {
   ActivityCommsSection,
   ActivityEventSection,
-  ActivityNewsReleaseSection,
   ActivityOverviewSection,
   ActivityReportsSection,
   ActivityScheduleSection,
   ActivitySharingSection,
 } from './ActivityFormSections';
 
+/** Strip default `shadow-xs` / outline-button shadow on form controls inside the activity form only. */
+const ACTIVITY_FORM_FIELD_SHADOW_RESET = cn(
+  '[&_[data-slot=input]]:shadow-none',
+  '[&_[data-slot=textarea]]:shadow-none',
+  '[&_[data-slot=combobox-chips]]:shadow-none',
+  '[&_[data-slot=input-group]]:shadow-none',
+  '[&_[data-slot=freeform-combobox-chips]]:shadow-none',
+  '[&_button[data-variant=outline]]:shadow-none',
+  '[&_[data-slot=switch]]:shadow-none'
+);
+
 type ActivityFormBodyProps = {
-  form: UseFormReturn<ActivityFormData>;
   lookups: FormLookupData;
+  /** From parent `useCommsContactCandidates` -- avoids a duplicate query and stale option lists. */
+  commsContactCandidates: CommsContactCandidate[] | undefined;
   readOnly?: boolean;
-  /** Teams for lead team dropdown (create/edit). When provided, overview shows lead team field instead of lead ministry only. */
-  leadTeamOptions?: TeamListItem[];
+  /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
+  showChangedBadges?: boolean;
+  leadTeamField?: ActivityLeadTeamFieldConfig;
 };
 
 /**
  * Shared two-column form body used by create, view, and edit activity pages.
  */
 export function ActivityFormBody({
-  form,
   lookups,
+  commsContactCandidates,
   readOnly = false,
-  leadTeamOptions,
+  showChangedBadges = true,
+  leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
-  const commsLeadOptions = lookups.users.map((u) => ({
-    value: u.value,
-    label: u.label,
-  }));
+  const form = useFormContext<ActivityFormData>();
+  const leadTeamField = {
+    ...defaultActivityLeadTeamFieldConfig,
+    ...leadTeamFieldProp,
+  };
+
+  const commsContacts = useWatch({
+    control: form.control,
+    name: 'commsContacts',
+  });
+
+  const commsLeadOptions = useMemo<OptionItem[]>(() => {
+    const candidateOptions: OptionItem[] = (commsContactCandidates ?? []).map(
+      (c) => ({
+        value: String(c.id),
+        label: c.label,
+      })
+    );
+    const candidateIds = new Set(candidateOptions.map((o) => o.value));
+    const currentContacts: Array<{ userId: number }> = commsContacts ?? [];
+    const fallbacks = currentContacts
+      .filter((c) => !candidateIds.has(String(c.userId)))
+      .map((c) => {
+        const userOption = lookups.users.find(
+          (opt) => opt.value === String(c.userId)
+        );
+        return {
+          value: String(c.userId),
+          label: userOption?.label ?? `User ${c.userId}`,
+        };
+      });
+    return [...candidateOptions, ...fallbacks];
+  }, [commsContactCandidates, commsContacts, lookups.users]);
+
+  const editContextValue = useMemo<ActivityEditContextValue>(
+    () => ({ readOnly }),
+    [readOnly]
+  );
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <div className="space-y-6">
-        <ActivityOverviewSection
-          categories={lookups.categories}
-          organizations={lookups.organizations}
-          tags={lookups.tags}
-          readOnly={readOnly}
-          leadTeamOptions={leadTeamOptions}
-        />
+    <ActivityEditProvider value={editContextValue}>
+      <FormDisplayOptionsProvider showChangedBadges={showChangedBadges}>
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-12 lg:grid-cols-2',
+            ACTIVITY_FORM_FIELD_SHADOW_RESET
+          )}
+        >
+          <div className="space-y-12">
+            <ActivityOverviewSection
+              categories={lookups.categories}
+              organizations={lookups.organizations}
+              tags={lookups.tags}
+              pitchRequiredStatuses={lookups.pitchRequiredStatuses}
+              leadTeamField={leadTeamField}
+            />
 
-        <div>
-          <ActivityCommsSection
-            commsMaterialOptions={lookups.commsMaterials}
-            commsLeadOptions={commsLeadOptions}
-            readOnly={readOnly}
-          />
+            <ActivityCommsSection
+              commsMaterialOptions={lookups.commsMaterials}
+              commsLeadOptions={commsLeadOptions}
+              translationLanguageOptions={lookups.translationLanguages}
+              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
+              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+              translationRequiredStatuses={lookups.translationRequiredStatuses}
+            />
+          </div>
 
-          <div className="my-6 border-t border-gray-300" />
+          <div className="space-y-12">
+            <ActivityReportsSection />
 
-          <ActivityNewsReleaseSection
-            translationLanguageOptions={lookups.translationLanguages}
-            newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-            newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-            readOnly={readOnly}
-          />
+            <ActivityScheduleSection
+              dateStatuses={lookups.dateStatuses}
+              timeStatuses={lookups.timeStatuses}
+            />
+
+            <ActivityEventSection
+              venueStatuses={lookups.venueStatuses}
+              representativeOptions={lookups.governmentRepresentatives}
+              premierRequestedOptions={lookups.premierRequested}
+              eventPlannerOptions={lookups.eventPlanners}
+            />
+
+            <ActivitySharingSection
+              sharedWithTeamOptions={lookups.sharedWithTeams.map((t) => ({
+                value: String(t.id),
+                label: t.displayName ?? t.name,
+              }))}
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="space-y-6">
-        <ActivityReportsSection form={form} readOnly={readOnly} />
-
-        <ActivityScheduleSection form={form} readOnly={readOnly} />
-
-        <ActivityEventSection
-          representativeOptions={lookups.governmentRepresentatives}
-          premierRequestedOptions={lookups.premierRequested}
-          eventPlannerOptions={lookups.eventPlanners}
-          readOnly={readOnly}
-        />
-
-        <ActivitySharingSection
-          sharedWithTeamOptions={lookups.sharedWithTeams.map((t) => ({
-            value: String(t.id),
-            label: t.displayName ?? t.name,
-          }))}
-          readOnly={readOnly}
-        />
-      </div>
-    </div>
+      </FormDisplayOptionsProvider>
+    </ActivityEditProvider>
   );
 }

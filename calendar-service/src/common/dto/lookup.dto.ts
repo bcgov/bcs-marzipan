@@ -15,7 +15,7 @@ import {
   createResponseWrapperSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
-  createVenueQuickPickRequestSchema,
+  createVenuePresetRequestSchema,
   governmentRepresentativeResponseSchema,
   lookupItemSchema,
   ministryResponseSchema,
@@ -29,8 +29,8 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
-  updateVenueQuickPickRequestSchema,
-  venueQuickPickItemSchema,
+  updateVenuePresetRequestSchema,
+  venuePresetItemSchema,
 } from '@corpcal/shared/schemas';
 
 /**
@@ -282,21 +282,21 @@ export class ActivityStatusResponseWrapperDto extends createZodDto(
 ) {}
 
 // ============================================
-// Venue Quick Pick DTOs
+// Venue Preset DTOs
 // ============================================
 
-export class CreateVenueQuickPickDto extends createZodDto(
-  createVenueQuickPickRequestSchema
+export class CreateVenuePresetDto extends createZodDto(
+  createVenuePresetRequestSchema
 ) {}
 
-export class UpdateVenueQuickPickDto extends createZodDto(
-  updateVenueQuickPickRequestSchema
+export class UpdateVenuePresetDto extends createZodDto(
+  updateVenuePresetRequestSchema
 ) {}
 
-export class VenueQuickPickResponseWrapperDto extends createZodDto(
-  createResponseWrapperSchema(venueQuickPickItemSchema)
+export class VenuePresetResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(venuePresetItemSchema)
 ) {}
 
-export class VenueQuickPickArrayResponseWrapperDto extends createZodDto(
-  createArrayResponseWrapperSchema(venueQuickPickItemSchema)
+export class VenuePresetArrayResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(venuePresetItemSchema)
 ) {}

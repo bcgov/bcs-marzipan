@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -29,13 +30,16 @@ import {
   deletionAudit,
   favoriteActivities,
   ministries,
+  pitchRequiredStatuses,
   teams,
+  translationRequiredStatuses,
   userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
   PERMISSIONS,
+  PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
@@ -55,6 +59,7 @@ import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
+import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -74,7 +79,8 @@ export class ActivitiesService {
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService,
     private readonly locksService: LocksService,
-    private readonly policyService: PolicyService
+    private readonly policyService: PolicyService,
+    private readonly teamsService: TeamsService
   ) {}
 
   /**
@@ -96,10 +102,14 @@ export class ActivitiesService {
         typeof venue.venueName === 'string'
           ? venue.venueName.trim() || null
           : (venue.venueName ?? null),
-      street:
-        typeof venue.street === 'string'
-          ? venue.street.trim() || null
-          : (venue.street ?? null),
+      addressLine1:
+        typeof venue.addressLine1 === 'string'
+          ? venue.addressLine1.trim() || null
+          : (venue.addressLine1 ?? null),
+      addressLine2:
+        typeof venue.addressLine2 === 'string'
+          ? venue.addressLine2.trim() || null
+          : (venue.addressLine2 ?? null),
       city:
         typeof venue.city === 'string'
           ? venue.city.trim() || null
@@ -116,6 +126,27 @@ export class ActivitiesService {
   }
 
   /**
+   * Validate that every comms contact userId is an active member of the lead
+   * team and has a role that grants activities.edit.
+   */
+  private async validateCommsContactsForTeam(
+    commsContacts: Array<{ userId: number; isLead: boolean }> | undefined,
+    leadTeamId: number
+  ): Promise<void> {
+    if (!commsContacts || commsContacts.length === 0) return;
+    const eligible =
+      await this.teamsService.getEligibleCommsUserIds(leadTeamId);
+    const invalid = commsContacts.filter((c) => !eligible.has(c.userId));
+    if (invalid.length > 0) {
+      const ids = invalid.map((c) => c.userId).join(', ');
+      throw new BadRequestException(
+        `Comms contact(s) [${ids}] are not eligible for lead team ${leadTeamId}. ` +
+          'Contacts must be active members of the lead team with activities.edit permission.'
+      );
+    }
+  }
+
+  /**
    * Fetch all related data (categories, tags, statuses, etc.) for the given activity IDs.
    * Used by mapToResponseDto (bulk), findOne, update, requestDelete, and restore.
    */
@@ -129,6 +160,7 @@ export class ActivitiesService {
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
+      venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
       translationsRequiredMap,
@@ -136,7 +168,7 @@ export class ActivitiesService {
       sharedWithMap,
       commsContactsMap,
       leadOrgNamesMap,
-      eventPlannerNamesMap,
+      eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
@@ -145,12 +177,14 @@ export class ActivitiesService {
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
+      leadTeamDisplayMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities(activityIds),
       this.dataFetcherService.fetchTagsForActivities(activityIds),
       this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
       this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
       this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
+      this.dataFetcherService.fetchVenueStatusesForActivities(activityIds),
       this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
       this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
       this.dataFetcherService.fetchTranslationsRequiredForActivities(
@@ -162,7 +196,9 @@ export class ActivitiesService {
       this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
       this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
       this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities(activityRows),
+      this.dataFetcherService.fetchEventPlannerDetailsForActivities(
+        activityIds
+      ),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
         activityIds
@@ -179,13 +215,32 @@ export class ActivitiesService {
       this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
         activityIds
       ),
+      this.dataFetcherService.fetchLeadTeamDisplayForActivities(
+        activityRows.map((a) => ({ id: a.id, leadTeamId: a.leadTeamId }))
+      ),
     ]);
+    // Derive eventPlannersMap and eventPlannerIdsMap from details for backward compatibility
+    const eventPlannersMap = new Map<number, string[]>();
+    const eventPlannerIdsMap = new Map<number, number[]>();
+    for (const [activityId, details] of eventPlannerDetailsMap) {
+      eventPlannersMap.set(
+        activityId,
+        details.map((d) => d.name)
+      );
+      eventPlannerIdsMap.set(
+        activityId,
+        details
+          .filter((d) => d.eventPlannerId != null)
+          .map((d) => d.eventPlannerId as number)
+      );
+    }
     return {
       categoriesResult,
       tagsMap,
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
+      venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
       translationsRequiredMap,
@@ -193,7 +248,9 @@ export class ActivitiesService {
       sharedWithMap,
       commsContactsMap,
       leadOrgNamesMap,
-      eventPlannerNamesMap,
+      eventPlannerDetailsMap,
+      eventPlannersMap,
+      eventPlannerIdsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
@@ -202,6 +259,7 @@ export class ActivitiesService {
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
+      leadTeamDisplayMap,
     };
   }
 
@@ -308,6 +366,46 @@ export class ActivitiesService {
   }
 
   /**
+   * Resolve DB IDs for tri-state "pending" row (display "Pending review") used as create defaults.
+   */
+  private async resolvePendingPitchAndTranslationStatusIds(): Promise<{
+    pitchRequiredStatusId: number;
+    translationsRequiredStatusId: number;
+  }> {
+    const [pitchRow] = await this.databaseService.db
+      .select({ id: pitchRequiredStatuses.id })
+      .from(pitchRequiredStatuses)
+      .where(
+        eq(pitchRequiredStatuses.name, PITCH_TRANSLATION_PENDING_LOOKUP_NAME)
+      )
+      .limit(1);
+    const [translationRow] = await this.databaseService.db
+      .select({ id: translationRequiredStatuses.id })
+      .from(translationRequiredStatuses)
+      .where(
+        eq(
+          translationRequiredStatuses.name,
+          PITCH_TRANSLATION_PENDING_LOOKUP_NAME
+        )
+      )
+      .limit(1);
+    if (pitchRow?.id == null) {
+      throw new InternalServerErrorException(
+        'Pitch required status "pending" is not configured in lookups.'
+      );
+    }
+    if (translationRow?.id == null) {
+      throw new InternalServerErrorException(
+        'Translation required status "pending" is not configured in lookups.'
+      );
+    }
+    return {
+      pitchRequiredStatusId: pitchRow.id,
+      translationsRequiredStatusId: translationRow.id,
+    };
+  }
+
+  /**
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
@@ -331,12 +429,14 @@ export class ActivitiesService {
       translationLanguageIds,
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
+      eventPlanners: eventPlannersArray,
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed,
+      commsContactLeadId: _commsContactLeadIdCreateIgnored,
       ...activityData
     } = dto;
 
@@ -397,10 +497,33 @@ export class ActivitiesService {
       leadMinistryId: resolvedLeadMinistryId,
     };
 
-    // Validate category IDs if provided
-    if (categoryIds && categoryIds.length > 0) {
-      await this.utilsService.validateCategoryIds(categoryIds);
+    if (!categoryIds?.length) {
+      throw new BadRequestException('At least one category is required.');
     }
+    await this.utilsService.validateCategoryIds(categoryIds);
+
+    const pendingStatuses =
+      await this.resolvePendingPitchAndTranslationStatusIds();
+    const {
+      pitchRequiredStatusId: dtoPitchStatus,
+      translationsRequiredStatusId: dtoTranslationStatus,
+      significance: dtoSignificance,
+      ...activityRowWithoutDefaults
+    } = activityDataWithResolvedMinistry;
+
+    const activityRowForInsert = {
+      ...activityRowWithoutDefaults,
+      significance: dtoSignificance ?? null,
+      pitchRequiredStatusId:
+        dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
+      translationsRequiredStatusId:
+        dtoTranslationStatus ?? pendingStatuses.translationsRequiredStatusId,
+    };
+
+    await this.validateCommsContactsForTeam(
+      commsContactsArray,
+      activityData.leadTeamId
+    );
 
     const now = new Date();
 
@@ -425,7 +548,7 @@ export class ActivitiesService {
         createdDateTime: Date;
         lastUpdatedDateTime: Date;
       } = {
-        ...activityDataWithResolvedMinistry,
+        ...activityRowForInsert,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
@@ -541,6 +664,13 @@ export class ActivitiesService {
           tx,
           activityId,
           commsContactsArray,
+          now
+        ),
+        // Event planners
+        this.junctionService.insertEventPlanners(
+          tx,
+          activityId,
+          eventPlannersArray,
           now
         ),
         // Representatives with attending status
@@ -898,6 +1028,7 @@ export class ActivitiesService {
         activityStatus: related.activityStatusesMap.get(activity.id),
         dateStatus: related.dateStatusesMap.get(activity.id),
         timeStatus: related.timeStatusesMap.get(activity.id),
+        venueStatus: related.venueStatusesMap.get(activity.id),
         venueAddress: related.venueAddressesMap.get(activity.id) ?? null,
         commsMaterials: related.commsMaterialsMap.get(activity.id) ?? [],
         translationsRequired:
@@ -906,7 +1037,10 @@ export class ActivitiesService {
           related.representativesAttendingMap.get(activity.id) ?? [],
         sharedWith: related.sharedWithMap.get(activity.id) ?? [],
         commsContacts,
-        eventLeadName: related.eventPlannerNamesMap.get(activity.id) ?? null,
+        eventPlannerDetails:
+          related.eventPlannerDetailsMap.get(activity.id) ?? [],
+        eventPlanners: related.eventPlannersMap.get(activity.id) ?? [],
+        eventPlannerLeadIds: related.eventPlannerIdsMap.get(activity.id) ?? [],
         leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
         newsReleaseOrigin:
           related.newsReleaseOriginsMap.get(activity.id) ?? null,
@@ -921,6 +1055,8 @@ export class ActivitiesService {
         leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
         leadMinistryAbbreviation:
           related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
+        leadTeamDisplayName:
+          related.leadTeamDisplayMap.get(activity.id) ?? null,
         canEdit: canEdit ?? undefined,
       });
     });
@@ -1001,6 +1137,7 @@ export class ActivitiesService {
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
+      venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
@@ -1008,7 +1145,9 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts,
-      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
+      eventPlanners: related.eventPlannersMap.get(id) ?? [],
+      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
@@ -1021,6 +1160,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       canEdit: canEdit ?? undefined,
     });
   }
@@ -1091,12 +1231,14 @@ export class ActivitiesService {
       translationLanguageIds,
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
+      eventPlanners: eventPlannersArray,
       representatives,
       venueAddress,
       reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed: _markAsReviewedIgnored,
+      commsContactLeadId: _commsContactLeadIdUiIgnored,
       ...activityUpdateData
     } = dto;
 
@@ -1147,6 +1289,17 @@ export class ActivitiesService {
         )
       );
 
+    // Validate comms contacts belong to the (possibly updated) lead team
+    const effectiveLeadTeamId =
+      (activityUpdateData as Partial<Activity>).leadTeamId ??
+      oldActivity.leadTeamId;
+    if (effectiveLeadTeamId != null) {
+      await this.validateCommsContactsForTeam(
+        commsContactsArray,
+        effectiveLeadTeamId
+      );
+    }
+
     const existingRepresentatives = await this.databaseService.db
       .select({
         representativeId: activityRepresentatives.representativeId,
@@ -1185,6 +1338,12 @@ export class ActivitiesService {
           'You may only set lead team to a team you belong to.'
         );
       }
+    }
+
+    // Validate categories outside the transaction so we do not hold a txn
+    // connection while borrowing another from the pool (pool starvation under load).
+    if (categoryIds !== undefined) {
+      await this.utilsService.validateCategoryIds(categoryIds);
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
@@ -1389,6 +1548,16 @@ export class ActivitiesService {
         );
       }
 
+      // Update event planners
+      if (eventPlannersArray !== undefined) {
+        await this.junctionService.updateEventPlanners(
+          tx,
+          id,
+          eventPlannersArray,
+          now
+        );
+      }
+
       // Update report settings
       if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
         // Convert array format to Map for service layer
@@ -1427,6 +1596,7 @@ export class ActivitiesService {
       activityStatus,
       dateStatus,
       timeStatus,
+      venueStatus,
       venueAddressesMap,
       commsMaterials,
       translationsRequired,
@@ -1434,7 +1604,7 @@ export class ActivitiesService {
       sharedWith,
       commsContacts,
       leadOrgNamesMap,
-      eventPlannerNamesMap,
+      eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
@@ -1443,12 +1613,14 @@ export class ActivitiesService {
       translationsRequiredStatus,
       leadMinistryName,
       leadMinistryAbbreviation,
+      leadTeamDisplayMap,
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
       this.dataFetcherService.fetchActivityStatusesForActivities([id]),
       this.dataFetcherService.fetchDateStatusesForActivities([id]),
       this.dataFetcherService.fetchTimeStatusesForActivities([id]),
+      this.dataFetcherService.fetchVenueStatusesForActivities([id]),
       this.dataFetcherService.fetchVenueAddressesForActivities([id]),
       this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
       this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
@@ -1456,7 +1628,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
       this.dataFetcherService.fetchCommsContactsForActivities([id]),
       this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
-      this.dataFetcherService.fetchEventPlannerNamesForActivities([updated]),
+      this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
@@ -1467,7 +1639,12 @@ export class ActivitiesService {
       ]),
       this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
       this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
+      this.dataFetcherService.fetchLeadTeamDisplayForActivities([
+        { id: updated.id, leadTeamId: updated.leadTeamId },
+      ]),
     ]);
+
+    const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       categoriesResult;
@@ -1479,13 +1656,18 @@ export class ActivitiesService {
       activityStatus: activityStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
+      venueStatus: venueStatus.get(id),
       venueAddress: venueAddressesMap.get(id) ?? null,
       commsMaterials: commsMaterials.get(id) ?? [],
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
       sharedWith: sharedWith.get(id) ?? [],
       commsContacts: commsContacts.get(id) ?? [],
-      eventLeadName: eventPlannerNamesMap.get(id) ?? null,
+      eventPlannerDetails,
+      eventPlanners: eventPlannerDetails.map((d) => d.name),
+      eventPlannerLeadIds: eventPlannerDetails
+        .filter((d) => d.eventPlannerId != null)
+        .map((d) => d.eventPlannerId as number),
       leadOrgName: leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
@@ -1495,6 +1677,7 @@ export class ActivitiesService {
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
+      leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -1582,8 +1765,21 @@ export class ActivitiesService {
       activityHistoryNotes || 'Activity updated'
     );
 
-    // Notify connected clients viewing this activity
-    this.activitiesGateway.notifyActivityUpdate(id, result);
+    // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
+    // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
+    const gateway = this.activitiesGateway;
+    const notifyPayload = result;
+    const notifyActivityId = id;
+    setImmediate(() => {
+      try {
+        gateway.notifyActivityUpdate(notifyActivityId, notifyPayload);
+      } catch (err: unknown) {
+        this.logger.error(
+          'notifyActivityUpdate failed (deferred)',
+          err instanceof Error ? err.stack : String(err)
+        );
+      }
+    });
 
     return result;
   }
@@ -1826,6 +2022,7 @@ export class ActivitiesService {
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
+      venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
@@ -1833,7 +2030,9 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
-      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
+      eventPlanners: related.eventPlannersMap.get(id) ?? [],
+      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
@@ -1846,6 +2045,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 
@@ -1948,6 +2148,7 @@ export class ActivitiesService {
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
+      venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
@@ -1955,7 +2156,9 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
-      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
+      eventPlanners: related.eventPlannersMap.get(id) ?? [],
+      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
@@ -1968,6 +2171,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 
@@ -2062,6 +2266,7 @@ export class ActivitiesService {
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
+      venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
@@ -2069,7 +2274,9 @@ export class ActivitiesService {
         related.representativesAttendingMap.get(id) ?? [],
       sharedWith: related.sharedWithMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
-      eventLeadName: related.eventPlannerNamesMap.get(id) ?? null,
+      eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
+      eventPlanners: related.eventPlannersMap.get(id) ?? [],
+      eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
       leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
@@ -2082,6 +2289,7 @@ export class ActivitiesService {
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
+      leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
   }
 
@@ -2114,12 +2322,12 @@ export class ActivitiesService {
     // Verify activity exists
     await this.findOne(id);
 
-    const now = new Date();
-
-    // Validate category IDs if provided
-    if (categoryIds.length > 0) {
-      await this.utilsService.validateCategoryIds(categoryIds);
+    if (categoryIds.length === 0) {
+      throw new BadRequestException('At least one category is required.');
     }
+    await this.utilsService.validateCategoryIds(categoryIds);
+
+    const now = new Date();
 
     // Get existing category IDs for history
     const existingCategories = await this.databaseService.db

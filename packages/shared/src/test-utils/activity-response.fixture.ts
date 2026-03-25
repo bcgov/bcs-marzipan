@@ -57,6 +57,7 @@ export function createMockActivityResponse(
     startTime: '10:00',
     endTime: '12:00',
     timeStatusId: 1,
+    venueStatusId: 1,
     schedulingNotes: null,
     strategy: null,
 
@@ -64,10 +65,6 @@ export function createMockActivityResponse(
     newsReleaseOriginId: null,
     newsReleaseId: null,
     newsReleaseDistributionId: null,
-
-    // Event lead/planner
-    eventPlannerLeadId: null,
-    eventPlannerLeadName: null,
 
     // Look Ahead
     executiveSummary: null,
@@ -102,9 +99,12 @@ export function createMockActivityResponse(
     sharedWith: [],
     commsContacts: [],
     leadOrg: null,
-    eventLead: null,
+    eventPlannerDetails: [],
+    eventPlanners: [],
+    eventPlannerLeadIds: [],
     dateStatus: 'Set',
     timeStatus: 'Set',
+    venueStatus: 'Venue TBD',
     activityStatus: DEFAULT_ACTIVITY_STATUS,
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,
@@ -113,6 +113,7 @@ export function createMockActivityResponse(
     translationsRequiredStatus: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
+    leadTeamDisplayName: null,
     venueAddress: null,
     reportSettings: [],
 
