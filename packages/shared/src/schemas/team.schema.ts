@@ -51,6 +51,18 @@ export const teamDetailSchema = teamListItemSchema.extend({
 
 export type TeamDetail = z.infer<typeof teamDetailSchema>;
 
+/**
+ * Comms contact candidate returned by GET /teams/:id/comms-contact-candidates.
+ * Active team member whose role grants activities.edit.
+ */
+export const commsContactCandidateSchema = z.object({
+  id: z.number().int(),
+  label: z.string(),
+  value: z.number().int(),
+});
+
+export type CommsContactCandidate = z.infer<typeof commsContactCandidateSchema>;
+
 // ============================================
 // Request Body Schemas
 // ============================================

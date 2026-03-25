@@ -1,6 +1,7 @@
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
+  canonicalizeActivityFormData,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
 } from '@corpcal/shared/utils';
@@ -53,14 +54,23 @@ export type StatusLookupMap = Map<number | string, string>;
 export function formatHistoryFieldValue(
   field: string,
   value: unknown,
-  dateStatusMap?: StatusLookupMap
+  dateStatusMap?: StatusLookupMap,
+  venueStatusMap?: StatusLookupMap
 ): string {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || value === '') {
     return '(empty)';
   }
 
   if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {
     return dateStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'venueStatusId' &&
+    typeof value === 'number' &&
+    venueStatusMap
+  ) {
+    return venueStatusMap.get(value) || String(value);
   }
 
   if (
@@ -79,12 +89,27 @@ export function formatHistoryFieldValue(
     const addr = value as Record<string, unknown>;
     const parts = [];
     if (typeof addr.venueName === 'string') parts.push(addr.venueName);
-    if (typeof addr.street === 'string') parts.push(addr.street);
+    if (typeof addr.addressLine1 === 'string') parts.push(addr.addressLine1);
+    if (typeof addr.addressLine2 === 'string') parts.push(addr.addressLine2);
     if (typeof addr.city === 'string') parts.push(addr.city);
     if (typeof addr.provinceOrState === 'string')
       parts.push(addr.provinceOrState);
     if (typeof addr.country === 'string') parts.push(addr.country);
     return parts.length > 0 ? parts.join(', ') : '(address)';
+  }
+
+  if (field === 'eventPlanners') {
+    if (Array.isArray(value)) {
+      const planners = value as Array<{
+        eventPlannerId?: number;
+        eventPlannerName?: string;
+        isLead?: boolean;
+      }>;
+      const names = planners
+        .map((p) => p.eventPlannerName ?? `ID ${p.eventPlannerId}`)
+        .join(', ');
+      return names || '(no event planners)';
+    }
   }
 
   if (field === 'representatives') {
@@ -133,8 +158,12 @@ export function formatHistoryFieldValue(
  * Keys intentionally excluded from form comparison.
  * activityHistoryNotes is edit metadata (the "reason for change" note),
  * not a user-editable data field.
+ * commsContactLeadId is legacy UI convenience; lead is represented via commsContacts.
  */
-type ExcludedFromCompare = 'activityHistoryNotes' | 'markAsReviewed';
+type ExcludedFromCompare =
+  | 'activityHistoryNotes'
+  | 'markAsReviewed'
+  | 'commsContactLeadId';
 
 const FIELDS_TO_COMPARE = [
   'title',
@@ -144,6 +173,7 @@ const FIELDS_TO_COMPARE = [
   'strategy',
   'dateStatusId',
   'timeStatusId',
+  'venueStatusId',
   'activityStatusId',
   'isIssue',
   'isAllDay',
@@ -164,13 +194,11 @@ const FIELDS_TO_COMPARE = [
   'leadOrgName',
   'leadTeamId',
   'leadMinistryId',
-  'eventPlannerLeadId',
-  'eventPlannerLeadName',
+  'eventPlanners',
   'newsReleaseDistributionId',
   'premierRequestedId',
   'newsReleaseId',
   'newsReleaseOriginId',
-  'commsContactLeadId',
   'categoryIds',
   'tagIds',
   'commsMaterialIds',
@@ -199,10 +227,12 @@ export function computeFormChanges(
   current: ActivityFormData
 ): HistoryChange[] {
   const changes: HistoryChange[] = [];
+  const initialC = canonicalizeActivityFormData(initial);
+  const currentC = canonicalizeActivityFormData(current);
 
   for (const field of FIELDS_TO_COMPARE) {
-    const oldVal = initial[field];
-    const newVal = current[field];
+    const oldVal = initialC[field];
+    const newVal = currentC[field];
     if (!isDeepEqual(oldVal, newVal)) {
       changes.push({
         field,

@@ -1,7 +1,6 @@
 export { ActivityOverviewSection } from './ActivityOverviewSection';
 export { ActivityScheduleSection } from './ActivityScheduleSection';
 export { ActivityCommsSection } from './ActivityCommsSection';
-export { ActivityNewsReleaseSection } from './ActivityNewsReleaseSection';
 export { ActivityEventSection } from './ActivityEventSection';
 export { ActivityReportsSection } from './ActivityReportsSection';
 export { ActivitySharingSection } from './ActivitySharingSection';

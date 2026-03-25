@@ -1,6 +1,37 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 
+function trimVenueNullable(v: string | null | undefined): string | null {
+  if (v == null) return null;
+  const t = v.trim();
+  return t === '' ? null : t;
+}
+
+/** Stable empty venue object so RHF nested defaults use explicit `null` (not missing keys / undefined). */
+export function normalizeVenueAddressForForm(
+  input: ActivityResponse['venueAddress']
+): NonNullable<ActivityFormData['venueAddress']> {
+  const empty = {
+    venueName: null as string | null,
+    addressLine1: null as string | null,
+    addressLine2: null as string | null,
+    city: null as string | null,
+    provinceOrState: null as string | null,
+    country: null as string | null,
+  };
+  if (input == null || typeof input !== 'object') {
+    return empty;
+  }
+  return {
+    venueName: trimVenueNullable(input.venueName),
+    addressLine1: trimVenueNullable(input.addressLine1),
+    addressLine2: trimVenueNullable(input.addressLine2),
+    city: trimVenueNullable(input.city),
+    provinceOrState: trimVenueNullable(input.provinceOrState),
+    country: trimVenueNullable(input.country),
+  };
+}
+
 /**
  * Optional lookups to resolve response display names to IDs for form fields.
  * Pass these when mapping an ActivityResponse to form data so junction arrays are populated.
@@ -76,14 +107,29 @@ export function mapResponseToFormData(
         }))
       : undefined;
 
+  const eventPlanners =
+    response.eventPlannerDetails?.length > 0
+      ? response.eventPlannerDetails.map((d) => ({
+          eventPlannerId: d.eventPlannerId ?? undefined,
+          eventPlannerName: d.eventPlannerName ?? undefined,
+          isLead: d.isLead,
+        }))
+      : response.eventPlanners?.length > 0
+        ? response.eventPlanners.map((name, i) => ({
+            eventPlannerName: name,
+            isLead: i === 0,
+          }))
+        : undefined;
+
   return {
     title: response.title,
     summary: response.summary,
-    significance: response.significance,
+    significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
     strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId,
     timeStatusId: response.timeStatusId,
+    venueStatusId: response.venueStatusId ?? undefined,
     activityStatusId: response.activityStatusId,
     isIssue: response.isIssue,
     isAllDay: response.isAllDay,
@@ -107,11 +153,10 @@ export function mapResponseToFormData(
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
-    eventPlannerLeadId: response.eventPlannerLeadId ?? undefined,
-    eventPlannerLeadName: response.eventPlannerLeadName ?? undefined,
+    eventPlanners: eventPlanners?.length ? eventPlanners : undefined,
     newsReleaseDistributionId: response.newsReleaseDistributionId ?? undefined,
     premierRequestedId: response.premierRequestedId ?? undefined,
-    categoryIds: categoryIds?.length ? categoryIds : undefined,
+    categoryIds: categoryIds?.length ? categoryIds : [],
     tagIds: tagIds?.length ? tagIds : undefined,
     commsMaterialIds: commsMaterialIds?.length ? commsMaterialIds : undefined,
     translationLanguageIds: translationLanguageIds?.length
@@ -123,6 +168,6 @@ export function mapResponseToFormData(
       : undefined,
     commsContacts: commsContacts?.length ? commsContacts : undefined,
     reportSettings: reportSettings?.length ? reportSettings : undefined,
-    venueAddress: response.venueAddress ?? undefined,
+    venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }

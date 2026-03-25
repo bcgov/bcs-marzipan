@@ -1,6 +1,6 @@
 {
-  "id": "bec489ad-bdda-4eec-a665-98f05dede172",
-  "prevId": "416f5235-9bea-4cbb-9f02-5d9f53bc78c5",
+  "id": "24c92a77-fa55-41de-af91-35db653e2445",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -127,18 +127,6 @@
         "news_release_date_time": {
           "name": "news_release_date_time",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_id": {
-          "name": "event_planner_lead_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_name": {
-          "name": "event_planner_lead_name",
-          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -300,15 +288,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activities_event_planner_lead_id_event_planners_id_fk": {
-          "name": "activities_event_planner_lead_id_event_planners_id_fk",
-          "tableFrom": "activities",
-          "tableTo": "event_planners",
-          "columnsFrom": ["event_planner_lead_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "activities_pitch_required_status_id_pitch_required_statuses_id_fk": {
           "name": "activities_pitch_required_status_id_pitch_required_statuses_id_fk",
           "tableFrom": "activities",
@@ -404,10 +383,6 @@
         "lead_org_at_most_one": {
           "name": "lead_org_at_most_one",
           "value": "NOT (\"activities\".\"lead_org_id\" IS NOT NULL AND \"activities\".\"lead_org_name\" IS NOT NULL)"
-        },
-        "event_planner_lead_at_most_one": {
-          "name": "event_planner_lead_at_most_one",
-          "value": "NOT (\"activities\".\"event_planner_lead_id\" IS NOT NULL AND \"activities\".\"event_planner_lead_name\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -3703,102 +3678,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.venues": {
-      "name": "venues",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "address": {
-          "name": "address",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "venues_created_by_users_id_fk": {
-          "name": "venues_created_by_users_id_fk",
-          "tableFrom": "venues",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "venues_last_updated_by_users_id_fk": {
-          "name": "venues_last_updated_by_users_id_fk",
-          "tableFrom": "venues",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.activity_categories": {
       "name": "activity_categories",
       "schema": "",
@@ -3990,6 +3869,83 @@
           "columns": ["activity_id", "comms_material_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_event_planners": {
+      "name": "activity_event_planners",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_planner_id": {
+          "name": "event_planner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_planner_name": {
+          "name": "event_planner_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_lead": {
+          "name": "is_lead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_event_planners_activity_id_activities_id_fk": {
+          "name": "activity_event_planners_activity_id_activities_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_event_planners_event_planner_id_event_planners_id_fk": {
+          "name": "activity_event_planners_event_planner_id_event_planners_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "event_planners",
+          "columnsFrom": ["event_planner_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -5189,8 +5145,14 @@
           "primaryKey": false,
           "notNull": false
         },
-        "street": {
-          "name": "street",
+        "address_line1": {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_line2": {
+          "name": "address_line2",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -5254,8 +5216,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "street": {
-          "name": "street",
+        "address_line1": {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_line2": {
+          "name": "address_line2",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false

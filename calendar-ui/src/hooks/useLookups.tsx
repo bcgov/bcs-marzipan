@@ -10,6 +10,7 @@ import type {
   ReportResponse,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
+  VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 
 import {
@@ -33,6 +34,7 @@ import {
   fetchTranslationLanguages,
   fetchTranslationRequiredStatuses,
   fetchUsers,
+  fetchVenueStatuses,
   type ActivityStatusLookupItem,
   type CategoryLookupItem,
   type CommsMaterialsLookupItem,
@@ -181,6 +183,14 @@ export function useTimeStatuses() {
   return useQuery<TimeStatusLookupItem[]>({
     queryKey: ['lookups', 'time-statuses'],
     queryFn: () => fetchTimeStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useVenueStatuses() {
+  return useQuery<VenueStatusLookupItem[]>({
+    queryKey: ['lookups', 'venue-statuses'],
+    queryFn: () => fetchVenueStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

@@ -1,13 +1,10 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
-import { FormProvider, useForm, type Resolver } from 'react-hook-form';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
-  createActivityRequestSchema,
   type ActivityFormData,
   type ActivityResponse,
   type UpdateActivityRequest,
@@ -45,7 +42,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
+import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityLock } from '../hooks/useActivityLock';
+import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
@@ -54,12 +54,11 @@ import {
   useSoftDeleteActivity,
   useUpdateActivity,
 } from '../hooks/useCalendar';
-import { useFormLookups } from '../hooks/useFormLookups';
-import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
-import { useDateStatuses } from '../hooks/useLookups';
-import { getDefaultFormValues } from '../lib/activity-form-defaults';
+import {
+  EDIT_LOCK_CONFLICT_TOAST,
+  useEditLockIntent,
+} from '../hooks/useEditLockIntent';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
-import { activityToFormData } from '../lib/activity-form-mapper';
 import { buildPayloadForUpdate } from '../lib/activity-form-payload';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
@@ -71,15 +70,6 @@ const logger = createLogger('ActivityPage');
 
 const UNSAVED_MESSAGE = 'You have unsaved changes. Leave anyway?';
 
-/**
- * Grace period (ms) after entering view mode during which form focus/click do not trigger edit.
- * Necessary because on load the browser or React often focuses the form, which would otherwise
- * fire onFocus -> enterEdit and immediately redirect to the edit URL.
- */
-const VIEW_MODE_GRACE_MS = 400;
-
-type PendingAction = 'delete' | 'requestDelete' | undefined;
-
 export type ActivityPageProps = {
   activity: ActivityResponse;
   refreshActivity: () => Promise<void>;
@@ -89,26 +79,34 @@ export function ActivityPage({
   activity,
   refreshActivity,
 }: ActivityPageProps): React.ReactElement {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
-  const viewPath = `/activity/${id}`;
-  const editPath = `/activity/${id}/edit`;
 
-  const isEditMode = location.pathname.endsWith('/edit');
-
-  const lookups = useFormLookups();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const apiCanEdit = (activity as ActivityResponse & { canEdit?: boolean })
     .canEdit;
+  /** API omits canEdit only for unauthenticated responses; treat missing as not editable. */
   const canEditActivity =
-    hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && apiCanEdit !== false;
+    hasPermission(PERMISSIONS.ACTIVITIES.EDIT) && (apiCanEdit ?? false);
+  const leadTeamFetchEnabled = canCreateActivity || canEditActivity;
+
   const {
-    data: leadTeamOptions = [],
-    isError: leadTeamOptionsError,
-    refetch: refetchLeadTeamOptions,
-  } = useLeadTeamOptions(canCreateActivity || canEditActivity);
+    form,
+    lookups,
+    leadTeamOptions,
+    leadTeamOptionsError,
+    leadTeamOptionsFetching,
+    refetchLeadTeamOptions,
+    commsContactCandidates,
+  } = useActivityFormSetup({
+    mode: 'edit',
+    leadTeamFetchEnabled,
+    userId: user?.id,
+    userTeamIds: user?.teamIds,
+    hasCreateAny,
+  });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -127,7 +125,6 @@ export function ActivityPage({
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
-  /** Users with delete.any may open/edit when status is delete_requested or deleted. */
   const canEditWhenBlocked = canDeleteAny;
   const canRestore =
     normalizedStatus === 'deleted'
@@ -145,12 +142,15 @@ export function ActivityPage({
     !canDelete;
 
   const {
-    lockedByOther,
+    lockState,
     lockedByUsername,
-    isLoading: lockLoading,
+    acquire,
     release,
-  } = useActivityLock(isEditMode ? id : null);
+    setLockedByOther,
+    clearLockedByOther,
+  } = useActivityLock(id);
 
+  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -169,28 +169,35 @@ export function ActivityPage({
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
   );
-  const [pendingAction, setPendingAction] = useState<PendingAction>(undefined);
-  const pendingFocusFieldRef = useRef<string | undefined>(undefined);
-  const initialFormDataRef = useRef<ActivityFormData | null>(null);
-  /** Timestamp when we last entered view mode; used to ignore spurious focus/click on load. */
-  const viewModeEnteredAtRef = useRef<number>(0);
+  const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
+    useActivityEditFormHydration(activity, lookups, form);
 
-  const { data: dateStatuses } = useDateStatuses();
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
 
-  const form = useForm<ActivityFormData>({
-    resolver: zodResolver(
-      createActivityRequestSchema
-    ) as Resolver<ActivityFormData>,
-    mode: 'onChange',
-    defaultValues: getDefaultFormValues(),
+  useActivityWebSocket(id, {
+    onLockAcquired: (lockedBy) => {
+      if (user?.id != null && lockedBy.userId === user?.id) {
+        return;
+      }
+      if (lockState !== 'owned') {
+        setLockedByOther(lockedBy.username);
+      }
+    },
+    onLockReleased: () => {
+      clearLockedByOther();
+    },
+    onDataUpdated: () => {
+      void refreshActivity();
+    },
   });
 
   const isDirty = form.formState.isDirty;
+  const dirtyFieldsCount = Object.keys(form.formState.dirtyFields ?? {}).length;
+  const dirtyFieldsSignature = JSON.stringify(form.formState.dirtyFields ?? {});
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(
     form.formState,
@@ -198,38 +205,51 @@ export function ActivityPage({
   );
 
   useEffect(() => {
-    const mapped = activityToFormData(activity, lookups);
-    form.reset(mapped);
-    initialFormDataRef.current = mapped;
-  }, [activity, lookups, form]);
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
-  // Redirect: edit mode without EDIT permission -> view
-  useEffect(() => {
-    if (isEditMode && !canEditActivity) {
-      void navigate(viewPath, { replace: true });
-    }
-  }, [isEditMode, canEditActivity, navigate, viewPath]);
+  const mayEdit =
+    canEditActivity &&
+    lockState !== 'locked-by-other' &&
+    (!isBlockedStatus || canEditWhenBlocked);
 
-  // Redirect: edit mode + blocked status and no permission to edit when blocked -> view
-  useEffect(() => {
-    if (isEditMode && isBlockedStatus && !canEditWhenBlocked) {
-      void navigate(viewPath, { replace: true });
-    }
-  }, [isEditMode, isBlockedStatus, canEditWhenBlocked, navigate, viewPath]);
+  const mayEditFormFields =
+    canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
+  const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
+  const hasEditLock = lockState === 'owned';
+  const canSubmitWithoutValidationErrors =
+    isFormValid || missingFields.length === 0;
+  const canSubmitUpdate =
+    hasEditLock &&
+    canSubmitWithoutValidationErrors &&
+    !isSubmitting &&
+    !readOnly;
 
-  // When entering view mode, record time so handleFormInteraction can ignore events within grace period
-  useEffect(() => {
-    if (!isEditMode) {
-      viewModeEnteredAtRef.current = Date.now();
-    }
-  }, [isEditMode]);
+  const onEditLockAcquireConflict = useCallback(() => {
+    toast.error(EDIT_LOCK_CONFLICT_TOAST);
+  }, []);
 
-  // Release edit lock when leaving edit mode (e.g. Back button or URL change to view). Cancel/Save already call release() before navigating.
-  useEffect(() => {
-    if (!isEditMode) {
-      void release();
-    }
-  }, [isEditMode, release]);
+  useEditLockIntent({
+    formHydrated: isFormHydrated,
+    hydrationGeneration,
+    isDirty,
+    dirtyFieldsCount,
+    dirtyFieldsSignature,
+    mayEdit,
+    isEditing,
+    setIsEditing,
+    acquire,
+    lockState,
+    form,
+    initialFormDataRef,
+    onAcquireConflict: onEditLockAcquireConflict,
+  });
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -254,81 +274,23 @@ export function ActivityPage({
     setShowDeleteModal(true);
   }, [id, normalizedStatus]);
 
-  // Pending action/focus after entering edit mode
-  useEffect(() => {
-    if (!isEditMode) return;
-    const field = pendingFocusFieldRef.current;
-    if (field) {
-      pendingFocusFieldRef.current = undefined;
-      requestAnimationFrame(() => {
-        try {
-          form.setFocus(field as keyof ActivityFormData);
-        } catch {
-          // ignore invalid field names
+  const ensureEditThen = useCallback(
+    (action: () => void) => {
+      if (isEditing) {
+        action();
+        return;
+      }
+      setIsEditing(true);
+      void acquire().then((ok) => {
+        if (ok) {
+          action();
+        } else {
+          setIsEditing(false);
+          toast.error(EDIT_LOCK_CONFLICT_TOAST);
         }
       });
-    }
-    if (pendingAction === 'delete') {
-      setPendingAction(undefined);
-      void handleOpenDeleteModal();
-    } else if (pendingAction === 'requestDelete') {
-      setPendingAction(undefined);
-      setShowRequestDeleteModal(true);
-    }
-  }, [isEditMode, pendingAction, form, handleOpenDeleteModal]);
-
-  // Warn on tab close/refresh when there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  const readOnly =
-    !isEditMode ||
-    lockedByOther ||
-    lockLoading ||
-    (isBlockedStatus && !canEditWhenBlocked);
-
-  const enterEdit = useCallback(
-    (focusField?: string, action?: PendingAction) => {
-      if (!canEditActivity) return;
-      if (isBlockedStatus && !canEditWhenBlocked) return;
-      if (focusField) pendingFocusFieldRef.current = focusField;
-      if (action) setPendingAction(action);
-      void navigate(editPath, { replace: true });
     },
-    [canEditActivity, isBlockedStatus, canEditWhenBlocked, navigate, editPath]
-  );
-
-  const handleFormInteraction = useCallback(
-    (
-      e: React.FocusEvent<HTMLFormElement> | React.MouseEvent<HTMLFormElement>
-    ) => {
-      const mayEnterEdit = !isBlockedStatus || canEditWhenBlocked;
-      if (!isEditMode && canEditActivity && mayEnterEdit) {
-        // Skip if still in grace period after entering view mode (avoids redirect on load)
-        if (Date.now() - viewModeEnteredAtRef.current < VIEW_MODE_GRACE_MS) {
-          return;
-        }
-        const target = e.target as HTMLElement;
-        const field = target
-          .closest('[data-field]')
-          ?.getAttribute('data-field');
-        enterEdit(field ?? undefined);
-      }
-    },
-    [
-      isEditMode,
-      canEditActivity,
-      isBlockedStatus,
-      canEditWhenBlocked,
-      enterEdit,
-    ]
+    [isEditing, acquire]
   );
 
   const handleCancel = async () => {
@@ -337,23 +299,19 @@ export function ActivityPage({
       return;
     }
     await release();
-    void navigate(viewPath, { replace: true });
+    setIsEditing(false);
+    if (initialFormDataRef.current) {
+      form.reset(initialFormDataRef.current);
+    }
   };
 
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
     await release();
-    void navigate(viewPath, { replace: true });
-  };
-
-  const handleDeleteFromView = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    enterEdit(undefined, 'delete');
-  };
-
-  const handleRequestDeleteFromView = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    enterEdit(undefined, 'requestDelete');
+    setIsEditing(false);
+    if (initialFormDataRef.current) {
+      form.reset(initialFormDataRef.current);
+    }
   };
 
   const onSubmit = (data: ActivityFormData) => {
@@ -388,7 +346,11 @@ export function ActivityPage({
       void navigate('/');
     } catch (err) {
       logger.error('Failed to update activity', err);
-      showErrorToast(err, 'Your changes could not be saved.');
+      const message =
+        err instanceof ApiError && err.status === 409
+          ? 'The entry is locked by another user. Your changes could not be saved.'
+          : 'Your changes could not be saved.';
+      showErrorToast(err, message);
     } finally {
       setIsSubmitting(false);
       setShowConfirmModal(false);
@@ -487,7 +449,7 @@ export function ActivityPage({
       ? computeFormChanges(initialFormDataRef.current, form.getValues())
       : [];
 
-  const displayId = activity.displayId ?? `ACT-${activity.id}`;
+  const displayId = activity.displayId ?? `???-${activity.id}`;
   const categories = activity.category ?? [];
 
   return (
@@ -501,9 +463,9 @@ export function ActivityPage({
         activityStatus={activity.activityStatus ?? null}
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
-        onHistoryClick={isEditMode ? () => setHistoryOpen(true) : undefined}
+        onHistoryClick={() => setHistoryOpen(true)}
       />
-      {isEditMode && lockedByOther && (
+      {lockState === 'locked-by-other' && (
         <LockBanner lockedByUsername={lockedByUsername} />
       )}
       {isBlockedStatus && (
@@ -515,159 +477,134 @@ export function ActivityPage({
           isRestoring={isRestoring}
         />
       )}
-      <FormProvider {...form}>
-        <Form {...form}>
-          <form
-            className={!isEditMode ? 'cursor-pointer' : undefined}
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (isEditMode) {
-                void form.handleSubmit(onSubmit, onError)(e);
-              }
+      <Form {...form}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (hasEditLock) {
+              void form.handleSubmit(onSubmit, onError)(e);
+            }
+          }}
+        >
+          {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
+            <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <span>Could not load lead team options.</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void refetchLeadTeamOptions();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          <ActivityFormBody
+            lookups={lookups}
+            commsContactCandidates={commsContactCandidates}
+            readOnly={readOnly}
+            leadTeamField={{
+              options: leadTeamOptions,
+              displayLabel:
+                (
+                  activity as ActivityResponse & {
+                    leadTeamDisplayName?: string | null;
+                  }
+                ).leadTeamDisplayName ?? null,
+              optionsFetching: leadTeamOptionsFetching,
             }}
-            onFocus={!isEditMode ? handleFormInteraction : undefined}
-            onClick={!isEditMode ? handleFormInteraction : undefined}
-          >
-            {(canCreateActivity || canEditActivity) && leadTeamOptionsError && (
-              <div className="border-destructive/50 bg-destructive/10 text-destructive mb-4 flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                <span>Could not load lead team options.</span>
+          />
+          <div className="bg-background/90 supports-backdrop-filter:bg-background/80 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4 backdrop-blur">
+            <div className="flex gap-2">
+              {showRequestDeleteButton && (
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void refetchLeadTeamOptions();
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    ensureEditThen(() => setShowRequestDeleteModal(true));
                   }}
+                  disabled={isSubmitting || !hasEditLock}
                 >
-                  Retry
+                  Request delete
                 </Button>
-              </div>
-            )}
-            <ActivityFormBody
-              form={form}
-              lookups={lookups}
-              readOnly={readOnly}
-              leadTeamOptions={leadTeamOptions}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
-              <div className="flex gap-2">
-                {showRequestDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={
-                      isEditMode
-                        ? () => setShowRequestDeleteModal(true)
-                        : handleRequestDeleteFromView
-                    }
-                    disabled={isSubmitting}
-                  >
-                    Request delete
-                  </Button>
-                )}
-                {showDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
-                    onClick={
-                      isEditMode
-                        ? () => void handleOpenDeleteModal()
-                        : handleDeleteFromView
-                    }
-                    disabled={isSubmitting}
-                  >
-                    Delete
-                  </Button>
-                )}
-              </div>
-              <div className="flex gap-4">
-                {isEditMode ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleCancel()}
-                      disabled={isSubmitting}
+              )}
+              {showDeleteButton && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    ensureEditThen(() => void handleOpenDeleteModal());
+                  }}
+                  disabled={isSubmitting || !hasEditLock}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleCancel()}
+                disabled={isSubmitting || !hasEditLock}
+              >
+                Cancel
+              </Button>
+              {!canSubmitWithoutValidationErrors ? (
+                <Popover open={showMissingFieldsPopover}>
+                  <PopoverTrigger asChild>
+                    <div
+                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
                     >
-                      Cancel
-                    </Button>
-                    {!isFormValid && missingFields.length > 0 ? (
-                      <Popover open={showMissingFieldsPopover}>
-                        <PopoverTrigger asChild>
-                          <div
-                            onMouseEnter={() =>
-                              setShowMissingFieldsPopover(true)
-                            }
-                            onMouseLeave={() =>
-                              setShowMissingFieldsPopover(false)
-                            }
-                          >
-                            <Button
-                              type="submit"
-                              disabled={true}
-                              className="cursor-not-allowed"
-                            >
-                              {isSubmitting ? 'Updating...' : 'Update'}
-                            </Button>
-                          </div>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="w-80"
-                          onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                          onMouseLeave={() =>
-                            setShowMissingFieldsPopover(false)
-                          }
-                        >
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-medium">
-                              Required fields missing:
-                            </h4>
-                            <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                              {missingFields.map((field) => (
-                                <li key={field}>{field}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <Button type="submit" disabled={isSubmitting || readOnly}>
+                      <Button
+                        type="submit"
+                        disabled={true}
+                        className="cursor-not-allowed"
+                      >
                         {isSubmitting ? 'Updating...' : 'Update'}
                       </Button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="outline">
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => enterEdit()}
-                      disabled={
-                        !canEditActivity ||
-                        (isBlockedStatus && !canEditWhenBlocked)
-                      }
-                    >
-                      Edit
-                    </Button>
-                  </>
-                )}
-              </div>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80"
+                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                  >
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">
+                        Required fields missing:
+                      </h4>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                        {missingFields.map((field) => (
+                          <li key={field}>{field}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Button type="submit" disabled={!canSubmitUpdate}>
+                  {isSubmitting ? 'Updating...' : 'Update'}
+                </Button>
+              )}
             </div>
-          </form>
-        </Form>
-      </FormProvider>
-      {isEditMode && (
-        <ActivityHistory
-          activityId={id}
-          open={historyOpen}
-          onOpenChange={(v) => setHistoryOpen(!!v)}
-          dateStatuses={dateStatuses}
-        />
-      )}
+          </div>
+        </form>
+      </Form>
+      <ActivityHistory
+        activityId={id}
+        open={historyOpen}
+        onOpenChange={(v) => setHistoryOpen(!!v)}
+        dateStatuses={lookups.dateStatuses}
+        venueStatuses={lookups.venueStatuses}
+      />
       <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
         <DialogContent>
           <DialogHeader>
@@ -695,7 +632,8 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        dateStatuses={dateStatuses}
+        dateStatuses={lookups.dateStatuses}
+        venueStatuses={lookups.venueStatuses}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)
         }

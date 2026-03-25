@@ -1,40 +1,143 @@
-import { X } from 'lucide-react';
-import { useFormContext, useFormState } from 'react-hook-form';
+import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
-import type { TeamListItem } from '@corpcal/shared/api/types';
+import type {
+  PitchRequiredStatusLookupItem,
+  TeamListItem,
+} from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Badge } from '@/components/ui/badge';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
+import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  RequiredFieldIndicator,
 } from '@/components/ui/form';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import {
-  usePitchRequiredStatuses,
-  useTranslationRequiredStatuses,
-} from '@/hooks/useLookups';
-import { useMultiSelect } from '@/hooks/useMultiSelect';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+  getPresetAnchorToday,
+  parseIsoDateLocal,
+  PRESETS_FUTURE_SHORT,
+} from '@/lib/scheduled-date-presets';
+import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
+import {
+  defaultActivityLeadTeamFieldConfig,
+  type ActivityLeadTeamFieldConfig,
+} from '../activity-lead-team-field-config';
 import { ActivityFormSection } from './ActivityFormSection';
+
+/** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
+const DIRTY_CASCADE = { shouldDirty: true } as const;
+
+type LeadOrganizationOption = {
+  value: number;
+  label: string;
+  ministryId?: number | null;
+};
+
+/**
+ * Isolated so `useWatch('leadOrgName')` only re-renders this subtree when that
+ * field changes, not the entire overview section.
+ */
+function LeadOrganizationField({
+  organizations,
+  readOnly,
+}: {
+  organizations: LeadOrganizationOption[];
+  readOnly: boolean;
+}) {
+  const form = useFormContext<ActivityFormData>();
+  const leadOrgName = useWatch({ control: form.control, name: 'leadOrgName' });
+
+  return (
+    <FormField
+      control={form.control}
+      name="leadOrgId"
+      render={({ field }) => {
+        const leadOrgId = field.value;
+
+        const comboboxValue: FreeformComboboxValue =
+          leadOrgId != null
+            ? { type: 'option', value: String(leadOrgId) }
+            : leadOrgName
+              ? { type: 'freeform', value: leadOrgName }
+              : null;
+
+        const handleChange = (
+          value: FreeformComboboxValue | FreeformComboboxValue[] | null
+        ) => {
+          const single =
+            value == null
+              ? null
+              : Array.isArray(value)
+                ? (value[0] ?? null)
+                : value;
+          if (!single) {
+            field.onChange(null);
+            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+          } else if (single.type === 'option') {
+            field.onChange(Number(single.value));
+            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+          } else {
+            field.onChange(null);
+            form.setValue('leadOrgName', single.value, DIRTY_CASCADE);
+          }
+        };
+
+        return (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormControl data-field={field.name}>
+              <FreeformCombobox
+                readOnly={readOnly}
+                options={organizations.map((o) => ({
+                  value: String(o.value),
+                  label: o.label,
+                }))}
+                value={comboboxValue}
+                onChange={handleChange}
+                placeholder="Select lead organization"
+                searchPlaceholder="Search organizations..."
+                emptyMessage="No organizations found."
+                freeformLabel="New org"
+                freeformDescription=""
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
 
 type ActivityOverviewSectionProps = {
   categories: Array<{
@@ -42,11 +145,10 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
   }>;
-  organizations: Array<{ value: number; label: string }>;
+  organizations: LeadOrganizationOption[];
   tags: Array<{ id: number; text: string }>;
-  readOnly?: boolean;
-  /** When provided, show Lead team combobox. Ministry is derived from the selected team. */
-  leadTeamOptions?: TeamListItem[];
+  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
+  leadTeamField?: ActivityLeadTeamFieldConfig;
 };
 
 export const ActivityOverviewSection: React.FC<
@@ -55,77 +157,99 @@ export const ActivityOverviewSection: React.FC<
   categories,
   organizations,
   tags,
-  readOnly = false,
-  leadTeamOptions,
+  pitchRequiredStatuses,
+  leadTeamField: leadTeamFieldProp,
 }) => {
+  const {
+    options: leadTeamOptions,
+    displayLabel: leadTeamDisplayLabel,
+    optionsFetching: leadTeamOptionsFetching,
+  } = {
+    ...defaultActivityLeadTeamFieldConfig,
+    ...leadTeamFieldProp,
+  };
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
+  const categoriesAnchorRef = useComboboxAnchor();
+  const tagsAnchorRef = useComboboxAnchor();
 
-  const [selectedCategories, toggleCategory] = useMultiSelect<
-    ActivityFormData,
-    'categoryIds',
-    number
-  >(form, 'categoryIds');
-
-  const [selectedTags, toggleTag] = useMultiSelect<
-    ActivityFormData,
-    'tagIds',
-    number
-  >(form, 'tagIds');
-
-  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
-  const { data: translationRequiredStatuses = [] } =
-    useTranslationRequiredStatuses();
-
-  // Track dirty fields to show change indicators
-  const { dirtyFields } = useFormState({ control: form.control });
-  const titleChanged = 'title' in dirtyFields && Boolean(dirtyFields.title);
+  const categoryOptions = categories.map((c) => ({
+    value: String(c.id),
+    label: c.displayName ?? c.name,
+  }));
+  const tagOptions = tags.map((t) => ({
+    value: String(t.id),
+    label: t.text,
+  }));
 
   return (
-    <ActivityFormSection
-      title={getActivityFormSectionLabel('overview')}
-      fieldsClassName="space-y-6"
-    >
-      <div>
-        <Label className="block">
-          Category <span className="text-destructive">*</span>
-        </Label>
-        <p className="text-muted-foreground mb-3 text-sm">
-          Select all that apply
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
-            <Badge
-              key={category.id}
-              variant={
-                selectedCategories.includes(category.id)
-                  ? 'selected'
-                  : 'outline'
-              }
-              className="cursor-pointer px-4 py-2 text-sm"
-              onClick={readOnly ? undefined : () => toggleCategory(category.id)}
-            >
-              {category.displayName || category.name}
-            </Badge>
-          ))}
-        </div>
-      </div>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.overview}>
+      <FormField
+        control={form.control}
+        name="categoryIds"
+        render={({ field }) => {
+          const selectedOptions = categoryOptions.filter((o) =>
+            (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>
+                {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
+              </FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={categoryOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  readOnly={readOnly}
+                >
+                  <ComboboxChips ref={categoriesAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: OptionItem[]) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select categories..." />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={categoriesAnchorRef}>
+                    <ComboboxEmpty>No categories found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: OptionItem) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
 
-      {/* Title field with change indicator */}
       <FormField
         control={form.control}
         name="title"
         render={({ field }) => (
           <FormItem>
             <FormLabel>
-              Title <span className="text-destructive">*</span>
-              {titleChanged && (
-                <Badge variant="warning" className="ml-2">
-                  Changed
-                </Badge>
-              )}
+              {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
             </FormLabel>
             <FormControl data-field={field.name}>
-              <Input
+              <Textarea
+                rows={2}
                 placeholder="Enter activity title"
                 readOnly={readOnly}
                 {...field}
@@ -137,129 +261,177 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      {leadTeamOptions ? (
-        <FormField
-          control={form.control}
-          name="leadTeamId"
-          render={({ field }) => {
-            const comboboxValue: FreeformComboboxValue =
-              field.value != null
-                ? { type: 'option', value: String(field.value) }
-                : null;
-
-            const handleChange = (value: FreeformComboboxValue) => {
-              if (!value) {
-                field.onChange(undefined);
-                form.setValue('leadMinistryId', undefined);
-              } else if (value.type === 'option') {
-                const teamId = Number(value.value);
-                field.onChange(teamId);
-                const team = leadTeamOptions.find((t) => t.id === teamId);
-                form.setValue('leadMinistryId', team?.ministryId ?? undefined);
-              }
-            };
-
-            const options = leadTeamOptions.map((t) => ({
-              value: String(t.id),
-              label: t.ministryName
-                ? `${t.displayName || t.name} (${t.ministryName})`
-                : t.displayName || t.name,
-            }));
-
-            return (
-              <FormItem>
-                <FormLabel>
-                  Lead team <span className="text-destructive">*</span>
-                </FormLabel>
-                <FormControl data-field={field.name}>
-                  <FreeformCombobox
-                    disabled={readOnly}
-                    options={options}
-                    value={comboboxValue}
-                    onChange={handleChange}
-                    placeholder="Select lead team"
-                    searchPlaceholder="Search teams..."
-                    emptyMessage="No teams found."
-                    freeformLabel="Other"
-                    freeformDescription="Can't find the team?"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-      ) : null}
-
       <FormField
         control={form.control}
-        name="leadOrgId"
+        name="leadTeamId"
         render={({ field }) => {
-          // Derive the combobox value from form state
-          const leadOrgId = field.value;
-          const leadOrgName = form.watch('leadOrgName');
+          const mergedTeams: TeamListItem[] = (() => {
+            const list = [...leadTeamOptions];
+            const lid = field.value;
+            if (lid != null && lid > 0 && !list.some((t) => t.id === lid)) {
+              const label = leadTeamDisplayLabel?.trim() || `Team ${lid}`;
+              list.unshift({
+                id: lid,
+                name: label,
+                displayName: leadTeamDisplayLabel,
+                description: null,
+                sortOrder: 0,
+                isActive: true,
+                roleId: null,
+                memberCount: 0,
+                ministryId: null,
+                ministryName: null,
+              });
+            }
+            return list;
+          })();
 
-          const comboboxValue: FreeformComboboxValue =
-            leadOrgId != null
-              ? { type: 'option', value: String(leadOrgId) }
-              : leadOrgName
-                ? { type: 'freeform', value: leadOrgName }
+          const handleValueChange = (value: string) => {
+            // Radix may still call onValueChange with '' during option load/reset; never apply when view-only.
+            if (readOnly) return;
+
+            const previousTeamId = field.value ?? null;
+            const previousTeam =
+              previousTeamId != null
+                ? mergedTeams.find((t) => t.id === previousTeamId)
                 : null;
+            const syncedOrgId =
+              previousTeam?.ministryId != null
+                ? (organizations.find(
+                    (o) => o.ministryId === previousTeam.ministryId
+                  )?.value ?? null)
+                : null;
+            const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
+            const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
+            const leadOrgInSyncWithTeam =
+              (syncedOrgId != null &&
+                currentLeadOrgId === syncedOrgId &&
+                (currentLeadOrgName == null || currentLeadOrgName === '')) ||
+              (syncedOrgId == null &&
+                currentLeadOrgId == null &&
+                (currentLeadOrgName == null || currentLeadOrgName === ''));
 
-          const handleChange = (value: FreeformComboboxValue) => {
-            if (!value) {
-              field.onChange(null);
-              form.setValue('leadOrgName', null);
-            } else if (value.type === 'option') {
-              field.onChange(Number(value.value));
-              form.setValue('leadOrgName', null);
+            const teamId =
+              value === '' || value == null ? undefined : Number(value);
+            field.onChange(teamId);
+
+            if (teamId == null) {
+              form.setValue('leadMinistryId', undefined, DIRTY_CASCADE);
+              if (leadOrgInSyncWithTeam) {
+                form.setValue('leadOrgId', null, DIRTY_CASCADE);
+                form.setValue('leadOrgName', null, DIRTY_CASCADE);
+              }
             } else {
-              field.onChange(null);
-              form.setValue('leadOrgName', value.value);
+              const team = mergedTeams.find((t) => t.id === teamId);
+              form.setValue(
+                'leadMinistryId',
+                team?.ministryId ?? undefined,
+                DIRTY_CASCADE
+              );
+              if (leadOrgInSyncWithTeam && team) {
+                const orgForMinistry =
+                  team.ministryId != null
+                    ? organizations.find(
+                        (o) => o.ministryId === team.ministryId
+                      )
+                    : undefined;
+                if (orgForMinistry) {
+                  form.setValue(
+                    'leadOrgId',
+                    orgForMinistry.value,
+                    DIRTY_CASCADE
+                  );
+                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
+                } else {
+                  form.setValue('leadOrgId', null, DIRTY_CASCADE);
+                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
+                }
+              }
             }
           };
 
+          const options = mergedTeams.map((t) => ({
+            value: String(t.id),
+            label: t.ministryName
+              ? `${t.displayName || t.name} (${t.ministryName})`
+              : t.displayName || t.name,
+          }));
+
+          const showOptionsLoading =
+            leadTeamOptionsFetching && leadTeamOptions.length === 0;
+
           return (
             <FormItem>
-              <FormLabel>Lead Organization</FormLabel>
+              <FormLabel>
+                {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
+              </FormLabel>
               <FormControl data-field={field.name}>
-                <FreeformCombobox
-                  disabled={readOnly}
-                  options={organizations.map((o) => ({
-                    value: String(o.value),
-                    label: o.label,
-                  }))}
-                  value={comboboxValue}
-                  onChange={handleChange}
-                  placeholder="Select lead organization"
-                  searchPlaceholder="Search organizations..."
-                  emptyMessage="No organizations found."
-                  freeformLabel="Other"
-                  freeformDescription="Can't find the organization?"
-                />
+                <FormSelect
+                  readOnly={readOnly}
+                  value={
+                    field.value !== undefined &&
+                    field.value !== null &&
+                    Number(field.value) > 0
+                      ? String(field.value)
+                      : ''
+                  }
+                  onValueChange={handleValueChange}
+                >
+                  <FormSelectTrigger readOnly={readOnly} className="w-full">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      {showOptionsLoading ? (
+                        <Loader2
+                          className="text-muted-foreground h-4 w-4 shrink-0 animate-spin"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <SelectValue placeholder="Select lead team" />
+                    </div>
+                  </FormSelectTrigger>
+                  <SelectContent>
+                    {options.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                    {showOptionsLoading ? (
+                      <div className="text-muted-foreground flex items-center gap-2 px-2 py-1.5 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading teams…
+                      </div>
+                    ) : null}
+                  </SelectContent>
+                </FormSelect>
               </FormControl>
-              <FormDescription>
-                Select an organization from the list, or type to enter a custom
-                name
-              </FormDescription>
               <FormMessage />
             </FormItem>
           );
         }}
       />
+
+      <LeadOrganizationField
+        organizations={organizations}
+        readOnly={readOnly}
+      />
+      {/* summary is required `z.string()` on ActivityFormData; keep '' not undefined (optional fields use empty-to-undefined). */}
       <FormField
         control={form.control}
         name="summary"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Summary</FormLabel>
+            <FormLabel>
+              {getActivityFieldLabel(field.name)} <RequiredFieldIndicator />
+            </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter activity summary"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value)}
               />
             </FormControl>
             <FormMessage />
@@ -275,12 +447,36 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
-                disabled={readOnly}
-                onCheckedChange={field.onChange}
+                readOnly={readOnly}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked);
+                  if (checked) {
+                    form.setValue('visibility', 'team', DIRTY_CASCADE);
+                    const executiveSummary = form.getValues('executiveSummary');
+                    if (!executiveSummary?.trim()) {
+                      const leadTeamId = form.getValues('leadTeamId');
+                      const team =
+                        leadTeamId != null && leadTeamOptions?.length
+                          ? leadTeamOptions.find((t) => t.id === leadTeamId)
+                          : undefined;
+                      const holdFor = team
+                        ? team.ministryName ||
+                          team.displayName ||
+                          team.name ||
+                          'team'
+                        : 'team';
+                      form.setValue(
+                        'executiveSummary',
+                        `Hold for ${holdFor}.`,
+                        DIRTY_CASCADE
+                      );
+                    }
+                  }
+                }}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Confidential</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
@@ -294,30 +490,36 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Checkbox
                 checked={field.value}
-                disabled={readOnly}
+                readOnly={readOnly}
                 onCheckedChange={field.onChange}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Issue</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
       />
-
+      <FormSectionDivider />
       <FormField
         control={form.control}
         name="significance"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Significance</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter significance"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
             <FormMessage />
@@ -325,149 +527,164 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <div className="my-6 border-t border-gray-300"></div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Pitch</h3>
-
-        <FormField
-          control={form.control}
-          name="pitchRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Pitch required status</FormLabel>
-              <Select
-                disabled={readOnly}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
-                onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
-                }
-              >
-                <FormControl data-field={field.name}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {pitchRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="pitchDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Pitch Date</FormLabel>
+      <FormField
+        control={form.control}
+        name="pitchRequiredStatusId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormSelect
+              readOnly={readOnly}
+              value={
+                field.value !== undefined && field.value !== null
+                  ? String(field.value)
+                  : ''
+              }
+              onValueChange={(value) =>
+                field.onChange(value === '' ? undefined : Number(value))
+              }
+            >
               <FormControl data-field={field.name}>
-                <Input
+                <FormSelectTrigger readOnly={readOnly}>
+                  <SelectValue placeholder="Select status" />
+                </FormSelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {pitchRequiredStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.displayName ?? status.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </FormSelect>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="pitchDate"
+        render={({ field }) => {
+          const raw = field.value ?? '';
+          const pitchLabel = raw
+            ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
+            : 'Select pitch date';
+          return (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormControl className="w-full" data-field={field.name}>
+                <ScheduledDatePopoverField
+                  triggerVariant="form"
+                  value={raw}
+                  onChange={(iso) => field.onChange(iso || undefined)}
+                  label={pitchLabel}
+                  triggerMuted={!raw}
                   readOnly={readOnly}
-                  type="date"
-                  {...field}
-                  value={field.value || ''}
+                  popoverTitle="Select pitch date"
+                  presets={PRESETS_FUTURE_SHORT}
+                  getPresetAnchor={getPresetAnchorToday}
+                  headerRight={
+                    raw && !readOnly ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary text-sm"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    ) : null
+                  }
                 />
               </FormControl>
               <FormMessage />
             </FormItem>
-          )}
-        />
-      </div>
+          );
+        }}
+      />
 
-      <div className="my-6 border-t border-gray-300"></div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Translations</h3>
-
-        <FormField
-          control={form.control}
-          name="translationsRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Translations required status</FormLabel>
-              <Select
-                disabled={readOnly}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
-                onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
-                }
-              >
-                <FormControl data-field={field.name}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {translationRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+      <FormSectionDivider />
 
       <FormField
         control={form.control}
         name="notes"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Notes</FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter notes"
                 readOnly={readOnly}
                 rows={4}
-                {...field}
-                value={field.value || ''}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
               />
             </FormControl>
-            <FormDescription>
-              General notes for admin change log and tracking
-            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
 
-      <div>
-        <Label className="mb-3 block">Tags</Label>
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant={selectedTags.includes(tag.id) ? 'default' : 'outline'}
-              className="cursor-pointer px-4 py-2 text-sm"
-              onClick={readOnly ? undefined : () => toggleTag(tag.id)}
-            >
-              {tag.text}
-              {selectedTags.includes(tag.id) && <X className="ml-2 h-3 w-3" />}
-            </Badge>
-          ))}
-        </div>
-        <FormDescription className="mt-2">
-          Select tags to categorize this activity
-        </FormDescription>
-      </div>
+      <FormField
+        control={form.control}
+        name="tagIds"
+        render={({ field }) => {
+          const selectedOptions = tagOptions.filter((o) =>
+            (field.value ?? []).includes(Number(o.value))
+          );
+          return (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={tagOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    field.onChange(selected.map((o) => Number(o.value)))
+                  }
+                  itemToStringValue={(o) => o.label}
+                  readOnly={readOnly}
+                >
+                  <ComboboxChips ref={tagsAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: OptionItem[]) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select tags..." />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={tagsAnchorRef}>
+                    <ComboboxEmpty>No tags found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: OptionItem) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
     </ActivityFormSection>
   );
 };

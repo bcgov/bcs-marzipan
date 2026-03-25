@@ -18,6 +18,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { LocksService } from '../locks/locks.service';
 import { PolicyService } from '../policy/policy.service';
+import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
@@ -131,6 +132,8 @@ describe('ActivitiesService', () => {
     updateActivityReportSettings: vi.fn().mockResolvedValue(undefined),
     insertCommsContacts: vi.fn().mockResolvedValue(undefined),
     updateCommsContacts: vi.fn().mockResolvedValue(undefined),
+    insertEventPlanners: vi.fn().mockResolvedValue(undefined),
+    updateEventPlanners: vi.fn().mockResolvedValue(undefined),
   };
 
   // Mock data fetcher service (from shared factory to stay in sync with ActivityDataFetcherService)
@@ -164,6 +167,12 @@ describe('ActivitiesService', () => {
   const mockPolicyService = {
     isCommsContactForActivity: vi.fn().mockResolvedValue(false),
     getLeadTeamIdForActivity: vi.fn().mockResolvedValue(null),
+  };
+
+  // Mock teams service (for comms contact validation)
+  const mockTeamsService = {
+    getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set([1])),
+    findCommsContactCandidates: vi.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
@@ -202,6 +211,10 @@ describe('ActivitiesService', () => {
         {
           provide: PolicyService,
           useValue: mockPolicyService,
+        },
+        {
+          provide: TeamsService,
+          useValue: mockTeamsService,
         },
       ],
     }).compile();
@@ -264,7 +277,7 @@ describe('ActivitiesService', () => {
         newsReleaseId: '123e4567-e89b-12d3-a456-426614174001',
         newsReleaseDistributionId: 1,
         premierRequestedId: 2,
-        eventPlannerLeadId: 3,
+        eventPlanners: [{ eventPlannerId: 3, isLead: true }],
         reportSettings: [
           { reportId: 1, omitted: true },
           { reportId: 2, omitted: true },
@@ -312,20 +325,21 @@ describe('ActivitiesService', () => {
       expect(result.endTime).toBeNull();
     });
 
-    it('should map an activity with eventPlannerLeadName instead of eventPlannerLeadId', async () => {
-      const mockActivity = createMockActivity({
-        eventPlannerLeadId: null,
-        eventPlannerLeadName: 'External Event Lead',
-      });
+    it('should map an activity with event planners from junction data', async () => {
+      const mockActivity = createMockActivity();
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
+      mockDataFetcherService.fetchEventPlannerDetailsForActivities.mockResolvedValue(
+        new Map([[1, [{ name: 'External Event Lead', isLead: true }]]])
+      );
 
       const result = await service.findOne(1);
 
-      // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
-      expect(result.eventLead).toBe('External Event Lead');
-      expect(result.eventPlannerLeadName).toBe('External Event Lead');
+      expect(result.eventPlanners).toEqual(['External Event Lead']);
+      expect(result.eventPlannerDetails).toEqual([
+        { name: 'External Event Lead', isLead: true },
+      ]);
     });
 
     it('should format dates correctly in ActivityResponse', async () => {
@@ -1451,6 +1465,9 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchTimeStatusesForActivities.mockResolvedValue(
         new Map([[1, 'confirmed']])
       );
+      mockDataFetcherService.fetchVenueStatusesForActivities.mockResolvedValue(
+        new Map([[1, 'Venue TBD']])
+      );
       mockDataFetcherService.fetchVenueAddressesForActivities.mockResolvedValue(
         new Map([[1, null]])
       );
@@ -1472,8 +1489,8 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchLeadOrgNamesForActivities.mockResolvedValue(
         new Map([[1, null]])
       );
-      mockDataFetcherService.fetchEventPlannerNamesForActivities.mockResolvedValue(
-        new Map([[1, null]])
+      mockDataFetcherService.fetchEventPlannerDetailsForActivities.mockResolvedValue(
+        new Map([[1, []]])
       );
       mockDataFetcherService.fetchNewsReleaseOriginsForActivities.mockResolvedValue(
         new Map([[1, null]])
@@ -1741,6 +1758,94 @@ describe('ActivitiesService', () => {
         1,
         10
       );
+    });
+  });
+
+  describe('comms contacts validation against lead team', () => {
+    it('should reject create when commsContacts userId is not eligible for lead team', async () => {
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(
+        new Set([2, 3])
+      );
+
+      const dto = createMockActivityRequest({
+        leadTeamId: 5,
+        commsContacts: [{ userId: 99, isLead: true }],
+      });
+
+      const statusRow = [{ id: 3, name: 'new' }];
+      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+
+      mockDatabaseService.db.select = vi.fn(() => {
+        const chain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn(),
+        };
+        chain.limit
+          .mockResolvedValueOnce(statusRow)
+          .mockResolvedValueOnce(teamRow)
+          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce([{ id: 1 }]);
+        return chain;
+      });
+
+      await expect(
+        service.create(dto, 1, {
+          permissions: [
+            PERMISSIONS.ACTIVITIES.CREATE,
+            PERMISSIONS.ACTIVITIES.EDIT,
+            PERMISSIONS.ACTIVITIES.CREATE_ANY,
+          ],
+          teamIds: [5],
+        })
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockTeamsService.getEligibleCommsUserIds).toHaveBeenCalledWith(5);
+    });
+
+    it('should not reject create when commsContacts are all eligible for lead team', async () => {
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(
+        new Set([1, 2])
+      );
+
+      const dto = createMockActivityRequest({
+        leadTeamId: 5,
+        commsContacts: [{ userId: 1, isLead: true }],
+      });
+
+      const statusRow = [{ id: 3, name: 'new' }];
+      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+
+      mockDatabaseService.db.select = vi.fn(() => {
+        const chain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn(),
+        };
+        chain.limit
+          .mockResolvedValueOnce(statusRow)
+          .mockResolvedValueOnce(teamRow)
+          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce([{ id: 1 }]);
+        return chain;
+      });
+
+      mockDatabaseService.db.transaction.mockRejectedValue(
+        new Error('STOP: validation passed')
+      );
+
+      await expect(
+        service.create(dto, 1, {
+          permissions: [
+            PERMISSIONS.ACTIVITIES.CREATE,
+            PERMISSIONS.ACTIVITIES.EDIT,
+            PERMISSIONS.ACTIVITIES.CREATE_ANY,
+          ],
+          teamIds: [5],
+        })
+      ).rejects.toThrow('STOP: validation passed');
+
+      expect(mockTeamsService.getEligibleCommsUserIds).toHaveBeenCalledWith(5);
     });
   });
 });

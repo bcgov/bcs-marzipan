@@ -1,4 +1,4 @@
-import type { SortLevel } from '@/components/Table/SortDropdown';
+import type { SortLevel } from '@/components/table/SortDropdown';
 
 import type { ActivityTableRow } from './activityTableRow';
 

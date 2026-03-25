@@ -149,7 +149,7 @@ const _categoryResponseCheck: {
  */
 const _tagResponseCheck: {
   id: Tag['id'];
-  key: Tag['key'];
+  name: Tag['name'];
   displayName: Tag['displayName'];
   isActive: Tag['isActive'];
 } = {} as never;
@@ -172,7 +172,8 @@ const _cityResponseCheck: {
   name: City['name'];
   displayName: City['displayName'];
   isActive: City['isActive'];
-  province: City['province'];
+  provinceOrState: City['provinceOrState'];
+  country: City['country'];
 } = {} as never;
 
 /**

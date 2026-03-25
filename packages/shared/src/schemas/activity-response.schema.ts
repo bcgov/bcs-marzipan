@@ -52,7 +52,7 @@ export const activityDbFieldsSchema = z.object({
   // Overview
   title: z.string(),
   summary: z.string(),
-  significance: z.string(),
+  significance: z.string().nullable(),
 
   // Lead organization (mutually exclusive: either ID or Name)
   leadOrgId: z.number().int().nullable(),
@@ -66,6 +66,7 @@ export const activityDbFieldsSchema = z.object({
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
   timeStatusId: z.number().int(),
+  venueStatusId: z.number().int().nullable(),
   schedulingNotes: z.string().nullable(),
   strategy: z.string().nullable(),
 
@@ -73,10 +74,6 @@ export const activityDbFieldsSchema = z.object({
   newsReleaseOriginId: z.number().int().nullable(),
   newsReleaseId: z.string().uuid().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
-
-  // Event lead/planner (mutually exclusive: either ID or Name)
-  eventPlannerLeadId: z.number().int().nullable(),
-  eventPlannerLeadName: z.string().nullable(),
 
   // Look Ahead
   executiveSummary: z.string().nullable(),
@@ -123,6 +120,20 @@ const reportSettingSchema = z.object({
 });
 
 /**
+ * Event planner detail item (id/name + display name + isLead).
+ * Matches activity_event_planners junction: eventPlannerId and eventPlannerName can be null from DB
+ * (event planner is optional on the form). name is the computed display name for API/UI.
+ */
+export const eventPlannerDetailSchema = z.object({
+  eventPlannerId: z.number().int().optional().nullable(),
+  eventPlannerName: z.string().optional().nullable(),
+  name: z.string(),
+  isLead: z.boolean(),
+});
+
+export type EventPlannerDetail = z.infer<typeof eventPlannerDetailSchema>;
+
+/**
  * Layer 2: Computed Fields Schema
  *
  * These fields are computed from joins and lookups - they don't exist
@@ -157,12 +168,17 @@ export const activityComputedFieldsSchema = z.object({
   // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
   leadOrg: z.string().nullable(),
 
-  // Computed user names (from user ID lookups)
-  eventLead: z.string().nullable(),
+  // Event planner details (id/name + display name + isLead) for form hydration and display
+  eventPlannerDetails: z.array(eventPlannerDetailSchema).default([]),
+  // Event planner display names (derived from eventPlannerDetails for list/table)
+  eventPlanners: z.array(z.string()).default([]),
+  // Event planner lookup IDs for this activity (for client-side filtering; derived from eventPlannerDetails)
+  eventPlannerLeadIds: z.array(z.number().int()).default([]),
 
   // Computed status names (from lookup table joins)
   dateStatus: z.string(),
   timeStatus: z.string(),
+  venueStatus: z.string().nullable(),
   activityStatus: z.string(),
 
   // Computed lookup names
@@ -173,6 +189,8 @@ export const activityComputedFieldsSchema = z.object({
   translationsRequiredStatus: z.string().nullable(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),
+  /** Lead team label for display (team + ministry); independent of lead-options scope. */
+  leadTeamDisplayName: z.string().nullable(),
 
   // Venue address (from venue_addresses table join)
   venueAddress: venueAddressSchema,

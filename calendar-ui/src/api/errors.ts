@@ -227,10 +227,12 @@ export function createApiError(error: unknown): ApiError | NetworkError {
           ? headers['X-Correlation-ID']
           : undefined;
 
-      return new NetworkError(
-        'Network error: Unable to connect to server',
-        correlationId
-      );
+      const detail =
+        code === 'ECONNABORTED'
+          ? 'Request timed out before the server finished responding.'
+          : 'Network error: Unable to connect to server';
+
+      return new NetworkError(detail, correlationId);
     }
   }
 

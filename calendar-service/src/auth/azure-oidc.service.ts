@@ -18,6 +18,15 @@ export class AzureOidcService {
   constructor(private readonly configService: ConfigService) {}
 
   isConfigured(): boolean {
+    const authStrategy = this.configService.get<string>(
+      'AUTH_STRATEGY',
+      'mock'
+    );
+
+    if (authStrategy !== 'azure') {
+      return false;
+    }
+
     return !!(
       this.configService.get<string>('AZURE_TENANT_ID') &&
       this.configService.get<string>('AZURE_CLIENT_ID') &&
@@ -40,11 +49,17 @@ export class AzureOidcService {
       );
     }
 
-    const issuerUrl = new URL(
-      `https://login.microsoftonline.com/${tenantId}/v2.0`
+    const discoveryUrl = new URL(
+      `https://login.microsoftonline.com/${tenantId}/v2.0/.well-known/openid-configuration`
     );
 
-    this.cachedConfig = await oidc.discovery(issuerUrl, clientId, clientSecret);
+    // Azure's well-known document is stable and reachable in OpenShift.
+    // Using the exact metadata URL avoids issuer transformation edge cases.
+    this.cachedConfig = await oidc.discovery(
+      discoveryUrl,
+      clientId,
+      clientSecret
+    );
     return this.cachedConfig;
   }
 

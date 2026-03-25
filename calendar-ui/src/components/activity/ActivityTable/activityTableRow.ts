@@ -44,12 +44,13 @@ export interface ActivityTableRow {
   leadMinistryAbbreviation: string | null;
   commsLeadName: string | null;
   commsContactsCount: number;
-  eventLead: string | null;
-  /** IDs for client-side lead filtering */
+  /** Event planner display names */
+  eventPlanners: string[];
+  /** Event planner lookup IDs for client-side filtering */
+  eventPlannerLeadIds: number[];
   leadMinistryId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
-  eventPlannerLeadId: number | null;
 
   // Materials column
   translationsRequired: string[];
@@ -76,7 +77,8 @@ function formatVenueAddress(
   const parts: string[] = [];
 
   if (venueAddress.venueName) parts.push(venueAddress.venueName);
-  if (venueAddress.street) parts.push(venueAddress.street);
+  if (venueAddress.addressLine1) parts.push(venueAddress.addressLine1);
+  if (venueAddress.addressLine2) parts.push(venueAddress.addressLine2);
   if (venueAddress.city) parts.push(venueAddress.city);
   if (venueAddress.provinceOrState) parts.push(venueAddress.provinceOrState);
 
@@ -132,11 +134,11 @@ export function mapActivityResponseToTableRow(
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     commsLeadName: commsLead?.name ?? null,
     commsContactsCount: activity.commsContacts.length,
-    eventLead: activity.eventLead,
+    eventPlanners: activity.eventPlanners ?? [],
+    eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
     leadMinistryId: activity.leadMinistryId ?? null,
     leadOrgId: activity.leadOrgId ?? null,
     commsContactLeadUserId: commsLead?.userId ?? null,
-    eventPlannerLeadId: activity.eventPlannerLeadId ?? null,
 
     // Materials
     translationsRequired: activity.translationsRequired,

@@ -10,7 +10,7 @@
 -- USERS
 -- Users for authentication and authorization
 -- MUST be seeded first as other tables reference them via created_by/last_updated_by
--- 20 users total: 12 Editors, 5 Advanced, 2 Admin, 1 SystemAdmin
+-- 51 users total: 43 Editors, 5 Advanced, 2 Admin, 1 SystemAdmin
 -- ============================================================================
 
 INSERT INTO users (id, ad_username, ad_display_name, ad_email, ad_department, ad_job_title, role_id, is_active) VALUES
@@ -27,6 +27,38 @@ INSERT INTO users (id, ad_username, ad_display_name, ad_email, ad_department, ad
   (10, 'kwame.asante', 'Kwame Asante', 'kwame.asante@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
   (11, 'william.thomas', 'William Thomas', 'william.thomas@gov.bc.ca', 'GCPE', 'Senior Public Affairs Officer', 2, true),
   (12, 'soo-jin.kim', 'Soo-jin Kim', 'soo-jin.kim@gov.bc.ca', 'GCPE', 'Comms Manager', 2, true),
+  -- Additional Editor role users (31 total) - role_id: 2
+  (21, 'oliver.bennett', 'Oliver Bennett', 'oliver.bennett@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (22, 'maya.rivera', 'Maya Rivera', 'maya.rivera@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (23, 'liam.chen', 'Liam Chen', 'liam.chen@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (24, 'zoe.martinez', 'Zoe Martinez', 'zoe.martinez@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (25, 'ethan.nguyen', 'Ethan Nguyen', 'ethan.nguyen@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (26, 'ava.roberts', 'Ava Roberts', 'ava.roberts@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (27, 'noah.wilson', 'Noah Wilson', 'noah.wilson@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (28, 'isla.fernandez', 'Isla Fernandez', 'isla.fernandez@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (29, 'james.singh', 'James Singh', 'james.singh@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (30, 'mia.clark', 'Mia Clark', 'mia.clark@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (31, 'lucas.evans', 'Lucas Evans', 'lucas.evans@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (32, 'charlotte.morris', 'Charlotte Morris', 'charlotte.morris@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (33, 'henry.wright', 'Henry Wright', 'henry.wright@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (34, 'amelia.hughes', 'Amelia Hughes', 'amelia.hughes@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (35, 'benjamin.reed', 'Benjamin Reed', 'benjamin.reed@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (36, 'harper.ward', 'Harper Ward', 'harper.ward@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (37, 'jackson.cole', 'Jackson Cole', 'jackson.cole@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (38, 'ella.cooper', 'Ella Cooper', 'ella.cooper@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (39, 'sebastian.wood', 'Sebastian Wood', 'sebastian.wood@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (40, 'scarlett.ramirez', 'Scarlett Ramirez', 'scarlett.ramirez@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (41, 'logan.kelly', 'Logan Kelly', 'logan.kelly@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (42, 'grace.flores', 'Grace Flores', 'grace.flores@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (43, 'aiden.bailey', 'Aiden Bailey', 'aiden.bailey@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (44, 'chloe.brooks', 'Chloe Brooks', 'chloe.brooks@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (45, 'samuel.russell', 'Samuel Russell', 'samuel.russell@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (46, 'aria.henderson', 'Aria Henderson', 'aria.henderson@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (47, 'daniel.sanders', 'Daniel Sanders', 'daniel.sanders@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (48, 'victoria.price', 'Victoria Price', 'victoria.price@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (49, 'matthew.long', 'Matthew Long', 'matthew.long@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (50, 'lily.patterson', 'Lily Patterson', 'lily.patterson@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
+  (51, 'owen.hughes', 'Owen Hughes', 'owen.hughes@gov.bc.ca', 'GCPE', 'Public Affairs Officer', 2, true),
   -- Advanced Editor role users (5 total) - role_id: 4
   (13, 'john.doe', 'John Doe', 'john.doe@gov.bc.ca', 'GCPE', 'Issues Manager', 4, true),
   (14, 'nadia.al-mansouri', 'Nadia Al-Mansouri', 'nadia.al-mansouri@gov.bc.ca', 'GCPE', 'Media Relations Officer', 4, true),
@@ -92,7 +124,7 @@ INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, descripti
 SELECT * FROM (VALUES
   ('pending', 'Pending', 1, true, 'Pitch approval is pending', 1, 1),
   ('required', 'Required', 2, true, 'Pitch approval is required', 1, 1),
-  ('not required', 'Not Required', 3, true, 'Pitch approval is not required', 1, 1)
+  ('not required', 'Not required', 3, true, 'Pitch approval is not required', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.name);
 
@@ -104,7 +136,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.nam
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not Confirmed', 1, true, 'Date is not confirmed', 1, 1),
+  ('not_confirmed', 'Not confirmed', 1, true, 'Date is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -118,7 +150,7 @@ WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name)
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not Confirmed', 1, true, 'Time is not confirmed', 1, 1),
+  ('not_confirmed', 'Not confirmed', 1, true, 'Time is not confirmed', 1, 1),
   ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 1, 1),
   ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
@@ -126,15 +158,13 @@ WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name)
 
 -- ============================================================================
 -- VENUE STATUSES
--- Venue statuses for activities
--- Values: 'unknown', 'tentative', 'confirmed'
+-- Linked to activities.venue_status_id (TBC / TBD only).
 -- ============================================================================
 
 INSERT INTO venue_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('tbd', 'TBD', 1, true, 'Venue is to be determined', 1, 1),
-  ('tentative', 'Tentative', 2, true, 'Venue is tentatively scheduled', 1, 1),
-  ('confirmed', 'Confirmed', 3, true, 'Venue is confirmed', 1, 1)
+  ('TBD', 'Venue TBD', 1, true, 'Venue to be determined', 1, 1),
+  ('TBC', 'Venue TBC', 2, true, 'Venue to be confirmed', 1, 1)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
@@ -155,7 +185,7 @@ INSERT INTO translation_required_statuses (id, name, display_name, sort_order, i
 VALUES
   (1, 'pending', 'Pending review', 1, true, 1, 1),
   (2, 'required', 'Required', 2, true, 1, 1),
-  (3, 'not_required', 'Not Required', 3, true, 1, 1)
+  (3, 'not_required', 'Not required', 3, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -169,7 +199,7 @@ VALUES
   (1, 'event', 'Event', 1, 'global', true, 'Event category', 1, 1),
   (2, 'release', 'Release', 2, 'global', true, 'Release category', 1, 1),
   (3, 'awareness', 'Awareness date', 3, 'global', true, 'Awareness category', 1, 1),
-  (4, 'conference', 'Conference', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
+  (4, 'conference', 'Conference / AGM / Forum', 4, 'global', true, 'Conference / AGM / Forum category', 1, 1),
   (5, 'fyi', 'FYI', 5, 'global', true, 'FYI category (use for internal awareness)', 1, 1),
   (6, 'social media', 'Social media', 6, 'global', true, 'Social media category', 1, 1),
   (7, 'speech', 'Speech', 7, 'global', true, 'Speech category', 1, 1),
@@ -248,18 +278,32 @@ ON CONFLICT (id) DO NOTHING;
 -- Cities for activities
 -- ============================================================================
 
-INSERT INTO cities (id, name, display_name, sort_order, is_active, province, created_by, last_updated_by) VALUES
-  (1, 'Victoria', 'Victoria', 1, true, 'BC', 1, 1),
-  (2, 'Vancouver', 'Vancouver', 2, true, 'BC', 1, 1),
-  (3, 'Kelowna', 'Kelowna', 3, true, 'BC', 1, 1),
-  (4, 'Nanaimo', 'Nanaimo', 4, true, 'BC', 1, 1),
-  (5, 'Kamloops', 'Kamloops', 5, true, 'BC', 1, 1),
-  (6, 'Prince George', 'Prince George', 6, true, 'BC', 1, 1),
-  (7, 'Terrace', 'Terrace', 7, true, 'BC', 1, 1),
-  (8, 'Vernon', 'Vernon', 8, true, 'BC', 1, 1),
-  (9, 'Williams Lake', 'Williams Lake', 9, true, 'BC', 1, 1),
-  (10, 'Prince Rupert', 'Prince Rupert', 10, true, 'BC', 1, 1),
-  (11, 'Smithers', 'Smithers', 11, true, 'BC', 1, 1)
+INSERT INTO cities (id, name, display_name, sort_order, is_active, province_or_state, country, created_by, last_updated_by) VALUES
+  (1, 'Victoria', 'Victoria', 1, true, 'BC', 'Canada', 1, 1),
+  (2, 'Vancouver', 'Vancouver', 2, true, 'BC', 'Canada', 1, 1),
+  (3, 'Kelowna', 'Kelowna', 3, true, 'BC', 'Canada', 1, 1),
+  (4, 'Nanaimo', 'Nanaimo', 4, true, 'BC', 'Canada', 1, 1),
+  (5, 'Kamloops', 'Kamloops', 5, true, 'BC', 'Canada', 1, 1),
+  (6, 'Prince George', 'Prince George', 6, true, 'BC', 'Canada', 1, 1),
+  (7, 'Terrace', 'Terrace', 7, true, 'BC', 'Canada', 1, 1),
+  (8, 'Vernon', 'Vernon', 8, true, 'BC', 'Canada', 1, 1),
+  (9, 'Williams Lake', 'Williams Lake', 9, true, 'BC', 'Canada', 1, 1),
+  (10, 'Prince Rupert', 'Prince Rupert', 10, true, 'BC', 'Canada', 1, 1),
+  (11, 'Smithers', 'Smithers', 11, true, 'BC', 'Canada', 1, 1),
+  (12, 'Surrey', 'Surrey', 12, true, 'BC', 'Canada', 1, 1),
+  (13, 'Burnaby', 'Burnaby', 13, true, 'BC', 'Canada', 1, 1),
+  (14, 'Richmond', 'Richmond', 14, true, 'BC', 'Canada', 1, 1),
+  (15, 'Abbotsford', 'Abbotsford', 15, true, 'BC', 'Canada', 1, 1),
+  (16, 'Coquitlam', 'Coquitlam', 16, true, 'BC', 'Canada', 1, 1),
+  (17, 'Delta', 'Delta', 17, true, 'BC', 'Canada', 1, 1),
+  (18, 'Toronto', 'Toronto', 18, true, 'ON', 'Canada', 1, 1),
+  (19, 'Ottawa', 'Ottawa', 19, true, 'ON', 'Canada', 1, 1),
+  (20, 'Montreal', 'Montreal', 20, true, 'QC', 'Canada', 1, 1),
+  (21, 'Calgary', 'Calgary', 21, true, 'AB', 'Canada', 1, 1),
+  (22, 'Edmonton', 'Edmonton', 22, true, 'AB', 'Canada', 1, 1),
+  (23, 'Winnipeg', 'Winnipeg', 23, true, 'MB', 'Canada', 1, 1),
+  (24, 'Halifax', 'Halifax', 24, true, 'NS', 'Canada', 1, 1),
+  (25, 'Quebec City', 'Quebec City', 25, true, 'QC', 'Canada', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -287,8 +331,8 @@ INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviat
   (15, 15, true, 'INF', 'Infrastructure', 'INF', 1, 1),
   (16, 16, true, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
   (17, 17, true, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 1),
-  (18, 18, true, 'LBR', 'Labour', 'LBR', 1, 1),
-  (19, 19, true, 'MCM', 'Mining and Critical Minerals', 'MCM', 1, 1),
+  (18, 18, true, 'LAB', 'Labour', 'LAB', 1, 1),
+  (19, 19, true, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 1),
   (20, 20, true, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
   (21, 21, true, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 1),
   (22, 22, true, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
@@ -322,8 +366,8 @@ INSERT INTO organizations (id, name, display_name, organization_type, ministry_i
   (15, 'INF', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
   (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
   (17, 'JEG', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
-  (18, 'LBR', 'Labour', 'bcgov', 18, true, 18, 1, 1),
-  (19, 'MCM', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
+  (18, 'LAB', 'Labour', 'bcgov', 18, true, 18, 1, 1),
+  (19, 'MIN', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
   (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
   (21, 'PSSG', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
   (22, 'SDPR', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),
@@ -387,22 +431,40 @@ ON CONFLICT (id) DO UPDATE
       created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
 
+-- -- ============================================================================
+-- -- TAGS
+-- -- Classification tags for activities (used for subscriptions/news subscribe)
+-- -- Updated with new values
+-- -- ============================================================================
+
+-- INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
+--   (1, 'bc coroners service', 'BC Coroners Service', 1, 'global', true, 'BC Coroners Service subscription tag', 1, 1),
+--   (2, 'cleanbc', 'CleanBC', 2, 'global', true, 'CleanBC subscription tag', 1, 1),
+--   (3, 'connectivity in b c', 'Connectivity in B.C.', 3, 'global', true, 'Connectivity in B.C. subscription tag', 1, 1),
+--   (4, 'covid 19', 'COVID-19', 4, 'global', true, 'COVID-19 subscription tag', 1, 1),
+--   (5, 'ending gender based violence', 'Ending Gender-Based Violence', 5, 'global', true, 'Ending Gender-Based Violence subscription tag', 1, 1),
+--   (6, 'gender equity', 'Gender Equity', 6, 'global', true, 'Gender Equity subscription tag', 1, 1),
+--   (7, 'housing affordability', 'Housing Affordability', 7, 'global', true, 'Housing Affordability subscription tag', 1, 1),
+--   (8, 'natural resources', 'Natural Resources', 8, 'global', true, 'Natural Resources subscription tag', 1, 1),
+--   (9, 'tariffs', 'Tariffs', 9, 'global', true, 'Tariffs subscription tag', 1, 1)
+-- ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================================
 -- TAGS
--- Classification tags for activities (used for subscriptions/news subscribe)
+-- Tags teams can apply to activities; currently limited to use by admin
 -- Updated with new values
 -- ============================================================================
 
 INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
-  (1, 'bc coroners service', 'BC Coroners Service', 1, 'global', true, 'BC Coroners Service subscription tag', 1, 1),
-  (2, 'cleanbc', 'CleanBC', 2, 'global', true, 'CleanBC subscription tag', 1, 1),
-  (3, 'connectivity in b c', 'Connectivity in B.C.', 3, 'global', true, 'Connectivity in B.C. subscription tag', 1, 1),
-  (4, 'covid 19', 'COVID-19', 4, 'global', true, 'COVID-19 subscription tag', 1, 1),
-  (5, 'ending gender based violence', 'Ending Gender-Based Violence', 5, 'global', true, 'Ending Gender-Based Violence subscription tag', 1, 1),
-  (6, 'gender equity', 'Gender Equity', 6, 'global', true, 'Gender Equity subscription tag', 1, 1),
-  (7, 'housing affordability', 'Housing Affordability', 7, 'global', true, 'Housing Affordability subscription tag', 1, 1),
-  (8, 'natural resources', 'Natural Resources', 8, 'global', true, 'Natural Resources subscription tag', 1, 1),
-  (9, 'tariffs', 'Tariffs', 9, 'global', true, 'Tariffs subscription tag', 1, 1)
+  (1, 'HQ-EV', 'HQ-EV', 1, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (2, 'HQ-ECO', 'HQ-ECO', 2, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (3, 'HQ-PR', 'HQ-PR', 3, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (4, 'HQ-1P', 'HQ-1P', 4, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (5, 'HQ-2PT', 'HQ-2PT', 5, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (6, 'HQ-3S', 'HQ-3S', 6, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (7, 'HQ-4W', 'HQ-4W', 7, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (8, 'CAS', 'CAS', 8, 'global', true, 'CCHQ tag for admin use only', 1, 1),
+  (9, 'LWS', 'LWS', 9, 'global', true, 'CCHQ tag for admin use only', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -444,20 +506,6 @@ INSERT INTO comms_contacts (id, name, display_name, sort_order, is_active, email
   (4, 'David Kim', 'David Kim', 4, true, 'david.kim@gov.bc.ca', '250-555-0104', 1, 1),
   (5, 'Jennifer Taylor', 'Jennifer Taylor', 5, true, 'jennifer.taylor@gov.bc.ca', '250-555-0105', 1, 1),
   (6, 'Robert Williams', 'Robert Williams', 6, true, 'robert.williams@gov.bc.ca', '250-555-0106', 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================================
--- VENUES
--- Venues for activities
--- ============================================================================
-
-INSERT INTO venues (id, name, display_name, sort_order, is_active, address, created_by, last_updated_by) VALUES
-  (1, 'Victoria Conference Centre', 'Victoria Conference Centre', 1, true, NULL, 1, 1),
-  (2, 'Vancouver Convention Centre', 'Vancouver Convention Centre', 2, true, NULL, 1, 1),
-  (3, 'Parliament Buildings', 'Parliament Buildings', 3, true, NULL, 1, 1),
-  (4, 'Placeholder Venue 1', 'Placeholder Venue 1', 4, true, NULL, 1, 1),
-  (5, 'Placeholder Venue 2', 'Placeholder Venue 2', 5, true, NULL, 1, 1),
-  (6, 'Placeholder Venue 3', 'Placeholder Venue 3', 6, true, NULL, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -621,9 +669,6 @@ SELECT setval('tags_id_seq', COALESCE((SELECT MAX(id) FROM tags), 1), true);
 -- Comms contacts sequence
 SELECT setval('comms_contacts_id_seq', COALESCE((SELECT MAX(id) FROM comms_contacts), 1), true);
 
--- Venues sequence
-SELECT setval('venues_id_seq', COALESCE((SELECT MAX(id) FROM venues), 1), true);
-
 -- Event planners sequence
 SELECT setval('event_planners_id_seq', COALESCE((SELECT MAX(id) FROM event_planners), 1), true);
 
@@ -643,16 +688,18 @@ SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ============================================================================
--- VENUE QUICK PICKS
--- Admin-configured quick-pick venues for the activity form (max 4 active)
+-- VENUE PRESETS
+-- Admin-defined named venues for the activity form.
+-- Pinned presets appear as quick-select badges beneath the Venue Name input.
 -- ============================================================================
 
-INSERT INTO venue_quick_picks (venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
+INSERT INTO venue_presets (venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, 1, 1),
-  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, 1, 1)
-) AS v(venue_name, street, city, province_or_state, country, sort_order, is_active, created_by, last_updated_by)
-WHERE NOT EXISTS (SELECT 1 FROM venue_quick_picks LIMIT 1);
+  ('BC Legislature', '501 Belleville St', 'Victoria', 'British Columbia', 'Canada', 1, true, true, 1, 1, 1),
+  ('Vancouver Convention Centre', '1055 Canada Pl', 'Vancouver', 'British Columbia', 'Canada', 2, true, true, 2, 1, 1),
+  ('Government House', '1401 Rockland Ave', 'Victoria', 'British Columbia', 'Canada', 3, true, true, 3, 1, 1)
+) AS v(venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
+WHERE NOT EXISTS (SELECT 1 FROM venue_presets LIMIT 1);
 
--- Venue quick picks sequence
-SELECT setval('venue_quick_picks_id_seq', COALESCE((SELECT MAX(id) FROM venue_quick_picks), 1), true);
+-- Venue presets sequence
+SELECT setval('venue_presets_id_seq', COALESCE((SELECT MAX(id) FROM venue_presets), 1), true);

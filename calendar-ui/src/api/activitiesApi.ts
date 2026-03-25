@@ -82,7 +82,10 @@ export async function updateActivity(
 ): Promise<ActivityResponse> {
   const res = await api.patch<{ success: boolean; data: ActivityResponse }>(
     `/activities/${id}`,
-    activity
+    activity,
+    {
+      timeout: 20_000,
+    }
   );
   return res.data.data;
 }

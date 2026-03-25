@@ -135,10 +135,10 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/venue-quick-picks (GET)', () => {
-    it('should return venue quick-picks array', () => {
+  describe('/lookups/venue-presets (GET)', () => {
+    it('should return venue presets array', () => {
       return createAuthRequest(app, accessToken)
-        .get('/lookups/venue-quick-picks')
+        .get('/lookups/venue-presets')
         .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('success', true);
@@ -147,31 +147,17 @@ describe('LookupsController (e2e)', () => {
           if (res.body.data.length > 0) {
             expect(res.body.data[0]).toHaveProperty('id');
             expect(res.body.data[0]).toHaveProperty('venueName');
+            expect(res.body.data[0]).toHaveProperty('isPinned');
+            expect(res.body.data[0]).toHaveProperty('pinnedSortOrder');
           }
         });
     });
 
     it('should have cache-control headers', () => {
       return createAuthRequest(app, accessToken)
-        .get('/lookups/venue-quick-picks')
+        .get('/lookups/venue-presets')
         .expect(200)
         .expect('Cache-Control', /public/);
-    });
-  });
-
-  describe('/lookups/venue-last-used (GET)', () => {
-    it('should return last-used venues for authenticated user', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/lookups/venue-last-used')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(Array.isArray(res.body.data)).toBe(true);
-          if (res.body.data.length > 0) {
-            expect(res.body.data[0]).toHaveProperty('venueName');
-          }
-        });
     });
   });
 

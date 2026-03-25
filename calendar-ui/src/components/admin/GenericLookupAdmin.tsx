@@ -10,7 +10,7 @@ import {
   FormField,
   LookupForm,
 } from '@/components/admin';
-import { GenericDataTable } from '@/components/Table/GenericDataTable';
+import { GenericDataTable } from '@/components/table/GenericDataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

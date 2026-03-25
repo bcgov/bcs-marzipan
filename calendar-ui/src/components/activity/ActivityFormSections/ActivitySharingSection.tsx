@@ -6,6 +6,7 @@ import {
   type Visibility,
 } from '@corpcal/shared/constants/constants';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -26,38 +27,34 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivitySharingSectionProps = {
-  sharedWithTeamOptions: Array<{ value: string; label: string }>;
-  readOnly?: boolean;
+  sharedWithTeamOptions: OptionItem[];
 };
 
 export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
   sharedWithTeamOptions,
-  readOnly = false,
 }) => {
+  const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const sharedWithAnchorRef = useComboboxAnchor();
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('sharing')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.sharing}>
       <FormField
         control={form.control}
         name="visibility"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Visibility</FormLabel>
-            <Select
-              disabled={readOnly}
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormSelect
+              readOnly={readOnly}
               onValueChange={(value) => {
                 const visibility: Visibility = (
                   VISIBILITY as readonly string[]
@@ -69,19 +66,15 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
               value={field.value || DEFAULT_VISIBILITY}
             >
               <FormControl data-field={field.name}>
-                <SelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select visibility" />
-                </SelectTrigger>
+                </FormSelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="global">Global</SelectItem>
-                <SelectItem value="team">Team Only</SelectItem>
+                <SelectItem value="global">All ministries</SelectItem>
+                <SelectItem value="team">My team only</SelectItem>
               </SelectContent>
-            </Select>
-            <FormDescription>
-              Global: visible to all teams. Team Only: visible only to your team
-              and shared teams.
-            </FormDescription>
+            </FormSelect>
             <FormMessage />
           </FormItem>
         )}
@@ -101,25 +94,21 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>Shared With Teams</FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={sharedWithTeamOptions}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(
-                    selected: Array<{ value: string; label: string }>
-                  ) => {
+                  onValueChange={(selected: OptionItem[]) => {
                     field.onChange(selected.map((o) => parseInt(o.value, 10)));
                   }}
-                  itemToStringValue={(o: { value: string; label: string }) =>
-                    o.label
-                  }
-                  disabled={readOnly}
+                  itemToStringValue={(o: OptionItem) => o.label}
+                  readOnly={readOnly}
                 >
                   <ComboboxChips ref={sharedWithAnchorRef} className="w-full">
                     <ComboboxValue>
-                      {(values: Array<{ value: string; label: string }>) => (
+                      {(values: OptionItem[]) => (
                         <>
                           {values.map((option) => (
                             <ComboboxChip key={option.value}>
@@ -134,7 +123,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                   <ComboboxContent anchor={sharedWithAnchorRef}>
                     <ComboboxEmpty>No teams found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: { value: string; label: string }) => (
+                      {(option: OptionItem) => (
                         <ComboboxItem key={option.value} value={option}>
                           {option.label}
                         </ComboboxItem>
@@ -144,9 +133,7 @@ export const ActivitySharingSection: React.FC<ActivitySharingSectionProps> = ({
                 </Combobox>
               </FormControl>
               <FormDescription>
-                These teams can see this activity and it will be marked as
-                important for them. If visibility is Team Only, sharing grants
-                access.
+                Teams selected can see the activity in their Shared with tab.
               </FormDescription>
               <FormMessage />
             </FormItem>

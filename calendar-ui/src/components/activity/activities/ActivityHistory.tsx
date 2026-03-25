@@ -86,11 +86,17 @@ export default function ActivityHistory({
   open,
   onOpenChange,
   dateStatuses,
+  venueStatuses,
 }: {
   activityId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
+  venueStatuses?: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -126,6 +132,16 @@ export default function ActivityHistory({
     }
     return map;
   }, [dateStatuses]);
+
+  const venueStatusMap = React.useMemo(() => {
+    const map = new Map<number | string, string>();
+    if (venueStatuses) {
+      venueStatuses.forEach((status) => {
+        map.set(status.id, status.displayName ?? status.name);
+      });
+    }
+    return map;
+  }, [venueStatuses]);
 
   const loadHistory = useCallback(async () => {
     if (!open) return;
