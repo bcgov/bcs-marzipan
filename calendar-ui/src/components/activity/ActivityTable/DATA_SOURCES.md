@@ -21,7 +21,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Event lead                   | From user lookup                                           | Leads – event lead                 |
 | Representatives attending    | `activity_representatives.representative_name` (free text) | Scheduling – rep badges            |
 | Comms contacts               | User names (for lead)                                      | Leads – comms lead name            |
-| Venue                        | Joined venue_addresses (name, street, city, etc.)          | Scheduling – formatted address     |
+| Venue                        | Joined `venue_addresses` (see below)                       | Scheduling – formatted address     |
 | Look ahead status / section  | DB enum values (not from lookup table)                     | Summary – look ahead badge         |
 
 ## Values not from lookups
@@ -52,3 +52,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Dates in scheduling        | ISO date strings                         | `formatDate(iso)` – "Mon DD" style                                                                 |
 
 Look ahead status/section are **enum values** from the schema (e.g. `new`, `events`); they are not from a lookup table. The UI maps them to labels via `getLookAheadStatusLabel` / `getLookAheadSectionLabel` in `form-options.ts`.
+
+### Venue address fields (`venueAddress`)
+
+Activity API responses expose nested **`venueAddress`** with camelCase keys aligned to `venue_addresses`: **`venueName`**, **`addressLine1`**, **`addressLine2`** (floor, suite, room, etc.), **`city`**, **`provinceOrState`**, **`country`**. The scheduling column uses `formatVenueAddress()` / `activityTableRow` logic, which concatenates non-empty parts (including `addressLine2` when present). **Venue presets** (`GET /lookups/venue-presets`) use the same address field shape, including optional **`addressLine2`**, stored in `venue_presets`. All active presets appear in the Venue Name combobox; pinned presets (`isPinned`) are also shown as quick-select badges. Address autocomplete (Canada Post) fills line 1 and locality fields; **`addressLine2` is entered manually** and is cleared in the activity form when the user selects a new address from autocomplete so a previous suite/unit does not stick to a different street.

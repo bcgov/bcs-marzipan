@@ -66,11 +66,7 @@ export function activityToFormData(
   const base = mapResponseToFormData(activity, buildFormLookups(lookups));
   const reps = lookups.governmentRepresentatives;
   if (!reps?.length) {
-    return {
-      ...base,
-      commsContactLeadId:
-        activity.commsContacts?.find((c) => c.isLead)?.userId ?? null,
-    };
+    return base;
   }
   const repNameToIdMap = new Map<string, number>();
   reps.forEach((rep) => {
@@ -83,12 +79,9 @@ export function activityToFormData(
       if (repId != null) return { representativeId: repId };
       return { representativeName: representative };
     }) ?? [];
-  const commsContactLeadId =
-    activity.commsContacts?.find((c) => c.isLead)?.userId ?? null;
   return {
     ...base,
     representatives:
       representatives.length > 0 ? representatives : base.representatives,
-    commsContactLeadId,
   };
 }

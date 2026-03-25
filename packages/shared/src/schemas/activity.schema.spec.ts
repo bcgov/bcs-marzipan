@@ -14,6 +14,7 @@ import {
 const validLeadTeamId = 1;
 const validLeadMinistryId = 1;
 
+/** Minimal valid create request; includes required commsContacts with one lead. */
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
   return {
     title: 'Test Activity',
@@ -24,6 +25,8 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     activityStatusId: 1,
     leadTeamId: validLeadTeamId,
     leadMinistryId: validLeadMinistryId,
+    categoryIds: [1],
+    commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
 }
@@ -61,6 +64,28 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
+  it('accepts create without significance or with null significance', () => {
+    const without = createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: undefined })
+    );
+    expect(without.significance).toBeUndefined();
+    const explicitNull = createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: null })
+    );
+    expect(explicitNull.significance).toBeNull();
+  });
+
+  it('rejects create when categoryIds is missing or empty', () => {
+    const missing = minimalCreateRequest();
+    delete (missing as Record<string, unknown>).categoryIds;
+    expect(() => createActivityRequestSchema.parse(missing)).toThrow();
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ categoryIds: [] })
+      )
+    ).toThrow();
+  });
+
   it('accepts valid enums for visibility, lookAheadStatus, lookAheadSection', () => {
     for (const v of VISIBILITY) {
       createActivityRequestSchema.parse(
@@ -92,11 +117,17 @@ describe('createActivityRequestSchema', () => {
       minimalCreateRequest({
         venueAddress: {
           venueName: 'Hall',
-          street: null,
+          addressLine1: null,
+          addressLine2: null,
           city: null,
           provinceOrState: null,
           country: null,
         },
+      })
+    );
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        venueAddress: { city: 'Victoria', country: 'Canada' },
       })
     );
   });
@@ -140,6 +171,177 @@ describe('createActivityRequestSchema', () => {
       minimalCreateRequest({ leadMinistryId: undefined })
     );
   });
+
+  it('accepts create with commsContacts having exactly one lead', () => {
+    const result = createActivityRequestSchema.parse(
+      minimalCreateRequest({ commsContacts: [{ userId: 1, isLead: true }] })
+    );
+    expect(result.commsContacts).toHaveLength(1);
+    expect(result.commsContacts?.[0].isLead).toBe(true);
+  });
+
+  it('rejects create when commsContacts is missing', () => {
+    const withoutComms = minimalCreateRequest();
+    delete (withoutComms as Record<string, unknown>).commsContacts;
+    expect(() => createActivityRequestSchema.parse(withoutComms)).toThrow();
+    const err = createActivityRequestSchema.safeParse(withoutComms);
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+  });
+
+  it('rejects create when commsContacts is empty array', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ commsContacts: [] })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ commsContacts: [] })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('rejects create when no contact is lead', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          commsContacts: [
+            { userId: 1, isLead: false },
+            { userId: 2, isLead: false },
+          ],
+        })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        commsContacts: [{ userId: 1, isLead: false }],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('rejects create when more than one contact is lead', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          commsContacts: [
+            { userId: 1, isLead: true },
+            { userId: 2, isLead: true },
+          ],
+        })
+      )
+    ).toThrow();
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        commsContacts: [
+          { userId: 1, isLead: true },
+          { userId: 2, isLead: true },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('accepts create with eventPlanners array (id or name per entry, isLead)', () => {
+    const withId = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        eventPlanners: [{ eventPlannerId: 1, isLead: true }],
+      })
+    );
+    expect(withId.eventPlanners).toEqual([
+      { eventPlannerId: 1, eventPlannerName: undefined, isLead: true },
+    ]);
+    const withName = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        eventPlanners: [{ eventPlannerName: 'External Lead', isLead: true }],
+      })
+    );
+    expect(withName.eventPlanners).toEqual([
+      {
+        eventPlannerId: undefined,
+        eventPlannerName: 'External Lead',
+        isLead: true,
+      },
+    ]);
+  });
+
+  it('rejects create when eventPlanners has entries but no lead', () => {
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        eventPlanners: [
+          { eventPlannerId: 1, isLead: false },
+          { eventPlannerName: 'Other', isLead: false },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
+    expect(err.error.issues[0].message).toBe(
+      'When event planners are provided, exactly one must be marked as lead.'
+    );
+  });
+
+  it('rejects create when eventPlanners has two leads', () => {
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        eventPlanners: [
+          { eventPlannerId: 1, isLead: true },
+          { eventPlannerName: 'Other', isLead: true },
+        ],
+      })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
+  });
+
+  it('accepts create with representatives (id or non-empty name per entry)', () => {
+    const withId = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        representatives: [{ representativeId: 1 }],
+      })
+    );
+    expect(withId.representatives).toEqual([{ representativeId: 1 }]);
+    const withName = createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        representatives: [{ representativeName: 'Rep Name' }],
+      })
+    );
+    expect(withName.representatives).toEqual([
+      { representativeName: 'Rep Name' },
+    ]);
+  });
+
+  it('rejects create when a representative entry has no id and no name', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ representatives: [{}] })
+      )
+    ).toThrow();
+  });
+
+  it('rejects create when representativeId is zero and name is missing', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          representatives: [{ representativeId: 0 }],
+        })
+      )
+    ).toThrow();
+  });
+
+  it('rejects create when representativeName is only whitespace', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          representatives: [{ representativeName: '   ' }],
+        })
+      )
+    ).toThrow();
+  });
 });
 
 describe('updateActivityRequestSchema', () => {
@@ -150,6 +352,98 @@ describe('updateActivityRequestSchema', () => {
 
   it('accepts empty object', () => {
     updateActivityRequestSchema.parse({});
+  });
+
+  it('rejects update when representatives contains an empty entry', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({ representatives: [{}] })
+    ).toThrow();
+  });
+
+  it('accepts update with only title (no commsContacts)', () => {
+    const result = updateActivityRequestSchema.parse({ title: 'Only title' });
+    expect(result.title).toBe('Only title');
+  });
+
+  it('accepts update when commsContacts has exactly one lead', () => {
+    const result = updateActivityRequestSchema.parse({
+      commsContacts: [{ userId: 1, isLead: true }],
+    });
+    expect(result.commsContacts).toHaveLength(1);
+    expect(result.commsContacts?.[0].isLead).toBe(true);
+  });
+
+  it('accepts update when commsContacts is empty array', () => {
+    updateActivityRequestSchema.parse({ commsContacts: [] });
+  });
+
+  it('rejects update when commsContacts has contacts but no lead', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        commsContacts: [{ userId: 1, isLead: false }],
+      })
+    ).toThrow();
+    const err = updateActivityRequestSchema.safeParse({
+      commsContacts: [{ userId: 1, isLead: false }],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+  });
+
+  it('rejects update when commsContacts has two leads', () => {
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        commsContacts: [
+          { userId: 1, isLead: true },
+          { userId: 2, isLead: true },
+        ],
+      })
+    ).toThrow();
+    const err = updateActivityRequestSchema.safeParse({
+      commsContacts: [
+        { userId: 1, isLead: true },
+        { userId: 2, isLead: true },
+      ],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['commsContacts']);
+  });
+
+  it('accepts update when eventPlanners has exactly one lead', () => {
+    const result = updateActivityRequestSchema.parse({
+      eventPlanners: [
+        { eventPlannerId: 1, isLead: true },
+        { eventPlannerName: 'Other', isLead: false },
+      ],
+    });
+    expect(result.eventPlanners).toHaveLength(2);
+    expect(result.eventPlanners?.[0].isLead).toBe(true);
+    expect(result.eventPlanners?.[1].isLead).toBe(false);
+  });
+
+  it('rejects update when eventPlanners has entries but no lead', () => {
+    const err = updateActivityRequestSchema.safeParse({
+      eventPlanners: [
+        { eventPlannerId: 1, isLead: false },
+        { eventPlannerName: 'Other', isLead: false },
+      ],
+    });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['eventPlanners']);
+  });
+
+  it('rejects update when categoryIds is empty array', () => {
+    const err = updateActivityRequestSchema.safeParse({ categoryIds: [] });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['categoryIds']);
+    expect(err.error.issues[0].message).toBe(
+      'At least one category is required.'
+    );
+  });
+
+  it('accepts update when categoryIds is omitted', () => {
+    updateActivityRequestSchema.parse({ title: 'x' });
   });
 });
 
@@ -165,11 +459,29 @@ describe('venueAddressFieldsSchema', () => {
   it('accepts valid venue object with nullables', () => {
     const v = {
       venueName: 'Hall',
-      street: null,
+      addressLine1: null,
+      addressLine2: null,
       city: 'Victoria',
       provinceOrState: null,
       country: 'Canada',
     };
     expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('accepts addressLine2 (floor, room, etc.)', () => {
+    const v = {
+      venueName: 'Convention Centre',
+      addressLine1: '123 Main St',
+      addressLine2: 'Suite 400',
+      city: 'Victoria',
+      provinceOrState: 'BC',
+      country: 'Canada',
+    };
+    expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('accepts partial venue object (independent fields)', () => {
+    const partial = { city: 'Victoria', country: 'Canada' };
+    expect(venueAddressFieldsSchema.parse(partial)).toEqual(partial);
   });
 });

@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import {
   SortDropdown,
   type SortColumnConfig,
-} from '@/components/Table/SortDropdown';
+} from '@/components/table/SortDropdown';
 import { Input } from '@/components/ui/input';
 
 const TEAM_SORT_COLUMNS: SortColumnConfig[] = [

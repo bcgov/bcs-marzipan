@@ -1,10 +1,10 @@
 import type { ReactNode, RefObject } from 'react';
 
-import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
+import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import {
   TableSummaryBar,
   type BooleanFilter,
-} from '@/components/Table/TableSummaryBar';
+} from '@/components/table/TableSummaryBar';
 
 export interface ActivityTableLayoutProps {
   /** Ref forwarded to the scroll container for scroll-to-top on pagination. */

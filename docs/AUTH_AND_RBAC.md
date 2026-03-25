@@ -96,6 +96,11 @@ If Azure sign-in should land on a specific UI page after the callback, set
 `https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca/`. If left blank,
 the backend redirects to `/` after successful sign-in.
 
+For OpenShift deployments, treat `AUTH_COOKIE_DOMAIN` and
+`POST_LOGIN_REDIRECT_URL` as environment-specific values. They should be
+supplied at deploy time rather than hardcoded into the base manifests so dev,
+staging, and prod can each use their own public UI hostname.
+
 ### Token content and policy changes
 
 The JWT embeds the user's **permissions** and **teamIds** at login time. As a result:
@@ -147,7 +152,8 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | lookups.view/manage                   | view   | view   | view       | view        | view+manage | all       |
 | users.\* (except manage_roles/delete) |        |        |            |             | x           | x         |
 | users.delete, manage_roles            |        |        |            |             |             | x         |
-| teams.\*                              |        |        |            |             | x           | x         |
+| teams.view                            |        | x      | x          | x           | x           | x         |
+| teams.create/edit/delete              |        |        |            |             | x           | x         |
 | settings.\*                           |        |        |            |             | x           | x         |
 | system.\*                             |        |        |            |             |             | x         |
 

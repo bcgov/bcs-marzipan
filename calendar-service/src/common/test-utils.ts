@@ -41,12 +41,14 @@ export const createMockActivityRequest = (
     endTime: '12:00',
     dateStatusId: 1,
     timeStatusId: 1,
+    venueStatusId: null,
     activityStatusId: 1,
     leadTeamId: 1,
     leadMinistryId: 1, // Office of the Premier (from seed)
     visibility: 'global',
     leadOrgName: 'Test Org', // XOR with leadOrgId: exactly one must be set
-    eventPlannerLeadName: 'Test Lead', // XOR with eventPlannerLeadId: exactly one must be set
+    categoryIds: [1],
+    eventPlanners: [{ eventPlannerName: 'Test Lead', isLead: true }],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
@@ -77,6 +79,7 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     significance: '',
     dateStatusId: 1,
     timeStatusId: 1,
+    venueStatusId: null,
     isAllDay: false,
     startDate: new Date('2024-01-15').toISOString(),
     startTime: '10:00',
@@ -88,8 +91,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     newsReleaseDateTime: null,
     newsReleaseOriginId: null,
     newsReleaseDistributionId: null,
-    eventPlannerLeadId: null,
-    eventPlannerLeadName: null,
     executiveSummary: null,
     lookAheadStatus: 'none',
     lookAheadSection: 'events',

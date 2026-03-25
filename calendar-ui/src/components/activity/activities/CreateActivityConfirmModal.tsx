@@ -37,13 +37,14 @@ const PRIMARY_FIELDS: Array<keyof ActivityFormData> = [
   'title',
   'leadTeamId',
   'summary',
-  'commsContactLeadId',
+  'commsContacts',
   'startDate',
   'endDate',
   'dateStatusId',
   'startTime',
   'endTime',
   'timeStatusId',
+  'venueStatusId',
 ];
 
 const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
@@ -51,13 +52,14 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'title',
   'leadTeamId',
   'summary',
-  'commsContactLeadId',
+  'commsContacts',
   'startDate',
   'endDate',
   'dateStatusId',
   'startTime',
   'endTime',
   'timeStatusId',
+  'venueStatusId',
   'significance',
   'schedulingNotes',
   'strategy',
@@ -69,7 +71,7 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'notes',
   'executiveSummary',
   'leadOrgId',
-  'eventPlannerLeadId',
+  'eventPlanners',
   'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
@@ -112,9 +114,18 @@ function resolveDisplayValue(
     return ministry?.displayName || ministry?.name || String(value);
   }
 
-  if (field === 'commsContactLeadId' && typeof value === 'number') {
-    const user = lookups.users.find((u) => String(u.value) === String(value));
-    return user?.label || String(value);
+  if (field === 'commsContacts' && Array.isArray(value)) {
+    const contacts = value as Array<{ userId?: number; isLead?: boolean }>;
+    if (contacts.length === 0) return '(none)';
+    return contacts
+      .map((c) => {
+        const user = lookups.users.find(
+          (u) => c.userId != null && String(u.value) === String(c.userId)
+        );
+        const name = user?.label ?? String(c.userId ?? '');
+        return c.isLead ? `${name} (Lead)` : name;
+      })
+      .join(', ');
   }
 
   if (field === 'dateStatusId' && typeof value === 'number' && dateStatuses) {
@@ -127,16 +138,34 @@ function resolveDisplayValue(
     return status?.label || status?.name || String(value);
   }
 
+  if (field === 'venueStatusId' && typeof value === 'number') {
+    const status = lookups.venueStatuses.find((s) => s.id === value);
+    return status?.displayName ?? status?.name ?? String(value);
+  }
+
   if (field === 'leadOrgId' && typeof value === 'number') {
     const org = lookups.organizations.find((o) => o.value === value);
     return org?.label || String(value);
   }
 
-  if (field === 'eventPlannerLeadId' && typeof value === 'number') {
-    const planner = lookups.eventPlanners.find(
-      (p) => String(p.value) === String(value)
-    );
-    return planner?.label || String(value);
+  if (field === 'eventPlanners' && Array.isArray(value)) {
+    if (value.length === 0) return '(none)';
+    const items = value as Array<{
+      eventPlannerId?: number;
+      eventPlannerName?: string;
+      isLead?: boolean;
+    }>;
+    return items
+      .map((p) => {
+        if (p.eventPlannerId != null) {
+          const planner = lookups.eventPlanners.find(
+            (ep) => String(ep.value) === String(p.eventPlannerId)
+          );
+          return planner?.label ?? String(p.eventPlannerId);
+        }
+        return p.eventPlannerName ?? '(unknown)';
+      })
+      .join(', ');
   }
 
   if (field === 'pitchRequiredStatusId' && typeof value === 'number') {
@@ -154,7 +183,10 @@ function resolveDisplayValue(
     const parts: string[] = [];
     if (typeof addr.venueName === 'string' && addr.venueName)
       parts.push(addr.venueName);
-    if (typeof addr.street === 'string' && addr.street) parts.push(addr.street);
+    if (typeof addr.addressLine1 === 'string' && addr.addressLine1)
+      parts.push(addr.addressLine1);
+    if (typeof addr.addressLine2 === 'string' && addr.addressLine2)
+      parts.push(addr.addressLine2);
     if (typeof addr.city === 'string' && addr.city) parts.push(addr.city);
     if (typeof addr.provinceOrState === 'string' && addr.provinceOrState)
       parts.push(addr.provinceOrState);

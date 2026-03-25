@@ -1,17 +1,16 @@
-import { UseFormReturn } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,19 +19,16 @@ import {
   lookAheadStatusOptions,
 } from '@/constants/form-options';
 import { useReports } from '@/hooks/useLookups';
-import { getActivityFormSectionLabel } from '@/lib/activity-form-section-labels';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
+import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
+import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
-type ActivityReportsSectionProps = {
-  form: UseFormReturn<ActivityFormData>;
-  readOnly?: boolean;
-};
-
-export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
-  form,
-  readOnly = false,
-}) => {
+export const ActivityReportsSection: React.FC = () => {
+  const { readOnly } = useActivityEdit();
+  const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
 
   // Find report IDs for Look Ahead and 30/60/90 reports
@@ -47,7 +43,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
   );
 
   return (
-    <ActivityFormSection title={getActivityFormSectionLabel('reports')}>
+    <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.reports}>
       <FormField
         control={form.control}
         name="reportSettings"
@@ -94,7 +90,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                       <Checkbox
                         id="thirty-sixty-ninety"
                         checked={!thirtySixtyNinetyOmitted}
-                        disabled={readOnly}
+                        readOnly={readOnly}
                         onCheckedChange={(checked) => {
                           updateReportSetting(
                             thirtySixtyNinetyReport.id,
@@ -105,7 +101,7 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
                     </FormControl>
                     <label
                       htmlFor="thirty-sixty-ninety"
-                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70 peer-data-readonly:opacity-100!"
                     >
                       30-60-90
                     </label>
@@ -118,103 +114,105 @@ export const ActivityReportsSection: React.FC<ActivityReportsSectionProps> = ({
         }}
       />
 
-      <div className="my-6 border-t border-gray-300"></div>
+      <FormSectionDivider />
 
-      {/* Look Ahead Section Title */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Look ahead</h2>
+      <ActivityFormHeading>Look ahead</ActivityFormHeading>
 
-        {/* Executive Summary */}
-        <FormField
-          control={form.control}
-          name="executiveSummary"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Executive summary</FormLabel>
-              <FormControl data-field={field.name}>
-                <Textarea
-                  {...field}
-                  value={field.value || ''}
-                  placeholder="Enter executive summary"
-                  readOnly={readOnly}
-                  rows={4}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <FormField
+        control={form.control}
+        name="executiveSummary"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormControl data-field={field.name}>
+              <Textarea
+                placeholder="Enter executive summary"
+                readOnly={readOnly}
+                rows={4}
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                value={field.value ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  field.onChange(v === '' ? undefined : v);
+                }}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-        {/* Report Status Radio Buttons */}
-        <FormField
-          control={form.control}
-          name="lookAheadStatus"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Report Status</FormLabel>
-              <FormControl data-field={field.name}>
-                <RadioGroup
-                  disabled={readOnly}
-                  onValueChange={field.onChange}
-                  value={field.value || ''}
-                  className="flex flex-row space-x-4"
-                >
-                  {lookAheadStatusOptions.map((option) => (
-                    <div
-                      key={option.value}
-                      className="flex items-center space-x-2"
+      <FormField
+        control={form.control}
+        name="lookAheadStatus"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormControl data-field={field.name}>
+              <RadioGroup
+                readOnly={readOnly}
+                onValueChange={field.onChange}
+                value={field.value || ''}
+                className="flex flex-row space-x-4"
+              >
+                {lookAheadStatusOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    className="flex items-center space-x-2"
+                  >
+                    <RadioGroupItem
+                      value={option.value}
+                      id={`status-${option.value}`}
+                    />
+                    <Label
+                      htmlFor={`status-${option.value}`}
+                      className="cursor-pointer font-normal"
                     >
-                      <RadioGroupItem
-                        value={option.value}
-                        id={`status-${option.value}`}
-                      />
-                      <Label
-                        htmlFor={`status-${option.value}`}
-                        className="cursor-pointer font-normal"
-                      >
-                        {option.label}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}
         name="lookAheadSection"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Section</FormLabel>
-            <div className="flex flex-wrap gap-2">
-              {lookAheadSectionOptions.map((option) => {
-                const isSelected = field.value === option.value;
-                return (
-                  <Badge
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormControl data-field={field.name}>
+              <RadioGroup
+                readOnly={readOnly}
+                onValueChange={field.onChange}
+                value={field.value ?? ''}
+                className="flex flex-row space-x-4"
+              >
+                {lookAheadSectionOptions.map((option) => (
+                  <div
                     key={option.value}
-                    variant={isSelected ? 'default' : 'outline'}
-                    className="cursor-pointer px-4 py-2 text-sm"
-                    onClick={
-                      readOnly
-                        ? undefined
-                        : () => {
-                            const newValue = isSelected ? null : option.value;
-                            field.onChange(newValue);
-                          }
-                    }
+                    className="flex items-center space-x-2"
                   >
-                    {option.label}
-                  </Badge>
-                );
-              })}
-            </div>
-            <FormDescription className="mt-2">
-              Select the look ahead section
-            </FormDescription>
+                    <RadioGroupItem
+                      value={option.value}
+                      id={`lookAhead-section-${option.value}`}
+                    />
+                    <Label
+                      htmlFor={`lookAhead-section-${option.value}`}
+                      className="cursor-pointer font-normal"
+                    >
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

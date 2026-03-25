@@ -7,13 +7,14 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
+import { getCorsAllowedOrigins } from '../common/config/cors-allowed-origins';
 import type { ActivityResponseDto } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 
 @WebSocketGateway({
   cors: {
-    // TODO: In production, restrict to frontend domain
-    origin: '*',
+    origin: getCorsAllowedOrigins(),
+    credentials: true,
   },
 })
 export class ActivitiesGateway
@@ -81,8 +82,8 @@ export class ActivitiesGateway
    */
   notifyActivityUpdate(activityId: number, data: ActivityResponseDto) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
-    this.logger.log(
-      `Currently viewing activities: ${JSON.stringify(Array.from(this.viewingActivities.entries()))}`
+    this.logger.debug(
+      `viewingActivities map size=${this.viewingActivities.size} (deferred from PATCH handler)`
     );
 
     // Find all clients viewing this activity
@@ -117,5 +118,36 @@ export class ActivitiesGateway
   broadcastActivityUpdated(data: ActivityResponseDto) {
     this.logger.log(`Broadcasting activity updated: ${data.id}`);
     this.server.to('activities-table').emit('activityUpdated', data);
+  }
+
+  /**
+   * Notify all clients viewing a specific activity that a lock was acquired.
+   */
+  notifyLockAcquired(
+    activityId: number,
+    lockedBy: { userId: number; username: string }
+  ) {
+    this.logger.log(
+      `Notifying viewers of activity ${activityId}: lock acquired by ${lockedBy.username}`
+    );
+    for (const [clientId, activityIds] of this.viewingActivities.entries()) {
+      if (activityIds.has(activityId)) {
+        this.server.to(clientId).emit('lockAcquired', { activityId, lockedBy });
+      }
+    }
+  }
+
+  /**
+   * Notify all clients viewing a specific activity that the lock was released.
+   */
+  notifyLockReleased(activityId: number) {
+    this.logger.log(
+      `Notifying viewers of activity ${activityId}: lock released`
+    );
+    for (const [clientId, activityIds] of this.viewingActivities.entries()) {
+      if (activityIds.has(activityId)) {
+        this.server.to(clientId).emit('lockReleased', { activityId });
+      }
+    }
   }
 }

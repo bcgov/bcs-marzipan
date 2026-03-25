@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
@@ -26,6 +27,11 @@ interface EditActivityConfirmModalProps {
   onOpenChange: (open: boolean) => void;
   changes: HistoryChange[];
   dateStatuses?: Array<{ id: string | number; label: string }>;
+  venueStatuses?: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+  }>;
   onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
   /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
@@ -37,6 +43,7 @@ export function EditActivityConfirmModal({
   onOpenChange,
   changes,
   dateStatuses,
+  venueStatuses,
   onConfirm,
   isSubmitting,
   showMarkAsReviewed = false,
@@ -54,6 +61,16 @@ export function EditActivityConfirmModal({
     }
     return map;
   }, [dateStatuses]);
+
+  const venueStatusMap: StatusLookupMap = useMemo(() => {
+    const map = new Map<number | string, string>();
+    if (venueStatuses) {
+      venueStatuses.forEach((status) => {
+        map.set(status.id, status.displayName ?? status.name);
+      });
+    }
+    return map;
+  }, [venueStatuses]);
 
   const visibleChanges = showAllChanges
     ? changes
@@ -104,7 +121,8 @@ export function EditActivityConfirmModal({
                     {formatHistoryFieldValue(
                       change.field,
                       change.oldValue,
-                      dateStatusMap
+                      dateStatusMap,
+                      venueStatusMap
                     )}
                   </span>{' '}
                   &rarr;{' '}
@@ -112,7 +130,8 @@ export function EditActivityConfirmModal({
                     {formatHistoryFieldValue(
                       change.field,
                       change.newValue,
-                      dateStatusMap
+                      dateStatusMap,
+                      venueStatusMap
                     )}
                   </span>
                 </div>
@@ -180,7 +199,14 @@ export function EditActivityConfirmModal({
             Return to edit
           </Button>
           <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
-            {isSubmitting ? 'Updating...' : 'Confirm'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Updating...
+              </>
+            ) : (
+              'Confirm'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

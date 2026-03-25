@@ -19,7 +19,7 @@ import {
   MinistriesAdmin,
   TagsAdmin,
   ThemesAdmin,
-  VenueQuickPicksAdmin,
+  VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
 
 type Section =
@@ -31,7 +31,7 @@ type Section =
   | 'ministries'
   | 'statuses'
   | 'themes'
-  | 'venue-quick-picks';
+  | 'venue-presets';
 
 const sections = [
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
@@ -47,8 +47,8 @@ const sections = [
   { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
   { id: 'themes' as Section, label: 'Themes', icon: Palette },
   {
-    id: 'venue-quick-picks' as Section,
-    label: 'Venue Quick Picks',
+    id: 'venue-presets' as Section,
+    label: 'Venue Presets',
     icon: Bookmark,
   },
 ];
@@ -144,8 +144,8 @@ export function Settings() {
             <ThemesAdmin />
           </div>
 
-          <div id="section-venue-quick-picks">
-            <VenueQuickPicksAdmin />
+          <div id="section-venue-presets">
+            <VenuePresetsAdmin />
           </div>
         </div>
       </div>

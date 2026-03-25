@@ -57,12 +57,11 @@ SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ----------------------------------------------------------------------------
 -- TEAM MINISTRY (teams.ministry_id)
--- CCHQ (2) and IGRS (35): Premier's Office (1).
 -- Ministry Comms (8-32): PREM=1, AGRI=2, ... WLRS=25.
 -- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->ENV(9).
 -- ----------------------------------------------------------------------------
 
-UPDATE teams SET ministry_id = 1 WHERE id IN (2, 8, 35);
+UPDATE teams SET ministry_id = 1 WHERE id = 8;
 UPDATE teams SET ministry_id = 2 WHERE id = 9;
 UPDATE teams SET ministry_id = 3 WHERE id = 10;
 UPDATE teams SET ministry_id = 4 WHERE id = 11;

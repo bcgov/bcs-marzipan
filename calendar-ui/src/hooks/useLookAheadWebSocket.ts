@@ -1,6 +1,11 @@
 import { io } from 'socket.io-client';
 import { useEffect } from 'react';
 
+import {
+  CALENDAR_SOCKET_IO_OPTIONS,
+  getCalendarSocketUrl,
+} from '@/lib/calendar-socket';
+
 interface UseLookAheadWebSocketOptions {
   onActivityUpdate?: () => void;
 }
@@ -14,12 +19,14 @@ export function useLookAheadWebSocket({
   onActivityUpdate,
 }: UseLookAheadWebSocketOptions = {}): void {
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const socket = io(apiUrl);
+    const socket = io(getCalendarSocketUrl(), CALENDAR_SOCKET_IO_OPTIONS);
 
-    socket.on('connect', () => {
+    const subscribe = () => {
       socket.emit('subscribeToActivities');
-    });
+    };
+
+    socket.on('connect', subscribe);
+    socket.io.on('reconnect', subscribe);
 
     socket.on('activityCreated', () => {
       onActivityUpdate?.();
@@ -31,6 +38,8 @@ export function useLookAheadWebSocket({
 
     return () => {
       socket.emit('unsubscribeFromActivities');
+      socket.off('connect', subscribe);
+      socket.io.off('reconnect', subscribe);
       socket.off('activityCreated');
       socket.off('activityUpdated');
       socket.disconnect();

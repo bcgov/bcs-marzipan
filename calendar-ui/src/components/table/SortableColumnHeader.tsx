@@ -1,5 +1,5 @@
-import type { SortColumnConfig } from '@/components/Table/SortDropdown';
-import { SortIndicator } from '@/components/Table/SortIndicator';
+import type { SortColumnConfig } from '@/components/table/SortDropdown';
+import { SortIndicator } from '@/components/table/SortIndicator';
 import {
   Tooltip,
   TooltipContent,
