@@ -859,12 +859,12 @@ export function GlobalHistory() {
                                     {entry.changes?.map((change, index) => (
                                       <div
                                         key={`${entry.id}-${index}`}
-                                        className="text-sm text-slate-600"
+                                        className="text-foreground text-sm"
                                       >
-                                        <span className="font-medium text-slate-700">
+                                        <span className="text-foreground font-medium">
                                           {getHistoryFieldLabel(change.field)}:
                                         </span>{' '}
-                                        <span>
+                                        <span className="text-muted-foreground">
                                           {formatChangeValue(
                                             change.field,
                                             change.oldValue
