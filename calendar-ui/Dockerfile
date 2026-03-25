@@ -14,23 +14,19 @@ RUN NODE_OPTIONS=--max-old-space-size=4096 \
     npm run build --workspace=calendar-ui
 
 
-# --- Runtime: OpenShift-friendly unprivileged nginx
+# Runtime: OpenShift-friendly, non-root nginx
 FROM nginxinc/nginx-unprivileged:alpine
 
-# Static files
+# Static UI build output
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html
 
-# Main nginx config (full config with http{} that includes /tmp/default.conf)
-# IMPORTANT: this is the file you just added
+# Full nginx config with http{} that includes /tmp/default.conf
 COPY calendar-ui/nginx.main.conf /etc/nginx/nginx.conf
 
-# Your server-block template rendered at runtime into /tmp/default.conf
+# Server-block template rendered at container startup
 COPY --from=build /app/calendar-ui/nginx.conf /tmp/default.conf.template
 
 EXPOSE 8080
 
-# Render env var(s) into the server-block, then start nginx normally (NO "-c /tmp/default.conf")
-CMD ["/bin/sh", "-c", "\
-  envsubst '$$API_PROXY_UPSTREAM' < /tmp/default.conf.template > /tmp/default.conf && \
-  exec nginx -g 'daemon off;' \
-"]
+# Render env vars into server-block, then start nginx normally
+CMD ["/bin/sh", "-c", "envsubst '$$API_PROXY_UPSTREAM' < /tmp/default.conf.template > /tmp/default.conf && exec nginx -g 'daemon off;'"]
