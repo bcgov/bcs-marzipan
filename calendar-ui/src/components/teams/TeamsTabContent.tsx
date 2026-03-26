@@ -10,17 +10,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
-import { SortIndicator } from '@/components/Table/SortIndicator';
+import { SortIndicator } from '@/components/table/SortIndicator';
 import {
   tableBodyRow,
   tableTable,
   tableTd,
   tableTh,
   tableThead,
-} from '@/components/Table/tableConstants';
-import { TablePagination } from '@/components/Table/TablePagination';
-import { TableScrollContainer } from '@/components/Table/TableScrollContainer';
-import { TableSummaryBar } from '@/components/Table/TableSummaryBar';
+} from '@/components/table/tableConstants';
+import { TablePagination } from '@/components/table/TablePagination';
+import { TableScrollContainer } from '@/components/table/TableScrollContainer';
+import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { TeamManagementFilters } from '@/components/teams/TeamManagementFilters';
 import { Button } from '@/components/ui/button';
 import {

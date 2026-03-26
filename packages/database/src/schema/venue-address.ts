@@ -18,7 +18,8 @@ export const venueAddresses = pgTable(
 
     // Address fields (all nullable)
     venueName: varchar('venue_name', { length: 255 }),
-    street: varchar('street', { length: 255 }),
+    addressLine1: varchar('address_line1', { length: 255 }),
+    addressLine2: varchar('address_line2', { length: 255 }),
     city: varchar('city', { length: 255 }),
     provinceOrState: varchar('province_or_state', { length: 255 }),
     country: varchar('country', { length: 255 }),

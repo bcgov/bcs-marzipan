@@ -1,12 +1,10 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityResponse } from '@corpcal/shared/schemas';
 import { ErrorState, StatusMessage } from '@/components/shared';
 
 import { fetchActivity } from '../api/activitiesApi';
-import { useAuth } from '../hooks/useAuth';
 import {
   LOAD_ACTIVITY_NO_ID,
   LOAD_ACTIVITY_TITLE,
@@ -25,22 +23,9 @@ export type ActivityLayoutContext = {
 
 export function ActivityLayout(): React.ReactElement {
   const { id } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { hasPermission } = useAuth();
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const isEditRoute = location.pathname.endsWith('/edit');
-  const canAccessEdit = hasPermission(PERMISSIONS.ACTIVITIES.EDIT);
-  const redirectToView = isEditRoute && !canAccessEdit;
-
-  // Redirect users without EDIT permission away from edit route before loading activity
-  useEffect(() => {
-    if (!id || !redirectToView) return;
-    void navigate(`/activity/${id}`, { replace: true });
-  }, [id, redirectToView, navigate]);
 
   const refreshActivity = useCallback(async () => {
     if (!id) return;
@@ -53,9 +38,6 @@ export function ActivityLayout(): React.ReactElement {
     if (!id) {
       setError(LOAD_ACTIVITY_NO_ID);
       setLoading(false);
-      return;
-    }
-    if (redirectToView) {
       return;
     }
     let mounted = true;
@@ -78,7 +60,7 @@ export function ActivityLayout(): React.ReactElement {
     return () => {
       mounted = false;
     };
-  }, [id, redirectToView]);
+  }, [id]);
 
   if (loading) {
     return (

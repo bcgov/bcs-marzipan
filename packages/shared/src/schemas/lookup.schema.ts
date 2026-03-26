@@ -116,6 +116,7 @@ export const organizationLookupItemSchema = z.object({
   value: z.number().int(),
   name: z.string(),
   displayName: z.string(),
+  ministryId: z.number().int().nullable().optional(),
 });
 
 // ============================================
@@ -338,13 +339,17 @@ export const cityResponseSchema = z.object({
   displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
-  province: z.string().nullable(),
+  provinceOrState: z.string().nullable(),
+  country: z.string().nullable(),
 });
 
 export const cityLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
-  province: z.string().nullable(),
+  provinceOrState: z.string().nullable(),
+  country: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
 });
 
 // ============================================
@@ -471,17 +476,19 @@ export const themeLookupItemSchema = z.object({
 });
 
 // ============================================
-// Venue Quick Pick Schema
+// Venue Preset Schema
 // ============================================
 
 /**
- * Venue Quick Pick Item - admin-configured quick-pick venue for the activity form.
- * GET /lookups/venue-quick-picks returns an array of these.
- * Same shape as VenueAddress plus id for fixed quick-picks.
+ * Venue Preset Item - admin-defined named venue for the activity form.
+ * GET /lookups/venue-presets returns an array of these.
+ * All active rows appear in the combobox; pinned rows also show as badges.
  */
-export const venueQuickPickItemSchema = z
+export const venuePresetItemSchema = z
   .object({
     id: z.number().int(),
+    isPinned: z.boolean(),
+    pinnedSortOrder: z.number().int(),
   })
   .merge(venueAddressSchema);
 
@@ -573,7 +580,7 @@ export type ThemeLookupItem = z.infer<typeof themeLookupItemSchema>;
 
 export type ReportResponse = z.infer<typeof reportResponseSchema>;
 
-export type VenueQuickPickItem = z.infer<typeof venueQuickPickItemSchema>;
+export type VenuePresetItem = z.infer<typeof venuePresetItemSchema>;
 
 // ============================================
 // Request Schemas (for create/update operations)
@@ -622,7 +629,8 @@ export const updateTagRequestSchema = createTagRequestSchema.partial();
 export const createCityRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  province: z.string().max(255).nullable().optional(),
+  provinceOrState: z.string().max(255).nullable().optional(),
+  country: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
 });
@@ -725,23 +733,26 @@ export const updateActivityStatusRequestSchema =
   createActivityStatusRequestSchema.partial();
 
 /**
- * Create Venue Quick Pick Request Schema
+ * Create Venue Preset Request Schema
  */
-export const createVenueQuickPickRequestSchema = z.object({
+export const createVenuePresetRequestSchema = z.object({
   venueName: z.string().min(1).max(255),
-  street: z.string().max(255).nullable().optional(),
+  addressLine1: z.string().max(255).nullable().optional(),
+  addressLine2: z.string().max(255).nullable().optional(),
   city: z.string().max(255).nullable().optional(),
   provinceOrState: z.string().max(255).nullable().optional(),
   country: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int().default(0).optional(),
   isActive: z.boolean().default(true).optional(),
+  isPinned: z.boolean().default(false).optional(),
+  pinnedSortOrder: z.number().int().default(0).optional(),
 });
 
 /**
- * Update Venue Quick Pick Request Schema
+ * Update Venue Preset Request Schema
  */
-export const updateVenueQuickPickRequestSchema =
-  createVenueQuickPickRequestSchema.partial();
+export const updateVenuePresetRequestSchema =
+  createVenuePresetRequestSchema.partial();
 
 // ============================================
 // Request Type Exports
@@ -775,9 +786,9 @@ export type CreateActivityStatusRequest = z.infer<
 export type UpdateActivityStatusRequest = z.infer<
   typeof updateActivityStatusRequestSchema
 >;
-export type CreateVenueQuickPickRequest = z.infer<
-  typeof createVenueQuickPickRequestSchema
+export type CreateVenuePresetRequest = z.infer<
+  typeof createVenuePresetRequestSchema
 >;
-export type UpdateVenueQuickPickRequest = z.infer<
-  typeof updateVenueQuickPickRequestSchema
+export type UpdateVenuePresetRequest = z.infer<
+  typeof updateVenuePresetRequestSchema
 >;

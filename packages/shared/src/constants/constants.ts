@@ -129,6 +129,12 @@ export const DEFAULT_LOOK_AHEAD_SECTION = 'events' as const;
  */
 export const DEFAULT_VISIBILITY = 'global' as const;
 
+/**
+ * Lookup `name` for pitch_required_statuses and translation_required_statuses
+ * when defaulting to "Pending review" on activity create.
+ */
+export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = 'pending' as const;
+
 // ============================================================================
 // Auth Constants
 // ============================================================================

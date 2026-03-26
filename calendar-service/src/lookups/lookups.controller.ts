@@ -30,7 +30,7 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 } from '@corpcal/shared/api/types';
 import {
   createActivityStatusRequestSchema,
@@ -41,7 +41,7 @@ import {
   createMinistryRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
-  createVenueQuickPickRequestSchema,
+  createVenuePresetRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -50,7 +50,7 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
-  updateVenueQuickPickRequestSchema,
+  updateVenuePresetRequestSchema,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -67,7 +67,7 @@ import {
   CreateMinistryDto,
   CreateTagDto,
   CreateThemeDto,
-  CreateVenueQuickPickDto,
+  CreateVenuePresetDto,
   GovernmentRepresentativeResponseWrapperDto,
   LookupArrayResponseWrapperDto,
   MinistryResponseWrapperDto,
@@ -81,9 +81,9 @@ import {
   UpdateMinistryDto,
   UpdateTagDto,
   UpdateThemeDto,
-  UpdateVenueQuickPickDto,
-  VenueQuickPickArrayResponseWrapperDto,
-  VenueQuickPickResponseWrapperDto,
+  UpdateVenuePresetDto,
+  VenuePresetArrayResponseWrapperDto,
+  VenuePresetResponseWrapperDto,
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
@@ -785,6 +785,19 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get all venue statuses' })
+  @ApiResponse({
+    status: 200,
+    description: 'Venue statuses retrieved successfully',
+    type: LookupArrayResponseWrapperDto,
+  })
+  @Get('venue-statuses')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getVenueStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
+    const data = await this.lookupsService.getVenueStatuses();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all pitch required statuses' })
   @ApiResponse({
     status: 200,
@@ -886,78 +899,60 @@ export class LookupsController {
   }
 
   @ApiOperation({
-    summary: 'Get venue quick-picks',
+    summary: 'Get venue presets',
     description:
-      'Returns admin-configured quick-pick venues for the activity form (max 4 active).',
+      'Returns admin-defined venue presets for the activity form. Pinned presets are shown as badges.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Venue quick-picks retrieved successfully',
-    type: VenueQuickPickArrayResponseWrapperDto,
+    description: 'Venue presets retrieved successfully',
+    type: VenuePresetArrayResponseWrapperDto,
   })
-  @Get('venue-quick-picks')
+  @Get('venue-presets')
   @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getVenueQuickPicks(): Promise<{
+  async getVenuePresets(): Promise<{
     success: boolean;
-    data: VenueQuickPickItem[];
+    data: VenuePresetItem[];
   }> {
-    const data = await this.lookupsService.getVenueQuickPicks();
+    const data = await this.lookupsService.getVenuePresets();
     return { success: true, data };
   }
 
-  @ApiOperation({
-    summary: 'Get last-used venue addresses',
-    description:
-      'Returns the last 2 distinct venue addresses used by the current user.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Last-used venues retrieved successfully',
-    type: VenueQuickPickArrayResponseWrapperDto,
-  })
-  @Get('venue-last-used')
-  async getVenueLastUsed(
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenueQuickPickItem[] }> {
-    const data = await this.lookupsService.getVenueLastUsed(user.id);
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Create a venue quick-pick' })
+  @ApiOperation({ summary: 'Create a venue preset' })
   @ApiResponse({
     status: 201,
-    description: 'Venue quick-pick created successfully',
-    type: VenueQuickPickResponseWrapperDto,
+    description: 'Venue preset created successfully',
+    type: VenuePresetResponseWrapperDto,
   })
-  @ApiBody({ type: CreateVenueQuickPickDto })
+  @ApiBody({ type: CreateVenuePresetDto })
   @RequirePermission('lookups.manage')
-  @Post('venue-quick-picks')
-  async createVenueQuickPick(
-    @Body(new ZodValidationPipe(createVenueQuickPickRequestSchema))
-    body: CreateVenueQuickPickDto,
+  @Post('venue-presets')
+  async createVenuePreset(
+    @Body(new ZodValidationPipe(createVenuePresetRequestSchema))
+    body: CreateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenueQuickPickItem }> {
-    const data = await this.lookupsService.createVenueQuickPick(body, user.id);
+  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+    const data = await this.lookupsService.createVenuePreset(body, user.id);
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Update a venue quick-pick' })
+  @ApiOperation({ summary: 'Update a venue preset' })
   @ApiResponse({
     status: 200,
-    description: 'Venue quick-pick updated successfully',
-    type: VenueQuickPickResponseWrapperDto,
+    description: 'Venue preset updated successfully',
+    type: VenuePresetResponseWrapperDto,
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Venue quick-pick ID' })
-  @ApiBody({ type: UpdateVenueQuickPickDto })
+  @ApiParam({ name: 'id', type: Number, description: 'Venue preset ID' })
+  @ApiBody({ type: UpdateVenuePresetDto })
   @RequirePermission('lookups.manage')
-  @Patch('venue-quick-picks/:id')
-  async updateVenueQuickPick(
+  @Patch('venue-presets/:id')
+  async updateVenuePreset(
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateVenueQuickPickRequestSchema))
-    body: UpdateVenueQuickPickDto,
+    @Body(new ZodValidationPipe(updateVenuePresetRequestSchema))
+    body: UpdateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenueQuickPickItem }> {
-    const data = await this.lookupsService.updateVenueQuickPick(
+  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+    const data = await this.lookupsService.updateVenuePreset(
       Number(id),
       body,
       user.id
@@ -965,15 +960,15 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Delete a venue quick-pick' })
-  @ApiResponse({ status: 200, description: 'Venue quick-pick deleted' })
-  @ApiParam({ name: 'id', type: Number, description: 'Venue quick-pick ID' })
+  @ApiOperation({ summary: 'Delete a venue preset' })
+  @ApiResponse({ status: 200, description: 'Venue preset deleted' })
+  @ApiParam({ name: 'id', type: Number, description: 'Venue preset ID' })
   @RequirePermission('lookups.manage')
-  @Delete('venue-quick-picks/:id')
-  async deleteVenueQuickPick(
+  @Delete('venue-presets/:id')
+  async deleteVenuePreset(
     @Param('id') id: string
   ): Promise<{ success: boolean }> {
-    await this.lookupsService.deleteVenueQuickPick(Number(id));
+    await this.lookupsService.deleteVenuePreset(Number(id));
     return { success: true };
   }
 

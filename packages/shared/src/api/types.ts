@@ -41,6 +41,7 @@ export type {
   TeamListItem,
   TeamMember,
   TeamDetail,
+  CommsContactCandidate,
   CreateTeamBody,
   UpdateTeamBody,
 } from '../schemas/team.schema';
@@ -76,7 +77,8 @@ export type {
   ReportResponse,
   DateStatusLookupItem,
   TimeStatusLookupItem,
+  VenueStatusLookupItem,
   PitchRequiredStatusLookupItem,
   TranslationRequiredStatusLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 } from '../schemas/lookup.schema';

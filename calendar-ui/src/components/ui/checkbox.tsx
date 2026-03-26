@@ -6,17 +6,28 @@ import { cn } from '../../lib/utils';
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> & {
+    /**
+     * View-only: non-interactive like disabled but keeps full opacity (use for
+     * context read-only forms). Prefer over `disabled` when the surface should
+     * not look muted.
+     */
+    readOnly?: boolean;
+  }
+>(({ className, readOnly, disabled, checked, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
+    data-readonly={readOnly ? '' : undefined}
     className={cn(
       'peer border-input ring-offset-background focus-visible:ring-ring h-4 w-4 shrink-0 rounded-sm border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[#0F6CBD]',
+      readOnly && 'opacity-100!',
       className
     )}
     style={{
-      backgroundColor: props.checked ? '#0F6CBD' : undefined,
+      backgroundColor: checked ? '#0F6CBD' : undefined,
     }}
+    checked={checked}
+    disabled={readOnly || disabled}
     {...props}
   >
     <CheckboxPrimitive.Indicator

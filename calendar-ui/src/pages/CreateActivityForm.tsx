@@ -1,12 +1,9 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
-import React, { useEffect, useRef, useState, type FC } from 'react';
+import { useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
-  createActivityRequestSchema,
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
@@ -15,7 +12,6 @@ import { CreateActivityConfirmModal } from '@/components/activity/activities/Cre
 import { PageHeader } from '@/components/layout';
 import {
   ActivityBreadcrumb,
-  AutosaveIndicator,
   FormErrorFallback,
   StatusMessage,
 } from '@/components/shared';
@@ -27,24 +23,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
-import {
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  ResumeDialog,
-} from '../components/ui/resumeDraftDialog';
+import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useAuth } from '../hooks/useAuth';
-import { useAutoSave } from '../hooks/useAutoSave';
 import { useCreateActivity } from '../hooks/useCalendar';
-import { useFormLookups } from '../hooks/useFormLookups';
-import { useLeadTeamOptions } from '../hooks/useLeadTeamOptions';
-import { useDateStatuses, useTimeStatuses } from '../hooks/useLookups';
-import {
-  DEFAULT_FORM_VALUES,
-  getDefaultFormValues,
-} from '../lib/activity-form-defaults';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
 import {
@@ -55,11 +36,9 @@ import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
-// Key used to store draft dialog session state in sessionStorage
-const DRAFT_DIALOG_SESSION_KEY = 'create-activity-draft-dialog';
-
 const logger = createLogger('CreateActivityForm');
 
+/** Create popup: draft autosave and resume dialog removed while autosave stayed permanently disabled. */
 export const CreateActivityForm: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
@@ -68,188 +47,30 @@ export const CreateActivityForm: FC = () => {
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
   );
-  const draftCheckedRef = useRef(false);
 
   const createMutation = useCreateActivity();
-  const {
-    hasPermission,
-    isLoading: isAuthLoading,
-    isAuthenticated,
-    user,
-  } = useAuth();
+  const { hasPermission, isLoading: isAuthLoading, user } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
 
-  // Fetch date and time statuses
-  const { data: dateStatuses } = useDateStatuses();
-  const { data: timeStatuses } = useTimeStatuses();
-
-  // Fetch all lookup data
-  const lookups = useFormLookups();
   const {
-    data: leadTeamOptions = [],
-    isError: leadTeamOptionsError,
-    refetch: refetchLeadTeamOptions,
-  } = useLeadTeamOptions(canCreateActivity);
-
-  const form = useForm<ActivityFormData>({
-    resolver: zodResolver(
-      createActivityRequestSchema
-    ) as Resolver<ActivityFormData>,
-    mode: 'onChange', // Validate on change to enable real-time validation
-    defaultValues: {
-      ...getDefaultFormValues(),
-    },
+    form,
+    lookups,
+    leadTeamOptions,
+    leadTeamOptionsError,
+    leadTeamOptionsFetching,
+    refetchLeadTeamOptions,
+    commsContactCandidates,
+  } = useActivityFormSetup({
+    mode: 'create',
+    leadTeamFetchEnabled: canCreateActivity,
+    userId: user?.id,
+    userTeamIds: user?.teamIds,
+    hasCreateAny,
   });
 
-  // Set default date and time statuses to "unknown" when they're loaded
-  useEffect(() => {
-    if (dateStatuses && !form.getValues('dateStatusId')) {
-      const unknownStatus = dateStatuses.find((s) => s.name === 'unknown');
-      if (unknownStatus) {
-        form.setValue('dateStatusId', unknownStatus.id);
-      }
-    }
-  }, [dateStatuses, form]);
-
-  useEffect(() => {
-    if (timeStatuses && !form.getValues('timeStatusId')) {
-      const unknownStatus = timeStatuses.find((s) => s.name === 'unknown');
-      if (unknownStatus) {
-        form.setValue('timeStatusId', unknownStatus.id);
-      }
-    }
-  }, [timeStatuses, form]);
-
-  // Default lead team to user's first team when options load (only if form has no leadTeamId yet)
-  useEffect(() => {
-    if (leadTeamOptions.length === 0) return;
-    const currentLeadTeamId = form.getValues('leadTeamId');
-    if (currentLeadTeamId != null) return;
-    const firstUserTeamId = user?.teamIds?.[0];
-    const defaultTeam =
-      (firstUserTeamId != null &&
-        leadTeamOptions.find((t) => t.id === firstUserTeamId)) ||
-      leadTeamOptions[0];
-    if (defaultTeam) {
-      form.setValue('leadTeamId', defaultTeam.id);
-      form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
-    }
-  }, [leadTeamOptions, user?.teamIds, form]);
-
-  // Get form values for autosave - use subscription pattern to avoid infinite loops
-  const [formValues, setFormValues] = useState<Partial<ActivityFormData>>(() =>
-    form.getValues()
-  );
-  const previousValuesRef = useRef<string>('');
-
-  useEffect(() => {
-    // Subscribe to form changes and only update state when values actually change
-    const subscription = form.watch((values) => {
-      const newValues = values as Partial<ActivityFormData>;
-      const newValuesStr = JSON.stringify(newValues);
-
-      // Only update if values actually changed
-      if (newValuesStr !== previousValuesRef.current) {
-        previousValuesRef.current = newValuesStr;
-        setFormValues(newValues);
-      }
-    });
-
-    // Initialize previous values ref
-    previousValuesRef.current = JSON.stringify(form.getValues());
-
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  // Autosave integration: userId comes from auth context inside useAutoSave
-  const initialDraftExistsRef = useRef(false);
-  const [showDraftDialog, setShowDraftDialog] = useState(false);
-
-  const {
-    existingDraft,
-    isDraftLoading,
-    isSaving,
-    lastSaved,
-    deleteDraft,
-    resetInitialFormData,
-  } = useAutoSave(
-    'activity',
-    formValues,
-    undefined,
-    {
-      debounceMs: 3000, // Save 3 seconds after user stops typing
-      enabled: !isSubmitting, // Disable during submission
-      onSaveError: (err) => {
-        logger.error('Draft save failed', err);
-        showErrorToast(err, 'Draft could not be saved.');
-      },
-    },
-    DEFAULT_FORM_VALUES
-  );
-
-  // On first load, record if a draft existed at mount, and only ever show dialog if it did
-  const didCheckInitialDraft = useRef(false);
-  useEffect(() => {
-    if (isDraftLoading || didCheckInitialDraft.current) return;
-    didCheckInitialDraft.current = true;
-    if (
-      existingDraft?.draftData &&
-      Object.keys(existingDraft.draftData).length > 0
-    ) {
-      initialDraftExistsRef.current = true;
-      setShowDraftDialog(true);
-    } else {
-      initialDraftExistsRef.current = false;
-    }
-  }, [existingDraft, isDraftLoading]);
-
-  // Prevent dialog from ever being shown if a draft did not exist at mount
-  useEffect(() => {
-    if (!isDraftLoading && !initialDraftExistsRef.current && showDraftDialog) {
-      setShowDraftDialog(false);
-    }
-  }, [isDraftLoading, showDraftDialog]);
-
-  // ...existing code...
-  // Reset dialog session flag if user starts fresh or continues draft
-  const handleContinueDraft = () => {
-    if (existingDraft?.draftData) {
-      const normalized = {
-        ...getDefaultFormValues(),
-        ...existingDraft.draftData,
-      } as ActivityFormData;
-      form.reset(normalized);
-    }
-    setShowDraftDialog(false);
-    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
-  };
-
-  const handleStartFresh = () => {
-    if (existingDraft) {
-      deleteDraft();
-    }
-    setShowDraftDialog(false);
-    draftCheckedRef.current = false;
-    form.reset(getDefaultFormValues(), {
-      keepDirty: false,
-      keepTouched: false,
-    });
-    resetInitialFormData();
-    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
-  };
-
   const handleCancel = () => {
-    // Delete the draft if it exists (hook uses delete-by-form; no need to await for close)
-    if (existingDraft) {
-      try {
-        deleteDraft();
-      } catch (e) {
-        logger.warn('Error deleting draft on cancel', e);
-      }
-    }
-
-    sessionStorage.removeItem(DRAFT_DIALOG_SESSION_KEY);
     form.reset();
     window.close();
   };
@@ -276,10 +97,6 @@ export const CreateActivityForm: FC = () => {
       } as CreateActivityRequest;
 
       await createMutation.mutateAsync(payload);
-
-      if (existingDraft) {
-        deleteDraft();
-      }
 
       toast.success('Activity created', {
         id: 'activity-created',
@@ -366,38 +183,10 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ResumeDialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Continue where you left off?</DialogTitle>
-            <DialogDescription>
-              You have a saved draft for this activity form. Would you like to
-              continue editing it, or start with a fresh form?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleStartFresh} type="button">
-              Start Fresh
-            </Button>
-            <Button onClick={handleContinueDraft} type="button">
-              Continue Draft
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </ResumeDialog>
-
       <ActivityBreadcrumb currentLabel="New activity" />
       <PageHeader
         title="Create New Activity"
         description="Fill in the activity details below"
-        action={
-          <AutosaveIndicator
-            isAuthenticated={isAuthenticated}
-            isSaving={isSaving}
-            lastSaved={lastSaved}
-            isLoading={isDraftLoading}
-          />
-        }
       />
 
       <Form {...form}>
@@ -423,10 +212,15 @@ export const CreateActivityForm: FC = () => {
             </div>
           )}
           <ActivityFormBody
-            form={form}
             lookups={lookups}
+            commsContactCandidates={commsContactCandidates}
             readOnly={false}
-            leadTeamOptions={leadTeamOptions}
+            showChangedBadges={false}
+            leadTeamField={{
+              options: leadTeamOptions,
+              displayLabel: null,
+              optionsFetching: leadTeamOptionsFetching,
+            }}
           />
 
           <div className="flex justify-end gap-4 pt-6">
@@ -437,7 +231,7 @@ export const CreateActivityForm: FC = () => {
                 void handleCancel();
               }}
               disabled={isSubmitting}
-              title="This will discard any draft data and close the page"
+              title="Close the create window without saving"
             >
               Cancel
             </Button>
@@ -491,8 +285,8 @@ export const CreateActivityForm: FC = () => {
         }}
         formData={form.getValues()}
         lookups={lookups}
-        dateStatuses={dateStatuses}
-        timeStatuses={timeStatuses}
+        dateStatuses={lookups.dateStatuses}
+        timeStatuses={lookups.timeStatuses}
         leadTeamOptions={leadTeamOptions}
         onConfirm={(notes, markAsReviewed) =>
           void handleConfirmedSubmit(notes, markAsReviewed)

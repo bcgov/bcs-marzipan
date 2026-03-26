@@ -3,15 +3,28 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   activityCommsContacts,
+  activityEventPlanners,
   activityReportSettings,
   activityRepresentatives,
   governmentRepresentatives,
   reports,
   venueAddresses,
 } from '@corpcal/database/schema';
-import type { VenueAddress } from '@corpcal/shared/schemas';
+import type { VenueAddress, VenueAddressBase } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
+
+/** Maps API venue fields to DB column values (null for unset). */
+function venueAddressToRowFields(venueAddress: VenueAddressBase) {
+  return {
+    venueName: venueAddress.venueName ?? null,
+    addressLine1: venueAddress.addressLine1 ?? null,
+    addressLine2: venueAddress.addressLine2 ?? null,
+    city: venueAddress.city ?? null,
+    provinceOrState: venueAddress.provinceOrState ?? null,
+    country: venueAddress.country ?? null,
+  };
+}
 
 /**
  * Service for managing activity junction table relationships
@@ -137,6 +150,93 @@ export class ActivityJunctionService {
           toInsert.map((id) => ({
             activityId,
             ...idMapper(id),
+            isActive: true,
+            timestamp: now,
+          }))
+        );
+      }
+    }
+  }
+
+  /**
+   * Insert event planners into activityEventPlanners table
+   * Backend prefers eventPlannerId when present, else eventPlannerName (one-off). isLead marks the lead planner.
+   */
+  async insertEventPlanners(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    eventPlanners:
+      | Array<{
+          eventPlannerId?: number;
+          eventPlannerName?: string;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    if (
+      !eventPlanners ||
+      !Array.isArray(eventPlanners) ||
+      eventPlanners.length === 0
+    ) {
+      return;
+    }
+    const valid = eventPlanners.filter(
+      (p) =>
+        (typeof p.eventPlannerId === 'number' && p.eventPlannerId > 0) ||
+        (typeof p.eventPlannerName === 'string' &&
+          p.eventPlannerName.trim().length > 0)
+    );
+    if (valid.length === 0) return;
+    await tx.insert(activityEventPlanners).values(
+      valid.map((p) => ({
+        activityId,
+        eventPlannerId: p.eventPlannerId ?? null,
+        eventPlannerName: p.eventPlannerName?.trim() ?? null,
+        isLead: p.isLead ?? false,
+        isActive: true,
+        timestamp: now,
+      }))
+    );
+  }
+
+  /**
+   * Update event planners: replaces all existing with the new set (soft-delete old, insert new).
+   */
+  async updateEventPlanners(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    eventPlanners:
+      | Array<{
+          eventPlannerId?: number;
+          eventPlannerName?: string;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    await tx
+      .update(activityEventPlanners)
+      .set({ isActive: false })
+      .where(eq(activityEventPlanners.activityId, activityId));
+    if (eventPlanners && eventPlanners.length > 0) {
+      const valid = eventPlanners.filter(
+        (p) =>
+          (typeof p.eventPlannerId === 'number' && p.eventPlannerId > 0) ||
+          (typeof p.eventPlannerName === 'string' &&
+            p.eventPlannerName.trim().length > 0)
+      );
+      if (valid.length > 0) {
+        await tx.insert(activityEventPlanners).values(
+          valid.map((p) => ({
+            activityId,
+            eventPlannerId: p.eventPlannerId ?? null,
+            eventPlannerName: p.eventPlannerName?.trim() ?? null,
+            isLead: p.isLead ?? false,
             isActive: true,
             timestamp: now,
           }))
@@ -329,11 +429,7 @@ export class ActivityJunctionService {
 
     await tx.insert(venueAddresses).values({
       activityId,
-      venueName: venueAddress.venueName,
-      street: venueAddress.street,
-      city: venueAddress.city,
-      provinceOrState: venueAddress.provinceOrState,
-      country: venueAddress.country,
+      ...venueAddressToRowFields(venueAddress),
     });
   }
 
@@ -375,23 +471,13 @@ export class ActivityJunctionService {
       // Update existing address
       await tx
         .update(venueAddresses)
-        .set({
-          venueName: venueAddress.venueName,
-          street: venueAddress.street,
-          city: venueAddress.city,
-          provinceOrState: venueAddress.provinceOrState,
-          country: venueAddress.country,
-        })
+        .set(venueAddressToRowFields(venueAddress))
         .where(eq(venueAddresses.activityId, activityId));
     } else {
       // Insert new address
       await tx.insert(venueAddresses).values({
         activityId,
-        venueName: venueAddress.venueName,
-        street: venueAddress.street,
-        city: venueAddress.city,
-        provinceOrState: venueAddress.provinceOrState,
-        country: venueAddress.country,
+        ...venueAddressToRowFields(venueAddress),
       });
     }
   }
@@ -445,7 +531,6 @@ export class ActivityJunctionService {
     reportSettings: Map<number, boolean>
   ): Promise<void> {
     for (const [reportId, omitted] of reportSettings.entries()) {
-      // Check if row exists
       const [existing] = await tx
         .select()
         .from(activityReportSettings)
@@ -458,7 +543,6 @@ export class ActivityJunctionService {
         .limit(1);
 
       if (existing) {
-        // Update existing row
         await tx
           .update(activityReportSettings)
           .set({ omitted })
@@ -469,7 +553,6 @@ export class ActivityJunctionService {
             )
           );
       } else {
-        // Insert new row
         await tx.insert(activityReportSettings).values({
           activityId,
           reportId,

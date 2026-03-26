@@ -17,7 +17,8 @@ import type {
   TranslationLanguageLookupItem,
   TranslationRequiredStatusLookupItem,
   UserLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
+  VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type {
   CreateActivityStatusRequest,
@@ -28,7 +29,7 @@ import type {
   CreateMinistryRequest,
   CreateTagRequest,
   CreateThemeRequest,
-  CreateVenueQuickPickRequest,
+  CreateVenuePresetRequest,
   UpdateActivityStatusRequest,
   UpdateCategoryRequest,
   UpdateCityRequest,
@@ -37,7 +38,7 @@ import type {
   UpdateMinistryRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
-  UpdateVenueQuickPickRequest,
+  UpdateVenuePresetRequest,
 } from '@corpcal/shared/schemas';
 
 import api from './axios';
@@ -199,6 +200,14 @@ export async function fetchTimeStatuses(): Promise<TimeStatusLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchVenueStatuses(): Promise<VenueStatusLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: VenueStatusLookupItem[];
+  }>('/lookups/venue-statuses');
+  return res.data.data;
+}
+
 export async function fetchPitchRequiredStatuses(): Promise<
   PitchRequiredStatusLookupItem[]
 > {
@@ -241,19 +250,11 @@ export async function fetchThemes(): Promise<ThemeLookupItem[]> {
   return res.data.data;
 }
 
-export async function fetchVenueQuickPicks(): Promise<VenueQuickPickItem[]> {
+export async function fetchVenuePresets(): Promise<VenuePresetItem[]> {
   const res = await api.get<{
     success: boolean;
-    data: VenueQuickPickItem[];
-  }>('/lookups/venue-quick-picks');
-  return res.data.data;
-}
-
-export async function fetchLastUsedAddresses(): Promise<VenueQuickPickItem[]> {
-  const res = await api.get<{
-    success: boolean;
-    data: VenueQuickPickItem[];
-  }>('/lookups/venue-last-used');
+    data: VenuePresetItem[];
+  }>('/lookups/venue-presets');
   return res.data.data;
 }
 
@@ -305,33 +306,33 @@ export async function updateTag(
   return res.data;
 }
 
-// Venue quick picks
-export async function createVenueQuickPick(
-  data: CreateVenueQuickPickRequest
-): Promise<{ success: boolean; data: VenueQuickPickItem }> {
-  const res = await api.post<{ success: boolean; data: VenueQuickPickItem }>(
-    '/lookups/venue-quick-picks',
+// Venue presets
+export async function createVenuePreset(
+  data: CreateVenuePresetRequest
+): Promise<{ success: boolean; data: VenuePresetItem }> {
+  const res = await api.post<{ success: boolean; data: VenuePresetItem }>(
+    '/lookups/venue-presets',
     data
   );
   return res.data;
 }
 
-export async function updateVenueQuickPick(
+export async function updateVenuePreset(
   id: number,
-  data: UpdateVenueQuickPickRequest
-): Promise<{ success: boolean; data: VenueQuickPickItem }> {
-  const res = await api.patch<{ success: boolean; data: VenueQuickPickItem }>(
-    `/lookups/venue-quick-picks/${id}`,
+  data: UpdateVenuePresetRequest
+): Promise<{ success: boolean; data: VenuePresetItem }> {
+  const res = await api.patch<{ success: boolean; data: VenuePresetItem }>(
+    `/lookups/venue-presets/${id}`,
     data
   );
   return res.data;
 }
 
-export async function deleteVenueQuickPick(
+export async function deleteVenuePreset(
   id: number
 ): Promise<{ success: boolean }> {
   const res = await api.delete<{ success: boolean }>(
-    `/lookups/venue-quick-picks/${id}`
+    `/lookups/venue-presets/${id}`
   );
   return res.data;
 }
@@ -490,5 +491,5 @@ export type {
   LookupItem,
   MinistryLookupItem,
   ThemeLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 };

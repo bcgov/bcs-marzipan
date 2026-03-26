@@ -6,6 +6,7 @@ import type {
 import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
+import type { OptionItem } from '@/schemas/types';
 
 /**
  * Client-side keyword filter for activity table rows.
@@ -33,7 +34,7 @@ export function filterActivityRowsByKeyword(
       row.leadMinistryAbbreviation ?? '',
       row.leadMinistry ?? '',
       row.commsLeadName ?? '',
-      row.eventLead ?? '',
+      (row.eventPlanners ?? []).join(' '),
       row.activityStatus,
       row.activityRepresentatives.join(' '),
     ];
@@ -61,9 +62,9 @@ function isDateInRange(
 /** Optional context for filterActivityRowsByFilters (e.g. lookup options to resolve IDs to labels). */
 export interface FilterActivityRowsContext {
   /** Options for translation required statuses (value = id, label = displayName matching row.translationsRequiredStatus). */
-  translationRequiredStatusOptions?: Array<{ value: string; label: string }>;
+  translationRequiredStatusOptions?: OptionItem[];
   /** Options for translation languages (value = id, label = string that appears in row.translationsRequired). */
-  translationLanguageOptions?: Array<{ value: string; label: string }>;
+  translationLanguageOptions?: OptionItem[];
 }
 
 /**
@@ -212,9 +213,8 @@ export function filterActivityRowsByFilters(
   }
   if (filterState.eventPlannerLeadIds.length > 0) {
     const plannerSet = new Set(filterState.eventPlannerLeadIds);
-    result = result.filter(
-      (row) =>
-        row.eventPlannerLeadId != null && plannerSet.has(row.eventPlannerLeadId)
+    result = result.filter((row) =>
+      (row.eventPlannerLeadIds ?? []).some((id) => plannerSet.has(id))
     );
   }
 

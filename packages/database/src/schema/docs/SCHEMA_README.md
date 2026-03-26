@@ -7,7 +7,7 @@ This document describes the schema flow and type safety architecture in the appl
 The application uses a layered approach to ensure type safety from the database to the frontend:
 
 ```
-Database → Drizzle → Zod (auto-generated) → API Response (derived) → DTO (implements) → Frontend
+Database → Drizzle → Zod (hand-maintained request/response) → API → Frontend
 ```
 
 ## Key Components
@@ -21,31 +21,18 @@ Database → Drizzle → Zod (auto-generated) → API Response (derived) → DTO
 
 ### 2. Zod Schemas (`packages/shared/src/schemas/`)
 
-#### Activity Schema (`activity.schema.ts`)
+#### Activity request / response (`activity.schema.ts`, `activity-response.schema.ts`)
 
-Automatically generated from Drizzle schema using `drizzle-zod`:
+These are **hand-maintained** (see file headers in `packages/shared`). They define HTTP create/update payloads and `ActivityResponse`. When you change Drizzle columns for `activities`, update the Zod layers and run `packages/shared/scripts/validate-types.ts`.
 
-- `activitySchema`: Generated from `createSelectSchema(activities)` - matches database select queries
-- `createActivitySchema`: Generated from `createInsertSchema(activities)` - for database inserts
-- `updateActivitySchema`: Generated from `createUpdateSchema(activities)` - for database updates
-- `createActivityRequestSchema`: Extends `createActivitySchema` with HTTP request transformations
-- `updateActivityRequestSchema`: Extends `updateActivitySchema` for HTTP update requests
-- `filterActivitiesSchema`: Custom schema for query parameter validation
+- **`createActivityRequestSchema` / `updateActivityRequestSchema`**: API body validation (junction fields, refinements for comms lead and event planners, etc.).
+- **`activityResponseSchema`**: DB-shaped fields plus computed fields (`category`, tags, status names, etc.) built in the calendar service.
 
-#### Activity Response Schema (`activity-response.schema.ts`)
+Field transformations (dates/times as ISO strings, etc.) are implemented in the service mapper, not by a generated `drizzle-zod` pipeline.
 
-**Derived from Drizzle schema** using `createSelectSchema` and transformations:
+#### Recent database-facing changes
 
-- Base schema generated from `createSelectSchema(activities)`
-- Fields omitted: internal fields (rowVersion, deprecated fields)
-- Fields transformed:
-  - Date/time fields: `Date` → ISO string (`YYYY-MM-DD`), `time` → `HH:mm` string
-  - Foreign key IDs: Serial IDs remain `number` (matches database type), UUID IDs remain `string`
-  - Timestamps: `Date` → ISO datetime string
-- Fields renamed: `leadOrgId` → `leadOrg`, `isConfidential` → `confidential`, etc.
-- Computed fields added: `category`, `tags`, etc. (from relatedData)
-
-This ensures the API response schema automatically stays in sync with database schema changes.
+See [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (e.g. nullable `significance`, category rules on create).
 
 ### 3. DTOs (`packages/shared/src/dto/`)
 
@@ -82,7 +69,7 @@ This ensures the API response schema automatically stays in sync with database s
 
 ### 1. Compile-time Safety
 
-- **Schema Generation**: Zod schemas automatically generated from Drizzle
+- **Schema alignment**: Activity Zod schemas are maintained next to Drizzle; `validate-types.ts` and `schema-helpers.ts` help catch drift
 - **Type Inference**: TypeScript types inferred from Zod schemas
 - **Mapping Validation**: `ensureMatchesSchema()` ensures mapping produces valid types
 - **DTO Type Check**: Compile-time check that DTO class matches type
@@ -288,7 +275,9 @@ The application uses SQL seed files to populate lookup tables and initial data. 
 
 ### Migration Logging
 
-All schema changes must be documented in `packages/database/migrations/MIGRATION_LOG.md`. This log serves as a historical record of database schema evolution and helps track breaking changes.
+Document notable database and constraint changes in [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (append-only). The subsection below is an **additional** narrative log; keep it aligned with the actual files under `packages/database/migrations/` on your branch.
+
+**Current generated baseline (this branch):** `packages/database/migrations/0000_20260322_venue_and_activity.sql` (replaces `0000_20260305_delete_audit.sql` on `main`). Older dated entries below describe logical evolution; incremental filenames may not exist if history was squashed into that baseline.
 
 #### When to Update the Migration Log
 
@@ -330,13 +319,13 @@ Each log entry should include:
 - Consider backfilling default preferences for existing users
 ```
 
-#### 2026-02-12 - Add venue_quick_picks table
+#### 2026-02-12 - Add venue_presets table
 
-**Migration File(s):** `0005_20260212_venue_quick_picks.sql`
+**Migration File(s):** Historical incremental: `0005_20260212_venue_quick_picks.sql` (if present in older branches). **Current repo:** see `0000_20260322_venue_and_activity.sql`.
 
 **Changes:**
 
-- Created new `venue_quick_picks` table with columns: id, venue_name, street, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
+- Created `venue_presets` table (originally `venue_quick_picks`, renamed 2026-03-21) with columns: id, venue_name, address_line1, city, province_or_state, country, sort_order, is_active, created_date_time, created_by, last_updated_date_time, last_updated_by
 - Added foreign key constraints: created_by and last_updated_by reference users.id
 
 **Breaking Changes:**
@@ -345,7 +334,56 @@ Each log entry should include:
 
 **Notes:**
 
-- Used for admin-configured quick-pick venues on the activity form (max 4 active). No legacy data; populated via admin UI or seeds.
+- Admin-defined named venues for the activity form. No legacy data; populated via admin UI or seeds.
+
+#### 2026-03-20 - Add address_line2 to venue_presets
+
+**Migration File(s):** Historical incremental: `0003_venue_quick_picks_address_line2.sql`. **Current repo:** rolled into `0000_20260322_venue_and_activity.sql`.
+
+**Changes:**
+
+- Added nullable `address_line2` (`varchar(255)`) to `venue_presets`, matching `venue_addresses` and `VenuePresetItem` / `venueAddressSchema`.
+
+**Breaking Changes:**
+
+- None (new nullable column; existing rows default to NULL).
+
+**Notes:**
+
+- Admin UI and API create/update accept optional `addressLine2`; list/detail responses include it for parity with last-used and activity venue payloads.
+
+#### 2026-03-20 - Drop unused `venues` lookup table
+
+**Migration File(s):** Historical incremental: `0004_drop_venues.sql`. **Current repo:** rolled into `0000_20260322_venue_and_activity.sql`.
+
+**Changes:**
+
+- Removed `venues` (unused seeded lookup; activity venue data lives in `venue_addresses`, form presets in `venue_presets`).
+
+**Breaking Changes:**
+
+- None for the app (table was not referenced by services or APIs).
+
+#### 2026-03-21 - Rename venue_quick_picks to venue_presets, add pin columns
+
+**Migration File(s):** **Current repo:** `0000_20260322_venue_and_activity.sql`.
+
+**Changes:**
+
+- Renamed table from `venue_quick_picks` to `venue_presets`.
+- Added `is_pinned` (`boolean`, not null, default false) - controls whether preset appears as a quick-select badge.
+- Added `pinned_sort_order` (`integer`, not null, default 0) - badge display order among pinned presets.
+- Removed max-4-active enforcement; all active presets now appear in the combobox dropdown.
+- Added address deduplication (addressLine1 + addressLine2) on create/update.
+
+**Breaking Changes:**
+
+- API routes changed from `/lookups/venue-quick-picks` to `/lookups/venue-presets`.
+- Response shape includes new fields `isPinned` and `pinnedSortOrder`.
+
+**Notes:**
+
+- Table semantics broadened: presets serve both as combobox options (all active) and pinned preset badges.
 
 #### Benefits
 
@@ -358,7 +396,7 @@ Each log entry should include:
 
 ### Type Assertion Errors
 
-If you see type assertion errors with `z.ZodType & typeof schema`, this is expected. The drizzle-zod library's type definitions require this pattern. The types are still safe - the assertion just helps TypeScript recognize the compatibility.
+If you see type assertion errors with `z.ZodType & typeof schema`, that often comes from **drizzle-zod** where it is still used. Activity request/response shapes are hand-maintained Zod; prefer `validate-types` and mapper checks for those.
 
 ### Schema Drift
 
