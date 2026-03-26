@@ -19,8 +19,10 @@ import {
   ScheduledDateRangeFields,
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
-import { PageContainer } from '@/components/layout';
+import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
+import { TableScrollContainer } from '@/components/table/TableScrollContainer';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -52,12 +54,24 @@ const EMPTY_DATE_RANGE: DateRangeValue = {
   noEndDate: false,
 };
 
+const MAX_CHANGE_VALUE_LENGTH = 120;
+
 type HistoryTab = 'all' | 'mine';
 
 type FilterOption = {
   value: string;
   label: string;
 };
+
+function truncateChangeLogValue(value: string): string {
+  const normalizedValue = value.replace(/\s+/g, ' ').trim();
+
+  if (normalizedValue.length <= MAX_CHANGE_VALUE_LENGTH) {
+    return normalizedValue;
+  }
+
+  return `${normalizedValue.slice(0, MAX_CHANGE_VALUE_LENGTH - 3).trimEnd()}...`;
+}
 
 function formatActorUsername(username?: string | null): string | null {
   if (!username) {
@@ -570,41 +584,59 @@ export function GlobalHistory() {
   };
 
   const formatChangeValue = (field: string, value: unknown): string => {
+    let formattedValue: string;
+
     if (typeof value === 'number') {
       switch (field) {
         case 'activityStatusId':
-          return activityStatusLabelMap.get(value) || String(value);
+          formattedValue = activityStatusLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'createdBy':
         case 'lastUpdatedBy':
         case 'eventPlannerLeadId':
         case 'commsContactLeadId':
-          return userLabelMap.get(value) || String(value);
+          formattedValue = userLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'leadTeamId':
-          return leadTeamLabelMap.get(value) || String(value);
+          formattedValue = leadTeamLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'leadMinistryId':
-          return ministryLabelMap.get(value) || String(value);
+          formattedValue = ministryLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'leadOrgId':
-          return organizationLabelMap.get(value) || String(value);
+          formattedValue = organizationLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'dateStatusId':
-          return dateStatusLabelMap.get(value) || String(value);
+          formattedValue = dateStatusLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'timeStatusId':
-          return timeStatusLabelMap.get(value) || String(value);
+          formattedValue = timeStatusLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'pitchRequiredStatusId':
-          return pitchRequiredStatusLabelMap.get(value) || String(value);
+          formattedValue =
+            pitchRequiredStatusLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'translationsRequiredStatusId':
-          return translationRequiredStatusLabelMap.get(value) || String(value);
+          formattedValue =
+            translationRequiredStatusLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'newsReleaseOriginId':
-          return newsReleaseOriginLabelMap.get(value) || String(value);
+          formattedValue =
+            newsReleaseOriginLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'newsReleaseDistributionId':
-          return newsReleaseDistributionLabelMap.get(value) || String(value);
+          formattedValue =
+            newsReleaseDistributionLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         case 'premierRequestedId':
-          return premierRequestedLabelMap.get(value) || String(value);
+          formattedValue = premierRequestedLabelMap.get(value) || String(value);
+          return truncateChangeLogValue(formattedValue);
         default:
           break;
       }
     }
 
-    return formatHistoryFieldValue(field, value);
+    return truncateChangeLogValue(formatHistoryFieldValue(field, value));
   };
 
   const filteredEntries = useMemo(() => {
@@ -682,87 +714,83 @@ export function GlobalHistory() {
   }, [filteredEntries]);
 
   return (
-    <PageContainer className="max-w-[1100px]">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-            History
-          </h1>
+    <>
+      <PageHeader title="History" />
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as HistoryTab)}
+      >
+        <div className="mb-4">
+          <TabsList className="mb-0" variant="line" size="med">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="mine">My history</TabsTrigger>
+          </TabsList>
         </div>
+      </Tabs>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as HistoryTab)}
-        >
-          <div className="mb-0">
-            <TabsList className="mb-0" variant="line" size="med">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="mine">My history</TabsTrigger>
-            </TabsList>
-          </div>
-        </Tabs>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-[240px] max-w-[240px] min-w-[240px]">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search"
-              className="pr-3 pl-8"
-              aria-label="Search history"
-            />
-          </div>
-          <DateFilter value={dateRange} onChange={setDateRange} />
-          <SearchableMultiSelectFilter
-            label="Update type"
-            options={actionTypeOptions}
-            selectedValues={selectedActionTypes}
-            onChange={setSelectedActionTypes}
-          />
-          <SearchableMultiSelectFilter
-            label="Updated by"
-            options={userOptions}
-            selectedValues={selectedUserIds}
-            onChange={setSelectedUserIds}
-            searchPlaceholder="Search users"
-          />
-          <SearchableMultiSelectFilter
-            label="Category"
-            options={categoryOptions}
-            selectedValues={selectedCategories}
-            onChange={setSelectedCategories}
-          />
-          <SearchableMultiSelectFilter
-            label="Team"
-            options={leadTeamOptions}
-            selectedValues={selectedLeadTeamIds}
-            onChange={setSelectedLeadTeamIds}
-            searchPlaceholder="Search teams"
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative w-[240px] max-w-[240px] min-w-[240px]">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search"
+            className="pr-3 pl-8"
+            aria-label="Search history"
           />
         </div>
+        <DateFilter value={dateRange} onChange={setDateRange} />
+        <SearchableMultiSelectFilter
+          label="Update type"
+          options={actionTypeOptions}
+          selectedValues={selectedActionTypes}
+          onChange={setSelectedActionTypes}
+        />
+        <SearchableMultiSelectFilter
+          label="Updated by"
+          options={userOptions}
+          selectedValues={selectedUserIds}
+          onChange={setSelectedUserIds}
+          searchPlaceholder="Search users"
+        />
+        <SearchableMultiSelectFilter
+          label="Category"
+          options={categoryOptions}
+          selectedValues={selectedCategories}
+          onChange={setSelectedCategories}
+        />
+        <SearchableMultiSelectFilter
+          label="Team"
+          options={leadTeamOptions}
+          selectedValues={selectedLeadTeamIds}
+          onChange={setSelectedLeadTeamIds}
+          searchPlaceholder="Search teams"
+        />
+      </div>
 
-        {historyQuery.isLoading ? (
-          <div className="text-sm text-slate-500">Loading history...</div>
-        ) : historyQuery.isError ? (
-          <ErrorState
-            title="Unable to load history"
-            message="Try again or refresh the page."
-            onRetry={() => void historyQuery.refetch()}
-          />
-        ) : groupedEntries.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-            No matching history found.
-          </div>
-        ) : (
-          <div className="space-y-8">
+      {historyQuery.isLoading ? (
+        <div className="text-sm text-slate-500">Loading history...</div>
+      ) : historyQuery.isError ? (
+        <ErrorState
+          title="Unable to load history"
+          message="Try again or refresh the page."
+          onRetry={() => void historyQuery.refetch()}
+        />
+      ) : groupedEntries.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
+          No matching history found.
+        </div>
+      ) : (
+        <TableScrollContainer>
+          <div className="space-y-8 p-5">
             {groupedEntries.map(([heading, dayEntries]) => (
               <section key={heading} className="space-y-4">
                 <h2 className="text-base font-normal text-slate-700">
                   {heading}
                 </h2>
-                <div className="space-y-2.5">
+                <div className="space-y-[2.5px]">
                   {dayEntries.map((entry) => {
                     const timestamp = new Date(entry.timestamp);
                     const teamName = leadTeamLabelMap.get(
@@ -774,12 +802,17 @@ export function GlobalHistory() {
                     return (
                       <article
                         key={entry.id}
-                        className="flex items-start justify-between gap-6 rounded-lg bg-white py-4 pr-5"
+                        className="flex items-start justify-between gap-6 rounded-lg bg-white"
                       >
                         <div className="flex min-w-0 flex-1 gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
-                            {getActorInitials(entry)}
-                          </div>
+                          <Avatar
+                            className="h-9 w-9"
+                            title={getActorDisplayName(entry)}
+                          >
+                            <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
+                              {getActorInitials(entry)}
+                            </AvatarFallback>
+                          </Avatar>
                           <div className="min-w-0 space-y-1.5">
                             <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
                               <span className="font-medium text-slate-900">
@@ -805,19 +838,6 @@ export function GlobalHistory() {
                             <div className="text-sm font-bold text-slate-900">
                               {entry.activity.title}
                             </div>
-
-                            {entry.activity.categories.length > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {entry.activity.categories.map((category) => (
-                                  <span
-                                    key={`${entry.id}-${category}`}
-                                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                                  >
-                                    {category}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
 
                             {entry.notes ? (
                               <div className="text-sm text-slate-700">
@@ -887,8 +907,8 @@ export function GlobalHistory() {
               </section>
             ))}
           </div>
-        )}
-      </div>
-    </PageContainer>
+        </TableScrollContainer>
+      )}
+    </>
   );
 }
