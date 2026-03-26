@@ -6,15 +6,15 @@ For general edit permission (who may PATCH an activity, UI read-only rules, and 
 
 ## Statuses
 
-| Status               | Description                                                                                                  |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **New**              | Initial state when an activity is created (non-admin).                                                       |
-| **Changed**          | Set after any edit unless an admin marks as reviewed.                                                        |
-| **Reviewed**         | Set when an admin submits create or update with "Mark as reviewed" checked.                                  |
-| **Delete requested** | Set when a Comms contact or a member of the activity's lead team requests deletion (notes required).         |
-| **Deleted**          | Soft delete; set when an admin/sysAdmin performs "Soft delete" (notes required).                             |
-| **Completed**        | Set by a scheduled job a fixed delay after the activity end time (or after midnight for all-day activities). |
-| **On hold**          | Not yet implemented; reserved for future use.                                                                |
+| Status               | Description                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **New**              | Initial state when an activity is created (non-admin).                                                                                   |
+| **Changed**          | Set after any edit unless an admin marks as reviewed.                                                                                    |
+| **Reviewed**         | Set when a user with `activities.review` marks an activity reviewed (create confirm, or edit **Review** / update with `markAsReviewed`). |
+| **Delete requested** | Set when a Comms contact or a member of the activity's lead team requests deletion (notes required).                                     |
+| **Deleted**          | Soft delete; set when an admin/sysAdmin performs "Soft delete" (notes required).                                                         |
+| **Completed**        | Set by a scheduled job a fixed delay after the activity end time (or after midnight for all-day activities).                             |
+| **On hold**          | Not yet implemented; reserved for future use.                                                                                            |
 
 Status is not user-editable on the activity form; it is set by the system based on the action and the user's role.
 
@@ -26,8 +26,8 @@ Status is not user-editable on the activity form; it is set by the system based 
 
 ## How Status Is Set
 
-- **Create**: New activity is set to **New**. If the user is Admin or System Admin and submits with "Mark as reviewed" checked, status is set to **Reviewed**.
-- **Update**: If current status is **Delete requested** or **Deleted**, updates are rejected. Otherwise: non-admin always sets status to **Changed**; Admin/System Admin sets **Reviewed** if "Mark as reviewed" is checked, otherwise **Changed**.
+- **Create**: New activity is set to **New**. If the user has `activities.review` and submits with "Mark as reviewed" checked on the create confirmation dialog, status is set to **Reviewed**.
+- **Update**: If current status is **Delete requested** or **Deleted**, updates are rejected. Otherwise: users **without** `activities.review` always set status to **Changed** on save. Users **with** `activities.review` set **Reviewed** when they either use the **Review** action on the activity edit page (or save with pending changes via that flow) or send `markAsReviewed: true` on PATCH; saving changes with **Update** alone (without marking reviewed) sets **Changed**.
 - **Request delete**: Sets status to **Delete requested**. Notes are required. Comms contacts on the activity or members of the activity's lead team may call this.
 - **Soft delete**: Sets status to **Deleted**. Notes (reason) are required.
 - **Hard delete**: A note is required. The delete and the identity of who deleted are recorded in activity history before the activity row is removed.
