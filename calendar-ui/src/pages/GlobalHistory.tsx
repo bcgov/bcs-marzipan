@@ -6,20 +6,14 @@ import { useMemo, useState } from 'react';
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
 import {
-  fetchActivityStatuses,
-  fetchCategories,
   fetchDateStatuses,
-  fetchMinistries,
   fetchNewsReleaseDistributions,
   fetchNewsReleaseOrigins,
-  fetchOrganizations,
   fetchPitchRequiredStatuses,
   fetchPremierRequested,
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
-  fetchUsers,
 } from '@/api/lookupsApi';
-import { fetchTeams } from '@/api/usersApi';
 import {
   isDateRangeActive,
   ScheduledDateRangeFields,
@@ -36,6 +30,14 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FilterTrigger } from '@/components/users/FilterTrigger';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  useActivityStatuses,
+  useCategories,
+  useMinistries,
+  useOrganizations,
+  useTeams,
+  useUsers,
+} from '@/hooks/useLookups';
 import {
   formatHistoryFieldValue,
   getActionText,
@@ -324,41 +326,12 @@ export function GlobalHistory() {
     queryFn: fetchGlobalActivityHistory,
   });
 
-  const teamsQuery = useQuery({
-    queryKey: ['teams', 'history-filters'],
-    queryFn: fetchTeams,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const categoriesQuery = useQuery({
-    queryKey: ['lookups', 'categories', 'history-filters'],
-    queryFn: fetchCategories,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const usersQuery = useQuery({
-    queryKey: ['lookups', 'users', 'history-filters'],
-    queryFn: () => fetchUsers(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const organizationsQuery = useQuery({
-    queryKey: ['lookups', 'organizations', 'history-filters'],
-    queryFn: () => fetchOrganizations(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const ministriesQuery = useQuery({
-    queryKey: ['lookups', 'ministries', 'history-filters'],
-    queryFn: fetchMinistries,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const activityStatusesQuery = useQuery({
-    queryKey: ['lookups', 'activity-statuses', 'history-filters'],
-    queryFn: fetchActivityStatuses,
-    staleTime: 5 * 60 * 1000,
-  });
+  const teamsQuery = useTeams();
+  const categoriesQuery = useCategories();
+  const usersQuery = useUsers();
+  const organizationsQuery = useOrganizations();
+  const ministriesQuery = useMinistries();
+  const activityStatusesQuery = useActivityStatuses();
 
   const dateStatusesQuery = useQuery({
     queryKey: ['lookups', 'date-statuses', 'history-filters'],
