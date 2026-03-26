@@ -113,14 +113,20 @@ describe('SavedFiltersService', () => {
         scopeType: 'team',
         scopeTeamId: 5,
       });
-      const chain = createChain([userRow, teamRow], 'orderBy');
+      const globalRow = makeSavedFilterRow({
+        id: 3,
+        name: 'Global filter',
+        scopeType: 'global',
+        scopeTeamId: null,
+      });
+      const chain = createChain([userRow, teamRow, globalRow], 'orderBy');
       mockDatabaseService.db.select.mockReturnValueOnce(chain);
       chain.from.mockReturnValue(chain);
       chain.where.mockReturnValue(chain);
 
       const result = await service.listByContext(10, 'all', [5]);
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
     });
   });
 
@@ -169,6 +175,18 @@ describe('SavedFiltersService', () => {
           searchKeyword: '',
         })
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject team scope when scopeTeamId is missing', async () => {
+      await expect(
+        service.create(10, {
+          contextKey: 'all',
+          name: 'Team scoped',
+          filterState: {},
+          searchKeyword: '',
+          scopeType: 'team',
+        })
+      ).rejects.toThrow('scopeTeamId is required when scopeType is team');
     });
   });
 

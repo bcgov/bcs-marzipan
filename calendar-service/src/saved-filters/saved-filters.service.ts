@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -20,6 +21,16 @@ import type {
 const { activitySavedFilters } = schema;
 
 type SavedFilterRow = typeof activitySavedFilters.$inferSelect;
+type SavedFilterScopeType = 'user' | 'team' | 'global';
+
+interface ScopeResolution {
+  scopeType: SavedFilterScopeType;
+  scopeTeamId: number | null;
+}
+
+interface ScopeContext {
+  teamIds?: number[];
+}
 
 @Injectable()
 export class SavedFiltersService {
@@ -47,6 +58,8 @@ export class SavedFiltersService {
           teamIds.map((id) => sql`${id}`),
           sql`, `
         )}))
+        OR
+        (${activitySavedFilters.scopeType} = 'global')
       )`;
 
       rows = await this.db.db
@@ -65,8 +78,11 @@ export class SavedFiltersService {
         .where(
           and(
             ...conditions,
-            eq(activitySavedFilters.ownerUserId, userId),
-            eq(activitySavedFilters.scopeType, 'user')
+            sql`(
+              (${activitySavedFilters.scopeType} = 'user' AND ${activitySavedFilters.ownerUserId} = ${userId})
+              OR
+              (${activitySavedFilters.scopeType} = 'global')
+            )`
           )
         )
         .orderBy(
@@ -81,14 +97,25 @@ export class SavedFiltersService {
 
   async create(
     userId: number,
-    body: CreateSavedFilterBody
+    body: CreateSavedFilterBody,
+    scopeContext?: ScopeContext
   ): Promise<SavedFilterResponse> {
     const trimmedName = body.name.trim();
+    const resolvedScope = this.resolveScope({
+      scopeType: body.scopeType,
+      scopeTeamId: body.scopeTeamId,
+      teamIds: scopeContext?.teamIds,
+    });
 
-    await this.assertNameUnique(userId, body.contextKey, trimmedName);
+    await this.assertNameUnique(
+      userId,
+      body.contextKey,
+      trimmedName,
+      resolvedScope
+    );
 
     if (body.isDefault) {
-      await this.clearDefaultForContext(userId, body.contextKey);
+      await this.clearDefaultForContext(userId, body.contextKey, resolvedScope);
     }
 
     const [row] = await this.db.db
@@ -100,7 +127,8 @@ export class SavedFiltersService {
         filterState: body.filterState,
         searchKeyword: body.searchKeyword ?? '',
         isDefault: body.isDefault ?? false,
-        scopeType: 'user',
+        scopeType: resolvedScope.scopeType,
+        scopeTeamId: resolvedScope.scopeTeamId,
       })
       .returning();
 
@@ -114,9 +142,18 @@ export class SavedFiltersService {
   async update(
     userId: number,
     filterId: number,
-    body: UpdateSavedFilterBody
+    body: UpdateSavedFilterBody,
+    scopeContext?: ScopeContext
   ): Promise<SavedFilterResponse> {
     const existing = await this.findOwnedOrFail(userId, filterId);
+    const resolvedScope = this.resolveScope({
+      scopeType: body.scopeType ?? (existing.scopeType as SavedFilterScopeType),
+      scopeTeamId:
+        body.scopeTeamId !== undefined
+          ? body.scopeTeamId
+          : existing.scopeTeamId,
+      teamIds: scopeContext?.teamIds,
+    });
 
     if (body.name !== undefined) {
       const trimmedName = body.name.trim();
@@ -125,13 +162,18 @@ export class SavedFiltersService {
           userId,
           existing.contextKey,
           trimmedName,
+          resolvedScope,
           filterId
         );
       }
     }
 
     if (body.isDefault === true) {
-      await this.clearDefaultForContext(userId, existing.contextKey);
+      await this.clearDefaultForContext(
+        userId,
+        existing.contextKey,
+        resolvedScope
+      );
     }
 
     const setClause: Record<string, unknown> = { updatedAt: new Date() };
@@ -141,6 +183,10 @@ export class SavedFiltersService {
     if (body.searchKeyword !== undefined)
       setClause.searchKeyword = body.searchKeyword;
     if (body.isDefault !== undefined) setClause.isDefault = body.isDefault;
+    if (body.scopeType !== undefined)
+      setClause.scopeType = resolvedScope.scopeType;
+    if (body.scopeTeamId !== undefined)
+      setClause.scopeTeamId = resolvedScope.scopeTeamId;
 
     const [row] = await this.db.db
       .update(activitySavedFilters)
@@ -164,7 +210,11 @@ export class SavedFiltersService {
     const name = await this.generateUniqueName(
       userId,
       existing.contextKey,
-      baseName
+      baseName,
+      {
+        scopeType: existing.scopeType as SavedFilterScopeType,
+        scopeTeamId: existing.scopeTeamId,
+      }
     );
 
     const [row] = await this.db.db
@@ -176,7 +226,8 @@ export class SavedFiltersService {
         filterState: existing.filterState,
         searchKeyword: existing.searchKeyword,
         isDefault: false,
-        scopeType: 'user',
+        scopeType: existing.scopeType,
+        scopeTeamId: existing.scopeTeamId,
       })
       .returning();
 
@@ -234,16 +285,17 @@ export class SavedFiltersService {
     userId: number,
     contextKey: string,
     name: string,
+    scope: ScopeResolution,
     excludeId?: number
   ): Promise<void> {
     const lowerName = name.toLowerCase();
 
-    const conditions: SQL[] = [
-      eq(activitySavedFilters.ownerUserId, userId),
-      eq(activitySavedFilters.contextKey, contextKey),
-      eq(activitySavedFilters.isActive, true),
-      sql`lower(${activitySavedFilters.name}) = ${lowerName}`,
-    ];
+    const conditions: SQL[] = this.getNameMatchConditions(
+      userId,
+      contextKey,
+      lowerName,
+      scope
+    );
 
     if (excludeId !== undefined) {
       conditions.push(sql`${activitySavedFilters.id} != ${excludeId}`);
@@ -264,25 +316,35 @@ export class SavedFiltersService {
 
   private async clearDefaultForContext(
     userId: number,
-    contextKey: string
+    contextKey: string,
+    scope: ScopeResolution
   ): Promise<void> {
+    const conditions: SQL[] = [
+      eq(activitySavedFilters.contextKey, contextKey),
+      eq(activitySavedFilters.isDefault, true),
+      eq(activitySavedFilters.isActive, true),
+    ];
+    if (scope.scopeType === 'user') {
+      conditions.push(eq(activitySavedFilters.scopeType, 'user'));
+      conditions.push(eq(activitySavedFilters.ownerUserId, userId));
+    } else if (scope.scopeType === 'team') {
+      conditions.push(eq(activitySavedFilters.scopeType, 'team'));
+      conditions.push(eq(activitySavedFilters.scopeTeamId, scope.scopeTeamId!));
+    } else {
+      conditions.push(eq(activitySavedFilters.scopeType, 'global'));
+    }
+
     await this.db.db
       .update(activitySavedFilters)
       .set({ isDefault: false, updatedAt: new Date() })
-      .where(
-        and(
-          eq(activitySavedFilters.ownerUserId, userId),
-          eq(activitySavedFilters.contextKey, contextKey),
-          eq(activitySavedFilters.isDefault, true),
-          eq(activitySavedFilters.isActive, true)
-        )
-      );
+      .where(and(...conditions));
   }
 
   private async generateUniqueName(
     userId: number,
     contextKey: string,
-    baseName: string
+    baseName: string,
+    scope: ScopeResolution
   ): Promise<string> {
     let candidate = baseName;
     let suffix = 2;
@@ -295,10 +357,12 @@ export class SavedFiltersService {
         .from(activitySavedFilters)
         .where(
           and(
-            eq(activitySavedFilters.ownerUserId, userId),
-            eq(activitySavedFilters.contextKey, contextKey),
-            eq(activitySavedFilters.isActive, true),
-            sql`lower(${activitySavedFilters.name}) = ${lowerCandidate}`
+            ...this.getNameMatchConditions(
+              userId,
+              contextKey,
+              lowerCandidate,
+              scope
+            )
           )
         )
         .limit(1);
@@ -317,6 +381,64 @@ export class SavedFiltersService {
     return candidate;
   }
 
+  private getNameMatchConditions(
+    userId: number,
+    contextKey: string,
+    lowerName: string,
+    scope: ScopeResolution
+  ): SQL[] {
+    const conditions: SQL[] = [
+      eq(activitySavedFilters.contextKey, contextKey),
+      eq(activitySavedFilters.isActive, true),
+      sql`lower(${activitySavedFilters.name}) = ${lowerName}`,
+    ];
+    if (scope.scopeType === 'user') {
+      conditions.push(eq(activitySavedFilters.scopeType, 'user'));
+      conditions.push(eq(activitySavedFilters.ownerUserId, userId));
+    } else if (scope.scopeType === 'team') {
+      conditions.push(eq(activitySavedFilters.scopeType, 'team'));
+      conditions.push(eq(activitySavedFilters.scopeTeamId, scope.scopeTeamId!));
+    } else {
+      conditions.push(eq(activitySavedFilters.scopeType, 'global'));
+    }
+    return conditions;
+  }
+
+  private resolveScope(input: {
+    scopeType?: string;
+    scopeTeamId?: number | null;
+    teamIds?: number[];
+  }): ScopeResolution {
+    const scopeType = (input.scopeType ?? 'user') as SavedFilterScopeType;
+    if (
+      scopeType !== 'user' &&
+      scopeType !== 'team' &&
+      scopeType !== 'global'
+    ) {
+      throw new BadRequestException(`Invalid scopeType: ${input.scopeType}`);
+    }
+
+    if (scopeType === 'team') {
+      if (input.scopeTeamId == null) {
+        throw new BadRequestException(
+          'scopeTeamId is required when scopeType is team'
+        );
+      }
+      if (
+        input.teamIds &&
+        input.teamIds.length > 0 &&
+        !input.teamIds.includes(input.scopeTeamId)
+      ) {
+        throw new ForbiddenException(
+          'You can only share a filter with one of your teams'
+        );
+      }
+      return { scopeType, scopeTeamId: input.scopeTeamId };
+    }
+
+    return { scopeType, scopeTeamId: null };
+  }
+
   private mapToResponse(row: SavedFilterRow): SavedFilterResponse {
     return {
       id: row.id,
@@ -327,7 +449,7 @@ export class SavedFiltersService {
       searchKeyword: row.searchKeyword,
       isDefault: row.isDefault,
       sortOrder: row.sortOrder,
-      scopeType: row.scopeType,
+      scopeType: row.scopeType as SavedFilterScopeType,
       scopeTeamId: row.scopeTeamId,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),

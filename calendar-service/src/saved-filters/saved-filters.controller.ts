@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -20,7 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import type { AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
@@ -97,10 +98,13 @@ export class SavedFiltersController {
     body: CreateSavedFilterDto
   ): Promise<{ success: boolean; data: SavedFilterResponseDto }> {
     try {
+      this.assertScopePermission(user, body.scopeType);
       this.logger.log(
         `Creating saved filter "${body.name}" for user ${user.id}`
       );
-      const data = await this.savedFiltersService.create(user.id, body);
+      const data = await this.savedFiltersService.create(user.id, body, {
+        teamIds: user.teamIds ?? [],
+      });
       return { success: true, data };
     } catch (error: unknown) {
       const msg =
@@ -130,8 +134,11 @@ export class SavedFiltersController {
     @Body(new ZodValidationPipe(updateSavedFilterBodySchema))
     body: UpdateSavedFilterDto
   ): Promise<{ success: boolean; data: SavedFilterResponseDto }> {
+    this.assertScopePermission(user, body.scopeType);
     this.logger.log(`Updating saved filter ${id} for user ${user.id}`);
-    const data = await this.savedFiltersService.update(user.id, id, body);
+    const data = await this.savedFiltersService.update(user.id, id, body, {
+      teamIds: user.teamIds ?? [],
+    });
     return { success: true, data };
   }
 
@@ -175,5 +182,29 @@ export class SavedFiltersController {
   ): Promise<void> {
     this.logger.log(`Deleting saved filter ${id} for user ${user.id}`);
     await this.savedFiltersService.remove(user.id, id);
+  }
+
+  private assertScopePermission(user: AuthUser, scopeType?: string): void {
+    if (!scopeType || scopeType === 'user') return;
+
+    if (scopeType === 'team') {
+      if (!user.permissions.includes(PERMISSIONS.SAVED_FILTERS.SHARE_TEAM)) {
+        throw new ForbiddenException(
+          'You do not have permission to share team saved filters'
+        );
+      }
+      return;
+    }
+
+    if (scopeType === 'global') {
+      if (!user.permissions.includes(PERMISSIONS.SAVED_FILTERS.SHARE_GLOBAL)) {
+        throw new ForbiddenException(
+          'You do not have permission to share global saved filters'
+        );
+      }
+      return;
+    }
+
+    throw new ForbiddenException(`Invalid scope type: ${scopeType}`);
   }
 }
