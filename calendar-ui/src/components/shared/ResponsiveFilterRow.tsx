@@ -9,6 +9,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -37,6 +38,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  filterPopoverMenuItemClass,
+  filterPopoverMenuItemDestructiveClass,
+  filterPopoverSplitClearIconClass,
+  filterPopoverSubmenuTriggerClass,
+} from '@/components/users/filterPopoverMenuItemClasses';
 import {
   FilterTrigger,
   filterTriggerStyles,
@@ -115,7 +122,8 @@ const OverflowFilterRow = forwardRef<
       ref={ref}
       type="button"
       className={cn(
-        'data-[state=open]:bg-accent hover:bg-accent hover:text-accent-foreground flex w-full items-center justify-between gap-2 py-2 pr-4 pl-6 text-sm outline-none select-none',
+        'flex w-full items-center justify-between gap-2 py-2 pr-4 pl-6 text-sm',
+        filterPopoverSubmenuTriggerClass,
         className
       )}
       {...buttonProps}
@@ -128,7 +136,7 @@ const OverflowFilterRow = forwardRef<
             tabIndex={0}
             onClick={handleClearClick}
             onPointerDown={handleClearPointerDown}
-            className="text-muted-foreground hover:text-foreground hover:bg-accent inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 align-middle"
+            className={filterPopoverSplitClearIconClass}
             aria-label={triggerProps.clearAriaLabel}
           >
             <X className="h-3.5 w-3.5" />
@@ -209,7 +217,10 @@ function SavedFilterRowActionsPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-8 shrink-0 items-center justify-center py-2 outline-none"
+          className={cn(
+            'flex w-8 shrink-0 items-center justify-center py-2',
+            filterPopoverSubmenuTriggerClass
+          )}
           aria-label={`Actions for ${sf.name}`}
           aria-expanded={open}
           {...subPopoverHover.triggerPointerHandlers}
@@ -226,7 +237,10 @@ function SavedFilterRowActionsPopover({
       >
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none disabled:pointer-events-none disabled:opacity-50"
+          className={cn(
+            'flex w-full flex-col items-start gap-0 py-2 pr-2 pl-2 text-sm disabled:pointer-events-none disabled:opacity-50',
+            filterPopoverMenuItemClass
+          )}
           disabled={!hasActiveFilters()}
           onClick={onUpdate}
         >
@@ -237,7 +251,10 @@ function SavedFilterRowActionsPopover({
         </button>
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          className={cn(
+            'flex w-full flex-col items-start gap-0 py-2 pr-2 pl-2 text-sm',
+            filterPopoverMenuItemClass
+          )}
           onClick={onToggleDefault}
         >
           <span>{sf.isDefault ? 'Remove as default' : 'Make default'}</span>
@@ -247,14 +264,20 @@ function SavedFilterRowActionsPopover({
         </button>
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          className={cn(
+            'flex w-full items-center py-2 pr-2 pl-2 text-sm',
+            filterPopoverMenuItemClass
+          )}
           onClick={onDuplicate}
         >
           Duplicate
         </button>
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          className={cn(
+            'flex w-full items-center py-2 pr-2 pl-2 text-sm',
+            filterPopoverMenuItemClass
+          )}
           onClick={onRename}
         >
           Rename
@@ -262,7 +285,10 @@ function SavedFilterRowActionsPopover({
         <MenuDivider />
         <button
           type="button"
-          className="text-destructive hover:bg-destructive/10 flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          className={cn(
+            'flex w-full items-center py-2 pr-2 pl-2 text-sm',
+            filterPopoverMenuItemDestructiveClass
+          )}
           onClick={onDelete}
         >
           Delete saved filter
@@ -358,6 +384,7 @@ export function ResponsiveFilterRow({
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
   const [savedFiltersPopoverOpen, setSavedFiltersPopoverOpen] = useState(false);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
+  const filtersAccordionPanelId = useId();
 
   // Saved filter dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -721,9 +748,13 @@ export function ResponsiveFilterRow({
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     <button
                       type="button"
-                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-default items-center gap-2 px-4 py-2 text-sm font-medium outline-none"
+                      className={cn(
+                        'flex w-full cursor-default items-center gap-2 px-4 py-2 text-sm font-medium',
+                        filterPopoverMenuItemClass
+                      )}
                       onClick={() => setFiltersAccordionOpen((prev) => !prev)}
                       aria-expanded={filtersAccordionOpen}
+                      aria-controls={filtersAccordionPanelId}
                     >
                       Filters
                       <ChevronDownIcon
@@ -733,20 +764,27 @@ export function ResponsiveFilterRow({
                         )}
                       />
                     </button>
-                    {filtersAccordionOpen && (
-                      <div>
-                        {overflowSlotEntries.map((entry) => (
-                          <OverflowFilterPopover
-                            key={entry.key}
-                            entry={entry}
-                            isOpen={openFilterKey === entry.key}
-                            onOpenChange={(open) =>
-                              setOpenFilterKey(open ? entry.key : null)
-                            }
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div
+                      id={filtersAccordionPanelId}
+                      role="region"
+                      aria-label="Filter categories"
+                      hidden={!filtersAccordionOpen}
+                    >
+                      {filtersAccordionOpen ? (
+                        <div>
+                          {overflowSlotEntries.map((entry) => (
+                            <OverflowFilterPopover
+                              key={entry.key}
+                              entry={entry}
+                              isOpen={openFilterKey === entry.key}
+                              onOpenChange={(open) =>
+                                setOpenFilterKey(open ? entry.key : null)
+                              }
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 )}
                 {hasOverflow && <div className="border-t" />}
@@ -758,7 +796,10 @@ export function ResponsiveFilterRow({
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between px-4 py-2 text-sm outline-none"
+                        className={cn(
+                          'flex w-full items-center justify-between px-4 py-2 text-sm font-medium',
+                          filterPopoverSubmenuTriggerClass
+                        )}
                         {...savedFiltersSubPopoverHover.triggerPointerHandlers}
                       >
                         My saved filters
@@ -783,9 +824,10 @@ export function ResponsiveFilterRow({
                               <button
                                 type="button"
                                 className={cn(
-                                  'hover:bg-accent hover:text-accent-foreground flex min-w-0 items-center gap-2 py-2 pr-2 pl-4 text-left text-sm outline-none',
+                                  'flex min-w-0 items-center gap-2 py-2 pr-2 pl-4 text-left text-sm',
+                                  filterPopoverMenuItemClass,
                                   activeSavedFilterId === sf.id &&
-                                    'bg-accent text-accent-foreground'
+                                    'bg-accent text-accent-foreground hover:bg-accent'
                                 )}
                                 aria-label={`Apply ${sf.name}`}
                                 aria-current={
@@ -799,7 +841,7 @@ export function ResponsiveFilterRow({
                                   {sf.name}
                                 </span>
                                 {sf.isDefault && (
-                                  <span className="bg-foreground text-background shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium">
+                                  <span className="border-border text-muted-foreground shrink-0 rounded-full border bg-transparent px-1.5 py-1 text-[12px] leading-none font-medium">
                                     Default
                                   </span>
                                 )}
@@ -830,7 +872,10 @@ export function ResponsiveFilterRow({
                 {hasSavedFilters && (
                   <button
                     type="button"
-                    className="hover:bg-accent hover:text-accent-foreground w-full px-4 py-2 text-left text-sm outline-none disabled:pointer-events-none disabled:opacity-50"
+                    className={cn(
+                      'w-full px-4 py-2 text-left text-sm font-medium disabled:pointer-events-none disabled:opacity-50',
+                      filterPopoverMenuItemClass
+                    )}
                     disabled={!hasActiveFilters()}
                     onClick={() => {
                       setCreateName('');

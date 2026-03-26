@@ -6,7 +6,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { filterPopoverSubmenuTriggerClass } from '@/components/users/filterPopoverMenuItemClasses';
 import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
+import { cn } from '@/lib/utils';
 
 import type { ActivityFilterState } from './activityFilterState';
 import { FilterSearchableList } from './FilterSearchableList';
@@ -99,7 +101,10 @@ function LeadSectionPopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none"
+          className={cn(
+            'flex w-full items-center justify-between gap-2 px-2 py-1.5 text-sm',
+            filterPopoverSubmenuTriggerClass
+          )}
           aria-expanded={isOpen}
           aria-label={`${section.label} filter${count > 0 ? ` (${count} selected)` : ''}`}
           {...subPopoverHover.triggerPointerHandlers}

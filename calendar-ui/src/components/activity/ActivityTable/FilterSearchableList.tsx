@@ -2,6 +2,8 @@ import { Search, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { filterPopoverMenuItemClass } from '@/components/users/filterPopoverMenuItemClasses';
+import { cn } from '@/lib/utils';
 
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 
@@ -144,7 +146,10 @@ export function FilterSearchableList({
           <div className="border-t" />
           <button
             type="button"
-            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-2 text-sm"
+            className={cn(
+              'text-muted-foreground flex w-full items-center gap-2 px-3 py-2 text-sm',
+              filterPopoverMenuItemClass
+            )}
             onClick={onClear}
           >
             <X className="h-3.5 w-3.5" />
