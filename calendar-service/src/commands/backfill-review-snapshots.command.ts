@@ -10,15 +10,21 @@ import { AppLogger } from '../common/logger/logger.service';
  * Usage (from calendar-service):
  *   npm run backfill:review-snapshots -- --reviewed-only
  *   npm run backfill:review-snapshots -- --mock-changed-only
+ *   npm run backfill:review-snapshots -- --recompute-all
  *
- * Omit flags to run **both** (typical local reset; production usually uses
- * `--reviewed-only` once after deploy).
+ * Omit flags to run **both** reviewed-only + mock-changed-only (typical local reset;
+ * production usually uses `--reviewed-only` once after deploy).
+ *
+ * --recompute-all: rewrites snapshots for all Reviewed activities using the current
+ * mapping logic (including name-to-ID lookups). Use after deploying junction-field
+ * lookup resolution to realign existing baselines.
  */
 async function bootstrap() {
   const argv = new Set(process.argv.slice(2));
   const reviewedOnly = argv.has('--reviewed-only');
   const mockChangedOnly = argv.has('--mock-changed-only');
-  const runBoth = !reviewedOnly && !mockChangedOnly;
+  const recomputeAll = argv.has('--recompute-all');
+  const runBoth = !reviewedOnly && !mockChangedOnly && !recomputeAll;
 
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['log', 'error', 'warn'],
@@ -28,6 +34,13 @@ async function bootstrap() {
   const activities = app.get(ActivitiesService);
 
   try {
+    if (recomputeAll) {
+      const n = await activities.recomputeAllReviewedSnapshots();
+      logger.log(
+        `Recompute all Reviewed snapshots: ${n} row(s) updated`,
+        'BackfillReviewSnapshots'
+      );
+    }
     if (runBoth || reviewedOnly) {
       const n = await activities.backfillReviewedFieldSnapshotsWhereNull();
       logger.log(

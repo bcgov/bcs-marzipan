@@ -21,6 +21,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:db": "npm run build:packages && ts-node -r tsconfig-paths/register ../scripts/test-db-connection.ts",
     "seed": "ts-node -r tsconfig-paths/register src/commands/seed.command.ts",
+    "seed:snapshot": "npm run seed && npm run backfill:review-snapshots",
     "backfill:review-snapshots": "ts-node -r tsconfig-paths/register src/commands/backfill-review-snapshots.command.ts"
   },
   "dependencies": {

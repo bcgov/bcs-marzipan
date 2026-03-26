@@ -142,4 +142,57 @@ describe('diffReviewFields', () => {
     const current = minimalForm({ notes: undefined });
     expect(diffReviewFields(current, baseline)).not.toContain('notes');
   });
+
+  describe('junction ID array fields (post-lookup)', () => {
+    it('detects categoryIds change', () => {
+      const baseline = minimalForm({ categoryIds: [1, 2] });
+      const current = minimalForm({ categoryIds: [1, 3] });
+      expect(diffReviewFields(current, baseline)).toContain('categoryIds');
+    });
+
+    it('ignores categoryIds order differences', () => {
+      const baseline = minimalForm({ categoryIds: [2, 1] });
+      const current = minimalForm({ categoryIds: [1, 2] });
+      expect(diffReviewFields(current, baseline)).not.toContain('categoryIds');
+    });
+
+    it('detects commsMaterialIds change', () => {
+      const baseline = minimalForm({ commsMaterialIds: [10] });
+      const current = minimalForm({ commsMaterialIds: [10, 11] });
+      expect(diffReviewFields(current, baseline)).toContain('commsMaterialIds');
+    });
+
+    it('detects translationLanguageIds change', () => {
+      const baseline = minimalForm({ translationLanguageIds: [20] });
+      const current = minimalForm({ translationLanguageIds: [21] });
+      expect(diffReviewFields(current, baseline)).toContain(
+        'translationLanguageIds'
+      );
+    });
+
+    it('detects sharedWithTeamIds change', () => {
+      const baseline = minimalForm({ sharedWithTeamIds: [] });
+      const current = minimalForm({ sharedWithTeamIds: [30] });
+      expect(diffReviewFields(current, baseline)).toContain(
+        'sharedWithTeamIds'
+      );
+    });
+
+    it('does not flag junction fields when both empty', () => {
+      const baseline = minimalForm({
+        commsMaterialIds: [],
+        translationLanguageIds: [],
+        sharedWithTeamIds: [],
+      });
+      const current = minimalForm({
+        commsMaterialIds: undefined,
+        translationLanguageIds: undefined,
+        sharedWithTeamIds: undefined,
+      });
+      const result = diffReviewFields(current, baseline);
+      expect(result).not.toContain('commsMaterialIds');
+      expect(result).not.toContain('translationLanguageIds');
+      expect(result).not.toContain('sharedWithTeamIds');
+    });
+  });
 });

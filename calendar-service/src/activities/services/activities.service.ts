@@ -27,11 +27,13 @@ import {
   activityThemes,
   activityTranslationsRequired,
   categories,
+  commsMaterials,
   deletionAudit,
   favoriteActivities,
   ministries,
   pitchRequiredStatuses,
   teams,
+  translatedLanguages,
   translationRequiredStatuses,
   userTeams,
   venueAddresses,
@@ -55,12 +57,14 @@ import type {
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  buildReviewDiffLookups,
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
+  type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
 import type { Database } from '../../database/database.provider';
@@ -136,12 +140,66 @@ export class ActivitiesService {
   }
 
   /**
+   * Load all active lookup rows needed to resolve response display-name arrays
+   * (categories, comms materials, translation languages, teams) to form-data
+   * ID arrays. Uses unscoped queries so review diffs resolve correctly even
+   * when the reviewer's team scoping would hide a category in the picker.
+   */
+  private async getReviewDiffLookups(): Promise<MapResponseToFormDataLookups> {
+    const [categoryRows, commsMaterialRows, translationLanguageRows, teamRows] =
+      await Promise.all([
+        this.databaseService.db
+          .select({
+            id: categories.id,
+            name: categories.name,
+            displayName: categories.displayName,
+          })
+          .from(categories)
+          .where(eq(categories.isActive, true)),
+        this.databaseService.db
+          .select({
+            id: commsMaterials.id,
+            name: commsMaterials.name,
+            displayName: commsMaterials.displayName,
+          })
+          .from(commsMaterials)
+          .where(eq(commsMaterials.isActive, true)),
+        this.databaseService.db
+          .select({
+            id: translatedLanguages.id,
+            name: translatedLanguages.name,
+            displayName: translatedLanguages.displayName,
+            shortcode: translatedLanguages.shortcode,
+          })
+          .from(translatedLanguages)
+          .where(eq(translatedLanguages.isActive, true)),
+        this.databaseService.db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            displayName: teams.displayName,
+          })
+          .from(teams)
+          .where(eq(teams.isActive, true)),
+      ]);
+    return buildReviewDiffLookups({
+      categories: categoryRows,
+      commsMaterials: commsMaterialRows,
+      translationLanguages: translationLanguageRows,
+      sharedWithTeams: teamRows,
+    });
+  }
+
+  /**
    * Build the canonical review snapshot from a fully-hydrated ActivityResponse.
    * Maps the response back to form-data shape (ID-based), then canonicalizes
    * so comparison uses the same normalisation as dirty-field detection.
    */
-  private buildSnapshotFromResponse(response: ActivityResponse): unknown {
-    const formData = mapResponseToFormData(response);
+  private buildSnapshotFromResponse(
+    response: ActivityResponse,
+    lookups?: MapResponseToFormDataLookups
+  ): unknown {
+    const formData = mapResponseToFormData(response, lookups);
     return buildReviewSnapshot(formData);
   }
 
@@ -152,9 +210,10 @@ export class ActivitiesService {
   private async persistReviewSnapshot(
     db: Database,
     activityId: number,
-    response: ActivityResponse
+    response: ActivityResponse,
+    lookups?: MapResponseToFormDataLookups
   ): Promise<void> {
-    const snapshot = this.buildSnapshotFromResponse(response);
+    const snapshot = this.buildSnapshotFromResponse(response, lookups);
     await db
       .update(activities)
       .set({
@@ -187,12 +246,13 @@ export class ActivitiesService {
   computeChangedFieldsSinceReview(
     response: ActivityResponse,
     snapshot: unknown,
-    snapshotVersion: number
+    snapshotVersion: number,
+    lookups?: MapResponseToFormDataLookups
   ): string[] | undefined {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
     }
-    const currentFormData = mapResponseToFormData(response);
+    const currentFormData = mapResponseToFormData(response, lookups);
     const baseline = snapshot
       ? (snapshot as ReturnType<typeof buildReviewSnapshot>)
       : getEmptyReviewBaseline();
@@ -216,6 +276,7 @@ export class ActivitiesService {
         )
       );
 
+    const lookups = await this.getReviewDiffLookups();
     let updated = 0;
     for (const { id } of targets) {
       const [row] = await this.databaseService.db
@@ -226,7 +287,43 @@ export class ActivitiesService {
       if (!row) continue;
       const related = await this.fetchRelatedForActivityIds([id], [row]);
       const response = this.mapFetchedActivityToResponseDto(row, related);
-      const snapshot = this.buildSnapshotFromResponse(response);
+      const snapshot = this.buildSnapshotFromResponse(response, lookups);
+      await this.databaseService.db
+        .update(activities)
+        .set({
+          reviewedFieldSnapshot: snapshot,
+          reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+        })
+        .where(eq(activities.id, id));
+      updated++;
+    }
+    return updated;
+  }
+
+  /**
+   * Recompute `reviewed_field_snapshot` for all **Reviewed** activities
+   * that already have a non-null snapshot. Used after changing the name-to-ID
+   * lookup resolution so existing baselines align with the new mapping.
+   */
+  async recomputeAllReviewedSnapshots(): Promise<number> {
+    const reviewedId = await this.getActivityStatusIdByName('reviewed');
+    const targets = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.activityStatusId, reviewedId));
+
+    const lookups = await this.getReviewDiffLookups();
+    let updated = 0;
+    for (const { id } of targets) {
+      const [row] = await this.databaseService.db
+        .select()
+        .from(activities)
+        .where(eq(activities.id, id))
+        .limit(1);
+      if (!row) continue;
+      const related = await this.fetchRelatedForActivityIds([id], [row]);
+      const response = this.mapFetchedActivityToResponseDto(row, related);
+      const snapshot = this.buildSnapshotFromResponse(response, lookups);
       await this.databaseService.db
         .update(activities)
         .set({
@@ -252,11 +349,12 @@ export class ActivitiesService {
       .from(activities)
       .where(eq(activities.activityStatusId, changedId));
 
+    const lookups = await this.getReviewDiffLookups();
     let updated = 0;
     for (const row of targets) {
       const related = await this.fetchRelatedForActivityIds([row.id], [row]);
       const response = this.mapFetchedActivityToResponseDto(row, related);
-      const currentForm = mapResponseToFormData(response);
+      const currentForm = mapResponseToFormData(response, lookups);
       const priorForm = this.buildMockPriorReviewForm(currentForm, row.id);
       const snapshot = buildReviewSnapshot(priorForm);
       const diff = diffReviewFields(currentForm, snapshot);
@@ -1059,10 +1157,12 @@ export class ActivitiesService {
 
     // When created as Reviewed, persist the review snapshot so the diff starts empty.
     if (initialStatusName === 'reviewed' && createdActivity) {
+      const lookups = await this.getReviewDiffLookups();
       await this.persistReviewSnapshot(
         this.databaseService.db,
         result.id,
-        createdActivity
+        createdActivity,
+        lookups
       );
     }
 
@@ -1337,17 +1437,16 @@ export class ActivitiesService {
 
     // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
-    const related = await this.fetchRelatedForActivityIds(
-      activityIds,
-      activityResults
-    );
-    const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
-      related.categoriesResult;
-
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+    const [related, reviewLookups] = await Promise.all([
+      this.fetchRelatedForActivityIds(activityIds, activityResults),
+      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+    ]);
+    const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
+      related.categoriesResult;
 
     return activityResults.map((activity) => {
       const commsContacts = related.commsContactsMap.get(activity.id) ?? [];
@@ -1404,7 +1503,8 @@ export class ActivitiesService {
           this.computeChangedFieldsSinceReview(
             response,
             activity.reviewedFieldSnapshot,
-            activity.reviewedFieldSnapshotVersion
+            activity.reviewedFieldSnapshotVersion,
+            reviewLookups
           );
       }
       return response;
@@ -1462,7 +1562,12 @@ export class ActivitiesService {
     }
 
     // Fetch related data
-    const related = await this.fetchRelatedForActivityIds([id], [activity]);
+    const canReview =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+    const [related, reviewLookups] = await Promise.all([
+      this.fetchRelatedForActivityIds([id], [activity]),
+      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+    ]);
     const commsContacts = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
@@ -1481,13 +1586,12 @@ export class ActivitiesService {
       canEdit: canEdit ?? undefined,
     });
 
-    const canReview =
-      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
     if (canReview) {
       response.changedFieldsSinceReview = this.computeChangedFieldsSinceReview(
         response,
         activity.reviewedFieldSnapshot,
-        activity.reviewedFieldSnapshotVersion
+        activity.reviewedFieldSnapshotVersion,
+        reviewLookups
       );
     }
 
@@ -2104,7 +2208,13 @@ export class ActivitiesService {
 
     // When status becomes Reviewed, capture the current state as the review snapshot.
     if (newStatusName === 'reviewed') {
-      await this.persistReviewSnapshot(this.databaseService.db, id, result);
+      const lookups = await this.getReviewDiffLookups();
+      await this.persistReviewSnapshot(
+        this.databaseService.db,
+        id,
+        result,
+        lookups
+      );
     }
 
     // Push Socket.IO work off the HTTP critical path so PATCH can respond even if

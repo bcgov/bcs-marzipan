@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 
-import { ActivitiesService } from '../activities/services/activities.service';
 import { AppModule } from '../app.module';
 import { AppLogger } from '../common/logger/logger.service';
 import { SeedService } from '../database/seed.service';
@@ -24,13 +23,6 @@ async function bootstrap() {
 
     if (success) {
       logger.log('Database seeding completed successfully', 'SeedCommand');
-      const activities = app.get(ActivitiesService);
-      const mockSnapshots =
-        await activities.seedMockReviewSnapshotsForChangedActivities();
-      logger.log(
-        `Mock review snapshots for Changed activities: ${mockSnapshots} row(s) updated`,
-        'SeedCommand'
-      );
       process.exit(0);
     } else {
       logger.error('Database seeding failed', undefined, 'SeedCommand');
