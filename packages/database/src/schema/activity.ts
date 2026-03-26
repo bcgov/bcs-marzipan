@@ -5,6 +5,7 @@ import {
   check,
   date,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -130,6 +131,13 @@ export const activities = pgTable(
     activityStatusId: integer('activity_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
+
+    // Review snapshot: canonical form-data JSON captured when status transitions to 'reviewed'.
+    // Used to compute per-field diff for reviewers. NULL when never reviewed or cleared on soft delete.
+    reviewedFieldSnapshot: jsonb('reviewed_field_snapshot'),
+    reviewedFieldSnapshotVersion: integer('reviewed_field_snapshot_version')
+      .notNull()
+      .default(1),
 
     // Audit fields
     createdBy: integer('created_by')

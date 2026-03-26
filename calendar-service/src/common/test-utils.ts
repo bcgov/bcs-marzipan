@@ -107,6 +107,8 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     lastUpdatedDateTime: now,
     lastUpdatedBy: 1,
     rowVersion: 0,
+    reviewedFieldSnapshot: null,
+    reviewedFieldSnapshotVersion: 1,
     ...overrides,
   };
 };

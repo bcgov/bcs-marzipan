@@ -72,11 +72,7 @@ export function ProtectedRoute({
           <p className="mb-6 text-slate-600">
             You don&apos;t have permission to access this page.
           </p>
-          <Button
-            onClick={handleNavigateHome}
-            variant="default"
-            className="bg-blue-600 text-white hover:bg-blue-700"
-          >
+          <Button onClick={handleNavigateHome} variant="default">
             Return to home page
           </Button>
         </div>
@@ -95,11 +91,7 @@ export function ProtectedRoute({
           <p className="mb-6 text-slate-600">
             This page requires the &quot;{requiredRole}&quot; role.
           </p>
-          <Button
-            onClick={handleNavigateHome}
-            variant="default"
-            className="bg-blue-600 text-white hover:bg-blue-700"
-          >
+          <Button onClick={handleNavigateHome} variant="default">
             Return to home page
           </Button>
         </div>

@@ -1,4 +1,5 @@
 import { ErrorBoundary } from 'react-error-boundary';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState, type FC } from 'react';
 
@@ -7,16 +8,15 @@ import {
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { ActivityFormBody } from '@/components/activity';
+import {
+  ActivityFormBody,
+  ActivityFormStickyBack,
+} from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
 import { PageHeader } from '@/components/layout';
-import {
-  ActivityBreadcrumb,
-  FormErrorFallback,
-  StatusMessage,
-} from '@/components/shared';
+import { FormErrorFallback, StatusMessage } from '@/components/shared';
+import { Button } from '@/components/ui/button';
 
-import { Button } from '../components/ui/button';
 import { Form } from '../components/ui/form';
 import {
   Popover,
@@ -40,6 +40,7 @@ const logger = createLogger('CreateActivityForm');
 
 /** Create popup: draft autosave and resume dialog removed while autosave stayed permanently disabled. */
 export const CreateActivityForm: FC = () => {
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
@@ -70,8 +71,12 @@ export const CreateActivityForm: FC = () => {
     hasCreateAny,
   });
 
+  const handleGoBack = () => {
+    void navigate(-1);
+  };
+
   const handleCancel = () => {
-    form.reset();
+    void form.reset();
     window.close();
   };
 
@@ -183,7 +188,7 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityBreadcrumb currentLabel="New activity" />
+      <ActivityFormStickyBack onBack={handleGoBack} />
       <PageHeader
         title="Create New Activity"
         description="Fill in the activity details below"
@@ -226,7 +231,7 @@ export const CreateActivityForm: FC = () => {
           <div className="flex justify-end gap-4 pt-6">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 void handleCancel();
               }}
@@ -245,6 +250,7 @@ export const CreateActivityForm: FC = () => {
                     <Button
                       type="submit"
                       disabled={true}
+                      variant={canReviewActivities ? 'outline' : 'default'}
                       className="cursor-not-allowed"
                     >
                       {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -269,7 +275,11 @@ export const CreateActivityForm: FC = () => {
                 </PopoverContent>
               </Popover>
             ) : (
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                variant={canReviewActivities ? 'outline' : 'default'}
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </Button>
             )}

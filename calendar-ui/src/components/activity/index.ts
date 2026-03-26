@@ -1,4 +1,5 @@
 export { ActivityFormBody } from './ActivityFormBody';
+export { ActivityFormStickyBack } from './ActivityFormStickyBack';
 export type { ActivityLeadTeamFieldConfig } from './activity-lead-team-field-config';
 export { defaultActivityLeadTeamFieldConfig } from './activity-lead-team-field-config';
 export { ActivityPageHeader } from './ActivityPageHeader';

@@ -43,6 +43,8 @@ type ActivityFormBodyProps = {
   readOnly?: boolean;
   /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
   showChangedBadges?: boolean;
+  /** Dotted field paths changed since last review (reviewer-only). */
+  reviewerChangedPaths?: ReadonlySet<string>;
   leadTeamField?: ActivityLeadTeamFieldConfig;
 };
 
@@ -54,6 +56,7 @@ export function ActivityFormBody({
   commsContactCandidates,
   readOnly = false,
   showChangedBadges = true,
+  reviewerChangedPaths,
   leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
   const form = useFormContext<ActivityFormData>();
@@ -97,7 +100,10 @@ export function ActivityFormBody({
 
   return (
     <ActivityEditProvider value={editContextValue}>
-      <FormDisplayOptionsProvider showChangedBadges={showChangedBadges}>
+      <FormDisplayOptionsProvider
+        showChangedBadges={showChangedBadges}
+        reviewerChangedPaths={reviewerChangedPaths}
+      >
         <div
           className={cn(
             'grid grid-cols-1 gap-12 lg:grid-cols-2',

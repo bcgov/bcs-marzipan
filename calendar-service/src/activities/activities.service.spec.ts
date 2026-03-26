@@ -8,7 +8,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
 import { PERMISSIONS } from '@corpcal/shared';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
+import {
+  activityResponseSchema,
+  type UpdateActivityRequest,
+} from '@corpcal/shared/schemas';
 
 import {
   createMockActivity,
@@ -1076,6 +1079,61 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
       ).toBe('reviewed');
+    });
+
+    it('should set status to reviewed when only markAsReviewed is true and user has activities.review', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Test Activity',
+        activityStatusId: 2,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'changed' }] : [{ id: 2 }]
+            ),
+        };
+      });
+
+      const updateDto = { markAsReviewed: true } as UpdateActivityRequest;
+      const result = await service.update(1, updateDto, 1, {
+        permissions: ['activities.review'],
+        roleName: 'Admin',
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(2);
     });
 
     it('should set status to changed on update when user lacks activities.review even if markAsReviewed is true', async () => {

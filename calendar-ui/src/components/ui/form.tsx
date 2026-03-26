@@ -14,6 +14,8 @@ import {
   forwardRef,
   useContext,
   useId,
+  useLayoutEffect,
+  useState,
   type ComponentPropsWithoutRef,
   type ElementRef,
   type HTMLAttributes,
@@ -22,18 +24,21 @@ import {
 } from 'react';
 
 import { cn } from '../../lib/utils';
-import { FormFieldChangedIndicator } from './form-field-changed-indicator';
+import { FormFieldIndicator } from './form-field-changed-indicator';
 import { Label } from './label';
 
 const Form = FormProvider;
 
 type FormDisplayOptionsContextValue = {
   showChangedBadges: boolean;
+  /** Dotted field paths flagged as changed since the last Reviewed snapshot. Empty set = no review diff. */
+  reviewerChangedPaths: ReadonlySet<string>;
 };
 
 const FormDisplayOptionsContext = createContext<FormDisplayOptionsContextValue>(
   {
     showChangedBadges: true,
+    reviewerChangedPaths: new Set(),
   }
 );
 
@@ -43,15 +48,21 @@ export function useFormDisplayOptions(): FormDisplayOptionsContextValue {
 
 type FormDisplayOptionsProviderProps = {
   showChangedBadges?: boolean;
+  reviewerChangedPaths?: ReadonlySet<string>;
   children: ReactNode;
 };
 
 function FormDisplayOptionsProvider({
   showChangedBadges = true,
+  reviewerChangedPaths,
   children,
 }: FormDisplayOptionsProviderProps): ReactElement {
+  const value = {
+    showChangedBadges,
+    reviewerChangedPaths: reviewerChangedPaths ?? new Set<string>(),
+  };
   return (
-    <FormDisplayOptionsContext.Provider value={{ showChangedBadges }}>
+    <FormDisplayOptionsContext.Provider value={value}>
       {children}
     </FormDisplayOptionsContext.Provider>
   );
@@ -95,7 +106,7 @@ const useFormField = () => {
   }
 
   const fieldState = getFieldState(fieldContext.name, formState);
-  const { id } = itemContext;
+  const { id, ariaRequired } = itemContext;
 
   return {
     id,
@@ -103,24 +114,26 @@ const useFormField = () => {
     formItemId: `${id}-form-item`,
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
+    ariaRequired,
     ...fieldState,
   };
 };
 
 type FormItemContextValue = {
   id: string;
+  ariaRequired: boolean;
+  setAriaRequired: (value: boolean) => void;
 };
 
-const FormItemContext = createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-);
+const FormItemContext = createContext<FormItemContextValue | null>(null);
 
 const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const id = useId();
+    const [ariaRequired, setAriaRequired] = useState(false);
 
     return (
-      <FormItemContext.Provider value={{ id }}>
+      <FormItemContext.Provider value={{ id, ariaRequired, setAriaRequired }}>
         <div ref={ref} className={cn('space-y-2', className)} {...props} />
       </FormItemContext.Provider>
     );
@@ -128,34 +141,84 @@ const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 );
 FormItem.displayName = 'FormItem';
 
+/**
+ * Asterisk for labels of fields required on create. Colour from
+ * Tailwind `text-required-field-indicator` (maps to `--color-required-field-indicator`, same as Deleted status badge background).
+ */
+function RequiredFieldIndicator({
+  className,
+  ...props
+}: HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn('text-required-field-indicator font-semibold', className)}
+      aria-hidden
+      {...props}
+    >
+      *
+    </span>
+  );
+}
+
 const FormLabel = forwardRef<
   ElementRef<typeof LabelPrimitive.Root>,
   ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
     showDirtyIndicator?: boolean;
+    /** Renders the required asterisk and sets `aria-required` on the sibling {@link FormControl}. */
+    showRequired?: boolean;
   }
->(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
-  const { error, formItemId, isDirty } = useFormField();
-  const { showChangedBadges } = useFormDisplayOptions();
+>(
+  (
+    {
+      className,
+      children,
+      showDirtyIndicator = true,
+      showRequired = false,
+      ...props
+    },
+    ref
+  ) => {
+    const { error, formItemId, isDirty, name } = useFormField();
+    const { setAriaRequired } = useContext(FormItemContext)!;
+    const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
 
-  return (
-    <Label
-      ref={ref}
-      className={cn(
-        error && 'text-destructive',
-        className,
-        'flex items-center gap-2',
-        showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
-      )}
-      htmlFor={formItemId}
-      {...props}
-    >
-      <span className="inline-flex items-center">{children}</span>
-      {showChangedBadges && showDirtyIndicator && isDirty && (
-        <FormFieldChangedIndicator />
-      )}
-    </Label>
-  );
-});
+    useLayoutEffect(() => {
+      if (!showRequired) return;
+      setAriaRequired(true);
+      return () => {
+        setAriaRequired(false);
+      };
+    }, [showRequired, setAriaRequired]);
+
+    return (
+      <Label
+        ref={ref}
+        className={cn(
+          error && 'text-destructive',
+          className,
+          'flex items-center gap-2',
+          showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
+        )}
+        htmlFor={formItemId}
+        {...props}
+      >
+        <span
+          className={cn('inline-flex items-center', showRequired && 'gap-1')}
+        >
+          {children}
+          {showRequired ? <RequiredFieldIndicator className="inline" /> : null}
+        </span>
+        {showChangedBadges &&
+          showDirtyIndicator &&
+          (isDirty ? (
+            <FormFieldIndicator variant="changed" />
+          ) : reviewerChangedPaths.has(name) ? (
+            <FormFieldIndicator variant="review" />
+          ) : null)}
+      </Label>
+    );
+  }
+);
 FormLabel.displayName = 'FormLabel';
 
 /** Walks RHF `dirtyFields` for dotted paths (e.g. `venueAddress.city`). */
@@ -172,6 +235,7 @@ function dirtyFieldAtPath(dirty: unknown, path: string): boolean {
 /**
  * Shows the changed marker for a field name without nesting the control under {@link FormLabel}
  * (e.g. composite date/time rows, sr-only labels).
+ * Prioritises the RHF dirty indicator; falls back to review-diff indicator when not dirty.
  */
 function FormFieldDirtyIndicator({
   name,
@@ -180,13 +244,17 @@ function FormFieldDirtyIndicator({
   name: string;
   className?: string;
 }) {
-  const { showChangedBadges } = useFormDisplayOptions();
+  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
   const { control } = useFormContext();
   const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges || !dirtyFieldAtPath(dirtyFields, name)) {
-    return null;
+  if (!showChangedBadges) return null;
+  if (dirtyFieldAtPath(dirtyFields, name)) {
+    return <FormFieldIndicator variant="changed" className={className} />;
   }
-  return <FormFieldChangedIndicator className={className} />;
+  if (reviewerChangedPaths.has(name)) {
+    return <FormFieldIndicator variant="review" className={className} />;
+  }
+  return null;
 }
 
 /**
@@ -199,24 +267,26 @@ function FormAggregateDirtyIndicator({
   names: readonly string[];
   className?: string;
 }) {
-  const { showChangedBadges } = useFormDisplayOptions();
+  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
   const { control } = useFormContext();
   const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges) {
-    return null;
-  }
+  if (!showChangedBadges) return null;
   const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
-  if (!anyDirty) {
-    return null;
+  if (anyDirty) {
+    return <FormFieldIndicator variant="changed" className={className} />;
   }
-  return <FormFieldChangedIndicator className={className} />;
+  const anyReview = names.some((path) => reviewerChangedPaths.has(path));
+  if (anyReview) {
+    return <FormFieldIndicator variant="review" className={className} />;
+  }
+  return null;
 }
 
 const FormControl = forwardRef<
   ElementRef<typeof Slot>,
   ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } =
+  const { error, formItemId, formDescriptionId, formMessageId, ariaRequired } =
     useFormField();
 
   return (
@@ -230,6 +300,7 @@ const FormControl = forwardRef<
       }
       aria-invalid={!!error}
       {...props}
+      aria-required={ariaRequired ? true : undefined}
     />
   );
 });
@@ -275,25 +346,6 @@ const FormMessage = forwardRef<
   );
 });
 FormMessage.displayName = 'FormMessage';
-
-/**
- * Asterisk for labels of fields required on create. Colour from
- * Tailwind `text-required-field-indicator` (maps to `--color-required-field-indicator`, same as Deleted status badge background).
- */
-function RequiredFieldIndicator({
-  className,
-  ...props
-}: HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className={cn('text-required-field-indicator font-semibold', className)}
-      aria-hidden
-      {...props}
-    >
-      *
-    </span>
-  );
-}
 
 export {
   useFormField,

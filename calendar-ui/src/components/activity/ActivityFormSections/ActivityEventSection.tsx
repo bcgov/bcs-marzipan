@@ -1,11 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import {
-  useFormContext,
-  useFormState,
-  useWatch,
-  type UseFormReturn,
-} from 'react-hook-form';
+import { useFormContext, useWatch, type UseFormReturn } from 'react-hook-form';
 import { useMemo, type FC } from 'react';
 
 import type {
@@ -34,6 +29,7 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox';
 import {
+  FormAggregateDirtyIndicator,
   FormControl,
   FormField,
   FormItem,
@@ -41,7 +37,6 @@ import {
   FormMessage,
   useFormDisplayOptions,
 } from '@/components/ui/form';
-import { FormFieldChangedIndicator } from '@/components/ui/form-field-changed-indicator';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
@@ -83,23 +78,6 @@ type VenueFormValue = {
   provinceOrState: string | null;
   country: string | null;
 };
-
-/**
- * RHF may mark `venueAddress` as `true` (whole object) or nested field flags.
- */
-function isVenueNameMarkedDirty(venueAddressDirty: unknown): boolean {
-  if (venueAddressDirty === true) return true;
-  if (
-    venueAddressDirty &&
-    typeof venueAddressDirty === 'object' &&
-    !Array.isArray(venueAddressDirty)
-  ) {
-    return Boolean(
-      (venueAddressDirty as Record<string, boolean | undefined>).venueName
-    );
-  }
-  return false;
-}
 
 const EMPTY_VENUE: VenueFormValue = {
   venueName: null,
@@ -318,18 +296,6 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     () => ({ ...EMPTY_VENUE, ...(venueAddressWatched ?? {}) }),
     [venueAddressWatched]
   );
-
-  const { dirtyFields } = useFormState({
-    control: form.control,
-  });
-
-  /** Heading badge: venue *name* or *status* only — not street/city/country (intentional). */
-  const venueLocationHeadingDirty = useMemo(() => {
-    return (
-      Boolean(dirtyFields?.venueStatusId) ||
-      isVenueNameMarkedDirty(dirtyFields?.venueAddress)
-    );
-  }, [dirtyFields]);
 
   const handleVenueAddressAutofill = (addressData: AddressData) => {
     const current = getVenueCurrent(form);
@@ -560,9 +526,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 )}
               >
                 {getActivityFieldLabel('venueName')}
-                {showChangedBadges && venueLocationHeadingDirty ? (
-                  <FormFieldChangedIndicator />
-                ) : null}
+                <FormAggregateDirtyIndicator
+                  names={['venueAddress.venueName', 'venueStatusId']}
+                />
               </span>
             </FormLabel>
             <FormControl data-field={_field.name}>
