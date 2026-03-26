@@ -1,7 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { REFERENCE_LOOKUP_CACHE_MS } from '@corpcal/shared';
 import type {
   DateStatusLookupItem,
   PitchRequiredStatusLookupItem,
@@ -11,7 +9,6 @@ import type {
 } from '@corpcal/shared/api/types';
 import type { OptionItem } from '@/schemas/types';
 
-import { fetchTeams } from '../api/usersApi';
 import {
   useActivityStatuses,
   useCategories,
@@ -27,6 +24,7 @@ import {
   usePitchStatuses,
   usePremierRequested,
   useTags,
+  useTeams,
   useTimeStatuses,
   useTranslationLanguages,
   useTranslationRequiredStatuses,
@@ -135,11 +133,7 @@ export function useFormLookups(): FormLookupData {
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
   const premierRequestedQuery = usePremierRequested();
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
-  const teamsQuery = useQuery({
-    queryKey: ['teams'],
-    queryFn: fetchTeams,
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
-  });
+  const teamsQuery = useTeams();
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
