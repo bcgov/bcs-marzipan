@@ -24,8 +24,7 @@ import {
 } from 'react';
 
 import { cn } from '../../lib/utils';
-import { FormFieldChangedIndicator } from './form-field-changed-indicator';
-import { FormFieldReviewIndicator } from './form-field-review-indicator';
+import { FormFieldIndicator } from './form-field-changed-indicator';
 import { Label } from './label';
 
 const Form = FormProvider;
@@ -212,9 +211,9 @@ const FormLabel = forwardRef<
         {showChangedBadges &&
           showDirtyIndicator &&
           (isDirty ? (
-            <FormFieldChangedIndicator />
+            <FormFieldIndicator variant="changed" />
           ) : reviewerChangedPaths.has(name) ? (
-            <FormFieldReviewIndicator />
+            <FormFieldIndicator variant="review" />
           ) : null)}
       </Label>
     );
@@ -250,10 +249,10 @@ function FormFieldDirtyIndicator({
   const { dirtyFields } = useFormState({ control });
   if (!showChangedBadges) return null;
   if (dirtyFieldAtPath(dirtyFields, name)) {
-    return <FormFieldChangedIndicator className={className} />;
+    return <FormFieldIndicator variant="changed" className={className} />;
   }
   if (reviewerChangedPaths.has(name)) {
-    return <FormFieldReviewIndicator className={className} />;
+    return <FormFieldIndicator variant="review" className={className} />;
   }
   return null;
 }
@@ -274,11 +273,11 @@ function FormAggregateDirtyIndicator({
   if (!showChangedBadges) return null;
   const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
   if (anyDirty) {
-    return <FormFieldChangedIndicator className={className} />;
+    return <FormFieldIndicator variant="changed" className={className} />;
   }
   const anyReview = names.some((path) => reviewerChangedPaths.has(path));
   if (anyReview) {
-    return <FormFieldReviewIndicator className={className} />;
+    return <FormFieldIndicator variant="review" className={className} />;
   }
   return null;
 }
