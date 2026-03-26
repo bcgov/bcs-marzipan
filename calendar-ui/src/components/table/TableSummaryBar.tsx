@@ -22,6 +22,8 @@ interface TableSummaryBarProps {
   singularLabel: string;
   pluralLabel?: string;
   filters?: BooleanFilter[];
+  /** Shown after the count when a saved filter is the active selection. */
+  appliedSavedFilterName?: string | null;
   className?: string;
 }
 
@@ -30,6 +32,7 @@ export function TableSummaryBar({
   singularLabel,
   pluralLabel,
   filters = [],
+  appliedSavedFilterName = null,
   className,
 }: TableSummaryBarProps) {
   const label =
@@ -42,8 +45,13 @@ export function TableSummaryBar({
         className
       )}
     >
-      <span>
-        Showing {count} {label}
+      <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span>
+          Showing {count} {label}
+        </span>
+        {appliedSavedFilterName ? (
+          <span>Filtering by {appliedSavedFilterName}</span>
+        ) : null}
       </span>
       {filters.length > 0 && (
         <div className="flex flex-wrap items-center gap-4">

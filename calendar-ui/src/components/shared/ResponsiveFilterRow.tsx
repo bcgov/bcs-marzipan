@@ -4,7 +4,6 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   forwardRef,
   Fragment,
@@ -45,10 +44,7 @@ import {
 import { useElementWidth } from '@/hooks/useElementWidth';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
-import {
-  sanitizeSavedFilterPayload,
-  type SavedFilterPayload,
-} from '@/lib/savedFilterSanitize';
+import { applySavedFilterSelection } from '@/lib/savedFilterApply';
 import { cn } from '@/lib/utils';
 
 const SLOT_GAP_PX = 8;
@@ -323,8 +319,11 @@ export interface ResponsiveFilterRowProps {
   /** Callback to apply a saved filter (sets filterState + searchKeyword in preferences). */
   onApplySavedFilter?: (
     filterState: ActivityFilterState,
-    searchKeyword: string
+    searchKeyword: string,
+    appliedFrom: { id: number; name: string }
   ) => void;
+  /** Highlights the saved-filter row that matches the last-applied selection (from this context). */
+  activeSavedFilterId?: number | null;
 }
 
 /**
@@ -347,6 +346,7 @@ export function ResponsiveFilterRow({
   filterState,
   searchKeyword,
   onApplySavedFilter,
+  activeSavedFilterId = null,
 }: ResponsiveFilterRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const containerWidth = useElementWidth(containerRef, {
@@ -357,6 +357,7 @@ export function ResponsiveFilterRow({
   const [filtersAccordionOpen, setFiltersAccordionOpen] = useState(false);
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
   const [savedFiltersPopoverOpen, setSavedFiltersPopoverOpen] = useState(false);
+  const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
 
   // Saved filter dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -405,18 +406,10 @@ export function ResponsiveFilterRow({
 
   const handleApplySavedFilter = useCallback(
     (sf: SavedFilterResponse) => {
-      if (!onApplySavedFilter) return;
-      const {
-        filterState: sanitized,
-        searchKeyword: kw,
-        hadInvalidValues,
-      } = sanitizeSavedFilterPayload(sf as unknown as SavedFilterPayload);
-      onApplySavedFilter(sanitized, kw);
-      if (hadInvalidValues) {
-        toast.warning(
-          'Some filter values are no longer available and were skipped.'
-        );
-      }
+      applySavedFilterSelection(sf, onApplySavedFilter, () => {
+        setSavedFiltersPopoverOpen(false);
+        setOverflowMenuOpen(false);
+      });
     },
     [onApplySavedFilter]
   );
@@ -673,7 +666,7 @@ export function ResponsiveFilterRow({
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Popover>
+            <Popover open={overflowMenuOpen} onOpenChange={setOverflowMenuOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -789,8 +782,17 @@ export function ResponsiveFilterRow({
                             <Fragment key={sf.id}>
                               <button
                                 type="button"
-                                className="hover:bg-accent hover:text-accent-foreground flex min-w-0 items-center gap-2 py-2 pr-2 pl-4 text-left text-sm outline-none"
+                                className={cn(
+                                  'hover:bg-accent hover:text-accent-foreground flex min-w-0 items-center gap-2 py-2 pr-2 pl-4 text-left text-sm outline-none',
+                                  activeSavedFilterId === sf.id &&
+                                    'bg-accent text-accent-foreground'
+                                )}
                                 aria-label={`Apply ${sf.name}`}
+                                aria-current={
+                                  activeSavedFilterId === sf.id
+                                    ? 'true'
+                                    : undefined
+                                }
                                 onClick={() => handleApplySavedFilter(sf)}
                               >
                                 <span className="min-w-0 truncate">

@@ -665,16 +665,27 @@ export function ActivityTable({
   const savedFiltersHook = useSavedFilters(savedFilterContextKey ?? null);
   const [currentSearchParams] = useSearchParams();
   const defaultAppliedRef = useRef<string | null>(null);
+  const [activeSavedFilter, setActiveSavedFilter] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
-    if (!savedFilterContextKey) return;
+    if (!savedFilterContextKey) {
+      setActiveSavedFilter(null);
+      return;
+    }
     if (defaultAppliedRef.current === savedFilterContextKey) return;
     if (hasAnyKnownParam(currentSearchParams)) {
       defaultAppliedRef.current = savedFilterContextKey;
+      setActiveSavedFilter(null);
       return;
     }
     const defaultFilter = savedFiltersHook.defaultFilter;
-    if (!defaultFilter) return;
+    if (!defaultFilter) {
+      setActiveSavedFilter(null);
+      return;
+    }
 
     defaultAppliedRef.current = savedFilterContextKey;
     const { filterState: sanitized, searchKeyword: kw } =
@@ -682,12 +693,24 @@ export function ActivityTable({
         defaultFilter as unknown as SavedFilterPayload
       );
     setPreferences({ filterState: sanitized, searchKeyword: kw });
+    setActiveSavedFilter({
+      id: defaultFilter.id,
+      name: defaultFilter.name,
+    });
   }, [
     savedFilterContextKey,
     savedFiltersHook.defaultFilter,
     currentSearchParams,
     setPreferences,
   ]);
+
+  useEffect(() => {
+    if (activeSavedFilter == null || !savedFilterContextKey) return;
+    const stillThere = savedFiltersHook.savedFilters.some(
+      (f) => f.id === activeSavedFilter.id
+    );
+    if (!stillThere) setActiveSavedFilter(null);
+  }, [activeSavedFilter, savedFilterContextKey, savedFiltersHook.savedFilters]);
 
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
@@ -1202,8 +1225,10 @@ export function ActivityTable({
         id: 'show-completed',
         label: 'Show completed',
         checked: effectiveShowCompleted,
-        onCheckedChange: (checked: boolean) =>
-          setPreferences({ showCompleted: checked }),
+        onCheckedChange: (checked: boolean) => {
+          setActiveSavedFilter(null);
+          setPreferences({ showCompleted: checked });
+        },
         disabled: hasStatusFilter,
         disabledTooltip,
       },
@@ -1213,8 +1238,10 @@ export function ActivityTable({
         id: 'show-deleted',
         label: 'Show deleted',
         checked: effectiveShowDeleted,
-        onCheckedChange: (checked: boolean) =>
-          setPreferences({ showDeleted: checked }),
+        onCheckedChange: (checked: boolean) => {
+          setActiveSavedFilter(null);
+          setPreferences({ showDeleted: checked });
+        },
         disabled: hasStatusFilter,
         disabledTooltip,
       });
@@ -1226,13 +1253,15 @@ export function ActivityTable({
     effectiveShowDeleted,
     canSeeDeleted,
     setPreferences,
+    setActiveSavedFilter,
   ]);
 
   const handleFilterStateChange = useCallback(
     (nextFilterState: typeof filterState) => {
+      setActiveSavedFilter(null);
       setPreferences({ filterState: nextFilterState });
     },
-    [setPreferences]
+    [setPreferences, setActiveSavedFilter]
   );
 
   const filterBar = (
@@ -1240,9 +1269,10 @@ export function ActivityTable({
       filterState={filterState}
       onFilterStateChange={handleFilterStateChange}
       searchKeyword={searchKeyword}
-      onSearchKeywordChange={(value: string) =>
-        setPreferences({ searchKeyword: value })
-      }
+      onSearchKeywordChange={(value: string) => {
+        setActiveSavedFilter(null);
+        setPreferences({ searchKeyword: value });
+      }}
       sortKey={sortKey}
       sortDirection={sortDirection}
       onSortChange={handleSortChange}
@@ -1261,11 +1291,15 @@ export function ActivityTable({
       eventPlannerOptions={eventPlannerOptions}
       savedFilters={savedFiltersHook}
       contextKey={savedFilterContextKey ?? null}
-      onApplySavedFilter={(filterState, searchKeyword) =>
-        setPreferences({ filterState, searchKeyword })
-      }
+      activeSavedFilterId={activeSavedFilter?.id ?? null}
+      onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {
+        setActiveSavedFilter(appliedFrom);
+        setPreferences({ filterState, searchKeyword });
+      }}
     />
   );
+
+  const appliedSavedFilterName = activeSavedFilter?.name ?? null;
 
   // Loading state
   if (loading) {
@@ -1278,6 +1312,7 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
         >
           <div className="flex flex-col items-center justify-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -1314,6 +1349,7 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
         >
           <ActivityTableEmptyState variant="no-data" />
         </ActivityTableLayout>
@@ -1334,6 +1370,7 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
         >
           {filteredData.length === 0 ? (
             <ActivityTableEmptyState variant="no-search-match" />

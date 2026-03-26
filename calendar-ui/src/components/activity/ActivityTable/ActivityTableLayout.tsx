@@ -14,6 +14,8 @@ export interface ActivityTableLayoutProps {
   singularLabel: string;
   pluralLabel: string;
   filters?: BooleanFilter[];
+  /** When set, summary bar shows “Filtering …” beside the count. */
+  appliedSavedFilterName?: string | null;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
@@ -28,6 +30,7 @@ export function ActivityTableLayout({
   singularLabel,
   pluralLabel,
   filters = [],
+  appliedSavedFilterName = null,
   children,
 }: ActivityTableLayoutProps) {
   return (
@@ -37,6 +40,7 @@ export function ActivityTableLayout({
         singularLabel={singularLabel}
         pluralLabel={pluralLabel}
         filters={filters}
+        appliedSavedFilterName={appliedSavedFilterName}
       />
       <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
     </div>

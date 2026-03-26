@@ -53,8 +53,10 @@ export interface ActivityTableFiltersProps {
   contextKey?: string | null;
   onApplySavedFilter?: (
     filterState: ActivityFilterState,
-    searchKeyword: string
+    searchKeyword: string,
+    appliedFrom: { id: number; name: string }
   ) => void;
+  activeSavedFilterId?: number | null;
 }
 
 function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
@@ -134,6 +136,7 @@ export function ActivityTableFilters({
   savedFilters,
   contextKey,
   onApplySavedFilter,
+  activeSavedFilterId = null,
 }: ActivityTableFiltersProps) {
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
@@ -479,6 +482,7 @@ export function ActivityTableFilters({
           filterState={filterState}
           searchKeyword={searchKeyword}
           onApplySavedFilter={onApplySavedFilter}
+          activeSavedFilterId={activeSavedFilterId}
           trailingContent={
             anyActive ? (
               <Button
