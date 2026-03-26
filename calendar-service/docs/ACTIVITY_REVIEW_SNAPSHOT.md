@@ -72,23 +72,48 @@ When adding or removing tracked fields, or changing normalisation rules:
 
 This avoids the need for a data migration on every schema change. For bulk corrections, a one-time migration script can be written to recompute snapshots for all Reviewed activities.
 
-## Backfill (Initial Migration)
+For the activity form field-change checklist (including when to update `buildReviewDiffLookups()`), see [ACTIVITY.md](./ACTIVITY.md).
 
-When deploying this feature to an existing database:
+## Backfill (Mock / Dev only)
 
-- **Reviewed** activities: set `reviewed_field_snapshot` to the canonicalized current state (computed from the activity row plus junction tables). This makes the diff start empty for already-reviewed activities.
-- **New / Changed / Delete requested / Completed**: leave `NULL` (implies empty-form baseline).
-- **Deleted**: leave `NULL` (cleared state).
+The `backfill:review-snapshots` CLI is a **mock-data helper only** for local/dev environments.
+Do **not** run this command against production data.
 
-Drizzle schema migrations do **not** emit this logic. Use the calendar-service CLI (runs the same `mapResponseToFormData` + `buildReviewSnapshot` path as runtime writes):
+Typical local usage:
 
 ```bash
 cd calendar-service
-npm run backfill:review-snapshots -- --reviewed-only
+npm run seed:snapshot
 ```
 
-- Idempotent: only updates **Reviewed** rows where `reviewed_field_snapshot` is still `NULL`.
-- **Mock / dev seed**: `npm run seed` runs SQL seeds and then applies synthetic prior snapshots for all **Changed** activities so reviewers see non-empty `changedFieldsSinceReview`. To re-run only the mock step: `npm run backfill:review-snapshots -- --mock-changed-only`. To run both backfills: `npm run backfill:review-snapshots` (no flags).
+- `npm run seed` runs seed files only.
+- `npm run seed:snapshot` runs seed files, then backfills/recomputes review snapshots for local mock data.
+- `npm run backfill:review-snapshots -- --mock-changed-only` updates only Changed rows with synthetic prior snapshots for reviewer testing.
+- `npm run backfill:review-snapshots -- --reviewed-only` updates only Reviewed rows where snapshot is `NULL`.
+- `npm run backfill:review-snapshots -- --recompute-all` rewrites snapshots for all Reviewed rows.
+
+## Junction Field Name-to-ID Resolution
+
+The API response contains display-name arrays for junction fields (`category`, `commsMaterials`, `translationsRequired`, `sharedWith`), while the form data uses ID arrays (`categoryIds`, `commsMaterialIds`, `translationLanguageIds`, `sharedWithTeamIds`). Mapping a response to form data requires name-to-ID lookups so the diff operates on IDs, matching the client form.
+
+Both the server (`ActivitiesService.getReviewDiffLookups()`) and the client (`buildFormLookups` in `calendar-ui`) use the shared `buildReviewDiffLookups()` from `packages/shared/src/utils/build-review-diff-lookups.ts` to construct these resolvers from the same trim/lowercase matching rules.
+
+Server-side lookups are **unscoped** (all active rows, not team-filtered) so that review diffs resolve correctly even when the reviewer's team scoping would exclude an item from the picker.
+
+### Recomputing existing snapshots after deploy
+
+Snapshots written before junction lookup resolution was added contain empty ID arrays for junction fields. After deploying the fix, the "current" side uses real IDs while the stored baseline still has empty arrays, which can cause false-positive review badges on junction fields until the activity is next marked Reviewed.
+
+For local/dev validation, you can recompute all Reviewed snapshots with:
+
+```bash
+cd calendar-service
+npm run backfill:review-snapshots -- --recompute-all
+```
+
+This rewrites `reviewed_field_snapshot` using the updated mapping (with lookups), so the stored baseline matches the new resolution logic and review badges start clean.
+
+For production environments, do not use this CLI command. If historical snapshot realignment is needed, ship a reviewed migration/runbook specifically for production data handling.
 
 ## Excluded Fields
 

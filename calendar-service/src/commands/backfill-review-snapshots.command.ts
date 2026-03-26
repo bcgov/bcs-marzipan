@@ -5,19 +5,18 @@ import { AppModule } from '../app.module';
 import { AppLogger } from '../common/logger/logger.service';
 
 /**
- * CLI: backfill `reviewed_field_snapshot` for Reviewed rows and/or mock Changed rows.
+ * CLI (mock/dev only): backfill `reviewed_field_snapshot` for local test data.
+ * Do not run this command against production data.
  *
  * Usage (from calendar-service):
  *   npm run backfill:review-snapshots -- --reviewed-only
  *   npm run backfill:review-snapshots -- --mock-changed-only
  *   npm run backfill:review-snapshots -- --recompute-all
  *
- * Omit flags to run **both** reviewed-only + mock-changed-only (typical local reset;
- * production usually uses `--reviewed-only` once after deploy).
+ * Omit flags to run **both** reviewed-only + mock-changed-only (typical local reset).
  *
  * --recompute-all: rewrites snapshots for all Reviewed activities using the current
- * mapping logic (including name-to-ID lookups). Use after deploying junction-field
- * lookup resolution to realign existing baselines.
+ * mapping logic (including name-to-ID lookups) for local/dev data alignment.
  */
 async function bootstrap() {
   const argv = new Set(process.argv.slice(2));
