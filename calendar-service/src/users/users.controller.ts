@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -26,6 +28,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   addUserToTeamBodySchema,
+  createUserBodySchema,
   transferActivitiesBodySchema,
   updateUserBodySchema,
   updateUserTeamRoleBodySchema,
@@ -37,6 +40,7 @@ import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import {
   AddUserToTeamDto,
+  CreateUserDto,
   TransferActivitiesDto,
   TransferActivitiesResponseDto,
   UpdateUserDto,
@@ -88,6 +92,33 @@ export class UsersController {
     const teamIds = parseCommaSeparatedIds(teamIdsParam);
     const roleIds = parseCommaSeparatedIds(roleIdsParam);
     const data = await this.usersService.findAll(search, teamIds, roleIds);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Create user',
+    description:
+      'Create a new user (email and role required). Email is used to match the user when they first sign in with Azure AD. Optional display name and initial team assignments.',
+  })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User created',
+    type: UserDetailResponseWrapperDto,
+  })
+  @ApiResponse({ status: 400, description: 'Validation error or invalid role' })
+  @ApiResponse({
+    status: 409,
+    description: 'A user with this email already exists',
+  })
+  @RequirePermission(PERMISSIONS.USERS.CREATE)
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Body(new ZodValidationPipe(createUserBodySchema)) dto: CreateUserDto,
+    @CurrentUser() currentUser: AuthUser
+  ): Promise<{ success: boolean; data: UserDetail }> {
+    const data = await this.usersService.create(dto, currentUser.id);
     return { success: true, data };
   }
 

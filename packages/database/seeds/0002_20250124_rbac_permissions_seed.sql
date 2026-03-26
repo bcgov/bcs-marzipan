@@ -55,7 +55,7 @@ CROSS JOIN permissions p
 WHERE r.name = 'Editor' AND p.key IN (
   'activities.view','activities.create','activities.edit','activities.requestDelete',
   'drafts.view','drafts.create','drafts.edit','drafts.delete',
-  'reports.view','lookups.view'
+  'reports.view','lookups.view','teams.view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -63,7 +63,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
-WHERE r.name = 'Advanced Viewer' AND p.key IN ('activities.view','drafts.view','reports.view','lookups.view')
+WHERE r.name = 'Advanced Viewer' AND p.key IN ('activities.view','drafts.view','reports.view','lookups.view','teams.view')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 5. Advanced Editor (create/delete scoped; approve, export, recover)
@@ -73,7 +73,7 @@ CROSS JOIN permissions p
 WHERE r.name = 'Advanced Editor' AND p.key IN (
   'activities.view','activities.create','activities.edit','activities.requestDelete','activities.approve',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
-  'reports.view','reports.export','lookups.view'
+  'reports.view','reports.export','lookups.view','teams.view'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 

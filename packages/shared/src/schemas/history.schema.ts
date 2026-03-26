@@ -14,6 +14,14 @@ export const historyChangeSchema = z.object({
 
 export type HistoryChange = z.infer<typeof historyChangeSchema>;
 
+export const historyActorSchema = z.object({
+  id: z.number().int(),
+  displayName: z.string(),
+  username: z.string().nullable().optional(),
+});
+
+export type HistoryActor = z.infer<typeof historyActorSchema>;
+
 // ============================================
 // Activity History
 // ============================================
@@ -32,10 +40,32 @@ export const activityHistoryEntrySchema = z.object({
   changes: z.array(historyChangeSchema).nullable(),
   notes: z.string().nullable(),
   timestamp: z.string(),
+  actor: historyActorSchema.optional(),
   userName: z.string().optional(),
 });
 
 export type ActivityHistoryEntry = z.infer<typeof activityHistoryEntrySchema>;
+
+export const globalActivityHistoryActivitySchema = z.object({
+  id: z.number().int(),
+  displayId: z.string().nullable(),
+  title: z.string(),
+  leadTeamId: z.number().int(),
+  categories: z.array(z.string()).default([]),
+});
+
+export type GlobalActivityHistoryActivity = z.infer<
+  typeof globalActivityHistoryActivitySchema
+>;
+
+export const globalActivityHistoryEntrySchema =
+  activityHistoryEntrySchema.extend({
+    activity: globalActivityHistoryActivitySchema,
+  });
+
+export type GlobalActivityHistoryEntry = z.infer<
+  typeof globalActivityHistoryEntrySchema
+>;
 
 // ============================================
 // User History

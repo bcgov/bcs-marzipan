@@ -19,6 +19,7 @@ export type { LookupQueryParams } from '../schemas/query-params.schema';
 export type {
   HistoryChange,
   ActivityHistoryEntry,
+  GlobalActivityHistoryEntry,
   UserHistoryEntry,
   TeamHistoryEntry,
 } from '../schemas/history.schema';
@@ -29,6 +30,7 @@ export type {
   UserListItem,
   UserDetail,
   RoleOption,
+  CreateUserBody,
   UpdateUserBody,
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,
@@ -40,6 +42,7 @@ export type {
   TeamListItem,
   TeamMember,
   TeamDetail,
+  CommsContactCandidate,
   CreateTeamBody,
   UpdateTeamBody,
 } from '../schemas/team.schema';
@@ -75,7 +78,8 @@ export type {
   ReportResponse,
   DateStatusLookupItem,
   TimeStatusLookupItem,
+  VenueStatusLookupItem,
   PitchRequiredStatusLookupItem,
   TranslationRequiredStatusLookupItem,
-  VenueQuickPickItem,
+  VenuePresetItem,
 } from '../schemas/lookup.schema';

@@ -24,11 +24,12 @@ import {
  * Use with appropriate modifiers (.nullable(), .optional()) as needed.
  */
 export const venueAddressSchema = z.object({
-  venueName: z.string().nullable(),
-  street: z.string().nullable(),
-  city: z.string().nullable(),
-  provinceOrState: z.string().nullable(),
-  country: z.string().nullable(),
+  venueName: z.string().nullable().optional(),
+  addressLine1: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  provinceOrState: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
 });
 
 /**
@@ -39,8 +40,8 @@ export const venueAddressFieldsSchema = venueAddressSchema
   .optional();
 
 /**
- * Base venue address object shape (all fields string | null).
- * Use this for normalization and when the value is known to be present.
+ * Base venue address object shape: each field is optional and may be `string | null`.
+ * Clients may send only the fields they set (e.g. city and country only).
  */
 export type VenueAddressBase = z.infer<typeof venueAddressSchema>;
 
@@ -66,16 +67,20 @@ const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.string().min(1).max(255),
   summary: z.string().max(1000),
-  significance: z.string().max(1000),
+  significance: z.preprocess(
+    (val) => (val === '' ? null : val),
+    z.union([z.string().max(1000), z.null()]).optional()
+  ),
   schedulingNotes: z.string().max(500).optional().nullable(),
   strategy: z.string().nullable().optional(),
 
-  // Status IDs (required, numbers for database)
+  // Status IDs (numbers for database; venue optional when activity has no venue)
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
   // activityStatusId is optional on create; backend sets it from markAsReviewed + role (new or reviewed).
   dateStatusId: z.number().int(),
   timeStatusId: z.number().int(),
+  venueStatusId: z.number().int().nullable().optional(),
   activityStatusId: z.number().int().optional(),
 
   // Boolean flags
@@ -120,10 +125,6 @@ const activityCoreFieldsSchema = z.object({
     z.number().int().nullable().optional()
   ), // Optional; derived from lead team's ministry
 
-  // Optional user ID fields
-  eventPlannerLeadId: z.number().int().nullable().optional(),
-  eventPlannerLeadName: z.string().max(255).nullable().optional(),
-
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable().optional(),
@@ -137,8 +138,10 @@ const activityCoreFieldsSchema = z.object({
 // ============================================================================
 
 /**
- * Representative schema
- * Supports either representativeId (from lookup table) or representativeName (freeform text)
+ * Representative schema.
+ * Array can mix entries by representativeId (lookup) or representativeName (freeform).
+ * Backend uses representativeId when present, else representativeName.
+ * Each non-empty array entry must include a positive id or a non-empty name.
  */
 const representativeSchema = z
   .object({
@@ -146,23 +149,30 @@ const representativeSchema = z
     representativeName: z.string().max(255).optional(),
   })
   .refine(
-    (data) =>
-      data.representativeId !== undefined ||
-      data.representativeName !== undefined,
+    (data) => {
+      const hasId =
+        data.representativeId !== undefined && data.representativeId > 0;
+      const hasName =
+        typeof data.representativeName === 'string' &&
+        data.representativeName.trim().length > 0;
+      return hasId || hasName;
+    },
     {
-      message: 'Either representativeId or representativeName must be provided',
-    }
-  )
-  .refine(
-    (data) =>
-      !(
-        data.representativeId !== undefined &&
-        data.representativeName !== undefined
-      ),
-    {
-      message: 'Cannot provide both representativeId and representativeName',
+      message:
+        'Each representative must have a representativeId or a non-empty representativeName',
     }
   );
+
+/**
+ * Event planner schema (one entry per planner).
+ * eventPlannerId = lookup table; eventPlannerName = one-off free text.
+ * Backend prefers id when present. isLead marks the lead planner (exactly one per activity when non-empty).
+ */
+const eventPlannerSchema = z.object({
+  eventPlannerId: z.number().int().optional(),
+  eventPlannerName: z.string().max(255).optional(),
+  isLead: z.boolean().default(false),
+});
 
 /**
  * Report setting schema
@@ -204,21 +214,65 @@ const junctionTableIdsSchema = z.object({
   tagIds: z.array(z.number().int()).optional(),
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
+  eventPlanners: z.array(eventPlannerSchema).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
+const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required.';
+
+/** Create requests require at least one category ID. */
+const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
+  categoryIds: z
+    .array(z.number().int())
+    .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
+});
+
+const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required.';
+const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
+
+/** Create: commsContacts must have at least one contact and exactly one lead. */
+function createLeadContactRefine(data: {
+  commsContacts?: Array<{ userId: number; isLead: boolean }>;
+}): boolean {
+  const contacts = data.commsContacts ?? [];
+  return contacts.length >= 1 && contacts.filter((c) => c.isLead).length === 1;
+}
+
+/** Update: when commsContacts is provided and non-empty, exactly one must be lead. */
+function updateLeadContactRefine(data: {
+  commsContacts?: Array<{ userId: number; isLead: boolean }>;
+}): boolean {
+  const contacts = data.commsContacts ?? [];
+  if (contacts.length === 0) return true;
+  return contacts.filter((c) => c.isLead).length === 1;
+}
+
+const EVENT_PLANNER_LEAD_REFINE_MESSAGE =
+  'When event planners are provided, exactly one must be marked as lead.';
+const EVENT_PLANNER_LEAD_REFINE_PATH = ['eventPlanners'] as const;
+
+/** When eventPlanners is provided and non-empty, exactly one must have isLead true. */
+function eventPlannerLeadRefine(data: {
+  eventPlanners?: Array<{
+    eventPlannerId?: number;
+    eventPlannerName?: string;
+    isLead?: boolean;
+  }>;
+}): boolean {
+  const planners = data.eventPlanners ?? [];
+  if (planners.length === 0) return true;
+  return planners.filter((p) => p.isLead === true).length === 1;
+}
+
 /**
- * Schema for creating a new activity via HTTP request
- *
- * Includes core activity fields plus junction table ID arrays and venue address.
- * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
+ * Base schema for create (no refinements).
+ * Used to build create and update schemas without calling .partial() on a refined schema (Zod v4).
  */
-// merge is deprecated in favor of extend, but extend causes type inference issues.
-export const createActivityRequestSchema = activityCoreFieldsSchema
-  .merge(junctionTableIdsSchema)
+const createBaseSchema = activityCoreFieldsSchema
+  .merge(createJunctionTableIdsSchema)
   .extend({
     venueAddress: venueAddressFieldsSchema,
     activityHistoryNotes: z.string().max(1000).optional(),
@@ -227,16 +281,42 @@ export const createActivityRequestSchema = activityCoreFieldsSchema
   });
 
 /**
+ * Schema for creating a new activity via HTTP request
+ *
+ * Includes core activity fields plus junction table ID arrays and venue address.
+ * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
+ * Requires at least one Comms contact with exactly one marked as lead.
+ */
+export const createActivityRequestSchema = createBaseSchema
+  .refine(createLeadContactRefine, {
+    message: LEAD_CONTACT_REFINE_MESSAGE,
+    path: [...LEAD_CONTACT_REFINE_PATH],
+  })
+  .refine(eventPlannerLeadRefine, {
+    message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
+    path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+  });
+
+/**
  * Schema for updating an activity via HTTP request
  *
  * All fields are optional (partial update).
  * ID comes from URL parameter, not request body.
+ * When commsContacts is provided and non-empty, enforces the same lead-contact rule as create.
  *
  * Note: XOR validation (leadOrgId/leadOrgName, etc.) is handled by
  * database CHECK constraints, not duplicated here.
  */
-export const updateActivityRequestSchema =
-  createActivityRequestSchema.partial();
+export const updateActivityRequestSchema = createBaseSchema
+  .partial()
+  .refine(updateLeadContactRefine, {
+    message: LEAD_CONTACT_REFINE_MESSAGE,
+    path: [...LEAD_CONTACT_REFINE_PATH],
+  })
+  .refine(eventPlannerLeadRefine, {
+    message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
+    path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+  });
 
 /**
  * Schema for soft deleting an activity
@@ -267,6 +347,17 @@ export const requestDeleteRequestSchema = z.object({
  */
 export const restoreRequestSchema = z.object({
   note: z.string().max(1000).optional(),
+});
+
+/**
+ * Schema for adding a standalone activity history note
+ */
+export const addActivityHistoryNoteRequestSchema = z.object({
+  note: z
+    .string()
+    .min(1, 'Note is required')
+    .max(1000, 'Note must not exceed 1000 characters')
+    .trim(),
 });
 
 /**
@@ -301,6 +392,9 @@ export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;
+export type AddActivityHistoryNoteRequest = z.infer<
+  typeof addActivityHistoryNoteRequestSchema
+>;
 export type HardDeleteRequest = z.infer<typeof hardDeleteRequestSchema>;
 
 /**

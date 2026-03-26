@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { useElementWidth } from '@/hooks/useElementWidth';
 import { cn } from '@/lib/utils';
 
 import { Badge, type BadgeProps } from './badge';
@@ -32,6 +33,8 @@ export interface BadgeGroupProps {
   containerClassName?: string;
   /** Class name for the overflow (+N) badge itself. */
   overflowBadgeClassName?: string;
+  /** Override variant for the overflow (+N) badge. If not set, derived from the first visible/item variant so it matches the grouped badges. */
+  overflowBadgeVariant?: BadgeProps['variant'];
   /** Optional explicit visible item count override (primarily for deterministic testing). */
   visibleCountOverride?: number;
 }
@@ -49,13 +52,14 @@ export function BadgeGroup({
   badgeClassName,
   containerClassName,
   overflowBadgeClassName,
+  overflowBadgeVariant: overflowBadgeVariantProp,
   visibleCountOverride,
 }: BadgeGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const containerWidth = useElementWidth(containerRef);
   const prevContainerWidthRef = useRef(0);
   const prevContentSignatureRef = useRef<string>(null);
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
 
   const finalVisibleCount =
     visibleCountOverride != null
@@ -73,24 +77,14 @@ export function BadgeGroup({
   );
   const overflowCount = overflowItems.length;
 
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-
-    const updateWidth = () => {
-      setContainerWidth(node.clientWidth);
-    };
-
-    updateWidth();
-
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => {
-      updateWidth();
-    });
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, []);
+  // Derive overflow badge appearance from the grouped badges so "+N" matches their color.
+  const overflowBadgeVariant: BadgeProps['variant'] =
+    overflowBadgeVariantProp ??
+    visibleItems[0]?.variant ??
+    items[0]?.variant ??
+    badgeVariant;
+  const overflowBadgeItemClassName =
+    visibleItems[0]?.className ?? items[0]?.className ?? badgeClassName;
 
   // Reset visible count only when content (length + keys) or line cap actually change, not on new array reference.
   const contentSignature = `${items.length}:${items.map((i) => i.key).join(',')}`;
@@ -209,9 +203,10 @@ export function BadgeGroup({
                 className="focus-visible:ring-ring shrink-0 cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 <Badge
-                  variant="outline"
+                  variant={overflowBadgeVariant}
                   className={cn(
-                    'h-auto min-h-5 text-xs text-slate-600',
+                    'h-auto min-h-5 text-xs',
+                    overflowBadgeItemClassName,
                     overflowBadgeClassName
                   )}
                 >

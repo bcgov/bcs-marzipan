@@ -1,28 +1,32 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Copy workspace configuration
 COPY package*.json ./
 COPY tsconfig.base.json ./
-
-# Copy all packages and UI source
 COPY packages/ ./packages/
 COPY calendar-ui/ ./calendar-ui/
 
 RUN npm ci --ignore-scripts
 
-# ARG VITE_API_BASE_URL
-# ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-# Build shared packages, then the UI
 RUN NODE_OPTIONS=--max-old-space-size=4096 \
     npm run build --workspace=packages/database && \
     npm run build --workspace=packages/shared && \
     npm run build --workspace=calendar-ui
 
-FROM docker.io/library/nginx:alpine
+
+# Runtime: OpenShift-friendly, non-root nginx
+FROM nginxinc/nginx-unprivileged:alpine
+
+# Static UI build output
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html
-COPY --from=build /app/calendar-ui/nginx.conf /etc/nginx/conf.d/default.conf
-RUN chmod -R g+rwX /var/cache/nginx /var/run /usr/share/nginx/html \
-    && chgrp -R 0 /var/cache/nginx /var/run /usr/share/nginx/html
+
+# Full nginx config with http{} that includes /tmp/default.conf
+COPY calendar-ui/nginx.main.conf /etc/nginx/nginx.conf
+
+# Server-block template rendered at container startup
+COPY --from=build /app/calendar-ui/nginx.conf /tmp/default.conf.template
+
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+
+# Render env vars into server-block, then start nginx normally
+CMD ["/bin/sh", "-c", "if [ -z \"${API_PROXY_UPSTREAM}\" ]; then echo 'ERROR: API_PROXY_UPSTREAM environment variable is not set. Please configure backend API URL.' >&2; exit 1; fi; envsubst '$$API_PROXY_UPSTREAM' < /tmp/default.conf.template > /tmp/default.conf && exec nginx -g 'daemon off;'"]

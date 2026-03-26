@@ -65,6 +65,7 @@ export type UserDetail = z.infer<typeof userDetailSchema>;
 export const roleOptionSchema = z.object({
   id: z.number().int(),
   name: z.string(),
+  description: z.string().nullable(),
 });
 
 export type RoleOption = z.infer<typeof roleOptionSchema>;
@@ -72,6 +73,29 @@ export type RoleOption = z.infer<typeof roleOptionSchema>;
 // ============================================
 // Request Body Schemas
 // ============================================
+
+/**
+ * POST /users - Create a new user (admin). Email is required for Azure AD match on first sign-in.
+ */
+export const createUserBodySchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email is required')
+    .email('Invalid email format'),
+  roleId: z.number().int(),
+  displayName: z.string().trim().optional(),
+  teams: z
+    .array(
+      z.object({
+        teamId: z.number().int(),
+        role: z.enum(TEAM_ROLES),
+      })
+    )
+    .optional(),
+});
+
+export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 
 /**
  * PATCH /users/:id - Update a user's role, active status, or notes.

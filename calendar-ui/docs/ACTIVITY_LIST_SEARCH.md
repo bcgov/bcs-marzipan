@@ -43,7 +43,7 @@ The filter matches the trimmed keyword (case-insensitive) against these fields o
 - `activityStatus`
 - `activityRepresentatives` (joined)
 
-The filter is implemented in [calendar-ui/src/lib/activity-query-utils.ts](../src/lib/activity-query-utils.ts) as `filterActivityRowsByKeyword`.
+The filter is implemented in [calendar-ui/src/lib/activity-query-utils.ts](src/lib/activity-query-utils.ts) as `filterActivityRowsByKeyword`.
 
 ### Behavior details
 
@@ -53,12 +53,12 @@ The filter is implemented in [calendar-ui/src/lib/activity-query-utils.ts](../sr
 
 ### Key files
 
-| File                                                                               | Purpose                                                                                                                                                    |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [useActivityTablePreferences.ts](../src/hooks/useActivityTablePreferences.ts)      | Adds `searchKeyword` to preferences; debounces URL sync (400ms) when only search changes so the field keeps focus; sessionStorage written on every change. |
-| [activity-query-utils.ts](../src/lib/activity-query-utils.ts)                      | `filterActivityRowsByKeyword(rows, keyword)` used to filter table rows.                                                                                    |
-| [ActivityTable.tsx](../src/components/ActivityTable/ActivityTable.tsx)             | Applies filter to `data` -> `filteredData`, then sort -> `sortedData`; passes search props to layout; empty-search state.                                  |
-| [ActivityTableLayout.tsx](../src/components/ActivityTable/ActivityTableLayout.tsx) | Optional search input in toolbar when `searchKeyword` and `onSearchKeywordChange` are provided.                                                            |
+| File                                                                                     | Purpose                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts)               | Adds `searchKeyword` to preferences; debounces URL sync (400ms) when only search changes so the field keeps focus; sessionStorage written on every change. |
+| [activity-query-utils.ts](src/lib/activity-query-utils.ts)                               | `filterActivityRowsByKeyword(rows, keyword)` used to filter table rows.                                                                                    |
+| [ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx)             | Applies filter to `data` -> `filteredData`, then sort -> `sortedData`; passes search props to layout; empty-search state.                                  |
+| [ActivityTableLayout.tsx](src/components/activity/ActivityTable/ActivityTableLayout.tsx) | Optional search input in toolbar when `searchKeyword` and `onSearchKeywordChange` are provided.                                                            |
 
 ---
 

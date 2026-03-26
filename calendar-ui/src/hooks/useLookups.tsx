@@ -10,6 +10,7 @@ import type {
   ReportResponse,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
+  VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 
 import {
@@ -33,6 +34,7 @@ import {
   fetchTranslationLanguages,
   fetchTranslationRequiredStatuses,
   fetchUsers,
+  fetchVenueStatuses,
   type ActivityStatusLookupItem,
   type CategoryLookupItem,
   type CommsMaterialsLookupItem,
@@ -46,6 +48,9 @@ import {
   type TranslationLanguageLookupItem,
   type UserLookupItem,
 } from '../api/lookupsApi';
+import { fetchTeams } from '../api/usersApi';
+
+type TeamLookupItem = Awaited<ReturnType<typeof fetchTeams>>[number];
 
 export function useCategories() {
   return useQuery<CategoryLookupItem[]>({
@@ -68,6 +73,14 @@ export function useUsers(params?: LookupQueryParams) {
     queryKey: ['lookups', 'users', params],
     queryFn: () => fetchUsers(params),
     staleTime: DYNAMIC_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useTeams() {
+  return useQuery<TeamLookupItem[]>({
+    queryKey: ['teams'],
+    queryFn: fetchTeams,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
@@ -181,6 +194,14 @@ export function useTimeStatuses() {
   return useQuery<TimeStatusLookupItem[]>({
     queryKey: ['lookups', 'time-statuses'],
     queryFn: () => fetchTimeStatuses(),
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
+
+export function useVenueStatuses() {
+  return useQuery<VenueStatusLookupItem[]>({
+    queryKey: ['lookups', 'venue-statuses'],
+    queryFn: () => fetchVenueStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

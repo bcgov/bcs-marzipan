@@ -71,12 +71,35 @@ AZURE_CLIENT_SECRET=your-app-client-secret
 # Optional callback override; if omitted, callback is derived from request host
 AZURE_REDIRECT_URI=
 
+# Optional cookie domain for proxy-based deployments. Use the public UI host,
+# not the internal calendar-service host, when auth flows through /api.
+AUTH_COOKIE_DOMAIN=
+
+# Optional post-login redirect URL. Use the public UI host or a UI route.
+POST_LOGIN_REDIRECT_URL=
+
 # JWT secret key (required in production - use a strong random value)
 JWT_SECRET=your-jwt-secret-change-in-production
 
 # JWT token expiration in seconds (default: 3600 = 1 hour)
 JWT_EXPIRES_IN=3600
 ```
+
+When the UI proxies backend requests through `/api`, the auth cookie should be
+scoped to the public UI hostname, for example
+`calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca`. Do not set the cookie
+domain to the backend service hostname, because the browser does not navigate to
+that host directly during normal app use.
+
+If Azure sign-in should land on a specific UI page after the callback, set
+`POST_LOGIN_REDIRECT_URL` to the public UI URL, for example
+`https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca/`. If left blank,
+the backend redirects to `/` after successful sign-in.
+
+For OpenShift deployments, treat `AUTH_COOKIE_DOMAIN` and
+`POST_LOGIN_REDIRECT_URL` as environment-specific values. They should be
+supplied at deploy time rather than hardcoded into the base manifests so dev,
+staging, and prod can each use their own public UI hostname.
 
 ### Token content and policy changes
 
@@ -129,7 +152,8 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | lookups.view/manage                   | view   | view   | view       | view        | view+manage | all       |
 | users.\* (except manage_roles/delete) |        |        |            |             | x           | x         |
 | users.delete, manage_roles            |        |        |            |             |             | x         |
-| teams.\*                              |        |        |            |             | x           | x         |
+| teams.view                            |        | x      | x          | x           | x           | x         |
+| teams.create/edit/delete              |        |        |            |             | x           | x         |
 | settings.\*                           |        |        |            |             | x           | x         |
 | system.\*                             |        |        |            |             |             | x         |
 
@@ -590,6 +614,10 @@ When `AUTH_STRATEGY=azure`:
 6. JWT is issued and stored in the httpOnly auth cookie.
 
 If no active local account can be linked, login is denied with `azure_no_account`.
+
+### Adding users
+
+Admins with the `users.create` permission can add users via **Add user** on the User Management page. They provide the user's **email** (required), role, and optionally display name and initial team(s). A local account is created; email is required so the user can be matched when they first sign in with Microsoft. When that person signs in with Azure AD, they are matched by email and their identity is linked. No separate invite email is sent; the user must use the same email address when signing in.
 
 ## Active Directory Integration (Production)
 

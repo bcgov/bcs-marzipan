@@ -5,6 +5,7 @@ import {
   addUserToTeamBodySchema,
   createArrayResponseWrapperSchema,
   createResponseWrapperSchema,
+  createUserBodySchema,
   transferActivitiesBodySchema,
   transferActivitiesResponseSchema,
   updateUserBodySchema,
@@ -13,6 +14,11 @@ import {
   userHistoryEntrySchema,
   userListItemSchema,
 } from '@corpcal/shared/schemas';
+
+/**
+ * Request DTO for POST /users - Create a new user (admin).
+ */
+export class CreateUserDto extends createZodDto(createUserBodySchema) {}
 
 /**
  * Request DTO for PATCH /users/:id - Update user role, active status, or notes.

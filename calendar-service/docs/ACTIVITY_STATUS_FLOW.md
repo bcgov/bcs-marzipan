@@ -2,6 +2,8 @@
 
 This document describes the business rules for activity statuses: which statuses exist, how they are set, and who can perform status-changing actions.
 
+For general edit permission (who may PATCH an activity, UI read-only rules, and comms-candidate API access), see [ACTIVITY_EDIT_ELIGIBILITY.md](./ACTIVITY_EDIT_ELIGIBILITY.md).
+
 ## Statuses
 
 | Status               | Description                                                                                                  |

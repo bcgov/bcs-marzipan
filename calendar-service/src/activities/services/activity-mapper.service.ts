@@ -9,6 +9,7 @@ import {
   LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
   type ActivityResponse,
+  type EventPlannerDetail,
   type LookAheadSection,
   type LookAheadStatus,
   type Visibility,
@@ -35,12 +36,14 @@ export class ActivityMapperService {
       activityStatus?: string;
       dateStatus?: string;
       timeStatus?: string;
+      venueStatus?: string;
       newsReleaseOrigin?: string | null;
       newsReleaseDistribution?: string | null;
       premierRequested?: string | null;
       venueAddress?: {
         venueName: string | null;
-        street: string | null;
+        addressLine1: string | null;
+        addressLine2: string | null;
         city: string | null;
         provinceOrState: string | null;
         country: string | null;
@@ -54,7 +57,9 @@ export class ActivityMapperService {
         name: string;
         isLead: boolean;
       }>;
-      eventLeadName?: string | null;
+      eventPlannerDetails?: EventPlannerDetail[];
+      eventPlanners?: string[];
+      eventPlannerLeadIds?: number[];
       leadOrgName?: string | null;
       reportSettings?: Array<{
         id: number;
@@ -66,6 +71,7 @@ export class ActivityMapperService {
       translationsRequiredStatus?: string | null;
       leadMinistry?: string | null;
       leadMinistryAbbreviation?: string | null;
+      leadTeamDisplayName?: string | null;
       canEdit?: boolean;
     }
   ): ActivityResponse {
@@ -93,6 +99,7 @@ export class ActivityMapperService {
       activityStatusId: activity.activityStatusId ?? 0,
       dateStatusId: activity.dateStatusId ?? 0,
       timeStatusId: activity.timeStatusId ?? 0,
+      venueStatusId: activity.venueStatusId ?? null,
       category: relatedData?.categories ?? [],
 
       // Basic info
@@ -110,12 +117,13 @@ export class ActivityMapperService {
       tags: relatedData?.tags ?? [],
 
       // Approvals
-      significance: activity.significance ?? '',
+      significance: activity.significance ?? null,
       activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,
 
       // Scheduling
       dateStatus: relatedData?.dateStatus ?? DEFAULT_STATUS,
       timeStatus: relatedData?.timeStatus ?? DEFAULT_STATUS,
+      venueStatus: relatedData?.venueStatus ?? null,
       isAllDay: activity.isAllDay ?? false,
       startDate: formatDate(activity.startDate),
       startTime: formatTime(activity.startTime),
@@ -134,11 +142,14 @@ export class ActivityMapperService {
       // Event
       representativesAttending: relatedData?.representativesAttending ?? [],
       venueAddress: relatedData?.venueAddress ?? null,
-      eventPlannerLeadId: activity.eventPlannerLeadId ?? null,
-      eventLead:
-        // Use free-text name if available, otherwise use fetched user name
-        activity.eventPlannerLeadName ?? relatedData?.eventLeadName ?? null,
-      eventPlannerLeadName: activity.eventPlannerLeadName ?? null,
+      eventPlannerDetails: (relatedData?.eventPlannerDetails ?? []).map(
+        (d) => ({
+          ...d,
+          eventPlannerName: d.eventPlannerName ?? undefined,
+        })
+      ),
+      eventPlanners: relatedData?.eventPlanners ?? [],
+      eventPlannerLeadIds: relatedData?.eventPlannerLeadIds ?? [],
 
       // Reports
       executiveSummary: activity.executiveSummary ?? null,
@@ -179,6 +190,7 @@ export class ActivityMapperService {
         relatedData?.translationsRequiredStatus ?? null,
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
+      leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
 
       // Report settings
       reportSettings: relatedData?.reportSettings ?? [],

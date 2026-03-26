@@ -1,6 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 
 import {
+  addActivityHistoryNoteRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
   hardDeleteRequestSchema,
@@ -53,6 +54,14 @@ export class RequestDeleteDto extends createZodDto(
  * Generated from restoreRequestSchema using nestjs-zod
  */
 export class RestoreDto extends createZodDto(restoreRequestSchema) {}
+
+/**
+ * DTO for adding a standalone activity history note
+ * Generated from addActivityHistoryNoteRequestSchema using nestjs-zod
+ */
+export class AddActivityHistoryNoteDto extends createZodDto(
+  addActivityHistoryNoteRequestSchema
+) {}
 
 /**
  * DTO for hard delete (permanent) request body. Reason is optional.

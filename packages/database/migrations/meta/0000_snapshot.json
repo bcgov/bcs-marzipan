@@ -1,5 +1,5 @@
 {
-  "id": "9531ec9b-1fbf-4d94-a37e-5cae96cf2a15",
+  "id": "282bf892-ad72-4eb6-88eb-8be3dbf65f62",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -48,7 +48,7 @@
           "name": "significance",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "is_issue": {
           "name": "is_issue",
@@ -112,6 +112,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "venue_status_id": {
+          "name": "venue_status_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "news_release_origin_id": {
           "name": "news_release_origin_id",
           "type": "integer",
@@ -127,18 +133,6 @@
         "news_release_date_time": {
           "name": "news_release_date_time",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_id": {
-          "name": "event_planner_lead_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "event_planner_lead_name": {
-          "name": "event_planner_lead_name",
-          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -291,20 +285,20 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "activities_venue_status_id_venue_statuses_id_fk": {
+          "name": "activities_venue_status_id_venue_statuses_id_fk",
+          "tableFrom": "activities",
+          "tableTo": "venue_statuses",
+          "columnsFrom": ["venue_status_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "activities_news_release_origin_id_news_release_origins_id_fk": {
           "name": "activities_news_release_origin_id_news_release_origins_id_fk",
           "tableFrom": "activities",
           "tableTo": "news_release_origins",
           "columnsFrom": ["news_release_origin_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "activities_event_planner_lead_id_event_planners_id_fk": {
-          "name": "activities_event_planner_lead_id_event_planners_id_fk",
-          "tableFrom": "activities",
-          "tableTo": "event_planners",
-          "columnsFrom": ["event_planner_lead_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -404,10 +398,6 @@
         "lead_org_at_most_one": {
           "name": "lead_org_at_most_one",
           "value": "NOT (\"activities\".\"lead_org_id\" IS NOT NULL AND \"activities\".\"lead_org_name\" IS NOT NULL)"
-        },
-        "event_planner_lead_at_most_one": {
-          "name": "event_planner_lead_at_most_one",
-          "value": "NOT (\"activities\".\"event_planner_lead_id\" IS NOT NULL AND \"activities\".\"event_planner_lead_name\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -1843,9 +1833,15 @@
           "notNull": true,
           "default": true
         },
-        "province": {
-          "name": "province",
-          "type": "varchar(100)",
+        "province_or_state": {
+          "name": "province_or_state",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -3703,102 +3699,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.venues": {
-      "name": "venues",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_name": {
-          "name": "display_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "address": {
-          "name": "address",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "venues_created_by_users_id_fk": {
-          "name": "venues_created_by_users_id_fk",
-          "tableFrom": "venues",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "venues_last_updated_by_users_id_fk": {
-          "name": "venues_last_updated_by_users_id_fk",
-          "tableFrom": "venues",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.activity_categories": {
       "name": "activity_categories",
       "schema": "",
@@ -3990,6 +3890,83 @@
           "columns": ["activity_id", "comms_material_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_event_planners": {
+      "name": "activity_event_planners",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "activity_id": {
+          "name": "activity_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_planner_id": {
+          "name": "event_planner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_planner_name": {
+          "name": "event_planner_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_lead": {
+          "name": "is_lead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_event_planners_activity_id_activities_id_fk": {
+          "name": "activity_event_planners_activity_id_activities_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "activities",
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_event_planners_event_planner_id_event_planners_id_fk": {
+          "name": "activity_event_planners_event_planner_id_event_planners_id_fk",
+          "tableFrom": "activity_event_planners",
+          "tableTo": "event_planners",
+          "columnsFrom": ["event_planner_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -5189,8 +5166,14 @@
           "primaryKey": false,
           "notNull": false
         },
-        "street": {
-          "name": "street",
+        "address_line1": {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_line2": {
+          "name": "address_line2",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -5238,8 +5221,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.venue_quick_picks": {
-      "name": "venue_quick_picks",
+    "public.venue_presets": {
+      "name": "venue_presets",
       "schema": "",
       "columns": {
         "id": {
@@ -5254,8 +5237,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "street": {
-          "name": "street",
+        "address_line1": {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address_line2": {
+          "name": "address_line2",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -5292,6 +5281,20 @@
           "notNull": true,
           "default": true
         },
+        "is_pinned": {
+          "name": "is_pinned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pinned_sort_order": {
+          "name": "pinned_sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "created_date_time": {
           "name": "created_date_time",
           "type": "timestamp with time zone",
@@ -5321,18 +5324,18 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "venue_quick_picks_created_by_users_id_fk": {
-          "name": "venue_quick_picks_created_by_users_id_fk",
-          "tableFrom": "venue_quick_picks",
+        "venue_presets_created_by_users_id_fk": {
+          "name": "venue_presets_created_by_users_id_fk",
+          "tableFrom": "venue_presets",
           "tableTo": "users",
           "columnsFrom": ["created_by"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "venue_quick_picks_last_updated_by_users_id_fk": {
-          "name": "venue_quick_picks_last_updated_by_users_id_fk",
-          "tableFrom": "venue_quick_picks",
+        "venue_presets_last_updated_by_users_id_fk": {
+          "name": "venue_presets_last_updated_by_users_id_fk",
+          "tableFrom": "venue_presets",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],

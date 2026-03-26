@@ -1,3 +1,6 @@
+/**
+ * @deprecated Unused. Activity scheduling uses ScheduledDatePopoverField instead.
+ */
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import * as React from 'react';
@@ -61,6 +64,7 @@ export function DateRangePicker({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          size="input"
           className={cn(
             'w-full justify-start text-left font-normal',
             !startDate && !endDate && 'text-muted-foreground'

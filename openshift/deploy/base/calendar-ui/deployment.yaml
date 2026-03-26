@@ -44,6 +44,11 @@ spec:
                 configMapKeyRef:
                   name: calendar-ui-config
                   key: VITE_API_BASE_URL
+            - name: API_PROXY_UPSTREAM
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: API_PROXY_UPSTREAM
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:

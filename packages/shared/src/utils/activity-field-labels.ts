@@ -12,6 +12,21 @@ export type ActivityFieldLabelKey =
   | keyof VenueAddressBase;
 
 /**
+ * Form/API field keys that are required on create (matches createActivityRequestSchema
+ * and comms lead rule). Visibility is omitted — it defaults to global in the schema.
+ * Use for required indicators in the UI; keep in sync when validation changes.
+ */
+export const ACTIVITY_CREATE_REQUIRED_FIELD_KEYS = [
+  'categoryIds',
+  'title',
+  'summary',
+  'leadTeamId',
+  'dateStatusId',
+  'timeStatusId',
+  'commsContacts',
+] as const satisfies readonly (keyof ActivityFormData)[];
+
+/**
  * User-facing labels for activity form/history field names.
  * Single source of truth for form validation messages, history changelog, confirm modals, etc.
  * Sentence case.
@@ -19,22 +34,27 @@ export type ActivityFieldLabelKey =
 export const ACTIVITY_FIELD_LABELS: Partial<
   Record<ActivityFieldLabelKey, string>
 > = {
+  categoryIds: 'Category',
   title: 'Title',
   summary: 'Summary',
   significance: 'Significance',
   dateStatusId: 'Date status',
   timeStatusId: 'Time status',
+  venueStatusId: 'Venue status',
   activityStatusId: 'Activity status',
   leadTeamId: 'Lead team',
   leadMinistryId: 'Lead ministry',
   leadOrgId: 'Lead organization',
   commsContactLeadId: 'Comms lead',
-  eventPlannerLeadId: 'Event planner',
-  categoryIds: 'Categories',
+  commsContacts: 'Comms contacts',
+  eventPlanners: 'Event planners',
   tagIds: 'Tags',
   commsMaterialIds: 'Comms materials',
   translationLanguageIds: 'Translation languages',
   sharedWithTeamIds: 'Shared with teams',
+  visibility: 'Visibility',
+  notes: 'Notes',
+  strategy: 'Strategy',
   isIssue: 'Issue',
   isAllDay: 'All day',
   isConfidential: 'Confidential',
@@ -55,11 +75,11 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   newsReleaseDistributionId: 'News release distribution',
   premierRequestedId: 'Premier requested',
   reportSettings: 'Report settings',
-  commsContacts: 'Comms contacts',
   representatives: 'Representatives',
-  // Venue address nested fields (e.g. when showing validation per field)
-  venueName: 'Venue name',
-  street: 'Street address',
+  // Venue row nested fields (DB `venue_name`, etc.)
+  venueName: 'Venue',
+  addressLine1: 'Address',
+  addressLine2: 'Address details',
   city: 'City',
   provinceOrState: 'Province/state',
   country: 'Country',
@@ -81,7 +101,8 @@ function sentenceCaseFromFieldName(field: string): string {
  * Use for form validation messages, history/changelog display, confirm modals, and anywhere
  * activity field names are shown in the app.
  *
- * @param fieldName - Field key (e.g. from ActivityFormData or path like "venueAddress.street")
+ * @param fieldName - Field key (e.g. from ActivityFormData or path like "venueAddress.addressLine1";
+ *   use `venueName` for the venue display name field, `venueAddress` for the whole row)
  * @returns Label from map, or sentence-case fallback from the last path segment
  */
 export function getActivityFieldLabel(fieldName: string): string {

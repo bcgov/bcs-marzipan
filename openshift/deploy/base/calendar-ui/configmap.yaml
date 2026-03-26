@@ -10,4 +10,5 @@ metadata:
     app.kubernetes.io/managed-by: kubectl
 data:
   NODE_ENV: development
-  VITE_API_BASE_URL: ${CALENDAR_UI_API_BASE_URL}
+  VITE_API_BASE_URL: /api
+  API_PROXY_UPSTREAM: http://10.98.65.134:3001

@@ -18,6 +18,12 @@ jobs:
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
       APP_VERSION: ${{ vars.APP_VERSION }}
+      AUTH_COOKIE_DOMAIN: ${{ vars.AUTH_COOKIE_DOMAIN }}
+      POST_LOGIN_REDIRECT_URL: ${{ vars.POST_LOGIN_REDIRECT_URL }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_REDIRECT_URI: ${{ secrets.AZURE_REDIRECT_URI }}
 
     steps:
       - name: Checkout code
@@ -44,7 +50,6 @@ jobs:
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
-          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/build | envsubst | oc apply -f -
 
       - name: Start binary build (calendar-service)
@@ -69,7 +74,6 @@ jobs:
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
-          export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui

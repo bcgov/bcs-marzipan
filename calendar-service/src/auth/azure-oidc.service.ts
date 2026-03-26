@@ -13,6 +13,15 @@ export class AzureOidcService {
   constructor(private readonly configService: ConfigService) {}
 
   isConfigured(): boolean {
+    const authStrategy = this.configService.get<string>(
+      'AUTH_STRATEGY',
+      'mock'
+    );
+
+    if (authStrategy !== 'azure') {
+      return false;
+    }
+
     return !!(
       this.configService.get<string>('AZURE_TENANT_ID') &&
       this.configService.get<string>('AZURE_CLIENT_ID') &&
@@ -35,11 +44,17 @@ export class AzureOidcService {
       );
     }
 
-    const issuerUrl = new URL(
-      `https://login.microsoftonline.com/${tenantId}/v2.0`
+    const discoveryUrl = new URL(
+      `https://login.microsoftonline.com/${tenantId}/v2.0/.well-known/openid-configuration`
     );
 
-    this.cachedConfig = await oidc.discovery(issuerUrl, clientId, clientSecret);
+    // Azure's well-known document is stable and reachable in OpenShift.
+    // Using the exact metadata URL avoids issuer transformation edge cases.
+    this.cachedConfig = await oidc.discovery(
+      discoveryUrl,
+      clientId,
+      clientSecret
+    );
     return this.cachedConfig;
   }
 
@@ -51,9 +66,10 @@ export class AzureOidcService {
       return configuredRedirectUri.trim();
     }
 
-    // Default to /api so UI-hosted proxy setups (e.g. Vite dev server) keep
-    // the callback and post-login redirects on the frontend origin.
-    return `${req.protocol}://${req.get('host')}/api/auth/azure/callback`;
+    // Use X-Forwarded-Proto when behind a reverse proxy (nginx, OpenShift edge TLS)
+    // so the URI scheme is https rather than the internal http.
+    const protocol = req.get('X-Forwarded-Proto') || req.protocol;
+    return `${protocol}://${req.get('host')}/api/auth/azure/callback`;
   }
 
   generateState(): string {

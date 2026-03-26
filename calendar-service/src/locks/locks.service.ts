@@ -129,12 +129,27 @@ export class LocksService {
     return (row ?? null) as LockForEntity | null;
   }
 
-  async releaseLock(lockId: number, userId: number): Promise<boolean> {
+  async getLockById(lockId: number): Promise<LockForEntity | null> {
+    const row = await this.databaseService.db.query.editLocks.findFirst({
+      where: eq(editLocks.id, lockId),
+    });
+    return (row ?? null) as LockForEntity | null;
+  }
+
+  /**
+   * Deletes the lock if it exists and belongs to the user.
+   * Returns the removed row (for notifications) or null if nothing was deleted.
+   */
+  async releaseLock(
+    lockId: number,
+    userId: number
+  ): Promise<LockForEntity | null> {
     const result = await this.databaseService.db
       .delete(editLocks)
       .where(and(eq(editLocks.id, lockId), eq(editLocks.userId, userId)))
-      .returning({ id: editLocks.id });
-    return result.length > 0;
+      .returning();
+    if (result.length === 0) return null;
+    return result[0] as LockForEntity;
   }
 
   async cleanupExpiredLocks(): Promise<number> {

@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
+import { getCorsAllowedOrigins } from './common/config/cors-allowed-origins';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { RateLimitInterceptor } from './common/interceptors/rate-limit.interceptor';
 import { AppLogger } from './common/logger/logger.service';
@@ -25,15 +26,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   app.useGlobalInterceptors(new RateLimitInterceptor(configService));
 
-  // Get CORS allowed origins from environment variable or use defaults
-  const corsOriginsEnv = configService.get<string>('CORS_ALLOWED_ORIGINS');
-  const allowedOrigins = corsOriginsEnv
-    ? corsOriginsEnv.split(',').map((origin) => origin.trim())
-    : [
-        'http://localhost:3000',
-        'http://localhost:4173',
-        'http://localhost:8080',
-      ];
+  const allowedOrigins = getCorsAllowedOrigins();
 
   // Enable CORS with credentials for httpOnly cookie authentication
   app.enableCors({

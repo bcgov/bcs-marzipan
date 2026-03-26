@@ -24,6 +24,7 @@ Creates a new calendar activity with related junction table records.
   "isAllDay": false,
   "dateStatusId": 1,
   "timeStatusId": 1,
+  "venueStatusId": null,
   "activityStatusId": 1,
   "leadMinistryId": 1,
   "isIssue": false,
@@ -46,7 +47,8 @@ Creates a new calendar activity with related junction table records.
   "premierRequestedId": 2,
   "venueAddress": {
     "venueName": null,
-    "street": "123 Main St",
+    "addressLine1": "123 Main St",
+    "addressLine2": null,
     "city": "Victoria",
     "provinceOrState": "BC",
     "country": "Canada"
@@ -55,6 +57,10 @@ Creates a new calendar activity with related junction table records.
   "tagIds": [1, 2]
 }
 ```
+
+**`venueStatusId`:** Optional. Id from the venue-status lookup (`/lookups/venue-statuses`), or `null` / omit when the activity has no venue or no venue status.
+
+**`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue presets** also store `addressLine2` (see lookups below).
 
 **Response:** `201 Created`
 
@@ -539,11 +545,11 @@ Simplified activity list for "Related Activities" dropdowns.
 
 ---
 
-### Get Venue Quick-Picks
+### Get Venue Presets
 
-**GET** `/lookups/venue-quick-picks`
+**GET** `/lookups/venue-presets`
 
-Returns admin-configured quick-pick venues for the activity form (max 4 active). Used as tags under the Venue address input.
+Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; up to 4 pinned presets are shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
 
 **Cache:** 1 hour
 
@@ -554,10 +560,13 @@ Returns admin-configured quick-pick venues for the activity form (max 4 active).
     {
       "id": 1,
       "venueName": "BC Legislature",
-      "street": "501 Belleville St",
+      "addressLine1": "501 Belleville St",
+      "addressLine2": null,
       "city": "Victoria",
       "provinceOrState": "British Columbia",
-      "country": "Canada"
+      "country": "Canada",
+      "isPinned": true,
+      "pinnedSortOrder": 1
     }
   ]
 }
@@ -565,53 +574,29 @@ Returns admin-configured quick-pick venues for the activity form (max 4 active).
 
 ---
 
-### Get Venue Last-Used
+### Create Venue Preset
 
-**GET** `/lookups/venue-last-used`
-
-Returns the last 2 distinct venue addresses used by the current user (from activities they last updated). Requires authentication.
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": -1,
-      "venueName": "Conference Room A",
-      "street": "123 Main St",
-      "city": "Victoria",
-      "provinceOrState": "British Columbia",
-      "country": "Canada"
-    }
-  ]
-}
-```
-
----
-
-### Create Venue Quick-Pick
-
-**POST** `/lookups/venue-quick-picks`
+**POST** `/lookups/venue-presets`
 
 **Permission:** `lookups.manage`
 
-**Body:** `venueName` (required), `street`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true). Maximum 4 active quick-picks enforced.
+**Body:** `venueName` (required), `addressLine1`, `addressLine2`, `city`, `provinceOrState`, `country`, `sortOrder` (default 0), `isActive` (default true), `isPinned` (default false), `pinnedSortOrder` (default 0). Duplicate addresses (same `addressLine1` + `addressLine2`) are rejected.
 
 ---
 
-### Update Venue Quick-Pick
+### Update Venue Preset
 
-**PATCH** `/lookups/venue-quick-picks/:id`
+**PATCH** `/lookups/venue-presets/:id`
 
 **Permission:** `lookups.manage`
 
-**Body:** Same as create (all optional for partial update).
+**Body:** Same as create (all optional for partial update). Duplicate address check applies when address fields change.
 
 ---
 
-### Delete Venue Quick-Pick
+### Delete Venue Preset
 
-**DELETE** `/lookups/venue-quick-picks/:id`
+**DELETE** `/lookups/venue-presets/:id`
 
 **Permission:** `lookups.manage`
 
