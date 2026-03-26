@@ -16,7 +16,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  RequiredFieldIndicator,
   useFormDisplayOptions,
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
@@ -140,15 +139,14 @@ export function ActivityScheduleSection({
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
+        {/* Group label — not FormLabel: not tied to one control id (nested fields each have sr-only labels). */}
         <Label
           className={cn(
             'flex items-center gap-2',
             showChangedBadges && 'min-h-[18px]'
           )}
         >
-          <span className="inline-flex items-center gap-1">
-            Date <RequiredFieldIndicator className="inline" />
-          </span>
+          <span>Date</span>
           <FormAggregateDirtyIndicator names={DATE_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
@@ -312,15 +310,14 @@ export function ActivityScheduleSection({
       </FormItem>
 
       <FormItem>
+        {/* Group label — not FormLabel: not tied to one control id (nested fields each have sr-only labels). */}
         <Label
           className={cn(
             'flex items-center gap-2',
             showChangedBadges && 'min-h-[18px]'
           )}
         >
-          <span className="inline-flex items-center gap-1">
-            Time <RequiredFieldIndicator className="inline" />
-          </span>
+          <span>Time</span>
           <FormAggregateDirtyIndicator names={TIME_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>

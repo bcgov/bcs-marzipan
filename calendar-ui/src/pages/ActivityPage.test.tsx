@@ -328,14 +328,64 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('always shows Cancel/Update but keeps them disabled until edit lock', async () => {
+  it('keeps Save disabled until edit lock and dirty', async () => {
     renderActivityPage();
 
     await screen.findByText(/Lead team/);
-    const cancel = screen.getByRole('button', { name: /^Cancel$/i });
-    const update = screen.getByRole('button', { name: /^Update$/i });
-    expect(cancel).toBeDisabled();
-    expect(update).toBeDisabled();
+    const save = screen.getByRole('button', { name: /^Save$/i });
+    expect(save).toBeDisabled();
+  });
+
+  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Discard changes/i })
+      ).toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /^Save$/i })).not.toBeDisabled()
+    );
+  });
+
+  it('shows Review when user has activities.review', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) =>
+        key === PERMISSIONS.ACTIVITIES.EDIT ||
+        key === PERMISSIONS.ACTIVITIES.CREATE ||
+        key === PERMISSIONS.ACTIVITIES.REVIEW,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
+
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.getByRole('button', { name: /^(Save and )?Review$/i })
+    ).toBeInTheDocument();
+  });
+
+  it('does not show Review without activities.review', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.REVIEW,
+      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+    });
+
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^(Save and )?Review$/i })
+    ).not.toBeInTheDocument();
   });
 
   it('typing in a text field triggers lock acquisition', async () => {

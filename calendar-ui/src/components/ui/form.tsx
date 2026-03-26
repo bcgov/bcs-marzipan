@@ -14,6 +14,8 @@ import {
   forwardRef,
   useContext,
   useId,
+  useLayoutEffect,
+  useState,
   type ComponentPropsWithoutRef,
   type ElementRef,
   type HTMLAttributes,
@@ -105,7 +107,7 @@ const useFormField = () => {
   }
 
   const fieldState = getFieldState(fieldContext.name, formState);
-  const { id } = itemContext;
+  const { id, ariaRequired } = itemContext;
 
   return {
     id,
@@ -113,24 +115,26 @@ const useFormField = () => {
     formItemId: `${id}-form-item`,
     formDescriptionId: `${id}-form-item-description`,
     formMessageId: `${id}-form-item-message`,
+    ariaRequired,
     ...fieldState,
   };
 };
 
 type FormItemContextValue = {
   id: string;
+  ariaRequired: boolean;
+  setAriaRequired: (value: boolean) => void;
 };
 
-const FormItemContext = createContext<FormItemContextValue>(
-  {} as FormItemContextValue
-);
+const FormItemContext = createContext<FormItemContextValue | null>(null);
 
 const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const id = useId();
+    const [ariaRequired, setAriaRequired] = useState(false);
 
     return (
-      <FormItemContext.Provider value={{ id }}>
+      <FormItemContext.Provider value={{ id, ariaRequired, setAriaRequired }}>
         <div ref={ref} className={cn('space-y-2', className)} {...props} />
       </FormItemContext.Provider>
     );
@@ -138,38 +142,80 @@ const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 );
 FormItem.displayName = 'FormItem';
 
+/**
+ * Asterisk for labels of fields required on create. Colour from
+ * Tailwind `text-required-field-indicator` (maps to `--color-required-field-indicator`, same as Deleted status badge background).
+ */
+function RequiredFieldIndicator({
+  className,
+  ...props
+}: HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn('text-required-field-indicator font-semibold', className)}
+      aria-hidden
+      {...props}
+    >
+      *
+    </span>
+  );
+}
+
 const FormLabel = forwardRef<
   ElementRef<typeof LabelPrimitive.Root>,
   ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
     showDirtyIndicator?: boolean;
+    /** Renders the required asterisk and sets `aria-required` on the sibling {@link FormControl}. */
+    showRequired?: boolean;
   }
->(({ className, children, showDirtyIndicator = true, ...props }, ref) => {
-  const { error, formItemId, name, isDirty } = useFormField();
-  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
-  const hasReviewDiff = reviewerChangedPaths.has(name);
+>(
+  (
+    {
+      className,
+      children,
+      showDirtyIndicator = true,
+      showRequired = false,
+      ...props
+    },
+    ref
+  ) => {
+    const { error, formItemId, isDirty } = useFormField();
+    const { setAriaRequired } = useContext(FormItemContext)!;
+    const { showChangedBadges } = useFormDisplayOptions();
 
-  return (
-    <Label
-      ref={ref}
-      className={cn(
-        error && 'text-destructive',
-        className,
-        'flex items-center gap-2',
-        showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
-      )}
-      htmlFor={formItemId}
-      {...props}
-    >
-      <span className="inline-flex items-center">{children}</span>
-      {showChangedBadges && showDirtyIndicator && isDirty && (
-        <FormFieldChangedIndicator />
-      )}
-      {showChangedBadges && showDirtyIndicator && !isDirty && hasReviewDiff && (
-        <FormFieldReviewIndicator />
-      )}
-    </Label>
-  );
-});
+    useLayoutEffect(() => {
+      if (!showRequired) return;
+      setAriaRequired(true);
+      return () => {
+        setAriaRequired(false);
+      };
+    }, [showRequired, setAriaRequired]);
+
+    return (
+      <Label
+        ref={ref}
+        className={cn(
+          error && 'text-destructive',
+          className,
+          'flex items-center gap-2',
+          showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
+        )}
+        htmlFor={formItemId}
+        {...props}
+      >
+        <span
+          className={cn('inline-flex items-center', showRequired && 'gap-1')}
+        >
+          {children}
+          {showRequired ? <RequiredFieldIndicator className="inline" /> : null}
+        </span>
+        {showChangedBadges && showDirtyIndicator && isDirty && (
+          <FormFieldChangedIndicator />
+        )}
+      </Label>
+    );
+  }
+);
 FormLabel.displayName = 'FormLabel';
 
 /** Walks RHF `dirtyFields` for dotted paths (e.g. `venueAddress.city`). */
@@ -237,7 +283,7 @@ const FormControl = forwardRef<
   ElementRef<typeof Slot>,
   ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId } =
+  const { error, formItemId, formDescriptionId, formMessageId, ariaRequired } =
     useFormField();
 
   return (
@@ -251,6 +297,7 @@ const FormControl = forwardRef<
       }
       aria-invalid={!!error}
       {...props}
+      aria-required={ariaRequired ? true : undefined}
     />
   );
 });
@@ -296,25 +343,6 @@ const FormMessage = forwardRef<
   );
 });
 FormMessage.displayName = 'FormMessage';
-
-/**
- * Asterisk for labels of fields required on create. Colour from
- * Tailwind `text-required-field-indicator` (maps to `--color-required-field-indicator`, same as Deleted status badge background).
- */
-function RequiredFieldIndicator({
-  className,
-  ...props
-}: HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className={cn('text-required-field-indicator font-semibold', className)}
-      aria-hidden
-      {...props}
-    >
-      *
-    </span>
-  );
-}
 
 export {
   useFormField,
