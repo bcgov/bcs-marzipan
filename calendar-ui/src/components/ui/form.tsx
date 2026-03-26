@@ -179,9 +179,9 @@ const FormLabel = forwardRef<
     },
     ref
   ) => {
-    const { error, formItemId, isDirty } = useFormField();
+    const { error, formItemId, isDirty, name } = useFormField();
     const { setAriaRequired } = useContext(FormItemContext)!;
-    const { showChangedBadges } = useFormDisplayOptions();
+    const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
 
     useLayoutEffect(() => {
       if (!showRequired) return;
@@ -209,9 +209,13 @@ const FormLabel = forwardRef<
           {children}
           {showRequired ? <RequiredFieldIndicator className="inline" /> : null}
         </span>
-        {showChangedBadges && showDirtyIndicator && isDirty && (
-          <FormFieldChangedIndicator />
-        )}
+        {showChangedBadges &&
+          showDirtyIndicator &&
+          (isDirty ? (
+            <FormFieldChangedIndicator />
+          ) : reviewerChangedPaths.has(name) ? (
+            <FormFieldReviewIndicator />
+          ) : null)}
       </Label>
     );
   }

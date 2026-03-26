@@ -2,13 +2,12 @@ import type {
   ActivityFormData,
   ActivityResponse,
 } from '@corpcal/shared/schemas';
-import { mapResponseToFormData } from '@corpcal/shared/utils';
+import {
+  buildReviewDiffLookups,
+  mapResponseToFormData,
+} from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
-
-function normalizeForMatch(value: string): string {
-  return value.trim().toLowerCase();
-}
 
 function buildFormLookups(
   lookups: Pick<
@@ -16,44 +15,12 @@ function buildFormLookups(
     'categories' | 'commsMaterials' | 'translationLanguages' | 'sharedWithTeams'
   >
 ): Parameters<typeof mapResponseToFormData>[1] {
-  return {
-    categoryNameToId: (name: string) => {
-      const key = normalizeForMatch(name);
-      return lookups.categories.find(
-        (c) =>
-          normalizeForMatch(c.name) === key ||
-          (c.displayName != null && normalizeForMatch(c.displayName) === key)
-      )?.id;
-    },
-    commsMaterialNameToId: (name: string) => {
-      const key = normalizeForMatch(name);
-      return lookups.commsMaterials.find(
-        (m) =>
-          normalizeForMatch(m.name) === key ||
-          (m.displayName != null && normalizeForMatch(m.displayName) === key)
-      )?.id;
-    },
-    translationLanguageNameToId: (value: string) => {
-      const key = normalizeForMatch(value);
-      return lookups.translationLanguages.find(
-        (l) =>
-          (l.shortcode != null && normalizeForMatch(l.shortcode) === key) ||
-          normalizeForMatch(l.name) === key ||
-          (l.displayName != null && normalizeForMatch(l.displayName) === key)
-      )?.id;
-    },
-    sharedWithTeamNameToId: lookups.sharedWithTeams?.length
-      ? (name: string) => {
-          const key = normalizeForMatch(name);
-          return lookups.sharedWithTeams?.find(
-            (t) =>
-              normalizeForMatch(t.name) === key ||
-              (t.displayName != null &&
-                normalizeForMatch(t.displayName) === key)
-          )?.id;
-        }
-      : undefined,
-  };
+  return buildReviewDiffLookups({
+    categories: lookups.categories,
+    commsMaterials: lookups.commsMaterials,
+    translationLanguages: lookups.translationLanguages,
+    sharedWithTeams: lookups.sharedWithTeams,
+  });
 }
 
 /**
