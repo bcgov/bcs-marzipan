@@ -23,6 +23,7 @@ import { RolesGuard } from './policy/guards/roles.guard';
 import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
 import { PolicyModule } from './policy/policy.module';
 import { ReportsModule } from './reports/reports.module';
+import { SavedFiltersModule } from './saved-filters/saved-filters.module';
 import { TeamsModule } from './teams/teams.module';
 import { UsersModule } from './users/users.module';
 
@@ -55,6 +56,7 @@ function resolveRootEnvPath(): string {
     LookupsModule,
     DraftsModule,
     ReportsModule,
+    SavedFiltersModule,
     LookAheadModule,
     UsersModule,
     TeamsModule,
