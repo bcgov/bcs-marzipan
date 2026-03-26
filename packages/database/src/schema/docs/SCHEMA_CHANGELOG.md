@@ -2,6 +2,14 @@
 
 Append-only log of notable schema and constraint changes. Regenerate SQL migrations with Drizzle Kit from `packages/database` when Drizzle schema changes.
 
+## 2026-03-26 — Activity saved filters: scope + future RBAC sharing
+
+- **`activity_saved_filters.scope_type`** supports `user` (private), `team` (team-shared), and `global` (application-wide).
+- **Future RBAC plan**:
+  - `savedFilters.share.global` will be granted to **Admin** roles.
+  - `savedFilters.share.team` will be granted to **team owners** (specific role mapping TBD).
+- Current seeds grant **basic CRUD** (`savedFilters.view/create/edit/delete`) to all roles; sharing permissions are intentionally not granted yet.
+
 ## 2026-03-22 — Activities: optional significance
 
 - **`activities.significance`**: Column is nullable (optional text). Aligns with `createActivityRequestSchema` / `activityDbFieldsSchema` in `@corpcal/shared`.

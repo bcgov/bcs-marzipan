@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -46,8 +47,10 @@ export const activitySavedFilters = pgTable(
     isActive: boolean('is_active').notNull().default(true),
 
     /**
-     * Future: scope type for sharing. 'user' = private, 'team' = shared with a team.
-     * V1 enforces 'user' only.
+     * Sharing scope type.
+     * - 'user': private saved filter owned by a single user
+     * - 'team': shared with members of scopeTeamId
+     * - 'global': shared across the application
      */
     scopeType: varchar('scope_type', { length: 20 }).notNull().default('user'),
 
@@ -67,10 +70,29 @@ export const activitySavedFilters = pgTable(
       table.ownerUserId,
       table.contextKey
     ),
-    uniqueName: uniqueIndex('asf_unique_name')
-      .on(table.ownerUserId, table.contextKey, table.name)
-      .where(sql`is_active = true`),
+    scopeTypeIdx: index('asf_scope_type_idx').on(table.scopeType),
     scopeTeamIdx: index('asf_scope_team_id_idx').on(table.scopeTeamId),
+    scopeTypeCheck: check(
+      'asf_scope_type_check',
+      sql`${table.scopeType} IN ('user', 'team', 'global')`
+    ),
+    scopeTeamConstraintCheck: check(
+      'asf_scope_team_scope_check',
+      sql`(
+        (${table.scopeType} = 'team' AND ${table.scopeTeamId} IS NOT NULL)
+        OR
+        (${table.scopeType} IN ('user', 'global') AND ${table.scopeTeamId} IS NULL)
+      )`
+    ),
+    uniqueUserScopeName: uniqueIndex('asf_unique_user_scope_name')
+      .on(table.ownerUserId, table.contextKey, sql`lower(${table.name})`)
+      .where(sql`is_active = true AND scope_type = 'user'`),
+    uniqueTeamScopeName: uniqueIndex('asf_unique_team_scope_name')
+      .on(table.scopeTeamId, table.contextKey, sql`lower(${table.name})`)
+      .where(sql`is_active = true AND scope_type = 'team'`),
+    uniqueGlobalScopeName: uniqueIndex('asf_unique_global_scope_name')
+      .on(table.contextKey, sql`lower(${table.name})`)
+      .where(sql`is_active = true AND scope_type = 'global'`),
   })
 );
 

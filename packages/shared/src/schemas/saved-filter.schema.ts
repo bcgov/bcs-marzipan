@@ -18,6 +18,9 @@ export const savedFilterContextKeySchema = z
   .min(1)
   .max(CONTEXT_KEY_MAX_LENGTH);
 
+export const savedFilterScopeTypeSchema = z.enum(['user', 'team', 'global']);
+export type SavedFilterScopeType = z.infer<typeof savedFilterScopeTypeSchema>;
+
 // ============================================
 // Response Schemas
 // ============================================
@@ -31,7 +34,7 @@ export const savedFilterResponseSchema = z.object({
   searchKeyword: z.string(),
   isDefault: z.boolean(),
   sortOrder: z.number().int(),
-  scopeType: z.string(),
+  scopeType: savedFilterScopeTypeSchema,
   scopeTeamId: z.number().int().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -52,7 +55,7 @@ export type SavedFilterListResponse = z.infer<
 // Request Body Schemas
 // ============================================
 
-const FILTER_NAME_MAX_LENGTH = 50;
+const FILTER_NAME_MAX_LENGTH = 80;
 
 export const createSavedFilterBodySchema = z.object({
   contextKey: savedFilterContextKeySchema,
@@ -60,6 +63,8 @@ export const createSavedFilterBodySchema = z.object({
   filterState: z.record(z.string(), z.unknown()),
   searchKeyword: z.string().default(''),
   isDefault: z.boolean().optional(),
+  scopeType: savedFilterScopeTypeSchema.optional(),
+  scopeTeamId: z.number().int().nullable().optional(),
 });
 
 export type CreateSavedFilterBody = z.infer<typeof createSavedFilterBodySchema>;
@@ -69,6 +74,8 @@ export const updateSavedFilterBodySchema = z.object({
   filterState: z.record(z.string(), z.unknown()).optional(),
   searchKeyword: z.string().optional(),
   isDefault: z.boolean().optional(),
+  scopeType: savedFilterScopeTypeSchema.optional(),
+  scopeTeamId: z.number().int().nullable().optional(),
 });
 
 export type UpdateSavedFilterBody = z.infer<typeof updateSavedFilterBodySchema>;

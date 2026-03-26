@@ -190,7 +190,7 @@ export class SavedFiltersController {
     if (scopeType === 'team') {
       if (!user.permissions.includes(PERMISSIONS.SAVED_FILTERS.SHARE_TEAM)) {
         throw new ForbiddenException(
-          'You do not have permission to share team saved filters'
+          'You do not have permission to share saved filters with your team.'
         );
       }
       return;
@@ -199,7 +199,7 @@ export class SavedFiltersController {
     if (scopeType === 'global') {
       if (!user.permissions.includes(PERMISSIONS.SAVED_FILTERS.SHARE_GLOBAL)) {
         throw new ForbiddenException(
-          'You do not have permission to share global saved filters'
+          'You do not have permission to share saved filters with all users.'
         );
       }
       return;

@@ -1,13 +1,7 @@
 import {
   ChevronDownIcon,
   ChevronRight,
-  Copy,
-  Pencil,
-  Save,
   SlidersHorizontal,
-  Star,
-  StarOff,
-  Trash2,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,6 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { MenuDivider } from '@/components/ui/menu-divider';
 import {
   Popover,
   PopoverContent,
@@ -191,6 +186,96 @@ function OverflowFilterPopover({
   );
 }
 
+/** Per-row actions popover for a saved filter (hover or click to open). */
+function SavedFilterRowActionsPopover({
+  savedFilter,
+  hasActiveFilters,
+  onUpdate,
+  onToggleDefault,
+  onDuplicate,
+  onRename,
+  onDelete,
+}: {
+  savedFilter: SavedFilterResponse;
+  hasActiveFilters: () => boolean;
+  onUpdate: () => void;
+  onToggleDefault: () => void;
+  onDuplicate: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const subPopoverHover = useSubPopoverHover(open, setOpen);
+  const sf = savedFilter;
+
+  return (
+    <Popover open={open} onOpenChange={subPopoverHover.onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-8 shrink-0 items-center justify-center py-2 outline-none"
+          aria-label={`Actions for ${sf.name}`}
+          aria-expanded={open}
+          {...subPopoverHover.triggerPointerHandlers}
+        >
+          <ChevronRight className="text-muted-foreground h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        className="min-w-48 p-1"
+        sideOffset={2}
+        {...subPopoverHover.contentPointerHandlers}
+      >
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none disabled:pointer-events-none disabled:opacity-50"
+          disabled={!hasActiveFilters()}
+          onClick={onUpdate}
+        >
+          <span>Update</span>
+          <span className="text-muted-foreground text-xs">
+            To currently applied filters
+          </span>
+        </button>
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          onClick={onToggleDefault}
+        >
+          <span>{sf.isDefault ? 'Remove as default' : 'Make default'}</span>
+          <span className="text-muted-foreground text-xs">
+            Applied on login
+          </span>
+        </button>
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          onClick={onDuplicate}
+        >
+          Duplicate
+        </button>
+        <button
+          type="button"
+          className="hover:bg-accent hover:text-accent-foreground flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          onClick={onRename}
+        >
+          Rename
+        </button>
+        <MenuDivider />
+        <button
+          type="button"
+          className="text-destructive hover:bg-destructive/10 flex w-full items-center rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
+          onClick={onDelete}
+        >
+          Delete saved filter
+        </button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export interface ResponsiveFilterSlotTriggerProps {
   active: boolean;
   count: number;
@@ -271,6 +356,7 @@ export function ResponsiveFilterRow({
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
   const [filtersAccordionOpen, setFiltersAccordionOpen] = useState(false);
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
+  const [savedFiltersPopoverOpen, setSavedFiltersPopoverOpen] = useState(false);
 
   // Saved filter dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -285,6 +371,10 @@ export function ResponsiveFilterRow({
 
   const hasSavedFilters = savedFilters != null && contextKey != null;
   const savedFiltersList = savedFilters?.savedFilters ?? [];
+  const savedFiltersSubPopoverHover = useSubPopoverHover(
+    savedFiltersPopoverOpen,
+    setSavedFiltersPopoverOpen
+  );
 
   const hasActiveFilters = useCallback(() => {
     if (!filterState) return false;
@@ -668,11 +758,15 @@ export function ResponsiveFilterRow({
                 )}
                 {hasOverflow && <div className="border-t" />}
                 {hasSavedFilters && (
-                  <Popover>
+                  <Popover
+                    open={savedFiltersPopoverOpen}
+                    onOpenChange={savedFiltersSubPopoverHover.onOpenChange}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
                         className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-full items-center justify-between px-4 py-2 text-sm outline-none"
+                        {...savedFiltersSubPopoverHover.triggerPointerHandlers}
                       >
                         My saved filters
                         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
@@ -683,6 +777,7 @@ export function ResponsiveFilterRow({
                       align="start"
                       className="max-h-60 w-64 overflow-x-hidden overflow-y-auto p-0"
                       sideOffset={2}
+                      {...savedFiltersSubPopoverHover.contentPointerHandlers}
                     >
                       {savedFiltersList.length === 0 ? (
                         <div className="text-muted-foreground px-4 py-3 text-center text-sm">
@@ -707,88 +802,22 @@ export function ResponsiveFilterRow({
                                   </span>
                                 )}
                               </button>
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent flex w-8 shrink-0 items-center justify-center py-2 outline-none"
-                                    aria-label={`Actions for ${sf.name}`}
-                                  >
-                                    <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  side="right"
-                                  align="start"
-                                  className="min-w-48 p-1"
-                                  sideOffset={2}
-                                >
-                                  <button
-                                    type="button"
-                                    className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none disabled:pointer-events-none disabled:opacity-50"
-                                    disabled={!hasActiveFilters()}
-                                    onClick={() => setUpdateDialogFilter(sf)}
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      <Save className="size-4 shrink-0" />
-                                      Update
-                                    </span>
-                                    <span className="text-muted-foreground pl-6 text-xs">
-                                      To currently applied filters
-                                    </span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="hover:bg-accent hover:text-accent-foreground flex w-full flex-col items-start gap-0 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
-                                    onClick={() => {
-                                      void handleToggleDefault(sf);
-                                    }}
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      {sf.isDefault ? (
-                                        <StarOff className="size-4 shrink-0" />
-                                      ) : (
-                                        <Star className="size-4 shrink-0" />
-                                      )}
-                                      {sf.isDefault
-                                        ? 'Remove as default'
-                                        : 'Make default'}
-                                    </span>
-                                    <span className="text-muted-foreground pl-6 text-xs">
-                                      Applied on login
-                                    </span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
-                                    onClick={() => {
-                                      void handleDuplicateSavedFilter(sf);
-                                    }}
-                                  >
-                                    <Copy className="size-4" />
-                                    Duplicate
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
-                                    onClick={() => {
-                                      setRenameDialogFilter(sf);
-                                      setRenameName(sf.name);
-                                    }}
-                                  >
-                                    <Pencil className="size-4" />
-                                    Rename
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 rounded-sm py-2 pr-2 pl-2 text-sm outline-none"
-                                    onClick={() => setDeleteDialogFilter(sf)}
-                                  >
-                                    <Trash2 className="size-4" />
-                                    Delete saved filter
-                                  </button>
-                                </PopoverContent>
-                              </Popover>
+                              <SavedFilterRowActionsPopover
+                                savedFilter={sf}
+                                hasActiveFilters={hasActiveFilters}
+                                onUpdate={() => setUpdateDialogFilter(sf)}
+                                onToggleDefault={() => {
+                                  void handleToggleDefault(sf);
+                                }}
+                                onDuplicate={() => {
+                                  void handleDuplicateSavedFilter(sf);
+                                }}
+                                onRename={() => {
+                                  setRenameDialogFilter(sf);
+                                  setRenameName(sf.name);
+                                }}
+                                onDelete={() => setDeleteDialogFilter(sf)}
+                              />
                             </Fragment>
                           ))}
                         </div>
