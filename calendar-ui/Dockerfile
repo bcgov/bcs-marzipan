@@ -29,4 +29,4 @@ COPY --from=build /app/calendar-ui/nginx.conf /tmp/default.conf.template
 EXPOSE 8080
 
 # Render env vars into server-block, then start nginx normally
-CMD ["/bin/sh", "-c", "envsubst '$$API_PROXY_UPSTREAM' < /tmp/default.conf.template > /tmp/default.conf && exec nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "if [ -z \"${API_PROXY_UPSTREAM}\" ]; then echo 'ERROR: API_PROXY_UPSTREAM environment variable is not set. Please configure backend API URL.' >&2; exit 1; fi; envsubst '$$API_PROXY_UPSTREAM' < /tmp/default.conf.template > /tmp/default.conf && exec nginx -g 'daemon off;'"]
