@@ -170,9 +170,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         header: 'Status',
         cell: ({ row }) =>
           row.original.isActive ? (
-            <Badge className="border-transparent bg-blue-600 text-white hover:bg-blue-700">
-              Active
-            </Badge>
+            <Badge variant="primary">Active</Badge>
           ) : (
             <Badge variant="secondary" className="gap-1">
               <XCircle className="h-3 w-3" />

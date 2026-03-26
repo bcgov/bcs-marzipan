@@ -56,7 +56,7 @@ export function AdminSection({
               <p className="mt-1 text-sm text-slate-600">{description}</p>
             )}
           </div>
-          <div className="flex flex-shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             {headerAction}
             <button
               onClick={scrollToTop}
@@ -70,7 +70,7 @@ export function AdminSection({
                 onClick={onAdd}
                 disabled={isLoading}
                 size="sm"
-                className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                className="gap-2"
               >
                 <Plus className="h-4 w-4" />
                 {addButtonLabel}
