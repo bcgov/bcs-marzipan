@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { OptionItem } from '@/schemas/types';
 
 import type { ActivityFilterState } from './activityFilterState';
@@ -48,6 +49,12 @@ export interface ActivityTableFiltersProps {
   eventPlannerOptions: LeadFilterOption[];
   translationStatusOptions: TranslationStatusFilterOption[];
   translationOptions: TranslationFilterOption[];
+  savedFilters?: UseSavedFiltersReturn;
+  contextKey?: string | null;
+  onApplySavedFilter?: (
+    filterState: ActivityFilterState,
+    searchKeyword: string
+  ) => void;
 }
 
 function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
@@ -124,6 +131,9 @@ export function ActivityTableFilters({
   eventPlannerOptions,
   translationStatusOptions,
   translationOptions,
+  savedFilters,
+  contextKey,
+  onApplySavedFilter,
 }: ActivityTableFiltersProps) {
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
@@ -464,6 +474,11 @@ export function ActivityTableFilters({
           overflowTriggerClassName="h-10"
           reservedWidthForTrailing={120}
           onClearAll={handleClearAllFilters}
+          savedFilters={savedFilters}
+          contextKey={contextKey}
+          filterState={filterState}
+          searchKeyword={searchKeyword}
+          onApplySavedFilter={onApplySavedFilter}
           trailingContent={
             anyActive ? (
               <Button

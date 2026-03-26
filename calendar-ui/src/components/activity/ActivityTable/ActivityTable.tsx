@@ -17,7 +17,7 @@ import {
   NotebookText,
   Users,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useCallback,
   useEffect,
@@ -77,12 +77,14 @@ import {
   useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
 import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   type ActivityListQueryParams,
   type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
+import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
   formatDateRange,
   formatExactDate,
@@ -90,6 +92,10 @@ import {
   formatTime12h,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import {
+  sanitizeSavedFilterPayload,
+  type SavedFilterPayload,
+} from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
@@ -636,6 +642,8 @@ export interface ActivityTableProps {
   sharedWithTeamId?: number;
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
+  /** Saved filter context key for saved-filter scoping (e.g. 'all', 'my-activities'). */
+  savedFilterContextKey?: string;
 }
 
 export function ActivityTable({
@@ -643,6 +651,7 @@ export function ActivityTable({
   commsContactLeadUserId,
   sharedWithTeamId,
   sharedWithTeamIds,
+  savedFilterContextKey,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -653,6 +662,33 @@ export function ActivityTable({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const { preferences, setPreferences } =
     useActivityTablePreferences(canSeeDeleted);
+  const savedFiltersHook = useSavedFilters(savedFilterContextKey ?? null);
+  const [currentSearchParams] = useSearchParams();
+  const defaultAppliedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!savedFilterContextKey) return;
+    if (defaultAppliedRef.current === savedFilterContextKey) return;
+    if (hasAnyKnownParam(currentSearchParams)) {
+      defaultAppliedRef.current = savedFilterContextKey;
+      return;
+    }
+    const defaultFilter = savedFiltersHook.defaultFilter;
+    if (!defaultFilter) return;
+
+    defaultAppliedRef.current = savedFilterContextKey;
+    const { filterState: sanitized, searchKeyword: kw } =
+      sanitizeSavedFilterPayload(
+        defaultFilter as unknown as SavedFilterPayload
+      );
+    setPreferences({ filterState: sanitized, searchKeyword: kw });
+  }, [
+    savedFilterContextKey,
+    savedFiltersHook.defaultFilter,
+    currentSearchParams,
+    setPreferences,
+  ]);
+
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
   const showCompleted = preferences.showCompleted;
@@ -1223,6 +1259,11 @@ export function ActivityTable({
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
+      savedFilters={savedFiltersHook}
+      contextKey={savedFilterContextKey ?? null}
+      onApplySavedFilter={(filterState, searchKeyword) =>
+        setPreferences({ filterState, searchKeyword })
+      }
     />
   );
 

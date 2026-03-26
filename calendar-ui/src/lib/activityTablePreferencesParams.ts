@@ -443,7 +443,7 @@ function parseFromStorage(
   }
 }
 
-function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
+export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
   return (
     searchParams.has(URL_PARAM_SORT) ||
     searchParams.has(URL_PARAM_DIR) ||

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
+import { buildSavedFilterContextKey } from '@/lib/savedFilterContextKey';
 import { cn } from '@/lib/utils';
 
 const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
@@ -134,24 +135,40 @@ export const ActivityListPage = () => {
 
   const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
 
+  const savedFilterContextKey = useMemo(
+    () => buildSavedFilterContextKey(activeTab, effectiveLeadTeamId),
+    [activeTab, effectiveLeadTeamId]
+  );
+
   const tableProps = useMemo(() => {
+    const base = { savedFilterContextKey };
     switch (activeTab) {
       case 'all':
-        return {};
+        return base;
       case 'ministry':
         return effectiveLeadTeamId != null
-          ? { leadTeamId: effectiveLeadTeamId }
-          : {};
+          ? { ...base, leadTeamId: effectiveLeadTeamId }
+          : base;
       case 'my-activities':
-        return user?.id != null ? { commsContactLeadUserId: user.id } : {};
+        return user?.id != null
+          ? { ...base, commsContactLeadUserId: user.id }
+          : base;
       case 'recent':
-        return {};
+        return base;
       case 'shared-with-me':
-        return userTeamIds.length > 0 ? { sharedWithTeamIds: userTeamIds } : {};
+        return userTeamIds.length > 0
+          ? { ...base, sharedWithTeamIds: userTeamIds }
+          : base;
       default:
-        return {};
+        return base;
     }
-  }, [activeTab, effectiveLeadTeamId, user?.id, userTeamIds]);
+  }, [
+    activeTab,
+    effectiveLeadTeamId,
+    user?.id,
+    userTeamIds,
+    savedFilterContextKey,
+  ]);
 
   return (
     <>
