@@ -50,7 +50,7 @@ export function TableSummaryBar({
           Showing {count} {label}
         </span>
         {appliedSavedFilterName ? (
-          <span>Filtering by {appliedSavedFilterName}</span>
+          <span aria-live="polite">Filtering by {appliedSavedFilterName}</span>
         ) : null}
       </span>
       {filters.length > 0 && (

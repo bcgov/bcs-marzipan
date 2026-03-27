@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -37,6 +38,7 @@ import {
 import {
   createSavedFilterBodySchema,
   duplicateSavedFilterBodySchema,
+  savedFilterQuerySchema,
   updateSavedFilterBodySchema,
 } from './dto/saved-filter.schema';
 import { SavedFiltersService } from './saved-filters.service';
@@ -65,15 +67,26 @@ export class SavedFiltersController {
     description: 'Saved filters retrieved',
     type: SavedFilterListResponseDto,
   })
+  @ApiResponse({
+    status: 400,
+    description: 'Missing or invalid contextKey query parameter',
+  })
   @RequirePermission('savedFilters.view')
   @Get()
   async list(
     @CurrentUser() user: AuthUser,
-    @Query('contextKey') contextKey: string
+    @Query('contextKey') contextKey: string | undefined
   ): Promise<{ success: boolean; data: SavedFilterListResponseDto }> {
+    const trimmed = typeof contextKey === 'string' ? contextKey.trim() : '';
+    const parsed = savedFilterQuerySchema.safeParse({ contextKey: trimmed });
+    if (!parsed.success) {
+      throw new BadRequestException(
+        'Query parameter contextKey is required and must be 1–100 characters.'
+      );
+    }
     const filters = await this.savedFiltersService.listByContext(
       user.id,
-      contextKey,
+      parsed.data.contextKey,
       user.teamIds ?? []
     );
     return { success: true, data: { filters, count: filters.length } };

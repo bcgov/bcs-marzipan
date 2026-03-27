@@ -19,7 +19,7 @@ import { users } from './user';
  * ActivitySavedFilters table - User-scoped saved filter presets for the activity list.
  * Stores filterState (JSON) + searchKeyword per user per context (tab).
  * Supports a single default per user+context for auto-apply on page load.
- * Schema includes nullable team-sharing columns for future shared-filter support.
+ * Supports user-private, team-scoped, and global sharing via scopeType and scopeTeamId.
  */
 export const activitySavedFilters = pgTable(
   'activity_saved_filters',
@@ -54,7 +54,7 @@ export const activitySavedFilters = pgTable(
      */
     scopeType: varchar('scope_type', { length: 20 }).notNull().default('user'),
 
-    /** Future: team ID when scopeType='team'. NULL for user-private filters. */
+    /** Team ID when scopeType='team'; NULL for user-private and global filters. */
     scopeTeamId: integer('scope_team_id'),
 
     createdAt: timestamp('created_at', { withTimezone: true })

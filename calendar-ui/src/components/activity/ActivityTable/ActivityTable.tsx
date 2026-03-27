@@ -1299,7 +1299,13 @@ export function ActivityTable({
     />
   );
 
-  const appliedSavedFilterName = activeSavedFilter?.name ?? null;
+  const appliedSavedFilterName = useMemo(() => {
+    if (activeSavedFilter == null) return null;
+    const fromList = savedFiltersHook.savedFilters.find(
+      (f) => f.id === activeSavedFilter.id
+    );
+    return fromList?.name ?? activeSavedFilter.name;
+  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
 
   // Loading state
   if (loading) {
