@@ -424,11 +424,8 @@ export class SavedFiltersService {
           'scopeTeamId is required when scopeType is team'
         );
       }
-      if (
-        input.teamIds &&
-        input.teamIds.length > 0 &&
-        !input.teamIds.includes(input.scopeTeamId)
-      ) {
+      const teamIds = input.teamIds ?? [];
+      if (!teamIds.includes(input.scopeTeamId)) {
         throw new ForbiddenException(
           'You can only share a filter with one of your teams'
         );

@@ -188,6 +188,83 @@ describe('SavedFiltersService', () => {
         })
       ).rejects.toThrow('scopeTeamId is required when scopeType is team');
     });
+
+    it('should reject team scope when user has no team ids', async () => {
+      await expect(
+        service.create(
+          10,
+          {
+            contextKey: 'all',
+            name: 'Team scoped',
+            filterState: {},
+            searchKeyword: '',
+            scopeType: 'team',
+            scopeTeamId: 5,
+          },
+          { teamIds: [] }
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject team scope when scopeTeamId is not one of the user teams', async () => {
+      await expect(
+        service.create(
+          10,
+          {
+            contextKey: 'all',
+            name: 'Team scoped',
+            filterState: {},
+            searchKeyword: '',
+            scopeType: 'team',
+            scopeTeamId: 99,
+          },
+          { teamIds: [1, 2, 5] }
+        )
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should create team-scoped filter when scopeTeamId is in user team ids', async () => {
+      const row = makeSavedFilterRow({
+        name: 'Team filter',
+        filterState: {},
+        searchKeyword: '',
+        scopeType: 'team',
+        scopeTeamId: 5,
+      });
+
+      const nameCheckChain = createChain([], 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(nameCheckChain);
+      nameCheckChain.from.mockReturnValue(nameCheckChain);
+      nameCheckChain.where.mockReturnValue(nameCheckChain);
+
+      const insertChain = createChain(row, 'limit');
+      mockDatabaseService.db.insert.mockReturnValueOnce(insertChain);
+      insertChain.values = vi.fn().mockReturnValue(insertChain);
+      const returningMock = vi.fn().mockResolvedValue([row]);
+      insertChain.returning = returningMock;
+      insertChain.values.mockReturnValue({ returning: returningMock });
+
+      const result = await service.create(
+        10,
+        {
+          contextKey: 'all',
+          name: 'Team filter',
+          filterState: {},
+          searchKeyword: '',
+          scopeType: 'team',
+          scopeTeamId: 5,
+        },
+        { teamIds: [5, 12] }
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          name: 'Team filter',
+          scopeType: 'team',
+          scopeTeamId: 5,
+        })
+      );
+    });
   });
 
   describe('findOwnedOrFail', () => {
