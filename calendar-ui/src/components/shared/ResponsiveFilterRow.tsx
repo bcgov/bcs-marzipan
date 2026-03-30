@@ -1,4 +1,5 @@
 import {
+  Check,
   ChevronDownIcon,
   ChevronRight,
   SlidersHorizontal,
@@ -11,6 +12,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -21,6 +23,7 @@ import {
 
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
+import { SavedFilterChipBox } from '@/components/shared/SavedFilterChipBox';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,8 +54,19 @@ import {
 import { useElementWidth } from '@/hooks/useElementWidth';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
+import {
+  buildActivityFilterChipRows,
+  clearSavedFilterChip,
+  type ActivityFilterSummaryContext,
+} from '@/lib/activity-filter-summary';
 import { applySavedFilterSelection } from '@/lib/savedFilterApply';
 import { cn } from '@/lib/utils';
+
+/** Draft filter + keyword for save/update/edit dialogs (chip editing). */
+type SavedFilterDraft = {
+  filterState: ActivityFilterState;
+  searchKeyword: string;
+};
 
 const SLOT_GAP_PX = 8;
 const OVERFLOW_BUTTON_RESERVE_PX = 110;
@@ -197,7 +211,7 @@ function SavedFilterRowActionsPopover({
   onUpdate,
   onToggleDefault,
   onDuplicate,
-  onRename,
+  onEdit,
   onDelete,
 }: {
   savedFilter: SavedFilterResponse;
@@ -205,7 +219,7 @@ function SavedFilterRowActionsPopover({
   onUpdate: () => void;
   onToggleDefault: () => void;
   onDuplicate: () => void;
-  onRename: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -255,12 +269,19 @@ function SavedFilterRowActionsPopover({
             'flex w-full flex-col items-start gap-0 py-2 pr-2 pl-2 text-sm',
             filterPopoverMenuItemClass
           )}
+          onClick={onEdit}
+        >
+          <span>Edit</span>
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'flex w-full flex-col items-start gap-0 py-2 pr-2 pl-2 text-sm',
+            filterPopoverMenuItemClass
+          )}
           onClick={onToggleDefault}
         >
           <span>{sf.isDefault ? 'Remove as default' : 'Make default'}</span>
-          <span className="text-muted-foreground text-xs">
-            Applied on login
-          </span>
         </button>
         <button
           type="button"
@@ -271,16 +292,6 @@ function SavedFilterRowActionsPopover({
           onClick={onDuplicate}
         >
           Duplicate
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'flex w-full items-center py-2 pr-2 pl-2 text-sm',
-            filterPopoverMenuItemClass
-          )}
-          onClick={onRename}
-        >
-          Rename
         </button>
         <MenuDivider />
         <button
@@ -350,6 +361,13 @@ export interface ResponsiveFilterRowProps {
   ) => void;
   /** Highlights the saved-filter row that matches the last-applied selection (from this context). */
   activeSavedFilterId?: number | null;
+  /** Option lists for filter chip labels (activity table). */
+  filterSummaryContext?: ActivityFilterSummaryContext;
+  /** Parse API saved filter into draft state for the Edit dialog. */
+  parseSavedFilterForDraft?: (savedFilter: SavedFilterResponse) => {
+    filterState: ActivityFilterState;
+    searchKeyword: string;
+  };
 }
 
 /**
@@ -373,6 +391,8 @@ export function ResponsiveFilterRow({
   searchKeyword,
   onApplySavedFilter,
   activeSavedFilterId = null,
+  filterSummaryContext,
+  parseSavedFilterForDraft,
 }: ResponsiveFilterRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const containerWidth = useElementWidth(containerRef, {
@@ -391,9 +411,12 @@ export function ResponsiveFilterRow({
   const [createName, setCreateName] = useState('');
   const [updateDialogFilter, setUpdateDialogFilter] =
     useState<SavedFilterResponse | null>(null);
-  const [renameDialogFilter, setRenameDialogFilter] =
+  const [editDialogFilter, setEditDialogFilter] =
     useState<SavedFilterResponse | null>(null);
-  const [renameName, setRenameName] = useState('');
+  const [editFilterName, setEditFilterName] = useState('');
+  const [createDraft, setCreateDraft] = useState<SavedFilterDraft | null>(null);
+  const [updateDraft, setUpdateDraft] = useState<SavedFilterDraft | null>(null);
+  const [editDraft, setEditDraft] = useState<SavedFilterDraft | null>(null);
   const [deleteDialogFilter, setDeleteDialogFilter] =
     useState<SavedFilterResponse | null>(null);
 
@@ -403,6 +426,33 @@ export function ResponsiveFilterRow({
     savedFiltersPopoverOpen,
     setSavedFiltersPopoverOpen
   );
+
+  const createChipRows = useMemo(() => {
+    if (!createDraft || !filterSummaryContext) return [];
+    return buildActivityFilterChipRows(
+      createDraft.filterState,
+      createDraft.searchKeyword,
+      filterSummaryContext
+    );
+  }, [createDraft, filterSummaryContext]);
+
+  const updateChipRows = useMemo(() => {
+    if (!updateDraft || !filterSummaryContext) return [];
+    return buildActivityFilterChipRows(
+      updateDraft.filterState,
+      updateDraft.searchKeyword,
+      filterSummaryContext
+    );
+  }, [updateDraft, filterSummaryContext]);
+
+  const editChipRows = useMemo(() => {
+    if (!editDraft || !filterSummaryContext) return [];
+    return buildActivityFilterChipRows(
+      editDraft.filterState,
+      editDraft.searchKeyword,
+      filterSummaryContext
+    );
+  }, [editDraft, filterSummaryContext]);
 
   const hasActiveFilters = useCallback(() => {
     if (!filterState) return false;
@@ -441,55 +491,104 @@ export function ResponsiveFilterRow({
     [onApplySavedFilter]
   );
 
+  const handleRemoveCreateChip = useCallback((chipKey: string) => {
+    setCreateDraft((prev) => {
+      if (!prev) return prev;
+      return clearSavedFilterChip(
+        chipKey,
+        prev.filterState,
+        prev.searchKeyword
+      );
+    });
+  }, []);
+
+  const handleRemoveUpdateChip = useCallback((chipKey: string) => {
+    setUpdateDraft((prev) => {
+      if (!prev) return prev;
+      return clearSavedFilterChip(
+        chipKey,
+        prev.filterState,
+        prev.searchKeyword
+      );
+    });
+  }, []);
+
+  const handleRemoveEditChip = useCallback((chipKey: string) => {
+    setEditDraft((prev) => {
+      if (!prev) return prev;
+      return clearSavedFilterChip(
+        chipKey,
+        prev.filterState,
+        prev.searchKeyword
+      );
+    });
+  }, []);
+
   const handleCreateSavedFilter = useCallback(async () => {
-    if (!savedFilters || !contextKey || !filterState) return;
+    if (!savedFilters || !contextKey || !createDraft) return;
     const name = createName.trim();
     if (!name) return;
     try {
       await savedFilters.createFilter({
         contextKey,
         name,
-        filterState: filterState as unknown as Record<string, unknown>,
-        searchKeyword: searchKeyword ?? '',
+        filterState: createDraft.filterState as unknown as Record<
+          string,
+          unknown
+        >,
+        searchKeyword: createDraft.searchKeyword,
       });
       setCreateDialogOpen(false);
       setCreateName('');
+      setCreateDraft(null);
     } catch {
       // Error toast handled by mutation
     }
-  }, [savedFilters, contextKey, filterState, searchKeyword, createName]);
+  }, [savedFilters, contextKey, createDraft, createName]);
 
   const handleUpdateSavedFilter = useCallback(async () => {
-    if (!savedFilters || !filterState || !updateDialogFilter) return;
+    if (!savedFilters || !updateDraft || !updateDialogFilter) return;
     try {
       await savedFilters.updateFilter({
         id: updateDialogFilter.id,
         body: {
-          filterState: filterState as unknown as Record<string, unknown>,
-          searchKeyword: searchKeyword ?? '',
+          filterState: updateDraft.filterState as unknown as Record<
+            string,
+            unknown
+          >,
+          searchKeyword: updateDraft.searchKeyword,
         },
       });
       setUpdateDialogFilter(null);
+      setUpdateDraft(null);
     } catch {
       // Error toast handled by mutation
     }
-  }, [savedFilters, filterState, searchKeyword, updateDialogFilter]);
+  }, [savedFilters, updateDraft, updateDialogFilter]);
 
-  const handleRenameSavedFilter = useCallback(async () => {
-    if (!savedFilters || !renameDialogFilter) return;
-    const name = renameName.trim();
+  const handleEditSavedFilter = useCallback(async () => {
+    if (!savedFilters || !editDialogFilter || !editDraft) return;
+    const name = editFilterName.trim();
     if (!name) return;
     try {
       await savedFilters.updateFilter({
-        id: renameDialogFilter.id,
-        body: { name },
+        id: editDialogFilter.id,
+        body: {
+          name,
+          filterState: editDraft.filterState as unknown as Record<
+            string,
+            unknown
+          >,
+          searchKeyword: editDraft.searchKeyword,
+        },
       });
-      setRenameDialogFilter(null);
-      setRenameName('');
+      setEditDialogFilter(null);
+      setEditFilterName('');
+      setEditDraft(null);
     } catch {
       // Error toast handled by mutation
     }
-  }, [savedFilters, renameDialogFilter, renameName]);
+  }, [savedFilters, editDialogFilter, editDraft, editFilterName]);
 
   const handleDeleteSavedFilter = useCallback(async () => {
     if (!savedFilters || !deleteDialogFilter) return;
@@ -824,10 +923,8 @@ export function ResponsiveFilterRow({
                               <button
                                 type="button"
                                 className={cn(
-                                  'flex min-w-0 items-center gap-2 py-2 pr-2 pl-4 text-left text-sm',
-                                  filterPopoverMenuItemClass,
-                                  activeSavedFilterId === sf.id &&
-                                    'bg-accent text-accent-foreground hover:bg-accent'
+                                  'relative flex min-w-0 items-center gap-2 py-2 pr-2 pl-8 text-left text-sm',
+                                  filterPopoverMenuItemClass
                                 )}
                                 aria-label={`Apply ${sf.name}`}
                                 aria-current={
@@ -837,6 +934,14 @@ export function ResponsiveFilterRow({
                                 }
                                 onClick={() => handleApplySavedFilter(sf)}
                               >
+                                <span
+                                  className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center"
+                                  aria-hidden
+                                >
+                                  {activeSavedFilterId === sf.id ? (
+                                    <Check className="h-4 w-4" />
+                                  ) : null}
+                                </span>
                                 <span className="min-w-0 truncate">
                                   {sf.name}
                                 </span>
@@ -849,16 +954,29 @@ export function ResponsiveFilterRow({
                               <SavedFilterRowActionsPopover
                                 savedFilter={sf}
                                 hasActiveFilters={hasActiveFilters}
-                                onUpdate={() => setUpdateDialogFilter(sf)}
+                                onUpdate={() => {
+                                  if (!filterState) return;
+                                  setUpdateDraft({
+                                    filterState: structuredClone(filterState),
+                                    searchKeyword: searchKeyword ?? '',
+                                  });
+                                  setUpdateDialogFilter(sf);
+                                }}
                                 onToggleDefault={() => {
                                   void handleToggleDefault(sf);
                                 }}
                                 onDuplicate={() => {
                                   void handleDuplicateSavedFilter(sf);
                                 }}
-                                onRename={() => {
-                                  setRenameDialogFilter(sf);
-                                  setRenameName(sf.name);
+                                onEdit={() => {
+                                  if (!parseSavedFilterForDraft) return;
+                                  const parsed = parseSavedFilterForDraft(sf);
+                                  setEditDraft({
+                                    filterState: parsed.filterState,
+                                    searchKeyword: parsed.searchKeyword,
+                                  });
+                                  setEditDialogFilter(sf);
+                                  setEditFilterName(sf.name);
                                 }}
                                 onDelete={() => setDeleteDialogFilter(sf)}
                               />
@@ -878,6 +996,11 @@ export function ResponsiveFilterRow({
                     )}
                     disabled={!hasActiveFilters()}
                     onClick={() => {
+                      if (!filterState) return;
+                      setCreateDraft({
+                        filterState: structuredClone(filterState),
+                        searchKeyword: searchKeyword ?? '',
+                      });
                       setCreateName('');
                       setCreateDialogOpen(true);
                     }}
@@ -911,14 +1034,29 @@ export function ResponsiveFilterRow({
       )}
 
       {/* Create saved filter dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            setCreateDraft(null);
+            setCreateName('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Save current filter</DialogTitle>
             <DialogDescription>
-              Save your currently applied filters for quick access later.
+              Save your currently applied filters for quick access later. Remove
+              chips to exclude criteria before saving.
             </DialogDescription>
           </DialogHeader>
+          <SavedFilterChipBox
+            rows={createChipRows}
+            onRemove={handleRemoveCreateChip}
+            disabled={savedFilters?.isCreating === true}
+          />
           <div className="space-y-3">
             <Input
               placeholder="Filter name"
@@ -952,17 +1090,26 @@ export function ResponsiveFilterRow({
       <Dialog
         open={updateDialogFilter != null}
         onOpenChange={(open) => {
-          if (!open) setUpdateDialogFilter(null);
+          if (!open) {
+            setUpdateDialogFilter(null);
+            setUpdateDraft(null);
+          }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Update saved filter</DialogTitle>
             <DialogDescription>
               Replace the filters in &ldquo;{updateDialogFilter?.name}&rdquo;
-              with your currently applied filters?
+              with the criteria below. Remove chips to exclude them from the
+              saved filter.
             </DialogDescription>
           </DialogHeader>
+          <SavedFilterChipBox
+            rows={updateChipRows}
+            onRemove={handleRemoveUpdateChip}
+            disabled={savedFilters?.isUpdating === true}
+          />
           <DialogFooter>
             <Button
               variant="outline"
@@ -980,30 +1127,37 @@ export function ResponsiveFilterRow({
         </DialogContent>
       </Dialog>
 
-      {/* Rename saved filter dialog */}
+      {/* Edit saved filter (name + stored snapshot) */}
       <Dialog
-        open={renameDialogFilter != null}
+        open={editDialogFilter != null}
         onOpenChange={(open) => {
           if (!open) {
-            setRenameDialogFilter(null);
-            setRenameName('');
+            setEditDialogFilter(null);
+            setEditFilterName('');
+            setEditDraft(null);
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Rename saved filter</DialogTitle>
+            <DialogTitle>Edit saved filter</DialogTitle>
             <DialogDescription>
-              Enter a new name for this saved filter.
+              Adjust stored filter criteria and the name. Remove chips to clear
+              those filters from the saved definition.
             </DialogDescription>
           </DialogHeader>
+          <SavedFilterChipBox
+            rows={editChipRows}
+            onRemove={handleRemoveEditChip}
+            disabled={savedFilters?.isUpdating === true}
+          />
           <div className="space-y-3">
             <Input
               placeholder="Filter name"
-              value={renameName}
-              onChange={(e) => setRenameName(e.target.value)}
+              value={editFilterName}
+              onChange={(e) => setEditFilterName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleRenameSavedFilter();
+                if (e.key === 'Enter') void handleEditSavedFilter();
               }}
               maxLength={80}
               autoFocus
@@ -1013,17 +1167,19 @@ export function ResponsiveFilterRow({
             <Button
               variant="outline"
               onClick={() => {
-                setRenameDialogFilter(null);
-                setRenameName('');
+                setEditDialogFilter(null);
+                setEditFilterName('');
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={() => void handleRenameSavedFilter()}
-              disabled={!renameName.trim() || savedFilters?.isUpdating === true}
+              onClick={() => void handleEditSavedFilter()}
+              disabled={
+                !editFilterName.trim() || savedFilters?.isUpdating === true
+              }
             >
-              {savedFilters?.isUpdating ? 'Renaming...' : 'Rename'}
+              {savedFilters?.isUpdating ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>

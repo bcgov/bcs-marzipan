@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
@@ -13,6 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
+import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
+import {
+  sanitizeSavedFilterPayload,
+  type ValidFilterLookups,
+} from '@/lib/savedFilterSanitize';
 import type { OptionItem } from '@/schemas/types';
 
 import type { ActivityFilterState } from './activityFilterState';
@@ -141,6 +147,73 @@ export function ActivityTableFilters({
   const anyActive = useMemo(
     () => hasAnyFilterActive(filterState),
     [filterState]
+  );
+
+  const summaryContext = useMemo((): ActivityFilterSummaryContext => {
+    return {
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    };
+  }, [
+    statusOptions,
+    pitchRequiredStatusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const validFilterLookupsForPreview = useMemo((): ValidFilterLookups => {
+    const nums = (options: OptionItem[]) =>
+      new Set(
+        options
+          .map((o) => parseInt(o.value, 10))
+          .filter((n) => Number.isFinite(n))
+      );
+    return {
+      statusIds: nums(statusOptions),
+      tagIds: nums(tagOptions),
+      ministryIds: nums(ministryOptions),
+      orgIds: nums(organizationOptions),
+      commsContactUserIds: nums(commsContactOptions),
+      eventPlannerIds: nums(eventPlannerOptions),
+      translationStatusIds: nums(translationStatusOptions),
+      translationLanguageIds: nums(translationOptions),
+    };
+  }, [
+    statusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const parseSavedFilterForDraft = useCallback(
+    (sf: SavedFilterResponse) => {
+      const { filterState: parsed, searchKeyword: sk } =
+        sanitizeSavedFilterPayload(
+          {
+            filterState: sf.filterState,
+            searchKeyword: sf.searchKeyword,
+          },
+          validFilterLookupsForPreview
+        );
+      return { filterState: parsed, searchKeyword: sk };
+    },
+    [validFilterLookupsForPreview]
   );
 
   const handleDateRangeChange = useCallback(
@@ -483,6 +556,8 @@ export function ActivityTableFilters({
           searchKeyword={searchKeyword}
           onApplySavedFilter={onApplySavedFilter}
           activeSavedFilterId={activeSavedFilterId}
+          filterSummaryContext={summaryContext}
+          parseSavedFilterForDraft={parseSavedFilterForDraft}
           trailingContent={
             anyActive ? (
               <Button
