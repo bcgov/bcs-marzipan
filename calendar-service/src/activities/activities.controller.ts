@@ -23,6 +23,7 @@ import type { Category } from '@corpcal/database/types';
 import type { AuthUser } from '@corpcal/shared';
 import type { ActivityResponse } from '@corpcal/shared/api';
 import {
+  addActivityHistoryNoteRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
   hardDeleteRequestBodySchema,
@@ -34,6 +35,7 @@ import {
   updateSharedWithSchema,
   updateTagsSchema,
   updateThemesSchema,
+  type AddActivityHistoryNoteRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
   type HardDeleteRequest,
@@ -47,6 +49,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityArrayResponseWrapperDto,
   ActivityResponseWrapperDto,
+  AddActivityHistoryNoteDto,
   CreateActivityDto,
   RequestDeleteDto,
   RestoreDto,
@@ -184,6 +187,28 @@ export class ActivitiesController {
     return {
       success: true,
       data: results,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Get global activity history',
+    description:
+      'Retrieves activity history entries across all activities visible to the current user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Global activity history retrieved successfully',
+  })
+  @RequirePermission('activities.view')
+  @Get('global-history')
+  async getGlobalHistory(@RequestContext() ctx: RequestContextType): Promise<{
+    success: boolean;
+    data: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
+  }> {
+    const result = await this.activitiesService.getGlobalHistory(ctx);
+    return {
+      success: true,
+      data: result,
     };
   }
 
@@ -478,6 +503,49 @@ export class ActivitiesController {
     data: Awaited<ReturnType<ActivitiesService['getHistory']>>;
   }> {
     const result = await this.activitiesService.getHistory(id);
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Add activity history note',
+    description:
+      'Adds a standalone note to the activity history timeline without changing activity fields.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Activity ID',
+    example: 1,
+  })
+  @ApiBody({ type: AddActivityHistoryNoteDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Activity history note added successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Activity not found',
+  })
+  @RequirePermission('activities.edit')
+  @UseGuards(CanEditActivityGuard)
+  @Post(':id/history/notes')
+  async addHistoryNote(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(addActivityHistoryNoteRequestSchema))
+    body: AddActivityHistoryNoteRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{
+    success: boolean;
+    data: Awaited<ReturnType<ActivitiesService['addHistoryNote']>>;
+  }> {
+    const result = await this.activitiesService.addHistoryNote(
+      id,
+      body.note,
+      user.id
+    );
     return {
       success: true,
       data: result,

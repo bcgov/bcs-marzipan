@@ -202,6 +202,10 @@ export const activityComputedFieldsSchema = z.object({
   // Whether the current user may edit this activity (comms contact, lead-team member, or bypass).
   // When false, user has view-only access (e.g. shared-with only). Omitted when not authenticated.
   canEdit: z.boolean().optional(),
+
+  // Dotted field paths that have changed since the last Reviewed snapshot.
+  // Only included for users with activities.review permission; omitted for non-reviewers.
+  changedFieldsSinceReview: z.array(z.string()).optional(),
 });
 
 /**

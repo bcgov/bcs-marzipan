@@ -350,6 +350,17 @@ export const restoreRequestSchema = z.object({
 });
 
 /**
+ * Schema for adding a standalone activity history note
+ */
+export const addActivityHistoryNoteRequestSchema = z.object({
+  note: z
+    .string()
+    .min(1, 'Note is required')
+    .max(1000, 'Note must not exceed 1000 characters')
+    .trim(),
+});
+
+/**
  * Schema for hard delete (permanent) request body.
  * Reason is optional but recommended for audit; when provided, same validation as soft delete.
  */
@@ -381,6 +392,9 @@ export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;
+export type AddActivityHistoryNoteRequest = z.infer<
+  typeof addActivityHistoryNoteRequestSchema
+>;
 export type HardDeleteRequest = z.infer<typeof hardDeleteRequestSchema>;
 
 /**

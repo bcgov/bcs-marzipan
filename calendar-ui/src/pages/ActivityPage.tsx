@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -11,28 +11,20 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
+  ActivityFormStickyBack,
   ActivityPageHeader,
   ActivityStatusBanner,
 } from '@/components/activity';
 import ActivityHistory from '@/components/activity/activities/ActivityHistory';
 import { DeleteActivityModal } from '@/components/activity/activities/DeleteActivityModal';
+import { DiscardActivityChangesDialog } from '@/components/activity/activities/DiscardActivityChangesDialog';
 import { EditActivityConfirmModal } from '@/components/activity/activities/EditActivityConfirmModal';
 import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
-import {
-  ActivityBreadcrumb,
-  FormErrorFallback,
-  LockBanner,
-} from '@/components/shared';
-import { normalizeActivityStatus } from '@/components/ui/badge';
+import { ReviewActionButtonLabel } from '@/components/activity/activities/ReviewActionButtonLabel';
+import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
+import { FormErrorFallback, LockBanner } from '@/components/shared';
+import { Badge, normalizeActivityStatus } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
 
 import { fetchActivityHistory } from '../api/activitiesApi';
@@ -42,6 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import { useActivityEditActions } from '../hooks/useActivityEditActions';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityLock } from '../hooks/useActivityLock';
@@ -59,7 +52,11 @@ import {
   useEditLockIntent,
 } from '../hooks/useEditLockIntent';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
-import { buildPayloadForUpdate } from '../lib/activity-form-payload';
+import {
+  buildMarkReviewedOnlyPayload,
+  buildPayloadForUpdate,
+  type UpdatePayloadOptions,
+} from '../lib/activity-form-payload';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
@@ -67,8 +64,6 @@ import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
-
-const UNSAVED_MESSAGE = 'You have unsaved changes. Leave anyway?';
 
 export type ActivityPageProps = {
   activity: ActivityResponse;
@@ -108,6 +103,12 @@ export function ActivityPage({
     hasCreateAny,
   });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
+  const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
+    const paths = canReviewActivities
+      ? activity.changedFieldsSinceReview
+      : undefined;
+    return paths ? new Set(paths) : new Set<string>();
+  }, [canReviewActivities, activity.changedFieldsSinceReview]);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -155,6 +156,7 @@ export function ActivityPage({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showRequestDeleteModal, setShowRequestDeleteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
@@ -219,17 +221,29 @@ export function ActivityPage({
     lockState !== 'locked-by-other' &&
     (!isBlockedStatus || canEditWhenBlocked);
 
+  const handleGoBack = useCallback(() => {
+    void navigate(-1);
+  }, [navigate]);
+
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
+  /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
+  const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
   const canSubmitWithoutValidationErrors =
     isFormValid || missingFields.length === 0;
-  const canSubmitUpdate =
-    hasEditLock &&
-    canSubmitWithoutValidationErrors &&
-    !isSubmitting &&
-    !readOnly;
+
+  const actionFlags = useActivityEditActions({
+    lockState,
+    mayEditFormFields,
+    canReviewActivities,
+    hasEditLock,
+    canSubmitWithoutValidationErrors,
+    isSubmitting,
+    readOnly,
+    isDirty,
+  });
 
   const onEditLockAcquireConflict = useCallback(() => {
     toast.error(EDIT_LOCK_CONFLICT_TOAST);
@@ -293,18 +307,6 @@ export function ActivityPage({
     [isEditing, acquire]
   );
 
-  const handleCancel = async () => {
-    if (isDirty) {
-      setShowLeaveConfirm(true);
-      return;
-    }
-    await release();
-    setIsEditing(false);
-    if (initialFormDataRef.current) {
-      form.reset(initialFormDataRef.current);
-    }
-  };
-
   const handleConfirmLeave = async () => {
     setShowLeaveConfirm(false);
     await release();
@@ -319,43 +321,81 @@ export function ActivityPage({
     setShowConfirmModal(true);
   };
 
-  const handleConfirmedSubmit = async (
-    notes?: string,
-    markAsReviewed?: boolean
-  ) => {
+  type SubmitActivityMode =
+    | { kind: 'update'; validatedData: ActivityFormData; notes?: string }
+    | { kind: 'reviewOnly'; notes?: string }
+    | {
+        kind: 'reviewWithSave';
+        validatedData: ActivityFormData;
+        notes?: string;
+      };
+
+  const runSubmitUpdate = useCallback(
+    async (mode: SubmitActivityMode) => {
+      setIsSubmitting(true);
+      try {
+        let submitData: UpdateActivityRequest;
+
+        if (mode.kind === 'reviewOnly') {
+          submitData = {
+            ...buildMarkReviewedOnlyPayload(mode.notes),
+          } as UpdateActivityRequest;
+        } else {
+          const opts: UpdatePayloadOptions =
+            mode.kind === 'reviewWithSave' ? { markAsReviewed: true } : {};
+          submitData = {
+            ...buildPayloadForUpdate(
+              mode.validatedData,
+              form.getValues(),
+              opts
+            ),
+            ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+          } as UpdateActivityRequest;
+        }
+
+        await updateMutation.mutateAsync({ id, data: submitData });
+        const titleForToast =
+          mode.kind === 'reviewOnly'
+            ? (activity.title ?? '')
+            : (mode.validatedData.title ?? '');
+        toast.success(
+          'Activity updated',
+          getActivityUpdatedToastOptions({
+            id: String(id),
+            title: titleForToast,
+            displayId: activity.displayId ?? undefined,
+          })
+        );
+        await release();
+        void navigate('/');
+      } catch (err) {
+        logger.error('Failed to update activity', err);
+        const message =
+          err instanceof ApiError && err.status === 409
+            ? 'The entry is locked by another user. Your changes could not be saved.'
+            : 'Your changes could not be saved.';
+        showErrorToast(err, message);
+      } finally {
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        setShowReviewModal(false);
+        setValidatedData(null);
+      }
+    },
+    [
+      id,
+      updateMutation,
+      form,
+      activity.title,
+      activity.displayId,
+      release,
+      navigate,
+    ]
+  );
+
+  const handleConfirmedSubmit = async (notes?: string) => {
     if (!validatedData) return;
-    setIsSubmitting(true);
-    try {
-      const formValues = form.getValues();
-      const submitData = {
-        ...buildPayloadForUpdate(validatedData, formValues, {
-          markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
-        }),
-        ...(notes ? { activityHistoryNotes: notes } : {}),
-      } as UpdateActivityRequest;
-      await updateMutation.mutateAsync({ id, data: submitData });
-      toast.success(
-        'Activity updated',
-        getActivityUpdatedToastOptions({
-          id: String(id),
-          title: validatedData.title ?? '',
-          displayId: activity.displayId ?? undefined,
-        })
-      );
-      await release();
-      void navigate('/');
-    } catch (err) {
-      logger.error('Failed to update activity', err);
-      const message =
-        err instanceof ApiError && err.status === 409
-          ? 'The entry is locked by another user. Your changes could not be saved.'
-          : 'Your changes could not be saved.';
-      showErrorToast(err, message);
-    } finally {
-      setIsSubmitting(false);
-      setShowConfirmModal(false);
-      setValidatedData(null);
-    }
+    await runSubmitUpdate({ kind: 'update', validatedData, notes });
   };
 
   const onError = () => {
@@ -372,6 +412,20 @@ export function ActivityPage({
       description: detail,
       duration: 6000,
     });
+  };
+
+  const handleReviewConfirm = async (notes?: string) => {
+    if (isDirty) {
+      await form.handleSubmit(async (data) => {
+        await runSubmitUpdate({
+          kind: 'reviewWithSave',
+          validatedData: data,
+          notes,
+        });
+      }, onError)();
+    } else {
+      await runSubmitUpdate({ kind: 'reviewOnly', notes });
+    }
   };
 
   const handleRestore = async () => {
@@ -449,12 +503,17 @@ export function ActivityPage({
       ? computeFormChanges(initialFormDataRef.current, form.getValues())
       : [];
 
+  const discardModalChanges =
+    showLeaveConfirm && initialFormDataRef.current
+      ? computeFormChanges(initialFormDataRef.current, form.getValues())
+      : [];
+
   const displayId = activity.displayId ?? `???-${activity.id}`;
   const categories = activity.category ?? [];
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityBreadcrumb currentLabel={displayId} />
+      <ActivityFormStickyBack onBack={handleGoBack} />
       <ActivityPageHeader
         displayId={displayId}
         title={activity.title ?? ''}
@@ -505,6 +564,7 @@ export function ActivityPage({
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
+            reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel:
@@ -516,46 +576,57 @@ export function ActivityPage({
               optionsFetching: leadTeamOptionsFetching,
             }}
           />
-          <div className="bg-background/90 supports-backdrop-filter:bg-background/80 sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4 backdrop-blur">
-            <div className="flex gap-2">
-              {showRequestDeleteButton && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="text-destructive border-destructive hover:bg-destructive/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    ensureEditThen(() => setShowRequestDeleteModal(true));
-                  }}
-                  disabled={isSubmitting || !hasEditLock}
-                >
-                  Request delete
-                </Button>
+          <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+              {isViewOnlyByPermission && (
+                <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-sm">
+                  <Badge variant="secondary">View-only</Badge>
+                  <span>You cannot edit this activity.</span>
+                </div>
               )}
-              {showDeleteButton && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="text-destructive border-destructive hover:bg-destructive/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    ensureEditThen(() => void handleOpenDeleteModal());
-                  }}
-                  disabled={isSubmitting || !hasEditLock}
-                >
-                  Delete
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {showRequestDeleteButton && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ensureEditThen(() => setShowRequestDeleteModal(true));
+                    }}
+                    disabled={isSubmitting || actionFlags.isLockedByOther}
+                  >
+                    Request delete
+                  </Button>
+                )}
+                {showDeleteButton && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      ensureEditThen(() => void handleOpenDeleteModal());
+                    }}
+                    disabled={isSubmitting || actionFlags.isLockedByOther}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void handleCancel()}
-                disabled={isSubmitting || !hasEditLock}
-              >
-                Cancel
-              </Button>
+            <div className="flex shrink-0 gap-4">
+              {isDirty && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="animate-in fade-in duration-200"
+                  onClick={() => setShowLeaveConfirm(true)}
+                  disabled={isSubmitting}
+                >
+                  Discard changes
+                </Button>
+              )}
               {!canSubmitWithoutValidationErrors ? (
                 <Popover open={showMissingFieldsPopover}>
                   <PopoverTrigger asChild>
@@ -566,9 +637,10 @@ export function ActivityPage({
                       <Button
                         type="submit"
                         disabled={true}
+                        variant={canReviewActivities ? 'outline' : 'default'}
                         className="cursor-not-allowed"
                       >
-                        {isSubmitting ? 'Updating...' : 'Update'}
+                        {isSubmitting ? 'Saving...' : 'Save'}
                       </Button>
                     </div>
                   </PopoverTrigger>
@@ -590,8 +662,22 @@ export function ActivityPage({
                   </PopoverContent>
                 </Popover>
               ) : (
-                <Button type="submit" disabled={!canSubmitUpdate}>
-                  {isSubmitting ? 'Updating...' : 'Update'}
+                <Button
+                  type="submit"
+                  variant={canReviewActivities ? 'outline' : 'default'}
+                  disabled={!actionFlags.canSubmitUpdate}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save'}
+                </Button>
+              )}
+              {actionFlags.showReviewAction && (
+                <Button
+                  type="button"
+                  aria-label={isDirty ? 'Save and Review' : 'Review'}
+                  disabled={!actionFlags.reviewActionEnabled}
+                  onClick={() => ensureEditThen(() => setShowReviewModal(true))}
+                >
+                  <ReviewActionButtonLabel isDirty={isDirty} />
                 </Button>
               )}
             </div>
@@ -605,26 +691,15 @@ export function ActivityPage({
         dateStatuses={lookups.dateStatuses}
         venueStatuses={lookups.venueStatuses}
       />
-      <Dialog open={showLeaveConfirm} onOpenChange={setShowLeaveConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unsaved changes</DialogTitle>
-            <DialogDescription>{UNSAVED_MESSAGE}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowLeaveConfirm(false)}
-            >
-              Stay
-            </Button>
-            <Button type="button" onClick={() => void handleConfirmLeave()}>
-              Leave
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DiscardActivityChangesDialog
+        open={showLeaveConfirm}
+        onOpenChange={setShowLeaveConfirm}
+        changes={discardModalChanges}
+        dateStatuses={lookups.dateStatuses}
+        venueStatuses={lookups.venueStatuses}
+        onReturnToEdit={() => setShowLeaveConfirm(false)}
+        onDiscard={() => void handleConfirmLeave()}
+      />
       <EditActivityConfirmModal
         open={showConfirmModal}
         onOpenChange={(open) => {
@@ -634,11 +709,16 @@ export function ActivityPage({
         changes={confirmModalChanges}
         dateStatuses={lookups.dateStatuses}
         venueStatuses={lookups.venueStatuses}
-        onConfirm={(notes, markAsReviewed) =>
-          void handleConfirmedSubmit(notes, markAsReviewed)
-        }
+        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
         isSubmitting={isSubmitting}
-        showMarkAsReviewed={canReviewActivities}
+      />
+      <ReviewActivityModal
+        open={showReviewModal}
+        onOpenChange={setShowReviewModal}
+        isDirty={isDirty}
+        isSubmitting={isSubmitting}
+        onConfirm={(notes) => void handleReviewConfirm(notes)}
+        displayId={displayId}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}

@@ -167,7 +167,6 @@ export const ActivityListPage = () => {
                 ? 'You do not have permission to create activities'
                 : undefined
             }
-            className="bg-(--bcsds-button-primary-background) text-white hover:bg-(--bcsds-button-primary-background)/95"
           >
             <Plus className="h-4 w-4" />
             New activity

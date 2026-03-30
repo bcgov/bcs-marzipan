@@ -70,3 +70,17 @@ export function buildPayloadForUpdate(
   }
   return payload;
 }
+
+/**
+ * Minimal PATCH body to mark an activity reviewed (no field changes).
+ * Backend sets status from `markAsReviewed` + `activities.review` permission.
+ */
+export function buildMarkReviewedOnlyPayload(activityHistoryNotes?: string): {
+  markAsReviewed: true;
+  activityHistoryNotes?: string;
+} {
+  return {
+    markAsReviewed: true,
+    ...(activityHistoryNotes ? { activityHistoryNotes } : {}),
+  };
+}

@@ -8,7 +8,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
 import { PERMISSIONS } from '@corpcal/shared';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
+import {
+  activityResponseSchema,
+  type UpdateActivityRequest,
+} from '@corpcal/shared/schemas';
 
 import {
   createMockActivity,
@@ -114,6 +117,7 @@ describe('ActivitiesService', () => {
   const mockActivityHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
     getActivityHistory: vi.fn().mockResolvedValue([]),
+    getHistoryEntryById: vi.fn().mockResolvedValue(null),
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
@@ -1009,6 +1013,10 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.title).toBe('Updated Activity');
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('updated');
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -1060,6 +1068,65 @@ describe('ActivitiesService', () => {
         title: 'Updated Activity',
         markAsReviewed: true,
       });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: ['activities.review'],
+        roleName: 'Admin',
+      });
+
+      expect(() => activityResponseSchema.parse(result)).not.toThrow();
+      expect(result.activityStatusId).toBe(2);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('reviewed');
+    });
+
+    it('should set status to reviewed when only markAsReviewed is true and user has activities.review', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Test Activity',
+        activityStatusId: 2,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'changed' }] : [{ id: 2 }]
+            ),
+        };
+      });
+
+      const updateDto = { markAsReviewed: true } as UpdateActivityRequest;
       const result = await service.update(1, updateDto, 1, {
         permissions: ['activities.review'],
         roleName: 'Admin',
@@ -1125,6 +1192,10 @@ describe('ActivitiesService', () => {
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.activityStatusId).toBe(1);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalled();
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('updated');
     });
 
     it('should throw ConflictException when activity status is delete_requested', async () => {
@@ -1374,6 +1445,45 @@ describe('ActivitiesService', () => {
   });
 
   describe('restore', () => {
+    it('should add a standalone history note', async () => {
+      mockDatabaseService.db.select = vi.fn(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+      }));
+      mockActivityHistoryService.recordChange.mockResolvedValueOnce({ id: 25 });
+      mockActivityHistoryService.getHistoryEntryById.mockResolvedValueOnce({
+        id: 25,
+        activityId: 1,
+        userId: 10,
+        actionType: 'note_added',
+        changes: null,
+        notes: 'A note for history',
+        timestamp: new Date().toISOString(),
+        actor: {
+          id: 10,
+          displayName: 'Test User',
+          username: 'test.user',
+        },
+        userName: 'Test User',
+      });
+
+      const result = await service.addHistoryNote(1, 'A note for history', 10);
+
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        10,
+        'note_added',
+        undefined,
+        'A note for history'
+      );
+      expect(
+        mockActivityHistoryService.getHistoryEntryById
+      ).toHaveBeenCalledWith(25);
+      expect(result.actionType).toBe('note_added');
+      expect(result.notes).toBe('A note for history');
+    });
+
     it('should restore activity using previous status from history', async () => {
       const existingActivity = createMockActivity({
         id: 1,

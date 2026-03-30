@@ -28,6 +28,7 @@ If `activities.edit` is missing, `canEdit` is **false**. If the field is omitted
 - **Form fields** are read-only unless the user is allowed to edit **and** the activity is not in a state that blocks editing for that user (e.g. delete-requested/deleted except where policy allows). Another user holding the edit lock also forces read-only.
 - **Optimistic edit:** users who _may_ edit can type before acquiring the edit lock; the client acquires the lock on the first real change (`useEditLockIntent`). Users who _may not_ edit never get an enabled form, so they cannot trigger lock acquisition by typing.
 - **`canEdit` handling:** the UI treats **missing** `canEdit` as **false** so the form does not allow edits when the API does not explicitly allow them.
+- **Review vs Update (edit page):** users with **`activities.review`** see a **Review** action in addition to **Update**. **Update** saves field changes and sets status to **Changed** (unless combined with review via the Review flow). **Review** marks the activity **Reviewed**; if there are unsaved edits, the Review confirmation saves them and marks reviewed in one step.
 
 ## Comms contact candidates: `GET /teams/:teamId/comms-contact-candidates`
 

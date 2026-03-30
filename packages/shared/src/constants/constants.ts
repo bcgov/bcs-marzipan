@@ -83,6 +83,14 @@ export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
 export const ACTIVITY_COMPLETED_DELAY_MINUTES = 15;
 
 /**
+ * Current version of the reviewedFieldSnapshot JSON shape.
+ * Bump when adding/removing tracked fields or changing normalisation rules.
+ * On read, snapshots with an older version can be ignored (treated as "no snapshot")
+ * until the activity is next marked Reviewed, which rewrites the snapshot at the current version.
+ */
+export const REVIEW_SNAPSHOT_VERSION = 1;
+
+/**
  * Helper type for nullable enum values
  */
 export type NullableEnum<T extends readonly string[]> = T[number] | null;

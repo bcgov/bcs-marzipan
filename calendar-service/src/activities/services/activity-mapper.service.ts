@@ -73,6 +73,7 @@ export class ActivityMapperService {
       leadMinistryAbbreviation?: string | null;
       leadTeamDisplayName?: string | null;
       canEdit?: boolean;
+      changedFieldsSinceReview?: string[];
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -198,6 +199,11 @@ export class ActivityMapperService {
       // Edit access for current user (set when authenticated)
       ...(relatedData?.canEdit !== undefined && {
         canEdit: relatedData.canEdit,
+      }),
+
+      // Review diff (only for activities.review users)
+      ...(relatedData?.changedFieldsSinceReview !== undefined && {
+        changedFieldsSinceReview: relatedData.changedFieldsSinceReview,
       }),
 
       // Meta
