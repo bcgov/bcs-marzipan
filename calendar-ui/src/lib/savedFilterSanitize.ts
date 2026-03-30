@@ -1,8 +1,9 @@
 import {
+  coerceActivityFilterStateFromRecord,
   DEFAULT_ACTIVITY_FILTER_STATE,
+  hasDisallowedActivityFilterStateKeys,
   type ActivityFilterState,
-  type PitchDateFilter,
-} from '@/components/activity/ActivityTable/activityFilterState';
+} from '@corpcal/shared';
 
 export interface SavedFilterPayload {
   filterState: Record<string, unknown>;
@@ -32,13 +33,6 @@ function sanitizeIdArray(
   return { ids: filtered, removed: filtered.length < nums.length };
 }
 
-function sanitizeStringArray(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return (raw as unknown[]).filter(
-    (s): s is string => typeof s === 'string' && s.length > 0
-  );
-}
-
 /**
  * Valid lookup ID sets that can be provided for sanitization.
  * If a set is undefined, no validation is performed for that field.
@@ -64,7 +58,7 @@ export function sanitizeSavedFilterPayload(
   lookups?: ValidFilterLookups
 ): SanitizedFilterResult {
   const raw = payload.filterState;
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return {
       filterState: DEFAULT_ACTIVITY_FILTER_STATE,
       searchKeyword: payload.searchKeyword ?? '',
@@ -72,113 +66,57 @@ export function sanitizeSavedFilterPayload(
     };
   }
 
-  let hadInvalid = false;
+  const record = raw;
+  let hadInvalid = hasDisallowedActivityFilterStateKeys(record);
 
-  const dr = raw.dateRange as Record<string, unknown> | undefined;
-  const dateRange = {
-    startDate: dr && typeof dr.startDate === 'string' ? dr.startDate : '',
-    endDate: dr && typeof dr.endDate === 'string' ? dr.endDate : '',
-    noStartDate: dr?.noStartDate === true,
-    noEndDate: dr?.noEndDate === true,
-  };
-
-  const categoryNames = sanitizeStringArray(raw.categoryNames);
+  const base = coerceActivityFilterStateFromRecord(record);
 
   const statusResult = sanitizeIdArray(
-    raw.activityStatusIds,
+    record.activityStatusIds,
     lookups?.statusIds
   );
   if (statusResult.removed) hadInvalid = true;
 
-  const pitchRequiredStatusNames = sanitizeStringArray(
-    raw.pitchRequiredStatusNames
-  );
-
-  let pitchDateFilter: PitchDateFilter = { kind: 'any' };
-  const pdf = raw.pitchDateFilter as
-    | { kind?: string; dateRange?: Record<string, unknown> }
-    | undefined;
-  if (pdf && typeof pdf === 'object') {
-    if (pdf.kind === 'not_scheduled') {
-      pitchDateFilter = { kind: 'not_scheduled' };
-    } else if (pdf.kind === 'scheduled' && pdf.dateRange) {
-      const pr = pdf.dateRange;
-      pitchDateFilter = {
-        kind: 'scheduled',
-        dateRange: {
-          startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
-          endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
-          noStartDate: pr.noStartDate === true,
-          noEndDate: pr.noEndDate === true,
-        },
-      };
-    }
-  }
-
-  const lookAheadStatusValues = sanitizeStringArray(raw.lookAheadStatusValues);
-  const lookAheadSectionValues = sanitizeStringArray(
-    raw.lookAheadSectionValues
-  );
-
-  const rawDateConfirmed = raw.dateConfirmedFilter;
-  const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
-    rawDateConfirmed === 'confirmed' || rawDateConfirmed === 'not_confirmed'
-      ? rawDateConfirmed
-      : 'any';
-
-  const rawTimeConfirmed = raw.timeConfirmedFilter;
-  const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
-    rawTimeConfirmed === 'confirmed' || rawTimeConfirmed === 'not_confirmed'
-      ? rawTimeConfirmed
-      : 'any';
-
-  const tagResult = sanitizeIdArray(raw.tagIds, lookups?.tagIds);
+  const tagResult = sanitizeIdArray(record.tagIds, lookups?.tagIds);
   if (tagResult.removed) hadInvalid = true;
 
   const ministryResult = sanitizeIdArray(
-    raw.leadMinistryIds,
+    record.leadMinistryIds,
     lookups?.ministryIds
   );
   if (ministryResult.removed) hadInvalid = true;
 
-  const orgResult = sanitizeIdArray(raw.leadOrgIds, lookups?.orgIds);
+  const orgResult = sanitizeIdArray(record.leadOrgIds, lookups?.orgIds);
   if (orgResult.removed) hadInvalid = true;
 
   const commsResult = sanitizeIdArray(
-    raw.commsContactLeadUserIds,
+    record.commsContactLeadUserIds,
     lookups?.commsContactUserIds
   );
   if (commsResult.removed) hadInvalid = true;
 
   const plannerResult = sanitizeIdArray(
-    raw.eventPlannerLeadIds,
+    record.eventPlannerLeadIds,
     lookups?.eventPlannerIds
   );
   if (plannerResult.removed) hadInvalid = true;
 
   const translationStatusResult = sanitizeIdArray(
-    raw.translationRequiredStatusIds,
+    record.translationRequiredStatusIds,
     lookups?.translationStatusIds
   );
   if (translationStatusResult.removed) hadInvalid = true;
 
   const translationLangResult = sanitizeIdArray(
-    raw.translationLanguageIds,
+    record.translationLanguageIds,
     lookups?.translationLanguageIds
   );
   if (translationLangResult.removed) hadInvalid = true;
 
   return {
     filterState: {
-      dateRange,
-      categoryNames,
+      ...base,
       activityStatusIds: statusResult.ids,
-      pitchRequiredStatusNames,
-      pitchDateFilter,
-      lookAheadStatusValues,
-      lookAheadSectionValues,
-      dateConfirmedFilter,
-      timeConfirmedFilter,
       tagIds: tagResult.ids,
       leadMinistryIds: ministryResult.ids,
       leadOrgIds: orgResult.ids,

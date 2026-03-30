@@ -98,3 +98,4 @@ The login page shows a **Sign in with Microsoft** button automatically when the 
 ## Docs
 
 - **[Management tables UX](src/components/Table/README.md)** – Sticky header, scrolling, skeleton loading, column widths, filters, sort, and pagination. Users/Teams tables as reference.
+- **Activity table URL & session preferences** — See [Activity table preferences](../docs/ACTIVITY_TABLE_PREFERENCES.md) (repo root `docs/`) for how `activityTablePreferencesParams.ts` maps filters to query strings and what to update when adding filter types.

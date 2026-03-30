@@ -1,7 +1,7 @@
 import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
-} from '@/components/activity/ActivityTable/activityFilterState';
+} from '@corpcal/shared';
 
 export const STORAGE_KEY = 'activityTablePreferences';
 

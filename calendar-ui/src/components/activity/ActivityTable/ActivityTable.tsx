@@ -27,6 +27,7 @@ import {
   type CSSProperties,
 } from 'react';
 
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/shared';
 import {
@@ -102,7 +103,6 @@ import {
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from './activityFilterState';
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
 import {
   ActivityTableFilters,

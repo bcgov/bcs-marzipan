@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import type { ActivityFilterState } from '@corpcal/shared';
 import {
   Popover,
   PopoverContent,
@@ -10,7 +11,6 @@ import { filterPopoverSubmenuTriggerClass } from '@/components/users/filterPopov
 import { useSubPopoverHover } from '@/hooks/useSubPopoverHover';
 import { cn } from '@/lib/utils';
 
-import type { ActivityFilterState } from './activityFilterState';
 import { FilterSearchableList } from './FilterSearchableList';
 
 export interface LeadFilterOption {

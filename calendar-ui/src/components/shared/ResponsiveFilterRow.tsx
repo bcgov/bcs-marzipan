@@ -1,4 +1,5 @@
 import { Check, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   forwardRef,
   Fragment,
@@ -14,8 +15,15 @@ import {
   type ReactNode,
 } from 'react';
 
+import {
+  activityFilterStateIsDefault,
+  type ActivityFilterState,
+} from '@corpcal/shared';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
-import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
+import {
+  SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE,
+  savedFilterPayloadIsEmpty,
+} from '@corpcal/shared/utils';
 import {
   FilterSearchableList,
   type FilterSearchableListOption,
@@ -421,6 +429,18 @@ export function ResponsiveFilterRow({
   const [editDraft, setEditDraft] = useState<SavedFilterDraft | null>(null);
   const [deleteDialogFilter, setDeleteDialogFilter] =
     useState<SavedFilterResponse | null>(null);
+  const [createPayloadError, setCreatePayloadError] = useState<string | null>(
+    null
+  );
+  const [updatePayloadError, setUpdatePayloadError] = useState<string | null>(
+    null
+  );
+  const [editPayloadError, setEditPayloadError] = useState<string | null>(null);
+  const editBaselineRef = useRef<{
+    filterState: ActivityFilterState;
+    searchKeyword: string;
+    name: string;
+  } | null>(null);
 
   const hasSavedFilters = savedFilters != null && contextKey != null;
   const savedFiltersList = useMemo(
@@ -472,27 +492,8 @@ export function ResponsiveFilterRow({
 
   const hasActiveFilters = useCallback(() => {
     if (!filterState) return false;
-    const fs = filterState;
     return (
-      fs.dateRange.startDate !== '' ||
-      fs.dateRange.endDate !== '' ||
-      fs.dateRange.noStartDate ||
-      fs.dateRange.noEndDate ||
-      fs.categoryNames.length > 0 ||
-      fs.activityStatusIds.length > 0 ||
-      fs.pitchRequiredStatusNames.length > 0 ||
-      fs.pitchDateFilter.kind !== 'any' ||
-      fs.lookAheadStatusValues.length > 0 ||
-      fs.lookAheadSectionValues.length > 0 ||
-      fs.dateConfirmedFilter !== 'any' ||
-      fs.timeConfirmedFilter !== 'any' ||
-      fs.tagIds.length > 0 ||
-      fs.leadMinistryIds.length > 0 ||
-      fs.leadOrgIds.length > 0 ||
-      fs.commsContactLeadUserIds.length > 0 ||
-      fs.eventPlannerLeadIds.length > 0 ||
-      fs.translationRequiredStatusIds.length > 0 ||
-      fs.translationLanguageIds.length > 0 ||
+      !activityFilterStateIsDefault(filterState) ||
       (searchKeyword ?? '').trim().length > 0
     );
   }, [filterState, searchKeyword]);
@@ -508,6 +509,7 @@ export function ResponsiveFilterRow({
   );
 
   const handleRemoveCreateChip = useCallback((chipKey: string) => {
+    setCreatePayloadError(null);
     setCreateDraft((prev) => {
       if (!prev) return prev;
       return clearSavedFilterChip(
@@ -519,6 +521,7 @@ export function ResponsiveFilterRow({
   }, []);
 
   const handleRemoveUpdateChip = useCallback((chipKey: string) => {
+    setUpdatePayloadError(null);
     setUpdateDraft((prev) => {
       if (!prev) return prev;
       return clearSavedFilterChip(
@@ -530,6 +533,7 @@ export function ResponsiveFilterRow({
   }, []);
 
   const handleRemoveEditChip = useCallback((chipKey: string) => {
+    setEditPayloadError(null);
     setEditDraft((prev) => {
       if (!prev) return prev;
       return clearSavedFilterChip(
@@ -544,6 +548,19 @@ export function ResponsiveFilterRow({
     if (!savedFilters || !contextKey || !createDraft) return;
     const name = createName.trim();
     if (!name) return;
+    if (
+      savedFilterPayloadIsEmpty(
+        createDraft.filterState as unknown as Record<string, unknown>,
+        createDraft.searchKeyword
+      )
+    ) {
+      setCreatePayloadError(SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE);
+      toast.error('Cannot save filter', {
+        description: SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE,
+      });
+      return;
+    }
+    setCreatePayloadError(null);
     try {
       await savedFilters.createFilter({
         contextKey,
@@ -563,7 +580,31 @@ export function ResponsiveFilterRow({
   }, [savedFilters, contextKey, createDraft, createName]);
 
   const handleUpdateSavedFilter = useCallback(async () => {
-    if (!savedFilters || !updateDraft || !updateDialogFilter) return;
+    if (
+      !savedFilters ||
+      !updateDraft ||
+      !updateDialogFilter ||
+      !parseSavedFilterForDraft
+    )
+      return;
+    if (
+      savedFilterPayloadIsEmpty(
+        updateDraft.filterState as unknown as Record<string, unknown>,
+        updateDraft.searchKeyword
+      )
+    ) {
+      setUpdatePayloadError(SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE);
+      const parsed = parseSavedFilterForDraft(updateDialogFilter);
+      setUpdateDraft({
+        filterState: parsed.filterState,
+        searchKeyword: parsed.searchKeyword,
+      });
+      toast.error('Cannot update filter', {
+        description: SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE,
+      });
+      return;
+    }
+    setUpdatePayloadError(null);
     try {
       await savedFilters.updateFilter({
         id: updateDialogFilter.id,
@@ -578,14 +619,42 @@ export function ResponsiveFilterRow({
       setUpdateDialogFilter(null);
       setUpdateDraft(null);
     } catch {
-      // Error toast handled by mutation
+      const parsed = parseSavedFilterForDraft(updateDialogFilter);
+      setUpdateDraft({
+        filterState: parsed.filterState,
+        searchKeyword: parsed.searchKeyword,
+      });
     }
-  }, [savedFilters, updateDraft, updateDialogFilter]);
+  }, [savedFilters, updateDraft, updateDialogFilter, parseSavedFilterForDraft]);
+
+  const restoreEditDraftFromBaseline = useCallback(() => {
+    const baseline = editBaselineRef.current;
+    if (!baseline) return;
+    setEditDraft({
+      filterState: structuredClone(baseline.filterState),
+      searchKeyword: baseline.searchKeyword,
+    });
+    setEditFilterName(baseline.name);
+  }, []);
 
   const handleEditSavedFilter = useCallback(async () => {
     if (!savedFilters || !editDialogFilter || !editDraft) return;
     const name = editFilterName.trim();
     if (!name) return;
+    if (
+      savedFilterPayloadIsEmpty(
+        editDraft.filterState as unknown as Record<string, unknown>,
+        editDraft.searchKeyword
+      )
+    ) {
+      setEditPayloadError(SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE);
+      restoreEditDraftFromBaseline();
+      toast.error('Cannot save filter', {
+        description: SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE,
+      });
+      return;
+    }
+    setEditPayloadError(null);
     try {
       await savedFilters.updateFilter({
         id: editDialogFilter.id,
@@ -598,13 +667,20 @@ export function ResponsiveFilterRow({
           searchKeyword: editDraft.searchKeyword,
         },
       });
+      editBaselineRef.current = null;
       setEditDialogFilter(null);
       setEditFilterName('');
       setEditDraft(null);
     } catch {
-      // Error toast handled by mutation
+      restoreEditDraftFromBaseline();
     }
-  }, [savedFilters, editDialogFilter, editDraft, editFilterName]);
+  }, [
+    savedFilters,
+    editDialogFilter,
+    editDraft,
+    editFilterName,
+    restoreEditDraftFromBaseline,
+  ]);
 
   const handleDeleteSavedFilter = useCallback(async () => {
     if (!savedFilters || !deleteDialogFilter) return;
@@ -645,6 +721,7 @@ export function ResponsiveFilterRow({
 
   const openCreateSavedFilterDialog = useCallback(() => {
     if (!filterState) return;
+    setCreatePayloadError(null);
     setCreateDraft({
       filterState: structuredClone(filterState),
       searchKeyword: searchKeyword ?? '',
@@ -652,6 +729,26 @@ export function ResponsiveFilterRow({
     setCreateName('');
     setCreateDialogOpen(true);
   }, [filterState, searchKeyword]);
+
+  const openEditSavedFilterDialog = useCallback(
+    (sf: SavedFilterResponse) => {
+      if (!parseSavedFilterForDraft) return;
+      const parsed = parseSavedFilterForDraft(sf);
+      editBaselineRef.current = {
+        filterState: structuredClone(parsed.filterState),
+        searchKeyword: parsed.searchKeyword,
+        name: sf.name,
+      };
+      setEditPayloadError(null);
+      setEditDraft({
+        filterState: parsed.filterState,
+        searchKeyword: parsed.searchKeyword,
+      });
+      setEditDialogFilter(sf);
+      setEditFilterName(sf.name);
+    },
+    [parseSavedFilterForDraft]
+  );
 
   const renderSavedFilterSearchRow = useCallback(
     (opt: FilterSearchableListOption) => {
@@ -690,6 +787,7 @@ export function ResponsiveFilterRow({
             hasActiveFilters={hasActiveFilters}
             onUpdate={() => {
               if (!filterState) return;
+              setUpdatePayloadError(null);
               setUpdateDraft({
                 filterState: structuredClone(filterState),
                 searchKeyword: searchKeyword ?? '',
@@ -703,14 +801,7 @@ export function ResponsiveFilterRow({
               void handleDuplicateSavedFilter(sf);
             }}
             onEdit={() => {
-              if (!parseSavedFilterForDraft) return;
-              const parsed = parseSavedFilterForDraft(sf);
-              setEditDraft({
-                filterState: parsed.filterState,
-                searchKeyword: parsed.searchKeyword,
-              });
-              setEditDialogFilter(sf);
-              setEditFilterName(sf.name);
+              openEditSavedFilterDialog(sf);
             }}
             onDelete={() => setDeleteDialogFilter(sf)}
           />
@@ -724,9 +815,9 @@ export function ResponsiveFilterRow({
       hasActiveFilters,
       filterState,
       searchKeyword,
-      parseSavedFilterForDraft,
       handleToggleDefault,
       handleDuplicateSavedFilter,
+      openEditSavedFilterDialog,
     ]
   );
 
@@ -1067,6 +1158,7 @@ export function ResponsiveFilterRow({
                                 hasActiveFilters={hasActiveFilters}
                                 onUpdate={() => {
                                   if (!filterState) return;
+                                  setUpdatePayloadError(null);
                                   setUpdateDraft({
                                     filterState: structuredClone(filterState),
                                     searchKeyword: searchKeyword ?? '',
@@ -1080,14 +1172,7 @@ export function ResponsiveFilterRow({
                                   void handleDuplicateSavedFilter(sf);
                                 }}
                                 onEdit={() => {
-                                  if (!parseSavedFilterForDraft) return;
-                                  const parsed = parseSavedFilterForDraft(sf);
-                                  setEditDraft({
-                                    filterState: parsed.filterState,
-                                    searchKeyword: parsed.searchKeyword,
-                                  });
-                                  setEditDialogFilter(sf);
-                                  setEditFilterName(sf.name);
+                                  openEditSavedFilterDialog(sf);
                                 }}
                                 onDelete={() => setDeleteDialogFilter(sf)}
                               />
@@ -1154,6 +1239,7 @@ export function ResponsiveFilterRow({
           if (!open) {
             setCreateDraft(null);
             setCreateName('');
+            setCreatePayloadError(null);
           }
         }}
       >
@@ -1170,11 +1256,19 @@ export function ResponsiveFilterRow({
             onRemove={handleRemoveCreateChip}
             disabled={savedFilters?.isCreating === true}
           />
+          {createPayloadError ? (
+            <p className="text-destructive text-sm font-medium" role="alert">
+              {createPayloadError}
+            </p>
+          ) : null}
           <div className="space-y-3">
             <Input
               placeholder="Filter name"
               value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
+              onChange={(e) => {
+                setCreatePayloadError(null);
+                setCreateName(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleCreateSavedFilter();
               }}
@@ -1206,6 +1300,7 @@ export function ResponsiveFilterRow({
           if (!open) {
             setUpdateDialogFilter(null);
             setUpdateDraft(null);
+            setUpdatePayloadError(null);
           }
         }}
       >
@@ -1223,6 +1318,11 @@ export function ResponsiveFilterRow({
             onRemove={handleRemoveUpdateChip}
             disabled={savedFilters?.isUpdating === true}
           />
+          {updatePayloadError ? (
+            <p className="text-destructive text-sm font-medium" role="alert">
+              {updatePayloadError}
+            </p>
+          ) : null}
           <DialogFooter>
             <Button
               variant="outline"
@@ -1248,6 +1348,8 @@ export function ResponsiveFilterRow({
             setEditDialogFilter(null);
             setEditFilterName('');
             setEditDraft(null);
+            setEditPayloadError(null);
+            editBaselineRef.current = null;
           }
         }}
       >
@@ -1264,11 +1366,19 @@ export function ResponsiveFilterRow({
             onRemove={handleRemoveEditChip}
             disabled={savedFilters?.isUpdating === true}
           />
+          {editPayloadError ? (
+            <p className="text-destructive text-sm font-medium" role="alert">
+              {editPayloadError}
+            </p>
+          ) : null}
           <div className="space-y-3">
             <Input
               placeholder="Filter name"
               value={editFilterName}
-              onChange={(e) => setEditFilterName(e.target.value)}
+              onChange={(e) => {
+                setEditPayloadError(null);
+                setEditFilterName(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleEditSavedFilter();
               }}

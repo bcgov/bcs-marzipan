@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/activity/ActivityTable/activityFilterState';
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 
 import {
   buildActivityFilterSummaryLines,

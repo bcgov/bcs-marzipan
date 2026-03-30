@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -57,6 +58,18 @@ describe('SavedFiltersService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    const db = mockDatabaseService.db;
+    db.select.mockReturnValue(db);
+    db.from.mockReturnValue(db);
+    db.where.mockReturnValue(db);
+    db.orderBy.mockReturnValue(db);
+    db.limit.mockReturnValue(db);
+    db.insert.mockReturnValue(db);
+    db.values.mockReturnValue(db);
+    db.returning.mockResolvedValue([]);
+    db.update.mockReturnValue(db);
+    db.set.mockReturnValue(db);
+    db.delete.mockReturnValue(db);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SavedFiltersService,
@@ -160,6 +173,17 @@ describe('SavedFiltersService', () => {
       );
     });
 
+    it('should reject create when filter payload is empty', async () => {
+      await expect(
+        service.create(10, {
+          contextKey: 'all',
+          name: 'Empty',
+          filterState: {},
+          searchKeyword: '',
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should throw ConflictException for duplicate names', async () => {
       const existing = { id: 99 };
       const nameCheckChain = createChain(existing, 'limit');
@@ -171,7 +195,7 @@ describe('SavedFiltersService', () => {
         service.create(10, {
           contextKey: 'all',
           name: 'Duplicate',
-          filterState: {},
+          filterState: { activityStatusIds: [1] },
           searchKeyword: '',
         })
       ).rejects.toThrow(ConflictException);
@@ -225,8 +249,8 @@ describe('SavedFiltersService', () => {
 
     it('should create team-scoped filter when scopeTeamId is in user team ids', async () => {
       const row = makeSavedFilterRow({
-        name: 'Team filter',
-        filterState: {},
+        name: 'Team scoped ok',
+        filterState: { categoryNames: ['Event'] },
         searchKeyword: '',
         scopeType: 'team',
         scopeTeamId: 5,
@@ -248,8 +272,8 @@ describe('SavedFiltersService', () => {
         10,
         {
           contextKey: 'all',
-          name: 'Team filter',
-          filterState: {},
+          name: 'Team scoped ok',
+          filterState: { categoryNames: ['Event'] },
           searchKeyword: '',
           scopeType: 'team',
           scopeTeamId: 5,
@@ -259,11 +283,55 @@ describe('SavedFiltersService', () => {
 
       expect(result).toEqual(
         expect.objectContaining({
-          name: 'Team filter',
+          name: 'Team scoped ok',
           scopeType: 'team',
           scopeTeamId: 5,
         })
       );
+    });
+  });
+
+  describe('update', () => {
+    it('should reject update when merged filter payload becomes empty', async () => {
+      const row = makeSavedFilterRow();
+      const findChain = createChain(row, 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(findChain);
+      findChain.from.mockReturnValue(findChain);
+      findChain.where.mockReturnValue(findChain);
+
+      await expect(
+        service.update(10, 1, {
+          filterState: {},
+          searchKeyword: '',
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should allow name-only update without merged empty check', async () => {
+      const row = makeSavedFilterRow();
+      const findChain = createChain(row, 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(findChain);
+      findChain.from.mockReturnValue(findChain);
+      findChain.where.mockReturnValue(findChain);
+
+      const nameCheckChain = createChain([], 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(nameCheckChain);
+      nameCheckChain.from.mockReturnValue(nameCheckChain);
+      nameCheckChain.where.mockReturnValue(nameCheckChain);
+
+      const updated = { ...row, name: 'Renamed unique 701' };
+      const updateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([updated]),
+      };
+      mockDatabaseService.db.update.mockReturnValueOnce(updateChain);
+
+      const result = await service.update(10, 1, {
+        name: 'Renamed unique 701',
+      });
+
+      expect(result.name).toBe('Renamed unique 701');
     });
   });
 

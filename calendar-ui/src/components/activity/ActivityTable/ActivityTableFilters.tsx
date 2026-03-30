@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import type { ActivityFilterState } from '@corpcal/shared';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
   ResponsiveFilterRow,
@@ -20,7 +21,6 @@ import {
 } from '@/lib/savedFilterSanitize';
 import type { OptionItem } from '@/schemas/types';
 
-import type { ActivityFilterState } from './activityFilterState';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';

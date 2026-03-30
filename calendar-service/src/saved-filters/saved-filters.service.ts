@@ -8,6 +8,10 @@ import {
 import { desc, SQL } from 'drizzle-orm';
 
 import { and, eq, schema, sql } from '@corpcal/database';
+import {
+  SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE,
+  savedFilterPayloadIsEmpty,
+} from '@corpcal/shared/utils';
 
 import { AppLogger } from '../common/logger/logger.service';
 import { DatabaseService } from '../database/database.service';
@@ -107,6 +111,8 @@ export class SavedFiltersService {
       teamIds: scopeContext?.teamIds,
     });
 
+    this.assertSavedFilterPayloadNotEmpty(body.filterState, body.searchKeyword);
+
     await this.assertNameUnique(
       userId,
       body.contextKey,
@@ -146,6 +152,19 @@ export class SavedFiltersService {
     scopeContext?: ScopeContext
   ): Promise<SavedFilterResponse> {
     const existing = await this.findOwnedOrFail(userId, filterId);
+
+    if (body.filterState !== undefined || body.searchKeyword !== undefined) {
+      const nextFilterState =
+        body.filterState !== undefined
+          ? body.filterState
+          : (existing.filterState as Record<string, unknown>);
+      const nextSearchKeyword =
+        body.searchKeyword !== undefined
+          ? body.searchKeyword
+          : existing.searchKeyword;
+      this.assertSavedFilterPayloadNotEmpty(nextFilterState, nextSearchKeyword);
+    }
+
     const resolvedScope = this.resolveScope({
       scopeType: body.scopeType ?? (existing.scopeType as SavedFilterScopeType),
       scopeTeamId:
@@ -252,6 +271,15 @@ export class SavedFiltersService {
   // ------------------------------------------------------------------
   // Internal helpers
   // ------------------------------------------------------------------
+
+  private assertSavedFilterPayloadNotEmpty(
+    filterState: Record<string, unknown>,
+    searchKeyword: string | null | undefined
+  ): void {
+    if (savedFilterPayloadIsEmpty(filterState, searchKeyword)) {
+      throw new BadRequestException(SAVED_FILTER_EMPTY_PAYLOAD_MESSAGE);
+    }
+  }
 
   private async findOwnedOrFail(
     userId: number,

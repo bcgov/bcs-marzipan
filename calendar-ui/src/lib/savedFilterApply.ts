@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 
+import type { ActivityFilterState } from '@corpcal/shared';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
-import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
 import { showErrorToast } from '@/lib/error-toast';
 import {
   sanitizeSavedFilterPayload,

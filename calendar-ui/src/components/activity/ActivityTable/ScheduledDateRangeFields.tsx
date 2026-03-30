@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { useCallback, useMemo } from 'react';
 
+import type { DateRangeValue } from '@corpcal/shared';
 import { Button } from '@/components/ui/button';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import {
@@ -10,12 +11,7 @@ import {
 } from '@/lib/scheduled-date-presets';
 import { cn } from '@/lib/utils';
 
-export interface DateRangeValue {
-  startDate: string;
-  endDate: string;
-  noStartDate: boolean;
-  noEndDate: boolean;
-}
+export type { DateRangeValue };
 
 /** True when the date range has any constraint (dates set or "no start/end date" toggles). */
 export function isDateRangeActive(dateRange: DateRangeValue): boolean {

@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 
-import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
+import type { ActivityFilterState } from '@corpcal/shared';
 import {
   isDateRangeActive,
   type DateRangeValue,
