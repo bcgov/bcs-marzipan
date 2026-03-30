@@ -141,3 +141,38 @@ export const filterActivitiesQuerySchema = z.object({
 export type FilterActivitiesQueryParams = z.infer<
   typeof filterActivitiesQuerySchema
 >;
+
+/**
+ * Reports report-data and CSV export query: same filters as activity list,
+ * plus optional keyword search and report-friendly date aliases.
+ */
+export const reportDataQuerySchema = filterActivitiesQuerySchema
+  .omit({ limit: true })
+  .extend({
+    limit: z
+      .string()
+      .default('500')
+      .transform(Number)
+      .pipe(z.number().int().positive().min(1).max(500)),
+    search: z.string().optional(),
+    /** When set, applies as startDateFrom unless startDateFrom is already provided. */
+    startDate: z.string().date().optional(),
+    /** When set, applies as startDateTo unless startDateTo is already provided. */
+    endDate: z.string().date().optional(),
+  });
+
+export type ReportDataQueryParams = z.infer<typeof reportDataQuerySchema>;
+
+export function reportDataQueryToActivityFindAllFilters(
+  query: ReportDataQueryParams
+): FilterActivitiesQueryParams {
+  const { search: _search, startDate, endDate, ...rest } = query;
+  const filters: FilterActivitiesQueryParams = { ...rest };
+  if (startDate !== undefined && filters.startDateFrom === undefined) {
+    filters.startDateFrom = startDate;
+  }
+  if (endDate !== undefined && filters.startDateTo === undefined) {
+    filters.startDateTo = endDate;
+  }
+  return filters;
+}

@@ -8,6 +8,12 @@ import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import sanitizeHtml from 'sanitize-html';
 
+import {
+  getEffectiveReportDetailText,
+  getEffectiveReportFields,
+  REPORT_TYPE_CONFIG_MAP,
+} from '@corpcal/shared/reports/reportTypeConfig';
+
 import type { LookAheadResponse } from '../api/reportsApi';
 import { sortLookAheadActivities } from './look-ahead-sort';
 
@@ -115,6 +121,9 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
   const contentEndY = pageHeight - FOOTER_HEIGHT;
 
   const reportDate = format(new Date(), 'EEEE, MMMM d, yyyy h:mm a');
+  const effectiveFields = data.report
+    ? getEffectiveReportFields(data.report)
+    : REPORT_TYPE_CONFIG_MAP.LOOK_AHEAD.fields;
 
   addHeader(doc, reportDate, true);
 
@@ -178,8 +187,12 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
         doc.setFont('helvetica', 'normal');
       }
 
+      const detailText = getEffectiveReportDetailText(
+        activity,
+        effectiveFields
+      );
       const detailsStr = stripHtml(
-        [activity.title, activity.executiveSummary].filter(Boolean).join(' – ')
+        [activity.title, detailText].filter(Boolean).join(' – ')
       );
       const detailsLines = doc.splitTextToSize(detailsStr, colWidths[2]);
       const lineCount = Math.min(detailsLines.length, 3);

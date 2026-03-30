@@ -7,6 +7,11 @@ import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import sanitizeHtml from 'sanitize-html';
 
+import {
+  getEffectiveReportDetailText,
+  getEffectiveReportFields,
+} from '@corpcal/shared/reports/reportTypeConfig';
+
 import type { ReportDataResponse } from '../api/reportsApi';
 import { sortLookAheadActivities } from './look-ahead-sort';
 
@@ -120,6 +125,7 @@ export function exportReportToPdf(data: ReportDataResponse): void {
 
   const reportDate = format(new Date(), 'EEEE, MMMM d, yyyy h:mm a');
   const reportTitle = data.report.displayName;
+  const effectiveFields = getEffectiveReportFields(data.report);
 
   addHeader(doc, reportTitle, reportDate, true);
 
@@ -183,8 +189,12 @@ export function exportReportToPdf(data: ReportDataResponse): void {
         doc.setFont('helvetica', 'normal');
       }
 
+      const detailText = getEffectiveReportDetailText(
+        activity,
+        effectiveFields
+      );
       const detailsStr = stripHtml(
-        [activity.title, activity.executiveSummary].filter(Boolean).join(' – ')
+        [activity.title, detailText].filter(Boolean).join(' – ')
       );
       const detailsLines = doc.splitTextToSize(detailsStr, colWidths[2]);
       const lineCount = Math.min(detailsLines.length, 3);

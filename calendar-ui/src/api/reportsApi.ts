@@ -2,6 +2,7 @@ import type {
   ActivityResponse,
   ReportResponse,
 } from '@corpcal/shared/api/types';
+import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 
 import api from './axios';
 
@@ -39,12 +40,12 @@ export async function fetchLookAheadData(params?: {
   return response.data;
 }
 
+/** Query params for `/reports/data/:type` and CSV export (strings as sent in the URL). */
+export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
+
 export async function fetchReportData(
   type: string,
-  params?: {
-    startDate?: string;
-    endDate?: string;
-  }
+  params?: ReportDataRequestParams
 ): Promise<ReportDataResponse> {
   const response = await api.get<ReportDataResponse>(`/reports/data/${type}`, {
     params,
@@ -57,14 +58,25 @@ export async function fetchReportsList(): Promise<ReportResponse[]> {
   return response.data;
 }
 
-export async function downloadReportCsv(
+export type ReportExportFormat = 'csv' | 'xlsx' | 'pdf';
+
+const EXPORT_EXT: Record<ReportExportFormat, string> = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  pdf: 'pdf',
+};
+
+/**
+ * Download a report export (same query params as {@link fetchReportData}).
+ * Uses shared server-side formatters; not tied to a specific page layout.
+ */
+export async function downloadReportExport(
   type: string,
-  params?: {
-    startDate?: string;
-    endDate?: string;
-  }
+  format: ReportExportFormat,
+  params?: ReportDataRequestParams
 ): Promise<void> {
-  const response = await api.get(`/reports/export/${type}/csv`, {
+  const ext = EXPORT_EXT[format];
+  const response = await api.get(`/reports/export/${type}/${ext}`, {
     params,
     responseType: 'blob',
   });
@@ -72,8 +84,16 @@ export async function downloadReportCsv(
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', `${type}-report.csv`);
+  link.setAttribute('download', `${type}-report.${ext}`);
   document.body.appendChild(link);
   link.click();
   link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function downloadReportCsv(
+  type: string,
+  params?: ReportDataRequestParams
+): Promise<void> {
+  return downloadReportExport(type, 'csv', params);
 }

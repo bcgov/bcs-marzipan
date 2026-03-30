@@ -8,13 +8,39 @@ import type {
   ReportResponse,
 } from '@corpcal/shared/api/types';
 import {
+  buildReportExportTable,
+  serializeReportTableToCsv,
+} from '@corpcal/shared/reports/reportExportFormat';
+import {
   mergeReportFilters,
   reportConfigSchema,
+  reportDataQueryToActivityFindAllFilters,
   type FilterActivitiesQueryParams,
+  type ReportDataQueryParams,
 } from '@corpcal/shared/schemas';
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
+import { renderReportTableToPdfBuffer } from './formatters/report-pdf.formatter';
+import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
+
+function pickDefinedActivityFilters(
+  filters: FilterActivitiesQueryParams
+): Partial<FilterActivitiesQueryParams> {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== undefined)
+  ) as Partial<FilterActivitiesQueryParams>;
+}
+
+/** When the report section already pins the activity start-date window, query dates must not override it. */
+function withoutActivityStartDateWindow(
+  filters: Partial<FilterActivitiesQueryParams>
+): Partial<FilterActivitiesQueryParams> {
+  const { startDateFrom: _f, startDateTo: _t, ...rest } = filters;
+  return rest;
+}
 
 export interface ReportSettingsDto {
   reportId: number;
@@ -317,17 +343,46 @@ export class ReportsService {
 
   /**
    * Get report data for a specific report type
-   * @param reportName - The report name (e.g., 'look-ahead', 'thirty-sixty-ninety')
-   * @param options - Additional filter options
+   * @param reportName - The report name (e.g., 'look-ahead', 'thirty-sixty-ninety') or `custom` for a configured-free dataset
+   * @param query - Activity list filters, optional `search`, and optional report `startDate`/`endDate` aliases
    * @returns Report data with sections and activities
    */
   async getReportData(
     reportName: string,
-    options?: {
-      startDate?: string;
-      endDate?: string;
-    }
+    query: ReportDataQueryParams,
+    ctx: RequestContextType
   ): Promise<ReportDataResponse> {
+    const { search } = query;
+    const normalized = reportName.trim().toLowerCase();
+
+    if (normalized === 'custom') {
+      const filters = reportDataQueryToActivityFindAllFilters(query);
+      let activities = await this.activitiesService.findAll(filters, ctx);
+      activities = filterActivityResponsesBySearchKeyword(activities, search);
+      activities = activities.filter((a) => !a.isConfidential);
+      const report: ReportResponse = {
+        id: -1,
+        name: 'custom',
+        displayName: 'Custom',
+        sortOrder: 0,
+        isActive: true,
+        visibility: 'team' satisfies Visibility,
+        config: null,
+        description: null,
+      };
+      return {
+        report,
+        sections: [
+          {
+            id: 'results',
+            name: 'Results',
+            order: 1,
+            activities,
+          },
+        ],
+      };
+    }
+
     const report = await this.findReportByName(reportName);
     if (!report) {
       throw new NotFoundException(`Report '${reportName}' not found`);
@@ -341,6 +396,9 @@ export class ReportsService {
 
     const omittedActivityIds = await this.getOmittedActivityIds(report.id);
     const sections: ReportSectionData[] = [];
+    const userFiltersAll = pickDefinedActivityFilters(
+      reportDataQueryToActivityFindAllFilters(query)
+    );
 
     for (const sectionConfig of report.config.sections) {
       // Merge global filter with section filter
@@ -379,25 +437,24 @@ export class ReportsService {
         }
       }
 
-      // Apply additional filters from options
       const filters: FilterActivitiesQueryParams = {
-        page: 1,
-        limit: 500,
+        page: query.page,
+        limit: query.limit,
         sharedWithTeamIds: undefined,
         includeCompleted: undefined,
         includeDeleted: undefined,
       };
 
-      // Apply date filters
+      // Apply date filters from report section config
       if (mergedFilter?.dateRange) {
         filters.startDateFrom = mergedFilter.dateRange.start;
         filters.startDateTo = mergedFilter.dateRange.end;
-      } else if (options?.startDate) {
-        filters.startDateFrom = options.startDate;
       }
-      if (options?.endDate && !mergedFilter?.dateRange) {
-        filters.startDateTo = options.endDate;
-      }
+
+      const userFilterOverlay = mergedFilter?.dateRange
+        ? withoutActivityStartDateWindow(userFiltersAll)
+        : userFiltersAll;
+      Object.assign(filters, userFilterOverlay);
 
       // Apply status filters
       // TODO: Implement status filtering based on activity status names
@@ -411,7 +468,8 @@ export class ReportsService {
         filters.lookAheadSection = mergedFilter.lookAheadSection as any;
       }
 
-      const activities = await this.activitiesService.findAll(filters);
+      let activities = await this.activitiesService.findAll(filters, ctx);
+      activities = filterActivityResponsesBySearchKeyword(activities, search);
       const filtered = activities.filter(
         (a) => !omittedActivityIds.has(a.id) && !a.isConfidential
       );
@@ -428,49 +486,28 @@ export class ReportsService {
   }
 
   /**
-   * Generate CSV content for a report
-   * @param data - Report data
-   * @returns CSV string
+   * Generate CSV content for a report (uses shared table builder + serializer).
    */
   generateReportCsv(data: ReportDataResponse): string {
-    const rows: string[] = [];
+    return serializeReportTableToCsv(buildReportExportTable(data));
+  }
 
-    // Add header
-    rows.push('Section,Date,Time,Status,Activity Details,Ref #,MIN');
+  /**
+   * Generate XLSX workbook bytes for a report.
+   */
+  async generateReportExcelBuffer(data: ReportDataResponse): Promise<Buffer> {
+    const table = buildReportExportTable(data);
+    return renderReportTableToExcelBuffer(table, data.report.displayName);
+  }
 
-    for (const section of data.sections) {
-      for (const activity of section.activities) {
-        const date = activity.startDate
-          ? new Date(activity.startDate).toLocaleDateString('en-CA')
-          : '';
-        const time = activity.startTime || '';
-        const status = activity.lookAheadStatus || '';
-        const details = [activity.title, activity.executiveSummary]
-          .filter(Boolean)
-          .join(' – ');
-        const ref = activity.displayId || '';
-        const min = activity.displayId
-          ? activity.displayId.split('-')[0] || ''
-          : '';
-
-        // Escape commas and quotes in CSV
-        const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`;
-
-        rows.push(
-          [
-            escapeCsv(section.name),
-            escapeCsv(date),
-            escapeCsv(time),
-            escapeCsv(status),
-            escapeCsv(details),
-            escapeCsv(ref),
-            escapeCsv(min),
-          ].join(',')
-        );
-      }
-    }
-
-    return rows.join('\n');
+  /**
+   * Generate PDF bytes for a report (tabular layout driven by {@link ReportExportTable}).
+   */
+  async generateReportPdfBuffer(data: ReportDataResponse): Promise<Buffer> {
+    const table = buildReportExportTable(data);
+    return renderReportTableToPdfBuffer(table, {
+      title: data.report.displayName,
+    });
   }
 }
 
