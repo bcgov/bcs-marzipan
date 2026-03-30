@@ -2,6 +2,7 @@
 export * from './activity.schema';
 export * from './activity-response.schema';
 export * from './activity-junction.schema';
+export * from './banner.schema';
 export * from './history.schema';
 export * from './lookup.schema';
 export * from './report-config.schema';

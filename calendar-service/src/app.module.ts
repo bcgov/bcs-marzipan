@@ -10,6 +10,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { BannerModule } from './banner/banner.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { DatabaseModule } from './database/database.module';
@@ -48,6 +49,7 @@ function resolveRootEnvPath(): string {
     DatabaseModule,
     PolicyModule,
     AuthModule,
+    BannerModule,
     ActivitiesModule,
     LocksModule,
     LookupsModule,

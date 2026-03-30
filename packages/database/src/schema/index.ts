@@ -15,3 +15,4 @@ export * from './venue-presets';
 export * from './rbac';
 export * from './editLocks';
 export * from './sessions';
+export * from './bannerSettings';
