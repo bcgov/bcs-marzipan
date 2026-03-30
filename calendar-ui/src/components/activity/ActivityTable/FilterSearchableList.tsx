@@ -1,5 +1,12 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 import { Input } from '@/components/ui/input';
 import { filterPopoverMenuItemClass } from '@/components/users/filterPopoverMenuItemClasses';
@@ -12,10 +19,17 @@ export interface FilterSearchableListOption {
   label: string;
 }
 
+export interface FilterSearchableListRenderOptionMeta {
+  index: number;
+  isFirst: boolean;
+}
+
 export interface FilterSearchableListProps {
   options: FilterSearchableListOption[];
-  selectedIds: number[];
-  onToggle: (id: number) => void;
+  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  selectedIds?: number[];
+  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  onToggle?: (id: number) => void;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
   emptyMessage?: string;
@@ -25,6 +39,14 @@ export interface FilterSearchableListProps {
   /** When provided with onSearchChange, search is controlled (parent can reset on close). */
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+  /**
+   * Custom row content (search + scroll still handled here). Use instead of checkbox rows
+   * when items need a different control (e.g. apply + actions per row).
+   */
+  renderOption?: (
+    opt: FilterSearchableListOption,
+    meta: FilterSearchableListRenderOptionMeta
+  ) => ReactNode;
 }
 
 /**
@@ -33,7 +55,7 @@ export interface FilterSearchableListProps {
  */
 export function FilterSearchableList({
   options,
-  selectedIds,
+  selectedIds = [],
   onToggle,
   searchPlaceholder = 'Search...',
   searchAriaLabel = 'Search',
@@ -43,6 +65,7 @@ export function FilterSearchableList({
   maxHeight = '250px',
   searchValue: controlledSearchValue,
   onSearchChange: controlledOnSearchChange,
+  renderOption,
 }: FilterSearchableListProps) {
   const [internalSearch, setInternalSearch] = useState('');
   const isControlled =
@@ -61,6 +84,7 @@ export function FilterSearchableList({
 
   const handleToggle = useCallback(
     (value: string) => {
+      if (!onToggle) return;
       const id = parseInt(value, 10);
       if (!Number.isFinite(id)) return;
       onToggle(id);
@@ -70,8 +94,9 @@ export function FilterSearchableList({
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const firstItemRef = useRef<HTMLLabelElement>(null);
+  const firstCustomRowRef = useRef<HTMLDivElement>(null);
 
-  const handleFirstItemKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleFirstItemKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
@@ -79,7 +104,7 @@ export function FilterSearchableList({
     }
   }, []);
 
-  const hasSelection = selectedIds.length > 0;
+  const hasSelection = !renderOption && selectedIds.length > 0;
 
   return (
     <>
@@ -105,21 +130,43 @@ export function FilterSearchableList({
         style={{ maxHeight }}
         tabIndex={0}
         onFocus={(e) => {
-          if (e.target === e.currentTarget && filteredOptions.length > 0) {
-            const firstCheckbox =
-              firstItemRef.current?.querySelector<HTMLButtonElement>(
-                'button[role="checkbox"]'
-              );
-            requestAnimationFrame(
-              () => firstCheckbox?.focus() ?? firstItemRef.current?.focus()
-            );
+          if (e.target !== e.currentTarget || filteredOptions.length === 0) {
+            return;
           }
+          if (renderOption) {
+            const firstFocusable =
+              firstCustomRowRef.current?.querySelector<HTMLElement>(
+                'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+              );
+            requestAnimationFrame(() => firstFocusable?.focus());
+            return;
+          }
+          const firstCheckbox =
+            firstItemRef.current?.querySelector<HTMLButtonElement>(
+              'button[role="checkbox"]'
+            );
+          requestAnimationFrame(
+            () => firstCheckbox?.focus() ?? firstItemRef.current?.focus()
+          );
         }}
       >
         {filteredOptions.length === 0 ? (
           <div className="text-muted-foreground px-3 py-2 text-center text-sm">
             {emptyMessage}
           </div>
+        ) : renderOption ? (
+          filteredOptions.map((opt, index) => {
+            const isFirst = index === 0;
+            return (
+              <div
+                key={opt.value}
+                ref={isFirst ? firstCustomRowRef : undefined}
+                className="grid grid-cols-[1fr_auto]"
+              >
+                {renderOption(opt, { index, isFirst })}
+              </div>
+            );
+          })
         ) : (
           filteredOptions.map((opt, index) => {
             const id = parseInt(opt.value, 10);

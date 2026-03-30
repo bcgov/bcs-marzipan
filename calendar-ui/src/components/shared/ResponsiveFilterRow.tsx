@@ -1,16 +1,9 @@
-import {
-  Check,
-  ChevronDownIcon,
-  ChevronRight,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
 import {
   forwardRef,
   Fragment,
   useCallback,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -23,6 +16,10 @@ import {
 
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
+import {
+  FilterSearchableList,
+  type FilterSearchableListOption,
+} from '@/components/activity/ActivityTable/FilterSearchableList';
 import { SavedFilterChipBox } from '@/components/shared/SavedFilterChipBox';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
 import { Button } from '@/components/ui/button';
@@ -70,6 +67,12 @@ type SavedFilterDraft = {
 
 const SLOT_GAP_PX = 8;
 const OVERFLOW_BUTTON_RESERVE_PX = 110;
+/** Reserve for the "My filters" trigger when saved filters are enabled (matches filter trigger min width + gap). */
+const MY_FILTERS_TRIGGER_RESERVE_PX = 108;
+/** `ml-6` before "My filters" so it stays visually separated from "More". */
+const MY_FILTERS_LEAD_IN_PX = 24;
+/** Show search + scroll list when saved filter count exceeds this (i.e. length > 6). */
+const SAVED_FILTERS_SEARCH_THRESHOLD = 6;
 const TRAILING_GROUP_OFFSET_PX = 32;
 /** Min change in container width (px) before re-measuring. Avoids resize loop from small reflows. */
 const WIDTH_CHANGE_THRESHOLD_PX = 10;
@@ -329,9 +332,9 @@ export interface ResponsiveFilterSlot {
 export interface ResponsiveFilterRowProps {
   /** Ordered list of filter slots (panel + triggerProps). */
   slots: ResponsiveFilterSlot[];
-  /** Label for the overflow trigger when some filters are visible inline. Default "More filters". */
+  /** Label for the overflow trigger when some filters are visible inline. Default "More". */
   overflowTriggerLabel?: string;
-  /** Label when no filters are visible inline (single "Filters" button). Default "Filters". */
+  /** Label when no filters are visible inline (single overflow button). Default "More". */
   overflowTriggerLabelWhenAlone?: string;
   /** Class name for the overflow trigger button (e.g. h-10 for alignment). */
   overflowTriggerClassName?: string;
@@ -372,13 +375,13 @@ export interface ResponsiveFilterRowProps {
 
 /**
  * Renders as many slot contents as fit in one row; the rest are moved into a
- * "More filters" (or "Filters" when none visible) popover with a Filters accordion,
- * My saved filters, and Save current filter. Uses ResizeObserver and layout measurement to compute how many slots fit.
+ * "More" (default label; overridable) popover with overflow filter rows; My filters holds new-filter entry,
+ * plus a separate "My filters" popover when saved filters are enabled. Uses ResizeObserver and layout measurement to compute how many slots fit.
  */
 export function ResponsiveFilterRow({
   slots,
-  overflowTriggerLabel = 'More filters',
-  overflowTriggerLabelWhenAlone = 'Filters',
+  overflowTriggerLabel = 'More',
+  overflowTriggerLabelWhenAlone = 'More',
   overflowTriggerClassName,
   trailingContent,
   onClearAll,
@@ -400,11 +403,10 @@ export function ResponsiveFilterRow({
     debounceMs: RESIZE_DEBOUNCE_MS,
   });
   const [visibleCount, setVisibleCount] = useState<number | null>(null);
-  const [filtersAccordionOpen, setFiltersAccordionOpen] = useState(false);
   const [openFilterKey, setOpenFilterKey] = useState<string | null>(null);
-  const [savedFiltersPopoverOpen, setSavedFiltersPopoverOpen] = useState(false);
+  const [myFiltersOpen, setMyFiltersOpen] = useState(false);
+  const [savedFiltersSearch, setSavedFiltersSearch] = useState('');
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
-  const filtersAccordionPanelId = useId();
 
   // Saved filter dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -421,10 +423,24 @@ export function ResponsiveFilterRow({
     useState<SavedFilterResponse | null>(null);
 
   const hasSavedFilters = savedFilters != null && contextKey != null;
-  const savedFiltersList = savedFilters?.savedFilters ?? [];
-  const savedFiltersSubPopoverHover = useSubPopoverHover(
-    savedFiltersPopoverOpen,
-    setSavedFiltersPopoverOpen
+  const savedFiltersList = useMemo(
+    () => savedFilters?.savedFilters ?? [],
+    [savedFilters?.savedFilters]
+  );
+  const savedFilterById = useMemo(() => {
+    const m = new Map<number, SavedFilterResponse>();
+    for (const sf of savedFiltersList) {
+      m.set(sf.id, sf);
+    }
+    return m;
+  }, [savedFiltersList]);
+  const savedFiltersSearchOptions = useMemo(
+    (): FilterSearchableListOption[] =>
+      savedFiltersList.map((sf) => ({
+        value: String(sf.id),
+        label: sf.name,
+      })),
+    [savedFiltersList]
   );
 
   const createChipRows = useMemo(() => {
@@ -484,7 +500,7 @@ export function ResponsiveFilterRow({
   const handleApplySavedFilter = useCallback(
     (sf: SavedFilterResponse) => {
       applySavedFilterSelection(sf, onApplySavedFilter, () => {
-        setSavedFiltersPopoverOpen(false);
+        setMyFiltersOpen(false);
         setOverflowMenuOpen(false);
       });
     },
@@ -627,6 +643,93 @@ export function ResponsiveFilterRow({
     [savedFilters]
   );
 
+  const openCreateSavedFilterDialog = useCallback(() => {
+    if (!filterState) return;
+    setCreateDraft({
+      filterState: structuredClone(filterState),
+      searchKeyword: searchKeyword ?? '',
+    });
+    setCreateName('');
+    setCreateDialogOpen(true);
+  }, [filterState, searchKeyword]);
+
+  const renderSavedFilterSearchRow = useCallback(
+    (opt: FilterSearchableListOption) => {
+      const id = parseInt(opt.value, 10);
+      const sf = savedFilterById.get(id);
+      if (!sf) return null;
+      return (
+        <>
+          <button
+            type="button"
+            className={cn(
+              'relative flex min-w-0 items-center gap-2 py-2 pr-2 pl-8 text-left text-sm',
+              filterPopoverMenuItemClass
+            )}
+            aria-label={`Apply ${sf.name}`}
+            aria-current={activeSavedFilterId === sf.id ? 'true' : undefined}
+            onClick={() => handleApplySavedFilter(sf)}
+          >
+            <span
+              className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center"
+              aria-hidden
+            >
+              {activeSavedFilterId === sf.id ? (
+                <Check className="h-4 w-4" />
+              ) : null}
+            </span>
+            <span className="min-w-0 truncate">{sf.name}</span>
+            {sf.isDefault && (
+              <span className="border-border text-muted-foreground shrink-0 rounded-full border bg-transparent px-1.5 py-1 text-[12px] leading-none font-medium">
+                Default
+              </span>
+            )}
+          </button>
+          <SavedFilterRowActionsPopover
+            savedFilter={sf}
+            hasActiveFilters={hasActiveFilters}
+            onUpdate={() => {
+              if (!filterState) return;
+              setUpdateDraft({
+                filterState: structuredClone(filterState),
+                searchKeyword: searchKeyword ?? '',
+              });
+              setUpdateDialogFilter(sf);
+            }}
+            onToggleDefault={() => {
+              void handleToggleDefault(sf);
+            }}
+            onDuplicate={() => {
+              void handleDuplicateSavedFilter(sf);
+            }}
+            onEdit={() => {
+              if (!parseSavedFilterForDraft) return;
+              const parsed = parseSavedFilterForDraft(sf);
+              setEditDraft({
+                filterState: parsed.filterState,
+                searchKeyword: parsed.searchKeyword,
+              });
+              setEditDialogFilter(sf);
+              setEditFilterName(sf.name);
+            }}
+            onDelete={() => setDeleteDialogFilter(sf)}
+          />
+        </>
+      );
+    },
+    [
+      savedFilterById,
+      activeSavedFilterId,
+      handleApplySavedFilter,
+      hasActiveFilters,
+      filterState,
+      searchKeyword,
+      parseSavedFilterForDraft,
+      handleToggleDefault,
+      handleDuplicateSavedFilter,
+    ]
+  );
+
   const count = slots.length;
 
   useEffect(() => {
@@ -657,10 +760,15 @@ export function ResponsiveFilterRow({
       '[data-responsive-filter-slot="true"]'
     );
     const trailingReserve = reservedWidthForTrailing ?? 0;
+    const overflowControlsReserve =
+      OVERFLOW_BUTTON_RESERVE_PX +
+      (savedFilters != null && contextKey != null
+        ? SLOT_GAP_PX + MY_FILTERS_LEAD_IN_PX + MY_FILTERS_TRIGGER_RESERVE_PX
+        : 0);
     const availableWidth =
       containerWidth -
       TRAILING_GROUP_OFFSET_PX -
-      OVERFLOW_BUTTON_RESERVE_PX -
+      overflowControlsReserve -
       trailingReserve;
 
     let used = 0;
@@ -688,7 +796,14 @@ export function ResponsiveFilterRow({
     const displayCount = fitCount >= 3 ? fitCount : 0;
 
     setVisibleCount(displayCount);
-  }, [visibleCount, containerWidth, count, reservedWidthForTrailing]);
+  }, [
+    visibleCount,
+    containerWidth,
+    count,
+    reservedWidthForTrailing,
+    savedFilters,
+    contextKey,
+  ]);
 
   const finalVisible =
     visibleCount == null ? count : Math.min(Math.max(0, visibleCount), count);
@@ -736,10 +851,15 @@ export function ResponsiveFilterRow({
     );
   }
 
+  const overflowControlsReserveWhenMeasuring =
+    OVERFLOW_BUTTON_RESERVE_PX +
+    (hasSavedFilters
+      ? SLOT_GAP_PX + MY_FILTERS_LEAD_IN_PX + MY_FILTERS_TRIGGER_RESERVE_PX
+      : 0);
   const minWidthWhenMeasuring =
     visibleCount === null
       ? TRAILING_GROUP_OFFSET_PX +
-        OVERFLOW_BUTTON_RESERVE_PX +
+        overflowControlsReserveWhenMeasuring +
         (reservedWidthForTrailing ?? 0)
       : undefined;
 
@@ -790,133 +910,124 @@ export function ResponsiveFilterRow({
                 <InlineFilterSlot slot={entry} />
               </div>
             ))}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Popover open={overflowMenuOpen} onOpenChange={setOverflowMenuOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    filterTriggerStyles.base,
-                    'shrink-0 gap-1.5',
-                    showClearInTrigger ? 'justify-between' : 'justify-start',
-                    overflowTriggerActive
-                      ? filterTriggerStyles.active
-                      : filterTriggerStyles.inactive,
-                    overflowTriggerClassName
-                  )}
-                  aria-label={
-                    hasOverflow
-                      ? finalVisible === 0
-                        ? `${triggerLabel}; ${overflowSlotEntries.length} filters`
-                        : `${triggerLabel}; ${overflowSlotEntries.length} more filters`
-                      : `${triggerLabel}; saved filters and save current filter`
-                  }
+            {hasOverflow && (
+              <div className="shrink-0">
+                <Popover
+                  open={overflowMenuOpen}
+                  onOpenChange={setOverflowMenuOpen}
                 >
-                  <span className="flex min-w-0 shrink items-center gap-1.5">
-                    <SlidersHorizontal
-                      className={cn(
-                        'h-4 w-4 shrink-0',
-                        overflowTriggerActive ? 'opacity-100' : 'opacity-70'
-                      )}
-                    />
-                    <span className="truncate">{triggerLabelWithCount}</span>
-                  </span>
-                  {showClearInTrigger && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onPointerDown={handleClearAllPointerDown}
-                      onClick={handleClearAllClick}
-                      className={filterTriggerStyles.clearIcon}
-                      aria-label="Clear all filters"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                className={cn(
-                  FILTER_PANEL_MIN_WIDTH,
-                  'flex max-h-[min(80vh,400px)] w-auto flex-col overflow-hidden p-0'
-                )}
-              >
-                {hasOverflow && (
-                  <div className="min-h-0 flex-1 overflow-y-auto">
+                  <PopoverTrigger asChild>
                     <button
                       type="button"
                       className={cn(
-                        'flex w-full cursor-default items-center gap-2 px-4 py-2 text-sm font-medium',
-                        filterPopoverMenuItemClass
+                        filterTriggerStyles.base,
+                        'shrink-0',
+                        overflowTriggerActive
+                          ? filterTriggerStyles.active
+                          : filterTriggerStyles.inactive,
+                        overflowTriggerClassName
                       )}
-                      onClick={() => setFiltersAccordionOpen((prev) => !prev)}
-                      aria-expanded={filtersAccordionOpen}
-                      aria-controls={filtersAccordionPanelId}
+                      aria-label={
+                        finalVisible === 0
+                          ? `${triggerLabel}; ${overflowSlotEntries.length} filters`
+                          : `${triggerLabel}; ${overflowSlotEntries.length} more filters`
+                      }
                     >
-                      Filters
-                      <ChevronDownIcon
-                        className={cn(
-                          'ml-auto size-4 transition-transform duration-200',
-                          filtersAccordionOpen && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                    <div
-                      id={filtersAccordionPanelId}
-                      role="region"
-                      aria-label="Filter categories"
-                      hidden={!filtersAccordionOpen}
-                    >
-                      {filtersAccordionOpen ? (
-                        <div>
-                          {overflowSlotEntries.map((entry) => (
-                            <OverflowFilterPopover
-                              key={entry.key}
-                              entry={entry}
-                              isOpen={openFilterKey === entry.key}
-                              onOpenChange={(open) =>
-                                setOpenFilterKey(open ? entry.key : null)
-                              }
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                )}
-                {hasOverflow && <div className="border-t" />}
-                {hasSavedFilters && (
-                  <Popover
-                    open={savedFiltersPopoverOpen}
-                    onOpenChange={savedFiltersSubPopoverHover.onOpenChange}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          'flex w-full items-center justify-between px-4 py-2 text-sm font-medium',
-                          filterPopoverSubmenuTriggerClass
-                        )}
-                        {...savedFiltersSubPopoverHover.triggerPointerHandlers}
-                      >
-                        My saved filters
-                        <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="right"
-                      align="start"
-                      className="max-h-60 w-64 overflow-x-hidden overflow-y-auto p-0"
-                      sideOffset={2}
-                      {...savedFiltersSubPopoverHover.contentPointerHandlers}
-                    >
-                      {savedFiltersList.length === 0 ? (
-                        <div className="text-muted-foreground px-4 py-3 text-center text-sm">
-                          No saved filters yet
-                        </div>
+                      <span className="truncate">{triggerLabelWithCount}</span>
+                      {showClearInTrigger ? (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onPointerDown={handleClearAllPointerDown}
+                          onClick={handleClearAllClick}
+                          className={filterTriggerStyles.clearIcon}
+                          aria-label="Clear all filters"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </span>
                       ) : (
+                        <ChevronDown className={filterTriggerStyles.chevron} />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className={cn(
+                      FILTER_PANEL_MIN_WIDTH,
+                      'flex max-h-[min(80vh,400px)] w-auto flex-col overflow-hidden p-0'
+                    )}
+                  >
+                    <div
+                      className="min-h-0 flex-1 overflow-y-auto"
+                      role="region"
+                      aria-label="More filters"
+                    >
+                      {overflowSlotEntries.map((entry) => (
+                        <OverflowFilterPopover
+                          key={entry.key}
+                          entry={entry}
+                          isOpen={openFilterKey === entry.key}
+                          onOpenChange={(open) =>
+                            setOpenFilterKey(open ? entry.key : null)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+            {hasSavedFilters && (
+              <div className="ml-6 shrink-0">
+                <Popover
+                  open={myFiltersOpen}
+                  onOpenChange={(open) => {
+                    setMyFiltersOpen(open);
+                    if (!open) setSavedFiltersSearch('');
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        filterTriggerStyles.base,
+                        filterTriggerStyles.inactive,
+                        'shrink-0 justify-start gap-1.5',
+                        overflowTriggerClassName
+                      )}
+                      aria-label="My filters"
+                    >
+                      <span className="truncate">My filters</span>
+                      <ChevronDown className={filterTriggerStyles.chevron} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className={cn(
+                      FILTER_PANEL_MIN_WIDTH,
+                      'flex max-h-[min(80vh,400px)] w-64 flex-col overflow-hidden p-0'
+                    )}
+                  >
+                    {savedFiltersList.length === 0 ? (
+                      <div className="text-muted-foreground px-4 py-3 text-center text-sm">
+                        No saved filters yet
+                      </div>
+                    ) : savedFiltersList.length >
+                      SAVED_FILTERS_SEARCH_THRESHOLD ? (
+                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <FilterSearchableList
+                          options={savedFiltersSearchOptions}
+                          renderOption={renderSavedFilterSearchRow}
+                          searchPlaceholder="Search saved filters..."
+                          searchAriaLabel="Search saved filters"
+                          emptyMessage="No matching filters"
+                          searchValue={savedFiltersSearch}
+                          onSearchChange={setSavedFiltersSearch}
+                          maxHeight="min(240px, 40vh)"
+                        />
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto">
                         <div className="grid grid-cols-[1fr_auto]">
                           {savedFiltersList.map((sf) => (
                             <Fragment key={sf.id}>
@@ -983,33 +1094,35 @@ export function ResponsiveFilterRow({
                             </Fragment>
                           ))}
                         </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                )}
-                {hasSavedFilters && (
-                  <button
-                    type="button"
-                    className={cn(
-                      'w-full px-4 py-2 text-left text-sm font-medium disabled:pointer-events-none disabled:opacity-50',
-                      filterPopoverMenuItemClass
+                      </div>
                     )}
-                    disabled={!hasActiveFilters()}
-                    onClick={() => {
-                      if (!filterState) return;
-                      setCreateDraft({
-                        filterState: structuredClone(filterState),
-                        searchKeyword: searchKeyword ?? '',
-                      });
-                      setCreateName('');
-                      setCreateDialogOpen(true);
-                    }}
-                  >
-                    Save current filter
-                  </button>
-                )}
-              </PopoverContent>
-            </Popover>
+                    <div className="border-t" />
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex w-full items-start gap-3 px-4 py-3 text-left text-sm disabled:pointer-events-none disabled:opacity-50',
+                        filterPopoverMenuItemClass
+                      )}
+                      disabled={!hasActiveFilters()}
+                      onClick={openCreateSavedFilterDialog}
+                    >
+                      <Save
+                        className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0"
+                        aria-hidden
+                      />
+                      <span className="flex min-w-0 flex-col items-start gap-0.5">
+                        <span className="font-medium">New saved filter</span>
+                        <span className="text-muted-foreground text-xs leading-snug font-normal">
+                          From currently applied filters
+                        </span>
+                      </span>
+                    </button>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             {reservedWidthForTrailing != null ? (
               finalVisible > 0 ? (
                 (trailingContent ?? (
