@@ -1,3 +1,5 @@
+import { X } from 'lucide-react';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Tooltip,
@@ -17,6 +19,8 @@ export interface BooleanFilter {
   disabledTooltip?: string;
 }
 
+const DEFAULT_MAX_VISIBLE_FILTER_TYPES = 3;
+
 interface TableSummaryBarProps {
   count: number;
   singularLabel: string;
@@ -24,6 +28,15 @@ interface TableSummaryBarProps {
   filters?: BooleanFilter[];
   /** Shown after the count when a saved filter is the active selection. */
   appliedSavedFilterName?: string | null;
+  /**
+   * Active filter dimension labels (e.g. Category, Date). Ignored when
+   * `appliedSavedFilterName` is set. Hidden on small screens; use `onClearFilters` for mobile.
+   */
+  appliedFilterTypeLabels?: string[];
+  /** Defaults to 3; remainder summarized as “+n more”. */
+  maxVisibleFilterTypes?: number;
+  /** When set, renders a compact “Clear filters” control for all breakpoints. */
+  onClearFilters?: () => void;
   className?: string;
 }
 
@@ -33,24 +46,63 @@ export function TableSummaryBar({
   pluralLabel,
   filters = [],
   appliedSavedFilterName = null,
+  appliedFilterTypeLabels = [],
+  maxVisibleFilterTypes = DEFAULT_MAX_VISIBLE_FILTER_TYPES,
+  onClearFilters,
   className,
 }: TableSummaryBarProps) {
   const label =
     count === 1 ? singularLabel : (pluralLabel ?? singularLabel + 's');
 
+  const maxTypes = Math.max(1, maxVisibleFilterTypes);
+  const typeLabels =
+    appliedSavedFilterName != null ? [] : appliedFilterTypeLabels;
+  const visibleTypeCount = Math.min(typeLabels.length, maxTypes);
+  const overflowTypeCount = typeLabels.length - visibleTypeCount;
+  const filteringOnText =
+    typeLabels.length === 0
+      ? ''
+      : overflowTypeCount > 0
+        ? `${typeLabels.slice(0, visibleTypeCount).join(', ')}, +${overflowTypeCount} more`
+        : typeLabels.join(', ');
+  const filteringBySrOnly =
+    typeLabels.length === 0 ? '' : `Filtering by: ${filteringOnText}`;
+  const spaceAfterCount =
+    appliedSavedFilterName != null || Boolean(filteringOnText);
+
   return (
     <div
       className={cn(
-        'mb-2 flex flex-wrap items-center justify-between gap-4 text-sm text-stone-500',
+        'text-foreground mb-0 flex min-h-9 flex-wrap items-center justify-between gap-4 text-sm',
         className
       )}
     >
-      <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span>
+      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <span className={cn('shrink-0', spaceAfterCount && 'me-3')}>
           Showing {count} {label}
         </span>
         {appliedSavedFilterName ? (
-          <span aria-live="polite">Filtering by {appliedSavedFilterName}</span>
+          <span className="text-stone-500" aria-live="polite">
+            Filtering by: {appliedSavedFilterName}
+          </span>
+        ) : filteringOnText ? (
+          <>
+            <span className="sr-only text-stone-500 md:hidden">
+              {filteringBySrOnly}
+            </span>
+            <span className="hidden min-w-0 text-stone-500 md:inline">{`Filtering by: ${filteringOnText}`}</span>
+          </>
+        ) : null}
+        {onClearFilters ? (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
+            aria-label="Clear all filters"
+          >
+            <X className="size-3 shrink-0" aria-hidden />
+            Clear all filters
+          </button>
         ) : null}
       </span>
       {filters.length > 0 && (
@@ -58,7 +110,7 @@ export function TableSummaryBar({
           {filters.map((filter) => {
             const isDisabled = filter.disabled === true;
             const labelClassName = cn(
-              'flex items-center gap-2 text-sm text-stone-500',
+              'text-foreground flex items-center gap-2 text-sm',
               isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
             );
             const labelContent = (
@@ -67,7 +119,7 @@ export function TableSummaryBar({
                   checked={filter.checked}
                   onCheckedChange={(v) => filter.onCheckedChange(v === true)}
                   aria-label={filter.label}
-                  className="border-stone-500"
+                  className="border-input"
                   disabled={isDisabled}
                 />
                 {filter.label}

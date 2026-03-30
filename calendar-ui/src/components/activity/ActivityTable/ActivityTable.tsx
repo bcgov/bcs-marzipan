@@ -79,6 +79,10 @@ import {
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import {
+  getAppliedActivityFilterTypeLabels,
+  type ActivityFilterSummaryContext,
+} from '@/lib/activity-filter-summary';
+import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   type ActivityListQueryParams,
@@ -98,8 +102,12 @@ import {
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
 
+import { DEFAULT_ACTIVITY_FILTER_STATE } from './activityFilterState';
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
-import { ActivityTableFilters } from './ActivityTableFilters';
+import {
+  ActivityTableFilters,
+  hasAnyActivityTableFilterActive,
+} from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
@@ -1264,6 +1272,60 @@ export function ActivityTable({
     [setPreferences, setActiveSavedFilter]
   );
 
+  const appliedSavedFilterName = useMemo(() => {
+    if (activeSavedFilter == null) return null;
+    const fromList = savedFiltersHook.savedFilters.find(
+      (f) => f.id === activeSavedFilter.id
+    );
+    return fromList?.name ?? activeSavedFilter.name;
+  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
+
+  const filterSummaryContextForBar = useMemo(
+    (): ActivityFilterSummaryContext => ({
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    }),
+    [
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    ]
+  );
+
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      getAppliedActivityFilterTypeLabels(
+        filterState,
+        searchKeyword,
+        filterSummaryContextForBar
+      ),
+    [filterState, searchKeyword, filterSummaryContextForBar]
+  );
+
+  const handleClearPanelFilters = useCallback(() => {
+    setActiveSavedFilter(null);
+    setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
+  }, [setPreferences, setActiveSavedFilter]);
+
+  const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
+    filterState
+  )
+    ? handleClearPanelFilters
+    : undefined;
+
   const filterBar = (
     <ActivityTableFilters
       filterState={filterState}
@@ -1299,14 +1361,6 @@ export function ActivityTable({
     />
   );
 
-  const appliedSavedFilterName = useMemo(() => {
-    if (activeSavedFilter == null) return null;
-    const fromList = savedFiltersHook.savedFilters.find(
-      (f) => f.id === activeSavedFilter.id
-    );
-    return fromList?.name ?? activeSavedFilter.name;
-  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
-
   // Loading state
   if (loading) {
     return (
@@ -1319,6 +1373,8 @@ export function ActivityTable({
           pluralLabel="entries"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          onClearFilters={tableSummaryOnClearFilters}
         >
           <div className="flex flex-col items-center justify-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -1356,6 +1412,8 @@ export function ActivityTable({
           pluralLabel="entries"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          onClearFilters={tableSummaryOnClearFilters}
         >
           <ActivityTableEmptyState variant="no-data" />
         </ActivityTableLayout>
@@ -1377,6 +1435,8 @@ export function ActivityTable({
           pluralLabel="entries"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (
             <ActivityTableEmptyState variant="no-search-match" />

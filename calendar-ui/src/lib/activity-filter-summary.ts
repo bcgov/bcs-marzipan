@@ -291,6 +291,25 @@ export function buildActivityFilterChipRows(
   return rows;
 }
 
+/** Strip trailing colon from chip row labels for inline summary text. */
+function filterTypeLabelForSummaryBar(raw: string): string {
+  return raw.endsWith(':') ? raw.slice(0, -1) : raw;
+}
+
+/**
+ * Short label per active filter dimension (e.g. table summary “Filtering by: …”).
+ * Order matches {@link buildActivityFilterChipRows}.
+ */
+export function getAppliedActivityFilterTypeLabels(
+  filterState: ActivityFilterState,
+  searchKeyword: string,
+  ctx: ActivityFilterSummaryContext
+): string[] {
+  return buildActivityFilterChipRows(filterState, searchKeyword, ctx).map(
+    (row) => filterTypeLabelForSummaryBar(row.label)
+  );
+}
+
 /**
  * Builds human-readable lines for the filters that are currently active.
  * Omits dimensions that match the default (no filter).

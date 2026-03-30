@@ -5,6 +5,7 @@ import { DEFAULT_ACTIVITY_FILTER_STATE } from '@/components/activity/ActivityTab
 import {
   buildActivityFilterSummaryLines,
   clearSavedFilterChip,
+  getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
 } from './activity-filter-summary';
 
@@ -19,6 +20,24 @@ const emptyCtx: ActivityFilterSummaryContext = {
   translationStatusOptions: [],
   translationOptions: [],
 };
+
+describe('getAppliedActivityFilterTypeLabels', () => {
+  it('returns labels in chip-row order', () => {
+    const labels = getAppliedActivityFilterTypeLabels(
+      {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        categoryNames: ['A'],
+        activityStatusIds: [1],
+      },
+      'kw',
+      {
+        ...emptyCtx,
+        statusOptions: [{ value: '1', label: 'Published' }],
+      }
+    );
+    expect(labels).toEqual(['Search', 'Category', 'Status']);
+  });
+});
 
 describe('buildActivityFilterSummaryLines', () => {
   it('includes search when keyword is non-empty', () => {

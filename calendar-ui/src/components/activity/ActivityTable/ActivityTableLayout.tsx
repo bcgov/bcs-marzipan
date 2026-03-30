@@ -14,8 +14,12 @@ export interface ActivityTableLayoutProps {
   singularLabel: string;
   pluralLabel: string;
   filters?: BooleanFilter[];
-  /** When set, summary bar shows “Filtering …” beside the count. */
+  /** When set, summary bar shows “Filtering by: …” beside the count. */
   appliedSavedFilterName?: string | null;
+  /** Active filter dimensions for “Filtering by: …” (ignored when a saved filter name is set). */
+  appliedFilterTypeLabels?: string[];
+  /** Clears panel filters only (not search); clears saved-filter selection in the parent. */
+  onClearFilters?: () => void;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
@@ -31,6 +35,8 @@ export function ActivityTableLayout({
   pluralLabel,
   filters = [],
   appliedSavedFilterName = null,
+  appliedFilterTypeLabels = [],
+  onClearFilters,
   children,
 }: ActivityTableLayoutProps) {
   return (
@@ -41,6 +47,8 @@ export function ActivityTableLayout({
         pluralLabel={pluralLabel}
         filters={filters}
         appliedSavedFilterName={appliedSavedFilterName}
+        appliedFilterTypeLabels={appliedFilterTypeLabels}
+        onClearFilters={onClearFilters}
       />
       <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
     </div>

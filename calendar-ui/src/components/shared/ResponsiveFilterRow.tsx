@@ -332,9 +332,9 @@ export interface ResponsiveFilterSlot {
 export interface ResponsiveFilterRowProps {
   /** Ordered list of filter slots (panel + triggerProps). */
   slots: ResponsiveFilterSlot[];
-  /** Label for the overflow trigger when some filters are visible inline. Default "More". */
+  /** Label for the overflow trigger when some filters are visible inline. Default "More filters". */
   overflowTriggerLabel?: string;
-  /** Label when no filters are visible inline (single overflow button). Default "More". */
+  /** Label when no filters are visible inline (single overflow button). Default "Filters". */
   overflowTriggerLabelWhenAlone?: string;
   /** Class name for the overflow trigger button (e.g. h-10 for alignment). */
   overflowTriggerClassName?: string;
@@ -375,13 +375,13 @@ export interface ResponsiveFilterRowProps {
 
 /**
  * Renders as many slot contents as fit in one row; the rest are moved into a
- * "More" (default label; overridable) popover with overflow filter rows; My filters holds new-filter entry,
+ * "More" / "Filters" when alone (defaults; overridable) popover with overflow filter rows; My filters holds new-filter entry,
  * plus a separate "My filters" popover when saved filters are enabled. Uses ResizeObserver and layout measurement to compute how many slots fit.
  */
 export function ResponsiveFilterRow({
   slots,
   overflowTriggerLabel = 'More',
-  overflowTriggerLabelWhenAlone = 'More',
+  overflowTriggerLabelWhenAlone = 'Filters',
   overflowTriggerClassName,
   trailingContent,
   onClearAll,
