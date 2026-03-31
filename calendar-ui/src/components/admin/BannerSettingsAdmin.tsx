@@ -37,19 +37,12 @@ type BannerFormData = {
  */
 const DEFAULT_BANNER_CONTENT = `<div class="flex items-center justify-between">
   <div class="flex items-center space-x-2">
-    <svg class="w-5 h-5 text-black flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2L22 20H2L12 2Z" fill="currentColor"/>
-      <path d="M12 18C12.5523 18 13 17.5523 13 17C13 16.4477 12.5523 16 12 16C11.4477 16 11 16.4477 11 17C11 17.5523 11.4477 18 12 18Z" fill="white"/>
-      <path d="M11 8V14H13V8H11Z" fill="white"/>
-    </svg>
     <span class="text-sm font-medium whitespace-nowrap">Notice</span>
   </div>
   <div class="flex-1 text-sm px-4 hidden md:block">
-    If you experience any issues or have suggestions, please share them in the <a href="#" class="underline text-amber-800 hover:text-amber-900" target="_blank" rel="noopener noreferrer">support channel</a>.
+    Default banner content.
   </div>
-  <button onclick="window.open('#', '_blank')" class="px-3 py-1 bg-white text-amber-600 border-none rounded text-sm font-medium hover:bg-gray-50 flex-shrink-0">
-    Feedback
-  </button>
+  <a href="#" onclick="window.open('#', '_blank')" class="inline-flex items-center justify-center bg-white text-slate-900 border border-slate-200 px-2 py-0.5 rounded-sm text-sm font-semibold hover:bg-slate-100 no-underline align-middle leading-none">Link</a>
 </div>`;
 
 const DEFAULT_FORM_DATA: BannerFormData = {
@@ -76,7 +69,36 @@ const COLOR_PRESETS = [
   { name: 'Info Blue', bg: '#0284C7', text: '#FFFFFF' },
 ];
 
+/**
+ * Small ready-made action button snippet used by the Insert helper
+ */
+const ACTION_BUTTON_SNIPPET = `<a href="#" onclick="window.open('#', '_blank')" class="inline-flex items-center justify-center bg-white text-slate-900 border border-slate-200 px-3 py-0.5 rounded-md text-sm font-semibold hover:bg-slate-100 no-underline align-middle leading-none text-center">Action</a>`;
+
+/**
+ * Insert the action button inside the centered content div when possible.
+ * Targets a div whose class contains `flex-1` (matches DEFAULT_BANNER_CONTENT).
+ * Falls back to inserting inside the outer items-center row, or appending.
+ */
+function insertActionIntoContent(content: string) {
+  // match: <div ... class="... flex-1 ...">CONTENT</div>
+  const containerRe =
+    /(<div[^>]*class="[^"]*\bflex-1\b[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/i;
+  if (containerRe.test(content)) {
+    return content.replace(containerRe, `$1$2 ${ACTION_BUTTON_SNIPPET}$3`);
+  }
+
+  // fallback: match an outer row with items-center (the top-level flex row)
+  const rowRe =
+    /(<div[^>]*class="[^"]*\bitems-center\b[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/i;
+  if (rowRe.test(content)) {
+    return content.replace(rowRe, `$1$2 ${ACTION_BUTTON_SNIPPET}$3`);
+  }
+
+  // final fallback: append to the end
+  return `${content}\n${ACTION_BUTTON_SNIPPET}`;
+}
 function applyColorPreset(preset: (typeof COLOR_PRESETS)[0], setFormData: any) {
+  // Update both background and text colour from preset
   setFormData((current: BannerFormData) => ({
     ...current,
     backgroundColor: preset.bg,
@@ -103,7 +125,7 @@ function toFormData(banner: BannerSettings | null): BannerFormData {
   return {
     isActive: banner.isActive,
     content: banner.content,
-    backgroundColor: banner.backgroundColor,
+    backgroundColor: banner.backgroundColor ?? '#E6A635',
     textColor: banner.textColor,
     isDismissible: banner.isDismissible,
     variant: banner.variant ?? 'info',
@@ -117,7 +139,7 @@ function toRequestBody(formData: BannerFormData): UpsertBannerSettingsBody {
   return {
     isActive: formData.isActive,
     content: formData.content.trim(),
-    backgroundColor: formData.backgroundColor,
+    backgroundColor: formData.backgroundColor ?? '#f4f3f2f3',
     textColor: formData.textColor,
     variant: formData.variant,
     isDismissible: formData.isDismissible,
@@ -193,6 +215,7 @@ export function BannerSettingsAdmin() {
 
   const saveMutation = useMutation({
     mutationFn: (data: BannerFormData) =>
+      // Preserve existing background colour from loaded settings; the admin no longer edits it
       upsertBannerSettings(toRequestBody(data)),
     onSuccess: (savedBanner) => {
       queryClient.setQueryData(['banner', 'settings'], savedBanner);
@@ -298,43 +321,64 @@ export function BannerSettingsAdmin() {
               <Label htmlFor="banner-content">Banner Content</Label>
               <div className="flex gap-2">
                 {canManage && (
-                  <div className="flex overflow-hidden rounded-md border">
-                    <Button
-                      type="button"
-                      variant={editorMode === 'wysiwyg' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        if (editorMode === 'html') {
-                          const hasComplexHtml =
-                            /<(svg|button|script|style|iframe|form|input|select|textarea)/i.test(
-                              formData.content
-                            );
-                          if (hasComplexHtml) {
-                            if (
-                              !window.confirm(
-                                'Warning: Visual mode will simplify complex HTML elements like SVGs, buttons, and custom layouts. Continue?'
-                              )
-                            ) {
-                              return;
+                  <>
+                    <div className="flex overflow-hidden rounded-md border">
+                      <Button
+                        type="button"
+                        variant={editorMode === 'wysiwyg' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => {
+                          if (editorMode === 'html') {
+                            const hasComplexHtml =
+                              /<(svg|button|script|style|iframe|form|input|select|textarea)/i.test(
+                                formData.content
+                              );
+                            if (hasComplexHtml) {
+                              if (
+                                !window.confirm(
+                                  'Warning: Visual mode will simplify complex HTML elements like SVGs, buttons, and custom layouts. Continue?'
+                                )
+                              ) {
+                                return;
+                              }
                             }
                           }
-                        }
-                        setEditorMode('wysiwyg');
-                      }}
-                      className="rounded-none"
-                    >
-                      Visual
-                    </Button>
+                          setEditorMode('wysiwyg');
+                        }}
+                        className="rounded-none"
+                      >
+                        Visual
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={editorMode === 'html' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setEditorMode('html')}
+                        className="rounded-none"
+                      >
+                        HTML
+                      </Button>
+                    </div>
+
                     <Button
                       type="button"
-                      variant={editorMode === 'html' ? 'default' : 'ghost'}
+                      variant="ghost"
                       size="sm"
-                      onClick={() => setEditorMode('html')}
-                      className="rounded-none"
+                      onClick={() => {
+                        setFormData((current) => ({
+                          ...current,
+                          content: insertActionIntoContent(current.content),
+                        }));
+                        // If switching to Visual mode, reflect change immediately
+                        if (editorMode === 'wysiwyg') {
+                          setEditorMode('wysiwyg');
+                        }
+                      }}
+                      className="rounded-md"
                     >
-                      HTML
+                      Insert action
                     </Button>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -399,12 +443,12 @@ export function BannerSettingsAdmin() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4">
             <div className="space-y-2">
-              <Label htmlFor="banner-background-color">Background Color</Label>
+              <Label htmlFor="banner-bg-color">Background Color</Label>
               <div className="flex items-center gap-3">
                 <Input
-                  id="banner-background-color"
+                  id="banner-bg-color"
                   type="color"
                   value={formData.backgroundColor}
                   onChange={(event) =>
