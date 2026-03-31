@@ -26,6 +26,8 @@ type BannerFormData = {
   backgroundColor: string;
   textColor: string;
   isDismissible: boolean;
+  variant: 'info' | 'warning' | 'success';
+  dismissScope: 'persistent' | 'session';
   startDateTime: string;
   endDateTime: string;
 };
@@ -36,6 +38,8 @@ const DEFAULT_FORM_DATA: BannerFormData = {
   backgroundColor: '#E6A635',
   textColor: '#000000',
   isDismissible: true,
+  variant: 'info',
+  dismissScope: 'persistent',
   startDateTime: '',
   endDateTime: '',
 };
@@ -62,6 +66,8 @@ function toFormData(banner: BannerSettings | null): BannerFormData {
     backgroundColor: banner.backgroundColor,
     textColor: banner.textColor,
     isDismissible: banner.isDismissible,
+    variant: banner.variant ?? 'info',
+    dismissScope: banner.dismissScope ?? 'persistent',
     startDateTime: toLocalDateTimeValue(banner.startDateTime),
     endDateTime: toLocalDateTimeValue(banner.endDateTime),
   };
@@ -73,7 +79,9 @@ function toRequestBody(formData: BannerFormData): UpsertBannerSettingsBody {
     content: formData.content.trim(),
     backgroundColor: formData.backgroundColor,
     textColor: formData.textColor,
+    variant: formData.variant,
     isDismissible: formData.isDismissible,
+    dismissScope: formData.dismissScope,
     startDateTime: formData.startDateTime
       ? new Date(formData.startDateTime).toISOString()
       : null,
@@ -126,7 +134,9 @@ export function BannerSettingsAdmin() {
       content: formData.content,
       backgroundColor: formData.backgroundColor,
       textColor: formData.textColor,
+      variant: formData.variant,
       isDismissible: formData.isDismissible,
+      dismissScope: formData.dismissScope,
       startDateTime: formData.startDateTime
         ? new Date(formData.startDateTime).toISOString()
         : null,
@@ -308,6 +318,41 @@ export function BannerSettingsAdmin() {
                   disabled={!canManage}
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="banner-variant">Variant</Label>
+              <select
+                id="banner-variant"
+                value={formData.variant}
+                onChange={(e) =>
+                  handleFieldChange('variant', e.target.value as any)
+                }
+                disabled={!canManage}
+                className="w-full rounded border p-2"
+              >
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="success">Success</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="banner-dismiss-scope">Dismiss Scope</Label>
+              <select
+                id="banner-dismiss-scope"
+                value={formData.dismissScope}
+                onChange={(e) =>
+                  handleFieldChange('dismissScope', e.target.value as any)
+                }
+                disabled={!canManage}
+                className="w-full rounded border p-2"
+              >
+                <option value="persistent">Persistent (local)</option>
+                <option value="session">Session (tab only)</option>
+              </select>
             </div>
           </div>
 
