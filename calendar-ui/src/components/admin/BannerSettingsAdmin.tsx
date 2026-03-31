@@ -32,9 +32,29 @@ type BannerFormData = {
   endDateTime: string;
 };
 
+/**
+ * Default banner content including an action button (matches media-hub-app)
+ */
+const DEFAULT_BANNER_CONTENT = `<div class="flex items-center justify-between">
+  <div class="flex items-center space-x-2">
+    <svg class="w-5 h-5 text-black flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2L22 20H2L12 2Z" fill="currentColor"/>
+      <path d="M12 18C12.5523 18 13 17.5523 13 17C13 16.4477 12.5523 16 12 16C11.4477 16 11 16.4477 11 17C11 17.5523 11.4477 18 12 18Z" fill="white"/>
+      <path d="M11 8V14H13V8H11Z" fill="white"/>
+    </svg>
+    <span class="text-sm font-medium whitespace-nowrap">Notice</span>
+  </div>
+  <div class="flex-1 text-sm px-4 hidden md:block">
+    If you experience any issues or have suggestions, please share them in the <a href="#" class="underline text-amber-800 hover:text-amber-900" target="_blank" rel="noopener noreferrer">support channel</a>.
+  </div>
+  <button onclick="window.open('#', '_blank')" class="px-3 py-1 bg-white text-amber-600 border-none rounded text-sm font-medium hover:bg-gray-50 flex-shrink-0">
+    Feedback
+  </button>
+</div>`;
+
 const DEFAULT_FORM_DATA: BannerFormData = {
   isActive: false,
-  content: '',
+  content: DEFAULT_BANNER_CONTENT,
   backgroundColor: '#E6A635',
   textColor: '#000000',
   isDismissible: true,
@@ -43,6 +63,26 @@ const DEFAULT_FORM_DATA: BannerFormData = {
   startDateTime: '',
   endDateTime: '',
 };
+
+/**
+ * Quick color presets to match media-hub-app for consistency across apps
+ */
+const COLOR_PRESETS = [
+  { name: 'Golden Amber (Default)', bg: '#E6A635', text: '#000000' },
+  { name: 'BC Blue', bg: '#003366', text: '#FFFFFF' },
+  { name: 'Emergency Red', bg: '#DC2626', text: '#FFFFFF' },
+  { name: 'Success Green', bg: '#059669', text: '#FFFFFF' },
+  { name: 'Warning Orange', bg: '#EA580C', text: '#FFFFFF' },
+  { name: 'Info Blue', bg: '#0284C7', text: '#FFFFFF' },
+];
+
+function applyColorPreset(preset: (typeof COLOR_PRESETS)[0], setFormData: any) {
+  setFormData((current: BannerFormData) => ({
+    ...current,
+    backgroundColor: preset.bg,
+    textColor: preset.text,
+  }));
+}
 
 function toLocalDateTimeValue(value: string | null): string {
   if (!value) {
@@ -98,6 +138,7 @@ export function BannerSettingsAdmin() {
   const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
   const canManage = hasSettingsManage && isSystemAdmin;
   const [formData, setFormData] = useState<BannerFormData>(DEFAULT_FORM_DATA);
+  const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('html');
 
   const {
     data: bannerSettings,
@@ -253,23 +294,110 @@ export function BannerSettingsAdmin() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="banner-content">Banner Content</Label>
-            <Textarea
-              id="banner-content"
-              rows={8}
-              value={formData.content}
-              onChange={(event) =>
-                handleFieldChange('content', event.target.value)
-              }
-              disabled={!canManage}
-              placeholder="Enter HTML to display in the banner, for example: <strong>Important:</strong> Service will be unavailable from 6-7 PM."
-            />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="banner-content">Banner Content</Label>
+              <div className="flex gap-2">
+                {canManage && (
+                  <div className="flex overflow-hidden rounded-md border">
+                    <Button
+                      type="button"
+                      variant={editorMode === 'wysiwyg' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        if (editorMode === 'html') {
+                          const hasComplexHtml =
+                            /<(svg|button|script|style|iframe|form|input|select|textarea)/i.test(
+                              formData.content
+                            );
+                          if (hasComplexHtml) {
+                            if (
+                              !window.confirm(
+                                'Warning: Visual mode will simplify complex HTML elements like SVGs, buttons, and custom layouts. Continue?'
+                              )
+                            ) {
+                              return;
+                            }
+                          }
+                        }
+                        setEditorMode('wysiwyg');
+                      }}
+                      className="rounded-none"
+                    >
+                      Visual
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={editorMode === 'html' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setEditorMode('html')}
+                      className="rounded-none"
+                    >
+                      HTML
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {editorMode === 'wysiwyg' ? (
+              <div
+                contentEditable={canManage}
+                suppressContentEditableWarning
+                onInput={(e) =>
+                  handleFieldChange(
+                    'content',
+                    (e.target as HTMLDivElement).innerHTML
+                  )
+                }
+                className={`min-h-[120px] rounded border p-2 ${!canManage ? 'pointer-events-none bg-slate-50' : ''}`}
+                dangerouslySetInnerHTML={{ __html: formData.content }}
+              />
+            ) : (
+              <Textarea
+                id="banner-content"
+                rows={8}
+                value={formData.content}
+                onChange={(event) =>
+                  handleFieldChange('content', event.target.value)
+                }
+                disabled={!canManage}
+                placeholder="Enter HTML to display in the banner, for example: <strong>Important:</strong> Service will be unavailable from 6-7 PM."
+              />
+            )}
+
             <p className="text-sm text-slate-600">
-              Supports safe HTML such as paragraphs, links, bold, italics,
-              lists, and line breaks. Scripts and unsafe markup are removed
-              automatically.
+              {editorMode === 'wysiwyg'
+                ? 'Use the visual editor for simple formatting. Complex elements like buttons or SVGs may be simplified when switching to Visual mode — use HTML mode to add action buttons.'
+                : 'Edit raw HTML directly. Use HTML mode to add action buttons or other complex elements; unsafe markup is removed automatically.'}
             </p>
           </div>
+
+          {canManage && (
+            <div className="space-y-4">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="text-sm font-medium text-slate-900">
+                  Color Presets
+                </div>
+              </div>
+
+              <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {COLOR_PRESETS.map((preset, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => applyColorPreset(preset, setFormData)}
+                    className="flex items-center gap-2 rounded border p-2 text-xs hover:bg-gray-50"
+                  >
+                    <div
+                      className="h-4 w-4 rounded"
+                      style={{ backgroundColor: preset.bg }}
+                    />
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

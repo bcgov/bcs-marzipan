@@ -1,4 +1,4 @@
-import { Info, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
 
 import type { BannerSettings } from '@corpcal/shared/api/types';
 import { sanitizeBannerHtml } from '@/lib/banner-html';
@@ -18,6 +18,12 @@ export function SystemBanner({
   compact = false,
 }: SystemBannerProps) {
   const showDismiss = banner.isDismissible && typeof onDismiss === 'function';
+  const Icon =
+    banner.variant === 'warning'
+      ? AlertTriangle
+      : banner.variant === 'success'
+        ? CheckCircle
+        : Info;
   const sanitizedContent = sanitizeBannerHtml(banner.content);
 
   return (
@@ -32,15 +38,12 @@ export function SystemBanner({
     >
       <div
         className={cn(
-          'flex items-start gap-3 py-3',
+          'flex items-center gap-3 py-3',
           compact ? 'px-4' : 'px-4 md:px-20'
         )}
       >
-        <div
-          aria-hidden
-          className="mt-0.5 shrink-0 rounded-full bg-black/10 p-1"
-        >
-          <Info className="h-4 w-4" />
+        <div aria-hidden className="shrink-0 rounded-full bg-black/10 p-1">
+          <Icon className="h-4 w-4" />
         </div>
 
         <div

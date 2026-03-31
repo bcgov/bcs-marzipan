@@ -73,9 +73,9 @@ const Header = () => {
     }
 
     try {
-      setIsDismissed(
-        localStorage.getItem(getBannerDismissKey(banner)) === 'true'
-      );
+      const storage =
+        banner.dismissScope === 'session' ? sessionStorage : localStorage;
+      setIsDismissed(storage.getItem(getBannerDismissKey(banner)) === 'true');
     } catch {
       setIsDismissed(false);
     }
@@ -125,7 +125,9 @@ const Header = () => {
     setIsDismissed(true);
 
     try {
-      localStorage.setItem(getBannerDismissKey(banner), 'true');
+      const storage =
+        banner.dismissScope === 'session' ? sessionStorage : localStorage;
+      storage.setItem(getBannerDismissKey(banner), 'true');
     } catch {
       // Ignore storage failures.
     }

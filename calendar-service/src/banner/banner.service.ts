@@ -50,7 +50,9 @@ export class BannerService {
       content: body.content.trim(),
       backgroundColor: body.backgroundColor,
       textColor: body.textColor,
+      variant: body.variant,
       isDismissible: body.isDismissible,
+      dismissScope: body.dismissScope,
       startDateTime: body.startDateTime ? new Date(body.startDateTime) : null,
       endDateTime: body.endDateTime ? new Date(body.endDateTime) : null,
       lastUpdatedDateTime: now,
@@ -95,12 +97,29 @@ export class BannerService {
   }
 
   private mapRow(row: BannerSettingsRow): BannerSettings {
+    const allowedVariants = ['info', 'warning', 'success'] as const;
+    const allowedDismissScopes = ['persistent', 'session'] as const;
+
+    const variant =
+      typeof row.variant === 'string' &&
+      (allowedVariants as readonly string[]).includes(row.variant)
+        ? (row.variant as BannerSettings['variant'])
+        : 'info';
+
+    const dismissScope =
+      typeof row.dismissScope === 'string' &&
+      (allowedDismissScopes as readonly string[]).includes(row.dismissScope)
+        ? (row.dismissScope as BannerSettings['dismissScope'])
+        : 'persistent';
+
     return {
       id: row.id,
       isActive: row.isActive,
       content: row.content,
       backgroundColor: row.backgroundColor,
+      variant,
       textColor: row.textColor,
+      dismissScope,
       isDismissible: row.isDismissible,
       startDateTime: row.startDateTime?.toISOString() ?? null,
       endDateTime: row.endDateTime?.toISOString() ?? null,

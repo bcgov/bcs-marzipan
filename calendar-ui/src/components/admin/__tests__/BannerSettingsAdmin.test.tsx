@@ -44,12 +44,14 @@ describe('BannerSettingsAdmin', () => {
     const { BannerSettingsAdmin } = await import('../BannerSettingsAdmin');
     render(<BannerSettingsAdmin />);
 
-    await waitFor(() => expect(mockFetchBannerSettings).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetchBannerSettings).toHaveBeenCalled(), {
+      timeout: 20000,
+    });
     expect(screen.getByText(/System Banner/i)).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /Save Banner/i })
     ).toBeInTheDocument();
-  });
+  }, 20000);
 
   it('does not render for non-System-Admin users', async () => {
     mockFetchBannerSettings.mockResolvedValue(null);

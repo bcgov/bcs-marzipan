@@ -18,7 +18,11 @@ export const bannerSettings = pgTable('banner_settings', {
     .notNull()
     .default('#E6A635'),
   textColor: varchar('text_color', { length: 20 }).notNull().default('#000000'),
+  variant: varchar('variant', { length: 20 }).notNull().default('info'),
   isDismissible: boolean('is_dismissible').notNull().default(true),
+  dismissScope: varchar('dismiss_scope', { length: 20 })
+    .notNull()
+    .default('persistent'),
   startDateTime: timestamp('start_date_time', { withTimezone: true }),
   endDateTime: timestamp('end_date_time', { withTimezone: true }),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
