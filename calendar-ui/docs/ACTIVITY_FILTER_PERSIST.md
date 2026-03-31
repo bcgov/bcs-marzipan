@@ -10,6 +10,17 @@ The activity list persists sort and filter state so it survives navigation and c
 
 So URL and sessionStorage always hold the same preference shape; the only difference is **when** we read from which source (URL wins when it has any of our known params).
 
+## Saved filter default auto-apply
+
+- Saved filters are available across activity list contexts/tabs.
+- The user default saved filter is global for activity lists.
+- Default auto-apply only runs when initial state is effectively blank.
+- Auto-apply is skipped when either:
+  - URL includes any known activity query params, or
+  - restored preferences already contain active filters and/or a non-empty search.
+
+This prevents defaults from overwriting explicit user intent during navigation.
+
 ## How URL and sessionStorage work together
 
 ### Read path (initial state)

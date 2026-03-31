@@ -20,7 +20,6 @@ describe('applySavedFilterSelection', () => {
   const minimalSavedFilter = {
     id: 1,
     name: 'My filter',
-    contextKey: 'ctx',
     filterState: {
       dateRange: {
         startDate: '',

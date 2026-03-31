@@ -366,8 +366,6 @@ export interface ResponsiveFilterRowProps {
   containerClassName?: string;
   /** Saved filters data/actions from useSavedFilters hook. */
   savedFilters?: UseSavedFiltersReturn;
-  /** Current saved-filter context key. */
-  contextKey?: string | null;
   /** Current filter state for saving/comparing. */
   filterState?: ActivityFilterState;
   /** Current search keyword for saving/comparing. */
@@ -405,7 +403,6 @@ export function ResponsiveFilterRow({
   className,
   containerClassName,
   savedFilters,
-  contextKey,
   filterState,
   searchKeyword,
   onApplySavedFilter,
@@ -456,7 +453,7 @@ export function ResponsiveFilterRow({
     name: string;
   } | null>(null);
 
-  const hasSavedFilters = savedFilters != null && contextKey != null;
+  const hasSavedFilters = savedFilters != null;
   const savedFiltersList = useMemo(
     () => savedFilters?.savedFilters ?? [],
     [savedFilters?.savedFilters]
@@ -559,7 +556,7 @@ export function ResponsiveFilterRow({
   }, []);
 
   const handleCreateSavedFilter = useCallback(async () => {
-    if (!savedFilters || !contextKey || !createDraft) return;
+    if (!savedFilters || !createDraft) return;
     const name = createName.trim();
     if (!name) return;
     if (
@@ -578,7 +575,6 @@ export function ResponsiveFilterRow({
     setCreateNameError(null);
     try {
       await savedFilters.createFilter({
-        contextKey,
         name,
         filterState: createDraft.filterState as unknown as Record<
           string,
@@ -594,7 +590,7 @@ export function ResponsiveFilterRow({
         setCreateNameError(SAVED_FILTER_DUPLICATE_NAME_INLINE);
       }
     }
-  }, [savedFilters, contextKey, createDraft, createName]);
+  }, [savedFilters, createDraft, createName]);
 
   const handleUpdateSavedFilter = useCallback(async () => {
     if (
@@ -876,7 +872,7 @@ export function ResponsiveFilterRow({
     const trailingReserve = reservedWidthForTrailing ?? 0;
     const overflowControlsReserve =
       OVERFLOW_BUTTON_RESERVE_PX +
-      (savedFilters != null && contextKey != null
+      (savedFilters != null
         ? SLOT_GAP_PX + MY_FILTERS_LEAD_IN_PX + MY_FILTERS_TRIGGER_RESERVE_PX
         : 0);
     const availableWidth =
@@ -916,7 +912,6 @@ export function ResponsiveFilterRow({
     count,
     reservedWidthForTrailing,
     savedFilters,
-    contextKey,
   ]);
 
   const finalVisible =

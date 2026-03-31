@@ -1,9 +1,9 @@
 export interface SavedFilterAutoApplyDecisionInput {
-  contextKey: string | null | undefined;
   lookupsReady: boolean;
-  defaultAppliedContext: string | null;
-  suppressedByClearContext: string | null;
+  defaultAlreadyApplied: boolean;
+  suppressedByClear: boolean;
   hasKnownUrlParams: boolean;
+  hasRestoredActivePreferences: boolean;
   hasDefaultFilter: boolean;
 }
 
@@ -14,21 +14,21 @@ export interface SavedFilterAutoApplyDecision {
 }
 
 /**
- * Decision table for whether to auto-apply the context default saved filter.
+ * Decision table for whether to auto-apply the global default saved filter.
  */
 export function getSavedFilterAutoApplyDecision(
   input: SavedFilterAutoApplyDecisionInput
 ): SavedFilterAutoApplyDecision {
   const {
-    contextKey,
     lookupsReady,
-    defaultAppliedContext,
-    suppressedByClearContext,
+    defaultAlreadyApplied,
+    suppressedByClear,
     hasKnownUrlParams,
+    hasRestoredActivePreferences,
     hasDefaultFilter,
   } = input;
 
-  if (!contextKey || !lookupsReady) {
+  if (!lookupsReady) {
     return {
       shouldApplyDefault: false,
       shouldMarkContextApplied: false,
@@ -36,7 +36,7 @@ export function getSavedFilterAutoApplyDecision(
     };
   }
 
-  if (suppressedByClearContext === contextKey) {
+  if (suppressedByClear) {
     return {
       shouldApplyDefault: false,
       shouldMarkContextApplied: true,
@@ -44,7 +44,7 @@ export function getSavedFilterAutoApplyDecision(
     };
   }
 
-  if (defaultAppliedContext === contextKey) {
+  if (defaultAlreadyApplied) {
     return {
       shouldApplyDefault: false,
       shouldMarkContextApplied: false,
@@ -52,10 +52,10 @@ export function getSavedFilterAutoApplyDecision(
     };
   }
 
-  if (hasKnownUrlParams) {
+  if (hasKnownUrlParams || hasRestoredActivePreferences) {
     return {
       shouldApplyDefault: false,
-      shouldMarkContextApplied: false,
+      shouldMarkContextApplied: true,
       shouldClearActiveSavedFilter: true,
     };
   }

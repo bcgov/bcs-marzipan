@@ -20,19 +20,18 @@ import { showErrorToast } from '@/lib/error-toast';
 import { resolveEffectiveDefaultSavedFilterId } from '@/lib/savedFilterDefaultResolve';
 import { isSavedFilterDuplicateNameConflict } from '@/lib/savedFilterDuplicateName';
 
-function savedFilterQueryKey(contextKey: string) {
-  return ['activity-saved-filters', contextKey] as const;
+function savedFilterQueryKey() {
+  return ['activity-saved-filters'] as const;
 }
 
 const EMPTY_SAVED_FILTERS: SavedFilterResponse[] = [];
 
-export function useSavedFilters(contextKey: string | null) {
+export function useSavedFilters() {
   const queryClient = useQueryClient();
 
   const { data: listData, isLoading } = useQuery({
-    queryKey: savedFilterQueryKey(contextKey ?? ''),
-    queryFn: () => listSavedFilters(contextKey!),
-    enabled: contextKey != null && contextKey.length > 0,
+    queryKey: savedFilterQueryKey(),
+    queryFn: () => listSavedFilters(),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -61,12 +60,10 @@ export function useSavedFilters(contextKey: string | null) {
   }, [savedFilters, effectiveDefaultSavedFilterId]);
 
   const invalidate = useCallback(() => {
-    if (contextKey) {
-      void queryClient.invalidateQueries({
-        queryKey: savedFilterQueryKey(contextKey),
-      });
-    }
-  }, [contextKey, queryClient]);
+    void queryClient.invalidateQueries({
+      queryKey: savedFilterQueryKey(),
+    });
+  }, [queryClient]);
 
   const createMutation = useMutation({
     mutationFn: (body: CreateSavedFilterBody) => createSavedFilter(body),
@@ -123,11 +120,7 @@ export function useSavedFilters(contextKey: string | null) {
 
   const setDefaultMutation = useMutation({
     mutationFn: (savedFilterId: number | null) => {
-      if (!contextKey) {
-        return Promise.reject(new Error('Missing context'));
-      }
       return setMyDefaultSavedFilter({
-        contextKey,
         savedFilterId,
       });
     },

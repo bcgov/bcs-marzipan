@@ -8,7 +8,6 @@ const base = (overrides: Partial<SavedFilterResponse>): SavedFilterResponse =>
   ({
     id: 1,
     ownerUserId: 10,
-    contextKey: 'all',
     name: 'A',
     filterState: {},
     searchKeyword: '',

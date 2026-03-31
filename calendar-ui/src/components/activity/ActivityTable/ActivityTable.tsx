@@ -645,6 +645,12 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
+/** Active saved-filter preset shown in the summary bar and Saved filters menu. */
+export type ActivityTableActiveSavedFilter = {
+  id: number;
+  name: string;
+};
+
 export interface ActivityTableProps {
   /** When set, only activities with this lead team are shown (e.g. ministry tab). */
   leadTeamId?: number;
@@ -654,8 +660,14 @@ export interface ActivityTableProps {
   sharedWithTeamId?: number;
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
-  /** Saved filter context key for saved-filter scoping (e.g. 'all', 'my-activities'). */
-  savedFilterContextKey?: string;
+  /**
+   * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
+   * is considered applied (e.g. single ActivityTable across activity list tabs).
+   */
+  activeSavedFilter?: ActivityTableActiveSavedFilter | null;
+  onActiveSavedFilterChange?: (
+    value: ActivityTableActiveSavedFilter | null
+  ) => void;
 }
 
 export function ActivityTable({
@@ -663,7 +675,8 @@ export function ActivityTable({
   commsContactLeadUserId,
   sharedWithTeamId,
   sharedWithTeamIds,
-  savedFilterContextKey,
+  activeSavedFilter: activeSavedFilterFromParent,
+  onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -674,30 +687,36 @@ export function ActivityTable({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const { preferences, setPreferences } =
     useActivityTablePreferences(canSeeDeleted);
-  const savedFiltersHook = useSavedFilters(savedFilterContextKey ?? null);
+  const savedFiltersHook = useSavedFilters();
   const [currentSearchParams] = useSearchParams();
-  const defaultAppliedRef = useRef<string | null>(null);
-  const defaultSuppressedByClearRef = useRef<string | null>(null);
-  const [activeSavedFilter, setActiveSavedFilter] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
+  const defaultAppliedRef = useRef(false);
+  const defaultSuppressedByClearRef = useRef(false);
+  const [internalActiveSavedFilter, setInternalActiveSavedFilter] =
+    useState<ActivityTableActiveSavedFilter | null>(null);
+
+  const savedFilterSelectionControlled = onActiveSavedFilterChange != null;
+  const activeSavedFilter = savedFilterSelectionControlled
+    ? (activeSavedFilterFromParent ?? null)
+    : internalActiveSavedFilter;
+
+  const setActiveSavedFilter = useCallback(
+    (value: ActivityTableActiveSavedFilter | null) => {
+      if (savedFilterSelectionControlled) {
+        onActiveSavedFilterChange?.(value);
+      } else {
+        setInternalActiveSavedFilter(value);
+      }
+    },
+    [savedFilterSelectionControlled, onActiveSavedFilterChange]
+  );
 
   useEffect(() => {
-    if (!savedFilterContextKey) {
-      setActiveSavedFilter(null);
-      defaultAppliedRef.current = null;
-      defaultSuppressedByClearRef.current = null;
-    }
-  }, [savedFilterContextKey]);
-
-  useEffect(() => {
-    if (activeSavedFilter == null || !savedFilterContextKey) return;
+    if (activeSavedFilter == null) return;
     const stillThere = savedFiltersHook.savedFilters.some(
       (f) => f.id === activeSavedFilter.id
     );
     if (!stillThere) setActiveSavedFilter(null);
-  }, [activeSavedFilter, savedFilterContextKey, savedFiltersHook.savedFilters]);
+  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
 
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
@@ -867,16 +886,18 @@ export function ActivityTable({
 
   useEffect(() => {
     const decision = getSavedFilterAutoApplyDecision({
-      contextKey: savedFilterContextKey,
       lookupsReady: savedFilterDefaultLookupsReady,
-      defaultAppliedContext: defaultAppliedRef.current,
-      suppressedByClearContext: defaultSuppressedByClearRef.current,
+      defaultAlreadyApplied: defaultAppliedRef.current,
+      suppressedByClear: defaultSuppressedByClearRef.current,
       hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
+      hasRestoredActivePreferences:
+        hasAnyActivityTableFilterActive(filterState) ||
+        searchKeyword.trim().length > 0,
       hasDefaultFilter: savedFiltersHook.defaultFilter != null,
     });
 
-    if (decision.shouldMarkContextApplied && savedFilterContextKey) {
-      defaultAppliedRef.current = savedFilterContextKey;
+    if (decision.shouldMarkContextApplied) {
+      defaultAppliedRef.current = true;
     }
 
     if (decision.shouldClearActiveSavedFilter) {
@@ -910,10 +931,11 @@ export function ActivityTable({
       );
     }
   }, [
-    savedFilterContextKey,
     savedFiltersHook.defaultFilter,
     savedFiltersHook.isLoading,
     currentSearchParams,
+    filterState,
+    searchKeyword,
     setPreferences,
     validFilterLookupsForDefaultApply,
     savedFilterDefaultLookupsReady,
@@ -1380,13 +1402,24 @@ export function ActivityTable({
   );
 
   const handleClearPanelFilters = useCallback(() => {
-    if (savedFilterContextKey) {
-      defaultSuppressedByClearRef.current = savedFilterContextKey;
-      defaultAppliedRef.current = null;
-    }
+    defaultSuppressedByClearRef.current = true;
+    defaultAppliedRef.current = false;
     setActiveSavedFilter(null);
     setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
-  }, [savedFilterContextKey, setPreferences, setActiveSavedFilter]);
+  }, [setPreferences, setActiveSavedFilter]);
+
+  const handleClearAllCriteria = useCallback(() => {
+    defaultSuppressedByClearRef.current = true;
+    defaultAppliedRef.current = false;
+    setActiveSavedFilter(null);
+    setPreferences({
+      filterState: DEFAULT_ACTIVITY_FILTER_STATE,
+      searchKeyword: '',
+    });
+  }, [setPreferences, setActiveSavedFilter]);
+
+  const hasActiveCriteria =
+    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
 
   const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
     filterState
@@ -1420,7 +1453,6 @@ export function ActivityTable({
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
       savedFilters={savedFiltersHook}
-      contextKey={savedFilterContextKey ?? null}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
       onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {
         setActiveSavedFilter(appliedFrom);
@@ -1483,7 +1515,12 @@ export function ActivityTable({
           appliedFilterTypeLabels={appliedFilterTypeLabels}
           onClearFilters={tableSummaryOnClearFilters}
         >
-          <ActivityTableEmptyState variant="no-data" />
+          <ActivityTableEmptyState
+            variant={hasActiveCriteria ? 'no-filter-match' : 'no-data'}
+            onClearFilters={
+              hasActiveCriteria ? handleClearAllCriteria : undefined
+            }
+          />
         </ActivityTableLayout>
       </div>
     );

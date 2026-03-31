@@ -42,18 +42,14 @@ export class SavedFiltersService {
 
   constructor(private readonly db: DatabaseService) {}
 
-  async listByContext(
+  async list(
     userId: number,
-    contextKey: string,
     teamIds: number[]
   ): Promise<{
     filters: SavedFilterResponse[];
     defaultSavedFilterId: number | null;
   }> {
-    const conditions: SQL[] = [
-      eq(activitySavedFilters.contextKey, contextKey),
-      eq(activitySavedFilters.isActive, true),
-    ];
+    const conditions: SQL[] = [eq(activitySavedFilters.isActive, true)];
 
     let rows: SavedFilterRow[];
 
@@ -91,10 +87,7 @@ export class SavedFiltersService {
         .orderBy(activitySavedFilters.sortOrder, activitySavedFilters.name);
     }
 
-    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
-      userId,
-      contextKey
-    );
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(userId);
 
     return {
       filters: rows.map((row) => this.mapToResponse(row, defaultSavedFilterId)),
@@ -104,30 +97,19 @@ export class SavedFiltersService {
 
   async setMyDefault(
     userId: number,
-    contextKey: string,
     savedFilterId: number | null,
     teamIds: number[]
   ): Promise<{ defaultSavedFilterId: number | null }> {
     if (savedFilterId == null) {
       await this.db.db
         .delete(userActivitySavedFilterDefaults)
-        .where(
-          and(
-            eq(userActivitySavedFilterDefaults.userId, userId),
-            eq(userActivitySavedFilterDefaults.contextKey, contextKey)
-          )
-        );
+        .where(eq(userActivitySavedFilterDefaults.userId, userId));
       return { defaultSavedFilterId: null };
     }
 
     const row = await this.findActiveFilterById(savedFilterId);
     if (!row) {
       throw new NotFoundException(`Saved filter ${savedFilterId} not found`);
-    }
-    if (row.contextKey !== contextKey) {
-      throw new BadRequestException(
-        'Saved filter does not belong to this activity list context'
-      );
     }
     if (!this.isSavedFilterVisibleToUser(row, userId, teamIds)) {
       throw new ForbiddenException(
@@ -138,15 +120,9 @@ export class SavedFiltersService {
     await this.db.db.transaction(async (tx) => {
       await tx
         .delete(userActivitySavedFilterDefaults)
-        .where(
-          and(
-            eq(userActivitySavedFilterDefaults.userId, userId),
-            eq(userActivitySavedFilterDefaults.contextKey, contextKey)
-          )
-        );
+        .where(eq(userActivitySavedFilterDefaults.userId, userId));
       await tx.insert(userActivitySavedFilterDefaults).values({
         userId,
-        contextKey,
         savedFilterId,
         updatedAt: new Date(),
       });
@@ -169,18 +145,12 @@ export class SavedFiltersService {
 
     this.assertSavedFilterPayloadNotEmpty(body.filterState, body.searchKeyword);
 
-    await this.assertNameUnique(
-      userId,
-      body.contextKey,
-      trimmedName,
-      resolvedScope
-    );
+    await this.assertNameUnique(userId, trimmedName, resolvedScope);
 
     const [row] = await this.db.db
       .insert(activitySavedFilters)
       .values({
         ownerUserId: userId,
-        contextKey: body.contextKey,
         name: trimmedName,
         filterState: body.filterState,
         searchKeyword: body.searchKeyword ?? '',
@@ -190,13 +160,10 @@ export class SavedFiltersService {
       .returning();
 
     this.logger.log(
-      `Created saved filter ${row.id} "${trimmedName}" for user ${userId} in context ${body.contextKey}`
+      `Created saved filter ${row.id} "${trimmedName}" for user ${userId}`
     );
 
-    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
-      userId,
-      body.contextKey
-    );
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(userId);
     return this.mapToResponse(row, defaultSavedFilterId);
   }
 
@@ -234,7 +201,6 @@ export class SavedFiltersService {
       if (trimmedName !== existing.name) {
         await this.assertNameUnique(
           userId,
-          existing.contextKey,
           trimmedName,
           resolvedScope,
           filterId
@@ -261,10 +227,7 @@ export class SavedFiltersService {
 
     this.logger.log(`Updated saved filter ${filterId} for user ${userId}`);
 
-    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
-      userId,
-      row.contextKey
-    );
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(userId);
     return this.mapToResponse(row, defaultSavedFilterId);
   }
 
@@ -285,21 +248,15 @@ export class SavedFiltersService {
     existing: SavedFilterRow
   ): Promise<SavedFilterResponse> {
     const baseName = body.name?.trim() || `${existing.name} (copy)`;
-    const name = await this.generateUniqueName(
-      userId,
-      existing.contextKey,
-      baseName,
-      {
-        scopeType: existing.scopeType as SavedFilterScopeType,
-        scopeTeamId: existing.scopeTeamId,
-      }
-    );
+    const name = await this.generateUniqueName(userId, baseName, {
+      scopeType: existing.scopeType as SavedFilterScopeType,
+      scopeTeamId: existing.scopeTeamId,
+    });
 
     const [row] = await this.db.db
       .insert(activitySavedFilters)
       .values({
         ownerUserId: userId,
-        contextKey: existing.contextKey,
         name,
         filterState: existing.filterState,
         searchKeyword: existing.searchKeyword,
@@ -312,10 +269,7 @@ export class SavedFiltersService {
       `Duplicated saved filter ${existing.id} as ${row.id} for user ${userId}`
     );
 
-    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
-      userId,
-      existing.contextKey
-    );
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(userId);
     return this.mapToResponse(row, defaultSavedFilterId);
   }
 
@@ -339,20 +293,14 @@ export class SavedFiltersService {
   // ------------------------------------------------------------------
 
   private async getUserDefaultSavedFilterId(
-    userId: number,
-    contextKey: string
+    userId: number
   ): Promise<number | null> {
     const [defaultRow] = await this.db.db
       .select({
         savedFilterId: userActivitySavedFilterDefaults.savedFilterId,
       })
       .from(userActivitySavedFilterDefaults)
-      .where(
-        and(
-          eq(userActivitySavedFilterDefaults.userId, userId),
-          eq(userActivitySavedFilterDefaults.contextKey, contextKey)
-        )
-      )
+      .where(eq(userActivitySavedFilterDefaults.userId, userId))
       .limit(1);
     return defaultRow?.savedFilterId ?? null;
   }
@@ -396,7 +344,6 @@ export class SavedFiltersService {
 
   private async assertNameUnique(
     userId: number,
-    contextKey: string,
     name: string,
     scope: ScopeResolution,
     excludeId?: number
@@ -405,7 +352,6 @@ export class SavedFiltersService {
 
     const conditions: SQL[] = this.getNameMatchConditions(
       userId,
-      contextKey,
       lowerName,
       scope
     );
@@ -461,7 +407,6 @@ export class SavedFiltersService {
 
   private async generateUniqueName(
     userId: number,
-    contextKey: string,
     baseName: string,
     scope: ScopeResolution
   ): Promise<string> {
@@ -475,14 +420,7 @@ export class SavedFiltersService {
         .select({ id: activitySavedFilters.id })
         .from(activitySavedFilters)
         .where(
-          and(
-            ...this.getNameMatchConditions(
-              userId,
-              contextKey,
-              lowerCandidate,
-              scope
-            )
-          )
+          and(...this.getNameMatchConditions(userId, lowerCandidate, scope))
         )
         .limit(1);
 
@@ -502,12 +440,10 @@ export class SavedFiltersService {
 
   private getNameMatchConditions(
     userId: number,
-    contextKey: string,
     lowerName: string,
     scope: ScopeResolution
   ): SQL[] {
     const conditions: SQL[] = [
-      eq(activitySavedFilters.contextKey, contextKey),
       eq(activitySavedFilters.isActive, true),
       sql`lower(${activitySavedFilters.name}) = ${lowerName}`,
     ];
@@ -562,7 +498,6 @@ export class SavedFiltersService {
     return {
       id: row.id,
       ownerUserId: row.ownerUserId,
-      contextKey: row.contextKey,
       name: row.name,
       filterState: row.filterState as Record<string, unknown>,
       searchKeyword: row.searchKeyword,

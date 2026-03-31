@@ -12,7 +12,8 @@ describe('SavedFiltersController', () => {
   const mockSavedFiltersService = {
     getOwnedFilterForDuplicate: vi.fn(),
     duplicate: vi.fn(),
-    listByContext: vi.fn(),
+    list: vi.fn(),
+    setMyDefault: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
@@ -52,7 +53,6 @@ describe('SavedFiltersController', () => {
     const makeRow = (overrides: Record<string, unknown> = {}) => ({
       id: 1,
       ownerUserId: 10,
-      contextKey: 'all',
       name: 'Src',
       filterState: { categoryNames: ['A'] },
       searchKeyword: '',
@@ -114,7 +114,6 @@ describe('SavedFiltersController', () => {
         id: 2,
         name: 'Src (copy)',
         ownerUserId: 10,
-        contextKey: 'all',
         filterState: {},
         searchKeyword: '',
         isDefault: false,

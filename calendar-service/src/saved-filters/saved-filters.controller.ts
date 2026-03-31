@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,13 +10,11 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  Query,
 } from '@nestjs/common';
 import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -39,7 +36,6 @@ import {
 import {
   createSavedFilterBodySchema,
   duplicateSavedFilterBodySchema,
-  savedFilterQuerySchema,
   setMyDefaultSavedFilterBodySchema,
   updateSavedFilterBodySchema,
 } from './dto/saved-filter.schema';
@@ -53,45 +49,22 @@ export class SavedFiltersController {
   constructor(private readonly savedFiltersService: SavedFiltersService) {}
 
   @ApiOperation({
-    summary: 'List saved filters for a context',
+    summary: 'List saved filters for activity lists',
     description:
-      'Returns saved filters owned by the current user (and team-shared filters visible to the user) for the given context key.',
-  })
-  @ApiQuery({
-    name: 'contextKey',
-    required: true,
-    type: String,
-    description:
-      'Activity list context key (e.g. "all", "my-activities", "ministry:team:5")',
+      'Returns saved filters owned by the current user (and team-shared filters visible to the user) for activity lists.',
   })
   @ApiResponse({
     status: 200,
     description: 'Saved filters retrieved',
     type: SavedFilterListResponseDto,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Missing or invalid contextKey query parameter',
-  })
   @RequirePermission('savedFilters.view')
   @Get()
   async list(
-    @CurrentUser() user: AuthUser,
-    @Query('contextKey') contextKey: string | undefined
+    @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: SavedFilterListResponseDto }> {
-    const trimmed = typeof contextKey === 'string' ? contextKey.trim() : '';
-    const parsed = savedFilterQuerySchema.safeParse({ contextKey: trimmed });
-    if (!parsed.success) {
-      throw new BadRequestException(
-        'Query parameter contextKey is required and must be 1–100 characters.'
-      );
-    }
     const { filters, defaultSavedFilterId } =
-      await this.savedFiltersService.listByContext(
-        user.id,
-        parsed.data.contextKey,
-        user.teamIds ?? []
-      );
+      await this.savedFiltersService.list(user.id, user.teamIds ?? []);
     return {
       success: true,
       data: { filters, count: filters.length, defaultSavedFilterId },
@@ -100,8 +73,7 @@ export class SavedFiltersController {
 
   @ApiOperation({
     summary: 'Create a saved filter',
-    description:
-      'Creates a new saved filter for the current user in the specified context.',
+    description: 'Creates a new saved filter for the current user.',
   })
   @ApiBody({ type: CreateSavedFilterDto })
   @ApiResponse({
@@ -133,9 +105,9 @@ export class SavedFiltersController {
   }
 
   @ApiOperation({
-    summary: 'Set or clear my default saved filter for a context',
+    summary: 'Set or clear my default saved filter',
     description:
-      'Persists which saved filter is applied on load for this user and activity list tab. Does not modify shared preset rows.',
+      'Persists which saved filter is applied on load for this user across activity lists. Does not modify shared preset rows.',
   })
   @ApiBody({ type: SetMyDefaultSavedFilterDto })
   @ApiResponse({
@@ -166,7 +138,6 @@ export class SavedFiltersController {
   }> {
     const data = await this.savedFiltersService.setMyDefault(
       user.id,
-      body.contextKey,
       body.savedFilterId,
       user.teamIds ?? []
     );

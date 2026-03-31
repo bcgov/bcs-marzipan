@@ -55,7 +55,6 @@ export interface ActivityTableFiltersProps {
   translationStatusOptions: TranslationStatusFilterOption[];
   translationOptions: TranslationFilterOption[];
   savedFilters?: UseSavedFiltersReturn;
-  contextKey?: string | null;
   onApplySavedFilter?: (
     filterState: ActivityFilterState,
     searchKeyword: string,
@@ -141,7 +140,6 @@ export function ActivityTableFilters({
   translationStatusOptions,
   translationOptions,
   savedFilters,
-  contextKey,
   onApplySavedFilter,
   activeSavedFilterId = null,
 }: ActivityTableFiltersProps) {
@@ -546,7 +544,6 @@ export function ActivityTableFilters({
           overflowTriggerClassName="h-10"
           onClearAll={handleClearAllFilters}
           savedFilters={savedFilters}
-          contextKey={contextKey}
           filterState={filterState}
           searchKeyword={searchKeyword}
           onApplySavedFilter={onApplySavedFilter}

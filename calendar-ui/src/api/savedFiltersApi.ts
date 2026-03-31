@@ -12,15 +12,13 @@ import api from './axios';
 
 const logger = createLogger('SavedFiltersAPI');
 
-export async function listSavedFilters(
-  contextKey: string
-): Promise<SavedFilterListResponse> {
-  logger.debug('Listing saved filters', { contextKey });
+export async function listSavedFilters(): Promise<SavedFilterListResponse> {
+  logger.debug('Listing saved filters');
 
   const res = await api.get<{
     success: boolean;
     data: SavedFilterListResponse;
-  }>('/activity-saved-filters', { params: { contextKey } });
+  }>('/activity-saved-filters');
 
   return res.data.data;
 }
@@ -29,7 +27,6 @@ export async function setMyDefaultSavedFilter(
   body: SetMyDefaultSavedFilterBody
 ): Promise<{ defaultSavedFilterId: number | null }> {
   logger.debug('Setting my default saved filter', {
-    contextKey: body.contextKey,
     savedFilterId: body.savedFilterId,
   });
 

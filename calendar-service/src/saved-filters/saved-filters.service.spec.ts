@@ -87,7 +87,6 @@ describe('SavedFiltersService', () => {
   const makeSavedFilterRow = (overrides = {}) => ({
     id: 1,
     ownerUserId: 10,
-    contextKey: 'all',
     name: 'My filter',
     filterState: { categoryNames: ['Event'] },
     searchKeyword: 'test',
@@ -100,7 +99,7 @@ describe('SavedFiltersService', () => {
     ...overrides,
   });
 
-  describe('listByContext', () => {
+  describe('list', () => {
     it('should return saved filters for user with no team visibility', async () => {
       const row = makeSavedFilterRow();
       const chain = createChain([row], 'orderBy');
@@ -113,7 +112,7 @@ describe('SavedFiltersService', () => {
       defaultChain.from.mockReturnValue(defaultChain);
       defaultChain.where.mockReturnValue(defaultChain);
 
-      const result = await service.listByContext(10, 'all', []);
+      const result = await service.list(10, []);
 
       expect(result.filters).toHaveLength(1);
       expect(result.defaultSavedFilterId).toBeNull();
@@ -121,7 +120,6 @@ describe('SavedFiltersService', () => {
         expect.objectContaining({
           id: 1,
           name: 'My filter',
-          contextKey: 'all',
           ownerUserId: 10,
         })
       );
@@ -151,7 +149,7 @@ describe('SavedFiltersService', () => {
       defaultChain.from.mockReturnValue(defaultChain);
       defaultChain.where.mockReturnValue(defaultChain);
 
-      const result = await service.listByContext(10, 'all', [5]);
+      const result = await service.list(10, [5]);
 
       expect(result.filters).toHaveLength(3);
     });
@@ -181,7 +179,6 @@ describe('SavedFiltersService', () => {
       insertChain.values.mockReturnValue({ returning: returningMock });
 
       const result = await service.create(10, {
-        contextKey: 'all',
         name: 'My filter',
         filterState: { categoryNames: ['Event'] },
         searchKeyword: 'test',
@@ -195,7 +192,6 @@ describe('SavedFiltersService', () => {
     it('should reject create when filter payload is empty', async () => {
       await expect(
         service.create(10, {
-          contextKey: 'all',
           name: 'Empty',
           filterState: {},
           searchKeyword: '',
@@ -212,7 +208,6 @@ describe('SavedFiltersService', () => {
 
       await expect(
         service.create(10, {
-          contextKey: 'all',
           name: 'Duplicate',
           filterState: { activityStatusIds: [1] },
           searchKeyword: '',
@@ -223,7 +218,6 @@ describe('SavedFiltersService', () => {
     it('should reject team scope when scopeTeamId is missing', async () => {
       await expect(
         service.create(10, {
-          contextKey: 'all',
           name: 'Team scoped',
           filterState: {},
           searchKeyword: '',
@@ -237,7 +231,6 @@ describe('SavedFiltersService', () => {
         service.create(
           10,
           {
-            contextKey: 'all',
             name: 'Team scoped',
             filterState: {},
             searchKeyword: '',
@@ -254,7 +247,6 @@ describe('SavedFiltersService', () => {
         service.create(
           10,
           {
-            contextKey: 'all',
             name: 'Team scoped',
             filterState: {},
             searchKeyword: '',
@@ -295,7 +287,6 @@ describe('SavedFiltersService', () => {
       const result = await service.create(
         10,
         {
-          contextKey: 'all',
           name: 'Team scoped ok',
           filterState: { categoryNames: ['Event'] },
           searchKeyword: '',
@@ -368,7 +359,7 @@ describe('SavedFiltersService', () => {
 
   describe('setMyDefault', () => {
     it('should clear default when savedFilterId is null', async () => {
-      await expect(service.setMyDefault(10, 'all', null, [])).resolves.toEqual({
+      await expect(service.setMyDefault(10, null, [])).resolves.toEqual({
         defaultSavedFilterId: null,
       });
 
@@ -381,20 +372,8 @@ describe('SavedFiltersService', () => {
       selectChain.from.mockReturnValue(selectChain);
       selectChain.where.mockReturnValue(selectChain);
 
-      await expect(service.setMyDefault(10, 'all', 999, [])).rejects.toThrow(
+      await expect(service.setMyDefault(10, 999, [])).rejects.toThrow(
         NotFoundException
-      );
-    });
-
-    it('should throw BadRequestException when context does not match', async () => {
-      const row = makeSavedFilterRow({ id: 7, contextKey: 'my-activities' });
-      const selectChain = createChain(row, 'limit');
-      mockDatabaseService.db.select.mockReturnValueOnce(selectChain);
-      selectChain.from.mockReturnValue(selectChain);
-      selectChain.where.mockReturnValue(selectChain);
-
-      await expect(service.setMyDefault(10, 'all', 7, [])).rejects.toThrow(
-        BadRequestException
       );
     });
 
@@ -410,7 +389,7 @@ describe('SavedFiltersService', () => {
       selectChain.from.mockReturnValue(selectChain);
       selectChain.where.mockReturnValue(selectChain);
 
-      await expect(service.setMyDefault(10, 'all', 8, [5])).rejects.toThrow(
+      await expect(service.setMyDefault(10, 8, [5])).rejects.toThrow(
         ForbiddenException
       );
     });
@@ -432,7 +411,7 @@ describe('SavedFiltersService', () => {
         Promise.resolve(callback(txChain))
       );
 
-      await expect(service.setMyDefault(10, 'all', 11, [])).resolves.toEqual({
+      await expect(service.setMyDefault(10, 11, [])).resolves.toEqual({
         defaultSavedFilterId: 11,
       });
       expect(mockDatabaseService.db.transaction).toHaveBeenCalled();
