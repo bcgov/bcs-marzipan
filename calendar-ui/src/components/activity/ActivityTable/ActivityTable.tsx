@@ -717,7 +717,7 @@ export function ActivityTable({
       (f) => f.id === activeSavedFilter.id
     );
     if (!stillThere) setActiveSavedFilter(null);
-  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
+  }, [activeSavedFilter, savedFiltersHook.savedFilters, setActiveSavedFilter]);
 
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
@@ -938,6 +938,7 @@ export function ActivityTable({
     filterState,
     searchKeyword,
     setPreferences,
+    setActiveSavedFilter,
     validFilterLookupsForDefaultApply,
     savedFilterDefaultLookupsReady,
   ]);
