@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 
 import {
+  ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW,
   buildActivityFilterSummaryLines,
+  buildActivityFilterSummaryLinesForDetailPopover,
   clearSavedFilterChip,
   getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
@@ -103,6 +105,49 @@ describe('buildActivityFilterSummaryLines', () => {
       label: 'Languages',
       value: 'ZH-HANS',
     });
+  });
+});
+
+describe('buildActivityFilterSummaryLinesForDetailPopover', () => {
+  it('truncates more than ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW tag labels', () => {
+    const ids = Array.from(
+      { length: ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW + 1 },
+      (_, i) => i + 1
+    );
+    const tagOptions = ids.map((id) => ({
+      value: String(id),
+      label: `Tag ${id}`,
+    }));
+    const lines = buildActivityFilterSummaryLinesForDetailPopover(
+      { ...DEFAULT_ACTIVITY_FILTER_STATE, tagIds: ids },
+      '',
+      { ...emptyCtx, tagOptions }
+    );
+    const tagsLine = lines.find((l) => l.label === 'Tags');
+    expect(tagsLine).toBeDefined();
+    expect(tagsLine?.value).toContain('+1 more');
+    expect(tagsLine?.value.startsWith('Tag 1')).toBe(true);
+  });
+
+  it('does not truncate when value count is at the limit', () => {
+    const ids = Array.from(
+      { length: ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW },
+      (_, i) => i + 1
+    );
+    const tagOptions = ids.map((id) => ({
+      value: String(id),
+      label: `Tag ${id}`,
+    }));
+    const lines = buildActivityFilterSummaryLinesForDetailPopover(
+      { ...DEFAULT_ACTIVITY_FILTER_STATE, tagIds: ids },
+      '',
+      { ...emptyCtx, tagOptions }
+    );
+    const tagsLine = lines.find((l) => l.label === 'Tags');
+    expect(tagsLine?.value.includes('more')).toBe(false);
+    expect(tagsLine?.value.split(', ').length).toBe(
+      ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW
+    );
   });
 });
 

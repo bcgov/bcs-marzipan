@@ -1,6 +1,12 @@
-import { X } from 'lucide-react';
+import { Info, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +27,118 @@ export interface BooleanFilter {
 
 const DEFAULT_MAX_VISIBLE_FILTER_TYPES = 3;
 
+/** Lines shown in the optional “filtering by” detail popover (label + value per row). */
+export interface TableSummaryFilterDetailLine {
+  label: string;
+  value: string;
+}
+
+const HOVER_CLOSE_DELAY_MS = 150;
+
+function usePrefersHover(): boolean {
+  const [value, setValue] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(hover: hover)').matches
+      : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover)');
+    const onChange = () => setValue(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return value;
+}
+
+function FilterDetailPopover({
+  lines,
+  scrollClassName,
+  ariaLabel,
+}: {
+  lines: TableSummaryFilterDetailLine[];
+  scrollClassName: string;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const prefersHover = usePrefersHover();
+  const closeTimerRef = useRef<number | null>(null);
+
+  const cancelScheduledClose = () => {
+    if (closeTimerRef.current != null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const handleHoverOpen = () => {
+    if (!prefersHover) return;
+    cancelScheduledClose();
+    setOpen(true);
+  };
+
+  const handleHoverScheduleClose = () => {
+    if (!prefersHover) return;
+    cancelScheduledClose();
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      closeTimerRef.current = null;
+    }, HOVER_CLOSE_DELAY_MS);
+  };
+
+  useEffect(
+    () => () => {
+      cancelScheduledClose();
+    },
+    []
+  );
+
+  const triggerClassName =
+    'text-stone-500 hover:text-stone-700 focus-visible:ring-ring/50 relative z-10 -mr-1.5 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 outline-none focus-visible:ring-[3px]';
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={triggerClassName}
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          onMouseEnter={handleHoverOpen}
+          onMouseLeave={handleHoverScheduleClose}
+        >
+          <Info className="size-3.5 shrink-0" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-80 max-w-[min(20rem,100vw-1rem)] p-0"
+        onMouseEnter={handleHoverOpen}
+        onMouseLeave={handleHoverScheduleClose}
+      >
+        <div
+          className={cn(
+            scrollClassName,
+            'flex flex-col gap-3 px-4 py-3 text-sm'
+          )}
+        >
+          {lines.map((line, index) => (
+            <p
+              key={`${line.label}:${index}`}
+              className="m-0 leading-snug wrap-break-word"
+            >
+              <span className="text-foreground font-normal">
+                {line.label}:{' '}
+              </span>
+              <span className="text-muted-foreground">{line.value}</span>
+            </p>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface TableSummaryBarProps {
   count: number;
   singularLabel: string;
@@ -37,6 +155,11 @@ interface TableSummaryBarProps {
   maxVisibleFilterTypes?: number;
   /** When set, renders a compact “Clear filters” control for all breakpoints. */
   onClearFilters?: () => void;
+  /**
+   * When non-empty, an info control before the summary opens a read-only popover with one row
+   * per active dimension (values may be truncated per activity table rules).
+   */
+  filterDetailLines?: TableSummaryFilterDetailLine[];
   className?: string;
 }
 
@@ -49,6 +172,7 @@ export function TableSummaryBar({
   appliedFilterTypeLabels = [],
   maxVisibleFilterTypes = DEFAULT_MAX_VISIBLE_FILTER_TYPES,
   onClearFilters,
+  filterDetailLines = [],
   className,
 }: TableSummaryBarProps) {
   const label =
@@ -66,7 +190,17 @@ export function TableSummaryBar({
         ? `${typeLabels.slice(0, visibleTypeCount).join(', ')}, +${overflowTypeCount} more`
         : typeLabels.join(', ');
   const filterParenthetical =
-    typeLabels.length === 0 ? '' : `(Filtering by: ${filteringOnText})`;
+    typeLabels.length === 0 ? '' : `Filtered by: ${filteringOnText}`;
+  const savedFilterParenthetical =
+    appliedSavedFilterName != null
+      ? `Filtered by: ${appliedSavedFilterName}`
+      : '';
+  const hasFilterDetailPopover = filterDetailLines.length > 0;
+  const showAdHocFilterSummary = !appliedSavedFilterName && filteringOnText;
+  const showSavedFilterSummary = appliedSavedFilterName != null;
+
+  const filterPopoverScrollClassName =
+    'popover-list-scroll max-h-[min(var(--popover-list-max-height),var(--radix-popover-content-available-height))] overflow-y-auto';
 
   return (
     <div
@@ -76,30 +210,57 @@ export function TableSummaryBar({
       )}
     >
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <span className="shrink-0">
+        <span className="inline-flex min-h-9 min-w-0 flex-wrap items-center gap-x-1">
+          <span className="shrink-0 leading-normal">
             Showing {count} {label}
           </span>
-          {appliedSavedFilterName ? (
-            <span className="text-stone-500" aria-live="polite">
-              (Filtering by: {appliedSavedFilterName})
-            </span>
-          ) : filteringOnText ? (
-            <>
-              <span className="sr-only text-stone-500 md:hidden">
-                {filterParenthetical}
+          {showSavedFilterSummary ? (
+            hasFilterDetailPopover ? (
+              <span
+                className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-0 gap-y-1 leading-normal"
+                aria-live="polite"
+              >
+                <FilterDetailPopover
+                  lines={filterDetailLines}
+                  scrollClassName={filterPopoverScrollClassName}
+                  ariaLabel={`Filtered by ${appliedSavedFilterName}. Show filter details.`}
+                />
+                <span className="min-w-0 wrap-break-word">
+                  {savedFilterParenthetical}
+                </span>
               </span>
-              <span className="hidden min-w-0 text-stone-500 md:inline">
-                {filterParenthetical}
+            ) : (
+              <span className="leading-normal" aria-live="polite">
+                {savedFilterParenthetical}
               </span>
-            </>
+            )
+          ) : showAdHocFilterSummary ? (
+            hasFilterDetailPopover ? (
+              <span className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-0 gap-y-1 leading-normal">
+                <FilterDetailPopover
+                  lines={filterDetailLines}
+                  scrollClassName={filterPopoverScrollClassName}
+                  ariaLabel={`${filterParenthetical} Show filter details.`}
+                />
+                <span className="min-w-0 wrap-break-word">
+                  {filterParenthetical}
+                </span>
+              </span>
+            ) : (
+              <>
+                <span className="sr-only md:hidden">{filterParenthetical}</span>
+                <span className="hidden min-w-0 leading-normal md:inline">
+                  {filterParenthetical}
+                </span>
+              </>
+            )
           ) : null}
         </span>
         {onClearFilters ? (
           <button
             type="button"
             onClick={onClearFilters}
-            className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
             aria-label="Clear all filters"
           >
             <X className="size-3 shrink-0" aria-hidden />

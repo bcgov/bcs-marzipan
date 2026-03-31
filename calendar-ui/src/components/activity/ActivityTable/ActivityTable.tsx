@@ -81,6 +81,7 @@ import {
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import {
+  buildActivityFilterSummaryLinesForDetailPopover,
   getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
 } from '@/lib/activity-filter-summary';
@@ -1401,6 +1402,21 @@ export function ActivityTable({
     [filterState, searchKeyword, filterSummaryContextForBar]
   );
 
+  const hasActiveCriteria =
+    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
+
+  const filterDetailLines = useMemo(
+    () =>
+      hasActiveCriteria
+        ? buildActivityFilterSummaryLinesForDetailPopover(
+            filterState,
+            searchKeyword,
+            filterSummaryContextForBar
+          )
+        : [],
+    [filterState, searchKeyword, filterSummaryContextForBar, hasActiveCriteria]
+  );
+
   const handleClearPanelFilters = useCallback(() => {
     defaultSuppressedByClearRef.current = true;
     defaultAppliedRef.current = false;
@@ -1417,9 +1433,6 @@ export function ActivityTable({
       searchKeyword: '',
     });
   }, [setPreferences, setActiveSavedFilter]);
-
-  const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
 
   const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
     filterState
@@ -1474,6 +1487,7 @@ export function ActivityTable({
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
         >
           <div className="flex flex-col items-center justify-center gap-3 py-12">
@@ -1513,6 +1527,7 @@ export function ActivityTable({
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
         >
           <ActivityTableEmptyState
@@ -1541,6 +1556,7 @@ export function ActivityTable({
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (

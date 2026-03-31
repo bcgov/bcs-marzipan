@@ -327,6 +327,35 @@ export function buildActivityFilterSummaryLines(
   );
 }
 
+/** Max values listed per filter row in the activity table summary detail popover; extra values become “+n more”. */
+export const ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW = 8;
+
+/**
+ * Like {@link buildActivityFilterSummaryLines}, but caps how many chip values are shown per row
+ * for dense multi-select fields (tags, statuses, etc.).
+ */
+export function buildActivityFilterSummaryLinesForDetailPopover(
+  filterState: ActivityFilterState,
+  searchKeyword: string,
+  ctx: ActivityFilterSummaryContext,
+  maxValuesPerRow: number = ACTIVITY_FILTER_DETAIL_POPOVER_MAX_VALUES_PER_ROW
+): ActivityFilterSummaryLine[] {
+  return buildActivityFilterChipRows(filterState, searchKeyword, ctx).map(
+    (row) => {
+      const labels = row.chips.map((c) => c.displayLabel);
+      if (labels.length <= maxValuesPerRow) {
+        return { label: row.label, value: labels.join(', ') };
+      }
+      const head = labels.slice(0, maxValuesPerRow);
+      const more = labels.length - maxValuesPerRow;
+      return {
+        label: row.label,
+        value: `${head.join(', ')}, +${more} more`,
+      };
+    }
+  );
+}
+
 /**
  * Removes a single chip value from filter state.
  */
