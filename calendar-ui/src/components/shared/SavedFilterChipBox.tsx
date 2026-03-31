@@ -61,8 +61,8 @@ export function SavedFilterChipBox({
           >
             <div
               className={cn(
-                'text-foreground shrink-0 text-left text-xs leading-normal font-medium sm:max-w-[min(12rem,40%)]',
-                editable ? 'pt-[7px]' : 'pt-[3px]'
+                'text-foreground shrink-0 text-left text-sm leading-normal font-medium',
+                'sm:flex sm:h-[calc(--spacing(6))] sm:max-w-[min(12rem,40%)] sm:items-center'
               )}
             >
               {row.label.endsWith(':') ? row.label : `${row.label}:`}
