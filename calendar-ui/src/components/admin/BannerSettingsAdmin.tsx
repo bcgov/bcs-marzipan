@@ -3,7 +3,7 @@ import { Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type {
   BannerSettings,
   UpsertBannerSettingsBody,
@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermissions';
 
 import { SystemBanner } from '../layout/SystemBanner';
@@ -84,7 +85,10 @@ function toRequestBody(formData: BannerFormData): UpsertBannerSettingsBody {
 
 export function BannerSettingsAdmin() {
   const queryClient = useQueryClient();
-  const canManage = usePermission(PERMISSIONS.SETTINGS.MANAGE);
+  const { user } = useAuth();
+  const hasSettingsManage = usePermission(PERMISSIONS.SETTINGS.MANAGE);
+  const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+  const canManage = hasSettingsManage && isSystemAdmin;
   const [formData, setFormData] = useState<BannerFormData>(DEFAULT_FORM_DATA);
 
   const {
@@ -183,6 +187,11 @@ export function BannerSettingsAdmin() {
     saveMutation.mutate(formData);
   };
 
+  // Hide the entire admin section for non-System-Admin users
+  if (!isSystemAdmin) {
+    return null;
+  }
+
   return (
     <AdminSection
       title="System Banner"
@@ -218,8 +227,8 @@ export function BannerSettingsAdmin() {
 
       {!canManage && (
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-          You can view the current banner configuration, but you need the
-          settings.manage permission to update it.
+          You can view the current banner configuration, but only System Admin
+          users can update it.
         </div>
       )}
 

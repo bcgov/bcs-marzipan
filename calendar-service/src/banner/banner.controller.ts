@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Put } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import {
   PERMISSIONS,
+  SYSTEM_ROLE_IDS,
   type AuthUser,
   type ResponseWrapper,
 } from '@corpcal/shared';
@@ -23,6 +24,14 @@ import { BannerService } from './banner.service';
 @Controller('banner')
 export class BannerController {
   constructor(private readonly bannerService: BannerService) {}
+
+  private ensureSystemAdmin(user: AuthUser): void {
+    if (user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
+      throw new ForbiddenException(
+        'Only System Admin users can manage system banners.'
+      );
+    }
+  }
 
   @ApiOperation({
     summary: 'Get active banner',
@@ -67,6 +76,8 @@ export class BannerController {
     body: UpsertBannerSettingsDto,
     @CurrentUser() user: AuthUser
   ): Promise<ResponseWrapper<BannerSettings>> {
+    this.ensureSystemAdmin(user);
+
     const data = await this.bannerService.upsertBannerSettings(body, user.id);
     return { success: true, data };
   }
