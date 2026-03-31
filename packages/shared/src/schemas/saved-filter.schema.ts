@@ -32,6 +32,7 @@ export const savedFilterResponseSchema = z.object({
   name: z.string(),
   filterState: z.record(z.string(), z.unknown()),
   searchKeyword: z.string(),
+  /** True when this row is the current user's default for this context (from user_activity_saved_filter_defaults). */
   isDefault: z.boolean(),
   sortOrder: z.number().int(),
   scopeType: savedFilterScopeTypeSchema,
@@ -45,6 +46,8 @@ export type SavedFilterResponse = z.infer<typeof savedFilterResponseSchema>;
 export const savedFilterListResponseSchema = z.object({
   filters: z.array(savedFilterResponseSchema),
   count: z.number().int(),
+  /** Per-user default for this context; persisted in user_activity_saved_filter_defaults. */
+  defaultSavedFilterId: z.number().int().nullable(),
 });
 
 export type SavedFilterListResponse = z.infer<
@@ -62,7 +65,6 @@ export const createSavedFilterBodySchema = z.object({
   name: z.string().min(1).max(FILTER_NAME_MAX_LENGTH),
   filterState: z.record(z.string(), z.unknown()),
   searchKeyword: z.string().default(''),
-  isDefault: z.boolean().optional(),
   scopeType: savedFilterScopeTypeSchema.optional(),
   scopeTeamId: z.number().int().nullable().optional(),
 });
@@ -73,7 +75,6 @@ export const updateSavedFilterBodySchema = z.object({
   name: z.string().min(1).max(FILTER_NAME_MAX_LENGTH).optional(),
   filterState: z.record(z.string(), z.unknown()).optional(),
   searchKeyword: z.string().optional(),
-  isDefault: z.boolean().optional(),
   scopeType: savedFilterScopeTypeSchema.optional(),
   scopeTeamId: z.number().int().nullable().optional(),
 });
@@ -86,4 +87,14 @@ export const duplicateSavedFilterBodySchema = z.object({
 
 export type DuplicateSavedFilterBody = z.infer<
   typeof duplicateSavedFilterBodySchema
+>;
+
+export const setMyDefaultSavedFilterBodySchema = z.object({
+  contextKey: savedFilterContextKeySchema,
+  /** Set to null to clear the default for this context. */
+  savedFilterId: z.number().int().nullable(),
+});
+
+export type SetMyDefaultSavedFilterBody = z.infer<
+  typeof setMyDefaultSavedFilterBodySchema
 >;

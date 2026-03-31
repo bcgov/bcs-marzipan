@@ -1,5 +1,5 @@
 {
-  "id": "309106c0-de3c-479c-8eba-cafe48e57df1",
+  "id": "916b6a65-0c9d-4116-a4ef-dc4899ed4100",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -5952,6 +5952,13 @@
           "notNull": true,
           "default": "''"
         },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "sort_order": {
           "name": "sort_order",
           "type": "integer",
@@ -6031,17 +6038,30 @@
           "method": "btree",
           "with": {}
         },
-        "asf_scope_type_idx": {
-          "name": "asf_scope_type_idx",
+        "asf_unique_name": {
+          "name": "asf_unique_name",
           "columns": [
             {
-              "expression": "scope_type",
+              "expression": "owner_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "context_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "is_active = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -6060,84 +6080,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "asf_unique_user_scope_name": {
-          "name": "asf_unique_user_scope_name",
-          "columns": [
-            {
-              "expression": "owner_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "is_active = true AND scope_type = 'user'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "asf_unique_team_scope_name": {
-          "name": "asf_unique_team_scope_name",
-          "columns": [
-            {
-              "expression": "scope_team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "is_active = true AND scope_type = 'team'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "asf_unique_global_scope_name": {
-          "name": "asf_unique_global_scope_name",
-          "columns": [
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "is_active = true AND scope_type = 'global'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -6146,137 +6088,6 @@
           "tableFrom": "activity_saved_filters",
           "tableTo": "users",
           "columnsFrom": ["owner_user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "asf_scope_type_check": {
-          "name": "asf_scope_type_check",
-          "value": "\"activity_saved_filters\".\"scope_type\" IN ('user', 'team', 'global')"
-        },
-        "asf_scope_team_scope_check": {
-          "name": "asf_scope_team_scope_check",
-          "value": "(\n        (\"activity_saved_filters\".\"scope_type\" = 'team' AND \"activity_saved_filters\".\"scope_team_id\" IS NOT NULL)\n        OR\n        (\"activity_saved_filters\".\"scope_type\" IN ('user', 'global') AND \"activity_saved_filters\".\"scope_team_id\" IS NULL)\n      )"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.user_activity_saved_filter_defaults": {
-      "name": "user_activity_saved_filter_defaults",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "context_key": {
-          "name": "context_key",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "saved_filter_id": {
-          "name": "saved_filter_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "uasfd_user_context_unique": {
-          "name": "uasfd_user_context_unique",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "uasfd_user_id_idx": {
-          "name": "uasfd_user_id_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "uasfd_saved_filter_id_idx": {
-          "name": "uasfd_saved_filter_id_idx",
-          "columns": [
-            {
-              "expression": "saved_filter_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "user_activity_saved_filter_defaults_user_id_users_id_fk": {
-          "name": "user_activity_saved_filter_defaults_user_id_users_id_fk",
-          "tableFrom": "user_activity_saved_filter_defaults",
-          "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "user_activity_saved_filter_defaults_saved_filter_id_activity_saved_filters_id_fk": {
-          "name": "user_activity_saved_filter_defaults_saved_filter_id_activity_saved_filters_id_fk",
-          "tableFrom": "user_activity_saved_filter_defaults",
-          "tableTo": "activity_saved_filters",
-          "columnsFrom": ["saved_filter_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"

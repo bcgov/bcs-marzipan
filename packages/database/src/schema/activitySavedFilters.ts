@@ -18,7 +18,7 @@ import { users } from './user';
 /**
  * ActivitySavedFilters table - User-scoped saved filter presets for the activity list.
  * Stores filterState (JSON) + searchKeyword per user per context (tab).
- * Supports a single default per user+context for auto-apply on page load.
+ * Per-user default for auto-apply is stored in user_activity_saved_filter_defaults.
  * Supports user-private, team-scoped, and global sharing via scopeType and scopeTeamId.
  */
 export const activitySavedFilters = pgTable(
@@ -39,8 +39,6 @@ export const activitySavedFilters = pgTable(
     filterState: jsonb('filter_state').notNull(),
 
     searchKeyword: text('search_keyword').notNull().default(''),
-
-    isDefault: boolean('is_default').notNull().default(false),
 
     sortOrder: integer('sort_order').notNull().default(0),
 
