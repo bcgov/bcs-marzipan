@@ -560,7 +560,7 @@ export function ActivityTableFilters({
             placeholder="Search activities..."
             value={searchKeyword}
             onChange={(e) => onSearchKeywordChange(e.target.value)}
-            className="pr-8 pl-8"
+            className="pr-8 pl-8 shadow-none"
             aria-label="Search activities"
           />
           {searchKeyword && (
@@ -583,6 +583,7 @@ export function ActivityTableFilters({
           defaultSortKey={defaultSortKey}
           defaultSortDirection={defaultSortDirection}
           ariaLabel="Sort by"
+          triggerClassName="shadow-none"
         />
       </div>
     </div>

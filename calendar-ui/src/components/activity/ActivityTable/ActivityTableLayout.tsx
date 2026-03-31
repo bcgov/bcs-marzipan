@@ -14,9 +14,9 @@ export interface ActivityTableLayoutProps {
   singularLabel: string;
   pluralLabel: string;
   filters?: BooleanFilter[];
-  /** When set, summary bar shows “Filtering by: …” beside the count. */
+  /** When set, summary bar appends “(filtering by: …)” after the count. */
   appliedSavedFilterName?: string | null;
-  /** Active filter dimensions for “Filtering by: …” (ignored when a saved filter name is set). */
+  /** Active filter dimensions for “(filtering by: …)” (ignored when a saved filter name is set). */
   appliedFilterTypeLabels?: string[];
   /** Clears panel filters only (not search); clears saved-filter selection in the parent. */
   onClearFilters?: () => void;

@@ -65,10 +65,8 @@ export function TableSummaryBar({
       : overflowTypeCount > 0
         ? `${typeLabels.slice(0, visibleTypeCount).join(', ')}, +${overflowTypeCount} more`
         : typeLabels.join(', ');
-  const filteringBySrOnly =
-    typeLabels.length === 0 ? '' : `Filtering by: ${filteringOnText}`;
-  const spaceAfterCount =
-    appliedSavedFilterName != null || Boolean(filteringOnText);
+  const filterParenthetical =
+    typeLabels.length === 0 ? '' : `(Filtering by: ${filteringOnText})`;
 
   return (
     <div
@@ -78,21 +76,25 @@ export function TableSummaryBar({
       )}
     >
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <span className={cn('shrink-0', spaceAfterCount && 'me-3')}>
-          Showing {count} {label}
-        </span>
-        {appliedSavedFilterName ? (
-          <span className="text-stone-500" aria-live="polite">
-            Filtering by: {appliedSavedFilterName}
+        <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="shrink-0">
+            Showing {count} {label}
           </span>
-        ) : filteringOnText ? (
-          <>
-            <span className="sr-only text-stone-500 md:hidden">
-              {filteringBySrOnly}
+          {appliedSavedFilterName ? (
+            <span className="text-stone-500" aria-live="polite">
+              (Filtering by: {appliedSavedFilterName})
             </span>
-            <span className="hidden min-w-0 text-stone-500 md:inline">{`Filtering by: ${filteringOnText}`}</span>
-          </>
-        ) : null}
+          ) : filteringOnText ? (
+            <>
+              <span className="sr-only text-stone-500 md:hidden">
+                {filterParenthetical}
+              </span>
+              <span className="hidden min-w-0 text-stone-500 md:inline">
+                {filterParenthetical}
+              </span>
+            </>
+          ) : null}
+        </span>
         {onClearFilters ? (
           <button
             type="button"

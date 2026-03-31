@@ -297,7 +297,7 @@ function filterTypeLabelForSummaryBar(raw: string): string {
 }
 
 /**
- * Short label per active filter dimension (e.g. table summary “Filtering by: …”).
+ * Short label per active filter dimension (e.g. table summary “(filtering by: …)”).
  * Order matches {@link buildActivityFilterChipRows}.
  */
 export function getAppliedActivityFilterTypeLabels(
