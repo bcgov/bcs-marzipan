@@ -4,6 +4,8 @@ CREATE TABLE "banner_settings" (
 	"content" text NOT NULL,
 	"background_color" varchar(20) DEFAULT '#E6A635' NOT NULL,
 	"text_color" varchar(20) DEFAULT '#000000' NOT NULL,
+    "variant" varchar(20) NOT NULL DEFAULT 'info',
+    "dismiss_scope" varchar(20) NOT NULL DEFAULT 'persistent',
 	"is_dismissible" boolean DEFAULT true NOT NULL,
 	"start_date_time" timestamp with time zone,
 	"end_date_time" timestamp with time zone,
