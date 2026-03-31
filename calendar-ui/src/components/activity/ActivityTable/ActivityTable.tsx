@@ -98,6 +98,7 @@ import {
   formatTime12h,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
   type SavedFilterPayload,
@@ -676,6 +677,7 @@ export function ActivityTable({
   const savedFiltersHook = useSavedFilters(savedFilterContextKey ?? null);
   const [currentSearchParams] = useSearchParams();
   const defaultAppliedRef = useRef<string | null>(null);
+  const defaultSuppressedByClearRef = useRef<string | null>(null);
   const [activeSavedFilter, setActiveSavedFilter] = useState<{
     id: number;
     name: string;
@@ -685,6 +687,7 @@ export function ActivityTable({
     if (!savedFilterContextKey) {
       setActiveSavedFilter(null);
       defaultAppliedRef.current = null;
+      defaultSuppressedByClearRef.current = null;
     }
   }, [savedFilterContextKey]);
 
@@ -863,26 +866,31 @@ export function ActivityTable({
     activityStatusesForFilter.length > 0 && !savedFiltersHook.isLoading;
 
   useEffect(() => {
-    if (!savedFilterContextKey) {
-      return;
-    }
-    if (!savedFilterDefaultLookupsReady) {
-      return;
-    }
-    if (defaultAppliedRef.current === savedFilterContextKey) return;
-    if (hasAnyKnownParam(currentSearchParams)) {
+    const decision = getSavedFilterAutoApplyDecision({
+      contextKey: savedFilterContextKey,
+      lookupsReady: savedFilterDefaultLookupsReady,
+      defaultAppliedContext: defaultAppliedRef.current,
+      suppressedByClearContext: defaultSuppressedByClearRef.current,
+      hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
+      hasDefaultFilter: savedFiltersHook.defaultFilter != null,
+    });
+
+    if (decision.shouldMarkContextApplied && savedFilterContextKey) {
       defaultAppliedRef.current = savedFilterContextKey;
-      setActiveSavedFilter(null);
-      return;
     }
-    const defaultFilter = savedFiltersHook.defaultFilter;
-    if (!defaultFilter) {
+
+    if (decision.shouldClearActiveSavedFilter) {
       setActiveSavedFilter(null);
-      defaultAppliedRef.current = savedFilterContextKey;
+    }
+
+    if (!decision.shouldApplyDefault) {
       return;
     }
 
-    defaultAppliedRef.current = savedFilterContextKey;
+    const defaultFilter = savedFiltersHook.defaultFilter;
+    if (!defaultFilter) {
+      return;
+    }
     const {
       filterState: sanitized,
       searchKeyword: kw,
@@ -1372,9 +1380,13 @@ export function ActivityTable({
   );
 
   const handleClearPanelFilters = useCallback(() => {
+    if (savedFilterContextKey) {
+      defaultSuppressedByClearRef.current = savedFilterContextKey;
+      defaultAppliedRef.current = null;
+    }
     setActiveSavedFilter(null);
     setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
-  }, [setPreferences, setActiveSavedFilter]);
+  }, [savedFilterContextKey, setPreferences, setActiveSavedFilter]);
 
   const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
     filterState
