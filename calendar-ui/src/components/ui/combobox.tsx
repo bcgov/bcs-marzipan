@@ -6,6 +6,10 @@ import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
+  CHIP_LABEL_CLASSES,
+  CHIP_VISUAL_CLASSES,
+} from '@/components/ui/combobox-chip-styles';
+import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
@@ -288,13 +292,14 @@ function ComboboxChip({
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
       className={cn(
-        'bg-muted text-foreground flex h-[calc(--spacing(6))] w-fit items-center justify-center gap-1 rounded-sm px-1.5 text-sm font-medium whitespace-nowrap has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0',
+        CHIP_VISUAL_CLASSES,
+        'has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0',
         readOnly && 'pointer-events-none',
         className
       )}
       {...props}
     >
-      {children}
+      <span className={CHIP_LABEL_CLASSES}>{children}</span>
       {showRemoveButton && (
         <ComboboxPrimitive.ChipRemove
           render={<Button variant="ghost" size="icon-xs" />}

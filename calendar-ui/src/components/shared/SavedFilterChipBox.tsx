@@ -2,6 +2,10 @@ import { X } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  CHIP_LABEL_CLASSES,
+  CHIP_VISUAL_CLASSES,
+} from '@/components/ui/combobox-chip-styles';
 import type { ActivityFilterChipRow } from '@/lib/activity-filter-summary';
 import { cn } from '@/lib/utils';
 
@@ -72,22 +76,22 @@ export function SavedFilterChipBox({
                 <div
                   key={chip.chipKey}
                   role="listitem"
-                  className="bg-muted border-border text-foreground inline-flex max-w-full shrink-0 items-center gap-0.5 rounded-md border px-2 py-[2px] text-xs"
+                  className={CHIP_VISUAL_CLASSES}
                   title={chip.displayLabel}
                 >
-                  <span className="max-w-[min(100%,20rem)] min-w-0 wrap-break-word">
+                  <span className={CHIP_LABEL_CLASSES}>
                     {chip.displayLabel}
                   </span>
                   {editable ? (
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-foreground size-6 shrink-0"
+                      size="icon-xs"
+                      className="-ml-1 shrink-0 opacity-50 hover:opacity-100"
                       aria-label={`Remove ${chip.displayLabel}`}
                       onClick={() => onRemove(chip.chipKey)}
                     >
-                      <X className="size-3.5" aria-hidden />
+                      <X className="pointer-events-none" aria-hidden />
                     </Button>
                   ) : null}
                 </div>
