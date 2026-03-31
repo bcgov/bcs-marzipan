@@ -75,9 +75,9 @@ type SavedFilterDraft = {
 
 const SLOT_GAP_PX = 8;
 const OVERFLOW_BUTTON_RESERVE_PX = 110;
-/** Reserve for the "My filters" trigger when saved filters are enabled (matches filter trigger min width + gap). */
+/** Reserve for the "Saved filters" trigger when saved filters are enabled (matches filter trigger min width + gap). */
 const MY_FILTERS_TRIGGER_RESERVE_PX = 108;
-/** `ml-6` before "My filters" so it stays visually separated from "More". */
+/** `ml-6` before "Saved filters" so it stays visually separated from "More". */
 const MY_FILTERS_LEAD_IN_PX = 24;
 /** Show search + scroll list when saved filter count exceeds this (i.e. length > 6). */
 const SAVED_FILTERS_SEARCH_THRESHOLD = 6;
@@ -218,6 +218,7 @@ function OverflowFilterPopover({
 /** Per-row actions popover for a saved filter (hover or click to open). */
 function SavedFilterRowActionsPopover({
   savedFilter,
+  isDefault,
   hasActiveFilters,
   onUpdate,
   onToggleDefault,
@@ -226,6 +227,7 @@ function SavedFilterRowActionsPopover({
   onDelete,
 }: {
   savedFilter: SavedFilterResponse;
+  isDefault: boolean;
   hasActiveFilters: () => boolean;
   onUpdate: () => void;
   onToggleDefault: () => void;
@@ -292,7 +294,7 @@ function SavedFilterRowActionsPopover({
           )}
           onClick={onToggleDefault}
         >
-          <span>{sf.isDefault ? 'Remove as default' : 'Make default'}</span>
+          <span>{isDefault ? 'Remove as default' : 'Make default'}</span>
         </button>
         <button
           type="button"
@@ -383,8 +385,8 @@ export interface ResponsiveFilterRowProps {
 
 /**
  * Renders as many slot contents as fit in one row; the rest are moved into a
- * "More" / "Filters" when alone (defaults; overridable) popover with overflow filter rows; My filters holds new-filter entry,
- * plus a separate "My filters" popover when saved filters are enabled. Uses ResizeObserver and layout measurement to compute how many slots fit.
+ * "More" / "Filters" when alone (defaults; overridable) popover with overflow filter rows; Saved filters holds new-filter entry,
+ * plus a separate "Saved filters" popover when saved filters are enabled. Uses ResizeObserver and layout measurement to compute how many slots fit.
  */
 export function ResponsiveFilterRow({
   slots,
@@ -707,11 +709,9 @@ export function ResponsiveFilterRow({
   const handleToggleDefault = useCallback(
     async (sf: SavedFilterResponse) => {
       if (!savedFilters) return;
+      const isCurrently = savedFilters.effectiveDefaultSavedFilterId === sf.id;
       try {
-        await savedFilters.updateFilter({
-          id: sf.id,
-          body: { isDefault: !sf.isDefault },
-        });
+        await savedFilters.setDefaultFilter(isCurrently ? null : sf.id);
       } catch {
         // Error toast handled by mutation
       }
@@ -776,7 +776,7 @@ export function ResponsiveFilterRow({
               ) : null}
             </span>
             <span className="min-w-0 truncate">{sf.name}</span>
-            {sf.isDefault && (
+            {savedFilters?.effectiveDefaultSavedFilterId === sf.id && (
               <span className="border-border text-muted-foreground shrink-0 rounded-full border bg-transparent px-1.5 py-1 text-[12px] leading-none font-medium">
                 Default
               </span>
@@ -784,6 +784,7 @@ export function ResponsiveFilterRow({
           </button>
           <SavedFilterRowActionsPopover
             savedFilter={sf}
+            isDefault={savedFilters?.effectiveDefaultSavedFilterId === sf.id}
             hasActiveFilters={hasActiveFilters}
             onUpdate={() => {
               if (!filterState) return;
@@ -818,6 +819,7 @@ export function ResponsiveFilterRow({
       handleToggleDefault,
       handleDuplicateSavedFilter,
       openEditSavedFilterDialog,
+      savedFilters?.effectiveDefaultSavedFilterId,
     ]
   );
 
@@ -1086,9 +1088,9 @@ export function ResponsiveFilterRow({
                         'shrink-0 justify-start gap-1.5',
                         overflowTriggerClassName
                       )}
-                      aria-label="My filters"
+                      aria-label="Saved filters"
                     >
-                      <span className="truncate">My filters</span>
+                      <span className="truncate">Saved filters</span>
                       <ChevronDown className={filterTriggerStyles.chevron} />
                     </button>
                   </PopoverTrigger>
@@ -1147,7 +1149,8 @@ export function ResponsiveFilterRow({
                                 <span className="min-w-0 truncate">
                                   {sf.name}
                                 </span>
-                                {sf.isDefault && (
+                                {savedFilters?.effectiveDefaultSavedFilterId ===
+                                  sf.id && (
                                   <span className="border-border text-muted-foreground shrink-0 rounded-full border bg-transparent px-1.5 py-1 text-[12px] leading-none font-medium">
                                     Default
                                   </span>
@@ -1155,6 +1158,10 @@ export function ResponsiveFilterRow({
                               </button>
                               <SavedFilterRowActionsPopover
                                 savedFilter={sf}
+                                isDefault={
+                                  savedFilters?.effectiveDefaultSavedFilterId ===
+                                  sf.id
+                                }
                                 hasActiveFilters={hasActiveFilters}
                                 onUpdate={() => {
                                   if (!filterState) return;

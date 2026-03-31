@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import type {
   CreateSavedFilterBody,
@@ -12,9 +12,11 @@ import {
   deleteSavedFilter,
   duplicateSavedFilter,
   listSavedFilters,
+  setMyDefaultSavedFilter,
   updateSavedFilter,
 } from '@/api/savedFiltersApi';
 import { showErrorToast } from '@/lib/error-toast';
+import { resolveEffectiveDefaultSavedFilterId } from '@/lib/savedFilterDefaultResolve';
 
 function savedFilterQueryKey(contextKey: string) {
   return ['activity-saved-filters', contextKey] as const;
@@ -23,13 +25,32 @@ function savedFilterQueryKey(contextKey: string) {
 export function useSavedFilters(contextKey: string | null) {
   const queryClient = useQueryClient();
 
-  const { data: savedFilters = [], isLoading } = useQuery({
+  const { data: listData, isLoading } = useQuery({
     queryKey: savedFilterQueryKey(contextKey ?? ''),
     queryFn: () => listSavedFilters(contextKey!),
     enabled: contextKey != null && contextKey.length > 0,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
+
+  const savedFilters = listData?.filters ?? [];
+  const defaultSavedFilterIdFromApi = listData?.defaultSavedFilterId ?? null;
+
+  const effectiveDefaultSavedFilterId = useMemo(
+    () =>
+      resolveEffectiveDefaultSavedFilterId(
+        savedFilters,
+        defaultSavedFilterIdFromApi
+      ),
+    [savedFilters, defaultSavedFilterIdFromApi]
+  );
+
+  const defaultFilter = useMemo(() => {
+    if (effectiveDefaultSavedFilterId == null) return null;
+    return (
+      savedFilters.find((f) => f.id === effectiveDefaultSavedFilterId) ?? null
+    );
+  }, [savedFilters, effectiveDefaultSavedFilterId]);
 
   const invalidate = useCallback(() => {
     if (contextKey) {
@@ -90,20 +111,46 @@ export function useSavedFilters(contextKey: string | null) {
     },
   });
 
-  const defaultFilter = savedFilters.find((f) => f.isDefault) ?? null;
+  const setDefaultMutation = useMutation({
+    mutationFn: (savedFilterId: number | null) => {
+      if (!contextKey) {
+        return Promise.reject(new Error('Missing context'));
+      }
+      return setMyDefaultSavedFilter({
+        contextKey,
+        savedFilterId,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Default filter updated');
+    },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to update default filter');
+    },
+  });
+
+  const setDefaultFilter = useCallback(
+    (savedFilterId: number | null) =>
+      setDefaultMutation.mutateAsync(savedFilterId),
+    [setDefaultMutation]
+  );
 
   return {
     savedFilters,
     isLoading,
     defaultFilter,
+    effectiveDefaultSavedFilterId,
     createFilter: createMutation.mutateAsync,
     updateFilter: updateMutation.mutateAsync,
     duplicateFilter: duplicateMutation.mutateAsync,
     deleteFilter: deleteMutation.mutateAsync,
+    setDefaultFilter,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDuplicating: duplicateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isSettingDefault: setDefaultMutation.isPending,
     invalidate,
   };
 }

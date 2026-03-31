@@ -18,6 +18,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   useCallback,
   useEffect,
@@ -100,8 +101,10 @@ import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import {
   sanitizeSavedFilterPayload,
   type SavedFilterPayload,
+  type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
 import {
@@ -681,36 +684,9 @@ export function ActivityTable({
   useEffect(() => {
     if (!savedFilterContextKey) {
       setActiveSavedFilter(null);
-      return;
+      defaultAppliedRef.current = null;
     }
-    if (defaultAppliedRef.current === savedFilterContextKey) return;
-    if (hasAnyKnownParam(currentSearchParams)) {
-      defaultAppliedRef.current = savedFilterContextKey;
-      setActiveSavedFilter(null);
-      return;
-    }
-    const defaultFilter = savedFiltersHook.defaultFilter;
-    if (!defaultFilter) {
-      setActiveSavedFilter(null);
-      return;
-    }
-
-    defaultAppliedRef.current = savedFilterContextKey;
-    const { filterState: sanitized, searchKeyword: kw } =
-      sanitizeSavedFilterPayload(
-        defaultFilter as unknown as SavedFilterPayload
-      );
-    setPreferences({ filterState: sanitized, searchKeyword: kw });
-    setActiveSavedFilter({
-      id: defaultFilter.id,
-      name: defaultFilter.name,
-    });
-  }, [
-    savedFilterContextKey,
-    savedFiltersHook.defaultFilter,
-    currentSearchParams,
-    setPreferences,
-  ]);
+  }, [savedFilterContextKey]);
 
   useEffect(() => {
     if (activeSavedFilter == null || !savedFilterContextKey) return;
@@ -854,6 +830,86 @@ export function ActivityTable({
       })),
     [translationRequiredStatusesForFilter]
   );
+
+  const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
+    const nums = (options: OptionItem[]) =>
+      new Set(
+        options
+          .map((o) => parseInt(o.value, 10))
+          .filter((n) => Number.isFinite(n))
+      );
+    return {
+      statusIds: nums(statusOptions),
+      tagIds: nums(tagOptions),
+      ministryIds: nums(ministryOptions),
+      orgIds: nums(organizationOptions),
+      commsContactUserIds: nums(commsContactOptions),
+      eventPlannerIds: nums(eventPlannerOptions),
+      translationStatusIds: nums(translationStatusOptions),
+      translationLanguageIds: nums(translationOptions),
+    };
+  }, [
+    statusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const savedFilterDefaultLookupsReady =
+    activityStatusesForFilter.length > 0 && !savedFiltersHook.isLoading;
+
+  useEffect(() => {
+    if (!savedFilterContextKey) {
+      return;
+    }
+    if (!savedFilterDefaultLookupsReady) {
+      return;
+    }
+    if (defaultAppliedRef.current === savedFilterContextKey) return;
+    if (hasAnyKnownParam(currentSearchParams)) {
+      defaultAppliedRef.current = savedFilterContextKey;
+      setActiveSavedFilter(null);
+      return;
+    }
+    const defaultFilter = savedFiltersHook.defaultFilter;
+    if (!defaultFilter) {
+      setActiveSavedFilter(null);
+      defaultAppliedRef.current = savedFilterContextKey;
+      return;
+    }
+
+    defaultAppliedRef.current = savedFilterContextKey;
+    const {
+      filterState: sanitized,
+      searchKeyword: kw,
+      hadInvalidValues,
+    } = sanitizeSavedFilterPayload(
+      defaultFilter as unknown as SavedFilterPayload,
+      validFilterLookupsForDefaultApply
+    );
+    setPreferences({ filterState: sanitized, searchKeyword: kw });
+    setActiveSavedFilter({
+      id: defaultFilter.id,
+      name: defaultFilter.name,
+    });
+    if (hadInvalidValues) {
+      toast.warning(
+        'Some filter values are no longer available and were skipped.'
+      );
+    }
+  }, [
+    savedFilterContextKey,
+    savedFiltersHook.defaultFilter,
+    savedFiltersHook.isLoading,
+    currentSearchParams,
+    setPreferences,
+    validFilterLookupsForDefaultApply,
+    savedFilterDefaultLookupsReady,
+  ]);
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
   const statusFilterIncludesCompleted =

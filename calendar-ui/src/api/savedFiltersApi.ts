@@ -3,6 +3,7 @@ import type {
   DuplicateSavedFilterBody,
   SavedFilterListResponse,
   SavedFilterResponse,
+  SetMyDefaultSavedFilterBody,
   UpdateSavedFilterBody,
 } from '@corpcal/shared/schemas';
 
@@ -13,7 +14,7 @@ const logger = createLogger('SavedFiltersAPI');
 
 export async function listSavedFilters(
   contextKey: string
-): Promise<SavedFilterResponse[]> {
+): Promise<SavedFilterListResponse> {
   logger.debug('Listing saved filters', { contextKey });
 
   const res = await api.get<{
@@ -21,7 +22,23 @@ export async function listSavedFilters(
     data: SavedFilterListResponse;
   }>('/activity-saved-filters', { params: { contextKey } });
 
-  return res.data.data.filters;
+  return res.data.data;
+}
+
+export async function setMyDefaultSavedFilter(
+  body: SetMyDefaultSavedFilterBody
+): Promise<{ defaultSavedFilterId: number | null }> {
+  logger.debug('Setting my default saved filter', {
+    contextKey: body.contextKey,
+    savedFilterId: body.savedFilterId,
+  });
+
+  const res = await api.patch<{
+    success: boolean;
+    data: { defaultSavedFilterId: number | null };
+  }>('/activity-saved-filters/my-default', body);
+
+  return res.data.data;
 }
 
 export async function createSavedFilter(
