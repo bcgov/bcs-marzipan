@@ -422,7 +422,7 @@ export class SavedFiltersService {
 
     if (existing) {
       throw new ConflictException(
-        `A saved filter named "${name}" already exists in this context`
+        'A saved filter with this name already exists'
       );
     }
   }

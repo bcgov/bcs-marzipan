@@ -5,6 +5,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -40,6 +41,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { MenuDivider } from '@/components/ui/menu-divider';
 import {
   Popover,
@@ -65,6 +67,10 @@ import {
   type ActivityFilterSummaryContext,
 } from '@/lib/activity-filter-summary';
 import { applySavedFilterSelection } from '@/lib/savedFilterApply';
+import {
+  isSavedFilterDuplicateNameConflict,
+  SAVED_FILTER_DUPLICATE_NAME_INLINE,
+} from '@/lib/savedFilterDuplicateName';
 import { cn } from '@/lib/utils';
 
 /** Draft filter + keyword for save/update/edit dialogs (chip editing). */
@@ -421,6 +427,12 @@ export function ResponsiveFilterRow({
   // Saved filter dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createName, setCreateName] = useState('');
+  const [createNameError, setCreateNameError] = useState<string | null>(null);
+  const [editNameError, setEditNameError] = useState<string | null>(null);
+  const createSavedFilterNameFieldId = useId();
+  const createSavedFilterNameErrorId = `${createSavedFilterNameFieldId}-error`;
+  const editSavedFilterNameFieldId = useId();
+  const editSavedFilterNameErrorId = `${editSavedFilterNameFieldId}-error`;
   const [updateDialogFilter, setUpdateDialogFilter] =
     useState<SavedFilterResponse | null>(null);
   const [editDialogFilter, setEditDialogFilter] =
@@ -563,6 +575,7 @@ export function ResponsiveFilterRow({
       return;
     }
     setCreatePayloadError(null);
+    setCreateNameError(null);
     try {
       await savedFilters.createFilter({
         contextKey,
@@ -576,8 +589,10 @@ export function ResponsiveFilterRow({
       setCreateDialogOpen(false);
       setCreateName('');
       setCreateDraft(null);
-    } catch {
-      // Error toast handled by mutation
+    } catch (err) {
+      if (isSavedFilterDuplicateNameConflict(err)) {
+        setCreateNameError(SAVED_FILTER_DUPLICATE_NAME_INLINE);
+      }
     }
   }, [savedFilters, contextKey, createDraft, createName]);
 
@@ -657,6 +672,7 @@ export function ResponsiveFilterRow({
       return;
     }
     setEditPayloadError(null);
+    setEditNameError(null);
     try {
       await savedFilters.updateFilter({
         id: editDialogFilter.id,
@@ -673,7 +689,10 @@ export function ResponsiveFilterRow({
       setEditDialogFilter(null);
       setEditFilterName('');
       setEditDraft(null);
-    } catch {
+    } catch (err) {
+      if (isSavedFilterDuplicateNameConflict(err)) {
+        setEditNameError(SAVED_FILTER_DUPLICATE_NAME_INLINE);
+      }
       restoreEditDraftFromBaseline();
     }
   }, [
@@ -722,6 +741,7 @@ export function ResponsiveFilterRow({
   const openCreateSavedFilterDialog = useCallback(() => {
     if (!filterState) return;
     setCreatePayloadError(null);
+    setCreateNameError(null);
     setCreateDraft({
       filterState: structuredClone(filterState),
       searchKeyword: searchKeyword ?? '',
@@ -740,6 +760,7 @@ export function ResponsiveFilterRow({
         name: sf.name,
       };
       setEditPayloadError(null);
+      setEditNameError(null);
       setEditDraft({
         filterState: parsed.filterState,
         searchKeyword: parsed.searchKeyword,
@@ -1247,6 +1268,7 @@ export function ResponsiveFilterRow({
             setCreateDraft(null);
             setCreateName('');
             setCreatePayloadError(null);
+            setCreateNameError(null);
           }
         }}
       >
@@ -1269,19 +1291,37 @@ export function ResponsiveFilterRow({
             </p>
           ) : null}
           <div className="space-y-3">
-            <Input
-              placeholder="Filter name"
-              value={createName}
-              onChange={(e) => {
-                setCreatePayloadError(null);
-                setCreateName(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleCreateSavedFilter();
-              }}
-              maxLength={80}
-              autoFocus
-            />
+            <div className="space-y-2">
+              <Label htmlFor={createSavedFilterNameFieldId}>Filter name</Label>
+              <Input
+                id={createSavedFilterNameFieldId}
+                placeholder="e.g. My open activities"
+                value={createName}
+                aria-invalid={createNameError != null}
+                aria-describedby={
+                  createNameError ? createSavedFilterNameErrorId : undefined
+                }
+                onChange={(e) => {
+                  setCreatePayloadError(null);
+                  setCreateNameError(null);
+                  setCreateName(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleCreateSavedFilter();
+                }}
+                maxLength={80}
+                autoFocus
+              />
+              {createNameError ? (
+                <p
+                  id={createSavedFilterNameErrorId}
+                  className="text-destructive text-sm font-medium"
+                  role="alert"
+                >
+                  {createNameError}
+                </p>
+              ) : null}
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -1356,6 +1396,7 @@ export function ResponsiveFilterRow({
             setEditFilterName('');
             setEditDraft(null);
             setEditPayloadError(null);
+            setEditNameError(null);
             editBaselineRef.current = null;
           }
         }}
@@ -1379,19 +1420,37 @@ export function ResponsiveFilterRow({
             </p>
           ) : null}
           <div className="space-y-3">
-            <Input
-              placeholder="Filter name"
-              value={editFilterName}
-              onChange={(e) => {
-                setEditPayloadError(null);
-                setEditFilterName(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleEditSavedFilter();
-              }}
-              maxLength={80}
-              autoFocus
-            />
+            <div className="space-y-2">
+              <Label htmlFor={editSavedFilterNameFieldId}>Filter name</Label>
+              <Input
+                id={editSavedFilterNameFieldId}
+                placeholder="Filter name"
+                value={editFilterName}
+                aria-invalid={editNameError != null}
+                aria-describedby={
+                  editNameError ? editSavedFilterNameErrorId : undefined
+                }
+                onChange={(e) => {
+                  setEditPayloadError(null);
+                  setEditNameError(null);
+                  setEditFilterName(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleEditSavedFilter();
+                }}
+                maxLength={80}
+                autoFocus
+              />
+              {editNameError ? (
+                <p
+                  id={editSavedFilterNameErrorId}
+                  className="text-destructive text-sm font-medium"
+                  role="alert"
+                >
+                  {editNameError}
+                </p>
+              ) : null}
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -1399,6 +1458,7 @@ export function ResponsiveFilterRow({
               onClick={() => {
                 setEditDialogFilter(null);
                 setEditFilterName('');
+                setEditNameError(null);
               }}
             >
               Cancel

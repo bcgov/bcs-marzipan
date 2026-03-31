@@ -17,6 +17,7 @@ import {
 } from '@/api/savedFiltersApi';
 import { showErrorToast } from '@/lib/error-toast';
 import { resolveEffectiveDefaultSavedFilterId } from '@/lib/savedFilterDefaultResolve';
+import { isSavedFilterDuplicateNameConflict } from '@/lib/savedFilterDuplicateName';
 
 function savedFilterQueryKey(contextKey: string) {
   return ['activity-saved-filters', contextKey] as const;
@@ -67,6 +68,7 @@ export function useSavedFilters(contextKey: string | null) {
       toast.success(`Saved filter "${variables.name}" created`);
     },
     onError: (error) => {
+      if (isSavedFilterDuplicateNameConflict(error)) return;
       showErrorToast(error, 'Failed to create saved filter');
     },
   });
@@ -79,6 +81,7 @@ export function useSavedFilters(contextKey: string | null) {
       toast.success('Saved filter updated');
     },
     onError: (error) => {
+      if (isSavedFilterDuplicateNameConflict(error)) return;
       showErrorToast(error, 'Failed to update saved filter');
     },
   });
