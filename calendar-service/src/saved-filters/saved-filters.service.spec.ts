@@ -53,6 +53,7 @@ describe('SavedFiltersService', () => {
       update: vi.fn().mockReturnThis(),
       set: vi.fn().mockReturnThis(),
       delete: vi.fn().mockReturnThis(),
+      transaction: vi.fn(),
     },
   };
 
@@ -70,6 +71,9 @@ describe('SavedFiltersService', () => {
     db.update.mockReturnValue(db);
     db.set.mockReturnValue(db);
     db.delete.mockReturnValue(db);
+    db.transaction.mockImplementation((callback) =>
+      Promise.resolve(callback(db))
+    );
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SavedFiltersService,
@@ -362,6 +366,81 @@ describe('SavedFiltersService', () => {
     });
   });
 
+  describe('setMyDefault', () => {
+    it('should clear default when savedFilterId is null', async () => {
+      await expect(service.setMyDefault(10, 'all', null, [])).resolves.toEqual({
+        defaultSavedFilterId: null,
+      });
+
+      expect(mockDatabaseService.db.delete).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when saved filter does not exist', async () => {
+      const selectChain = createChain([], 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(selectChain);
+      selectChain.from.mockReturnValue(selectChain);
+      selectChain.where.mockReturnValue(selectChain);
+
+      await expect(service.setMyDefault(10, 'all', 999, [])).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw BadRequestException when context does not match', async () => {
+      const row = makeSavedFilterRow({ id: 7, contextKey: 'my-activities' });
+      const selectChain = createChain(row, 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(selectChain);
+      selectChain.from.mockReturnValue(selectChain);
+      selectChain.where.mockReturnValue(selectChain);
+
+      await expect(service.setMyDefault(10, 'all', 7, [])).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('should throw ForbiddenException when team-scoped filter is not visible', async () => {
+      const row = makeSavedFilterRow({
+        id: 8,
+        scopeType: 'team',
+        scopeTeamId: 42,
+        ownerUserId: 99,
+      });
+      const selectChain = createChain(row, 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(selectChain);
+      selectChain.from.mockReturnValue(selectChain);
+      selectChain.where.mockReturnValue(selectChain);
+
+      await expect(service.setMyDefault(10, 'all', 8, [5])).rejects.toThrow(
+        ForbiddenException
+      );
+    });
+
+    it('should replace existing default in transaction for visible filter', async () => {
+      const row = makeSavedFilterRow({ id: 11, ownerUserId: 10 });
+      const selectChain = createChain(row, 'limit');
+      mockDatabaseService.db.select.mockReturnValueOnce(selectChain);
+      selectChain.from.mockReturnValue(selectChain);
+      selectChain.where.mockReturnValue(selectChain);
+
+      const txChain = {
+        delete: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockResolvedValue(undefined),
+      };
+      mockDatabaseService.db.transaction.mockImplementationOnce((callback) =>
+        Promise.resolve(callback(txChain))
+      );
+
+      await expect(service.setMyDefault(10, 'all', 11, [])).resolves.toEqual({
+        defaultSavedFilterId: 11,
+      });
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalled();
+      expect(txChain.delete).toHaveBeenCalled();
+      expect(txChain.insert).toHaveBeenCalled();
+    });
+  });
+
   describe('findOwnedOrFail', () => {
     it('should throw NotFoundException when filter does not exist', async () => {
       const chain = createChain([], 'limit');
@@ -400,6 +479,7 @@ describe('SavedFiltersService', () => {
       await service.remove(10, 1);
 
       expect(mockDatabaseService.db.update).toHaveBeenCalled();
+      expect(mockDatabaseService.db.delete).toHaveBeenCalled();
     });
   });
 });

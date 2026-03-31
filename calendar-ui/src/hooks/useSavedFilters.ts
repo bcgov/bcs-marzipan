@@ -5,6 +5,7 @@ import { useCallback, useMemo } from 'react';
 import type {
   CreateSavedFilterBody,
   DuplicateSavedFilterBody,
+  SavedFilterResponse,
   UpdateSavedFilterBody,
 } from '@corpcal/shared/schemas';
 import {
@@ -23,6 +24,8 @@ function savedFilterQueryKey(contextKey: string) {
   return ['activity-saved-filters', contextKey] as const;
 }
 
+const EMPTY_SAVED_FILTERS: SavedFilterResponse[] = [];
+
 export function useSavedFilters(contextKey: string | null) {
   const queryClient = useQueryClient();
 
@@ -34,7 +37,11 @@ export function useSavedFilters(contextKey: string | null) {
     refetchOnWindowFocus: false,
   });
 
-  const savedFilters = listData?.filters ?? [];
+  const savedFiltersFromApi = listData?.filters;
+  const savedFilters = useMemo(
+    () => savedFiltersFromApi ?? EMPTY_SAVED_FILTERS,
+    [savedFiltersFromApi]
+  );
   const defaultSavedFilterIdFromApi = listData?.defaultSavedFilterId ?? null;
 
   const effectiveDefaultSavedFilterId = useMemo(
