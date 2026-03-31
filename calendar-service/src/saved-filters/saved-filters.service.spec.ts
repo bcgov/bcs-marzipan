@@ -87,7 +87,6 @@ describe('SavedFiltersService', () => {
     name: 'My filter',
     filterState: { categoryNames: ['Event'] },
     searchKeyword: 'test',
-    isDefault: false,
     sortOrder: 0,
     isActive: true,
     scopeType: 'user',
@@ -101,14 +100,20 @@ describe('SavedFiltersService', () => {
     it('should return saved filters for user with no team visibility', async () => {
       const row = makeSavedFilterRow();
       const chain = createChain([row], 'orderBy');
-      mockDatabaseService.db.select.mockReturnValueOnce(chain);
+      const defaultChain = createChain([], 'limit');
+      mockDatabaseService.db.select
+        .mockReturnValueOnce(chain)
+        .mockReturnValueOnce(defaultChain);
       chain.from.mockReturnValue(chain);
       chain.where.mockReturnValue(chain);
+      defaultChain.from.mockReturnValue(defaultChain);
+      defaultChain.where.mockReturnValue(defaultChain);
 
       const result = await service.listByContext(10, 'all', []);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual(
+      expect(result.filters).toHaveLength(1);
+      expect(result.defaultSavedFilterId).toBeNull();
+      expect(result.filters[0]).toEqual(
         expect.objectContaining({
           id: 1,
           name: 'My filter',
@@ -133,13 +138,18 @@ describe('SavedFiltersService', () => {
         scopeTeamId: null,
       });
       const chain = createChain([userRow, teamRow, globalRow], 'orderBy');
-      mockDatabaseService.db.select.mockReturnValueOnce(chain);
+      const defaultChain = createChain([], 'limit');
+      mockDatabaseService.db.select
+        .mockReturnValueOnce(chain)
+        .mockReturnValueOnce(defaultChain);
       chain.from.mockReturnValue(chain);
       chain.where.mockReturnValue(chain);
+      defaultChain.from.mockReturnValue(defaultChain);
+      defaultChain.where.mockReturnValue(defaultChain);
 
       const result = await service.listByContext(10, 'all', [5]);
 
-      expect(result).toHaveLength(3);
+      expect(result.filters).toHaveLength(3);
     });
   });
 
@@ -149,9 +159,14 @@ describe('SavedFiltersService', () => {
 
       // assertNameUnique: no existing with same name
       const nameCheckChain = createChain([], 'limit');
-      mockDatabaseService.db.select.mockReturnValueOnce(nameCheckChain);
+      const defaultIdChain = createChain([], 'limit');
+      mockDatabaseService.db.select
+        .mockReturnValueOnce(nameCheckChain)
+        .mockReturnValueOnce(defaultIdChain);
       nameCheckChain.from.mockReturnValue(nameCheckChain);
       nameCheckChain.where.mockReturnValue(nameCheckChain);
+      defaultIdChain.from.mockReturnValue(defaultIdChain);
+      defaultIdChain.where.mockReturnValue(defaultIdChain);
 
       // insert
       const insertChain = createChain(row, 'limit');
@@ -257,9 +272,14 @@ describe('SavedFiltersService', () => {
       });
 
       const nameCheckChain = createChain([], 'limit');
-      mockDatabaseService.db.select.mockReturnValueOnce(nameCheckChain);
+      const defaultIdChain = createChain([], 'limit');
+      mockDatabaseService.db.select
+        .mockReturnValueOnce(nameCheckChain)
+        .mockReturnValueOnce(defaultIdChain);
       nameCheckChain.from.mockReturnValue(nameCheckChain);
       nameCheckChain.where.mockReturnValue(nameCheckChain);
+      defaultIdChain.from.mockReturnValue(defaultIdChain);
+      defaultIdChain.where.mockReturnValue(defaultIdChain);
 
       const insertChain = createChain(row, 'limit');
       mockDatabaseService.db.insert.mockReturnValueOnce(insertChain);
@@ -310,14 +330,21 @@ describe('SavedFiltersService', () => {
     it('should allow name-only update without merged empty check', async () => {
       const row = makeSavedFilterRow();
       const findChain = createChain(row, 'limit');
-      mockDatabaseService.db.select.mockReturnValueOnce(findChain);
       findChain.from.mockReturnValue(findChain);
       findChain.where.mockReturnValue(findChain);
 
       const nameCheckChain = createChain([], 'limit');
-      mockDatabaseService.db.select.mockReturnValueOnce(nameCheckChain);
       nameCheckChain.from.mockReturnValue(nameCheckChain);
       nameCheckChain.where.mockReturnValue(nameCheckChain);
+
+      const defaultIdChain = createChain([], 'limit');
+      defaultIdChain.from.mockReturnValue(defaultIdChain);
+      defaultIdChain.where.mockReturnValue(defaultIdChain);
+
+      mockDatabaseService.db.select
+        .mockReturnValueOnce(findChain)
+        .mockReturnValueOnce(nameCheckChain)
+        .mockReturnValueOnce(defaultIdChain);
 
       const updated = { ...row, name: 'Renamed unique 701' };
       const updateChain = {

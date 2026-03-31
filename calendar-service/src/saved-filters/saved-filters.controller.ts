@@ -33,12 +33,14 @@ import {
   DuplicateSavedFilterDto,
   SavedFilterListResponseDto,
   SavedFilterResponseDto,
+  SetMyDefaultSavedFilterDto,
   UpdateSavedFilterDto,
 } from './dto/saved-filter.dto';
 import {
   createSavedFilterBodySchema,
   duplicateSavedFilterBodySchema,
   savedFilterQuerySchema,
+  setMyDefaultSavedFilterBodySchema,
   updateSavedFilterBodySchema,
 } from './dto/saved-filter.schema';
 import { SavedFiltersService } from './saved-filters.service';
@@ -84,12 +86,16 @@ export class SavedFiltersController {
         'Query parameter contextKey is required and must be 1–100 characters.'
       );
     }
-    const filters = await this.savedFiltersService.listByContext(
-      user.id,
-      parsed.data.contextKey,
-      user.teamIds ?? []
-    );
-    return { success: true, data: { filters, count: filters.length } };
+    const { filters, defaultSavedFilterId } =
+      await this.savedFiltersService.listByContext(
+        user.id,
+        parsed.data.contextKey,
+        user.teamIds ?? []
+      );
+    return {
+      success: true,
+      data: { filters, count: filters.length, defaultSavedFilterId },
+    };
   }
 
   @ApiOperation({
@@ -120,17 +126,57 @@ export class SavedFiltersController {
       });
       return { success: true, data };
     } catch (error: unknown) {
-      const msg =
-        error instanceof Error ? error.stack || error.message : String(error);
-      this.logger.error(`Failed to create saved filter: ${msg}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create saved filter: ${message}`);
       throw error;
     }
   }
 
   @ApiOperation({
+    summary: 'Set or clear my default saved filter for a context',
+    description:
+      'Persists which saved filter is applied on load for this user and activity list tab. Does not modify shared preset rows.',
+  })
+  @ApiBody({ type: SetMyDefaultSavedFilterDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Default updated',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            defaultSavedFilterId: { type: 'number', nullable: true },
+          },
+        },
+      },
+    },
+  })
+  @RequirePermission('savedFilters.view')
+  @Patch('my-default')
+  async setMyDefault(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(setMyDefaultSavedFilterBodySchema))
+    body: SetMyDefaultSavedFilterDto
+  ): Promise<{
+    success: boolean;
+    data: { defaultSavedFilterId: number | null };
+  }> {
+    const data = await this.savedFiltersService.setMyDefault(
+      user.id,
+      body.contextKey,
+      body.savedFilterId,
+      user.teamIds ?? []
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({
     summary: 'Update a saved filter',
     description:
-      'Updates name, filter payload, search keyword, or default status of a saved filter.',
+      'Updates name, filter payload, search keyword, or sharing scope of a saved filter.',
   })
   @ApiParam({ name: 'id', type: Number })
   @ApiBody({ type: UpdateSavedFilterDto })
@@ -176,7 +222,10 @@ export class SavedFiltersController {
     body: DuplicateSavedFilterDto
   ): Promise<{ success: boolean; data: SavedFilterResponseDto }> {
     this.logger.log(`Duplicating saved filter ${id} for user ${user.id}`);
-    const data = await this.savedFiltersService.duplicate(user.id, id, body);
+    const { scopeType, row } =
+      await this.savedFiltersService.getOwnedFilterForDuplicate(user.id, id);
+    this.assertScopePermission(user, scopeType);
+    const data = await this.savedFiltersService.duplicate(user.id, body, row);
     return { success: true, data };
   }
 

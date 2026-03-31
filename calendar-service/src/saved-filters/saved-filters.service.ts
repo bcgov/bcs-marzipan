@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { desc, SQL } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 
 import { and, eq, schema, sql } from '@corpcal/database';
 import {
@@ -22,7 +22,7 @@ import type {
   UpdateSavedFilterBody,
 } from './dto/saved-filter.schema';
 
-const { activitySavedFilters } = schema;
+const { activitySavedFilters, userActivitySavedFilterDefaults } = schema;
 
 type SavedFilterRow = typeof activitySavedFilters.$inferSelect;
 type SavedFilterScopeType = 'user' | 'team' | 'global';
@@ -46,7 +46,10 @@ export class SavedFiltersService {
     userId: number,
     contextKey: string,
     teamIds: number[]
-  ): Promise<SavedFilterResponse[]> {
+  ): Promise<{
+    filters: SavedFilterResponse[];
+    defaultSavedFilterId: number | null;
+  }> {
     const conditions: SQL[] = [
       eq(activitySavedFilters.contextKey, contextKey),
       eq(activitySavedFilters.isActive, true),
@@ -70,11 +73,7 @@ export class SavedFiltersService {
         .select()
         .from(activitySavedFilters)
         .where(and(...conditions, visibilityFilter))
-        .orderBy(
-          desc(activitySavedFilters.isDefault),
-          activitySavedFilters.sortOrder,
-          activitySavedFilters.name
-        );
+        .orderBy(activitySavedFilters.sortOrder, activitySavedFilters.name);
     } else {
       rows = await this.db.db
         .select()
@@ -89,14 +88,71 @@ export class SavedFiltersService {
             )`
           )
         )
-        .orderBy(
-          desc(activitySavedFilters.isDefault),
-          activitySavedFilters.sortOrder,
-          activitySavedFilters.name
-        );
+        .orderBy(activitySavedFilters.sortOrder, activitySavedFilters.name);
     }
 
-    return rows.map((row) => this.mapToResponse(row));
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
+      userId,
+      contextKey
+    );
+
+    return {
+      filters: rows.map((row) => this.mapToResponse(row, defaultSavedFilterId)),
+      defaultSavedFilterId,
+    };
+  }
+
+  async setMyDefault(
+    userId: number,
+    contextKey: string,
+    savedFilterId: number | null,
+    teamIds: number[]
+  ): Promise<{ defaultSavedFilterId: number | null }> {
+    if (savedFilterId == null) {
+      await this.db.db
+        .delete(userActivitySavedFilterDefaults)
+        .where(
+          and(
+            eq(userActivitySavedFilterDefaults.userId, userId),
+            eq(userActivitySavedFilterDefaults.contextKey, contextKey)
+          )
+        );
+      return { defaultSavedFilterId: null };
+    }
+
+    const row = await this.findActiveFilterById(savedFilterId);
+    if (!row) {
+      throw new NotFoundException(`Saved filter ${savedFilterId} not found`);
+    }
+    if (row.contextKey !== contextKey) {
+      throw new BadRequestException(
+        'Saved filter does not belong to this activity list context'
+      );
+    }
+    if (!this.isSavedFilterVisibleToUser(row, userId, teamIds)) {
+      throw new ForbiddenException(
+        'You cannot use this saved filter as your default'
+      );
+    }
+
+    await this.db.db.transaction(async (tx) => {
+      await tx
+        .delete(userActivitySavedFilterDefaults)
+        .where(
+          and(
+            eq(userActivitySavedFilterDefaults.userId, userId),
+            eq(userActivitySavedFilterDefaults.contextKey, contextKey)
+          )
+        );
+      await tx.insert(userActivitySavedFilterDefaults).values({
+        userId,
+        contextKey,
+        savedFilterId,
+        updatedAt: new Date(),
+      });
+    });
+
+    return { defaultSavedFilterId: savedFilterId };
   }
 
   async create(
@@ -120,10 +176,6 @@ export class SavedFiltersService {
       resolvedScope
     );
 
-    if (body.isDefault) {
-      await this.clearDefaultForContext(userId, body.contextKey, resolvedScope);
-    }
-
     const [row] = await this.db.db
       .insert(activitySavedFilters)
       .values({
@@ -132,7 +184,6 @@ export class SavedFiltersService {
         name: trimmedName,
         filterState: body.filterState,
         searchKeyword: body.searchKeyword ?? '',
-        isDefault: body.isDefault ?? false,
         scopeType: resolvedScope.scopeType,
         scopeTeamId: resolvedScope.scopeTeamId,
       })
@@ -142,7 +193,11 @@ export class SavedFiltersService {
       `Created saved filter ${row.id} "${trimmedName}" for user ${userId} in context ${body.contextKey}`
     );
 
-    return this.mapToResponse(row);
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
+      userId,
+      body.contextKey
+    );
+    return this.mapToResponse(row, defaultSavedFilterId);
   }
 
   async update(
@@ -187,21 +242,12 @@ export class SavedFiltersService {
       }
     }
 
-    if (body.isDefault === true) {
-      await this.clearDefaultForContext(
-        userId,
-        existing.contextKey,
-        resolvedScope
-      );
-    }
-
     const setClause: Record<string, unknown> = { updatedAt: new Date() };
     if (body.name !== undefined) setClause.name = body.name.trim();
     if (body.filterState !== undefined)
       setClause.filterState = body.filterState;
     if (body.searchKeyword !== undefined)
       setClause.searchKeyword = body.searchKeyword;
-    if (body.isDefault !== undefined) setClause.isDefault = body.isDefault;
     if (body.scopeType !== undefined)
       setClause.scopeType = resolvedScope.scopeType;
     if (body.scopeTeamId !== undefined)
@@ -215,16 +261,29 @@ export class SavedFiltersService {
 
     this.logger.log(`Updated saved filter ${filterId} for user ${userId}`);
 
-    return this.mapToResponse(row);
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
+      userId,
+      row.contextKey
+    );
+    return this.mapToResponse(row, defaultSavedFilterId);
+  }
+
+  /**
+   * Loads a saved filter the user owns (for share-permission check before duplicate).
+   */
+  async getOwnedFilterForDuplicate(
+    userId: number,
+    filterId: number
+  ): Promise<{ scopeType: SavedFilterScopeType; row: SavedFilterRow }> {
+    const row = await this.findOwnedOrFail(userId, filterId);
+    return { scopeType: row.scopeType as SavedFilterScopeType, row };
   }
 
   async duplicate(
     userId: number,
-    filterId: number,
-    body: DuplicateSavedFilterBody
+    body: DuplicateSavedFilterBody,
+    existing: SavedFilterRow
   ): Promise<SavedFilterResponse> {
-    const existing = await this.findOwnedOrFail(userId, filterId);
-
     const baseName = body.name?.trim() || `${existing.name} (copy)`;
     const name = await this.generateUniqueName(
       userId,
@@ -244,17 +303,20 @@ export class SavedFiltersService {
         name,
         filterState: existing.filterState,
         searchKeyword: existing.searchKeyword,
-        isDefault: false,
         scopeType: existing.scopeType,
         scopeTeamId: existing.scopeTeamId,
       })
       .returning();
 
     this.logger.log(
-      `Duplicated saved filter ${filterId} as ${row.id} for user ${userId}`
+      `Duplicated saved filter ${existing.id} as ${row.id} for user ${userId}`
     );
 
-    return this.mapToResponse(row);
+    const defaultSavedFilterId = await this.getUserDefaultSavedFilterId(
+      userId,
+      existing.contextKey
+    );
+    return this.mapToResponse(row, defaultSavedFilterId);
   }
 
   async remove(userId: number, filterId: number): Promise<void> {
@@ -265,12 +327,35 @@ export class SavedFiltersService {
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(activitySavedFilters.id, filterId));
 
+    await this.db.db
+      .delete(userActivitySavedFilterDefaults)
+      .where(eq(userActivitySavedFilterDefaults.savedFilterId, filterId));
+
     this.logger.log(`Soft-deleted saved filter ${filterId} for user ${userId}`);
   }
 
   // ------------------------------------------------------------------
   // Internal helpers
   // ------------------------------------------------------------------
+
+  private async getUserDefaultSavedFilterId(
+    userId: number,
+    contextKey: string
+  ): Promise<number | null> {
+    const [defaultRow] = await this.db.db
+      .select({
+        savedFilterId: userActivitySavedFilterDefaults.savedFilterId,
+      })
+      .from(userActivitySavedFilterDefaults)
+      .where(
+        and(
+          eq(userActivitySavedFilterDefaults.userId, userId),
+          eq(userActivitySavedFilterDefaults.contextKey, contextKey)
+        )
+      )
+      .limit(1);
+    return defaultRow?.savedFilterId ?? null;
+  }
 
   private assertSavedFilterPayloadNotEmpty(
     filterState: Record<string, unknown>,
@@ -342,30 +427,36 @@ export class SavedFiltersService {
     }
   }
 
-  private async clearDefaultForContext(
-    userId: number,
-    contextKey: string,
-    scope: ScopeResolution
-  ): Promise<void> {
-    const conditions: SQL[] = [
-      eq(activitySavedFilters.contextKey, contextKey),
-      eq(activitySavedFilters.isDefault, true),
-      eq(activitySavedFilters.isActive, true),
-    ];
-    if (scope.scopeType === 'user') {
-      conditions.push(eq(activitySavedFilters.scopeType, 'user'));
-      conditions.push(eq(activitySavedFilters.ownerUserId, userId));
-    } else if (scope.scopeType === 'team') {
-      conditions.push(eq(activitySavedFilters.scopeType, 'team'));
-      conditions.push(eq(activitySavedFilters.scopeTeamId, scope.scopeTeamId!));
-    } else {
-      conditions.push(eq(activitySavedFilters.scopeType, 'global'));
-    }
+  private async findActiveFilterById(
+    filterId: number
+  ): Promise<SavedFilterRow | null> {
+    const [row] = await this.db.db
+      .select()
+      .from(activitySavedFilters)
+      .where(
+        and(
+          eq(activitySavedFilters.id, filterId),
+          eq(activitySavedFilters.isActive, true)
+        )
+      )
+      .limit(1);
+    return row ?? null;
+  }
 
-    await this.db.db
-      .update(activitySavedFilters)
-      .set({ isDefault: false, updatedAt: new Date() })
-      .where(and(...conditions));
+  private isSavedFilterVisibleToUser(
+    row: SavedFilterRow,
+    userId: number,
+    teamIds: number[]
+  ): boolean {
+    const st = row.scopeType as SavedFilterScopeType;
+    if (st === 'user') return row.ownerUserId === userId;
+    if (st === 'global') return true;
+    if (st === 'team') {
+      if (row.scopeTeamId == null) return false;
+      if (teamIds.length === 0) return false;
+      return teamIds.includes(row.scopeTeamId);
+    }
+    return false;
   }
 
   private async generateUniqueName(
@@ -464,7 +555,10 @@ export class SavedFiltersService {
     return { scopeType, scopeTeamId: null };
   }
 
-  private mapToResponse(row: SavedFilterRow): SavedFilterResponse {
+  private mapToResponse(
+    row: SavedFilterRow,
+    defaultSavedFilterId: number | null
+  ): SavedFilterResponse {
     return {
       id: row.id,
       ownerUserId: row.ownerUserId,
@@ -472,7 +566,7 @@ export class SavedFiltersService {
       name: row.name,
       filterState: row.filterState as Record<string, unknown>,
       searchKeyword: row.searchKeyword,
-      isDefault: row.isDefault,
+      isDefault: row.id === defaultSavedFilterId,
       sortOrder: row.sortOrder,
       scopeType: row.scopeType as SavedFilterScopeType,
       scopeTeamId: row.scopeTeamId,

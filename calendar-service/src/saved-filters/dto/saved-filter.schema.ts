@@ -12,6 +12,7 @@ export {
   savedFilterContextKeySchema,
   savedFilterListResponseSchema,
   savedFilterResponseSchema,
+  setMyDefaultSavedFilterBodySchema,
   updateSavedFilterBodySchema,
 } from '@corpcal/shared/schemas';
 
@@ -20,6 +21,7 @@ export type {
   DuplicateSavedFilterBody,
   SavedFilterListResponse,
   SavedFilterResponse,
+  SetMyDefaultSavedFilterBody,
   UpdateSavedFilterBody,
 } from '@corpcal/shared/schemas';
 

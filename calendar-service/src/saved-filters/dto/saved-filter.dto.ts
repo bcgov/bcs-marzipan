@@ -5,6 +5,7 @@ import {
   duplicateSavedFilterBodySchema,
   savedFilterListResponseSchema,
   savedFilterResponseSchema,
+  setMyDefaultSavedFilterBodySchema,
   updateSavedFilterBodySchema,
 } from './saved-filter.schema';
 
@@ -26,4 +27,8 @@ export class SavedFilterResponseDto extends createZodDto(
 
 export class SavedFilterListResponseDto extends createZodDto(
   savedFilterListResponseSchema
+) {}
+
+export class SetMyDefaultSavedFilterDto extends createZodDto(
+  setMyDefaultSavedFilterBodySchema
 ) {}
