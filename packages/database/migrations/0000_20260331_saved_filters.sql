@@ -727,7 +727,6 @@ CREATE TABLE "sessions" (
 CREATE TABLE "activity_saved_filters" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_user_id" integer NOT NULL,
-	"context_key" varchar(100) NOT NULL,
 	"name" varchar(80) NOT NULL,
 	"filter_state" jsonb NOT NULL,
 	"search_keyword" text DEFAULT '' NOT NULL,
@@ -748,7 +747,6 @@ CREATE TABLE "activity_saved_filters" (
 CREATE TABLE "user_activity_saved_filter_defaults" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer NOT NULL,
-	"context_key" varchar(100) NOT NULL,
 	"saved_filter_id" integer NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -915,12 +913,11 @@ CREATE INDEX "edit_locks_user_id_idx" ON "edit_locks" USING btree ("user_id");--
 CREATE INDEX "idx_sessions_user_id" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_sessions_expires_at" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "asf_owner_user_id_idx" ON "activity_saved_filters" USING btree ("owner_user_id");--> statement-breakpoint
-CREATE INDEX "asf_context_key_idx" ON "activity_saved_filters" USING btree ("owner_user_id","context_key");--> statement-breakpoint
 CREATE INDEX "asf_scope_type_idx" ON "activity_saved_filters" USING btree ("scope_type");--> statement-breakpoint
 CREATE INDEX "asf_scope_team_id_idx" ON "activity_saved_filters" USING btree ("scope_team_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "asf_unique_user_scope_name" ON "activity_saved_filters" USING btree ("owner_user_id","context_key",lower("name")) WHERE is_active = true AND scope_type = 'user';--> statement-breakpoint
-CREATE UNIQUE INDEX "asf_unique_team_scope_name" ON "activity_saved_filters" USING btree ("scope_team_id","context_key",lower("name")) WHERE is_active = true AND scope_type = 'team';--> statement-breakpoint
-CREATE UNIQUE INDEX "asf_unique_global_scope_name" ON "activity_saved_filters" USING btree ("context_key",lower("name")) WHERE is_active = true AND scope_type = 'global';--> statement-breakpoint
-CREATE UNIQUE INDEX "uasfd_user_context_unique" ON "user_activity_saved_filter_defaults" USING btree ("user_id","context_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "asf_unique_user_scope_name" ON "activity_saved_filters" USING btree ("owner_user_id",lower("name")) WHERE is_active = true AND scope_type = 'user';--> statement-breakpoint
+CREATE UNIQUE INDEX "asf_unique_team_scope_name" ON "activity_saved_filters" USING btree ("scope_team_id",lower("name")) WHERE is_active = true AND scope_type = 'team';--> statement-breakpoint
+CREATE UNIQUE INDEX "asf_unique_global_scope_name" ON "activity_saved_filters" USING btree (lower("name")) WHERE is_active = true AND scope_type = 'global';--> statement-breakpoint
+CREATE UNIQUE INDEX "uasfd_user_unique" ON "user_activity_saved_filter_defaults" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "uasfd_user_id_idx" ON "user_activity_saved_filter_defaults" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "uasfd_saved_filter_id_idx" ON "user_activity_saved_filter_defaults" USING btree ("saved_filter_id");

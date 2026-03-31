@@ -17,7 +17,7 @@ import { users } from './user';
 
 /**
  * ActivitySavedFilters table - User-scoped saved filter presets for the activity list.
- * Stores filterState (JSON) + searchKeyword per user per context (tab).
+ * Stores filterState (JSON) + searchKeyword in a global activity-list scope.
  * Per-user default for auto-apply is stored in user_activity_saved_filter_defaults.
  * Supports user-private, team-scoped, and global sharing via scopeType and scopeTeamId.
  */
@@ -29,9 +29,6 @@ export const activitySavedFilters = pgTable(
     ownerUserId: integer('owner_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-
-    /** Stable key identifying the activity list tab (e.g. 'all', 'my-activities', 'ministry:team:5'). */
-    contextKey: varchar('context_key', { length: 100 }).notNull(),
 
     name: varchar('name', { length: 80 }).notNull(),
 
@@ -64,10 +61,6 @@ export const activitySavedFilters = pgTable(
   },
   (table) => ({
     ownerIdx: index('asf_owner_user_id_idx').on(table.ownerUserId),
-    contextIdx: index('asf_context_key_idx').on(
-      table.ownerUserId,
-      table.contextKey
-    ),
     scopeTypeIdx: index('asf_scope_type_idx').on(table.scopeType),
     scopeTeamIdx: index('asf_scope_team_id_idx').on(table.scopeTeamId),
     scopeTypeCheck: check(
@@ -83,13 +76,13 @@ export const activitySavedFilters = pgTable(
       )`
     ),
     uniqueUserScopeName: uniqueIndex('asf_unique_user_scope_name')
-      .on(table.ownerUserId, table.contextKey, sql`lower(${table.name})`)
+      .on(table.ownerUserId, sql`lower(${table.name})`)
       .where(sql`is_active = true AND scope_type = 'user'`),
     uniqueTeamScopeName: uniqueIndex('asf_unique_team_scope_name')
-      .on(table.scopeTeamId, table.contextKey, sql`lower(${table.name})`)
+      .on(table.scopeTeamId, sql`lower(${table.name})`)
       .where(sql`is_active = true AND scope_type = 'team'`),
     uniqueGlobalScopeName: uniqueIndex('asf_unique_global_scope_name')
-      .on(table.contextKey, sql`lower(${table.name})`)
+      .on(sql`lower(${table.name})`)
       .where(sql`is_active = true AND scope_type = 'global'`),
   })
 );

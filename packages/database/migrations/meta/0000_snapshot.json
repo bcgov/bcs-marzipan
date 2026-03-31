@@ -1,5 +1,5 @@
 {
-  "id": "309106c0-de3c-479c-8eba-cafe48e57df1",
+  "id": "108c57c5-5da0-498f-bef1-409c0b4d0ff1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -5927,12 +5927,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "context_key": {
-          "name": "context_key",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
         "name": {
           "name": "name",
           "type": "varchar(80)",
@@ -6010,27 +6004,6 @@
           "method": "btree",
           "with": {}
         },
-        "asf_context_key_idx": {
-          "name": "asf_context_key_idx",
-          "columns": [
-            {
-              "expression": "owner_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "asf_scope_type_idx": {
           "name": "asf_scope_type_idx",
           "columns": [
@@ -6071,12 +6044,6 @@
               "nulls": "last"
             },
             {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
               "expression": "lower(\"name\")",
               "asc": true,
               "isExpression": true,
@@ -6099,12 +6066,6 @@
               "nulls": "last"
             },
             {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
               "expression": "lower(\"name\")",
               "asc": true,
               "isExpression": true,
@@ -6120,12 +6081,6 @@
         "asf_unique_global_scope_name": {
           "name": "asf_unique_global_scope_name",
           "columns": [
-            {
-              "expression": "context_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
             {
               "expression": "lower(\"name\")",
               "asc": true,
@@ -6182,12 +6137,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "context_key": {
-          "name": "context_key",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
         "saved_filter_id": {
           "name": "saved_filter_id",
           "type": "integer",
@@ -6210,17 +6159,11 @@
         }
       },
       "indexes": {
-        "uasfd_user_context_unique": {
-          "name": "uasfd_user_context_unique",
+        "uasfd_user_unique": {
+          "name": "uasfd_user_unique",
           "columns": [
             {
               "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "context_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

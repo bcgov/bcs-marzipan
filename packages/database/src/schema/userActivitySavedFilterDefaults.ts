@@ -6,14 +6,13 @@ import {
   serial,
   timestamp,
   uniqueIndex,
-  varchar,
 } from 'drizzle-orm/pg-core';
 
 import { activitySavedFilters } from './activitySavedFilters';
 import { users } from './user';
 
 /**
- * Per-user default saved filter for an activity list context (tab).
+ * Per-user default saved filter for activity lists.
  * References a visible row in activity_saved_filters.
  */
 export const userActivitySavedFilterDefaults = pgTable(
@@ -24,8 +23,6 @@ export const userActivitySavedFilterDefaults = pgTable(
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-
-    contextKey: varchar('context_key', { length: 100 }).notNull(),
 
     savedFilterId: integer('saved_filter_id')
       .notNull()
@@ -39,10 +36,7 @@ export const userActivitySavedFilterDefaults = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    userContextUnique: uniqueIndex('uasfd_user_context_unique').on(
-      table.userId,
-      table.contextKey
-    ),
+    userUnique: uniqueIndex('uasfd_user_unique').on(table.userId),
     userIdx: index('uasfd_user_id_idx').on(table.userId),
     savedFilterIdx: index('uasfd_saved_filter_id_idx').on(table.savedFilterId),
   })
