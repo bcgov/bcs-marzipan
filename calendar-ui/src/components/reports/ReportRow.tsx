@@ -1,8 +1,15 @@
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import { tableBodyRow, tableTd } from '@/components/table/tableConstants';
 import { Badge } from '@/components/ui/badge';
 import { CopyableText } from '@/components/ui/copyable-text';
 import { formatExactDate, formatTime12h } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
+
+/** Matches Activity List table cells: light stroke + white fill (Fluent NeutralStroke1.Rest / #FFF via Tailwind). */
+const reportTableCell = cn(
+  tableTd,
+  'border-b border-slate-100 bg-white text-sm'
+);
 
 interface ReportRowProps {
   activity: ActivityResponse;
@@ -36,14 +43,9 @@ export function ReportRow({ activity, className }: ReportRowProps) {
   const commsLeadName = commsLead?.name ?? '–';
 
   return (
-    <tr
-      className={cn(
-        'border-border hover:bg-muted/30 border-b transition-colors',
-        className
-      )}
-    >
+    <tr className={cn(tableBodyRow, 'bg-white transition-colors', className)}>
       {/* Column 1: Date/Meta Info */}
-      <td className="px-4 py-3 align-top text-sm">
+      <td className={reportTableCell}>
         <div className="space-y-1.5">
           {/* Date and Time */}
           <div>
@@ -85,7 +87,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
       </td>
 
       {/* Column 2: Ministry Info */}
-      <td className="px-4 py-3 align-top text-sm">
+      <td className={reportTableCell}>
         <div className="space-y-1">
           {/* Lead Ministry (with abbreviation) */}
           <div>
@@ -110,7 +112,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
       </td>
 
       {/* Column 3: Main Activity Content */}
-      <td className="px-4 py-3 align-top text-sm break-words whitespace-normal">
+      <td className={cn(reportTableCell, 'break-words whitespace-normal')}>
         <div className="space-y-2">
           {/* Title */}
           <div>
@@ -118,36 +120,83 @@ export function ReportRow({ activity, className }: ReportRowProps) {
               {activity.title}
             </div>
           </div>
-
-          {/* Executive Summary / Description */}
-          {(activity.executiveSummary || activity.summary) && (
+          {/* Is Confidential */}
+          {activity.isConfidential && (
+            <div className="text-xs font-medium text-slate-600">
+              Confidential
+            </div>
+          )}
+          {/* Is Issue */}
+          {activity.isIssue && (
+            <div className="text-xs font-medium text-slate-600">Issue</div>
+          )}
+          {/* FYI */}
+          {activity.category.includes('FYI') && (
+            <div className="text-xs font-medium text-slate-600">FYI</div>
+          )}
+          {/* Summary */}
+          {activity.summary && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.summary}
+            </div>
+          )}
+          {/* Executive Summary */}
+          {activity.executiveSummary && (
             <div className="text-xs leading-relaxed text-slate-600">
               <p className="break-words whitespace-normal">
-                {activity.executiveSummary || activity.summary}
+                {activity.executiveSummary}
               </p>
             </div>
           )}
-
-          {/* Categories */}
-          {/* {activity.category.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {activity.category.map((cat) => (
-                <Badge
-                  key={cat}
-                  variant="primary"
-                  className="text-xs text-white"
-                >
-                  {cat}
-                </Badge>
-              ))}
-            </div> */}
-          {/* )} */}
+          {/* Significance */}
+          {activity.significance && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.significance}
+            </div>
+          )}
+          {/* Event Planner Lead */}
+          {activity.eventPlannerDetails && (
+            <div className="text-xs font-medium text-slate-600">
+              Event planner:{' '}
+              {
+                activity.eventPlannerDetails.find((planner) =>
+                  planner.isLead ? planner.name : null
+                )?.name
+              }
+            </div>
+          )}
         </div>
       </td>
 
       {/* Column 4: Release Info */}
-      <td className="px-4 py-3 align-top text-sm">
+      <td className={reportTableCell}>
         <div className="space-y-1.5">
+          {/* News Release Origin */}
+          {activity.newsReleaseOrigin && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.newsReleaseOrigin}
+            </div>
+          )}
+          {/* Comms Materials */}
+          {activity.commsMaterials && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.commsMaterials.map((material) => material).join(', ')}
+            </div>
+          )}
+          {/* Translations Required Status */}
+          {activity.translationsRequiredStatus && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.translationsRequiredStatus}
+            </div>
+          )}
+          {/* Translations Required */}
+          {activity.translationsRequired && (
+            <div className="text-xs font-medium text-slate-600">
+              {activity.translationsRequired
+                .map((translation) => translation)
+                .join(', ')}
+            </div>
+          )}
           {/* Comms Contact Lead */}
           {commsLeadName !== '–' && (
             <div>
@@ -177,7 +226,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
         </div>
       </td>
       {/* Column 5: Activity ID Info */}
-      <td className="px-4 py-3 align-top text-sm">
+      <td className={reportTableCell}>
         <div className="space-y-1.5">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span data-no-row-nav onClick={(e) => e.stopPropagation()}>

@@ -168,7 +168,7 @@ export function ReportsPage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col overflow-hidden">
       <PageHeader
         title="Reports"
         description="Generate and export various activity reports"
@@ -213,66 +213,74 @@ export function ReportsPage() {
         }
       />
 
-      <Tabs value={activeReport} onValueChange={handleTabChange}>
-        <div className="mb-0">
-          <TabsList className="mb-0" variant="line" size="med">
+      <div className="flex h-[calc(100dvh-11rem)] min-h-0 min-w-0 flex-col overflow-hidden">
+        <Tabs
+          value={activeReport}
+          onValueChange={handleTabChange}
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        >
+          <div className="mb-0 shrink-0">
+            <TabsList className="mb-0" variant="line" size="med">
+              {reports.map((report) => (
+                <TabsTrigger key={report.id} value={report.name}>
+                  {report.displayName}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+            <div className="shrink-0">
+              <ReportActivityFiltersBar
+                preferences={preferences}
+                setPreferences={setPreferences}
+              />
+            </div>
+
             {reports.map((report) => (
-              <TabsTrigger key={report.id} value={report.name}>
-                {report.displayName}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-
-        <div className="min-w-0 space-y-4">
-          <ReportActivityFiltersBar
-            preferences={preferences}
-            setPreferences={setPreferences}
-          />
-
-          {reports.map((report) => (
-            <TabsContent key={report.id} value={report.name} className="mt-0">
-              <div className="min-w-0">
+              <TabsContent
+                key={report.id}
+                value={report.name}
+                className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
+              >
                 {isLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex min-h-0 flex-1 items-center justify-center py-12">
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
-                  <div className="space-y-4">
-                    <Tabs
-                      defaultValue={data.sections[0]?.id ?? 'section-1'}
-                      className="w-full"
-                    >
-                      <TabsList className="mb-4">
-                        {data.sections.map((section: ReportSectionData) => (
-                          <TabsTrigger key={section.id} value={section.id}>
-                            {section.name} ({section.activities.length})
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
+                  <Tabs
+                    defaultValue={data.sections[0]?.id ?? 'section-1'}
+                    className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
+                  >
+                    <TabsList className="mb-4 shrink-0">
                       {data.sections.map((section: ReportSectionData) => (
-                        <TabsContent
-                          key={section.id}
-                          value={section.id}
-                          className="mt-0 outline-none"
-                        >
-                          <ReportSection section={section} />
-                        </TabsContent>
+                        <TabsTrigger key={section.id} value={section.id}>
+                          {section.name} ({section.activities.length})
+                        </TabsTrigger>
                       ))}
-                    </Tabs>
-                  </div>
+                    </TabsList>
+                    {data.sections.map((section: ReportSectionData) => (
+                      <TabsContent
+                        key={section.id}
+                        value={section.id}
+                        className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
+                      >
+                        <ReportSection section={section} />
+                      </TabsContent>
+                    ))}
+                  </Tabs>
                 ) : (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex min-h-0 flex-1 items-center justify-center py-12">
                     <p className="text-muted-foreground">
                       Select filters and the report will load automatically
                     </p>
                   </div>
                 )}
-              </div>
-            </TabsContent>
-          ))}
-        </div>
-      </Tabs>
-    </>
+              </TabsContent>
+            ))}
+          </div>
+        </Tabs>
+      </div>
+    </div>
   );
 }

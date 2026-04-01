@@ -26,8 +26,8 @@ export function ReportSection({ section }: ReportSectionProps) {
   const canNext = pageIndex < pageCount - 1;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="min-h-[400px] overflow-y-auto">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden pb-1">
+      <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto">
         <ReportTable activities={paginatedActivities} />
       </div>
       {pageCount > 1 && (

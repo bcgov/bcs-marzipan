@@ -3,6 +3,10 @@ import { cn } from '@/lib/utils';
 
 import { ReportRow } from './ReportRow';
 
+/** Sticky within the report section scroll area; opaque bg so rows don’t show through. */
+const headerCell =
+  'bg-muted/95 text-foreground sticky top-0 z-10 border-b px-4 py-3 text-left text-sm font-semibold shadow-[0_1px_0_0_hsl(var(--border))] backdrop-blur-sm';
+
 interface ReportTableProps {
   activities: ActivityResponse[];
   className?: string;
@@ -22,24 +26,27 @@ interface ReportTableProps {
 export function ReportTable({ activities, className }: ReportTableProps) {
   return (
     <div
-      className={cn('border-border overflow-auto rounded-md border', className)}
+      className={cn(
+        'border-border overflow-x-auto rounded-md border',
+        className
+      )}
     >
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
-          <tr className="border-border bg-muted/50 border-b">
-            <th className="w-1/6 px-4 py-3 text-left font-semibold text-slate-700">
+          <tr className="border-border border-b">
+            <th scope="col" className={cn(headerCell, 'w-1/6')}>
               Date & Time
             </th>
-            <th className="w-1/6 px-4 py-3 text-left font-semibold text-slate-700">
+            <th scope="col" className={cn(headerCell, 'w-1/6')}>
               Lead
             </th>
-            <th className="w-1/2 px-4 py-3 text-left font-semibold text-slate-700">
+            <th scope="col" className={cn(headerCell, 'w-1/2')}>
               Activity Details
             </th>
-            <th className="w-1/6 px-4 py-3 text-left font-semibold text-slate-700">
+            <th scope="col" className={cn(headerCell, 'w-1/6')}>
               Release
             </th>
-            <th className="w-1/6 px-4 py-3 text-left font-semibold text-slate-700">
+            <th scope="col" className={cn(headerCell, 'w-1/6')}>
               Activity ID
             </th>
           </tr>
