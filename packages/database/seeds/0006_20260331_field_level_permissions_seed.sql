@@ -14,7 +14,7 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
 ON CONFLICT (key) DO NOTHING;
 
 -- Admin and System Admin get all field-level permissions via their roles.
--- Other teams receive these via team_permissions (configured per-team, out of scope for this seed).
+-- Mock teams receive field grants via team_permissions (see block below).
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
@@ -28,3 +28,33 @@ CROSS JOIN permissions p
 WHERE r.name IN ('Admin', 'System Admin')
   AND p.key LIKE 'activities.%.edit' AND p.scope IS NOT NULL
 ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Mock team field grants (teams seed ids 1-8). Effective perms = team role_permissions UNION team_permissions.
+-- GCPE 1-7 + PREM (8): notes / lookAhead / pitch view.
+INSERT INTO team_permissions (team_id, permission_id)
+SELECT u.team_id, p.id
+FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8)) AS u(team_id)
+CROSS JOIN permissions p
+WHERE p.key IN (
+  'activities.notes.view',
+  'activities.lookAhead.view',
+  'activities.pitch.view'
+);
+
+-- CCHQ (2): all field edits for mock testing (notes, date/time status, lookAhead, translations, pitch).
+INSERT INTO team_permissions (team_id, permission_id)
+SELECT 2, p.id
+FROM permissions p
+WHERE p.key IN (
+  'activities.notes.edit',
+  'activities.dateTimeStatus.edit',
+  'activities.lookAhead.edit',
+  'activities.translations.edit',
+  'activities.pitch.edit'
+);
+
+-- MR (1): translations edit only (pair with team 2 for translations.edit).
+INSERT INTO team_permissions (team_id, permission_id)
+SELECT 1, p.id
+FROM permissions p
+WHERE p.key = 'activities.translations.edit';
