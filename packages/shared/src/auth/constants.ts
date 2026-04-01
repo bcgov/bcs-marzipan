@@ -89,8 +89,9 @@ export const PERMISSIONS = {
     LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
     LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
     TRANSLATIONS_EDIT: 'activities.translations.edit',
-    PITCH_VIEW: 'activities.pitch.view',
-    PITCH_EDIT: 'activities.pitch.edit',
+    PITCH_STATUS_VIEW: 'activities.pitchStatus.view',
+    PITCH_STATUS_EDIT: 'activities.pitchStatus.edit',
+    PITCH_DATE_EDIT: 'activities.pitchDate.edit',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

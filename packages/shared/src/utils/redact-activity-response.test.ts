@@ -17,7 +17,7 @@ const editorWithAllViewGrants = {
     'activities.view',
     'activities.notes.view',
     'activities.lookAhead.view',
-    'activities.pitch.view',
+    'activities.pitchStatus.view',
   ],
   roleName: SYSTEM_ROLES.EDITOR,
 };
@@ -49,7 +49,22 @@ describe('redactActivityResponse', () => {
     expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('strips view-restricted fields for Viewer without grants; keeps date/time status and translations', () => {
+  it('strips pitch status but keeps pitch date when pitch status is not viewable', () => {
+    const viewerNoPitchStatus = {
+      permissions: [
+        'activities.view',
+        'activities.notes.view',
+        'activities.lookAhead.view',
+      ],
+      roleName: SYSTEM_ROLES.EDITOR,
+    };
+    const result = redactActivityResponse(activity, viewerNoPitchStatus);
+    expect(result.pitchRequiredStatusId).toBeUndefined();
+    expect(result.pitchRequiredStatus).toBeUndefined();
+    expect(result.pitchDate).toBe('2025-03-01');
+  });
+
+  it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, and pitch date', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
     expect(result.notes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
@@ -63,7 +78,7 @@ describe('redactActivityResponse', () => {
     expect(result.translationsRequiredStatus).toBe('Pending');
     expect(result.pitchRequiredStatusId).toBeUndefined();
     expect(result.pitchRequiredStatus).toBeUndefined();
-    expect(result.pitchDate).toBeUndefined();
+    expect(result.pitchDate).toBe('2025-03-01');
   });
 
   it('preserves all fields for Advanced Viewer (role bypass)', () => {

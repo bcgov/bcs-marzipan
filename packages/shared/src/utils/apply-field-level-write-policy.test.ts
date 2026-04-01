@@ -18,7 +18,8 @@ const adminWithAll = {
     'activities.dateTimeStatus.edit',
     'activities.lookAhead.edit',
     'activities.translations.edit',
-    'activities.pitch.edit',
+    'activities.pitchStatus.edit',
+    'activities.pitchDate.edit',
   ],
   roleName: SYSTEM_ROLES.ADMIN,
 };
@@ -50,7 +51,7 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.translationLanguageIds).toBeUndefined();
     expect(dto.pitchRequiredStatusId).toBeUndefined();
     expect(dto.pitchDate).toBeUndefined();
-    expect(stripped).toHaveLength(5);
+    expect(stripped).toHaveLength(6);
   });
 
   it('preserves fields the user can edit', () => {
@@ -88,6 +89,6 @@ describe('applyFieldLevelWritePolicy', () => {
     const stripped = applyFieldLevelWritePolicy(dto, viewerNoGrants);
 
     expect(dto.title).toBe('Only title');
-    expect(stripped).toHaveLength(5);
+    expect(stripped).toHaveLength(6);
   });
 });

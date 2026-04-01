@@ -6,7 +6,7 @@
  *
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
  * Advanced Viewer / Advanced Editor / Admin / System Admin.
- * Scopes without a view permission (dateTimeStatus, translations) are always visible; edit is still gated.
+ * Scopes without a view permission (dateTimeStatus, translations, pitchDate) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
 
@@ -17,7 +17,8 @@ export const ACTIVITY_FIELD_SCOPES = [
   'dateTimeStatus',
   'lookAhead',
   'translations',
-  'pitch',
+  'pitchStatus',
+  'pitchDate',
 ] as const;
 
 export type ActivityFieldScope = (typeof ACTIVITY_FIELD_SCOPES)[number];
@@ -69,15 +70,17 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
     ],
     requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
   },
-  pitch: {
-    viewKey: PERMISSIONS.ACTIVITIES.PITCH_VIEW,
-    editKey: PERMISSIONS.ACTIVITIES.PITCH_EDIT,
-    responseFields: [
-      'pitchRequiredStatusId',
-      'pitchRequiredStatus',
-      'pitchDate',
-    ],
-    requestFields: ['pitchRequiredStatusId', 'pitchDate'],
+  pitchStatus: {
+    viewKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_VIEW,
+    editKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
+    responseFields: ['pitchRequiredStatusId', 'pitchRequiredStatus'],
+    requestFields: ['pitchRequiredStatusId'],
+  },
+  pitchDate: {
+    viewKey: null,
+    editKey: PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
+    responseFields: ['pitchDate'],
+    requestFields: ['pitchDate'],
   },
 } as const;
 

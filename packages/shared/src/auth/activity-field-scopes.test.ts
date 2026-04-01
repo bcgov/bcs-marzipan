@@ -61,23 +61,25 @@ describe('canViewActivityFieldScope', () => {
   it('returns false for view-restricted scopes when Viewer lacks grants', () => {
     expect(canViewActivityFieldScope(viewer, 'notes')).toBe(false);
     expect(canViewActivityFieldScope(viewer, 'lookAhead')).toBe(false);
-    expect(canViewActivityFieldScope(viewer, 'pitch')).toBe(false);
+    expect(canViewActivityFieldScope(viewer, 'pitchStatus')).toBe(false);
   });
 
-  it('returns true for dateTimeStatus and translations without grants (no view permission)', () => {
+  it('returns true for dateTimeStatus, translations, and pitchDate without grants (no view permission)', () => {
     expect(canViewActivityFieldScope(viewer, 'dateTimeStatus')).toBe(true);
     expect(canViewActivityFieldScope(viewer, 'translations')).toBe(true);
+    expect(canViewActivityFieldScope(viewer, 'pitchDate')).toBe(true);
   });
 
   it('returns false for view-restricted scopes when Editor lacks grants', () => {
     expect(canViewActivityFieldScope(editor, 'notes')).toBe(false);
     expect(canViewActivityFieldScope(editor, 'lookAhead')).toBe(false);
-    expect(canViewActivityFieldScope(editor, 'pitch')).toBe(false);
+    expect(canViewActivityFieldScope(editor, 'pitchStatus')).toBe(false);
   });
 
-  it('returns true for dateTimeStatus and translations when Editor lacks other grants', () => {
+  it('returns true for dateTimeStatus, translations, and pitchDate when Editor lacks other grants', () => {
     expect(canViewActivityFieldScope(editor, 'dateTimeStatus')).toBe(true);
     expect(canViewActivityFieldScope(editor, 'translations')).toBe(true);
+    expect(canViewActivityFieldScope(editor, 'pitchDate')).toBe(true);
   });
 
   it('returns true for Advanced Viewer (role bypass) without scope grants', () => {
@@ -150,7 +152,9 @@ describe('getViewableFieldScopes', () => {
     const result = getViewableFieldScopes(viewer);
     expect(result.has('dateTimeStatus')).toBe(true);
     expect(result.has('translations')).toBe(true);
-    expect(result.size).toBe(2);
+    expect(result.has('pitchDate')).toBe(true);
+    expect(result.has('pitchStatus')).toBe(false);
+    expect(result.size).toBe(3);
   });
 
   it('returns all scopes for Advanced Viewer', () => {
@@ -164,7 +168,8 @@ describe('getViewableFieldScopes', () => {
     expect(result.has('notes')).toBe(true);
     expect(result.has('dateTimeStatus')).toBe(true);
     expect(result.has('translations')).toBe(true);
-    expect(result.size).toBe(3);
+    expect(result.has('pitchDate')).toBe(true);
+    expect(result.size).toBe(4);
   });
 });
 

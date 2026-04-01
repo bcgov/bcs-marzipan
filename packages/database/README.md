@@ -231,7 +231,7 @@ The schema is defined in `src/schema/`:
 
 ## Field-level activity permissions
 
-Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions exist for `notes`, `lookAhead`, and `pitch` (API may omit those fields when the user lacks view access). **Date/time status** and **translations** use **edit-only** permissions (no separate view permission; anyone who can view the activity sees those fields).
+Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows, optional migration off legacy `activities.pitch.view` / `activities.pitch.edit`, and removal of obsolete keys. **View** permissions exist for `notes`, `lookAhead`, and `pitchStatus` (API may omit those fields when the user lacks view access). **Pitch date**, **date/time status**, and **translations** use **edit-only** field permissions where applicable (no separate view permission for pitch date; anyone who can view the activity sees those values).
 
 ## Types
 
