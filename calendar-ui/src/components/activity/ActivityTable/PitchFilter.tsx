@@ -1,12 +1,12 @@
 import { useCallback, type MouseEvent } from 'react';
 
-import type { OptionItem } from '@/schemas/types';
-
 import {
   DEFAULT_PITCH_DATE_RANGE,
   type ActivityFilterState,
   type PitchDateFilter,
-} from './activityFilterState';
+} from '@corpcal/shared';
+import type { OptionItem } from '@/schemas/types';
+
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 import { FilterSectionLabel } from './FilterSectionLabel';
 import {

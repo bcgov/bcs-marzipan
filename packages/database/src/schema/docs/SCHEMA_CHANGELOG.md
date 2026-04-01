@@ -2,6 +2,23 @@
 
 Append-only log of notable schema and constraint changes. Regenerate SQL migrations with Drizzle Kit from `packages/database` when Drizzle schema changes.
 
+## 2026-03-31 — Activity saved filters: global scope across contexts
+
+- **`activity_saved_filters`** no longer stores `context_key`; saved filters are now reused across activity-list contexts/tabs.
+- **Uniqueness constraints** now enforce name uniqueness by scope without context:
+  - user scope: `(owner_user_id, lower(name))`
+  - team scope: `(scope_team_id, lower(name))`
+  - global scope: `(lower(name))`
+- **`user_activity_saved_filter_defaults`** no longer stores `context_key`; each user now has at most one default saved filter for activity lists (`uasfd_user_unique`).
+
+## 2026-03-26 — Activity saved filters: scope + future RBAC sharing
+
+- **`activity_saved_filters.scope_type`** supports `user` (private), `team` (team-shared), and `global` (application-wide).
+- **Future RBAC plan**:
+  - `savedFilters.share.global` will be granted to **Admin** roles.
+  - `savedFilters.share.team` will be granted to **team owners** (specific role mapping TBD).
+- Current seeds grant **basic CRUD** (`savedFilters.view/create/edit/delete`) to all roles; sharing permissions are intentionally not granted yet.
+
 ## 2026-03-22 — Activities: optional significance
 
 - **`activities.significance`**: Column is nullable (optional text). Aligns with `createActivityRequestSchema` / `activityDbFieldsSchema` in `@corpcal/shared`.

@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 
+import type { ActivityFilterState } from '@corpcal/shared';
 import {
   lookAheadSectionOptions,
   lookAheadStatusOptions,
 } from '@/constants/form-options';
 
-import type { ActivityFilterState } from './activityFilterState';
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 import { FilterSectionLabel } from './FilterSectionLabel';
 

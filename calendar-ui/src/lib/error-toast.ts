@@ -123,8 +123,12 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
       variant = 'warning';
     }
 
-    // Include correlation ID in development
-    if (import.meta.env.DEV && error.correlationId) {
+    // Include correlation ID in development (skip for 409 + custom copy)
+    if (
+      import.meta.env.DEV &&
+      error.correlationId &&
+      !(error.status === 409 && customMessage)
+    ) {
       message += ` (ID: ${error.correlationId})`;
     }
   } else if (error instanceof NetworkError) {

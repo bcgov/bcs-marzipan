@@ -4,6 +4,7 @@ import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import {
   TableSummaryBar,
   type BooleanFilter,
+  type TableSummaryFilterDetailLine,
 } from '@/components/table/TableSummaryBar';
 
 export interface ActivityTableLayoutProps {
@@ -14,6 +15,14 @@ export interface ActivityTableLayoutProps {
   singularLabel: string;
   pluralLabel: string;
   filters?: BooleanFilter[];
+  /** When set, summary bar appends “(filtering by: …)” after the count. */
+  appliedSavedFilterName?: string | null;
+  /** Active filter dimensions for “(filtering by: …)” (ignored when a saved filter name is set). */
+  appliedFilterTypeLabels?: string[];
+  /** Read-only filter rows for the summary bar detail popover (activity table). */
+  filterDetailLines?: TableSummaryFilterDetailLine[];
+  /** Clears panel filters only (not search); clears saved-filter selection in the parent. */
+  onClearFilters?: () => void;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
@@ -28,6 +37,10 @@ export function ActivityTableLayout({
   singularLabel,
   pluralLabel,
   filters = [],
+  appliedSavedFilterName = null,
+  appliedFilterTypeLabels = [],
+  filterDetailLines = [],
+  onClearFilters,
   children,
 }: ActivityTableLayoutProps) {
   return (
@@ -37,6 +50,10 @@ export function ActivityTableLayout({
         singularLabel={singularLabel}
         pluralLabel={pluralLabel}
         filters={filters}
+        appliedSavedFilterName={appliedSavedFilterName}
+        appliedFilterTypeLabels={appliedFilterTypeLabels}
+        filterDetailLines={filterDetailLines}
+        onClearFilters={onClearFilters}
       />
       <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
     </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 
-import type { ActivityFilterState } from './activityFilterState';
+import type { ActivityFilterState } from '@corpcal/shared';
+
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 import {
   isDateRangeActive,

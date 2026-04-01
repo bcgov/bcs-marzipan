@@ -16,3 +16,5 @@ export * from './rbac';
 export * from './editLocks';
 export * from './sessions';
 export * from './bannerSettings';
+export * from './activitySavedFilters';
+export * from './userActivitySavedFilterDefaults';

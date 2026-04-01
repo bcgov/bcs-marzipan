@@ -1,9 +1,9 @@
+import type { ActivityFilterState } from '@corpcal/shared';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import type { ActivityFilterState } from '@/components/activity/ActivityTable/activityFilterState';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
 import type { OptionItem } from '@/schemas/types';
