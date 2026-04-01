@@ -47,24 +47,16 @@ import {
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
 } from '../activity-lead-team-field-config';
+import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
 /** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
 const DIRTY_CASCADE = { shouldDirty: true } as const;
-
-function useFieldScopeFlags() {
-  const { readOnly, canViewFieldScope, canEditFieldScope } = useActivityEdit();
-  return {
-    canViewPitch: canViewFieldScope?.('pitch') ?? true,
-    pitchReadOnly: readOnly || !(canEditFieldScope?.('pitch') ?? true),
-    canViewNotes: canViewFieldScope?.('notes') ?? true,
-    notesReadOnly: readOnly || !(canEditFieldScope?.('notes') ?? true),
-  };
-}
 
 type LeadOrganizationOption = {
   value: number;
@@ -177,9 +169,11 @@ export const ActivityOverviewSection: React.FC<
     ...defaultActivityLeadTeamFieldConfig,
     ...leadTeamFieldProp,
   };
-  const { readOnly } = useActivityEdit();
-  const { canViewPitch, pitchReadOnly, canViewNotes, notesReadOnly } =
-    useFieldScopeFlags();
+  const { readOnly, canViewFieldScope } = useActivityEdit();
+  const canViewPitch = canViewFieldScope?.('pitch') ?? true;
+  const canViewNotes = canViewFieldScope?.('notes') ?? true;
+  const pitchScope = useActivityFieldScopeControl('pitch');
+  const notesScope = useActivityFieldScopeControl('notes');
   const form = useFormContext<ActivityFormData>();
   const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
@@ -547,7 +541,8 @@ export const ActivityOverviewSection: React.FC<
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
                 <FormSelect
-                  readOnly={pitchReadOnly}
+                  readOnly={pitchScope.readOnly}
+                  disabled={pitchScope.permissionMuted}
                   value={
                     field.value !== undefined && field.value !== null
                       ? String(field.value)
@@ -557,11 +552,17 @@ export const ActivityOverviewSection: React.FC<
                     field.onChange(value === '' ? undefined : Number(value))
                   }
                 >
-                  <FormControl data-field={field.name}>
-                    <FormSelectTrigger readOnly={pitchReadOnly}>
-                      <SelectValue placeholder="Select status" />
-                    </FormSelectTrigger>
-                  </FormControl>
+                  <ActivityFieldScopePermissionTooltip scope="pitch">
+                    <FormControl data-field={field.name}>
+                      <FormSelectTrigger
+                        readOnly={
+                          pitchScope.readOnly && !pitchScope.permissionMuted
+                        }
+                      >
+                        <SelectValue placeholder="Select status" />
+                      </FormSelectTrigger>
+                    </FormControl>
+                  </ActivityFieldScopePermissionTooltip>
                   <SelectContent>
                     {pitchRequiredStatuses.map((status) => (
                       <SelectItem key={status.id} value={String(status.id)}>
@@ -586,32 +587,37 @@ export const ActivityOverviewSection: React.FC<
               return (
                 <FormItem>
                   <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                  <FormControl className="w-full" data-field={field.name}>
-                    <ScheduledDatePopoverField
-                      triggerVariant="form"
-                      value={raw}
-                      onChange={(iso) => field.onChange(iso || undefined)}
-                      label={pitchLabel}
-                      triggerMuted={!raw}
-                      readOnly={pitchReadOnly}
-                      popoverTitle="Select pitch date"
-                      presets={PRESETS_FUTURE_SHORT}
-                      getPresetAnchor={getPresetAnchorToday}
-                      headerRight={
-                        raw && !pitchReadOnly ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
-                          >
-                            Clear
-                          </Button>
-                        ) : null
-                      }
-                    />
-                  </FormControl>
+                  <ActivityFieldScopePermissionTooltip scope="pitch">
+                    <FormControl className="w-full" data-field={field.name}>
+                      <ScheduledDatePopoverField
+                        triggerVariant="form"
+                        value={raw}
+                        onChange={(iso) => field.onChange(iso || undefined)}
+                        label={pitchLabel}
+                        triggerMuted={!raw}
+                        readOnly={pitchScope.readOnly}
+                        disabled={pitchScope.permissionMuted}
+                        popoverTitle="Select pitch date"
+                        presets={PRESETS_FUTURE_SHORT}
+                        getPresetAnchor={getPresetAnchorToday}
+                        headerRight={
+                          raw &&
+                          !pitchScope.readOnly &&
+                          !pitchScope.permissionMuted ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary text-sm"
+                              onClick={() => field.onChange(undefined)}
+                            >
+                              Clear
+                            </Button>
+                          ) : null
+                        }
+                      />
+                    </FormControl>
+                  </ActivityFieldScopePermissionTooltip>
                   <FormMessage />
                 </FormItem>
               );
@@ -630,21 +636,24 @@ export const ActivityOverviewSection: React.FC<
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <Textarea
-                    placeholder="Enter notes"
-                    readOnly={notesReadOnly}
-                    rows={4}
-                    name={field.name}
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      field.onChange(v === '' ? undefined : v);
-                    }}
-                  />
-                </FormControl>
+                <ActivityFieldScopePermissionTooltip scope="notes">
+                  <FormControl data-field={field.name}>
+                    <Textarea
+                      placeholder="Enter notes"
+                      readOnly={notesScope.readOnly}
+                      disabled={notesScope.permissionMuted}
+                      rows={4}
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        field.onChange(v === '' ? undefined : v);
+                      }}
+                    />
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
                 <FormMessage />
               </FormItem>
             )}

@@ -34,6 +34,8 @@ import {
 import { cn } from '@/lib/utils';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
@@ -84,9 +86,8 @@ export function ActivityScheduleSection({
   dateStatuses,
   timeStatuses,
 }: ActivityScheduleSectionProps) {
-  const { readOnly, canEditFieldScope } = useActivityEdit();
-  const dateTimeStatusReadOnly =
-    readOnly || !(canEditFieldScope?.('dateTimeStatus') ?? true);
+  const { readOnly } = useActivityEdit();
+  const dateTimeStatusScope = useActivityFieldScopeControl('dateTimeStatus');
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
   const [activeTimePopover, setActiveTimePopover] = useState<
@@ -260,7 +261,8 @@ export function ActivityScheduleSection({
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
-                  readOnly={dateTimeStatusReadOnly}
+                  readOnly={dateTimeStatusScope.readOnly}
+                  disabled={dateTimeStatusScope.permissionMuted}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -273,15 +275,20 @@ export function ActivityScheduleSection({
                     )
                   }
                 >
-                  <FormControl data-field={statusField.name}>
-                    <FormSelectTrigger
-                      readOnly={dateTimeStatusReadOnly}
-                      className={STATUS_SELECT_MIN_WIDTH}
-                      aria-label={getActivityFieldLabel(statusField.name)}
-                    >
-                      <SelectValue placeholder="Date status" />
-                    </FormSelectTrigger>
-                  </FormControl>
+                  <ActivityFieldScopePermissionTooltip scope="dateTimeStatus">
+                    <FormControl data-field={statusField.name}>
+                      <FormSelectTrigger
+                        readOnly={
+                          dateTimeStatusScope.readOnly &&
+                          !dateTimeStatusScope.permissionMuted
+                        }
+                        className={STATUS_SELECT_MIN_WIDTH}
+                        aria-label={getActivityFieldLabel(statusField.name)}
+                      >
+                        <SelectValue placeholder="Date status" />
+                      </FormSelectTrigger>
+                    </FormControl>
+                  </ActivityFieldScopePermissionTooltip>
                   <SelectContent>
                     {dateStatuses.map((status) => (
                       <SelectItem key={status.id} value={String(status.id)}>
@@ -433,7 +440,8 @@ export function ActivityScheduleSection({
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
-                  readOnly={dateTimeStatusReadOnly}
+                  readOnly={dateTimeStatusScope.readOnly}
+                  disabled={dateTimeStatusScope.permissionMuted}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -446,15 +454,20 @@ export function ActivityScheduleSection({
                     )
                   }
                 >
-                  <FormControl data-field={statusField.name}>
-                    <FormSelectTrigger
-                      readOnly={dateTimeStatusReadOnly}
-                      className={STATUS_SELECT_MIN_WIDTH}
-                      aria-label={getActivityFieldLabel(statusField.name)}
-                    >
-                      <SelectValue placeholder="Time status" />
-                    </FormSelectTrigger>
-                  </FormControl>
+                  <ActivityFieldScopePermissionTooltip scope="dateTimeStatus">
+                    <FormControl data-field={statusField.name}>
+                      <FormSelectTrigger
+                        readOnly={
+                          dateTimeStatusScope.readOnly &&
+                          !dateTimeStatusScope.permissionMuted
+                        }
+                        className={STATUS_SELECT_MIN_WIDTH}
+                        aria-label={getActivityFieldLabel(statusField.name)}
+                      >
+                        <SelectValue placeholder="Time status" />
+                      </FormSelectTrigger>
+                    </FormControl>
+                  </ActivityFieldScopePermissionTooltip>
                   <SelectContent>
                     {timeStatuses.map((status) => (
                       <SelectItem key={status.id} value={String(status.id)}>

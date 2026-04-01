@@ -23,14 +23,15 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 export const ActivityReportsSection: React.FC = () => {
-  const { readOnly, canViewFieldScope, canEditFieldScope } = useActivityEdit();
+  const { readOnly, canViewFieldScope } = useActivityEdit();
   const canViewLookAhead = canViewFieldScope?.('lookAhead') ?? true;
-  const lookAheadReadOnly =
-    readOnly || !(canEditFieldScope?.('lookAhead') ?? true);
+  const lookAheadScope = useActivityFieldScopeControl('lookAhead');
   const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
 
@@ -129,21 +130,24 @@ export const ActivityReportsSection: React.FC = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <Textarea
-                    placeholder="Enter executive summary"
-                    readOnly={lookAheadReadOnly}
-                    rows={4}
-                    name={field.name}
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      field.onChange(v === '' ? undefined : v);
-                    }}
-                  />
-                </FormControl>
+                <ActivityFieldScopePermissionTooltip scope="lookAhead">
+                  <FormControl data-field={field.name}>
+                    <Textarea
+                      placeholder="Enter executive summary"
+                      readOnly={lookAheadScope.readOnly}
+                      disabled={lookAheadScope.permissionMuted}
+                      rows={4}
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        field.onChange(v === '' ? undefined : v);
+                      }}
+                    />
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
                 <FormMessage />
               </FormItem>
             )}
@@ -155,32 +159,35 @@ export const ActivityReportsSection: React.FC = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <RadioGroup
-                    readOnly={lookAheadReadOnly}
-                    onValueChange={field.onChange}
-                    value={field.value || ''}
-                    className="flex flex-row space-x-4"
-                  >
-                    {lookAheadStatusOptions.map((option) => (
-                      <div
-                        key={option.value}
-                        className="flex items-center space-x-2"
-                      >
-                        <RadioGroupItem
-                          value={option.value}
-                          id={`status-${option.value}`}
-                        />
-                        <Label
-                          htmlFor={`status-${option.value}`}
-                          className="cursor-pointer font-normal"
+                <ActivityFieldScopePermissionTooltip scope="lookAhead">
+                  <FormControl data-field={field.name}>
+                    <RadioGroup
+                      readOnly={lookAheadScope.readOnly}
+                      disabled={lookAheadScope.permissionMuted}
+                      onValueChange={field.onChange}
+                      value={field.value || ''}
+                      className="flex flex-row space-x-4"
+                    >
+                      {lookAheadStatusOptions.map((option) => (
+                        <div
+                          key={option.value}
+                          className="flex items-center space-x-2"
                         >
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
+                          <RadioGroupItem
+                            value={option.value}
+                            id={`status-${option.value}`}
+                          />
+                          <Label
+                            htmlFor={`status-${option.value}`}
+                            className="cursor-pointer font-normal"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
                 <FormMessage />
               </FormItem>
             )}
@@ -192,32 +199,35 @@ export const ActivityReportsSection: React.FC = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormControl data-field={field.name}>
-                  <RadioGroup
-                    readOnly={lookAheadReadOnly}
-                    onValueChange={field.onChange}
-                    value={field.value ?? ''}
-                    className="flex flex-row space-x-4"
-                  >
-                    {lookAheadSectionOptions.map((option) => (
-                      <div
-                        key={option.value}
-                        className="flex items-center space-x-2"
-                      >
-                        <RadioGroupItem
-                          value={option.value}
-                          id={`lookAhead-section-${option.value}`}
-                        />
-                        <Label
-                          htmlFor={`lookAhead-section-${option.value}`}
-                          className="cursor-pointer font-normal"
+                <ActivityFieldScopePermissionTooltip scope="lookAhead">
+                  <FormControl data-field={field.name}>
+                    <RadioGroup
+                      readOnly={lookAheadScope.readOnly}
+                      disabled={lookAheadScope.permissionMuted}
+                      onValueChange={field.onChange}
+                      value={field.value ?? ''}
+                      className="flex flex-row space-x-4"
+                    >
+                      {lookAheadSectionOptions.map((option) => (
+                        <div
+                          key={option.value}
+                          className="flex items-center space-x-2"
                         >
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </FormControl>
+                          <RadioGroupItem
+                            value={option.value}
+                            id={`lookAhead-section-${option.value}`}
+                          />
+                          <Label
+                            htmlFor={`lookAhead-section-${option.value}`}
+                            className="cursor-pointer font-normal"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
                 <FormMessage />
               </FormItem>
             )}

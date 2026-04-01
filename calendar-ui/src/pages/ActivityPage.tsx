@@ -222,7 +222,12 @@ export function ActivityPage({
     (!isBlockedStatus || canEditWhenBlocked);
 
   const handleGoBack = useCallback(() => {
-    void navigate(-1);
+    // New tab / direct loads have no prior history entry; send users to the activity list.
+    if (window.history.length > 1) {
+      void navigate(-1);
+    } else {
+      void navigate('/');
+    }
   }, [navigate]);
 
   const mayEditFormFields =
