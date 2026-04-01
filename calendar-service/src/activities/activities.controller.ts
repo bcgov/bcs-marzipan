@@ -44,6 +44,7 @@ import {
   type SoftDeleteRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { redactActivityResponse } from '@corpcal/shared/utils';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
@@ -78,6 +79,19 @@ export class ActivitiesController {
 
   constructor(private readonly activitiesService: ActivitiesService) {}
 
+  private redact(data: ActivityResponse, user?: AuthUser): ActivityResponse {
+    if (!user) return data;
+    return redactActivityResponse(data, user);
+  }
+
+  private redactAll(
+    data: ActivityResponse[],
+    user?: AuthUser
+  ): ActivityResponse[] {
+    if (!user) return data;
+    return data.map((d) => redactActivityResponse(d, user));
+  }
+
   @ApiOperation({
     summary: 'Create activity',
     description:
@@ -111,7 +125,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -160,7 +174,7 @@ export class ActivitiesController {
     const results = await this.activitiesService.findAll(filters, ctx);
     return {
       success: true,
-      data: results,
+      data: this.redactAll(results, ctx.user),
     };
   }
 
@@ -240,7 +254,7 @@ export class ActivitiesController {
     const result = await this.activitiesService.findOne(id, ctx);
     return {
       success: true,
-      data: result,
+      data: this.redact(result, ctx.user),
     };
   }
 
@@ -285,7 +299,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -331,7 +345,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -376,7 +390,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -424,7 +438,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -472,7 +486,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -583,7 +597,7 @@ export class ActivitiesController {
     const result = await this.activitiesService.cancelChanges(id, user.id);
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -671,7 +685,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -716,7 +730,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -761,7 +775,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 
@@ -806,7 +820,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: result,
+      data: this.redact(result, user),
     };
   }
 }
