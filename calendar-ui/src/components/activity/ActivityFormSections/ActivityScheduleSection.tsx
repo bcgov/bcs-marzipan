@@ -84,7 +84,9 @@ export function ActivityScheduleSection({
   dateStatuses,
   timeStatuses,
 }: ActivityScheduleSectionProps) {
-  const { readOnly } = useActivityEdit();
+  const { readOnly, canEditFieldScope } = useActivityEdit();
+  const dateTimeStatusReadOnly =
+    readOnly || !(canEditFieldScope?.('dateTimeStatus') ?? true);
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
   const [activeTimePopover, setActiveTimePopover] = useState<
@@ -258,7 +260,7 @@ export function ActivityScheduleSection({
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
-                  readOnly={readOnly}
+                  readOnly={dateTimeStatusReadOnly}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -273,7 +275,7 @@ export function ActivityScheduleSection({
                 >
                   <FormControl data-field={statusField.name}>
                     <FormSelectTrigger
-                      readOnly={readOnly}
+                      readOnly={dateTimeStatusReadOnly}
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
@@ -431,7 +433,7 @@ export function ActivityScheduleSection({
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
                 <FormSelect
-                  readOnly={readOnly}
+                  readOnly={dateTimeStatusReadOnly}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -446,7 +448,7 @@ export function ActivityScheduleSection({
                 >
                   <FormControl data-field={statusField.name}>
                     <FormSelectTrigger
-                      readOnly={readOnly}
+                      readOnly={dateTimeStatusReadOnly}
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >

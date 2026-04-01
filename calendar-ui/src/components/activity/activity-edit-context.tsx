@@ -19,8 +19,12 @@
  */
 import { createContext, useContext, type ReactNode } from 'react';
 
+import type { ActivityFieldScope } from '@corpcal/shared';
+
 export type ActivityEditContextValue = {
   readOnly: boolean;
+  canViewFieldScope?: (scope: ActivityFieldScope) => boolean;
+  canEditFieldScope?: (scope: ActivityFieldScope) => boolean;
 };
 
 const defaultValue: ActivityEditContextValue = {

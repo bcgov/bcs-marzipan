@@ -27,7 +27,10 @@ import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 export const ActivityReportsSection: React.FC = () => {
-  const { readOnly } = useActivityEdit();
+  const { readOnly, canViewFieldScope, canEditFieldScope } = useActivityEdit();
+  const canViewLookAhead = canViewFieldScope?.('lookAhead') ?? true;
+  const lookAheadReadOnly =
+    readOnly || !(canEditFieldScope?.('lookAhead') ?? true);
   const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
 
@@ -114,109 +117,113 @@ export const ActivityReportsSection: React.FC = () => {
         }}
       />
 
-      <FormSectionDivider />
+      {canViewLookAhead && (
+        <>
+          <FormSectionDivider />
 
-      <ActivityFormHeading>Look ahead</ActivityFormHeading>
+          <ActivityFormHeading>Look ahead</ActivityFormHeading>
 
-      <FormField
-        control={form.control}
-        name="executiveSummary"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <Textarea
-                placeholder="Enter executive summary"
-                readOnly={readOnly}
-                rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
-                value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+          <FormField
+            control={form.control}
+            name="executiveSummary"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormControl data-field={field.name}>
+                  <Textarea
+                    placeholder="Enter executive summary"
+                    readOnly={lookAheadReadOnly}
+                    rows={4}
+                    name={field.name}
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      field.onChange(v === '' ? undefined : v);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <FormField
-        control={form.control}
-        name="lookAheadStatus"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <RadioGroup
-                readOnly={readOnly}
-                onValueChange={field.onChange}
-                value={field.value || ''}
-                className="flex flex-row space-x-4"
-              >
-                {lookAheadStatusOptions.map((option) => (
-                  <div
-                    key={option.value}
-                    className="flex items-center space-x-2"
+          <FormField
+            control={form.control}
+            name="lookAheadStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormControl data-field={field.name}>
+                  <RadioGroup
+                    readOnly={lookAheadReadOnly}
+                    onValueChange={field.onChange}
+                    value={field.value || ''}
+                    className="flex flex-row space-x-4"
                   >
-                    <RadioGroupItem
-                      value={option.value}
-                      id={`status-${option.value}`}
-                    />
-                    <Label
-                      htmlFor={`status-${option.value}`}
-                      className="cursor-pointer font-normal"
-                    >
-                      {option.label}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+                    {lookAheadStatusOptions.map((option) => (
+                      <div
+                        key={option.value}
+                        className="flex items-center space-x-2"
+                      >
+                        <RadioGroupItem
+                          value={option.value}
+                          id={`status-${option.value}`}
+                        />
+                        <Label
+                          htmlFor={`status-${option.value}`}
+                          className="cursor-pointer font-normal"
+                        >
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <FormField
-        control={form.control}
-        name="lookAheadSection"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <RadioGroup
-                readOnly={readOnly}
-                onValueChange={field.onChange}
-                value={field.value ?? ''}
-                className="flex flex-row space-x-4"
-              >
-                {lookAheadSectionOptions.map((option) => (
-                  <div
-                    key={option.value}
-                    className="flex items-center space-x-2"
+          <FormField
+            control={form.control}
+            name="lookAheadSection"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormControl data-field={field.name}>
+                  <RadioGroup
+                    readOnly={lookAheadReadOnly}
+                    onValueChange={field.onChange}
+                    value={field.value ?? ''}
+                    className="flex flex-row space-x-4"
                   >
-                    <RadioGroupItem
-                      value={option.value}
-                      id={`lookAhead-section-${option.value}`}
-                    />
-                    <Label
-                      htmlFor={`lookAhead-section-${option.value}`}
-                      className="cursor-pointer font-normal"
-                    >
-                      {option.label}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+                    {lookAheadSectionOptions.map((option) => (
+                      <div
+                        key={option.value}
+                        className="flex items-center space-x-2"
+                      >
+                        <RadioGroupItem
+                          value={option.value}
+                          id={`lookAhead-section-${option.value}`}
+                        />
+                        <Label
+                          htmlFor={`lookAhead-section-${option.value}`}
+                          className="cursor-pointer font-normal"
+                        >
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </>
+      )}
     </ActivityFormSection>
   );
 };

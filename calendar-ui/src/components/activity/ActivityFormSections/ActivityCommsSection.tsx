@@ -79,7 +79,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   newsReleaseOriginOptions,
   translationRequiredStatuses,
 }) => {
-  const { readOnly } = useActivityEdit();
+  const { readOnly, canEditFieldScope } = useActivityEdit();
+  const translationsReadOnly =
+    readOnly || !(canEditFieldScope?.('translations') ?? true);
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
@@ -365,7 +367,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormSelect
-              readOnly={readOnly}
+              readOnly={translationsReadOnly}
               value={
                 field.value !== undefined && field.value !== null
                   ? String(field.value)
@@ -376,7 +378,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               }
             >
               <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
+                <FormSelectTrigger readOnly={translationsReadOnly}>
                   <SelectValue placeholder="Select status" />
                 </FormSelectTrigger>
               </FormControl>
@@ -412,7 +414,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     field.onChange(selected.map((o) => Number(o.value)))
                   }
                   itemToStringValue={(o) => o.label}
-                  readOnly={readOnly}
+                  readOnly={translationsReadOnly}
                 >
                   <ComboboxChips ref={translationsAnchorRef} className="w-full">
                     <ComboboxValue>
