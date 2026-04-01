@@ -389,7 +389,7 @@ export function GlobalHistory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const entries = historyQuery.data ?? [];
+  const entries = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
 
   const actionTypeOptions = useMemo<FilterOption[]>(() => {
     const values = [...new Set(entries.map((entry) => entry.actionType))];

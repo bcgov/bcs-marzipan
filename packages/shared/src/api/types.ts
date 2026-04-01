@@ -11,6 +11,10 @@
 
 // Re-export types from Zod schemas (single source of truth)
 export type { ActivityResponse } from '../schemas/activity-response.schema';
+export type {
+  BannerSettings,
+  UpsertBannerSettingsBody,
+} from '../schemas/banner.schema';
 
 // Query params types - re-exported from query-params schema
 export type { LookupQueryParams } from '../schemas/query-params.schema';
