@@ -157,8 +157,6 @@ function SidebarPinButton() {
   );
 }
 
-const HEADER_HEIGHT = '3.5rem'; // h-14
-
 /**
  * Desktop: hover over sidebar to expand (icons + labels); collapses when mouse leaves unless pinned.
  * Sidebar sits below the top nav (out of flow, fixed), full width header above.
