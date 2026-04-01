@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
 import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
@@ -26,7 +26,7 @@ const createQueryClient = () =>
 
 describe('GlobalHistory component', () => {
   beforeEach(() => {
-    (fetchGlobalActivityHistory as unknown as vi.Mock).mockResolvedValue([
+    (fetchGlobalActivityHistory as unknown as any).mockResolvedValue([
       {
         id: 1,
         timestamp: new Date().toISOString(),
