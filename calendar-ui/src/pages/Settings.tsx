@@ -5,11 +5,13 @@ import {
   FileText,
   FolderTree,
   MapPin,
+  Megaphone,
   Palette,
   Tag,
   Users,
 } from 'lucide-react';
 
+import { BannerSettingsAdmin } from '@/components/admin';
 import {
   ActivityStatusesAdmin,
   CategoriesAdmin,
@@ -23,6 +25,7 @@ import {
 } from '@/components/admin/LookupAdmins';
 
 type Section =
+  | 'banner'
   | 'categories'
   | 'cities'
   | 'comms'
@@ -34,6 +37,7 @@ type Section =
   | 'venue-presets';
 
 const sections = [
+  { id: 'banner' as Section, label: 'System Banner', icon: Megaphone },
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
   { id: 'cities' as Section, label: 'Cities', icon: MapPin },
   { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
@@ -112,6 +116,10 @@ export function Settings() {
 
         {/* Admin Sections */}
         <div className="space-y-8">
+          <div id="section-banner">
+            <BannerSettingsAdmin />
+          </div>
+
           <div id="section-categories">
             <CategoriesAdmin />
           </div>

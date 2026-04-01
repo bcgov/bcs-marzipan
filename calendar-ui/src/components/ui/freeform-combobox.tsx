@@ -15,6 +15,10 @@ import {
 } from '../../lib/read-only-static-field';
 import { cn } from '../../lib/utils';
 import {
+  CHIP_LABEL_CLASSES,
+  CHIP_VISUAL_CLASSES,
+} from './combobox-chip-styles';
+import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
@@ -399,10 +403,10 @@ export function FreeformCombobox({
           <span
             key={v.type === 'option' ? v.value : `freeform-${v.value}`}
             data-slot="chip"
-            className="bg-muted text-foreground flex h-5.5 w-fit max-w-full items-center gap-1 rounded-sm px-1.5 text-sm font-medium whitespace-nowrap"
+            className={CHIP_VISUAL_CLASSES}
           >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate">{getDisplayLabel(v)}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className={CHIP_LABEL_CLASSES}>{getDisplayLabel(v)}</span>
               {onSetLead && (
                 <>
                   {isLead && (

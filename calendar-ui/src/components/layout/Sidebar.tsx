@@ -8,13 +8,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  useCallback,
-  useEffect,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import { Badge } from '@/components/ui/badge';
@@ -163,8 +157,6 @@ function SidebarPinButton() {
   );
 }
 
-const HEADER_HEIGHT = '3.5rem'; // h-14
-
 /**
  * Desktop: hover over sidebar to expand (icons + labels); collapses when mouse leaves unless pinned.
  * Sidebar sits below the top nav (out of flow, fixed), full width header above.
@@ -227,11 +219,6 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       pinned={pinned}
       onPinnedChange={handlePinnedChange}
       className="h-svh"
-      style={
-        {
-          '--header-height': HEADER_HEIGHT,
-        } as CSSProperties
-      }
     >
       {header}
       <div className="flex min-h-0 flex-1">

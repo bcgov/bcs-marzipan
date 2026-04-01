@@ -91,6 +91,14 @@ export const PERMISSIONS = {
     DELETE: 'drafts.delete',
     RECOVER: 'drafts.recover',
   },
+  SAVED_FILTERS: {
+    VIEW: 'savedFilters.view',
+    CREATE: 'savedFilters.create',
+    EDIT: 'savedFilters.edit',
+    DELETE: 'savedFilters.delete',
+    SHARE_TEAM: 'savedFilters.share.team',
+    SHARE_GLOBAL: 'savedFilters.share.global',
+  },
   REPORTS: {
     VIEW: 'reports.view',
     EXPORT: 'reports.export',

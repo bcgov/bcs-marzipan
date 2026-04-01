@@ -6,5 +6,6 @@
 export * from './activity.dto';
 export * from './activity-response.dto';
 export * from './activity-update.dto';
+export * from './banner.dto';
 export * from './lookup.dto';
 export * from './health.dto';

@@ -1,7 +1,7 @@
 import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
-} from '@/components/activity/ActivityTable/activityFilterState';
+} from '@corpcal/shared';
 
 export const STORAGE_KEY = 'activityTablePreferences';
 
@@ -443,7 +443,7 @@ function parseFromStorage(
   }
 }
 
-function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
+export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
   return (
     searchParams.has(URL_PARAM_SORT) ||
     searchParams.has(URL_PARAM_DIR) ||

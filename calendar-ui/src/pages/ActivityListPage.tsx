@@ -3,7 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
-import { ActivityTable } from '@/components/activity/ActivityTable';
+import {
+  ActivityTable,
+  type ActivityTableActiveSavedFilter,
+} from '@/components/activity/ActivityTable';
 import { PageHeader } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
@@ -71,6 +74,8 @@ export const ActivityListPage = () => {
   const [selectedLeadTeamId, setSelectedLeadTeamId] = useState<number | null>(
     null
   );
+  const [activeSavedFilter, setActiveSavedFilter] =
+    useState<ActivityTableActiveSavedFilter | null>(null);
 
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
   const { data: ministries = [] } = useMinistries();
@@ -135,21 +140,26 @@ export const ActivityListPage = () => {
   const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
 
   const tableProps = useMemo(() => {
+    const base = {};
     switch (activeTab) {
       case 'all':
-        return {};
+        return base;
       case 'ministry':
         return effectiveLeadTeamId != null
-          ? { leadTeamId: effectiveLeadTeamId }
-          : {};
+          ? { ...base, leadTeamId: effectiveLeadTeamId }
+          : base;
       case 'my-activities':
-        return user?.id != null ? { commsContactLeadUserId: user.id } : {};
+        return user?.id != null
+          ? { ...base, commsContactLeadUserId: user.id }
+          : base;
       case 'recent':
-        return {};
+        return base;
       case 'shared-with-me':
-        return userTeamIds.length > 0 ? { sharedWithTeamIds: userTeamIds } : {};
+        return userTeamIds.length > 0
+          ? { ...base, sharedWithTeamIds: userTeamIds }
+          : base;
       default:
-        return {};
+        return base;
     }
   }, [activeTab, effectiveLeadTeamId, user?.id, userTeamIds]);
 
@@ -238,33 +248,17 @@ export const ActivityListPage = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="all" className="mt-0">
-          <div className="min-w-0">
-            <ActivityTable {...tableProps} />
-          </div>
-        </TabsContent>
-        {showMinistryTab && (
-          <TabsContent value="ministry" className="mt-0">
-            <div className="min-w-0">
-              <ActivityTable {...tableProps} />
-            </div>
-          </TabsContent>
-        )}
-        <TabsContent value="my-activities" className="mt-0">
-          <div className="min-w-0">
-            <ActivityTable {...tableProps} />
-          </div>
-        </TabsContent>
-        <TabsContent value="recent" className="mt-0">
-          <div className="min-w-0">
+        <div className="mt-0 min-w-0">
+          {activeTab === 'recent' ? (
             <ActivityTable />
-          </div>
-        </TabsContent>
-        <TabsContent value="shared-with-me" className="mt-0">
-          <div className="min-w-0">
-            <ActivityTable {...tableProps} />
-          </div>
-        </TabsContent>
+          ) : (
+            <ActivityTable
+              {...tableProps}
+              activeSavedFilter={activeSavedFilter}
+              onActiveSavedFilterChange={setActiveSavedFilter}
+            />
+          )}
+        </div>
       </Tabs>
     </>
   );

@@ -15,7 +15,8 @@ import { cn } from '@/lib/utils';
  * Exported for use by other components (e.g. ResponsiveFilterRow overflow trigger).
  */
 export const filterTriggerStyles = {
-  base: 'flex h-10 min-w-[100px] items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm font-normal whitespace-nowrap transition-colors',
+  /** Match Input / Button / Accordion: ring uses --ring, not browser blue or primary. */
+  base: 'flex h-10 min-w-[100px] items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm font-normal whitespace-nowrap outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
   inactive:
     'border-input bg-background hover:bg-accent hover:text-accent-foreground',
   // active: 'border-primary bg-[#545454] text-primary-foreground hover:opacity-90',

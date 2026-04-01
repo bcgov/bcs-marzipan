@@ -20,6 +20,12 @@ INSERT INTO permissions (key, display_name, category, subcategory, resource, act
   ('drafts.edit', 'Edit drafts', 'Drafts', 'Basic', 'drafts', 'edit', 12),
   ('drafts.delete', 'Delete drafts', 'Drafts', 'Basic', 'drafts', 'delete', 13),
   ('drafts.recover', 'Recover drafts', 'Drafts', 'Basic', 'drafts', 'recover', 14),
+  ('savedFilters.view', 'View saved filters', 'Saved Filters', 'Basic', 'savedFilters', 'view', 15),
+  ('savedFilters.create', 'Create saved filters', 'Saved Filters', 'Basic', 'savedFilters', 'create', 16),
+  ('savedFilters.edit', 'Edit saved filters', 'Saved Filters', 'Basic', 'savedFilters', 'edit', 17),
+  ('savedFilters.delete', 'Delete saved filters', 'Saved Filters', 'Basic', 'savedFilters', 'delete', 18),
+  ('savedFilters.share.team', 'Share saved filters with a team', 'Saved Filters', 'Sharing', 'savedFilters', 'share', 19),
+  ('savedFilters.share.global', 'Share saved filters globally', 'Saved Filters', 'Sharing', 'savedFilters', 'share', 20),
   ('reports.view', 'View reports', 'Reports', 'Basic', 'reports', 'view', 20),
   ('reports.export', 'Export reports', 'Reports', 'Basic', 'reports', 'export', 21),
   ('reports.create_custom', 'Create custom reports', 'Reports', 'Basic', 'reports', 'create_custom', 22),
@@ -41,14 +47,21 @@ INSERT INTO permissions (key, display_name, category, subcategory, resource, act
   ('system.manage_permissions', 'Manage permissions', 'System', 'Admin', 'system', 'manage_permissions', 71)
 ON CONFLICT (key) DO NOTHING;
 
--- 2. Viewer (view only, scoped)
+-- 2. Saved filters (CRUD for all roles)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r
+CROSS JOIN permissions p
+WHERE p.key IN ('savedFilters.view','savedFilters.create','savedFilters.edit','savedFilters.delete')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- 3. Viewer (view only, scoped)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Viewer' AND p.key IN ('activities.view','drafts.view','reports.view','lookups.view')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 3. Editor (Viewer + create, edit, delete, drafts; all scoped)
+-- 4. Editor (Viewer + create, edit, delete, drafts; all scoped)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
@@ -59,14 +72,14 @@ WHERE r.name = 'Editor' AND p.key IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 4. Advanced Viewer (view only, bypass scoping)
+-- 5. Advanced Viewer (view only, bypass scoping)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Advanced Viewer' AND p.key IN ('activities.view','drafts.view','reports.view','lookups.view','teams.view')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 5. Advanced Editor (create/delete scoped; approve, export, recover)
+-- 6. Advanced Editor (create/delete scoped; approve, export, recover)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
@@ -77,7 +90,7 @@ WHERE r.name = 'Advanced Editor' AND p.key IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 6. Admin (create.any, delete.any, publish, users, teams, lookups.manage, settings)
+-- 7. Admin (create.any, delete.any, publish, users, teams, lookups.manage, settings)
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
@@ -92,7 +105,7 @@ WHERE r.name = 'Admin' AND p.key IN (
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 7. System Admin: all permissions
+-- 8. System Admin: all permissions
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p

@@ -1,6 +1,8 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import type { ActivityFilterState } from '@corpcal/shared';
+import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
@@ -9,12 +11,16 @@ import {
   SortDropdown,
   type SortColumnConfig,
 } from '@/components/table/SortDropdown';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
+import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
+import {
+  sanitizeSavedFilterPayload,
+  type ValidFilterLookups,
+} from '@/lib/savedFilterSanitize';
 import type { OptionItem } from '@/schemas/types';
 
-import type { ActivityFilterState } from './activityFilterState';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
@@ -48,9 +54,18 @@ export interface ActivityTableFiltersProps {
   eventPlannerOptions: LeadFilterOption[];
   translationStatusOptions: TranslationStatusFilterOption[];
   translationOptions: TranslationFilterOption[];
+  savedFilters?: UseSavedFiltersReturn;
+  onApplySavedFilter?: (
+    filterState: ActivityFilterState,
+    searchKeyword: string,
+    appliedFrom: { id: number; name: string }
+  ) => void;
+  activeSavedFilterId?: number | null;
 }
 
-function hasAnyFilterActive(filterState: ActivityFilterState): boolean {
+export function hasAnyActivityTableFilterActive(
+  filterState: ActivityFilterState
+): boolean {
   const {
     dateRange,
     categoryNames,
@@ -124,10 +139,75 @@ export function ActivityTableFilters({
   eventPlannerOptions,
   translationStatusOptions,
   translationOptions,
+  savedFilters,
+  onApplySavedFilter,
+  activeSavedFilterId = null,
 }: ActivityTableFiltersProps) {
-  const anyActive = useMemo(
-    () => hasAnyFilterActive(filterState),
-    [filterState]
+  const summaryContext = useMemo((): ActivityFilterSummaryContext => {
+    return {
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    };
+  }, [
+    statusOptions,
+    pitchRequiredStatusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const validFilterLookupsForPreview = useMemo((): ValidFilterLookups => {
+    const nums = (options: OptionItem[]) =>
+      new Set(
+        options
+          .map((o) => parseInt(o.value, 10))
+          .filter((n) => Number.isFinite(n))
+      );
+    return {
+      statusIds: nums(statusOptions),
+      tagIds: nums(tagOptions),
+      ministryIds: nums(ministryOptions),
+      orgIds: nums(organizationOptions),
+      commsContactUserIds: nums(commsContactOptions),
+      eventPlannerIds: nums(eventPlannerOptions),
+      translationStatusIds: nums(translationStatusOptions),
+      translationLanguageIds: nums(translationOptions),
+    };
+  }, [
+    statusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const parseSavedFilterForDraft = useCallback(
+    (sf: SavedFilterResponse) => {
+      const { filterState: parsed, searchKeyword: sk } =
+        sanitizeSavedFilterPayload(
+          {
+            filterState: sf.filterState,
+            searchKeyword: sf.searchKeyword,
+          },
+          validFilterLookupsForPreview
+        );
+      return { filterState: parsed, searchKeyword: sk };
+    },
+    [validFilterLookupsForPreview]
   );
 
   const handleDateRangeChange = useCallback(
@@ -278,32 +358,6 @@ export function ActivityTableFilters({
         },
       },
       {
-        key: 'pitch',
-        label: 'Pitch',
-        panel: (
-          <PitchFilterPanel
-            filterState={filterState}
-            onFilterStateChange={onFilterStateChange}
-            pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.pitchRequiredStatusNames.length > 0 ||
-            filterState.pitchDateFilter.kind !== 'any',
-          count:
-            filterState.pitchRequiredStatusNames.length +
-            (filterState.pitchDateFilter.kind !== 'any' ? 1 : 0),
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              pitchRequiredStatusNames: [],
-              pitchDateFilter: { kind: 'any' },
-            }),
-          clearAriaLabel: 'Clear Pitch filter',
-        },
-      },
-      {
         key: 'lookAhead',
         label: 'Look Ahead',
         panel: (
@@ -347,52 +401,6 @@ export function ActivityTableFilters({
         },
       },
       {
-        key: 'tags',
-        label: 'Tags',
-        panel: (
-          <TagsFilterPanel
-            tagOptions={tagOptions}
-            selectedTagIds={filterState.tagIds}
-            onTagIdsChange={handleTagIdsChange}
-          />
-        ),
-        triggerProps: {
-          active: filterState.tagIds.length > 0,
-          count: filterState.tagIds.length,
-          onClear: () => handleTagIdsChange([]),
-          clearAriaLabel: 'Clear Tags filter',
-        },
-      },
-      {
-        key: 'translations',
-        label: 'Translations',
-        panel: (
-          <TranslationsFilterPanel
-            translationStatusOptions={translationStatusOptions}
-            translationOptions={translationOptions}
-            selectedStatusIds={filterState.translationRequiredStatusIds}
-            selectedLanguageIds={filterState.translationLanguageIds}
-            onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
-            onLanguageIdsChange={handleTranslationLanguageIdsChange}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.translationRequiredStatusIds.length > 0 ||
-            filterState.translationLanguageIds.length > 0,
-          count:
-            filterState.translationRequiredStatusIds.length +
-            filterState.translationLanguageIds.length,
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              translationRequiredStatusIds: [],
-              translationLanguageIds: [],
-            }),
-          clearAriaLabel: 'Clear Translations filter',
-        },
-      },
-      {
         key: 'leads',
         label: 'Leads',
         panel: (
@@ -427,6 +435,78 @@ export function ActivityTableFilters({
           clearAriaLabel: 'Clear Leads filter',
         },
       },
+      {
+        key: 'translations',
+        label: 'Translations',
+        panel: (
+          <TranslationsFilterPanel
+            translationStatusOptions={translationStatusOptions}
+            translationOptions={translationOptions}
+            selectedStatusIds={filterState.translationRequiredStatusIds}
+            selectedLanguageIds={filterState.translationLanguageIds}
+            onStatusIdsChange={handleTranslationRequiredStatusIdsChange}
+            onLanguageIdsChange={handleTranslationLanguageIdsChange}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.translationRequiredStatusIds.length > 0 ||
+            filterState.translationLanguageIds.length > 0,
+          count:
+            filterState.translationRequiredStatusIds.length +
+            filterState.translationLanguageIds.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              translationRequiredStatusIds: [],
+              translationLanguageIds: [],
+            }),
+          clearAriaLabel: 'Clear Translations filter',
+        },
+      },
+      {
+        key: 'tags',
+        label: 'Tags',
+        panel: (
+          <TagsFilterPanel
+            tagOptions={tagOptions}
+            selectedTagIds={filterState.tagIds}
+            onTagIdsChange={handleTagIdsChange}
+          />
+        ),
+        triggerProps: {
+          active: filterState.tagIds.length > 0,
+          count: filterState.tagIds.length,
+          onClear: () => handleTagIdsChange([]),
+          clearAriaLabel: 'Clear Tags filter',
+        },
+      },
+      {
+        key: 'pitch',
+        label: 'Pitch',
+        panel: (
+          <PitchFilterPanel
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+            pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.pitchRequiredStatusNames.length > 0 ||
+            filterState.pitchDateFilter.kind !== 'any',
+          count:
+            filterState.pitchRequiredStatusNames.length +
+            (filterState.pitchDateFilter.kind !== 'any' ? 1 : 0),
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              pitchRequiredStatusNames: [],
+              pitchDateFilter: { kind: 'any' },
+            }),
+          clearAriaLabel: 'Clear Pitch filter',
+        },
+      },
     ],
     [
       filterState,
@@ -456,29 +536,20 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by datetime, category, pitch, look ahead, status, tags, translations, leads, and keyword"
+      aria-label="Filter activities by datetime, category, look ahead, status, leads, translations, tags, pitch, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <ResponsiveFilterRow
           slots={filterSlots}
           overflowTriggerClassName="h-10"
-          reservedWidthForTrailing={120}
           onClearAll={handleClearAllFilters}
-          trailingContent={
-            anyActive ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="flex h-10 shrink-0 items-center gap-1 font-normal"
-                onClick={handleClearAllFilters}
-                aria-label="Clear all filters"
-              >
-                <X className="h-3.5 w-3.5" />
-                Clear filters
-              </Button>
-            ) : undefined
-          }
+          savedFilters={savedFilters}
+          filterState={filterState}
+          searchKeyword={searchKeyword}
+          onApplySavedFilter={onApplySavedFilter}
+          activeSavedFilterId={activeSavedFilterId}
+          filterSummaryContext={summaryContext}
+          parseSavedFilterForDraft={parseSavedFilterForDraft}
         />
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -489,7 +560,7 @@ export function ActivityTableFilters({
             placeholder="Search activities..."
             value={searchKeyword}
             onChange={(e) => onSearchKeywordChange(e.target.value)}
-            className="pr-8 pl-8"
+            className="pr-8 pl-8 shadow-none"
             aria-label="Search activities"
           />
           {searchKeyword && (
@@ -512,6 +583,7 @@ export function ActivityTableFilters({
           defaultSortKey={defaultSortKey}
           defaultSortDirection={defaultSortDirection}
           ariaLabel="Sort by"
+          triggerClassName="shadow-none"
         />
       </div>
     </div>

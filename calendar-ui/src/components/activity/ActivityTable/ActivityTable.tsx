@@ -17,7 +17,8 @@ import {
   NotebookText,
   Users,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   useCallback,
   useEffect,
@@ -27,6 +28,7 @@ import {
   type CSSProperties,
 } from 'react';
 
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/shared';
 import {
@@ -77,12 +79,19 @@ import {
   useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
+import {
+  buildActivityFilterSummaryLinesForDetailPopover,
+  getAppliedActivityFilterTypeLabels,
+  type ActivityFilterSummaryContext,
+} from '@/lib/activity-filter-summary';
 import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   type ActivityListQueryParams,
   type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
+import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
   formatDateRange,
   formatExactDate,
@@ -90,10 +99,20 @@ import {
   formatTime12h,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
+import {
+  sanitizeSavedFilterPayload,
+  type SavedFilterPayload,
+  type ValidFilterLookups,
+} from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
+import type { OptionItem } from '@/schemas/types';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
-import { ActivityTableFilters } from './ActivityTableFilters';
+import {
+  ActivityTableFilters,
+  hasAnyActivityTableFilterActive,
+} from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
   mapActivityResponseToTableRow,
@@ -627,6 +646,12 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
+/** Active saved-filter preset shown in the summary bar and Saved filters menu. */
+export type ActivityTableActiveSavedFilter = {
+  id: number;
+  name: string;
+};
+
 export interface ActivityTableProps {
   /** When set, only activities with this lead team are shown (e.g. ministry tab). */
   leadTeamId?: number;
@@ -636,6 +661,14 @@ export interface ActivityTableProps {
   sharedWithTeamId?: number;
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
+  /**
+   * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
+   * is considered applied (e.g. single ActivityTable across activity list tabs).
+   */
+  activeSavedFilter?: ActivityTableActiveSavedFilter | null;
+  onActiveSavedFilterChange?: (
+    value: ActivityTableActiveSavedFilter | null
+  ) => void;
 }
 
 export function ActivityTable({
@@ -643,6 +676,8 @@ export function ActivityTable({
   commsContactLeadUserId,
   sharedWithTeamId,
   sharedWithTeamIds,
+  activeSavedFilter: activeSavedFilterFromParent,
+  onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -653,6 +688,37 @@ export function ActivityTable({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const { preferences, setPreferences } =
     useActivityTablePreferences(canSeeDeleted);
+  const savedFiltersHook = useSavedFilters();
+  const [currentSearchParams] = useSearchParams();
+  const defaultAppliedRef = useRef(false);
+  const defaultSuppressedByClearRef = useRef(false);
+  const [internalActiveSavedFilter, setInternalActiveSavedFilter] =
+    useState<ActivityTableActiveSavedFilter | null>(null);
+
+  const savedFilterSelectionControlled = onActiveSavedFilterChange != null;
+  const activeSavedFilter = savedFilterSelectionControlled
+    ? (activeSavedFilterFromParent ?? null)
+    : internalActiveSavedFilter;
+
+  const setActiveSavedFilter = useCallback(
+    (value: ActivityTableActiveSavedFilter | null) => {
+      if (savedFilterSelectionControlled) {
+        onActiveSavedFilterChange?.(value);
+      } else {
+        setInternalActiveSavedFilter(value);
+      }
+    },
+    [savedFilterSelectionControlled, onActiveSavedFilterChange]
+  );
+
+  useEffect(() => {
+    if (activeSavedFilter == null) return;
+    const stillThere = savedFiltersHook.savedFilters.some(
+      (f) => f.id === activeSavedFilter.id
+    );
+    if (!stillThere) setActiveSavedFilter(null);
+  }, [activeSavedFilter, savedFiltersHook.savedFilters, setActiveSavedFilter]);
+
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
   const showCompleted = preferences.showCompleted;
@@ -787,6 +853,95 @@ export function ActivityTable({
       })),
     [translationRequiredStatusesForFilter]
   );
+
+  const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
+    const nums = (options: OptionItem[]) =>
+      new Set(
+        options
+          .map((o) => parseInt(o.value, 10))
+          .filter((n) => Number.isFinite(n))
+      );
+    return {
+      statusIds: nums(statusOptions),
+      tagIds: nums(tagOptions),
+      ministryIds: nums(ministryOptions),
+      orgIds: nums(organizationOptions),
+      commsContactUserIds: nums(commsContactOptions),
+      eventPlannerIds: nums(eventPlannerOptions),
+      translationStatusIds: nums(translationStatusOptions),
+      translationLanguageIds: nums(translationOptions),
+    };
+  }, [
+    statusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationStatusOptions,
+    translationOptions,
+  ]);
+
+  const savedFilterDefaultLookupsReady =
+    activityStatusesForFilter.length > 0 && !savedFiltersHook.isLoading;
+
+  useEffect(() => {
+    const decision = getSavedFilterAutoApplyDecision({
+      lookupsReady: savedFilterDefaultLookupsReady,
+      defaultAlreadyApplied: defaultAppliedRef.current,
+      suppressedByClear: defaultSuppressedByClearRef.current,
+      hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
+      hasRestoredActivePreferences:
+        hasAnyActivityTableFilterActive(filterState) ||
+        searchKeyword.trim().length > 0,
+      hasDefaultFilter: savedFiltersHook.defaultFilter != null,
+    });
+
+    if (decision.shouldMarkContextApplied) {
+      defaultAppliedRef.current = true;
+    }
+
+    if (decision.shouldClearActiveSavedFilter) {
+      setActiveSavedFilter(null);
+    }
+
+    if (!decision.shouldApplyDefault) {
+      return;
+    }
+
+    const defaultFilter = savedFiltersHook.defaultFilter;
+    if (!defaultFilter) {
+      return;
+    }
+    const {
+      filterState: sanitized,
+      searchKeyword: kw,
+      hadInvalidValues,
+    } = sanitizeSavedFilterPayload(
+      defaultFilter as unknown as SavedFilterPayload,
+      validFilterLookupsForDefaultApply
+    );
+    setPreferences({ filterState: sanitized, searchKeyword: kw });
+    setActiveSavedFilter({
+      id: defaultFilter.id,
+      name: defaultFilter.name,
+    });
+    if (hadInvalidValues) {
+      toast.warning(
+        'Some filter values are no longer available and were skipped.'
+      );
+    }
+  }, [
+    savedFiltersHook.defaultFilter,
+    savedFiltersHook.isLoading,
+    currentSearchParams,
+    filterState,
+    searchKeyword,
+    setPreferences,
+    setActiveSavedFilter,
+    validFilterLookupsForDefaultApply,
+    savedFilterDefaultLookupsReady,
+  ]);
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
   const statusFilterIncludesCompleted =
@@ -1166,8 +1321,10 @@ export function ActivityTable({
         id: 'show-completed',
         label: 'Show completed',
         checked: effectiveShowCompleted,
-        onCheckedChange: (checked: boolean) =>
-          setPreferences({ showCompleted: checked }),
+        onCheckedChange: (checked: boolean) => {
+          setActiveSavedFilter(null);
+          setPreferences({ showCompleted: checked });
+        },
         disabled: hasStatusFilter,
         disabledTooltip,
       },
@@ -1177,8 +1334,10 @@ export function ActivityTable({
         id: 'show-deleted',
         label: 'Show deleted',
         checked: effectiveShowDeleted,
-        onCheckedChange: (checked: boolean) =>
-          setPreferences({ showDeleted: checked }),
+        onCheckedChange: (checked: boolean) => {
+          setActiveSavedFilter(null);
+          setPreferences({ showDeleted: checked });
+        },
         disabled: hasStatusFilter,
         disabledTooltip,
       });
@@ -1190,23 +1349,107 @@ export function ActivityTable({
     effectiveShowDeleted,
     canSeeDeleted,
     setPreferences,
+    setActiveSavedFilter,
   ]);
 
   const handleFilterStateChange = useCallback(
     (nextFilterState: typeof filterState) => {
+      setActiveSavedFilter(null);
       setPreferences({ filterState: nextFilterState });
     },
-    [setPreferences]
+    [setPreferences, setActiveSavedFilter]
   );
+
+  const appliedSavedFilterName = useMemo(() => {
+    if (activeSavedFilter == null) return null;
+    const fromList = savedFiltersHook.savedFilters.find(
+      (f) => f.id === activeSavedFilter.id
+    );
+    return fromList?.name ?? activeSavedFilter.name;
+  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
+
+  const filterSummaryContextForBar = useMemo(
+    (): ActivityFilterSummaryContext => ({
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    }),
+    [
+      statusOptions,
+      pitchRequiredStatusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    ]
+  );
+
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      getAppliedActivityFilterTypeLabels(
+        filterState,
+        searchKeyword,
+        filterSummaryContextForBar
+      ),
+    [filterState, searchKeyword, filterSummaryContextForBar]
+  );
+
+  const hasActiveCriteria =
+    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
+
+  const filterDetailLines = useMemo(
+    () =>
+      hasActiveCriteria
+        ? buildActivityFilterSummaryLinesForDetailPopover(
+            filterState,
+            searchKeyword,
+            filterSummaryContextForBar
+          )
+        : [],
+    [filterState, searchKeyword, filterSummaryContextForBar, hasActiveCriteria]
+  );
+
+  const handleClearPanelFilters = useCallback(() => {
+    defaultSuppressedByClearRef.current = true;
+    defaultAppliedRef.current = false;
+    setActiveSavedFilter(null);
+    setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
+  }, [setPreferences, setActiveSavedFilter]);
+
+  const handleClearAllCriteria = useCallback(() => {
+    defaultSuppressedByClearRef.current = true;
+    defaultAppliedRef.current = false;
+    setActiveSavedFilter(null);
+    setPreferences({
+      filterState: DEFAULT_ACTIVITY_FILTER_STATE,
+      searchKeyword: '',
+    });
+  }, [setPreferences, setActiveSavedFilter]);
+
+  const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
+    filterState
+  )
+    ? handleClearPanelFilters
+    : undefined;
 
   const filterBar = (
     <ActivityTableFilters
       filterState={filterState}
       onFilterStateChange={handleFilterStateChange}
       searchKeyword={searchKeyword}
-      onSearchKeywordChange={(value: string) =>
-        setPreferences({ searchKeyword: value })
-      }
+      onSearchKeywordChange={(value: string) => {
+        setActiveSavedFilter(null);
+        setPreferences({ searchKeyword: value });
+      }}
       sortKey={sortKey}
       sortDirection={sortDirection}
       onSortChange={handleSortChange}
@@ -1223,6 +1466,12 @@ export function ActivityTable({
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
+      savedFilters={savedFiltersHook}
+      activeSavedFilterId={activeSavedFilter?.id ?? null}
+      onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {
+        setActiveSavedFilter(appliedFrom);
+        setPreferences({ filterState, searchKeyword });
+      }}
     />
   );
 
@@ -1237,6 +1486,10 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={tableSummaryOnClearFilters}
         >
           <div className="flex flex-col items-center justify-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -1273,8 +1526,17 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={tableSummaryOnClearFilters}
         >
-          <ActivityTableEmptyState variant="no-data" />
+          <ActivityTableEmptyState
+            variant={hasActiveCriteria ? 'no-filter-match' : 'no-data'}
+            onClearFilters={
+              hasActiveCriteria ? handleClearAllCriteria : undefined
+            }
+          />
         </ActivityTableLayout>
       </div>
     );
@@ -1293,6 +1555,10 @@ export function ActivityTable({
           singularLabel="entry"
           pluralLabel="entries"
           filters={eventTableFilters}
+          appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (
             <ActivityTableEmptyState variant="no-search-match" />

@@ -10,6 +10,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { BannerModule } from './banner/banner.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { DatabaseModule } from './database/database.module';
@@ -22,6 +23,7 @@ import { RolesGuard } from './policy/guards/roles.guard';
 import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
 import { PolicyModule } from './policy/policy.module';
 import { ReportsModule } from './reports/reports.module';
+import { SavedFiltersModule } from './saved-filters/saved-filters.module';
 import { TeamsModule } from './teams/teams.module';
 import { UsersModule } from './users/users.module';
 
@@ -48,11 +50,13 @@ function resolveRootEnvPath(): string {
     DatabaseModule,
     PolicyModule,
     AuthModule,
+    BannerModule,
     ActivitiesModule,
     LocksModule,
     LookupsModule,
     DraftsModule,
     ReportsModule,
+    SavedFiltersModule,
     LookAheadModule,
     UsersModule,
     TeamsModule,
