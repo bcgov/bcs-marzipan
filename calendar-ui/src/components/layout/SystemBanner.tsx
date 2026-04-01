@@ -8,14 +8,12 @@ interface SystemBannerProps {
   banner: BannerSettings;
   onDismiss?: () => void;
   className?: string;
-  compact?: boolean;
 }
 
 export function SystemBanner({
   banner,
   onDismiss,
   className,
-  compact = false,
 }: SystemBannerProps) {
   const showDismiss = banner.isDismissible && typeof onDismiss === 'function';
   const Icon =
@@ -36,13 +34,8 @@ export function SystemBanner({
         color: banner.textColor,
       }}
     >
-      <div className={cn('py-3', compact ? 'px-4' : 'px-4 md:px-4')}>
-        <div
-          className={cn(
-            'mx-auto flex w-full items-center gap-3',
-            compact ? '' : 'max-w-[1100px]'
-          )}
-        >
+      <div className={cn('px-4 py-2 md:px-20')}>
+        <div className={cn('mx-auto flex w-full items-center gap-3')}>
           <div aria-hidden className="shrink-0 rounded-full bg-black/10 p-1">
             <Icon className="h-4 w-4" />
           </div>

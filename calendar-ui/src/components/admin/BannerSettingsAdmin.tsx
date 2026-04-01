@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type {
@@ -161,6 +161,16 @@ export function BannerSettingsAdmin() {
   const canManage = hasSettingsManage && isSystemAdmin;
   const [formData, setFormData] = useState<BannerFormData>(DEFAULT_FORM_DATA);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('html');
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  // Keep the uncontrolled contentEditable in sync when switching modes
+  useEffect(() => {
+    if (editorMode === 'wysiwyg' && contentRef.current) {
+      if (contentRef.current.innerHTML !== formData.content) {
+        contentRef.current.innerHTML = formData.content;
+      }
+    }
+  }, [editorMode, formData.content]);
 
   const {
     data: bannerSettings,
@@ -385,16 +395,16 @@ export function BannerSettingsAdmin() {
 
             {editorMode === 'wysiwyg' ? (
               <div
+                ref={contentRef}
                 contentEditable={canManage}
                 suppressContentEditableWarning
-                onInput={(e) =>
+                onInput={() =>
                   handleFieldChange(
                     'content',
-                    (e.target as HTMLDivElement).innerHTML
+                    contentRef.current?.innerHTML ?? ''
                   )
                 }
                 className={`min-h-[120px] rounded border p-2 ${!canManage ? 'pointer-events-none bg-slate-50' : ''}`}
-                dangerouslySetInnerHTML={{ __html: formData.content }}
               />
             ) : (
               <Textarea
@@ -599,7 +609,7 @@ export function BannerSettingsAdmin() {
           <div className="text-sm font-medium text-slate-900">Preview</div>
           {previewBanner ? (
             <div className="overflow-hidden rounded-md border border-slate-200">
-              <SystemBanner banner={previewBanner} compact />
+              <SystemBanner banner={previewBanner} />
             </div>
           ) : (
             <div className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
