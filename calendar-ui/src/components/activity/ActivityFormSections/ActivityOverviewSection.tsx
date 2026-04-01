@@ -170,9 +170,11 @@ export const ActivityOverviewSection: React.FC<
     ...leadTeamFieldProp,
   };
   const { readOnly, canViewFieldScope } = useActivityEdit();
-  const canViewPitch = canViewFieldScope?.('pitch') ?? true;
+  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? true;
+  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? true;
   const canViewNotes = canViewFieldScope?.('notes') ?? true;
-  const pitchScope = useActivityFieldScopeControl('pitch');
+  const pitchStatusScope = useActivityFieldScopeControl('pitchStatus');
+  const pitchDateScope = useActivityFieldScopeControl('pitchDate');
   const notesScope = useActivityFieldScopeControl('notes');
   const form = useFormContext<ActivityFormData>();
   const categoriesAnchorRef = useComboboxAnchor();
@@ -532,99 +534,100 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      {canViewPitch && (
-        <>
-          <FormField
-            control={form.control}
-            name="pitchRequiredStatusId"
-            render={({ field }) => (
+      {canViewPitchStatus ? (
+        <FormField
+          control={form.control}
+          name="pitchRequiredStatusId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormSelect
+                readOnly={pitchStatusScope.readOnly}
+                disabled={pitchStatusScope.permissionMuted}
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+              >
+                <ActivityFieldScopePermissionTooltip scope="pitchStatus">
+                  <FormControl data-field={field.name}>
+                    <FormSelectTrigger
+                      readOnly={
+                        pitchStatusScope.readOnly &&
+                        !pitchStatusScope.permissionMuted
+                      }
+                    >
+                      <SelectValue placeholder="Select status" />
+                    </FormSelectTrigger>
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
+                <SelectContent>
+                  {pitchRequiredStatuses.map((status) => (
+                    <SelectItem key={status.id} value={String(status.id)}>
+                      {status.displayName ?? status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </FormSelect>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : null}
+
+      {canViewPitchDate ? (
+        <FormField
+          control={form.control}
+          name="pitchDate"
+          render={({ field }) => {
+            const raw = field.value ?? '';
+            const pitchLabel = raw
+              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
+              : 'Select pitch date';
+            return (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                <FormSelect
-                  readOnly={pitchScope.readOnly}
-                  disabled={pitchScope.permissionMuted}
-                  value={
-                    field.value !== undefined && field.value !== null
-                      ? String(field.value)
-                      : ''
-                  }
-                  onValueChange={(value) =>
-                    field.onChange(value === '' ? undefined : Number(value))
-                  }
-                >
-                  <ActivityFieldScopePermissionTooltip scope="pitch">
-                    <FormControl data-field={field.name}>
-                      <FormSelectTrigger
-                        readOnly={
-                          pitchScope.readOnly && !pitchScope.permissionMuted
-                        }
-                      >
-                        <SelectValue placeholder="Select status" />
-                      </FormSelectTrigger>
-                    </FormControl>
-                  </ActivityFieldScopePermissionTooltip>
-                  <SelectContent>
-                    {pitchRequiredStatuses.map((status) => (
-                      <SelectItem key={status.id} value={String(status.id)}>
-                        {status.displayName ?? status.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </FormSelect>
+                <ActivityFieldScopePermissionTooltip scope="pitchDate">
+                  <FormControl className="w-full" data-field={field.name}>
+                    <ScheduledDatePopoverField
+                      triggerVariant="form"
+                      value={raw}
+                      onChange={(iso) => field.onChange(iso || undefined)}
+                      label={pitchLabel}
+                      triggerMuted={!raw}
+                      readOnly={pitchDateScope.readOnly}
+                      disabled={pitchDateScope.permissionMuted}
+                      popoverTitle="Select pitch date"
+                      presets={PRESETS_FUTURE_SHORT}
+                      getPresetAnchor={getPresetAnchorToday}
+                      headerRight={
+                        raw &&
+                        !pitchDateScope.readOnly &&
+                        !pitchDateScope.permissionMuted ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary text-sm"
+                            onClick={() => field.onChange(undefined)}
+                          >
+                            Clear
+                          </Button>
+                        ) : null
+                      }
+                    />
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
                 <FormMessage />
               </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="pitchDate"
-            render={({ field }) => {
-              const raw = field.value ?? '';
-              const pitchLabel = raw
-                ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-                : 'Select pitch date';
-              return (
-                <FormItem>
-                  <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-                  <ActivityFieldScopePermissionTooltip scope="pitch">
-                    <FormControl className="w-full" data-field={field.name}>
-                      <ScheduledDatePopoverField
-                        triggerVariant="form"
-                        value={raw}
-                        onChange={(iso) => field.onChange(iso || undefined)}
-                        label={pitchLabel}
-                        triggerMuted={!raw}
-                        readOnly={pitchScope.readOnly}
-                        disabled={pitchScope.permissionMuted}
-                        popoverTitle="Select pitch date"
-                        presets={PRESETS_FUTURE_SHORT}
-                        getPresetAnchor={getPresetAnchorToday}
-                        headerRight={
-                          raw &&
-                          !pitchScope.readOnly &&
-                          !pitchScope.permissionMuted ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="text-primary text-sm"
-                              onClick={() => field.onChange(undefined)}
-                            >
-                              Clear
-                            </Button>
-                          ) : null
-                        }
-                      />
-                    </FormControl>
-                  </ActivityFieldScopePermissionTooltip>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-        </>
-      )}
+            );
+          }}
+        />
+      ) : null}
 
       {canViewNotes && (
         <>
