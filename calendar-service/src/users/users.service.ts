@@ -594,13 +594,85 @@ export class UsersService {
     if (contactFilter)
       updateConditions.push(eq(activityCommsContacts.isLead, false));
 
-    const result = await this.databaseService.db
-      .update(activityCommsContacts)
-      .set({ userId: dto.targetUserId })
-      .where(and(...updateConditions))
-      .returning({ activityId: activityCommsContacts.activityId });
+    const sourceRows = await this.databaseService.db
+      .select({
+        activityId: activityCommsContacts.activityId,
+        isLead: activityCommsContacts.isLead,
+      })
+      .from(activityCommsContacts)
+      .where(and(...updateConditions));
 
-    const transferredCount = result.length;
+    if (sourceRows.length === 0) {
+      await this.recordUserHistory(
+        sourceUserId,
+        changedByUserId,
+        'activities_transferred',
+        [
+          {
+            field: 'targetUserId',
+            oldValue: null,
+            newValue: dto.targetUserId,
+          },
+          { field: 'activityCount', oldValue: null, newValue: 0 },
+        ],
+        dto.notes ?? null
+      );
+      return { transferredCount: 0 };
+    }
+
+    const transferredCount = await this.databaseService.db.transaction(
+      async (tx) => {
+        let count = 0;
+        for (const row of sourceRows) {
+          const [targetRow] = await tx
+            .select({
+              isLead: activityCommsContacts.isLead,
+            })
+            .from(activityCommsContacts)
+            .where(
+              and(
+                eq(activityCommsContacts.activityId, row.activityId),
+                eq(activityCommsContacts.userId, dto.targetUserId)
+              )
+            )
+            .limit(1);
+
+          if (targetRow) {
+            await tx
+              .delete(activityCommsContacts)
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, sourceUserId)
+                )
+              );
+            await tx
+              .update(activityCommsContacts)
+              .set({
+                isLead: row.isLead || targetRow.isLead,
+              })
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, dto.targetUserId)
+                )
+              );
+          } else {
+            await tx
+              .update(activityCommsContacts)
+              .set({ userId: dto.targetUserId })
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, sourceUserId)
+                )
+              );
+          }
+          count += 1;
+        }
+        return count;
+      }
+    );
 
     await this.recordUserHistory(
       sourceUserId,
