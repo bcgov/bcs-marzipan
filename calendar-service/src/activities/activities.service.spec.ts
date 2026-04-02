@@ -69,6 +69,7 @@ describe('ActivitiesService', () => {
         where: vi.fn().mockResolvedValue([]),
         leftJoin: vi.fn().mockReturnThis(),
         innerJoin: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue([]),
       };
       const joinChain = {
@@ -532,6 +533,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -542,6 +544,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -618,6 +621,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -628,6 +632,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 2 }]),
           };
         }
@@ -703,6 +708,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -713,6 +719,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -900,6 +907,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([{ id: 5, name: 'Team', ministryId: 1 }]),
@@ -908,6 +916,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -1837,6 +1846,7 @@ describe('ActivitiesService', () => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
           limit: vi.fn(),
         };
         chain.limit
@@ -1878,12 +1888,16 @@ describe('ActivitiesService', () => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
           limit: vi.fn(),
         };
         chain.limit
-          .mockResolvedValueOnce(statusRow)
-          .mockResolvedValueOnce(teamRow)
-          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce(statusRow) // pitch pending status
+          .mockResolvedValueOnce(statusRow) // translation pending status
+          .mockResolvedValueOnce([{ id: 1 }]) // default dateStatusId
+          .mockResolvedValueOnce([{ id: 1 }]) // default timeStatusId
+          .mockResolvedValueOnce(teamRow) // team lookup
+          .mockResolvedValueOnce([{ id: 1 }]) // remaining lookups
           .mockResolvedValueOnce([{ id: 1 }]);
         return chain;
       });

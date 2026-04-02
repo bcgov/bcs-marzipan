@@ -1,9 +1,15 @@
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useMemo, type ReactElement } from 'react';
+import { useCallback, useMemo, type ReactElement } from 'react';
 
+import {
+  canEditActivityFieldScope,
+  canViewActivityFieldScope,
+  type ActivityFieldScope,
+} from '@corpcal/shared';
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
+import { useAuth } from '@/hooks/useAuth';
 import type { FormLookupData } from '@/hooks/useFormLookups';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
@@ -93,9 +99,37 @@ export function ActivityFormBody({
     return [...candidateOptions, ...fallbacks];
   }, [commsContactCandidates, commsContacts, lookups.users]);
 
+  const { user } = useAuth();
+
+  const canViewScope = useCallback(
+    (scope: ActivityFieldScope) =>
+      user
+        ? canViewActivityFieldScope(
+            { permissions: user.permissions, roleName: user.roleName },
+            scope
+          )
+        : false,
+    [user]
+  );
+
+  const canEditScope = useCallback(
+    (scope: ActivityFieldScope) =>
+      user
+        ? canEditActivityFieldScope(
+            { permissions: user.permissions, roleName: user.roleName },
+            scope
+          )
+        : false,
+    [user]
+  );
+
   const editContextValue = useMemo<ActivityEditContextValue>(
-    () => ({ readOnly }),
-    [readOnly]
+    () => ({
+      readOnly,
+      canViewFieldScope: canViewScope,
+      canEditFieldScope: canEditScope,
+    }),
+    [readOnly, canViewScope, canEditScope]
   );
 
   return (

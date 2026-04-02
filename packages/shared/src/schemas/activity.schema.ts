@@ -78,8 +78,8 @@ const activityCoreFieldsSchema = z.object({
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
   // activityStatusId is optional on create; backend sets it from markAsReviewed + role (new or reviewed).
-  dateStatusId: z.number().int(),
-  timeStatusId: z.number().int(),
+  dateStatusId: z.number().int().optional(), // Optional: server applies lookup defaults when omitted on create
+  timeStatusId: z.number().int().optional(), // Optional: server applies lookup defaults when omitted on create
   venueStatusId: z.number().int().nullable().optional(),
   activityStatusId: z.number().int().optional(),
 

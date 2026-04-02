@@ -56,7 +56,7 @@ function formatTime(dateStr: string | null, timeStr: string | null): string {
   return '–';
 }
 
-function statusLabel(status: string | null): string {
+function statusLabel(status: string | null | undefined): string {
   if (!status || status === 'none') return '–';
   return status === 'new' ? 'NEW' : 'CHANGED';
 }

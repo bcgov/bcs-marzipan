@@ -8,8 +8,10 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import { getCorsAllowedOrigins } from '../common/config/cors-allowed-origins';
-import type { ActivityResponseDto } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
+
+/** Id-only payloads so field-level HTTP redaction cannot be bypassed via WebSocket. */
+type ActivityTableSocketPayload = { activityId: number };
 
 @WebSocketGateway({
   cors: {
@@ -78,46 +80,48 @@ export class ActivitiesGateway
   }
 
   /**
-   * Notify all clients viewing a specific activity that it has been updated
+   * Notify all clients viewing a specific activity that it has been updated.
+   * Emits id-only payloads; clients refetch via HTTP where field-level redaction applies.
    */
-  notifyActivityUpdate(activityId: number, data: ActivityResponseDto) {
+  notifyActivityUpdate(activityId: number) {
     this.logger.log(`Notifying clients about activity ${activityId} update`);
     this.logger.debug(
       `viewingActivities map size=${this.viewingActivities.size} (deferred from PATCH handler)`
     );
+
+    const payload: ActivityTableSocketPayload = { activityId };
 
     // Find all clients viewing this activity
     let notifiedCount = 0;
     for (const [clientId, activityIds] of this.viewingActivities.entries()) {
       if (activityIds.has(activityId)) {
         this.logger.log(`Sending update to client ${clientId}`);
-        this.server.to(clientId).emit('dataUpdated', {
-          activityId,
-          ...data,
-        });
+        this.server.to(clientId).emit('dataUpdated', payload);
         notifiedCount++;
       }
     }
     this.logger.log(`Notified ${notifiedCount} client(s)`);
 
     // Also broadcast to activities table subscribers
-    this.broadcastActivityUpdated(data);
+    this.broadcastActivityUpdated(activityId);
   }
 
   /**
    * Broadcast to all clients subscribed to the activities table that a new activity was created
    */
-  broadcastActivityCreated(data: ActivityResponseDto) {
-    this.logger.log(`Broadcasting activity created: ${data.id}`);
-    this.server.to('activities-table').emit('activityCreated', data);
+  broadcastActivityCreated(activityId: number) {
+    this.logger.log(`Broadcasting activity created: ${activityId}`);
+    const payload: ActivityTableSocketPayload = { activityId };
+    this.server.to('activities-table').emit('activityCreated', payload);
   }
 
   /**
    * Broadcast to all clients subscribed to the activities table that an activity was updated
    */
-  broadcastActivityUpdated(data: ActivityResponseDto) {
-    this.logger.log(`Broadcasting activity updated: ${data.id}`);
-    this.server.to('activities-table').emit('activityUpdated', data);
+  broadcastActivityUpdated(activityId: number) {
+    this.logger.log(`Broadcasting activity updated: ${activityId}`);
+    const payload: ActivityTableSocketPayload = { activityId };
+    this.server.to('activities-table').emit('activityUpdated', payload);
   }
 
   /**

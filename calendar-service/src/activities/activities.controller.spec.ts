@@ -26,7 +26,14 @@ const mockUser: AuthUser = {
   email: 'test@example.com',
   roleId: 2,
   roleName: 'Editor',
-  permissions: ['activities.create', 'activities.edit', 'activities.delete'],
+  permissions: [
+    'activities.create',
+    'activities.edit',
+    'activities.delete',
+    'activities.notes.view',
+    'activities.lookAhead.view',
+    'activities.pitchStatus.view',
+  ],
   teamIds: [],
 };
 

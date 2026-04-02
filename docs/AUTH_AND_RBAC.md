@@ -477,6 +477,12 @@ Users who can see an activity only because it is **shared with** one of their te
 - **CanEditActivityGuard**: Used on PATCH/PUT activity, PUT categories, PUT tags, PUT shared-with, and PUT themes. The user must have `activities.edit` (enforced by `@RequirePermission`) and at least one of: (a) comms contact for the activity, (b) member of the activity's lead team, or (c) Admin / System Admin. Otherwise the request is rejected with 403 (view-only for shared-with).
 - **Response field `canEdit`**: The activity API response includes an optional `canEdit: boolean` when the request is authenticated. It is `true` when the user may edit (comms, lead team, or bypass) and `false` when the user has only shared-with access. The frontend uses this to hide the Edit button and keep the form read-only for shared-with-only users.
 
+#### Activity response field-level read (redaction)
+
+List and detail activity responses run `redactActivityResponse` in the activities controller. For scopes that have an `activities.<scope>.view` permission, the user must hold that permission, the matching `activities.<scope>.edit` permission (edit implies view), or a role that bypasses field view checks (Advanced Viewer, Advanced Editor, Admin, System Admin). Otherwise those response fields are omitted.
+
+Some scopes **do not** define a view permission: **translations** and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
+
 #### Using dataScope in controllers and services
 
 Controllers obtain `dataScope` via the `@RequestContext()` decorator and pass it into services:

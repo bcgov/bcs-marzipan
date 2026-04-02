@@ -6,6 +6,7 @@ import { PolicyModule } from '../policy/policy.module';
 import { TeamsModule } from '../teams/teams.module';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesGateway } from './activities.gateway';
+import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { ActivityHistoryService } from './services/activity-history.service';
@@ -16,6 +17,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
 @Module({
   imports: [DatabaseModule, LocksModule, PolicyModule, TeamsModule],
   providers: [
+    ActivityResponseRedactionInterceptor,
     ActivitiesService,
     ActivitiesGateway,
     ActivityHistoryService,

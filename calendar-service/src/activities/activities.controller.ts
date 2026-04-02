@@ -10,6 +10,7 @@ import {
   Put,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -69,10 +70,12 @@ import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.gua
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 
 @ApiTags('activities')
 @Controller('activities')
+@UseInterceptors(ActivityResponseRedactionInterceptor)
 export class ActivitiesController {
   private readonly logger = new AppLogger(ActivitiesController.name);
 
