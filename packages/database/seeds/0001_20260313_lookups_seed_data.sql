@@ -191,7 +191,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 -- CATEGORIES
 -- Classification categories for activities
--- Keep all existing values and add 'HQ Placeholder'
+-- Team-scoped categories (visibility = team) require team_categories (see teams seed).
 -- ============================================================================
 
 INSERT INTO categories (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by)
@@ -204,8 +204,20 @@ VALUES
   (6, 'social media', 'Social media', 6, 'global', true, 'Social media category', 1, 1),
   (7, 'speech', 'Speech', 7, 'global', true, 'Speech category', 1, 1),
   (8, 'tv radio', 'TV/Radio', 8, 'global', true, 'TV/Radio category', 1, 1),
-  (9, 'hq placeholder', 'HQ Placeholder', 9, 'global', true, 'HQ Placeholder category', 1, 1)
-ON CONFLICT (id) DO NOTHING;
+  (9, 'hq placeholder', 'HQ Placeholder', 9, 'team', true, 'HQ Placeholder category (CCHQ)', 1, 1),
+  (10, 'igrs event', 'IGRS Event', 10, 'team', true, 'IGRS event category', 1, 1),
+  (11, 'half-masting', 'Half-masting', 11, 'team', true, 'Half-masting category', 1, 1),
+  (12, 'national day', 'National day', 12, 'team', true, 'National day category', 1, 1),
+  (13, 'visit', 'Visit', 13, 'team', true, 'Visit category', 1, 1)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  sort_order = EXCLUDED.sort_order,
+  visibility = EXCLUDED.visibility,
+  is_active = EXCLUDED.is_active,
+  description = EXCLUDED.description,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
 
 -- ============================================================================
 -- COMMS MATERIALS
