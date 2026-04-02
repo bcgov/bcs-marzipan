@@ -369,7 +369,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormSelect
               readOnly={translationsScope.readOnly}
-              disabled={translationsScope.permissionMuted}
+              disabled={translationsScope.fieldScopeDisabled}
               value={
                 field.value !== undefined && field.value !== null
                   ? String(field.value)
@@ -384,7 +384,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   <FormSelectTrigger
                     readOnly={
                       translationsScope.readOnly &&
-                      !translationsScope.permissionMuted
+                      !translationsScope.fieldScopeDisabled
                     }
                   >
                     <SelectValue placeholder="Select status" />
@@ -426,9 +426,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     itemToStringValue={(o) => o.label}
                     readOnly={
                       translationsScope.readOnly &&
-                      !translationsScope.permissionMuted
+                      !translationsScope.fieldScopeDisabled
                     }
-                    disabled={translationsScope.permissionMuted}
+                    disabled={translationsScope.fieldScopeDisabled}
                   >
                     <ComboboxChips
                       ref={translationsAnchorRef}

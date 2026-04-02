@@ -170,9 +170,9 @@ export const ActivityOverviewSection: React.FC<
     ...leadTeamFieldProp,
   };
   const { readOnly, canViewFieldScope } = useActivityEdit();
-  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? true;
-  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? true;
-  const canViewNotes = canViewFieldScope?.('notes') ?? true;
+  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? false;
+  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? false;
+  const canViewNotes = canViewFieldScope?.('notes') ?? false;
   const pitchStatusScope = useActivityFieldScopeControl('pitchStatus');
   const pitchDateScope = useActivityFieldScopeControl('pitchDate');
   const notesScope = useActivityFieldScopeControl('notes');
@@ -543,7 +543,7 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
               <FormSelect
                 readOnly={pitchStatusScope.readOnly}
-                disabled={pitchStatusScope.permissionMuted}
+                disabled={pitchStatusScope.fieldScopeDisabled}
                 value={
                   field.value !== undefined && field.value !== null
                     ? String(field.value)
@@ -558,7 +558,7 @@ export const ActivityOverviewSection: React.FC<
                     <FormSelectTrigger
                       readOnly={
                         pitchStatusScope.readOnly &&
-                        !pitchStatusScope.permissionMuted
+                        !pitchStatusScope.fieldScopeDisabled
                       }
                     >
                       <SelectValue placeholder="Select status" />
@@ -600,14 +600,14 @@ export const ActivityOverviewSection: React.FC<
                       label={pitchLabel}
                       triggerMuted={!raw}
                       readOnly={pitchDateScope.readOnly}
-                      disabled={pitchDateScope.permissionMuted}
+                      disabled={pitchDateScope.fieldScopeDisabled}
                       popoverTitle="Select pitch date"
                       presets={PRESETS_FUTURE_SHORT}
                       getPresetAnchor={getPresetAnchorToday}
                       headerRight={
                         raw &&
                         !pitchDateScope.readOnly &&
-                        !pitchDateScope.permissionMuted ? (
+                        !pitchDateScope.fieldScopeDisabled ? (
                           <Button
                             type="button"
                             variant="ghost"
@@ -644,7 +644,7 @@ export const ActivityOverviewSection: React.FC<
                     <Textarea
                       placeholder="Enter notes"
                       readOnly={notesScope.readOnly}
-                      disabled={notesScope.permissionMuted}
+                      disabled={notesScope.fieldScopeDisabled}
                       rows={4}
                       name={field.name}
                       ref={field.ref}

@@ -31,12 +31,16 @@ export function applyFieldLevelWritePolicy<T extends Record<string, unknown>>(
     if (canEditActivityFieldScope(user, scope)) continue;
 
     const config = ACTIVITY_FIELD_SCOPE_CONFIG[scope];
+    let removedAny = false;
     for (const field of config.requestFields) {
       if (field in dto) {
         delete dto[field];
+        removedAny = true;
       }
     }
-    stripped.push(scope);
+    if (removedAny) {
+      stripped.push(scope);
+    }
   }
 
   return stripped;

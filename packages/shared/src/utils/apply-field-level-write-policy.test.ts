@@ -83,12 +83,12 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(stripped).toHaveLength(0);
   });
 
-  it('does not strip fields that are not in the dto', () => {
+  it('does not strip fields that are not in the dto and returns no scopes when nothing was removed', () => {
     const dto: Record<string, unknown> = { title: 'Only title' };
 
     const stripped = applyFieldLevelWritePolicy(dto, viewerNoGrants);
 
     expect(dto.title).toBe('Only title');
-    expect(stripped).toHaveLength(6);
+    expect(stripped).toHaveLength(0);
   });
 });

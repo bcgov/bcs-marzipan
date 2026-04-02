@@ -30,7 +30,7 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 export const ActivityReportsSection: React.FC = () => {
   const { readOnly, canViewFieldScope } = useActivityEdit();
-  const canViewLookAhead = canViewFieldScope?.('lookAhead') ?? true;
+  const canViewLookAhead = canViewFieldScope?.('lookAhead') ?? false;
   const lookAheadScope = useActivityFieldScopeControl('lookAhead');
   const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
@@ -135,7 +135,7 @@ export const ActivityReportsSection: React.FC = () => {
                     <Textarea
                       placeholder="Enter executive summary"
                       readOnly={lookAheadScope.readOnly}
-                      disabled={lookAheadScope.permissionMuted}
+                      disabled={lookAheadScope.fieldScopeDisabled}
                       rows={4}
                       name={field.name}
                       ref={field.ref}
@@ -163,7 +163,7 @@ export const ActivityReportsSection: React.FC = () => {
                   <FormControl data-field={field.name}>
                     <RadioGroup
                       readOnly={lookAheadScope.readOnly}
-                      disabled={lookAheadScope.permissionMuted}
+                      disabled={lookAheadScope.fieldScopeDisabled}
                       onValueChange={field.onChange}
                       value={field.value || ''}
                       className="flex flex-row space-x-4"
@@ -203,7 +203,7 @@ export const ActivityReportsSection: React.FC = () => {
                   <FormControl data-field={field.name}>
                     <RadioGroup
                       readOnly={lookAheadScope.readOnly}
-                      disabled={lookAheadScope.permissionMuted}
+                      disabled={lookAheadScope.fieldScopeDisabled}
                       onValueChange={field.onChange}
                       value={field.value ?? ''}
                       className="flex flex-row space-x-4"

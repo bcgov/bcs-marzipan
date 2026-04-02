@@ -262,7 +262,7 @@ export function ActivityScheduleSection({
                 </FormLabel>
                 <FormSelect
                   readOnly={dateTimeStatusScope.readOnly}
-                  disabled={dateTimeStatusScope.permissionMuted}
+                  disabled={dateTimeStatusScope.fieldScopeDisabled}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -280,7 +280,7 @@ export function ActivityScheduleSection({
                       <FormSelectTrigger
                         readOnly={
                           dateTimeStatusScope.readOnly &&
-                          !dateTimeStatusScope.permissionMuted
+                          !dateTimeStatusScope.fieldScopeDisabled
                         }
                         className={STATUS_SELECT_MIN_WIDTH}
                         aria-label={getActivityFieldLabel(statusField.name)}
@@ -441,7 +441,7 @@ export function ActivityScheduleSection({
                 </FormLabel>
                 <FormSelect
                   readOnly={dateTimeStatusScope.readOnly}
-                  disabled={dateTimeStatusScope.permissionMuted}
+                  disabled={dateTimeStatusScope.fieldScopeDisabled}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -459,7 +459,7 @@ export function ActivityScheduleSection({
                       <FormSelectTrigger
                         readOnly={
                           dateTimeStatusScope.readOnly &&
-                          !dateTimeStatusScope.permissionMuted
+                          !dateTimeStatusScope.fieldScopeDisabled
                         }
                         className={STATUS_SELECT_MIN_WIDTH}
                         aria-label={getActivityFieldLabel(statusField.name)}

@@ -24,7 +24,9 @@ import type { ActivityFieldScope } from '@corpcal/shared';
 
 export type ActivityEditContextValue = {
   readOnly: boolean;
+  /** When omitted, scoped fields fail closed (not shown as editable). `ActivityFormBody` wires auth-based callbacks. */
   canViewFieldScope?: (scope: ActivityFieldScope) => boolean;
+  /** When omitted, scoped fields fail closed. */
   canEditFieldScope?: (scope: ActivityFieldScope) => boolean;
 };
 
