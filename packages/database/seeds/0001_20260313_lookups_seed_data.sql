@@ -254,35 +254,35 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
--- Languages for translations. shortcode values are BCP 47 language tags.
--- Updated with new values
+-- Languages for translations. shortcode values are internal language codes.
 -- ============================================================================
 
 INSERT INTO translated_languages (id, name, display_name, shortcode, sort_order, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'arabic', 'Arabic', 'ar', 1, true, 'Arabic', 1, 1),
-  (2, 'chinese simplified', 'Chinese (Simplified)', 'zh-Hans', 2, true, 'Simplified Chinese', 1, 1),
-  (3, 'chinese traditional', 'Chinese (Traditional)', 'zh-Hant', 3, true, 'Traditional Chinese', 1, 1),
-  (4, 'dutch', 'Dutch', 'nl', 4, true, 'Dutch', 1, 1),
-  (5, 'farsi', 'Farsi', 'fa', 5, true, 'Farsi', 1, 1),
-  (6, 'finnish', 'Finnish', 'fi', 6, true, 'Finnish', 1, 1),
-  (7, 'french', 'French', 'fr', 7, true, 'French', 1, 1),
-  (8, 'gujarati', 'Gujarati', 'gu', 8, true, 'Gujarati', 1, 1),
-  (9, 'hebrew', 'Hebrew', 'he', 9, true, 'Hebrew', 1, 1),
-  (10, 'hindi', 'Hindi', 'hi', 10, true, 'Hindi', 1, 1),
-  (11, 'indonesian', 'Indonesian', 'id', 11, true, 'Indonesian', 1, 1),
-  (12, 'japanese', 'Japanese', 'ja', 12, true, 'Japanese', 1, 1),
-  (13, 'korean', 'Korean', 'ko', 13, true, 'Korean', 1, 1),
-  (14, 'portuguese', 'Portuguese', 'pt', 14, true, 'Portuguese', 1, 1),
-  (15, 'punjabi', 'Punjabi', 'pa', 15, true, 'Punjabi', 1, 1),
-  (16, 'russian', 'Russian', 'ru', 16, true, 'Russian', 1, 1),
-  (17, 'somali', 'Somali', 'so', 17, true, 'Somali', 1, 1),
-  (18, 'spanish', 'Spanish', 'es', 18, true, 'Spanish', 1, 1),
-  (19, 'swahili', 'Swahili', 'sw', 19, true, 'Swahili', 1, 1),
-  (20, 'tagalog', 'Tagalog', 'tl', 20, true, 'Tagalog', 1, 1),
-  (21, 'ukrainian', 'Ukrainian', 'uk', 21, true, 'Ukrainian', 1, 1),
-  (22, 'urdu', 'Urdu', 'ur', 22, true, 'Urdu', 1, 1),
-  (23, 'vietnamese', 'Vietnamese', 'vi', 23, true, 'Vietnamese', 1, 1)
+  (1, 'arabic', 'Arabic', 'AR', 1, true, 'Arabic', 1, 1),
+  (2, 'chinese simplified', 'Chinese (Simplified)', 'SC', 2, true, 'Chinese (Simplified)', 1, 1),
+  (3, 'chinese traditional', 'Chinese (Traditional)', 'TC', 3, true, 'Chinese (Traditional)', 1, 1),
+  (4, 'dutch', 'Dutch', 'DUT', 4, true, 'Dutch', 1, 1),
+  (5, 'farsi', 'Farsi', 'FAR', 5, true, 'Farsi', 1, 1),
+  (6, 'finnish', 'Finnish', 'FIN', 6, true, 'Finnish', 1, 1),
+  (7, 'french', 'French', 'FR', 7, true, 'French', 1, 1),
+  (8, 'gujarati', 'Gujarati', 'GUJ', 8, true, 'Gujarati', 1, 1),
+  (9, 'hebrew', 'Hebrew', 'HE', 9, true, 'Hebrew', 1, 1),
+  (10, 'hindi', 'Hindi', 'HI', 10, true, 'Hindi', 1, 1),
+  (11, 'indonesian', 'Indonesian', 'IND', 11, true, 'Indonesian', 1, 1),
+  (12, 'italian', 'Italian', 'IT', 12, true, 'Italian', 1, 1),
+  (13, 'japanese', 'Japanese', 'JP', 13, true, 'Japanese', 1, 1),
+  (14, 'korean', 'Korean', 'KO', 14, true, 'Korean', 1, 1),
+  (15, 'portuguese', 'Portuguese', 'POR', 15, true, 'Portuguese', 1, 1),
+  (16, 'punjabi', 'Punjabi', 'PUN', 16, true, 'Punjabi', 1, 1),
+  (17, 'russian', 'Russian', 'RU', 17, true, 'Russian', 1, 1),
+  (18, 'somali', 'Somali', 'SOM', 18, true, 'Somali', 1, 1),
+  (19, 'spanish', 'Spanish', 'SPA', 19, true, 'Spanish', 1, 1),
+  (20, 'swahili', 'Swahili', 'SWA', 20, true, 'Swahili', 1, 1),
+  (21, 'tagalog', 'Tagalog', 'TL', 21, true, 'Tagalog', 1, 1),
+  (22, 'ukrainian', 'Ukrainian', 'UKR', 22, true, 'Ukrainian', 1, 1),
+  (23, 'urdu', 'Urdu', 'URD', 23, true, 'Urdu', 1, 1),
+  (24, 'vietnamese', 'Vietnamese', 'VN', 24, true, 'Vietnamese', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
