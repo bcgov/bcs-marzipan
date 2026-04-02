@@ -1221,7 +1221,7 @@ export class ActivitiesService {
     // Broadcast to all clients that a new activity was created
     // Only broadcast if the activity was successfully fetched
     if (createdActivity) {
-      this.activitiesGateway.broadcastActivityCreated(createdActivity);
+      this.activitiesGateway.broadcastActivityCreated(createdActivity.id);
     }
 
     return createdActivity;
@@ -2280,11 +2280,10 @@ export class ActivitiesService {
     // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
     // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
     const gateway = this.activitiesGateway;
-    const notifyPayload = result;
     const notifyActivityId = id;
     setImmediate(() => {
       try {
-        gateway.notifyActivityUpdate(notifyActivityId, notifyPayload);
+        gateway.notifyActivityUpdate(notifyActivityId);
       } catch (err: unknown) {
         this.logger.error(
           'notifyActivityUpdate failed (deferred)',
