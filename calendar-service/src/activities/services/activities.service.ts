@@ -837,7 +837,7 @@ export class ActivitiesService {
 
   /**
    * Resolve the first (lowest sort_order) date and time status IDs for use as
-   * server-side defaults when the user's field-level write policy strips them.
+   * server-side defaults when the create request omits them.
    */
   private async resolveDefaultDateTimeStatusIds(): Promise<{
     dateStatusId: number;

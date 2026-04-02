@@ -85,7 +85,6 @@ export const PERMISSIONS = {
     UNPUBLISH: 'activities.unpublish',
     NOTES_VIEW: 'activities.notes.view',
     NOTES_EDIT: 'activities.notes.edit',
-    DATE_TIME_STATUS_EDIT: 'activities.dateTimeStatus.edit',
     LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
     LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
     TRANSLATIONS_EDIT: 'activities.translations.edit',

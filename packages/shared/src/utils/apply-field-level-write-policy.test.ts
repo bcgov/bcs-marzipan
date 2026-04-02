@@ -15,7 +15,6 @@ const adminWithAll = {
   permissions: [
     'activities.view',
     'activities.notes.edit',
-    'activities.dateTimeStatus.edit',
     'activities.lookAhead.edit',
     'activities.translations.edit',
     'activities.pitchStatus.edit',
@@ -43,15 +42,15 @@ describe('applyFieldLevelWritePolicy', () => {
 
     expect(dto.title).toBe('Keep me');
     expect(dto.notes).toBeUndefined();
-    expect(dto.dateStatusId).toBeUndefined();
-    expect(dto.timeStatusId).toBeUndefined();
+    expect(dto.dateStatusId).toBe(1);
+    expect(dto.timeStatusId).toBe(1);
     expect(dto.lookAheadStatus).toBeUndefined();
     expect(dto.lookAheadSection).toBeUndefined();
     expect(dto.translationsRequiredStatusId).toBeUndefined();
     expect(dto.translationLanguageIds).toBeUndefined();
     expect(dto.pitchRequiredStatusId).toBeUndefined();
     expect(dto.pitchDate).toBeUndefined();
-    expect(stripped).toHaveLength(6);
+    expect(stripped).toHaveLength(5);
   });
 
   it('preserves fields the user can edit', () => {
@@ -64,9 +63,9 @@ describe('applyFieldLevelWritePolicy', () => {
     const stripped = applyFieldLevelWritePolicy(dto, editorWithNotesEdit);
 
     expect(dto.notes).toBe('I should stay');
-    expect(dto.dateStatusId).toBeUndefined();
-    expect(stripped).toContain('dateTimeStatus');
+    expect(dto.dateStatusId).toBe(1);
     expect(stripped).not.toContain('notes');
+    expect(stripped).toHaveLength(0);
   });
 
   it('returns empty array when user has all edit grants', () => {
