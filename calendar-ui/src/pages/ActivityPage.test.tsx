@@ -16,6 +16,19 @@ import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
 
+/** Matches production Editor field access so `canViewActivityFieldScope` / `canEditActivityFieldScope` do not see undefined `permissions`. */
+const mockEditorFieldPermissions: string[] = [
+  PERMISSIONS.ACTIVITIES.NOTES_VIEW,
+  PERMISSIONS.ACTIVITIES.NOTES_EDIT,
+  PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
+  PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
+  PERMISSIONS.ACTIVITIES.PITCH_STATUS_VIEW,
+  PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
+  PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
+  PERMISSIONS.ACTIVITIES.DATE_TIME_STATUS_EDIT,
+  PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
+];
+
 vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
   return {
@@ -175,7 +188,12 @@ describe('ActivityPage form readiness', () => {
     mockLockState = 'idle';
     mockUseAuth.mockReturnValue({
       hasPermission: () => true,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
   });
@@ -239,7 +257,12 @@ describe('ActivityPage restore button visibility', () => {
   it('shows Restore when status is deleted and user has DELETE_ANY', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.DELETE_ANY,
-      user: { id: 1, roleName: 'Admin', teamIds: [] },
+      user: {
+        id: 1,
+        roleName: 'Admin',
+        teamIds: [],
+        permissions: mockEditorFieldPermissions,
+      },
     });
 
     renderActivityPage({
@@ -257,7 +280,12 @@ describe('ActivityPage restore button visibility', () => {
   it('does not show Restore when status is deleted and user lacks DELETE_ANY', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.DELETE_ANY,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
 
     renderActivityPage({
@@ -277,7 +305,12 @@ describe('ActivityPage restore button visibility', () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) =>
         key === PERMISSIONS.ACTIVITIES.REQUEST_DELETE,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
 
     renderActivityPage({
@@ -315,7 +348,12 @@ describe('ActivityPage optimistic inline edit', () => {
     });
     mockUseAuth.mockReturnValue({
       hasPermission: () => true,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
   });
 
@@ -363,7 +401,12 @@ describe('ActivityPage optimistic inline edit', () => {
         key === PERMISSIONS.ACTIVITIES.EDIT ||
         key === PERMISSIONS.ACTIVITIES.CREATE ||
         key === PERMISSIONS.ACTIVITIES.REVIEW,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
 
     renderActivityPage();
@@ -377,7 +420,12 @@ describe('ActivityPage optimistic inline edit', () => {
   it('does not show Review without activities.review', async () => {
     mockUseAuth.mockReturnValue({
       hasPermission: (key: string) => key !== PERMISSIONS.ACTIVITIES.REVIEW,
-      user: { id: 1, roleName: 'Editor', teamIds: [5] },
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
     });
 
     renderActivityPage();
