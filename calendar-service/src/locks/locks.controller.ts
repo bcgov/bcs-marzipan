@@ -2,26 +2,34 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-import type { AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { ApplicationSettingsService } from './application-settings.service';
 import {
   acquireLockBodySchema,
   type AcquireLockBody,
 } from './dto/acquire-lock.dto';
+import {
+  patchIdleTimeoutConfigSchema,
+  type PatchIdleTimeoutConfigBody,
+} from './dto/idle-timeout-config.dto';
 import { LocksService } from './locks.service';
 
 @ApiTags('locks')
@@ -30,8 +38,17 @@ import { LocksService } from './locks.service';
 export class LocksController {
   constructor(
     private readonly locksService: LocksService,
+    private readonly applicationSettings: ApplicationSettingsService,
     private readonly activitiesGateway: ActivitiesGateway
   ) {}
+
+  private ensureSystemAdmin(user: AuthUser): void {
+    if (user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
+      throw new ForbiddenException(
+        'Only System Admin users can change this setting.'
+      );
+    }
+  }
 
   @Post()
   @ApiOperation({ summary: 'Acquire a lock on an entity (e.g. activity)' })
@@ -65,6 +82,7 @@ export class LocksController {
       username: lock.username,
       acquiredAt: lock.acquiredAt,
       expiresAt: lock.expiresAt,
+      idleExpiresAt: lock.idleExpiresAt,
     };
   }
 
@@ -92,7 +110,64 @@ export class LocksController {
         username: lock.username,
         acquiredAt: lock.acquiredAt,
         expiresAt: lock.expiresAt,
+        idleExpiresAt: lock.idleExpiresAt,
       },
+    };
+  }
+
+  @Post('activity/:activityId/force-handoff')
+  @ApiOperation({
+    summary:
+      'Request transfer of the edit lock to yourself after a grace period (requires permission)',
+  })
+  @RequirePermission(PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF)
+  @ApiParam({ name: 'activityId', type: Number })
+  async forceHandoff(
+    @Param('activityId', ParseIntPipe) activityId: number,
+    @CurrentUser() user: AuthUser
+  ) {
+    return this.locksService.requestForceHandoff(
+      activityId,
+      user.id,
+      user.displayName ?? user.username
+    );
+  }
+
+  @Post('heartbeat/:lockId')
+  @ApiOperation({ summary: 'Extend idle deadline while holding a lock' })
+  @ApiParam({ name: 'lockId', type: Number })
+  async heartbeat(
+    @Param('lockId', ParseIntPipe) lockId: number,
+    @CurrentUser() user: AuthUser
+  ) {
+    return this.locksService.heartbeatLock(lockId, user.id);
+  }
+
+  @Get('idle-timeout-config')
+  @ApiOperation({ summary: 'Global edit lock idle timeout (minutes)' })
+  async getIdleTimeoutConfig() {
+    const idleTimeoutMinutes =
+      await this.applicationSettings.getEditLockIdleTimeoutMinutes();
+    return { success: true, data: { idleTimeoutMinutes } };
+  }
+
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
+  @Patch('idle-timeout-config')
+  @ApiOperation({
+    summary: 'Update global edit lock idle timeout (System Admin only)',
+  })
+  async patchIdleTimeoutConfig(
+    @Body(new ZodValidationPipe(patchIdleTimeoutConfigSchema))
+    body: PatchIdleTimeoutConfigBody,
+    @CurrentUser() user: AuthUser
+  ) {
+    this.ensureSystemAdmin(user);
+    await this.applicationSettings.setEditLockIdleTimeoutMinutes(
+      body.idleTimeoutMinutes
+    );
+    return {
+      success: true,
+      data: { idleTimeoutMinutes: body.idleTimeoutMinutes },
     };
   }
 

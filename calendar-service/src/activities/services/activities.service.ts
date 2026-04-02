@@ -2282,6 +2282,8 @@ export class ActivitiesService {
       }
     });
 
+    await this.locksService.completeHandoffAfterHolderSaveIfPending(id, userId);
+
     return result;
   }
 

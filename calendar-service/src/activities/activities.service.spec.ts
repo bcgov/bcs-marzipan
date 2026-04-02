@@ -165,6 +165,9 @@ describe('ActivitiesService', () => {
     getLockForEntity: vi.fn().mockResolvedValue(null),
     releaseLock: vi.fn().mockResolvedValue(undefined),
     tryAcquireLock: vi.fn().mockResolvedValue({}),
+    completeHandoffAfterHolderSaveIfPending: vi
+      .fn()
+      .mockResolvedValue(undefined),
   };
 
   // Mock policy service (for delete context: comms/lead-team when no delete.any)

@@ -5,11 +5,16 @@ import {
   CALENDAR_SOCKET_IO_OPTIONS,
   getCalendarSocketUrl,
 } from '@/lib/calendar-socket';
+import type { LockHandoffPendingPayload } from '@/lib/lock-handoff-toast';
+
+export type LockHandoffPendingSocketPayload = LockHandoffPendingPayload;
 
 interface UseActivityWebSocketOptions {
   onLockAcquired?: (lockedBy: { userId: number; username: string }) => void;
   onLockReleased?: () => void;
   onDataUpdated?: () => void;
+  /** User-targeted: admin handoff grace countdown (same socket connection). */
+  onLockHandoffPending?: (payload: LockHandoffPendingSocketPayload) => void;
 }
 
 /**
@@ -59,6 +64,12 @@ export function useActivityWebSocket(
       }
     });
 
+    socket.on('lockHandoffPending', (data: LockHandoffPendingSocketPayload) => {
+      if (data.activityId === activityId) {
+        optionsRef.current.onLockHandoffPending?.(data);
+      }
+    });
+
     return () => {
       socket.emit('leaveActivity', activityId);
       socket.off('connect', emitViewActivity);
@@ -66,6 +77,7 @@ export function useActivityWebSocket(
       socket.off('lockAcquired');
       socket.off('lockReleased');
       socket.off('dataUpdated');
+      socket.off('lockHandoffPending');
       socket.disconnect();
     };
   }, [activityId]);

@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -29,6 +29,7 @@ import { Form } from '@/components/ui/form';
 
 import { fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
+import { requestForceHandoff } from '../api/locksApi';
 import {
   Popover,
   PopoverContent,
@@ -51,6 +52,7 @@ import {
   EDIT_LOCK_CONFLICT_TOAST,
   useEditLockIntent,
 } from '../hooks/useEditLockIntent';
+import { useEditLockSession } from '../hooks/useEditLockSession';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildMarkReviewedOnlyPayload,
@@ -61,6 +63,7 @@ import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
+import { startLockHandoffCountdownToast } from '../lib/lock-handoff-toast';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
@@ -124,6 +127,9 @@ export function ActivityPage({
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
+  const canForceHandoff = hasPermission(
+    PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF
+  );
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
   const canEditWhenBlocked = canDeleteAny;
@@ -143,15 +149,37 @@ export function ActivityPage({
     !canDelete;
 
   const {
+    lock,
     lockState,
     lockedByUsername,
     acquire,
     release,
+    refreshLockFromServer,
+    sendHeartbeat,
+    applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
-  } = useActivityLock(id);
+  } = useActivityLock(id, user?.id);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [forceHandoffPending, setForceHandoffPending] = useState(false);
+  const handoffToastCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      handoffToastCleanupRef.current?.();
+      handoffToastCleanupRef.current = null;
+    };
+  }, [id]);
+
+  useEditLockSession({
+    form,
+    activityId: id,
+    lockState,
+    lock,
+    isEditing,
+    sendHeartbeat,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -180,9 +208,21 @@ export function ActivityPage({
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
 
+  const handleRequestForceHandoff = useCallback(async () => {
+    setForceHandoffPending(true);
+    try {
+      await requestForceHandoff(id);
+    } catch (err) {
+      showErrorToast(err, 'Could not request lock transfer');
+    } finally {
+      setForceHandoffPending(false);
+    }
+  }, [id]);
+
   useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
+        void refreshLockFromServer();
         return;
       }
       if (lockState !== 'owned') {
@@ -191,9 +231,21 @@ export function ActivityPage({
     },
     onLockReleased: () => {
       clearLockedByOther();
+      applyExternalLockReleased();
+      setIsEditing((editing) => {
+        if (editing && initialFormDataRef.current) {
+          form.reset(initialFormDataRef.current);
+        }
+        return false;
+      });
+      void refreshActivity();
     },
     onDataUpdated: () => {
       void refreshActivity();
+    },
+    onLockHandoffPending: (payload) => {
+      handoffToastCleanupRef.current?.();
+      handoffToastCleanupRef.current = startLockHandoffCountdownToast(payload);
     },
   });
 
@@ -530,7 +582,13 @@ export function ActivityPage({
         onHistoryClick={() => setHistoryOpen(true)}
       />
       {lockState === 'locked-by-other' && (
-        <LockBanner lockedByUsername={lockedByUsername} />
+        <LockBanner
+          lockedByUsername={lockedByUsername}
+          onRequestTakeLock={
+            canForceHandoff ? () => void handleRequestForceHandoff() : undefined
+          }
+          requestTakeLockPending={forceHandoffPending}
+        />
       )}
       {isBlockedStatus && (
         <ActivityStatusBanner
