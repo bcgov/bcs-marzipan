@@ -152,6 +152,47 @@ export async function fetchGlobalActivityHistory(): Promise<
   return Array.isArray(res.data) ? res.data : [];
 }
 
+export type PagedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+};
+
+export async function fetchGlobalActivityHistoryPaged(params?: {
+  page?: number;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+  query?: string;
+}): Promise<PagedResult<GlobalActivityHistoryEntry>> {
+  const res = await api.get('/activities/global-history', { params });
+  // Server may return either:
+  // - direct paged shape: { items, page, pageSize, hasNext }
+  // - wrapper shape: { success: true, data: { items, page, ... } }
+  // - legacy array: []
+  if (res.data && typeof res.data === 'object') {
+    // Direct paged shape
+    if ('items' in res.data && Array.isArray(res.data.items)) {
+      return res.data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+
+    // Wrapped shape from server
+    if ('data' in res.data && res.data.data && 'items' in res.data.data) {
+      return res.data.data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+  }
+
+  // Fallback: legacy array response -> wrap into a single page
+  const items = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+  return {
+    items,
+    page: 1,
+    pageSize: Array.isArray(items) ? items.length : 0,
+    hasNext: false,
+  };
+}
+
 export async function addActivityHistoryNote(
   id: number,
   body: AddActivityHistoryNoteRequest

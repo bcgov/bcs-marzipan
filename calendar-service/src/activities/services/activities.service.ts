@@ -2352,10 +2352,27 @@ export class ActivitiesService {
       return [];
     }
 
-    const historyEntries =
-      await this.activityHistoryService.getActivityHistoryForActivityIds(
-        activityIds
+    // Default scope: today (server local date)
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const todayDateStr = startOfToday.toISOString().slice(0, 10);
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        activityIds,
+        {
+          startDate: todayDateStr,
+          endDate: todayDateStr,
+          page: 1,
+          pageSize: 1000,
+        }
       );
+
+    const historyEntries = historyPage.items;
 
     if (historyEntries.length === 0) {
       return [];
@@ -2382,6 +2399,101 @@ export class ActivitiesService {
       const activity = activityMap.get(entry.activityId);
       return activity ? [{ ...entry, activity }] : [];
     });
+  }
+
+  async getGlobalHistoryPaged(
+    opts: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      pageSize?: number;
+      query?: string;
+    },
+    ctx?: RequestContextType
+  ): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    let activityRows = await this.databaseService.db.select().from(activities);
+
+    const dataScope = ctx?.dataScope;
+    if (dataScope && !dataScope.bypass) {
+      const visibleIds = await this.getVisibleActivityIdsForTeams(
+        dataScope.teamIds
+      );
+      activityRows = activityRows.filter((activity) =>
+        visibleIds.has(activity.id)
+      );
+    }
+
+    const activityIds = activityRows.map((activity) => activity.id);
+    if (activityIds.length === 0) {
+      return {
+        items: [],
+        page: opts.page ?? 1,
+        pageSize: opts.pageSize ?? 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const page = Math.max(1, opts.page ?? 1);
+    const pageSize = Math.max(1, opts.pageSize ?? 50);
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        activityIds,
+        {
+          startDate: opts.startDate,
+          endDate: opts.endDate,
+          page,
+          pageSize,
+          query: opts.query,
+        }
+      );
+
+    if (historyPage.items.length === 0) {
+      return {
+        items: [],
+        page,
+        pageSize,
+        hasNext: false,
+        totalItems: historyPage.totalItems ?? 0,
+      };
+    }
+
+    const { namesMap: categoriesMap } = (
+      await this.fetchRelatedForActivityIds(activityIds, activityRows)
+    ).categoriesResult;
+
+    const activityMap = new Map(
+      activityRows.map((activity) => [
+        activity.id,
+        {
+          id: activity.id,
+          displayId: activity.displayId,
+          title: activity.title,
+          leadTeamId: activity.leadTeamId,
+          categories: categoriesMap.get(activity.id) ?? [],
+        },
+      ])
+    );
+
+    const items = historyPage.items.flatMap((entry) => {
+      const activity = activityMap.get(entry.activityId);
+      return activity ? [{ ...entry, activity }] : [];
+    });
+
+    return {
+      items,
+      page,
+      pageSize,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems,
+    };
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {

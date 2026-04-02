@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
-import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
+import {
+  fetchGlobalActivityHistoryPaged,
+  type PagedResult,
+} from '@/api/activitiesApi';
 import {
   fetchDateStatuses,
   fetchNewsReleaseDistributions,
@@ -21,6 +24,7 @@ import {
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
+import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -334,10 +338,43 @@ export function GlobalHistory() {
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
     () => new Set()
   );
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
+
+  // reset page when filters/search change
+  useEffect(() => {
+    setPage(1);
+  }, [
+    dateRange.startDate,
+    dateRange.endDate,
+    searchQuery,
+    activeTab,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedCategories,
+    selectedLeadTeamIds,
+    pageSize,
+  ]);
 
   const historyQuery = useQuery({
-    queryKey: ['activities', 'global-history'],
-    queryFn: fetchGlobalActivityHistory,
+    queryKey: [
+      'activities',
+      'global-history',
+      page,
+      pageSize,
+      dateRange.startDate,
+      dateRange.endDate,
+      searchQuery,
+    ],
+    queryFn: async (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
+      fetchGlobalActivityHistoryPaged({
+        page,
+        pageSize,
+        startDate: dateRange.startDate || undefined,
+        endDate: dateRange.endDate || undefined,
+        query: searchQuery || undefined,
+      }),
+    placeholderData: (previousData) => previousData,
   });
 
   const teamsQuery = useTeams();
@@ -389,7 +426,10 @@ export function GlobalHistory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const entries = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  const entries = useMemo(
+    () => historyQuery.data?.items ?? [],
+    [historyQuery.data]
+  );
 
   const actionTypeOptions = useMemo<FilterOption[]>(() => {
     const values = [...new Set(entries.map((entry) => entry.actionType))];
@@ -907,6 +947,20 @@ export function GlobalHistory() {
               </section>
             ))}
           </div>
+          <TablePagination
+            totalItems={
+              historyQuery.data?.totalItems ??
+              page * pageSize + (historyQuery.data?.hasNext ? 1 : 0)
+            }
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(ps) => {
+              setPageSize(ps);
+              setPage(1);
+            }}
+            aria-label="History pagination"
+          />
         </TableScrollContainer>
       )}
     </>

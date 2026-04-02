@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 
-import { activityHistory, users } from '@corpcal/database/schema';
+import { activities, activityHistory, users } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import type {
   ActivityHistoryEntry,
@@ -168,6 +168,199 @@ export class ActivityHistoryService {
     const userMap = await this.getUserMap(userIds);
 
     return this.mapEntriesToResponse(historyEntries, userMap);
+  }
+
+  async getActivityHistoryForActivityIdsPaged(
+    activityIds: number[],
+    opts: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      pageSize?: number;
+      query?: string;
+    }
+  ): Promise<{
+    items: ActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    if (activityIds.length === 0) {
+      return {
+        items: [],
+        page: opts.page ?? 1,
+        pageSize: opts.pageSize ?? 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const page = Math.max(1, opts.page ?? 1);
+    const pageSize = Math.max(1, opts.pageSize ?? 50);
+    const limit = pageSize + 1;
+    const offset = (page - 1) * pageSize;
+
+    const whereClauses: any[] = [
+      inArray(activityHistory.activityId, activityIds),
+    ];
+
+    if (opts.startDate) {
+      // startDate expected in YYYY-MM-DD
+      const startIso = new Date(`${opts.startDate}T00:00:00.000Z`);
+      whereClauses.push(gte(activityHistory.timestamp, startIso));
+    }
+
+    if (opts.endDate) {
+      // include the end date up to end of day
+      const endIso = new Date(`${opts.endDate}T23:59:59.999Z`);
+      whereClauses.push(lte(activityHistory.timestamp, endIso));
+    }
+
+    if (opts.query) {
+      const raw = String(opts.query).trim();
+      if (raw.length > 0) {
+        // Date detection: YYYY-MM-DD or 'Mar 20' / 'March 20' (optionally with year)
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const monthDayMatch = raw.match(
+          /^([A-Za-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?$/
+        );
+        if (isoMatch) {
+          const startIso = new Date(`${raw}T00:00:00.000Z`);
+          const endIso = new Date(`${raw}T23:59:59.999Z`);
+          whereClauses.push(gte(activityHistory.timestamp, startIso));
+          whereClauses.push(lte(activityHistory.timestamp, endIso));
+        } else if (monthDayMatch) {
+          const monthName = monthDayMatch[1];
+          const day = parseInt(monthDayMatch[2], 10);
+          const year = monthDayMatch[3]
+            ? parseInt(monthDayMatch[3], 10)
+            : new Date().getFullYear();
+          const parsed = new Date(`${monthName} ${day} ${year}`);
+          if (!Number.isNaN(parsed.getTime())) {
+            const startIso = new Date(
+              Date.UTC(
+                parsed.getFullYear(),
+                parsed.getMonth(),
+                parsed.getDate(),
+                0,
+                0,
+                0,
+                0
+              )
+            );
+            const endIso = new Date(
+              Date.UTC(
+                parsed.getFullYear(),
+                parsed.getMonth(),
+                parsed.getDate(),
+                23,
+                59,
+                59,
+                999
+              )
+            );
+            whereClauses.push(gte(activityHistory.timestamp, startIso));
+            whereClauses.push(lte(activityHistory.timestamp, endIso));
+          }
+        } else {
+          const q = raw.toLowerCase();
+          const term = `%${q}%`;
+
+          // Join activities and users for searching fields on those tables
+          // We'll add joins later when building the query
+
+          // Numeric-only queries — treat as activity id OR match number part of displayId
+          if (/^\d+$/.test(q)) {
+            const num = Number(q);
+            whereClauses.push(
+              sql`(
+                ${activityHistory.activityId} = ${num}
+                OR lower(COALESCE(${activities.displayId}, '')) like ${term}
+              )`
+            );
+          }
+
+          // General text matching across several fields, plus category/tag EXISTS
+          whereClauses.push(
+            sql`(
+              lower(COALESCE(${activityHistory.actionType}, '')) like ${term}
+              OR lower(COALESCE(${activityHistory.notes}, '')) like ${term}
+              OR lower(COALESCE(${activities.title}, '')) like ${term}
+              OR lower(COALESCE(${activities.displayId}, '')) like ${term}
+              OR lower(COALESCE(${users.adDisplayName}, '')) like ${term}
+              OR lower(COALESCE(${users.adUsername}, '')) like ${term}
+              OR EXISTS(
+                select 1 from activity_categories ac
+                join categories c on ac.category_id = c.id
+                where ac.activity_id = ${activityHistory.activityId}
+                  and lower(COALESCE(c.display_name, '')) like ${term}
+              )
+              OR EXISTS(
+                select 1 from activity_subscriptions s
+                join tags t on s.tag_id = t.id
+                where s.activity_id = ${activityHistory.activityId}
+                  and lower(COALESCE(t.display_name, '')) like ${term}
+              )
+            )`
+          );
+        }
+      }
+    }
+
+    const whereExpr =
+      whereClauses.length > 1 ? and(...(whereClauses as any)) : whereClauses[0];
+
+    let qBuilder = this.databaseService.db
+      .select({
+        id: activityHistory.id,
+        activityId: activityHistory.activityId,
+        userId: activityHistory.userId,
+        actionType: activityHistory.actionType,
+        changes: activityHistory.changes,
+        notes: activityHistory.notes,
+        timestamp: activityHistory.timestamp,
+      })
+      .from(activityHistory);
+
+    // If query included fields on activities or users, join those tables for filtering
+    if (opts.query) {
+      qBuilder = (qBuilder as any)
+        .leftJoin(activities, eq(activityHistory.activityId, activities.id))
+        .leftJoin(users, eq(activityHistory.userId, users.id));
+    }
+
+    const query = (qBuilder as any)
+      .where(whereExpr)
+      .orderBy(desc(activityHistory.timestamp), desc(activityHistory.id))
+      .limit(limit)
+      .offset(offset);
+
+    // Build count query using same joins/where to get total matching rows
+    let countBuilder: any = this.databaseService.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(activityHistory as any);
+    if (opts.query) {
+      countBuilder = countBuilder
+        .leftJoin(activities, eq(activityHistory.activityId, activities.id))
+        .leftJoin(users, eq(activityHistory.userId, users.id));
+    }
+    countBuilder = countBuilder.where(whereExpr);
+
+    const [{ count: totalCount } = { count: 0 }] = await countBuilder;
+
+    const historyEntries = await query;
+
+    const hasNext = historyEntries.length > pageSize;
+    const pageItems = historyEntries.slice(0, pageSize);
+
+    const userIds = [
+      ...new Set(pageItems.map((entry: any) => entry.userId)),
+    ] as number[];
+    const userMap = await this.getUserMap(userIds);
+
+    const items = this.mapEntriesToResponse(pageItems as any[], userMap);
+    return { items, page, pageSize, hasNext, totalItems: totalCount ?? 0 };
   }
 
   async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {

@@ -201,11 +201,50 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get('global-history')
-  async getGlobalHistory(@RequestContext() ctx: RequestContextType): Promise<{
+  async getGlobalHistory(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('query') query?: string,
+    @RequestContext() ctx?: RequestContextType
+  ): Promise<{
     success: boolean;
-    data: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
+    data:
+      | Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>
+      | {
+          items: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
+          page: number;
+          pageSize: number;
+          hasNext: boolean;
+        };
   }> {
-    const result = await this.activitiesService.getGlobalHistory(ctx);
+    // If any pagination, explicit dates, or a query are provided, return a paged response
+    const hasPagingOrDate =
+      startDate !== undefined ||
+      endDate !== undefined ||
+      page !== undefined ||
+      pageSize !== undefined ||
+      query !== undefined;
+
+    if (!hasPagingOrDate) {
+      const result = await this.activitiesService.getGlobalHistory(ctx);
+      return {
+        success: true,
+        data: result,
+      };
+    }
+
+    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const parsedPageSize = pageSize
+      ? Math.max(1, parseInt(pageSize, 10) || 50)
+      : 50;
+
+    const result = await this.activitiesService.getGlobalHistoryPaged(
+      { startDate, endDate, page: parsedPage, pageSize: parsedPageSize, query },
+      ctx
+    );
+
     return {
       success: true,
       data: result,
