@@ -1,34 +1,56 @@
-import request from 'supertest';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 
-import { getAuthTokenForRole, startTestServer } from '../test/utils';
+import { AppModule } from '../src/app.module';
+import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
+import { createAuthRequest, e2eLogin } from './test-helpers';
 
-// This test file assumes test helpers exist to start the server and obtain tokens.
 describe('Banner API permissions', () => {
-  let app: any;
+  let app: INestApplication;
+  let nonAdminToken: string;
+  let systemAdminToken: string;
+
+  const upsertBody = {
+    isActive: true,
+    content: '<p>test</p>',
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    isDismissible: true,
+    startDateTime: null,
+    endDateTime: null,
+  };
 
   beforeAll(async () => {
-    app = await startTestServer();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalFilters(new HttpExceptionFilter());
+    await app.init();
+
+    nonAdminToken = await e2eLogin(app, 'thomas.garcia');
+    systemAdminToken = await e2eLogin(app, 'daniel.robinson');
+  });
+
+  afterAll(async () => {
+    await app.close();
   });
 
   it('forbids non-admin users from updating banner', async () => {
-    const token = await getAuthTokenForRole('user');
-    const res = await request(app)
-      .post('/api/admin/banner')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ content: '<p>test</p>' });
-
-    expect(res.status).toBe(403);
+    await createAuthRequest(app, nonAdminToken)
+      .put('/banner/settings')
+      .send(upsertBody)
+      .expect(403);
   });
 
   it('allows system admins to update banner', async () => {
-    const token = await getAuthTokenForRole('system-admin');
-    const res = await request(app)
-      .post('/api/admin/banner')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ content: '<p>test</p>' });
+    const res = await createAuthRequest(app, systemAdminToken)
+      .put('/banner/settings')
+      .send(upsertBody)
+      .expect(200);
 
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('id');
+    expect(res.body).toHaveProperty('success', true);
+    expect(res.body).toHaveProperty('data');
   });
 });
