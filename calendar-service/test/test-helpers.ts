@@ -41,7 +41,7 @@ export async function e2eLogin(
 
 /**
  * Returns a supertest-like object that sends Authorization: Bearer <token> on every request.
- * In supertest v7, request(server) only has .get/.post/etc.; .set() is on the result of those.
+ * In supertest v7, request(server) only has .get/.post/.put/etc.; .set() is on the result of those.
  */
 export function createAuthRequest(app: INestApplication, accessToken: string) {
   const server = app.getHttpServer();
@@ -49,6 +49,7 @@ export function createAuthRequest(app: INestApplication, accessToken: string) {
   return {
     get: (path: string) => request(server).get(path).set(authHeader),
     post: (path: string) => request(server).post(path).set(authHeader),
+    put: (path: string) => request(server).put(path).set(authHeader),
     patch: (path: string) => request(server).patch(path).set(authHeader),
     delete: (path: string) => request(server).delete(path).set(authHeader),
   };
