@@ -12,12 +12,33 @@ import { isDeepEqual } from '@corpcal/shared/utils';
 import type { Database } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
+// Raw row shape returned by DB queries for activity history
+// Keep in sync with the selected columns used in queries below
+type RawHistoryRow = {
+  id: number;
+  activityId: number;
+  userId: number;
+  actionType: string;
+  changes: unknown;
+  notes: string | null;
+  timestamp: Date | string;
+};
+
 /**
  * Service for tracking and retrieving activity change history
  */
 @Injectable()
 export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
+
+  // Raw row shape returned by DB queries for activity history
+  // Keep in sync with the selected columns used in queries
+  private typeRawHistoryRow?: void;
+
+  /*
+   * Note: declare a reusable type alias in a way that doesn't emit JS.
+   * We'll use a block-scoped type alias where needed via `type RawHistoryRow = ...`.
+   */
 
   private async getUserMap(userIds: number[]): Promise<
     Map<
@@ -201,7 +222,7 @@ export class ActivityHistoryService {
     const limit = pageSize + 1;
     const offset = (page - 1) * pageSize;
 
-    const whereClauses: any[] = [
+    const whereClauses: unknown[] = [
       inArray(activityHistory.activityId, activityIds),
     ];
 
@@ -309,7 +330,9 @@ export class ActivityHistoryService {
     }
 
     const whereExpr =
-      whereClauses.length > 1 ? and(...(whereClauses as any)) : whereClauses[0];
+      whereClauses.length > 1
+        ? and(...(whereClauses as Parameters<typeof and>))
+        : whereClauses[0];
 
     let qBuilder = this.databaseService.db
       .select({
@@ -349,17 +372,17 @@ export class ActivityHistoryService {
 
     const [{ count: totalCount } = { count: 0 }] = await countBuilder;
 
-    const historyEntries = await query;
+    const historyEntries: RawHistoryRow[] = await query;
 
     const hasNext = historyEntries.length > pageSize;
-    const pageItems = historyEntries.slice(0, pageSize);
+    const pageItems: RawHistoryRow[] = historyEntries.slice(0, pageSize);
 
-    const userIds = [
-      ...new Set(pageItems.map((entry: any) => entry.userId)),
-    ] as number[];
+    const userIds: number[] = [
+      ...new Set(pageItems.map((entry) => entry.userId)),
+    ];
     const userMap = await this.getUserMap(userIds);
 
-    const items = this.mapEntriesToResponse(pageItems as any[], userMap);
+    const items = this.mapEntriesToResponse(pageItems, userMap);
     return { items, page, pageSize, hasNext, totalItems: totalCount ?? 0 };
   }
 

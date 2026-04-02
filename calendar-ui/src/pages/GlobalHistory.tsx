@@ -823,95 +823,110 @@ export function GlobalHistory() {
           No matching history found.
         </div>
       ) : (
-        <TableScrollContainer>
-          <div className="space-y-8 p-5">
-            {groupedEntries.map(([heading, dayEntries]) => (
-              <section key={heading} className="space-y-4">
-                <h2 className="text-base font-normal text-slate-700">
-                  {heading}
-                </h2>
-                <div className="space-y-[2.5px]">
-                  {dayEntries.map((entry) => {
-                    const timestamp = new Date(entry.timestamp);
-                    const teamName = leadTeamLabelMap.get(
-                      entry.activity.leadTeamId
-                    );
-                    const hasChanges = (entry.changes?.length ?? 0) > 0;
-                    const isExpanded = expandedEntries.has(entry.id);
+        <>
+          <TableScrollContainer>
+            <div className="space-y-8 p-5">
+              {groupedEntries.map(([heading, dayEntries]) => (
+                <section key={heading} className="space-y-4">
+                  <h2 className="text-base font-normal text-slate-700">
+                    {heading}
+                  </h2>
+                  <div className="space-y-[2.5px]">
+                    {dayEntries.map((entry) => {
+                      const timestamp = new Date(entry.timestamp);
+                      const teamName = leadTeamLabelMap.get(
+                        entry.activity.leadTeamId
+                      );
+                      const hasChanges = (entry.changes?.length ?? 0) > 0;
+                      const isExpanded = expandedEntries.has(entry.id);
 
-                    return (
-                      <article
-                        key={entry.id}
-                        className="flex items-start justify-between gap-6 rounded-lg bg-white"
-                      >
-                        <div className="flex min-w-0 flex-1 gap-3">
-                          <Avatar
-                            className="h-9 w-9"
-                            title={getActorDisplayName(entry)}
-                          >
-                            <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
-                              {getActorInitials(entry)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 space-y-1.5">
-                            <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
-                              <span className="font-medium text-slate-900">
-                                {getActorDisplayName(entry)}
-                              </span>
-                              {teamName ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                                  {teamName}
+                      return (
+                        <article
+                          key={entry.id}
+                          className="flex items-start justify-between gap-6 rounded-lg bg-white"
+                        >
+                          <div className="flex min-w-0 flex-1 gap-3">
+                            <Avatar
+                              className="h-9 w-9"
+                              title={getActorDisplayName(entry)}
+                            >
+                              <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
+                                {getActorInitials(entry)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 space-y-1.5">
+                              <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
+                                <span className="font-medium text-slate-900">
+                                  {getActorDisplayName(entry)}
                                 </span>
-                              ) : null}
-                              <span>
-                                {getActionText(entry.actionType).toLowerCase()}
-                              </span>
-                              <Link
-                                to={`/activity/${entry.activity.id}`}
-                                className="font-medium text-blue-700 hover:underline"
-                              >
-                                {entry.activity.displayId ||
-                                  `Activity ${entry.activity.id}`}
-                              </Link>
-                            </div>
-
-                            <div className="text-sm font-bold text-slate-900">
-                              {entry.activity.title}
-                            </div>
-
-                            {entry.notes ? (
-                              <div className="text-sm text-slate-700">
-                                {entry.notes}
+                                {teamName ? (
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                                    {teamName}
+                                  </span>
+                                ) : null}
+                                <span>
+                                  {getActionText(
+                                    entry.actionType
+                                  ).toLowerCase()}
+                                </span>
+                                <Link
+                                  to={`/activity/${entry.activity.id}`}
+                                  className="font-medium text-blue-700 hover:underline"
+                                >
+                                  {entry.activity.displayId ||
+                                    `Activity ${entry.activity.id}`}
+                                </Link>
                               </div>
-                            ) : null}
 
-                            {hasChanges ? (
-                              <div className="space-y-1 pt-1">
-                                {isExpanded ? (
-                                  <>
-                                    {entry.changes?.map((change, index) => (
-                                      <div
-                                        key={`${entry.id}-${index}`}
-                                        className="text-foreground text-sm"
+                              <div className="text-sm font-bold text-slate-900">
+                                {entry.activity.title}
+                              </div>
+
+                              {entry.notes ? (
+                                <div className="text-sm text-slate-700">
+                                  {entry.notes}
+                                </div>
+                              ) : null}
+
+                              {hasChanges ? (
+                                <div className="space-y-1 pt-1">
+                                  {isExpanded ? (
+                                    <>
+                                      {entry.changes?.map((change, index) => (
+                                        <div
+                                          key={`${entry.id}-${index}`}
+                                          className="text-foreground text-sm"
+                                        >
+                                          <span className="text-foreground font-medium">
+                                            {getHistoryFieldLabel(change.field)}
+                                            :
+                                          </span>{' '}
+                                          <span className="text-muted-foreground">
+                                            {formatChangeValue(
+                                              change.field,
+                                              change.oldValue
+                                            )}
+                                          </span>{' '}
+                                          <span aria-hidden>→</span>{' '}
+                                          <span>
+                                            {formatChangeValue(
+                                              change.field,
+                                              change.newValue
+                                            )}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          toggleExpandedEntry(entry.id)
+                                        }
+                                        className="text-sm font-medium text-blue-700 hover:underline"
                                       >
-                                        <span className="text-foreground font-medium">
-                                          {getHistoryFieldLabel(change.field)}:
-                                        </span>{' '}
-                                        <span className="text-muted-foreground">
-                                          {formatChangeValue(
-                                            change.field,
-                                            change.oldValue
-                                          )}
-                                        </span>{' '}
-                                        <span aria-hidden>→</span>{' '}
-                                        <span>
-                                          {formatChangeValue(
-                                            change.field,
-                                            change.newValue
-                                          )}
-                                        </span>
-                                      </div>
-                                    ))}
+                                        Show less
+                                      </button>
+                                    </>
+                                  ) : (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -919,49 +934,41 @@ export function GlobalHistory() {
                                       }
                                       className="text-sm font-medium text-blue-700 hover:underline"
                                     >
-                                      Show less
+                                      Show more
                                     </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      toggleExpandedEntry(entry.id)
-                                    }
-                                    className="text-sm font-medium text-blue-700 hover:underline"
-                                  >
-                                    Show more
-                                  </button>
-                                )}
-                              </div>
-                            ) : null}
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                        <div className="shrink-0 text-sm text-slate-500">
-                          {formatExactDate(timestamp, { includeTime: true })}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
+                          <div className="shrink-0 text-sm text-slate-500">
+                            {formatExactDate(timestamp, { includeTime: true })}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </TableScrollContainer>
+          <div className="mt-4">
+            <TablePagination
+              totalItems={
+                historyQuery.data?.totalItems ??
+                page * pageSize + (historyQuery.data?.hasNext ? 1 : 0)
+              }
+              page={page}
+              pageSize={pageSize}
+              onPageChange={(p) => setPage(p)}
+              onPageSizeChange={(ps) => {
+                setPageSize(ps);
+                setPage(1);
+              }}
+              aria-label="History pagination"
+            />
           </div>
-          <TablePagination
-            totalItems={
-              historyQuery.data?.totalItems ??
-              page * pageSize + (historyQuery.data?.hasNext ? 1 : 0)
-            }
-            page={page}
-            pageSize={pageSize}
-            onPageChange={(p) => setPage(p)}
-            onPageSizeChange={(ps) => {
-              setPageSize(ps);
-              setPage(1);
-            }}
-            aria-label="History pagination"
-          />
-        </TableScrollContainer>
+        </>
       )}
     </>
   );

@@ -157,6 +157,7 @@ export type PagedResult<T> = {
   page: number;
   pageSize: number;
   hasNext: boolean;
+  totalItems?: number;
 };
 
 export async function fetchGlobalActivityHistoryPaged(params?: {
