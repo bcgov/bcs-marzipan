@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { SYSTEM_ROLES } from '../auth/constants';
 import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
-import { redactActivityResponse } from './redact-activity-response';
+import {
+  isActivityResponsePayload,
+  redactActivityResponse,
+} from './redact-activity-response';
 
 const advancedViewer = {
   permissions: ['activities.view'],
@@ -21,6 +24,58 @@ const editorWithAllViewGrants = {
   ],
   roleName: SYSTEM_ROLES.EDITOR,
 };
+
+describe('isActivityResponsePayload', () => {
+  it('returns true for a full activity-shaped object', () => {
+    const activity = createMockActivityResponse();
+    expect(isActivityResponsePayload(activity)).toBe(true);
+  });
+
+  it('returns false for category lookup rows', () => {
+    expect(
+      isActivityResponsePayload({
+        id: 1,
+        name: 'event',
+        displayName: 'Event',
+        sortOrder: 0,
+        visibility: 'global',
+        isActive: true,
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for activity history entries', () => {
+    expect(
+      isActivityResponsePayload({
+        id: 1,
+        activityId: 2,
+        userId: 3,
+        actionType: 'note_added',
+        changes: null,
+        notes: 'hi',
+        timestamp: '2025-01-01T00:00:00.000Z',
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for global-history activity summary (no activityStatusId / isIssue)', () => {
+    expect(
+      isActivityResponsePayload({
+        id: 1,
+        displayId: 'A-1',
+        title: 'T',
+        leadTeamId: 1,
+        categories: [],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for null and non-objects', () => {
+    expect(isActivityResponsePayload(null)).toBe(false);
+    expect(isActivityResponsePayload(undefined)).toBe(false);
+    expect(isActivityResponsePayload('x')).toBe(false);
+  });
+});
 
 describe('redactActivityResponse', () => {
   const activity = createMockActivityResponse({

@@ -5,6 +5,23 @@ import {
 } from '../auth/activity-field-scopes';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 
+/**
+ * True when `value` is a full ActivityResponse-shaped object (HTTP `data` fragment).
+ * Not for history rows, category lookups, or global-history activity summaries.
+ */
+export function isActivityResponsePayload(
+  value: unknown
+): value is ActivityResponse {
+  if (value === null || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.id === 'number' &&
+    typeof o.title === 'string' &&
+    typeof o.isIssue === 'boolean' &&
+    typeof o.activityStatusId === 'number'
+  );
+}
+
 interface FieldScopeUser {
   permissions: string[];
   roleName: string;

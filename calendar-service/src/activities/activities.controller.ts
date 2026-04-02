@@ -10,6 +10,7 @@ import {
   Put,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -44,7 +45,6 @@ import {
   type SoftDeleteRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-import { redactActivityResponse } from '@corpcal/shared/utils';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
@@ -70,27 +70,16 @@ import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.gua
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 
 @ApiTags('activities')
 @Controller('activities')
+@UseInterceptors(ActivityResponseRedactionInterceptor)
 export class ActivitiesController {
   private readonly logger = new AppLogger(ActivitiesController.name);
 
   constructor(private readonly activitiesService: ActivitiesService) {}
-
-  private redact(data: ActivityResponse, user?: AuthUser): ActivityResponse {
-    if (!user) return data;
-    return redactActivityResponse(data, user);
-  }
-
-  private redactAll(
-    data: ActivityResponse[],
-    user?: AuthUser
-  ): ActivityResponse[] {
-    if (!user) return data;
-    return data.map((d) => redactActivityResponse(d, user));
-  }
 
   @ApiOperation({
     summary: 'Create activity',
@@ -125,7 +114,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -174,7 +163,7 @@ export class ActivitiesController {
     const results = await this.activitiesService.findAll(filters, ctx);
     return {
       success: true,
-      data: this.redactAll(results, ctx.user),
+      data: results,
     };
   }
 
@@ -254,7 +243,7 @@ export class ActivitiesController {
     const result = await this.activitiesService.findOne(id, ctx);
     return {
       success: true,
-      data: this.redact(result, ctx.user),
+      data: result,
     };
   }
 
@@ -299,7 +288,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -345,7 +334,7 @@ export class ActivitiesController {
     });
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -390,7 +379,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -438,7 +427,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -486,7 +475,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -597,7 +586,7 @@ export class ActivitiesController {
     const result = await this.activitiesService.cancelChanges(id, user.id);
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -685,7 +674,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -730,7 +719,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -775,7 +764,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 
@@ -820,7 +809,7 @@ export class ActivitiesController {
     );
     return {
       success: true,
-      data: this.redact(result, user),
+      data: result,
     };
   }
 }
