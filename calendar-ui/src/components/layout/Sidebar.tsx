@@ -57,7 +57,7 @@ function AppSidebarContent() {
   const mainNavItems = [
     { to: '/', label: 'Activities', icon: CalendarDays },
     ...(canViewReports
-      ? [{ to: '/reports/look-ahead', label: 'Reports', icon: NotebookText }]
+      ? [{ to: '/reports', label: 'Reports', icon: NotebookText }]
       : []),
     { to: '/global-history', label: 'History', icon: History },
   ];

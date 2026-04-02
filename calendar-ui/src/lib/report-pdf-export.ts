@@ -1,7 +1,6 @@
 /**
- * Look Ahead Report PDF Export
- * Exports the Look Ahead report to a PDF with BC Government branding,
- * DRAFT AND CONFIDENTIAL markings, and tabular section layout.
+ * Generic Report PDF Export
+ * Exports reports to PDF with BC Government branding and tabular layout.
  */
 
 import { format } from 'date-fns';
@@ -11,10 +10,9 @@ import sanitizeHtml from 'sanitize-html';
 import {
   getEffectiveReportDetailText,
   getEffectiveReportFields,
-  REPORT_TYPE_CONFIG_MAP,
 } from '@corpcal/shared/reports/reportTypeConfig';
 
-import type { LookAheadResponse } from '../api/reportsApi';
+import type { ReportDataResponse } from '../api/reportsApi';
 import { sortLookAheadActivities } from './look-ahead-sort';
 
 const MARGIN = 20;
@@ -62,12 +60,17 @@ function formatTime(dateStr: string | null, timeStr: string | null): string {
   return '–';
 }
 
-function statusLabel(status: string | null | undefined): string {
+function statusLabel(status: string | null): string {
   if (!status || status === 'none') return '–';
   return status === 'new' ? 'NEW' : 'CHANGED';
 }
 
-function addHeader(doc: jsPDF, reportDate: string, isFirstPage: boolean): void {
+function addHeader(
+  doc: jsPDF,
+  reportTitle: string,
+  reportDate: string,
+  isFirstPage: boolean
+): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -88,7 +91,7 @@ function addHeader(doc: jsPDF, reportDate: string, isFirstPage: boolean): void {
   if (isFirstPage) {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Look Ahead', MARGIN, 35);
+    doc.text(reportTitle, MARGIN, 35);
   }
 }
 
@@ -111,9 +114,9 @@ function addFooter(
 }
 
 /**
- * Export Look Ahead report data to a PDF file.
+ * Export report data to a PDF file.
  */
-export function exportLookAheadToPdf(data: LookAheadResponse): void {
+export function exportReportToPdf(data: ReportDataResponse): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -121,11 +124,10 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
   const contentEndY = pageHeight - FOOTER_HEIGHT;
 
   const reportDate = format(new Date(), 'EEEE, MMMM d, yyyy h:mm a');
-  const effectiveFields = data.report
-    ? getEffectiveReportFields(data.report)
-    : REPORT_TYPE_CONFIG_MAP.LOOK_AHEAD.fields;
+  const reportTitle = data.report.displayName;
+  const effectiveFields = getEffectiveReportFields(data.report);
 
-  addHeader(doc, reportDate, true);
+  addHeader(doc, reportTitle, reportDate, true);
 
   let totalPages = 1;
   let currentPage = 1;
@@ -144,7 +146,7 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
       doc.addPage();
       totalPages += 1;
       currentPage += 1;
-      addHeader(doc, reportDate, false);
+      addHeader(doc, reportTitle, reportDate, false);
       addFooter(doc, currentPage, totalPages, reportDate);
       y = contentStartY;
     }
@@ -177,7 +179,7 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
           doc.addPage();
           totalPages += 1;
           currentPage += 1;
-          addHeader(doc, reportDate, false);
+          addHeader(doc, reportTitle, reportDate, false);
           addFooter(doc, currentPage, totalPages, reportDate);
           y = contentStartY;
         }
@@ -202,7 +204,7 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
         doc.addPage();
         totalPages += 1;
         currentPage += 1;
-        addHeader(doc, reportDate, false);
+        addHeader(doc, reportTitle, reportDate, false);
         addFooter(doc, currentPage, totalPages, reportDate);
         y = contentStartY;
       }
@@ -250,6 +252,6 @@ export function exportLookAheadToPdf(data: LookAheadResponse): void {
     addFooter(doc, p, pageCount, reportDate);
   }
 
-  const fileName = `look-ahead-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+  const fileName = `${data.report.name}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
   doc.save(fileName);
 }
