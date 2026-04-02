@@ -56,6 +56,20 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 
 -- ----------------------------------------------------------------------------
+-- TEAM_CATEGORIES
+-- Links team-scoped categories (categories.visibility = team) to teams.
+-- Requires categories seed (0001). CCHQ id=2, IGRS id=35.
+-- ----------------------------------------------------------------------------
+
+INSERT INTO team_categories (category_id, team_id, is_active) VALUES
+  (9, 2, true),
+  (10, 35, true),
+  (11, 35, true),
+  (12, 35, true),
+  (13, 35, true)
+ON CONFLICT (category_id, team_id) DO NOTHING;
+
+-- ----------------------------------------------------------------------------
 -- TEAM MINISTRY (teams.ministry_id)
 -- Ministry Comms (8-32): PREM=1, AF=2, ... WLRS=25 (ministry id matches org id 1-25).
 -- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->EP(9).
