@@ -73,3 +73,12 @@ export const databaseProvider = {
 };
 
 export type Database = ReturnType<typeof drizzle<typeof schema>>;
+
+/**
+ * Root pool client or an open transaction client. Pass the transaction `tx` from
+ * `db.transaction()` for all queries in that callback so one connection is not held
+ * idle while awaiting a second pool checkout (avoids pool self-deadlock).
+ */
+export type DrizzleDbExecutor =
+  | Database
+  | Parameters<Parameters<Database['transaction']>[0]>[0];

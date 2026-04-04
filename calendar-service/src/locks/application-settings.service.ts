@@ -3,10 +3,11 @@ import { eq } from 'drizzle-orm';
 
 import { applicationSettings } from '@corpcal/database/schema';
 
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 export const EDIT_LOCK_IDLE_TIMEOUT_KEY = 'edit_lock_idle_timeout_minutes';
-export const DEFAULT_EDIT_LOCK_IDLE_TIMEOUT_MINUTES = 30;
+export const DEFAULT_EDIT_LOCK_IDLE_TIMEOUT_MINUTES = 5;
 
 @Injectable()
 export class ApplicationSettingsService {
@@ -14,8 +15,10 @@ export class ApplicationSettingsService {
 
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async getEditLockIdleTimeoutMinutes(): Promise<number> {
-    const [row] = await this.databaseService.db
+  async getEditLockIdleTimeoutMinutes(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<number> {
+    const [row] = await executor
       .select()
       .from(applicationSettings)
       .where(eq(applicationSettings.key, EDIT_LOCK_IDLE_TIMEOUT_KEY))

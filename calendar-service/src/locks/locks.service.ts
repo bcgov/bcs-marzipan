@@ -16,7 +16,10 @@ import {
 } from '@corpcal/database/schema';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
-import type { Database } from '../database/database.provider';
+import type {
+  Database,
+  DrizzleDbExecutor,
+} from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from './application-settings.service';
 
@@ -55,14 +58,20 @@ export class LocksService {
     private readonly activitiesGateway: ActivitiesGateway
   ) {}
 
-  private async idleDeadlineFrom(now: Date): Promise<Date> {
+  private async idleDeadlineFrom(
+    now: Date,
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<Date> {
     const minutes =
-      await this.applicationSettings.getEditLockIdleTimeoutMinutes();
+      await this.applicationSettings.getEditLockIdleTimeoutMinutes(executor);
     return new Date(now.getTime() + minutes * 60 * 1000);
   }
 
-  private async getLockUsernameForUserId(userId: number): Promise<string> {
-    const [row] = await this.databaseService.db
+  private async getLockUsernameForUserId(
+    userId: number,
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<string> {
+    const [row] = await executor
       .select({
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
@@ -398,20 +407,22 @@ export class LocksService {
     activityId: number,
     holderUserId: number
   ): Promise<void> {
-    const [claimed] = await this.databaseService.db
-      .update(editLockPendingHandoffs)
-      .set({ status: 'processing' })
-      .where(
-        and(
-          eq(editLockPendingHandoffs.activityId, activityId),
-          eq(editLockPendingHandoffs.fromUserId, holderUserId),
-          eq(editLockPendingHandoffs.status, 'pending')
+    await this.databaseService.db.transaction(async (tx) => {
+      const [claimed] = await tx
+        .update(editLockPendingHandoffs)
+        .set({ status: 'processing' })
+        .where(
+          and(
+            eq(editLockPendingHandoffs.activityId, activityId),
+            eq(editLockPendingHandoffs.fromUserId, holderUserId),
+            eq(editLockPendingHandoffs.status, 'pending')
+          )
         )
-      )
-      .returning();
-    if (!claimed) return;
+        .returning();
+      if (!claimed) return;
 
-    await this.finalizeHandoffTransfer(claimed.id);
+      await this.finalizeHandoffTransferInTransaction(tx, claimed.id);
+    });
   }
 
   /**
@@ -454,17 +465,6 @@ export class LocksService {
     }
   }
 
-  /**
-   * Runs transfer + WS after claim (pending row is already `processing`).
-   */
-  private async finalizeHandoffTransfer(
-    pendingHandoffId: number
-  ): Promise<void> {
-    await this.databaseService.db.transaction(async (tx) => {
-      await this.finalizeHandoffTransferInTransaction(tx, pendingHandoffId);
-    });
-  }
-
   private async finalizeHandoffTransferInTransaction(
     tx: DbTransaction,
     pendingHandoffId: number
@@ -501,9 +501,9 @@ export class LocksService {
       return;
     }
 
-    const toUsername = await this.getLockUsernameForUserId(toUserId);
+    const toUsername = await this.getLockUsernameForUserId(toUserId, tx);
     const tNow = new Date();
-    const idleExpiresAt = await this.idleDeadlineFrom(tNow);
+    const idleExpiresAt = await this.idleDeadlineFrom(tNow, tx);
     const expiresAt = new Date(tNow.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
 
     await tx.delete(editLocks).where(eq(editLocks.id, lock.id));

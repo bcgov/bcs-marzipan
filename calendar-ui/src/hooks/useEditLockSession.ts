@@ -21,8 +21,16 @@ type UseEditLockSessionOptions = {
   sendHeartbeat: () => Promise<void>;
 };
 
+function idleWarnToastId(activityId: number): string {
+  return `idle-lock-warn-${activityId}`;
+}
+
 /**
  * Debounced heartbeats on form activity, periodic fallback, and T−2 min idle warning.
+ *
+ * Heartbeat effects intentionally omit `lock` from deps: `sendHeartbeat` uses `lockRef`,
+ * and including `lock` re-ran the debounce after every successful heartbeat, extending
+ * idle on a fixed cadence even with no user activity.
  */
 export function useEditLockSession({
   form,
@@ -34,34 +42,36 @@ export function useEditLockSession({
 }: UseEditLockSessionOptions): void {
   const idleWarnShownRef = useRef(false);
   const watched = useWatch({ control: form.control });
+  const idleExpiresAt = lock?.idleExpiresAt;
 
   useEffect(() => {
     idleWarnShownRef.current = false;
-  }, [activityId, lock?.idleExpiresAt]);
+  }, [activityId, idleExpiresAt]);
 
   useEffect(() => {
-    if (lockState !== 'owned' || !lock || !isEditing) return;
+    if (lockState !== 'owned' || !isEditing) return;
     const t = setTimeout(() => {
       void sendHeartbeat();
     }, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [watched, lockState, lock, isEditing, sendHeartbeat]);
+  }, [watched, lockState, isEditing, sendHeartbeat]);
 
   useEffect(() => {
-    if (lockState !== 'owned' || !lock || !isEditing) return;
+    if (lockState !== 'owned' || !isEditing) return;
     const id = window.setInterval(() => {
       void sendHeartbeat();
     }, HEARTBEAT_FALLBACK_MS);
     return () => window.clearInterval(id);
-  }, [lockState, lock, isEditing, sendHeartbeat]);
+  }, [lockState, isEditing, sendHeartbeat]);
 
   useEffect(() => {
-    if (lockState !== 'owned' || !lock?.idleExpiresAt) return;
+    if (lockState !== 'owned' || !idleExpiresAt) return;
 
     const check = (): void => {
-      const end = new Date(lock.idleExpiresAt).getTime();
+      const end = new Date(idleExpiresAt).getTime();
       const msLeft = end - Date.now();
       if (msLeft <= 0) {
+        toast.dismiss(idleWarnToastId(activityId));
         idleWarnShownRef.current = false;
         return;
       }
@@ -78,7 +88,7 @@ export function useEditLockSession({
               idleWarnShownRef.current = false;
             },
           },
-          id: `idle-lock-warn-${activityId}`,
+          id: idleWarnToastId(activityId),
         });
       }
       if (msLeft > IDLE_WARN_MS) {
@@ -88,6 +98,9 @@ export function useEditLockSession({
 
     check();
     const id = window.setInterval(check, IDLE_CHECK_MS);
-    return () => window.clearInterval(id);
-  }, [lockState, lock, activityId, sendHeartbeat]);
+    return () => {
+      window.clearInterval(id);
+      toast.dismiss(idleWarnToastId(activityId));
+    };
+  }, [lockState, idleExpiresAt, activityId, sendHeartbeat]);
 }

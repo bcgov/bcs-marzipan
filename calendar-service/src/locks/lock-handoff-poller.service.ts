@@ -9,11 +9,16 @@ import { LocksService } from './locks.service';
 @Injectable()
 export class LockHandoffPoller {
   private readonly logger = new Logger(LockHandoffPoller.name);
+  private maintenanceInFlight = false;
 
   constructor(private readonly locksService: LocksService) {}
 
   @Cron('*/10 * * * * *')
   async runLockMaintenance(): Promise<void> {
+    if (this.maintenanceInFlight) {
+      return;
+    }
+    this.maintenanceInFlight = true;
     try {
       const handoffs = await this.locksService.processDueHandoffsOnce();
       const cleaned = await this.locksService.cleanupExpiredLocks();
@@ -27,6 +32,8 @@ export class LockHandoffPoller {
         'Lock maintenance failed',
         err instanceof Error ? err.stack : String(err)
       );
+    } finally {
+      this.maintenanceInFlight = false;
     }
   }
 }
