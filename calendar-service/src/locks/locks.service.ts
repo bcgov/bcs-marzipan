@@ -16,8 +16,11 @@ import {
 } from '@corpcal/database/schema';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
+import type { Database } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from './application-settings.service';
+
+type DbTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 type EditLockRow = typeof editLocks.$inferSelect;
 
@@ -463,7 +466,7 @@ export class LocksService {
   }
 
   private async finalizeHandoffTransferInTransaction(
-    tx: any,
+    tx: DbTransaction,
     pendingHandoffId: number
   ): Promise<void> {
     const [pending] = await tx
@@ -486,7 +489,7 @@ export class LocksService {
         and(
           eq(editLocks.entityType, 'activity'),
           eq(editLocks.entityId, activityId)
-        )!
+        )
       )
       .limit(1);
 

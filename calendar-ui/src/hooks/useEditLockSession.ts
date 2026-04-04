@@ -53,7 +53,7 @@ export function useEditLockSession({
       void sendHeartbeat();
     }, HEARTBEAT_FALLBACK_MS);
     return () => window.clearInterval(id);
-  }, [lockState, lock?.id, isEditing, sendHeartbeat]);
+  }, [lockState, lock, isEditing, sendHeartbeat]);
 
   useEffect(() => {
     if (lockState !== 'owned' || !lock?.idleExpiresAt) return;
@@ -89,5 +89,5 @@ export function useEditLockSession({
     check();
     const id = window.setInterval(check, IDLE_CHECK_MS);
     return () => window.clearInterval(id);
-  }, [lockState, lock?.idleExpiresAt, activityId, sendHeartbeat]);
+  }, [lockState, lock, activityId, sendHeartbeat]);
 }
