@@ -178,7 +178,7 @@ export class ActivityHistoryService {
         actorDisplayName: userRow?.displayName ?? null,
         actorUsername: userRow?.username ?? null,
         categoryTagsText: categoryTagsText || null,
-      } as any)
+      })
       .returning();
 
     return historyEntry;
@@ -285,7 +285,7 @@ export class ActivityHistoryService {
           cursorTimestamp = null;
           cursorId = null;
         }
-      } catch (e) {
+      } catch {
         cursorTimestamp = null;
         cursorId = null;
       }
