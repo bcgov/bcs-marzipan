@@ -301,6 +301,8 @@ export function ActivityPage({
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
+    lockState !== 'checking' &&
+    lockState !== 'acquiring' &&
     (!isBlockedStatus || canEditWhenBlocked);
 
   const handleGoBack = useCallback(() => {
