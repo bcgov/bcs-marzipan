@@ -72,6 +72,28 @@ export async function getLockStatus(
   return res.data;
 }
 
+function locksApiBaseUrl(): string {
+  const base = import.meta.env.VITE_API_BASE_URL || '/api';
+  return base.replace(/\/$/, '');
+}
+
+/**
+ * Best-effort release during `pagehide` / document unload. Browsers often abort
+ * in-flight XHR/fetch without `keepalive`, so the normal Axios path can fail on
+ * tab close or hard navigation even though React cleanup runs.
+ */
+export function releaseLockWithKeepalive(lockId: number): void {
+  const url = `${locksApiBaseUrl()}/locks/${lockId}`;
+  void fetch(url, {
+    method: 'DELETE',
+    credentials: 'include',
+    keepalive: true,
+    headers: {
+      'X-Correlation-ID': crypto.randomUUID(),
+    },
+  });
+}
+
 export async function releaseLock(lockId: number): Promise<void> {
   try {
     await api.delete(`/locks/${lockId}`);

@@ -7,6 +7,7 @@ import {
   heartbeatLock,
   LOCKED_STATUS,
   releaseLock,
+  releaseLockWithKeepalive,
   type LockInfo,
 } from '../api/locksApi';
 
@@ -210,10 +211,19 @@ export function useActivityLock(
   }, []);
 
   useEffect(() => {
+    const onPageHide = (ev: PageTransitionEvent): void => {
+      if (ev.persisted) return;
+      const held = lockRef.current;
+      if (held == null) return;
+      releaseLockWithKeepalive(held.id);
+    };
+    window.addEventListener('pagehide', onPageHide);
+
     return () => {
+      window.removeEventListener('pagehide', onPageHide);
       const currentLock = lockRef.current;
       if (currentLock != null) {
-        void releaseLock(currentLock.id);
+        releaseLockWithKeepalive(currentLock.id);
         lockRef.current = null;
       }
     };
