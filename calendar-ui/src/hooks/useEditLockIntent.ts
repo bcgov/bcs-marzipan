@@ -3,6 +3,7 @@ import { useEffect, useRef, type RefObject } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
+import { computeFormChanges } from '../lib/activity-history-format';
 import type { LockState } from './useActivityLock';
 
 export const EDIT_LOCK_CONFLICT_TOAST =
@@ -61,6 +62,15 @@ export function useEditLockIntent({
     ) {
       return;
     }
+    const baseline = initialFormDataRef.current;
+    if (baseline) {
+      const meaningful = computeFormChanges(baseline, form.getValues());
+      if (meaningful.length === 0) {
+        form.reset(baseline);
+        return;
+      }
+    }
+
     autoAcquireAttemptedRef.current = true;
     setIsEditing(true);
     void acquire().then((ok) => {

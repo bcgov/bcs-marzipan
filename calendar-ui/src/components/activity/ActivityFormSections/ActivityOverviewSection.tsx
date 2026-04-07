@@ -297,6 +297,17 @@ export const ActivityOverviewSection: React.FC<
             // Radix may still call onValueChange with '' during option load/reset; never apply when view-only.
             if (readOnly) return;
 
+            // Radix may emit '' while options reconcile (e.g. during fetch). There is no empty
+            // SelectItem, so clearing to unassigned is never a deliberate user action here.
+            const currentLeadTeamId = field.value;
+            if (
+              (value === '' || value == null) &&
+              currentLeadTeamId != null &&
+              Number(currentLeadTeamId) > 0
+            ) {
+              return;
+            }
+
             const previousTeamId = field.value ?? null;
             const previousTeam =
               previousTeamId != null
