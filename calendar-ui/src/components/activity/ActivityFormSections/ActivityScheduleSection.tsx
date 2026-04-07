@@ -7,7 +7,10 @@ import type {
   TimeStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
+import {
+  FormSelectSafe,
+  FormSelectTrigger,
+} from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import {
   FormAggregateDirtyIndicator,
@@ -257,8 +260,9 @@ export function ActivityScheduleSection({
                 <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
-                <FormSelect
+                <FormSelectSafe
                   readOnly={readOnly}
+                  optionValues={dateStatuses.map((s) => String(s.id))}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -287,7 +291,7 @@ export function ActivityScheduleSection({
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </FormSelect>
+                </FormSelectSafe>
               </FormItem>
             )}
           />
@@ -430,8 +434,9 @@ export function ActivityScheduleSection({
                 <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
-                <FormSelect
+                <FormSelectSafe
                   readOnly={readOnly}
+                  optionValues={timeStatuses.map((s) => String(s.id))}
                   value={
                     statusField.value !== undefined &&
                     statusField.value !== null
@@ -460,7 +465,7 @@ export function ActivityScheduleSection({
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </FormSelect>
+                </FormSelectSafe>
               </FormItem>
             )}
           />

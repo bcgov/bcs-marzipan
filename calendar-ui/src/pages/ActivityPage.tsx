@@ -280,8 +280,6 @@ export function ActivityPage({
   });
 
   const isDirty = form.formState.isDirty;
-  const dirtyFieldsCount = Object.keys(form.formState.dirtyFields ?? {}).length;
-  const dirtyFieldsSignature = JSON.stringify(form.formState.dirtyFields ?? {});
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(
     form.formState,
@@ -341,9 +339,6 @@ export function ActivityPage({
   useEditLockIntent({
     formHydrated: isFormHydrated,
     hydrationGeneration,
-    isDirty,
-    dirtyFieldsCount,
-    dirtyFieldsSignature,
     mayEdit,
     isEditing,
     setIsEditing,

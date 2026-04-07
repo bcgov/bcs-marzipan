@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
 import type {
@@ -7,7 +6,10 @@ import type {
   TeamListItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
+import {
+  FormSelectSafe,
+  FormSelectTrigger,
+} from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -17,6 +19,7 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
@@ -131,6 +134,162 @@ function LeadOrganizationField({
                 freeformLabel="New org"
                 freeformDescription=""
               />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
+/**
+ * Isolated lead-team field using a value-controlled Combobox (single-select
+ * with search). Unlike Radix Select, the Combobox does not emit phantom
+ * onValueChange events when options reconcile during async loading.
+ */
+function LeadTeamField({
+  leadTeamOptions,
+  leadTeamDisplayLabel,
+  leadTeamOptionsFetching,
+  organizations,
+  readOnly,
+}: {
+  leadTeamOptions: TeamListItem[];
+  leadTeamDisplayLabel: string | null | undefined;
+  leadTeamOptionsFetching: boolean;
+  organizations: LeadOrganizationOption[];
+  readOnly: boolean;
+}) {
+  const form = useFormContext<ActivityFormData>();
+
+  return (
+    <FormField
+      control={form.control}
+      name="leadTeamId"
+      render={({ field }) => {
+        const mergedTeams: TeamListItem[] = (() => {
+          const list = [...leadTeamOptions];
+          const lid = field.value;
+          if (lid != null && lid > 0 && !list.some((t) => t.id === lid)) {
+            const label = leadTeamDisplayLabel?.trim() || `Team ${lid}`;
+            list.unshift({
+              id: lid,
+              name: label,
+              displayName: leadTeamDisplayLabel ?? null,
+              description: null,
+              sortOrder: 0,
+              isActive: true,
+              roleId: null,
+              memberCount: 0,
+              ministryId: null,
+              ministryName: null,
+            });
+          }
+          return list;
+        })();
+
+        const options: OptionItem[] = mergedTeams.map((t) => ({
+          value: String(t.id),
+          label: t.ministryName
+            ? `${t.displayName || t.name} (${t.ministryName})`
+            : t.displayName || t.name,
+        }));
+
+        const selectedOption: OptionItem | null =
+          field.value != null && field.value > 0
+            ? (options.find((o) => o.value === String(field.value)) ?? null)
+            : null;
+
+        const handleTeamChange = (option: OptionItem | null) => {
+          const previousTeamId = field.value ?? null;
+          const previousTeam =
+            previousTeamId != null
+              ? mergedTeams.find((t) => t.id === previousTeamId)
+              : null;
+          const syncedOrgId =
+            previousTeam?.ministryId != null
+              ? (organizations.find(
+                  (o) => o.ministryId === previousTeam.ministryId
+                )?.value ?? null)
+              : null;
+          const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
+          const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
+          const leadOrgInSyncWithTeam =
+            (syncedOrgId != null &&
+              currentLeadOrgId === syncedOrgId &&
+              (currentLeadOrgName == null || currentLeadOrgName === '')) ||
+            (syncedOrgId == null &&
+              currentLeadOrgId == null &&
+              (currentLeadOrgName == null || currentLeadOrgName === ''));
+
+          const teamId = option ? Number(option.value) : undefined;
+          field.onChange(teamId);
+
+          if (teamId == null) {
+            form.setValue('leadMinistryId', undefined, DIRTY_CASCADE);
+            if (leadOrgInSyncWithTeam) {
+              form.setValue('leadOrgId', null, DIRTY_CASCADE);
+              form.setValue('leadOrgName', null, DIRTY_CASCADE);
+            }
+          } else {
+            const team = mergedTeams.find((t) => t.id === teamId);
+            form.setValue(
+              'leadMinistryId',
+              team?.ministryId ?? undefined,
+              DIRTY_CASCADE
+            );
+            if (leadOrgInSyncWithTeam && team) {
+              const orgForMinistry =
+                team.ministryId != null
+                  ? organizations.find((o) => o.ministryId === team.ministryId)
+                  : undefined;
+              if (orgForMinistry) {
+                form.setValue('leadOrgId', orgForMinistry.value, DIRTY_CASCADE);
+                form.setValue('leadOrgName', null, DIRTY_CASCADE);
+              } else {
+                form.setValue('leadOrgId', null, DIRTY_CASCADE);
+                form.setValue('leadOrgName', null, DIRTY_CASCADE);
+              }
+            }
+          }
+        };
+
+        const showOptionsLoading =
+          leadTeamOptionsFetching && leadTeamOptions.length === 0;
+
+        return (
+          <FormItem>
+            <FormLabel showRequired>
+              {getActivityFieldLabel(field.name)}
+            </FormLabel>
+            <FormControl data-field={field.name}>
+              <Combobox
+                items={options}
+                value={selectedOption}
+                onValueChange={handleTeamChange}
+                itemToStringValue={(o: OptionItem) => o.label}
+                readOnly={readOnly}
+              >
+                <ComboboxInput
+                  placeholder="Select lead team"
+                  disabled={showOptionsLoading}
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>
+                    {showOptionsLoading
+                      ? 'Loading teams...'
+                      : 'No teams found.'}
+                  </ComboboxEmpty>
+                  <ComboboxList>
+                    {(option: OptionItem) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -268,163 +427,12 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="leadTeamId"
-        render={({ field }) => {
-          const mergedTeams: TeamListItem[] = (() => {
-            const list = [...leadTeamOptions];
-            const lid = field.value;
-            if (lid != null && lid > 0 && !list.some((t) => t.id === lid)) {
-              const label = leadTeamDisplayLabel?.trim() || `Team ${lid}`;
-              list.unshift({
-                id: lid,
-                name: label,
-                displayName: leadTeamDisplayLabel,
-                description: null,
-                sortOrder: 0,
-                isActive: true,
-                roleId: null,
-                memberCount: 0,
-                ministryId: null,
-                ministryName: null,
-              });
-            }
-            return list;
-          })();
-
-          const handleValueChange = (value: string) => {
-            // Radix may still call onValueChange with '' during option load/reset; never apply when view-only.
-            if (readOnly) return;
-
-            // Radix may emit '' while options reconcile (e.g. during fetch). There is no empty
-            // SelectItem, so clearing to unassigned is never a deliberate user action here.
-            const currentLeadTeamId = field.value;
-            if (
-              (value === '' || value == null) &&
-              currentLeadTeamId != null &&
-              Number(currentLeadTeamId) > 0
-            ) {
-              return;
-            }
-
-            const previousTeamId = field.value ?? null;
-            const previousTeam =
-              previousTeamId != null
-                ? mergedTeams.find((t) => t.id === previousTeamId)
-                : null;
-            const syncedOrgId =
-              previousTeam?.ministryId != null
-                ? (organizations.find(
-                    (o) => o.ministryId === previousTeam.ministryId
-                  )?.value ?? null)
-                : null;
-            const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
-            const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
-            const leadOrgInSyncWithTeam =
-              (syncedOrgId != null &&
-                currentLeadOrgId === syncedOrgId &&
-                (currentLeadOrgName == null || currentLeadOrgName === '')) ||
-              (syncedOrgId == null &&
-                currentLeadOrgId == null &&
-                (currentLeadOrgName == null || currentLeadOrgName === ''));
-
-            const teamId =
-              value === '' || value == null ? undefined : Number(value);
-            field.onChange(teamId);
-
-            if (teamId == null) {
-              form.setValue('leadMinistryId', undefined, DIRTY_CASCADE);
-              if (leadOrgInSyncWithTeam) {
-                form.setValue('leadOrgId', null, DIRTY_CASCADE);
-                form.setValue('leadOrgName', null, DIRTY_CASCADE);
-              }
-            } else {
-              const team = mergedTeams.find((t) => t.id === teamId);
-              form.setValue(
-                'leadMinistryId',
-                team?.ministryId ?? undefined,
-                DIRTY_CASCADE
-              );
-              if (leadOrgInSyncWithTeam && team) {
-                const orgForMinistry =
-                  team.ministryId != null
-                    ? organizations.find(
-                        (o) => o.ministryId === team.ministryId
-                      )
-                    : undefined;
-                if (orgForMinistry) {
-                  form.setValue(
-                    'leadOrgId',
-                    orgForMinistry.value,
-                    DIRTY_CASCADE
-                  );
-                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
-                } else {
-                  form.setValue('leadOrgId', null, DIRTY_CASCADE);
-                  form.setValue('leadOrgName', null, DIRTY_CASCADE);
-                }
-              }
-            }
-          };
-
-          const options = mergedTeams.map((t) => ({
-            value: String(t.id),
-            label: t.ministryName
-              ? `${t.displayName || t.name} (${t.ministryName})`
-              : t.displayName || t.name,
-          }));
-
-          const showOptionsLoading =
-            leadTeamOptionsFetching && leadTeamOptions.length === 0;
-
-          return (
-            <FormItem>
-              <FormLabel showRequired>
-                {getActivityFieldLabel(field.name)}
-              </FormLabel>
-              <FormControl data-field={field.name}>
-                <FormSelect
-                  readOnly={readOnly}
-                  value={
-                    field.value !== undefined &&
-                    field.value !== null &&
-                    Number(field.value) > 0
-                      ? String(field.value)
-                      : ''
-                  }
-                  onValueChange={handleValueChange}
-                >
-                  <FormSelectTrigger readOnly={readOnly} className="w-full">
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {showOptionsLoading ? (
-                        <Loader2
-                          className="text-muted-foreground h-4 w-4 shrink-0 animate-spin"
-                          aria-hidden
-                        />
-                      ) : null}
-                      <SelectValue placeholder="Select lead team" />
-                    </div>
-                  </FormSelectTrigger>
-                  <SelectContent>
-                    {options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                    {showOptionsLoading ? (
-                      <div className="text-muted-foreground flex items-center gap-2 px-2 py-1.5 text-sm">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading teams…
-                      </div>
-                    ) : null}
-                  </SelectContent>
-                </FormSelect>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          );
-        }}
+      <LeadTeamField
+        leadTeamOptions={leadTeamOptions}
+        leadTeamDisplayLabel={leadTeamDisplayLabel}
+        leadTeamOptionsFetching={leadTeamOptionsFetching}
+        organizations={organizations}
+        readOnly={readOnly}
       />
 
       <LeadOrganizationField
@@ -552,9 +560,10 @@ export const ActivityOverviewSection: React.FC<
           render={({ field }) => (
             <FormItem>
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <FormSelect
+              <FormSelectSafe
                 readOnly={pitchStatusScope.readOnly}
                 disabled={pitchStatusScope.fieldScopeDisabled}
+                optionValues={pitchRequiredStatuses.map((s) => String(s.id))}
                 value={
                   field.value !== undefined && field.value !== null
                     ? String(field.value)
@@ -583,7 +592,7 @@ export const ActivityOverviewSection: React.FC<
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </FormSelect>
+              </FormSelectSafe>
               <FormMessage />
             </FormItem>
           )}

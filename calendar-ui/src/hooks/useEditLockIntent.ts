@@ -1,4 +1,4 @@
-import type { UseFormReturn } from 'react-hook-form';
+import { useWatch, type UseFormReturn } from 'react-hook-form';
 import { useEffect, useRef, type RefObject } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
@@ -9,12 +9,12 @@ import type { LockState } from './useActivityLock';
 export const EDIT_LOCK_CONFLICT_TOAST =
   'Cannot edit. Another user has started editing this activity.';
 
+/** Debounce before evaluating form changes, letting controlled-component churn settle. */
+const CHANGE_DETECT_DEBOUNCE_MS = 80;
+
 type UseEditLockIntentOptions = {
   formHydrated: boolean;
   hydrationGeneration: number;
-  isDirty: boolean;
-  dirtyFieldsCount: number;
-  dirtyFieldsSignature: string;
   mayEdit: boolean;
   isEditing: boolean;
   setIsEditing: (value: boolean) => void;
@@ -27,15 +27,13 @@ type UseEditLockIntentOptions = {
 
 /**
  * Acquires the activity edit lock on the first real change after the form is
- * hydrated. Relies on {@link formHydrated} so pre-hydration dirty noise from
- * controlled fields does not trigger acquisition.
+ * hydrated. Uses {@link computeFormChanges} as the sole arbiter of whether a
+ * change is meaningful, with a short debounce to let controlled-component
+ * value churn settle before evaluating.
  */
 export function useEditLockIntent({
   formHydrated,
   hydrationGeneration,
-  isDirty,
-  dirtyFieldsCount,
-  dirtyFieldsSignature,
   mayEdit,
   isEditing,
   setIsEditing,
@@ -46,6 +44,7 @@ export function useEditLockIntent({
   onAcquireConflict,
 }: UseEditLockIntentOptions): void {
   const autoAcquireAttemptedRef = useRef(false);
+  const watched = useWatch({ control: form.control });
 
   useEffect(() => {
     autoAcquireAttemptedRef.current = false;
@@ -54,41 +53,40 @@ export function useEditLockIntent({
   useEffect(() => {
     if (
       !formHydrated ||
-      !isDirty ||
-      dirtyFieldsCount === 0 ||
       isEditing ||
       !mayEdit ||
       autoAcquireAttemptedRef.current
     ) {
       return;
     }
-    const baseline = initialFormDataRef.current;
-    if (baseline) {
-      const meaningful = computeFormChanges(baseline, form.getValues());
-      if (meaningful.length === 0) {
-        form.reset(baseline);
-        return;
-      }
-    }
 
-    autoAcquireAttemptedRef.current = true;
-    setIsEditing(true);
-    void acquire().then((ok) => {
-      if (!ok) {
-        setIsEditing(false);
-        if (initialFormDataRef.current) {
-          form.reset(initialFormDataRef.current);
+    const timeoutId = setTimeout(() => {
+      const baseline = initialFormDataRef.current;
+      if (!baseline) return;
+
+      const changes = computeFormChanges(baseline, form.getValues());
+      if (changes.length === 0) return;
+
+      autoAcquireAttemptedRef.current = true;
+      setIsEditing(true);
+      void acquire().then((ok) => {
+        if (!ok) {
+          setIsEditing(false);
+          if (initialFormDataRef.current) {
+            form.reset(initialFormDataRef.current);
+          }
+          onAcquireConflict();
+        } else {
+          autoAcquireAttemptedRef.current = false;
         }
-        onAcquireConflict();
-      } else {
-        autoAcquireAttemptedRef.current = false;
-      }
-    });
+      });
+    }, CHANGE_DETECT_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeoutId);
   }, [
+    watched,
     formHydrated,
-    isDirty,
-    dirtyFieldsCount,
-    dirtyFieldsSignature,
+    hydrationGeneration,
     isEditing,
     mayEdit,
     acquire,
@@ -99,8 +97,8 @@ export function useEditLockIntent({
   ]);
 
   useEffect(() => {
-    if (lockState === 'idle' && !isDirty) {
+    if (lockState === 'idle') {
       autoAcquireAttemptedRef.current = false;
     }
-  }, [lockState, isDirty]);
+  }, [lockState]);
 }

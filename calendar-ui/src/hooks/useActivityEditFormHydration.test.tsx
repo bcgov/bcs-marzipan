@@ -67,6 +67,39 @@ describe('useActivityEditFormHydration', () => {
     expect(result.current.initialFormDataRef.current).not.toBeNull();
   });
 
+  it('does not hydrate while lookups are still loading', () => {
+    const loadingLookups: FormLookupData = { ...mockLookups, isLoading: true };
+    const activity = createMockActivityResponse({
+      id: 1,
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+    });
+
+    const { result, rerender } = renderHook(
+      ({ lookups }: { lookups: FormLookupData }) => {
+        const form = useForm<ActivityFormData>({
+          defaultValues: getDefaultFormValues() as ActivityFormData,
+        });
+        return useActivityEditFormHydration(activity, lookups, form);
+      },
+      { initialProps: { lookups: loadingLookups } }
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.isFormHydrated).toBe(false);
+    expect(result.current.hydrationGeneration).toBe(0);
+
+    rerender({ lookups: mockLookups });
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.isFormHydrated).toBe(true);
+    expect(result.current.hydrationGeneration).toBe(1);
+  });
+
   it('bumps hydrationGeneration when lastUpdatedDateTime changes', () => {
     const activityV1 = createMockActivityResponse({
       id: 1,

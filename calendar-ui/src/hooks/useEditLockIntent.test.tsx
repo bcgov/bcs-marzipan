@@ -30,18 +30,11 @@ describe('useEditLockIntent', () => {
       initialFormDataRef.current = structuredClone(form.getValues());
     }
 
-    const isDirty = form.formState.isDirty;
-    const dirtyFields = form.formState.dirtyFields ?? {};
-    const dirtyFieldsCount = Object.keys(dirtyFields).length;
-    const dirtyFieldsSignature = JSON.stringify(dirtyFields);
     const onAcquireConflict = useMemo(() => vi.fn(), []);
 
     useEditLockIntent({
       formHydrated: props.formHydrated,
       hydrationGeneration: props.hydrationGeneration,
-      isDirty,
-      dirtyFieldsCount,
-      dirtyFieldsSignature,
       mayEdit: props.mayEdit,
       isEditing,
       setIsEditing,
@@ -56,6 +49,7 @@ describe('useEditLockIntent', () => {
   }
 
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     acquire.mockReset();
     acquire.mockImplementation(() => Promise.resolve(true));
   });
@@ -64,7 +58,7 @@ describe('useEditLockIntent', () => {
     vi.useRealTimers();
   });
 
-  it('does not call acquire when form is not hydrated', () => {
+  it('does not call acquire when form is not hydrated', async () => {
     const { result, rerender } = renderHook(
       (p: { hydrated: boolean; gen: number }) =>
         useHarness({
@@ -81,6 +75,7 @@ describe('useEditLockIntent', () => {
     });
     rerender({ hydrated: false, gen: 0 });
 
+    await act(() => vi.advanceTimersByTimeAsync(200));
     expect(acquire).not.toHaveBeenCalled();
   });
 
@@ -101,6 +96,7 @@ describe('useEditLockIntent', () => {
     });
 
     rerender({ hydrated: true, gen: 1 });
+    await act(() => vi.advanceTimersByTimeAsync(200));
 
     await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
   });
@@ -123,13 +119,14 @@ describe('useEditLockIntent', () => {
       result.current.form.setValue('title', 'X', { shouldDirty: true });
     });
     rerender({ hydrated: true, gen: 0 });
+    await act(() => vi.advanceTimersByTimeAsync(200));
 
     await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
     await act(() => Promise.resolve());
     expect(result.current.onAcquireConflict).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call acquire when mayEdit is false even if hydrated and dirty', () => {
+  it('does not call acquire when mayEdit is false even if hydrated and dirty', async () => {
     const { result, rerender } = renderHook(
       (p: { mayEdit: boolean }) =>
         useHarness({
@@ -145,6 +142,7 @@ describe('useEditLockIntent', () => {
       result.current.form.setValue('title', 'X', { shouldDirty: true });
     });
     rerender({ mayEdit: false });
+    await act(() => vi.advanceTimersByTimeAsync(200));
 
     expect(acquire).not.toHaveBeenCalled();
   });
@@ -167,11 +165,13 @@ describe('useEditLockIntent', () => {
       result.current.form.setValue('title', 'X', { shouldDirty: true });
     });
     rerender({ hydrated: true, gen: 0 });
+    await act(() => vi.advanceTimersByTimeAsync(200));
 
     await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
 
     rerender({ hydrated: true, gen: 0 });
     rerender({ hydrated: true, gen: 0 });
+    await act(() => vi.advanceTimersByTimeAsync(200));
 
     expect(acquire).toHaveBeenCalledTimes(1);
   });
