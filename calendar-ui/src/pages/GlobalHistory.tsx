@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import {
@@ -338,10 +338,11 @@ export function GlobalHistory() {
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
     () => new Set()
   );
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
-  // reset page when filters/search change
+  // Reset to page 1 whenever any filter changes
   useEffect(() => {
     setPage(1);
   }, [
@@ -353,7 +354,6 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
-    pageSize,
   ]);
 
   const historyQuery = useQuery({
@@ -366,15 +366,16 @@ export function GlobalHistory() {
       dateRange.endDate,
       searchQuery,
     ],
-    queryFn: async (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
+    queryFn: (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
       fetchGlobalActivityHistoryPaged({
         page,
         pageSize,
         startDate: dateRange.startDate || undefined,
         endDate: dateRange.endDate || undefined,
         query: searchQuery || undefined,
+        order: 'desc',
       }),
-    placeholderData: (previousData) => previousData,
+    placeholderData: (prev) => prev,
   });
 
   const teamsQuery = useTeams();
@@ -753,6 +754,41 @@ export function GlobalHistory() {
     return [...groups.entries()];
   }, [filteredEntries]);
 
+  // Derive which quick-select preset is active from the current dateRange.
+  // Returns null when no preset matches (including on initial load with no date set).
+  const activePreset = useMemo(() => {
+    if (!isDateRangeActive(dateRange)) return null;
+    const now = new Date();
+    const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      .toISOString()
+      .slice(0, 10);
+    if (dateRange.startDate === todayStr && dateRange.endDate === todayStr)
+      return 'today';
+    const last7Start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    last7Start.setDate(last7Start.getDate() - 6);
+    if (
+      dateRange.startDate === last7Start.toISOString().slice(0, 10) &&
+      dateRange.endDate === todayStr
+    )
+      return 'last7';
+    const last30Start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    last30Start.setDate(last30Start.getDate() - 29);
+    if (
+      dateRange.startDate === last30Start.toISOString().slice(0, 10) &&
+      dateRange.endDate === todayStr
+    )
+      return 'last30';
+    return null;
+  }, [dateRange]);
+
   return (
     <>
       <PageHeader title="History" />
@@ -769,7 +805,7 @@ export function GlobalHistory() {
         </div>
       </Tabs>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
         <div className="relative w-[240px] max-w-[240px] min-w-[240px]">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
@@ -810,6 +846,103 @@ export function GlobalHistory() {
         />
       </div>
 
+      {/* Quick-select date presets */}
+      <div className="mb-4 flex items-center gap-2">
+        {(
+          [
+            {
+              key: 'today',
+              label: 'Today',
+              getRange: () => {
+                const now = new Date();
+                const d = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const s = d.toISOString().slice(0, 10);
+                return {
+                  startDate: s,
+                  endDate: s,
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+            {
+              key: 'last7',
+              label: 'Last 7 days',
+              getRange: () => {
+                const now = new Date();
+                const end = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const start = new Date(end);
+                start.setDate(start.getDate() - 6);
+                return {
+                  startDate: start.toISOString().slice(0, 10),
+                  endDate: end.toISOString().slice(0, 10),
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+            {
+              key: 'last30',
+              label: 'Last 30 days',
+              getRange: () => {
+                const now = new Date();
+                const end = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const start = new Date(end);
+                start.setDate(start.getDate() - 29);
+                return {
+                  startDate: start.toISOString().slice(0, 10),
+                  endDate: end.toISOString().slice(0, 10),
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+          ] as const
+        ).map(({ key, label, getRange }) => {
+          const isActive = activePreset === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                isActive
+                  ? setDateRange(EMPTY_DATE_RANGE)
+                  : setDateRange(getRange())
+              }
+              className={
+                isActive
+                  ? 'rounded bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-blue-300'
+                  : 'rounded bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200'
+              }
+              aria-pressed={isActive}
+            >
+              {label}
+            </button>
+          );
+        })}
+        {activePreset !== null && (
+          <button
+            type="button"
+            className="rounded px-2 py-1 text-sm text-slate-500 hover:underline"
+            onClick={() => setDateRange(EMPTY_DATE_RANGE)}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {historyQuery.isLoading ? (
         <div className="text-sm text-slate-500">Loading history...</div>
       ) : historyQuery.isError ? (
@@ -820,11 +953,15 @@ export function GlobalHistory() {
         />
       ) : groupedEntries.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          No matching history found.
+          {isDateRangeActive(dateRange) ? (
+            <div>No changes in the selected timeframe.</div>
+          ) : (
+            <div>No matching history found.</div>
+          )}
         </div>
       ) : (
         <>
-          <TableScrollContainer>
+          <TableScrollContainer ref={tableScrollRef}>
             <div className="space-y-8 p-5">
               {groupedEntries.map(([heading, dayEntries]) => (
                 <section key={heading} className="space-y-4">
@@ -952,22 +1089,18 @@ export function GlobalHistory() {
               ))}
             </div>
           </TableScrollContainer>
-          <div className="mt-4">
-            <TablePagination
-              totalItems={
-                historyQuery.data?.totalItems ??
-                page * pageSize + (historyQuery.data?.hasNext ? 1 : 0)
-              }
-              page={page}
-              pageSize={pageSize}
-              onPageChange={(p) => setPage(p)}
-              onPageSizeChange={(ps) => {
-                setPageSize(ps);
-                setPage(1);
-              }}
-              aria-label="History pagination"
-            />
-          </div>
+          <TablePagination
+            totalItems={historyQuery.data?.totalItems ?? 0}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(ps) => {
+              setPageSize(ps);
+              setPage(1);
+            }}
+            scrollContainerRef={tableScrollRef}
+            aria-label="History pagination"
+          />
         </>
       )}
     </>

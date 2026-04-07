@@ -207,6 +207,7 @@ export class ActivitiesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('query') query?: string,
+    @Query('order') order?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -219,13 +220,14 @@ export class ActivitiesController {
           hasNext: boolean;
         };
   }> {
-    // If any pagination, explicit dates, or a query are provided, return a paged response
+    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
     const hasPagingOrDate =
       startDate !== undefined ||
       endDate !== undefined ||
       page !== undefined ||
       pageSize !== undefined ||
-      query !== undefined;
+      query !== undefined ||
+      order !== undefined;
 
     if (!hasPagingOrDate) {
       const result = await this.activitiesService.getGlobalHistory(ctx);
@@ -241,7 +243,14 @@ export class ActivitiesController {
       : 50;
 
     const result = await this.activitiesService.getGlobalHistoryPaged(
-      { startDate, endDate, page: parsedPage, pageSize: parsedPageSize, query },
+      {
+        startDate,
+        endDate,
+        page: parsedPage,
+        pageSize: parsedPageSize,
+        query,
+        order: order as any,
+      },
       ctx
     );
 

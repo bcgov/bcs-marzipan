@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 
-import { activities, activityHistory, users } from '@corpcal/database/schema';
+import {
+  activities,
+  activityCategories,
+  activityHistory,
+  activitySubscriptions,
+  categories,
+  tags,
+  users,
+} from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import type {
   ActivityHistoryEntry,
@@ -124,6 +132,39 @@ export class ActivityHistoryService {
     tx?: Database
   ): Promise<ActivityHistory> {
     const db = tx ?? this.databaseService.db;
+    // Fetch denormalized fields in the caller to avoid expensive triggers on write
+    const [activityRow] = await db
+      .select({ title: activities.title, displayId: activities.displayId })
+      .from(activities)
+      .where(eq(activities.id, activityId))
+      .limit(1);
+
+    const [userRow] = await db
+      .select({ displayName: users.adDisplayName, username: users.adUsername })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const categoryRows = await db
+      .select({ name: categories.displayName })
+      .from(activityCategories)
+      .leftJoin(categories, eq(activityCategories.categoryId, categories.id))
+      .where(eq(activityCategories.activityId, activityId));
+
+    const tagRows = await db
+      .select({ name: tags.displayName })
+      .from(activitySubscriptions)
+      .leftJoin(tags, eq(activitySubscriptions.tagId, tags.id))
+      .where(eq(activitySubscriptions.activityId, activityId));
+
+    const categoryTagsText = [
+      ...(categoryRows.map((r: any) => r.name).filter(Boolean) as string[]),
+      ...(tagRows.map((r: any) => r.name).filter(Boolean) as string[]),
+    ].join(' ');
+
+    // Insert denormalized fields. The TypeScript DB schema may not include
+    // these new columns yet, so cast the values to `any` to avoid type errors
+    // while the DB migration is staged separately.
     const [historyEntry] = await db
       .insert(activityHistory)
       .values({
@@ -132,7 +173,12 @@ export class ActivityHistoryService {
         actionType,
         changes: changes ? (changes as unknown) : null,
         notes: notes || null,
-      })
+        activityTitle: activityRow?.title ?? null,
+        activityDisplayId: activityRow?.displayId ?? null,
+        actorDisplayName: userRow?.displayName ?? null,
+        actorUsername: userRow?.username ?? null,
+        categoryTagsText: categoryTagsText || null,
+      } as any)
       .returning();
 
     return historyEntry;
@@ -199,6 +245,9 @@ export class ActivityHistoryService {
       page?: number;
       pageSize?: number;
       query?: string;
+      // optional keyset cursor: base64(JSON.stringify({ t: ISOString, id: number }))
+      cursor?: string;
+      order?: 'asc' | 'desc';
     }
   ): Promise<{
     items: ActivityHistoryEntry[];
@@ -206,6 +255,7 @@ export class ActivityHistoryService {
     pageSize: number;
     hasNext: boolean;
     totalItems: number;
+    nextCursor?: string | null;
   }> {
     if (activityIds.length === 0) {
       return {
@@ -221,6 +271,25 @@ export class ActivityHistoryService {
     const pageSize = Math.max(1, opts.pageSize ?? 50);
     const limit = pageSize + 1;
     const offset = (page - 1) * pageSize;
+
+    const useKeyset = Boolean(opts.cursor);
+    let cursorTimestamp: Date | null = null;
+    let cursorId: number | null = null;
+    if (useKeyset) {
+      try {
+        const decoded = Buffer.from(opts.cursor as string, 'base64').toString();
+        const parsed = JSON.parse(decoded) as { t: string; id: number };
+        cursorTimestamp = new Date(parsed.t);
+        cursorId = parsed.id;
+        if (Number.isNaN(cursorTimestamp.getTime())) {
+          cursorTimestamp = null;
+          cursorId = null;
+        }
+      } catch (e) {
+        cursorTimestamp = null;
+        cursorId = null;
+      }
+    }
 
     const whereClauses: unknown[] = [
       inArray(activityHistory.activityId, activityIds),
@@ -353,29 +422,90 @@ export class ActivityHistoryService {
         .leftJoin(users, eq(activityHistory.userId, users.id));
     }
 
+    // determine ordering (default: desc)
+    const order = (opts as any).order === 'asc' ? 'asc' : 'desc';
+    const orderByExpr =
+      order === 'asc'
+        ? [asc(activityHistory.timestamp), asc(activityHistory.id)]
+        : [desc(activityHistory.timestamp), desc(activityHistory.id)];
+
     const query = (qBuilder as any)
       .where(whereExpr)
-      .orderBy(desc(activityHistory.timestamp), desc(activityHistory.id))
-      .limit(limit)
-      .offset(offset);
+      .orderBy(...orderByExpr)
+      .limit(limit);
+
+    if (!useKeyset) {
+      query.offset(offset);
+    }
+
+    // If using keyset cursor, add additional WHERE clause for (timestamp,id) < (cursor)
+    if (useKeyset && cursorTimestamp && cursorId !== null) {
+      // For asc ordering: timestamp > cursorTimestamp OR (timestamp = cursorTimestamp AND id > cursorId)
+      // For desc ordering: timestamp < cursorTimestamp OR (timestamp = cursorTimestamp AND id < cursorId)
+      if ((opts as any).order === 'asc') {
+        query.where(
+          sql`(
+            (${activityHistory.timestamp} > ${cursorTimestamp})
+            OR (
+              ${activityHistory.timestamp} = ${cursorTimestamp}
+              AND ${activityHistory.id} > ${cursorId}
+            )
+          )`
+        );
+      } else {
+        query.where(
+          sql`(
+            (${activityHistory.timestamp} < ${cursorTimestamp})
+            OR (
+              ${activityHistory.timestamp} = ${cursorTimestamp}
+              AND ${activityHistory.id} < ${cursorId}
+            )
+          )`
+        );
+      }
+    }
 
     // Build count query using same joins/where to get total matching rows
-    let countBuilder: any = this.databaseService.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(activityHistory as any);
-    if (opts.query) {
-      countBuilder = countBuilder
-        .leftJoin(activities, eq(activityHistory.activityId, activities.id))
-        .leftJoin(users, eq(activityHistory.userId, users.id));
-    }
-    countBuilder = countBuilder.where(whereExpr);
+    // Build count query using same joins/where to get total matching rows
+    // For keyset pagination we avoid expensive COUNT(*) and return 0 for totalItems
+    let totalCount = 0;
+    if (!useKeyset) {
+      let countBuilder: any = this.databaseService.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityHistory as any);
+      if (opts.query) {
+        countBuilder = countBuilder
+          .leftJoin(activities, eq(activityHistory.activityId, activities.id))
+          .leftJoin(users, eq(activityHistory.userId, users.id));
+      }
+      countBuilder = countBuilder.where(whereExpr);
 
-    const [{ count: totalCount } = { count: 0 }] = await countBuilder;
+      const [{ count } = { count: 0 }] = await countBuilder;
+      totalCount = count ?? 0;
+    }
 
     const historyEntries: RawHistoryRow[] = await query;
 
     const hasNext = historyEntries.length > pageSize;
     const pageItems: RawHistoryRow[] = historyEntries.slice(0, pageSize);
+
+    // compute nextCursor for keyset flows
+    let nextCursor: string | null = null;
+    if (useKeyset && hasNext) {
+      const last = pageItems[pageItems.length - 1];
+      if (last) {
+        const cursorObj = {
+          t:
+            last.timestamp instanceof Date
+              ? last.timestamp.toISOString()
+              : String(last.timestamp),
+          id: last.id,
+        };
+        nextCursor = Buffer.from(JSON.stringify(cursorObj)).toString('base64');
+      }
+    } else if (useKeyset && !hasNext) {
+      nextCursor = null;
+    }
 
     const userIds: number[] = [
       ...new Set(pageItems.map((entry) => entry.userId)),
@@ -383,7 +513,14 @@ export class ActivityHistoryService {
     const userMap = await this.getUserMap(userIds);
 
     const items = this.mapEntriesToResponse(pageItems, userMap);
-    return { items, page, pageSize, hasNext, totalItems: totalCount ?? 0 };
+    return {
+      items,
+      page,
+      pageSize,
+      hasNext,
+      totalItems: totalCount ?? 0,
+      nextCursor,
+    };
   }
 
   async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {

@@ -2077,6 +2077,9 @@ export class ActivitiesService {
       ]),
     ]);
 
+    // Note: previously published category/tag refresh events to Redis here.
+    // Redis worker removed; propagation handled synchronously or via DB jobs if needed.
+
     const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -2332,9 +2335,13 @@ export class ActivitiesService {
     return this.activityHistoryService.getActivityHistory(id);
   }
 
-  async getGlobalHistory(
-    ctx?: RequestContextType
-  ): Promise<GlobalActivityHistoryEntry[]> {
+  async getGlobalHistory(ctx?: RequestContextType): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
     let activityRows = await this.databaseService.db.select().from(activities);
 
     const dataScope = ctx?.dataScope;
@@ -2349,7 +2356,13 @@ export class ActivitiesService {
 
     const activityIds = activityRows.map((activity) => activity.id);
     if (activityIds.length === 0) {
-      return [];
+      return {
+        items: [],
+        page: 1,
+        pageSize: 1000,
+        hasNext: false,
+        totalItems: 0,
+      };
     }
 
     // Default scope: today (server local date)
@@ -2375,7 +2388,13 @@ export class ActivitiesService {
     const historyEntries = historyPage.items;
 
     if (historyEntries.length === 0) {
-      return [];
+      return {
+        items: [],
+        page: 1,
+        pageSize: 1000,
+        hasNext: false,
+        totalItems: 0,
+      };
     }
 
     const { namesMap: categoriesMap } = (
@@ -2395,10 +2414,18 @@ export class ActivitiesService {
       ])
     );
 
-    return historyEntries.flatMap((entry) => {
+    const items = historyEntries.flatMap((entry) => {
       const activity = activityMap.get(entry.activityId);
       return activity ? [{ ...entry, activity }] : [];
     });
+
+    return {
+      items,
+      page: 1,
+      pageSize: 1000,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems ?? 0,
+    };
   }
 
   async getGlobalHistoryPaged(
@@ -2408,6 +2435,7 @@ export class ActivitiesService {
       page?: number;
       pageSize?: number;
       query?: string;
+      order?: 'asc' | 'desc';
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -2452,6 +2480,7 @@ export class ActivitiesService {
           page,
           pageSize,
           query: opts.query,
+          order: opts.order,
         }
       );
 

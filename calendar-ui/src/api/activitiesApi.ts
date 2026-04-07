@@ -166,6 +166,7 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   startDate?: string;
   endDate?: string;
   query?: string;
+  order?: 'asc' | 'desc';
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
   const res = await api.get('/activities/global-history', { params });
   // Server may return either:
