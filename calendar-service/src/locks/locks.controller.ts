@@ -133,6 +133,26 @@ export class LocksController {
     );
   }
 
+  @Delete('activity/:activityId/force-handoff')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Cancel a pending force handoff (only the user who requested it; requires permission)',
+  })
+  @RequirePermission(PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF)
+  @ApiParam({ name: 'activityId', type: Number })
+  @ApiResponse({ status: 204, description: 'Pending handoff cancelled' })
+  @ApiResponse({
+    status: 404,
+    description: 'No pending handoff for this activity as requester',
+  })
+  async cancelForceHandoff(
+    @Param('activityId', ParseIntPipe) activityId: number,
+    @CurrentUser() user: AuthUser
+  ): Promise<void> {
+    await this.locksService.cancelForceHandoff(activityId, user.id);
+  }
+
   @Post('heartbeat/:lockId')
   @ApiOperation({ summary: 'Extend idle deadline while holding a lock' })
   @ApiParam({ name: 'lockId', type: Number })

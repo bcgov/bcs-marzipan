@@ -210,4 +210,19 @@ export class ActivitiesGateway
   ): void {
     this.server.to(`user:${userId}`).emit('lockHandoffPending', payload);
   }
+
+  /** Holder and requester only: pending force handoff was cancelled by the requester. */
+  notifyLockHandoffCancelled(
+    activityId: number,
+    holderUserId: number,
+    requesterUserId: number
+  ): void {
+    const payload = { activityId };
+    this.server
+      .to(`user:${holderUserId}`)
+      .emit('lockHandoffCancelled', payload);
+    this.server
+      .to(`user:${requesterUserId}`)
+      .emit('lockHandoffCancelled', payload);
+  }
 }

@@ -4,11 +4,12 @@ This document lists **NestJS `@nestjs/schedule` cron jobs** run by `calendar-ser
 
 ## Jobs
 
-| Job              | Schedule                            | Class                                                            | Purpose                                                                                                                                                                                   |
-| ---------------- | ----------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lock maintenance | Every 10 seconds (`*/10 * * * * *`) | `LockHandoffPoller` (`src/locks/lock-handoff-poller.service.ts`) | Runs `LocksService.processDueHandoffsOnce()` (one due edit-lock handoff, if any), then `LocksService.cleanupExpiredLocks()` (delete expired lease or idle edit locks and notify viewers). |
+| Job                       | Schedule                                   | Class                                                            | Purpose                                                                                                                                                                                                                                                                    |
+| ------------------------- | ------------------------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lock handoff backup       | Every 180 seconds (`@Interval(180_000)`)   | `LockHandoffPoller` (`src/locks/lock-handoff-poller.service.ts`) | Runs `LocksService.processAllDueHandoffs()` (finalize due pending handoffs, up to a cap per run). Primary completion is a one-shot timer at `graceEndsAt` from `LockHandoffDeadlineKickService` when a handoff is requested; this interval covers restarts and edge cases. |
+| Expired edit lock cleanup | Every 6 hours (`0 0 */6 * * *`, six-field) | `LockHandoffPoller` (`src/locks/lock-handoff-poller.service.ts`) | `LocksService.cleanupExpiredLocks()` — delete rows past lease or idle deadline and notify viewers. Long interval may delay `lockReleased` WS for abandoned tabs; `tryAcquireLock` / read paths still treat expired rows as unlocked.                                       |
 
-There are no other `@Cron` tasks in this repository’s TypeScript sources today.
+These are the only `@Cron` / `@Interval` schedules registered under `calendar-service/src` today.
 
 ## Safety measures
 
@@ -18,9 +19,9 @@ There are no other `@Cron` tasks in this repository’s TypeScript sources today
 
 Handoff finalization and related reads (username, idle-timeout setting) therefore use the **transaction client `tx`** passed into `LocksService.finalizeHandoffTransferInTransaction`, not `this.databaseService.db`. The holder-save path claims a pending handoff and finalizes in a **single** transaction so there is no redundant nested transaction.
 
-### 2. Overlap guard on the cron handler
+### 2. Overlap guard on scheduled handlers
 
-If a maintenance run takes longer than the cron interval, Nest will schedule another tick. `LockHandoffPoller` uses a simple **in-process flag** (`maintenanceInFlight`): while a run is active, the next tick returns immediately. That limits stacked work and pool pressure under slowdowns.
+If a run takes longer than the next interval tick, Nest may schedule another invocation. `LockHandoffPoller` uses **in-process flags** (`handoffBackupInFlight`, `cleanupInFlight`): while a run is active, overlapping ticks return immediately. That limits stacked work and pool pressure under slowdowns.
 
 **Note:** This does not coordinate across multiple app replicas. If you run several `calendar-service` pods, each replica still runs its own cron on the same schedule; handoff processing remains safe because of DB row locking (`FOR UPDATE SKIP LOCKED`), but you may prefer a single runner or Postgres advisory locks later if you need strictly one maintainer cluster-wide.
 

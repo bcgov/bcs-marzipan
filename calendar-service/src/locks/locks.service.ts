@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { and, asc, eq, gt, lt, lte, or } from 'drizzle-orm';
 
@@ -22,6 +23,7 @@ import type {
 } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from './application-settings.service';
+import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.service';
 
 type DbTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -31,6 +33,8 @@ const LOCK_TTL_MINUTES = 5;
 const HANDOFF_GRACE_SECONDS = 30;
 /** Minimum interval between heartbeat DB updates (per lock). */
 const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
+/** Max handoffs finalized in one `processAllDueHandoffs` run (safety cap). */
+const DUE_HANDOFF_MAX_PER_RUN = 100;
 
 /** Explicit lock row shape for return types to avoid schema inference issues in consumers */
 export interface LockForEntity {
@@ -55,7 +59,9 @@ export class LocksService {
     private readonly databaseService: DatabaseService,
     private readonly applicationSettings: ApplicationSettingsService,
     @Inject(forwardRef(() => ActivitiesGateway))
-    private readonly activitiesGateway: ActivitiesGateway
+    private readonly activitiesGateway: ActivitiesGateway,
+    @Inject(forwardRef(() => LockHandoffDeadlineKickService))
+    private readonly handoffDeadlineKick: LockHandoffDeadlineKickService
   ) {}
 
   private async idleDeadlineFrom(
@@ -394,10 +400,51 @@ export class LocksService {
       role: 'requester',
     });
 
+    this.handoffDeadlineKick.scheduleHandoffKick(activityId, graceEndsAt);
+
     return {
       graceEndsAt: iso,
       pendingHandoffId: inserted.id,
     };
+  }
+
+  /**
+   * Requester withdraws a pending force handoff. Only `toUserId` may cancel.
+   */
+  async cancelForceHandoff(
+    activityId: number,
+    requesterUserId: number
+  ): Promise<void> {
+    const cancelled = await this.databaseService.db.transaction(async (tx) => {
+      const [row] = await tx
+        .delete(editLockPendingHandoffs)
+        .where(
+          and(
+            eq(editLockPendingHandoffs.activityId, activityId),
+            eq(editLockPendingHandoffs.status, 'pending'),
+            eq(editLockPendingHandoffs.toUserId, requesterUserId)
+          )
+        )
+        .returning({
+          fromUserId: editLockPendingHandoffs.fromUserId,
+          toUserId: editLockPendingHandoffs.toUserId,
+        });
+      return row ?? null;
+    });
+
+    if (!cancelled) {
+      throw new NotFoundException(
+        'No pending lock transfer to cancel for this activity.'
+      );
+    }
+
+    this.handoffDeadlineKick.clearScheduledKick(activityId);
+
+    this.activitiesGateway.notifyLockHandoffCancelled(
+      activityId,
+      cancelled.fromUserId,
+      cancelled.toUserId
+    );
   }
 
   /**
@@ -407,6 +454,7 @@ export class LocksService {
     activityId: number,
     holderUserId: number
   ): Promise<void> {
+    let finalized = false;
     await this.databaseService.db.transaction(async (tx) => {
       const [claimed] = await tx
         .update(editLockPendingHandoffs)
@@ -421,14 +469,31 @@ export class LocksService {
         .returning();
       if (!claimed) return;
 
+      finalized = true;
       await this.finalizeHandoffTransferInTransaction(tx, claimed.id);
     });
+
+    if (finalized) {
+      this.handoffDeadlineKick.clearScheduledKick(activityId);
+    }
   }
 
   /**
-   * Poller: process one due pending handoff (SKIP LOCKED inside transaction).
+   * Finalize every due pending handoff (grace ended), up to {@link DUE_HANDOFF_MAX_PER_RUN}.
+   * Used by the grace deadline kick, backup poller, and process restarts.
    */
-  async processDueHandoffsOnce(): Promise<number> {
+  async processAllDueHandoffs(): Promise<number> {
+    let total = 0;
+    for (let i = 0; i < DUE_HANDOFF_MAX_PER_RUN; i++) {
+      const n = await this.processNextDueHandoffOnce();
+      if (n === 0) break;
+      total += n;
+    }
+    return total;
+  }
+
+  /** One due handoff (SKIP LOCKED inside transaction). */
+  private async processNextDueHandoffOnce(): Promise<number> {
     const now = new Date();
     try {
       return await this.databaseService.db.transaction(async (tx) => {
@@ -458,7 +523,7 @@ export class LocksService {
       });
     } catch (err) {
       this.logger.error(
-        'processDueHandoffsOnce failed',
+        'processNextDueHandoffOnce failed',
         err instanceof Error ? err.stack : String(err)
       );
       return 0;
@@ -495,8 +560,7 @@ export class LocksService {
 
     if (!lock || lock.userId !== fromUserId) {
       await tx
-        .update(editLockPendingHandoffs)
-        .set({ status: 'cancelled' })
+        .delete(editLockPendingHandoffs)
         .where(eq(editLockPendingHandoffs.id, pendingHandoffId));
       return;
     }
@@ -520,8 +584,7 @@ export class LocksService {
       idleExpiresAt,
     });
     await tx
-      .update(editLockPendingHandoffs)
-      .set({ status: 'completed' })
+      .delete(editLockPendingHandoffs)
       .where(eq(editLockPendingHandoffs.id, pendingHandoffId));
 
     setImmediate(() => {

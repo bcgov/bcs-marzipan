@@ -15,6 +15,8 @@ interface UseActivityWebSocketOptions {
   onDataUpdated?: () => void;
   /** User-targeted: admin handoff grace countdown (same socket connection). */
   onLockHandoffPending?: (payload: LockHandoffPendingSocketPayload) => void;
+  /** User-targeted: requester cancelled pending force handoff. */
+  onLockHandoffCancelled?: () => void;
 }
 
 /**
@@ -70,6 +72,12 @@ export function useActivityWebSocket(
       }
     });
 
+    socket.on('lockHandoffCancelled', (data: { activityId: number }) => {
+      if (data.activityId === activityId) {
+        optionsRef.current.onLockHandoffCancelled?.();
+      }
+    });
+
     return () => {
       socket.emit('leaveActivity', activityId);
       socket.off('connect', emitViewActivity);
@@ -78,6 +86,7 @@ export function useActivityWebSocket(
       socket.off('lockReleased');
       socket.off('dataUpdated');
       socket.off('lockHandoffPending');
+      socket.off('lockHandoffCancelled');
       socket.disconnect();
     };
   }, [activityId]);

@@ -26,10 +26,14 @@ import { FormErrorFallback, LockBanner } from '@/components/shared';
 import { Badge, normalizeActivityStatus } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
+import {
+  startLockHandoffCountdownToast,
+  type LockHandoffToastHandle,
+} from '@/lib/lock-handoff-toast';
 
 import { fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
-import { requestForceHandoff } from '../api/locksApi';
+import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
 import {
   Popover,
   PopoverContent,
@@ -63,7 +67,6 @@ import { computeFormChanges } from '../lib/activity-history-format';
 import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
-import { startLockHandoffCountdownToast } from '../lib/lock-handoff-toast';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
@@ -163,12 +166,16 @@ export function ActivityPage({
 
   const [isEditing, setIsEditing] = useState(false);
   const [forceHandoffPending, setForceHandoffPending] = useState(false);
-  const handoffToastCleanupRef = useRef<(() => void) | null>(null);
+  const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
+  const [handoffAwaitingCompletion, setHandoffAwaitingCompletion] =
+    useState(false);
+  const handoffToastHandleRef = useRef<LockHandoffToastHandle | null>(null);
 
   useEffect(() => {
+    setHandoffAwaitingCompletion(false);
     return () => {
-      handoffToastCleanupRef.current?.();
-      handoffToastCleanupRef.current = null;
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = null;
     };
   }, [id]);
 
@@ -212,6 +219,7 @@ export function ActivityPage({
     setForceHandoffPending(true);
     try {
       await requestForceHandoff(id);
+      setHandoffAwaitingCompletion(true);
     } catch (err) {
       showErrorToast(err, 'Could not request lock transfer');
     } finally {
@@ -219,9 +227,24 @@ export function ActivityPage({
     }
   }, [id]);
 
+  const handleCancelForceHandoff = useCallback(async () => {
+    setCancelHandoffPending(true);
+    try {
+      await cancelForceHandoff(id);
+      handoffToastHandleRef.current?.notifyHandoffCancelled();
+      setHandoffAwaitingCompletion(false);
+    } catch (err) {
+      showErrorToast(err, 'Could not cancel unlock request');
+    } finally {
+      setCancelHandoffPending(false);
+    }
+  }, [id]);
+
   useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
+        setHandoffAwaitingCompletion(false);
+        handoffToastHandleRef.current?.notifyLockAcquired();
         void refreshLockFromServer();
         return;
       }
@@ -244,8 +267,15 @@ export function ActivityPage({
       void refreshActivity();
     },
     onLockHandoffPending: (payload) => {
-      handoffToastCleanupRef.current?.();
-      handoffToastCleanupRef.current = startLockHandoffCountdownToast(payload);
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = startLockHandoffCountdownToast(payload);
+      if (payload.role === 'requester') {
+        setHandoffAwaitingCompletion(true);
+      }
+    },
+    onLockHandoffCancelled: () => {
+      handoffToastHandleRef.current?.notifyHandoffCancelled();
+      setHandoffAwaitingCompletion(false);
     },
   });
 
@@ -588,6 +618,11 @@ export function ActivityPage({
             canForceHandoff ? () => void handleRequestForceHandoff() : undefined
           }
           requestTakeLockPending={forceHandoffPending}
+          handoffActive={handoffAwaitingCompletion}
+          onCancelHandoff={
+            canForceHandoff ? () => void handleCancelForceHandoff() : undefined
+          }
+          cancelHandoffPending={cancelHandoffPending}
         />
       )}
       {isBlockedStatus && (

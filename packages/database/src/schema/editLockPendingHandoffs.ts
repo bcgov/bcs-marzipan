@@ -21,6 +21,7 @@ export type EditLockPendingHandoffStatus =
 
 /**
  * When an admin requests to take the edit lock, a grace period runs before transfer.
+ * Rows are deleted when the handoff completes, is cancelled, or is aborted (not retained as history).
  */
 export const editLockPendingHandoffs = pgTable(
   'edit_lock_pending_handoffs',

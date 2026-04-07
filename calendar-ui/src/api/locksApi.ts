@@ -121,6 +121,10 @@ export async function requestForceHandoff(
   return res.data;
 }
 
+export async function cancelForceHandoff(activityId: number): Promise<void> {
+  await api.delete(`/locks/activity/${activityId}/force-handoff`);
+}
+
 export async function fetchIdleTimeoutConfig(): Promise<IdleTimeoutConfigResponse> {
   const res = await api.get<{
     success: boolean;
