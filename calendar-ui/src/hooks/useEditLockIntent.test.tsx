@@ -129,6 +129,26 @@ describe('useEditLockIntent', () => {
     expect(result.current.onAcquireConflict).toHaveBeenCalledTimes(1);
   });
 
+  it('does not call acquire when mayEdit is false even if hydrated and dirty', () => {
+    const { result, rerender } = renderHook(
+      (p: { mayEdit: boolean }) =>
+        useHarness({
+          formHydrated: true,
+          hydrationGeneration: 1,
+          mayEdit: p.mayEdit,
+          lockState: 'idle',
+        }),
+      { initialProps: { mayEdit: false } }
+    );
+
+    act(() => {
+      result.current.form.setValue('title', 'X', { shouldDirty: true });
+    });
+    rerender({ mayEdit: false });
+
+    expect(acquire).not.toHaveBeenCalled();
+  });
+
   it('does not spam acquire while the same dirty state retries', async () => {
     acquire.mockImplementation(() => Promise.resolve(false));
 
