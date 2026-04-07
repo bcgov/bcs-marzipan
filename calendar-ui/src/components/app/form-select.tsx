@@ -103,8 +103,8 @@ export function FormSelectSafe({
   onValueChangeRef.current =
     props.onValueChange === undefined
       ? undefined
-      : (value) => {
-          props.onValueChange(value);
+      : (value: string) => {
+          props.onValueChange?.(value);
         };
 
   const allowedValues = useMemo(

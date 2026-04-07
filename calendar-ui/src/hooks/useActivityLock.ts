@@ -1,6 +1,7 @@
 import type { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { ApiError } from '../api/errors';
 import {
   acquireLock,
   getLockStatus,
@@ -153,8 +154,15 @@ export function useActivityLock(
     try {
       const res = await heartbeatLock(currentLock.id);
       mergeLockIdleExpiry(res.idleExpiresAt);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : undefined;
+      if (status === 410 || status === 404) {
+        lockRef.current = null;
+        setLock(null);
+        setLockState('idle');
+        setLockedByUsername(null);
+        return;
+      }
     }
   }, [mergeLockIdleExpiry]);
 

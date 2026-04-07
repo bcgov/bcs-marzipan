@@ -1,4 +1,4 @@
-import { useWatch, type UseFormReturn } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { useEffect, useRef, type RefObject } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
@@ -30,6 +30,9 @@ type UseEditLockIntentOptions = {
  * hydrated. Uses {@link computeFormChanges} as the sole arbiter of whether a
  * change is meaningful, with a short debounce to let controlled-component
  * value churn settle before evaluating.
+ *
+ * Subscribes via {@link UseFormReturn.watch} so the hook does not re-render on
+ * every field change (unlike `useWatch` on the whole form).
  */
 export function useEditLockIntent({
   formHydrated,
@@ -44,61 +47,95 @@ export function useEditLockIntent({
   onAcquireConflict,
 }: UseEditLockIntentOptions): void {
   const autoAcquireAttemptedRef = useRef(false);
-  const watched = useWatch({ control: form.control });
+  const mayEditRef = useRef(mayEdit);
+  const formHydratedRef = useRef(formHydrated);
+  const isEditingRef = useRef(isEditing);
+
+  mayEditRef.current = mayEdit;
+  formHydratedRef.current = formHydrated;
+  isEditingRef.current = isEditing;
 
   useEffect(() => {
     autoAcquireAttemptedRef.current = false;
   }, [hydrationGeneration]);
 
   useEffect(() => {
-    if (
-      !formHydrated ||
-      isEditing ||
-      !mayEdit ||
-      autoAcquireAttemptedRef.current
-    ) {
-      return;
+    if (lockState === 'idle') {
+      autoAcquireAttemptedRef.current = false;
+    }
+  }, [lockState]);
+
+  useEffect(() => {
+    if (!formHydrated || isEditing || !mayEdit) {
+      return undefined;
     }
 
-    const timeoutId = setTimeout(() => {
-      const baseline = initialFormDataRef.current;
-      if (!baseline) return;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-      const changes = computeFormChanges(baseline, form.getValues());
-      if (changes.length === 0) return;
-
-      autoAcquireAttemptedRef.current = true;
-      setIsEditing(true);
-      void acquire().then((ok) => {
-        if (!ok) {
-          setIsEditing(false);
-          if (initialFormDataRef.current) {
-            form.reset(initialFormDataRef.current);
-          }
-          onAcquireConflict();
-        } else {
-          autoAcquireAttemptedRef.current = false;
+    const scheduleAcquireCheck = () => {
+      if (
+        !formHydratedRef.current ||
+        isEditingRef.current ||
+        !mayEditRef.current ||
+        autoAcquireAttemptedRef.current
+      ) {
+        return;
+      }
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined;
+        if (
+          !formHydratedRef.current ||
+          isEditingRef.current ||
+          !mayEditRef.current ||
+          autoAcquireAttemptedRef.current
+        ) {
+          return;
         }
-      });
-    }, CHANGE_DETECT_DEBOUNCE_MS);
+        const baseline = initialFormDataRef.current;
+        if (!baseline) return;
 
-    return () => clearTimeout(timeoutId);
+        const changes = computeFormChanges(baseline, form.getValues());
+        if (changes.length === 0) return;
+
+        autoAcquireAttemptedRef.current = true;
+        setIsEditing(true);
+        void acquire().then((ok) => {
+          if (!ok) {
+            setIsEditing(false);
+            if (initialFormDataRef.current) {
+              form.reset(initialFormDataRef.current);
+            }
+            onAcquireConflict();
+          } else {
+            autoAcquireAttemptedRef.current = false;
+          }
+        });
+      }, CHANGE_DETECT_DEBOUNCE_MS);
+    };
+
+    const subscription = form.watch(() => {
+      scheduleAcquireCheck();
+    });
+    scheduleAcquireCheck();
+
+    return () => {
+      subscription.unsubscribe();
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [
-    watched,
     formHydrated,
     hydrationGeneration,
-    isEditing,
     mayEdit,
+    isEditing,
     acquire,
     form,
     setIsEditing,
     initialFormDataRef,
     onAcquireConflict,
   ]);
-
-  useEffect(() => {
-    if (lockState === 'idle') {
-      autoAcquireAttemptedRef.current = false;
-    }
-  }, [lockState]);
 }

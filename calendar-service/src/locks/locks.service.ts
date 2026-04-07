@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, gt, lt, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
 
 import {
   editLockPendingHandoffs,
@@ -28,6 +28,18 @@ import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.ser
 type DbTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 type EditLockRow = typeof editLocks.$inferSelect;
+
+function isPostgresUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  let depth = 0;
+  while (current != null && depth < 5) {
+    const code = (current as { code?: string }).code;
+    if (code === '23505') return true;
+    current = (current as { cause?: unknown }).cause;
+    depth += 1;
+  }
+  return false;
+}
 
 const LOCK_TTL_MINUTES = 5;
 const HANDOFF_GRACE_SECONDS = 30;
@@ -120,87 +132,102 @@ export class LocksService {
   ): Promise<EditLockRow> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
-    const idleExpiresAt = await this.idleDeadlineFrom(now);
+    const advisoryKey = `${entityType}:${entityId}`;
 
-    const existing = await this.databaseService.db.query.editLocks.findFirst({
-      where: and(
-        eq(editLocks.entityType, entityType),
-        eq(editLocks.entityId, entityId)
-      ),
-    });
+    return await this.databaseService.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(abs(hashtext(${advisoryKey})))`
+      );
 
-    if (existing) {
-      const expiresAtDate =
-        existing.expiresAt instanceof Date
-          ? existing.expiresAt
-          : new Date(existing.expiresAt as string | number);
-      const idleExpiresAtDate =
-        existing.idleExpiresAt instanceof Date
-          ? existing.idleExpiresAt
-          : new Date(existing.idleExpiresAt as string | number);
-      const expiredLease = expiresAtDate < now;
-      const expiredIdle = idleExpiresAtDate < now;
-      if (expiredLease || expiredIdle) {
-        await this.databaseService.db
-          .delete(editLocks)
-          .where(eq(editLocks.id, existing.id));
-      } else if (existing.userId !== userId) {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.LOCKED,
-            message: 'This activity is being edited by another user.',
-            locked: true,
-            lockedBy: {
-              userId: existing.userId,
-              username: existing.username,
-              acquiredAt: existing.acquiredAt,
-              expiresAt: existing.expiresAt,
+      const idleExpiresAt = await this.idleDeadlineFrom(now, tx);
+
+      const existing = await tx.query.editLocks.findFirst({
+        where: and(
+          eq(editLocks.entityType, entityType),
+          eq(editLocks.entityId, entityId)
+        ),
+      });
+
+      if (existing) {
+        const expiresAtDate =
+          existing.expiresAt instanceof Date
+            ? existing.expiresAt
+            : new Date(existing.expiresAt as string | number);
+        const idleExpiresAtDate =
+          existing.idleExpiresAt instanceof Date
+            ? existing.idleExpiresAt
+            : new Date(existing.idleExpiresAt as string | number);
+        const expiredLease = expiresAtDate < now;
+        const expiredIdle = idleExpiresAtDate < now;
+        if (expiredLease || expiredIdle) {
+          await tx.delete(editLocks).where(eq(editLocks.id, existing.id));
+        } else if (existing.userId !== userId) {
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.LOCKED,
+              message: 'This activity is being edited by another user.',
+              locked: true,
+              lockedBy: {
+                userId: existing.userId,
+                username: existing.username,
+                acquiredAt: existing.acquiredAt,
+                expiresAt: existing.expiresAt,
+              },
             },
-          },
-          HttpStatus.LOCKED
-        );
-      } else {
-        const [updated] = await this.databaseService.db
-          .update(editLocks)
-          .set({
-            expiresAt,
-            lastRenewedAt: now,
-            lastActivityAt: now,
-            idleExpiresAt,
-            sessionId: sessionId ?? existing.sessionId,
-          })
-          .where(eq(editLocks.id, existing.id))
-          .returning();
-        return updated;
+            HttpStatus.LOCKED
+          );
+        } else {
+          const [updated] = await tx
+            .update(editLocks)
+            .set({
+              expiresAt,
+              lastRenewedAt: now,
+              lastActivityAt: now,
+              idleExpiresAt,
+              sessionId: sessionId ?? existing.sessionId,
+            })
+            .where(eq(editLocks.id, existing.id))
+            .returning();
+          if (!updated) {
+            this.logger.error(
+              `Lock renew returned no row for ${entityType} id=${entityId} userId=${userId}`
+            );
+            throw new HttpException(
+              `Failed to renew lock for ${entityType} ${entityId}`,
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          }
+          return updated;
+        }
       }
-    }
 
-    const [inserted] = await this.databaseService.db
-      .insert(editLocks)
-      .values({
-        entityType,
-        entityId,
-        userId,
-        username,
-        sessionId: sessionId ?? null,
-        acquiredAt: now,
-        expiresAt,
-        lastRenewedAt: now,
-        lastActivityAt: now,
-        idleExpiresAt,
-      })
-      .returning();
+      const [inserted] = await tx
+        .insert(editLocks)
+        .values({
+          entityType,
+          entityId,
+          userId,
+          username,
+          sessionId: sessionId ?? null,
+          acquiredAt: now,
+          expiresAt,
+          lastRenewedAt: now,
+          lastActivityAt: now,
+          idleExpiresAt,
+        })
+        .returning();
 
-    if (!inserted) {
-      this.logger.error(
-        `Lock insert returned no row for ${entityType} id=${entityId} userId=${userId}`
-      );
-      throw new HttpException(
-        `Failed to insert lock for ${entityType} ${entityId}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-    return inserted;
+      if (!inserted) {
+        this.logger.error(
+          `Lock insert returned no row for ${entityType} id=${entityId} userId=${userId}`
+        );
+        throw new HttpException(
+          `Failed to insert lock for ${entityType} ${entityId}`,
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      return inserted;
+    });
   }
 
   async getLockForEntity(
@@ -366,16 +393,27 @@ export class LocksService {
 
     const graceEndsAt = new Date(Date.now() + HANDOFF_GRACE_SECONDS * 1000);
 
-    const [inserted] = await this.databaseService.db
-      .insert(editLockPendingHandoffs)
-      .values({
-        activityId,
-        fromUserId: lock.userId,
-        toUserId: requesterUserId,
-        graceEndsAt,
-        status: 'pending',
-      })
-      .returning();
+    let inserted: typeof editLockPendingHandoffs.$inferSelect | undefined;
+    try {
+      const [row] = await this.databaseService.db
+        .insert(editLockPendingHandoffs)
+        .values({
+          activityId,
+          fromUserId: lock.userId,
+          toUserId: requesterUserId,
+          graceEndsAt,
+          status: 'pending',
+        })
+        .returning();
+      inserted = row;
+    } catch (err) {
+      if (isPostgresUniqueViolation(err)) {
+        throw new ConflictException(
+          'A lock transfer is already pending for this activity.'
+        );
+      }
+      throw err;
+    }
 
     if (!inserted) {
       throw new HttpException(

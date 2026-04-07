@@ -1,5 +1,5 @@
 {
-  "id": "862074a5-07bc-44a9-bc3b-8472bb137b14",
+  "id": "63628f51-a5e2-4262-944f-0683b93a7b84",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -5918,6 +5918,22 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "edit_lock_pending_handoffs_one_pending_per_activity": {
+          "name": "edit_lock_pending_handoffs_one_pending_per_activity",
+          "columns": [
+            {
+              "expression": "activity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"edit_lock_pending_handoffs\".\"status\" = 'pending'",
           "concurrently": false,
           "method": "btree",
           "with": {}

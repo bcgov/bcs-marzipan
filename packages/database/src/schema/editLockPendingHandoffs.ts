@@ -1,9 +1,11 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
   pgTable,
   serial,
   timestamp,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -47,5 +49,11 @@ export const editLockPendingHandoffs = pgTable(
       table.activityId
     ),
     dueIdx: index('edit_lock_pending_handoffs_due_idx').on(table.graceEndsAt),
+    /** At most one pending handoff row per activity (PostgreSQL partial unique index). */
+    onePendingPerActivity: uniqueIndex(
+      'edit_lock_pending_handoffs_one_pending_per_activity'
+    )
+      .on(table.activityId)
+      .where(sql`${table.status} = 'pending'`),
   })
 );

@@ -953,6 +953,7 @@ CREATE INDEX "edit_locks_user_id_idx" ON "edit_locks" USING btree ("user_id");--
 CREATE INDEX "edit_locks_idle_expires_at_idx" ON "edit_locks" USING btree ("idle_expires_at");--> statement-breakpoint
 CREATE INDEX "edit_lock_pending_handoffs_activity_id_idx" ON "edit_lock_pending_handoffs" USING btree ("activity_id");--> statement-breakpoint
 CREATE INDEX "edit_lock_pending_handoffs_due_idx" ON "edit_lock_pending_handoffs" USING btree ("grace_ends_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "edit_lock_pending_handoffs_one_pending_per_activity" ON "edit_lock_pending_handoffs" USING btree ("activity_id") WHERE "edit_lock_pending_handoffs"."status" = 'pending';--> statement-breakpoint
 CREATE INDEX "idx_sessions_user_id" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_sessions_expires_at" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "asf_owner_user_id_idx" ON "activity_saved_filters" USING btree ("owner_user_id");--> statement-breakpoint
