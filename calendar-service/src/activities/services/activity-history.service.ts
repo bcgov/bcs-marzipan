@@ -39,15 +39,6 @@ type RawHistoryRow = {
 export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  // Raw row shape returned by DB queries for activity history
-  // Keep in sync with the selected columns used in queries
-  private typeRawHistoryRow?: void;
-
-  /*
-   * Note: declare a reusable type alias in a way that doesn't emit JS.
-   * We'll use a block-scoped type alias where needed via `type RawHistoryRow = ...`.
-   */
-
   private async getUserMap(userIds: number[]): Promise<
     Map<
       number,
@@ -257,18 +248,20 @@ export class ActivityHistoryService {
     totalItems: number;
     nextCursor?: string | null;
   }> {
+    const MAX_PAGE_SIZE = 100;
+    const page = Math.max(1, opts.page ?? 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, opts.pageSize ?? 50));
+
     if (activityIds.length === 0) {
       return {
         items: [],
-        page: opts.page ?? 1,
-        pageSize: opts.pageSize ?? 50,
+        page,
+        pageSize,
         hasNext: false,
         totalItems: 0,
       };
     }
 
-    const page = Math.max(1, opts.page ?? 1);
-    const pageSize = Math.max(1, opts.pageSize ?? 50);
     const limit = pageSize + 1;
     const offset = (page - 1) * pageSize;
 
@@ -366,34 +359,34 @@ export class ActivityHistoryService {
             whereClauses.push(
               sql`(
                 ${activityHistory.activityId} = ${num}
-                OR lower(COALESCE(${activities.displayId}, '')) like ${term}
+                OR lower(${activities.displayId}) like ${term}
+              )`
+            );
+          } else {
+            // General text matching across several fields, plus category/tag EXISTS
+            whereClauses.push(
+              sql`(
+                lower(${activityHistory.actionType}) like ${term}
+                OR lower(${activityHistory.notes}) like ${term}
+                OR lower(${activities.title}) like ${term}
+                OR lower(${activities.displayId}) like ${term}
+                OR lower(${users.adDisplayName}) like ${term}
+                OR lower(${users.adUsername}) like ${term}
+                OR EXISTS(
+                  select 1 from activity_categories ac
+                  join categories c on ac.category_id = c.id
+                  where ac.activity_id = ${activityHistory.activityId}
+                    and lower(c.display_name) like ${term}
+                )
+                OR EXISTS(
+                  select 1 from activity_subscriptions s
+                  join tags t on s.tag_id = t.id
+                  where s.activity_id = ${activityHistory.activityId}
+                    and lower(t.display_name) like ${term}
+                )
               )`
             );
           }
-
-          // General text matching across several fields, plus category/tag EXISTS
-          whereClauses.push(
-            sql`(
-              lower(COALESCE(${activityHistory.actionType}, '')) like ${term}
-              OR lower(COALESCE(${activityHistory.notes}, '')) like ${term}
-              OR lower(COALESCE(${activities.title}, '')) like ${term}
-              OR lower(COALESCE(${activities.displayId}, '')) like ${term}
-              OR lower(COALESCE(${users.adDisplayName}, '')) like ${term}
-              OR lower(COALESCE(${users.adUsername}, '')) like ${term}
-              OR EXISTS(
-                select 1 from activity_categories ac
-                join categories c on ac.category_id = c.id
-                where ac.activity_id = ${activityHistory.activityId}
-                  and lower(COALESCE(c.display_name, '')) like ${term}
-              )
-              OR EXISTS(
-                select 1 from activity_subscriptions s
-                join tags t on s.tag_id = t.id
-                where s.activity_id = ${activityHistory.activityId}
-                  and lower(COALESCE(t.display_name, '')) like ${term}
-              )
-            )`
-          );
         }
       }
     }
@@ -429,40 +422,39 @@ export class ActivityHistoryService {
         ? [asc(activityHistory.timestamp), asc(activityHistory.id)]
         : [desc(activityHistory.timestamp), desc(activityHistory.id)];
 
+    // If using keyset cursor, combine cursor condition with existing where expression
+    let finalWhereExpr = whereExpr;
+    if (useKeyset && cursorTimestamp && cursorId !== null) {
+      // For asc ordering: timestamp > cursorTimestamp OR (timestamp = cursorTimestamp AND id > cursorId)
+      // For desc ordering: timestamp < cursorTimestamp OR (timestamp = cursorTimestamp AND id < cursorId)
+      const cursorCondition =
+        order === 'asc'
+          ? sql`(
+              (${activityHistory.timestamp} > ${cursorTimestamp})
+              OR (
+                ${activityHistory.timestamp} = ${cursorTimestamp}
+                AND ${activityHistory.id} > ${cursorId}
+              )
+            )`
+          : sql`(
+              (${activityHistory.timestamp} < ${cursorTimestamp})
+              OR (
+                ${activityHistory.timestamp} = ${cursorTimestamp}
+                AND ${activityHistory.id} < ${cursorId}
+              )
+            )`;
+      finalWhereExpr = finalWhereExpr
+        ? and(finalWhereExpr as Parameters<typeof and>[0], cursorCondition)
+        : cursorCondition;
+    }
+
     const query = (qBuilder as any)
-      .where(whereExpr)
+      .where(finalWhereExpr)
       .orderBy(...orderByExpr)
       .limit(limit);
 
     if (!useKeyset) {
       query.offset(offset);
-    }
-
-    // If using keyset cursor, add additional WHERE clause for (timestamp,id) < (cursor)
-    if (useKeyset && cursorTimestamp && cursorId !== null) {
-      // For asc ordering: timestamp > cursorTimestamp OR (timestamp = cursorTimestamp AND id > cursorId)
-      // For desc ordering: timestamp < cursorTimestamp OR (timestamp = cursorTimestamp AND id < cursorId)
-      if ((opts as any).order === 'asc') {
-        query.where(
-          sql`(
-            (${activityHistory.timestamp} > ${cursorTimestamp})
-            OR (
-              ${activityHistory.timestamp} = ${cursorTimestamp}
-              AND ${activityHistory.id} > ${cursorId}
-            )
-          )`
-        );
-      } else {
-        query.where(
-          sql`(
-            (${activityHistory.timestamp} < ${cursorTimestamp})
-            OR (
-              ${activityHistory.timestamp} = ${cursorTimestamp}
-              AND ${activityHistory.id} < ${cursorId}
-            )
-          )`
-        );
-      }
     }
 
     // Build count query using same joins/where to get total matching rows

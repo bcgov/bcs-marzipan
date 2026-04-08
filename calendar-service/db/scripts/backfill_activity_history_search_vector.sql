@@ -29,26 +29,21 @@ BEGIN
       WHERE ah.id > last_id
       ORDER BY ah.id
       LIMIT batch_size
+    ), updated AS (
+      UPDATE activity_history ah2
+      SET
+        activity_title = to_update.title,
+        activity_display_id = to_update.display_id,
+        actor_display_name = to_update.ad_display_name,
+        actor_username = to_update.ad_username,
+        category_tags_text = COALESCE(to_update.cat_names,'') || ' ' || COALESCE(to_update.tag_names,'')
+      FROM to_update
+      WHERE ah2.id = to_update.id
+      RETURNING ah2.id
     )
-    UPDATE activity_history ah2
-    SET
-      activity_title = to_update.title,
-      activity_display_id = to_update.display_id,
-      actor_display_name = to_update.ad_display_name,
-      actor_username = to_update.ad_username,
-      category_tags_text = COALESCE(to_update.cat_names,'') || ' ' || COALESCE(to_update.tag_names,''),
-      search_vector =
-        setweight(to_tsvector('english', coalesce(to_update.title, '')), 'A') ||
-        setweight(to_tsvector('english', coalesce(to_update.display_id, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(to_update.ad_display_name, '')), 'C') ||
-        setweight(to_tsvector('english', coalesce(to_update.ad_username, '')), 'D') ||
-        setweight(to_tsvector('english', coalesce(to_update.notes, '')), 'B') ||
-        setweight(to_tsvector('english', coalesce(coalesce(to_update.cat_names,''), '')), 'C')
-    FROM to_update
-    WHERE ah2.id = to_update.id
-    RETURNING ah2.id INTO last_id;
-
-    GET DIAGNOSTICS rows_processed = ROW_COUNT;
+    SELECT COALESCE(MAX(id), last_id), COUNT(*)
+    INTO last_id, rows_processed
+    FROM updated;
     IF rows_processed = 0 THEN
       EXIT;
     END IF;

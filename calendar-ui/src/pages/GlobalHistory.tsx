@@ -67,6 +67,14 @@ type FilterOption = {
   label: string;
 };
 
+/** Format a Date using local date parts to avoid UTC off-by-one in timezones ahead of UTC */
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function truncateChangeLogValue(value: string): string {
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
 
@@ -759,9 +767,9 @@ export function GlobalHistory() {
   const activePreset = useMemo(() => {
     if (!isDateRangeActive(dateRange)) return null;
     const now = new Date();
-    const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      .toISOString()
-      .slice(0, 10);
+    const todayStr = formatLocalDate(
+      new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    );
     if (dateRange.startDate === todayStr && dateRange.endDate === todayStr)
       return 'today';
     const last7Start = new Date(
@@ -771,7 +779,7 @@ export function GlobalHistory() {
     );
     last7Start.setDate(last7Start.getDate() - 6);
     if (
-      dateRange.startDate === last7Start.toISOString().slice(0, 10) &&
+      dateRange.startDate === formatLocalDate(last7Start) &&
       dateRange.endDate === todayStr
     )
       return 'last7';
@@ -782,7 +790,7 @@ export function GlobalHistory() {
     );
     last30Start.setDate(last30Start.getDate() - 29);
     if (
-      dateRange.startDate === last30Start.toISOString().slice(0, 10) &&
+      dateRange.startDate === formatLocalDate(last30Start) &&
       dateRange.endDate === todayStr
     )
       return 'last30';
@@ -860,7 +868,7 @@ export function GlobalHistory() {
                   now.getMonth(),
                   now.getDate()
                 );
-                const s = d.toISOString().slice(0, 10);
+                const s = formatLocalDate(d);
                 return {
                   startDate: s,
                   endDate: s,
@@ -882,8 +890,8 @@ export function GlobalHistory() {
                 const start = new Date(end);
                 start.setDate(start.getDate() - 6);
                 return {
-                  startDate: start.toISOString().slice(0, 10),
-                  endDate: end.toISOString().slice(0, 10),
+                  startDate: formatLocalDate(start),
+                  endDate: formatLocalDate(end),
                   noStartDate: false,
                   noEndDate: false,
                 };
@@ -902,8 +910,8 @@ export function GlobalHistory() {
                 const start = new Date(end);
                 start.setDate(start.getDate() - 29);
                 return {
-                  startDate: start.toISOString().slice(0, 10),
-                  endDate: end.toISOString().slice(0, 10),
+                  startDate: formatLocalDate(start),
+                  endDate: formatLocalDate(end),
                   noStartDate: false,
                   noEndDate: false,
                 };

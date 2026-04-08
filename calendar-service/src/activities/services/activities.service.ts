@@ -48,6 +48,7 @@ import {
 } from '@corpcal/shared';
 import type {
   ActivityFormData,
+  ActivityHistoryEntry,
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
@@ -2335,6 +2336,71 @@ export class ActivitiesService {
     return this.activityHistoryService.getActivityHistory(id);
   }
 
+  /**
+   * Returns visible activity IDs based on the request context's data scope.
+   * Only fetches IDs (not full rows) to minimize data transfer.
+   */
+  private async getVisibleActivityIds(
+    ctx?: RequestContextType
+  ): Promise<number[]> {
+    const dataScope = ctx?.dataScope;
+    if (dataScope && !dataScope.bypass) {
+      const visibleSet = await this.getVisibleActivityIdsForTeams(
+        dataScope.teamIds
+      );
+      return Array.from(visibleSet);
+    }
+    const rows = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities);
+    return rows.map((r) => r.id);
+  }
+
+  /**
+   * Enriches a page of history entries with activity metadata (title, displayId,
+   * leadTeamId, categories). Only fetches data for activity IDs present on the
+   * current page, keeping each paginated request lightweight.
+   */
+  private async enrichHistoryPage(
+    historyItems: ActivityHistoryEntry[]
+  ): Promise<GlobalActivityHistoryEntry[]> {
+    const pageActivityIds = [
+      ...new Set(historyItems.map((e) => e.activityId)),
+    ];
+    if (pageActivityIds.length === 0) return [];
+
+    const [pageActivityRows, { namesMap: categoriesMap }] = await Promise.all([
+      this.databaseService.db
+        .select({
+          id: activities.id,
+          displayId: activities.displayId,
+          title: activities.title,
+          leadTeamId: activities.leadTeamId,
+        })
+        .from(activities)
+        .where(inArray(activities.id, pageActivityIds)),
+      this.dataFetcherService.fetchCategoriesForActivities(pageActivityIds),
+    ]);
+
+    const activityMap = new Map(
+      pageActivityRows.map((a) => [
+        a.id,
+        {
+          id: a.id,
+          displayId: a.displayId,
+          title: a.title,
+          leadTeamId: a.leadTeamId,
+          categories: categoriesMap.get(a.id) ?? [],
+        },
+      ])
+    );
+
+    return historyItems.flatMap((entry) => {
+      const activity = activityMap.get(entry.activityId);
+      return activity ? [{ ...entry, activity }] : [];
+    });
+  }
+
   async getGlobalHistory(ctx?: RequestContextType): Promise<{
     items: GlobalActivityHistoryEntry[];
     page: number;
@@ -2342,24 +2408,12 @@ export class ActivitiesService {
     hasNext: boolean;
     totalItems: number;
   }> {
-    let activityRows = await this.databaseService.db.select().from(activities);
-
-    const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
-        dataScope.teamIds
-      );
-      activityRows = activityRows.filter((activity) =>
-        visibleIds.has(activity.id)
-      );
-    }
-
-    const activityIds = activityRows.map((activity) => activity.id);
-    if (activityIds.length === 0) {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    if (visibleActivityIds.length === 0) {
       return {
         items: [],
         page: 1,
-        pageSize: 1000,
+        pageSize: 50,
         hasNext: false,
         totalItems: 0,
       };
@@ -2367,62 +2421,35 @@ export class ActivitiesService {
 
     // Default scope: today (server local date)
     const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    const todayDateStr = startOfToday.toISOString().slice(0, 10);
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
-        activityIds,
+        visibleActivityIds,
         {
           startDate: todayDateStr,
           endDate: todayDateStr,
           page: 1,
-          pageSize: 1000,
+          pageSize: 50,
         }
       );
 
-    const historyEntries = historyPage.items;
-
-    if (historyEntries.length === 0) {
+    if (historyPage.items.length === 0) {
       return {
         items: [],
         page: 1,
-        pageSize: 1000,
+        pageSize: 50,
         hasNext: false,
         totalItems: 0,
       };
     }
 
-    const { namesMap: categoriesMap } = (
-      await this.fetchRelatedForActivityIds(activityIds, activityRows)
-    ).categoriesResult;
-
-    const activityMap = new Map(
-      activityRows.map((activity) => [
-        activity.id,
-        {
-          id: activity.id,
-          displayId: activity.displayId,
-          title: activity.title,
-          leadTeamId: activity.leadTeamId,
-          categories: categoriesMap.get(activity.id) ?? [],
-        },
-      ])
-    );
-
-    const items = historyEntries.flatMap((entry) => {
-      const activity = activityMap.get(entry.activityId);
-      return activity ? [{ ...entry, activity }] : [];
-    });
+    const items = await this.enrichHistoryPage(historyPage.items);
 
     return {
       items,
       page: 1,
-      pageSize: 1000,
+      pageSize: 50,
       hasNext: historyPage.hasNext,
       totalItems: historyPage.totalItems ?? 0,
     };
@@ -2445,20 +2472,8 @@ export class ActivitiesService {
     hasNext: boolean;
     totalItems: number;
   }> {
-    let activityRows = await this.databaseService.db.select().from(activities);
-
-    const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
-        dataScope.teamIds
-      );
-      activityRows = activityRows.filter((activity) =>
-        visibleIds.has(activity.id)
-      );
-    }
-
-    const activityIds = activityRows.map((activity) => activity.id);
-    if (activityIds.length === 0) {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    if (visibleActivityIds.length === 0) {
       return {
         items: [],
         page: opts.page ?? 1,
@@ -2473,7 +2488,7 @@ export class ActivitiesService {
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
-        activityIds,
+        visibleActivityIds,
         {
           startDate: opts.startDate,
           endDate: opts.endDate,
@@ -2494,27 +2509,7 @@ export class ActivitiesService {
       };
     }
 
-    const { namesMap: categoriesMap } = (
-      await this.fetchRelatedForActivityIds(activityIds, activityRows)
-    ).categoriesResult;
-
-    const activityMap = new Map(
-      activityRows.map((activity) => [
-        activity.id,
-        {
-          id: activity.id,
-          displayId: activity.displayId,
-          title: activity.title,
-          leadTeamId: activity.leadTeamId,
-          categories: categoriesMap.get(activity.id) ?? [],
-        },
-      ])
-    );
-
-    const items = historyPage.items.flatMap((entry) => {
-      const activity = activityMap.get(entry.activityId);
-      return activity ? [{ ...entry, activity }] : [];
-    });
+    const items = await this.enrichHistoryPage(historyPage.items);
 
     return {
       items,

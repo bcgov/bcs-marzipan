@@ -16,5 +16,5 @@ CREATE INDEX IF NOT EXISTS idx_activity_history_ts_id ON activity_history (times
 COMMIT;
 
 -- NOTES:
--- This consolidated script creates denormalized columns, indexes, a trigger to maintain the tsvector on write,
--- and a helper function to refresh category/tag denorms for an activity. It is idempotent for safe reapplication.
+-- This consolidated script creates denormalized columns and a composite pagination index.
+-- It is idempotent for safe reapplication.

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -21,7 +22,10 @@ import {
 
 import type { Category } from '@corpcal/database/types';
 import type { AuthUser } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api';
+import type {
+  ActivityResponse,
+  GlobalActivityHistoryEntry,
+} from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
   createActivityRequestSchema,
@@ -211,15 +215,35 @@ export class ActivitiesController {
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
-    data:
-      | Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>
-      | {
-          items: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
-          page: number;
-          pageSize: number;
-          hasNext: boolean;
-        };
+    data: {
+      items: GlobalActivityHistoryEntry[];
+      page: number;
+      pageSize: number;
+      hasNext: boolean;
+      totalItems: number;
+    };
   }> {
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (startDate !== undefined && !DATE_RE.test(startDate)) {
+      throw new BadRequestException(
+        'startDate must be a valid date in YYYY-MM-DD format'
+      );
+    }
+    if (endDate !== undefined && !DATE_RE.test(endDate)) {
+      throw new BadRequestException(
+        'endDate must be a valid date in YYYY-MM-DD format'
+      );
+    }
+    if (order !== undefined && order !== 'asc' && order !== 'desc') {
+      throw new BadRequestException('order must be "asc" or "desc"');
+    }
+
+    const MAX_PAGE_SIZE = 100;
+    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const parsedPageSize = pageSize
+      ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
+      : 50;
+
     // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
     const hasPagingOrDate =
       startDate !== undefined ||
@@ -237,11 +261,6 @@ export class ActivitiesController {
       };
     }
 
-    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
-    const parsedPageSize = pageSize
-      ? Math.max(1, parseInt(pageSize, 10) || 50)
-      : 50;
-
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
         startDate,
@@ -249,7 +268,7 @@ export class ActivitiesController {
         page: parsedPage,
         pageSize: parsedPageSize,
         query,
-        order: order as any,
+        order: order as 'asc' | 'desc' | undefined,
       },
       ctx
     );
