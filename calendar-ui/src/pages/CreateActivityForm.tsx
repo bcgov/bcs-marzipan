@@ -1,5 +1,4 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState, type FC } from 'react';
 
@@ -10,7 +9,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
-  ActivityFormStickyHeader,
+  ActivityFormStickyBack,
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
 import { PageHeader } from '@/components/layout';
@@ -40,7 +39,6 @@ const logger = createLogger('CreateActivityForm');
 
 /** Create popup: draft autosave and resume dialog removed while autosave stayed permanently disabled. */
 export const CreateActivityForm: FC = () => {
-  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
@@ -70,10 +68,6 @@ export const CreateActivityForm: FC = () => {
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
-
-  const handleGoBack = () => {
-    void navigate(-1);
-  };
 
   const handleCancel = () => {
     void form.reset();
@@ -188,7 +182,7 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyHeader onBack={handleGoBack} />
+      <ActivityFormStickyBack />
       <PageHeader
         title="Create New Activity"
         description="Fill in the activity details below"

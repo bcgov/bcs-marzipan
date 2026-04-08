@@ -1,5 +1,5 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -62,6 +62,7 @@ import {
 } from '../hooks/useEditLockIntent';
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
+import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildMarkReviewedOnlyPayload,
@@ -89,6 +90,7 @@ export function ActivityPage({
   refreshActivity,
 }: ActivityPageProps): React.ReactElement {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
 
@@ -363,13 +365,17 @@ export function ActivityPage({
     (!isBlockedStatus || canEditWhenBlocked);
 
   const handleGoBack = useCallback(() => {
-    // New tab / direct loads have no prior history entry; send users to the activity list.
+    const fromState = getActivityFormBackTarget(location.state);
+    if (fromState != null) {
+      void navigate(fromState);
+      return;
+    }
     if (window.history.length > 1) {
       void navigate(-1);
     } else {
       void navigate('/');
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);

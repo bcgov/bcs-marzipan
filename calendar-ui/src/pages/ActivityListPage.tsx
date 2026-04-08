@@ -1,5 +1,5 @@
 import { ChevronDown, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { cn } from '@/lib/utils';
 
 const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
@@ -67,6 +68,7 @@ function setStoredActivityListTab(tab: ActivityListTabValue): void {
  * Tabs filter the list: All, ministry lead team, My activities, Recent (disabled), Shared with me.
  */
 export const ActivityListPage = () => {
+  const location = useLocation();
   const { user, hasPermission } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
 
@@ -172,7 +174,7 @@ export const ActivityListPage = () => {
         action={
           canCreateActivity ? (
             <Button asChild>
-              <Link to="/create-activity">
+              <Link to="/create-activity" {...activityFormLinkState(location)}>
                 <Plus className="h-4 w-4" />
                 New activity
               </Link>
