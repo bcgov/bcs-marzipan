@@ -23,7 +23,9 @@ export function ActivityRichTextContent({
   return (
     <div
       className={cn(
-        'activity-rich-text-content [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_p]:mb-1 last:[&_p]:mb-0',
+        // Match RichTextField: outside list markers + padding (list-inside breaks li > p layout).
+        // Vertical margin only on top-level lists — nested ul/ol under li would otherwise gap more than siblings.
+        'activity-rich-text-content [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_li]:my-0 [&_li>ol]:my-0 [&_li>p]:mb-0 [&_li>ul]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-1 last:[&_p]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&>ol]:my-1 [&>ul]:my-1',
         className
       )}
       dangerouslySetInnerHTML={{ __html: html }}

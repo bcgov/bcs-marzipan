@@ -152,10 +152,6 @@ const ActivityLink = Link.extend({
 
 const starterKitCompact = StarterKit.configure({
   blockquote: false,
-  bulletList: false,
-  orderedList: false,
-  listItem: false,
-  listKeymap: false,
   codeBlock: false,
   code: false,
   heading: false,
