@@ -780,8 +780,7 @@ export function ActivityPage({
                 {showRequestDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => setShowRequestDeleteModal(true));
@@ -794,8 +793,7 @@ export function ActivityPage({
                 {showDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => void handleOpenDeleteModal());
