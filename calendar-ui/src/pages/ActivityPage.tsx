@@ -11,7 +11,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
-  ActivityFormStickyBack,
+  ActivityFormStickyHeader,
   ActivityPageHeader,
   ActivityStatusBanner,
 } from '@/components/activity';
@@ -22,7 +22,11 @@ import { EditActivityConfirmModal } from '@/components/activity/activities/EditA
 import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
 import { ReviewActionButtonLabel } from '@/components/activity/activities/ReviewActionButtonLabel';
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
-import { FormErrorFallback, LockBanner } from '@/components/shared';
+import {
+  FormErrorFallback,
+  LockBanner,
+  LockBannerContent,
+} from '@/components/shared';
 import { Badge, normalizeActivityStatus } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
@@ -57,6 +61,7 @@ import {
   useEditLockIntent,
 } from '../hooks/useEditLockIntent';
 import { useEditLockSession } from '../hooks/useEditLockSession';
+import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildMarkReviewedOnlyPayload,
@@ -70,6 +75,9 @@ import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
+
+/** Match sticky back bar height (py-3 + h-8 sm button ≈ 56px). IO rootMargin only accepts px or %. */
+const LOCK_BANNER_INTERSECTION_ROOT_MARGIN = '-56px 0px 0px 0px';
 
 export type ActivityPageProps = {
   activity: ActivityResponse;
@@ -318,6 +326,15 @@ export function ActivityPage({
   const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
+  const isLockedByOther = lockState === 'locked-by-other';
+  const [lockBannerSentinel, setLockBannerSentinel] =
+    useState<HTMLDivElement | null>(null);
+  const lockBannerInView = useElementIsIntersecting(
+    lockBannerSentinel,
+    isLockedByOther,
+    LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
+    0
+  );
   const canSubmitWithoutValidationErrors =
     isFormValid || missingFields.length === 0;
 
@@ -597,7 +614,31 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyBack onBack={handleGoBack} />
+      <ActivityFormStickyHeader
+        onBack={handleGoBack}
+        lockStrip={
+          isLockedByOther ? (
+            <LockBannerContent
+              lockedByUsername={lockedByUsername}
+              onRequestTakeLock={
+                canForceHandoff
+                  ? () => void handleRequestForceHandoff()
+                  : undefined
+              }
+              requestTakeLockPending={forceHandoffPending}
+              handoffActive={handoffAwaitingCompletion}
+              onCancelHandoff={
+                canForceHandoff
+                  ? () => void handleCancelForceHandoff()
+                  : undefined
+              }
+              cancelHandoffPending={cancelHandoffPending}
+              className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
+            />
+          ) : undefined
+        }
+        lockStripVisible={isLockedByOther && !lockBannerInView}
+      />
       <ActivityPageHeader
         displayId={displayId}
         title={activity.title ?? ''}
@@ -608,19 +649,26 @@ export function ActivityPage({
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
       />
-      {lockState === 'locked-by-other' && (
-        <LockBanner
-          lockedByUsername={lockedByUsername}
-          onRequestTakeLock={
-            canForceHandoff ? () => void handleRequestForceHandoff() : undefined
-          }
-          requestTakeLockPending={forceHandoffPending}
-          handoffActive={handoffAwaitingCompletion}
-          onCancelHandoff={
-            canForceHandoff ? () => void handleCancelForceHandoff() : undefined
-          }
-          cancelHandoffPending={cancelHandoffPending}
-        />
+      {isLockedByOther && (
+        <div ref={setLockBannerSentinel}>
+          <LockBanner
+            inert={!lockBannerInView}
+            lockedByUsername={lockedByUsername}
+            onRequestTakeLock={
+              canForceHandoff
+                ? () => void handleRequestForceHandoff()
+                : undefined
+            }
+            requestTakeLockPending={forceHandoffPending}
+            handoffActive={handoffAwaitingCompletion}
+            onCancelHandoff={
+              canForceHandoff
+                ? () => void handleCancelForceHandoff()
+                : undefined
+            }
+            cancelHandoffPending={cancelHandoffPending}
+          />
+        </div>
       )}
       {isBlockedStatus && (
         <ActivityStatusBanner

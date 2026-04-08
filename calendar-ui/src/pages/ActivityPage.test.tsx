@@ -525,6 +525,9 @@ describe('ActivityPage optimistic inline edit', () => {
     renderActivityPage();
 
     await screen.findByText(/Lead team/);
-    expect(screen.getByText(/Other User/)).toBeInTheDocument();
+    const lockBanner = screen.getByRole('alert');
+    expect(lockBanner).toHaveTextContent(/Other User/);
+    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    expect(titleTextarea).toHaveAttribute('readonly');
   });
 });
