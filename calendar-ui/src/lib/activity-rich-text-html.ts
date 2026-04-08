@@ -6,6 +6,7 @@ import { tryParseTipTapDoc } from '@corpcal/shared/utils';
 
 import {
   getActivityRichTextHtmlExtensions,
+  hasDangerousHrefScheme,
   markdownManagerForRichText,
 } from './activity-rich-text-extensions';
 
@@ -51,11 +52,7 @@ export function activityStoredValueToSanitizedHtml(
     transformTags: {
       a: (tagName, attribs) => {
         const href = attribs.href;
-        if (
-          href &&
-          (href.toLowerCase().startsWith('javascript:') ||
-            href.toLowerCase().startsWith('data:'))
-        ) {
+        if (href && hasDangerousHrefScheme(href)) {
           return { tagName: 'span', attribs: { class: attribs.class } };
         }
         return { tagName, attribs };

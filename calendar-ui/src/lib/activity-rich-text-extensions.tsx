@@ -16,6 +16,18 @@ import { EMPTY_RICH_TEXT_DOC, tryParseTipTapDoc } from '@corpcal/shared/utils';
 
 const NEW_TAB = { target: '_blank' as const, rel: 'noopener noreferrer' };
 
+const DANGEROUS_HREF_SCHEME_PREFIXES = [
+  'javascript:',
+  'vbscript:',
+  'data:',
+] as const;
+
+/** True when `href` uses a scheme we never treat as a normal link (XSS / CodeQL). */
+export function hasDangerousHrefScheme(href: string): boolean {
+  const h = href.trim().toLowerCase();
+  return DANGEROUS_HREF_SCHEME_PREFIXES.some((prefix) => h.startsWith(prefix));
+}
+
 /**
  * Target/rel for serializeHTML / generateHTML and plain `<a>` output.
  * `mailto:`, `tel:`, hash-only, and dangerous schemes stay without target.
@@ -25,10 +37,7 @@ export function linkTargetRelForHref(href: string | undefined): {
   rel?: string;
 } {
   const h = href?.trim() ?? '';
-  if (!h || h.toLowerCase().startsWith('javascript:')) {
-    return {};
-  }
-  if (h.toLowerCase().startsWith('data:')) {
+  if (!h || hasDangerousHrefScheme(h)) {
     return {};
   }
   if (h.startsWith('mailto:') || h.startsWith('tel:')) {
@@ -87,11 +96,7 @@ function ActivityLinkMarkView(props: MarkViewProps) {
     'href' | 'children'
   >;
 
-  if (
-    !hrefStr ||
-    hrefStr.toLowerCase().startsWith('javascript:') ||
-    hrefStr.toLowerCase().startsWith('data:')
-  ) {
+  if (!hrefStr || hasDangerousHrefScheme(hrefStr)) {
     return (
       <span className={className} {...passthrough}>
         <MarkViewContent />
