@@ -2,6 +2,7 @@ import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { isActivityRichTextEffectivelyEmpty } from '@corpcal/shared/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
@@ -13,7 +14,7 @@ import {
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextField } from '@/components/ui/rich-text-field';
 import {
   lookAheadSectionOptions,
   lookAheadStatusOptions,
@@ -131,20 +132,20 @@ export const ActivityReportsSection: React.FC = () => {
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="lookAhead">
-                  <FormControl data-field={field.name}>
-                    <Textarea
+                  <FormControl>
+                    <RichTextField
+                      name={field.name}
+                      value={field.value ?? ''}
+                      onChange={(v) => {
+                        field.onChange(
+                          isActivityRichTextEffectivelyEmpty(v) ? undefined : v
+                        );
+                      }}
+                      onBlur={field.onBlur}
                       placeholder="Enter executive summary"
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
-                      rows={4}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      value={field.value ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        field.onChange(v === '' ? undefined : v);
-                      }}
+                      data-field={field.name}
                     />
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>

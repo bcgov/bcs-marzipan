@@ -1,10 +1,18 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
+import {
+  EMPTY_RICH_TEXT_DOC,
+  isActivityRichTextEffectivelyEmpty,
+} from './activity-rich-text';
+
+function isNullishOrEmptyString(v: unknown): boolean {
+  return v === null || v === undefined || v === '';
+}
 
 /** Empty optional text → `undefined` so `''`, `null`, and missing match RHF + compare. */
 function canonOptString(v: unknown): string | undefined {
-  if (v === null || v === undefined || v === '') return undefined;
+  if (isNullishOrEmptyString(v)) return undefined;
   if (typeof v === 'string') return v;
   return undefined;
 }
@@ -46,23 +54,23 @@ export function canonicalizeActivityFormData(
   return {
     ...data,
     summary:
-      data.summary === null || data.summary === undefined || data.summary === ''
-        ? ''
+      isNullishOrEmptyString(data.summary) ||
+      isActivityRichTextEffectivelyEmpty(data.summary)
+        ? EMPTY_RICH_TEXT_DOC
         : data.summary,
-    significance:
-      data.significance === null ||
-      data.significance === undefined ||
-      data.significance === ''
-        ? undefined
-        : data.significance,
+    significance: isNullishOrEmptyString(data.significance)
+      ? undefined
+      : data.significance,
     schedulingNotes: canonOptString(
       data.schedulingNotes
     ) as ActivityFormData['schedulingNotes'],
     strategy: canonOptString(data.strategy) as ActivityFormData['strategy'],
     notes: canonOptString(data.notes) as ActivityFormData['notes'],
-    executiveSummary: canonOptString(
-      data.executiveSummary
-    ) as ActivityFormData['executiveSummary'],
+    executiveSummary:
+      isNullishOrEmptyString(data.executiveSummary) ||
+      isActivityRichTextEffectivelyEmpty(data.executiveSummary)
+        ? undefined
+        : data.executiveSummary,
     startDate: canonOptString(data.startDate) as ActivityFormData['startDate'],
     endDate: canonOptString(data.endDate) as ActivityFormData['endDate'],
     startTime: canonOptString(data.startTime) as ActivityFormData['startTime'],

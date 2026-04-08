@@ -6,6 +6,10 @@ import {
   VISIBILITY,
 } from '../constants/constants';
 import {
+  ACTIVITY_RICH_TEXT_MAX_BYTES,
+  EMPTY_RICH_TEXT_DOC,
+} from '../utils/activity-rich-text';
+import {
   createActivityRequestSchema,
   updateActivityRequestSchema,
   venueAddressFieldsSchema,
@@ -51,10 +55,22 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces summary max 1000 and significance max 1000', () => {
+  it('enforces summary max rich-text bytes and significance max 1000', () => {
     expect(() =>
       createActivityRequestSchema.parse(
-        minimalCreateRequest({ summary: 'a'.repeat(1001) })
+        minimalCreateRequest({
+          summary: 'a'.repeat(ACTIVITY_RICH_TEXT_MAX_BYTES + 1),
+        })
+      )
+    ).toThrow();
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ summary: '{"type":"paragraph"}' })
+      )
+    ).toThrow();
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ summary: EMPTY_RICH_TEXT_DOC })
       )
     ).toThrow();
     expect(() =>

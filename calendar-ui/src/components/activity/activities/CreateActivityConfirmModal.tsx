@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -203,6 +204,14 @@ function resolveDisplayValue(
           r.representativeName || `Rep ${r.representativeId}`
       )
       .join(', ');
+  }
+
+  if (
+    (field === 'summary' || field === 'executiveSummary') &&
+    typeof value === 'string'
+  ) {
+    const t = plainTextFromActivityRichField(value);
+    return t === '' ? '(empty)' : t;
   }
 
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';

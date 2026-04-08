@@ -4,6 +4,7 @@ import {
   canonicalizeActivityFormData,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
+  plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
 
 /**
@@ -59,6 +60,14 @@ export function formatHistoryFieldValue(
 ): string {
   if (value === null || value === undefined || value === '') {
     return '(empty)';
+  }
+
+  if (
+    (field === 'summary' || field === 'executiveSummary') &&
+    typeof value === 'string'
+  ) {
+    const t = plainTextFromActivityRichField(value);
+    return t === '' ? '(empty)' : t;
   }
 
   if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {

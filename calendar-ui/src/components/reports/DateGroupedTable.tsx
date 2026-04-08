@@ -1,6 +1,8 @@
 import { Fragment } from 'react';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
+import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { sortLookAheadActivities } from '@/lib/look-ahead-sort';
 import { cn } from '@/lib/utils';
 
@@ -104,10 +106,14 @@ export function DateGroupedTable({
                       {activity.title && (
                         <span className="font-medium">{activity.title}</span>
                       )}
-                      {activity.executiveSummary && (
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          {activity.executiveSummary}
-                        </p>
+                      {plainTextFromActivityRichField(
+                        activity.executiveSummary ?? ''
+                      ).length > 0 && (
+                        <div className="text-muted-foreground mt-1 text-xs">
+                          <ActivityRichTextContent
+                            value={activity.executiveSummary}
+                          />
+                        </div>
                       )}
                     </div>
                   </td>
