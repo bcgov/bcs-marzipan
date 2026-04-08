@@ -1,4 +1,5 @@
 import { ErrorBoundary } from 'react-error-boundary';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState, type FC } from 'react';
 
@@ -26,6 +27,7 @@ import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
+import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
 import {
   ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
@@ -37,8 +39,12 @@ import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CreateActivityForm');
 
-/** Create popup: draft autosave and resume dialog removed while autosave stayed permanently disabled. */
+/** Create flow: navigates back to the list (or `location.state.from`) after submit/cancel; same-tab as Activity list. */
 export const CreateActivityForm: FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const listOrBackPath = getActivityFormBackTarget(location.state) ?? '/';
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
@@ -71,7 +77,7 @@ export const CreateActivityForm: FC = () => {
 
   const handleCancel = () => {
     void form.reset();
-    window.close();
+    void navigate(listOrBackPath);
   };
 
   const onSubmit = (data: ActivityFormData) => {
@@ -84,6 +90,7 @@ export const CreateActivityForm: FC = () => {
     markAsReviewed?: boolean
   ) => {
     if (!validatedData) return;
+    const titleForToast = validatedData.title;
     setIsSubmitting(true);
     try {
       const formValues = form.getValues();
@@ -97,24 +104,24 @@ export const CreateActivityForm: FC = () => {
 
       await createMutation.mutateAsync(payload);
 
+      // Close the dialog before toast/navigation so we are not animating the portal while the route tears down.
+      setShowConfirmModal(false);
+      setValidatedData(null);
+      setIsSubmitting(false);
+
       toast.success('Activity created', {
         id: 'activity-created',
-        description: validatedData.title
-          ? `${validatedData.title}`
+        description: titleForToast
+          ? `${titleForToast}`
           : 'Your activity has been created.',
-        duration: 2500,
+        duration: 7000,
       });
-      // Brief delay so the success toast is visible before the popup closes
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      window.close();
+
+      void navigate(listOrBackPath, { replace: true });
     } catch (error) {
       logger.error('Failed to create activity', error);
       showErrorToast(error, 'Your activity could not be created.');
-      // User remains on the form so they can correct and retry; do not close/navigate
-    } finally {
       setIsSubmitting(false);
-      setShowConfirmModal(false);
-      setValidatedData(null);
     }
   };
 
@@ -281,23 +288,27 @@ export const CreateActivityForm: FC = () => {
         </form>
       </Form>
 
-      <CreateActivityConfirmModal
-        open={showConfirmModal}
-        onOpenChange={(open) => {
-          setShowConfirmModal(open);
-          if (!open) setValidatedData(null);
-        }}
-        formData={form.getValues()}
-        lookups={lookups}
-        dateStatuses={lookups.dateStatuses}
-        timeStatuses={lookups.timeStatuses}
-        leadTeamOptions={leadTeamOptions}
-        onConfirm={(notes, markAsReviewed) =>
-          void handleConfirmedSubmit(notes, markAsReviewed)
-        }
-        showMarkAsReviewed={canReviewActivities}
-        isSubmitting={isSubmitting}
-      />
+      {showConfirmModal ? (
+        <CreateActivityConfirmModal
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowConfirmModal(false);
+              setValidatedData(null);
+            }
+          }}
+          formData={form.getValues()}
+          lookups={lookups}
+          dateStatuses={lookups.dateStatuses}
+          timeStatuses={lookups.timeStatuses}
+          leadTeamOptions={leadTeamOptions}
+          onConfirm={(notes, markAsReviewed) =>
+            void handleConfirmedSubmit(notes, markAsReviewed)
+          }
+          showMarkAsReviewed={canReviewActivities}
+          isSubmitting={isSubmitting}
+        />
+      ) : null}
     </ErrorBoundary>
   );
 };
