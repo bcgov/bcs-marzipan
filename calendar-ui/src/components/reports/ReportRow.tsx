@@ -150,9 +150,10 @@ export function ReportRow({ activity, className }: ReportRowProps) {
             </div>
           )}
           {/* Significance */}
-          {activity.significance && (
+          {plainTextFromActivityRichField(activity.significance ?? '').length >
+            0 && (
             <div className="text-xs font-medium text-slate-600">
-              {activity.significance}
+              <ActivityRichTextContent value={activity.significance} />
             </div>
           )}
           {/* Event Planner Lead */}

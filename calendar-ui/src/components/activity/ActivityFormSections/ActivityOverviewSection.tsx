@@ -538,19 +538,15 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <Textarea
+            <FormControl>
+              <RichTextField
+                name={field.name}
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
                 placeholder="Enter significance"
                 readOnly={readOnly}
-                rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
-                value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
+                data-field={field.name}
               />
             </FormControl>
             <FormMessage />

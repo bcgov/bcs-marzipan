@@ -63,7 +63,9 @@ export function formatHistoryFieldValue(
   }
 
   if (
-    (field === 'summary' || field === 'executiveSummary') &&
+    (field === 'summary' ||
+      field === 'executiveSummary' ||
+      field === 'significance') &&
     typeof value === 'string'
   ) {
     const t = plainTextFromActivityRichField(value);

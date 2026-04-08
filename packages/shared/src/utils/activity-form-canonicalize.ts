@@ -58,9 +58,11 @@ export function canonicalizeActivityFormData(
       isActivityRichTextEffectivelyEmpty(data.summary)
         ? EMPTY_RICH_TEXT_DOC
         : data.summary,
-    significance: isNullishOrEmptyString(data.significance)
-      ? undefined
-      : data.significance,
+    significance:
+      isNullishOrEmptyString(data.significance) ||
+      isActivityRichTextEffectivelyEmpty(data.significance)
+        ? undefined
+        : data.significance,
     schedulingNotes: canonOptString(
       data.schedulingNotes
     ) as ActivityFormData['schedulingNotes'],

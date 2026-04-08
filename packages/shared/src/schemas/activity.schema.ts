@@ -83,8 +83,18 @@ const activityCoreFieldsSchema = z.object({
   title: z.string().min(1).max(255),
   summary: activityRichTextStoredStringSchema,
   significance: z.preprocess(
-    (val) => (val === '' ? null : val),
-    z.union([z.string().max(1000), z.null()]).optional()
+    emptyStringToNull,
+    z
+      .union([
+        z
+          .string()
+          .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
+          .refine(isActivityRichTextStorageRefine, {
+            message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+          }),
+        z.null(),
+      ])
+      .optional()
   ),
   schedulingNotes: z.string().max(500).optional().nullable(),
   strategy: z.string().nullable().optional(),

@@ -1,6 +1,6 @@
 /**
- * Activity Summary / Executive summary are stored as stringified Tip Tap / ProseMirror
- * JSON documents, or legacy markdown/plain text during migration.
+ * Activity summary, executive summary, and significance are stored as stringified
+ * Tip Tap / ProseMirror JSON documents, or legacy markdown/plain text during migration.
  */
 
 /** Max persisted size for rich text fields (request validation). */
