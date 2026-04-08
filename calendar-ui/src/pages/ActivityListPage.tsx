@@ -1,4 +1,5 @@
 import { ChevronDown, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
@@ -169,18 +170,22 @@ export const ActivityListPage = () => {
         title="Calendar activities"
         description="View and manage calendar activities"
         action={
-          <Button
-            onClick={() => window.open('/create-activity')}
-            disabled={!canCreateActivity}
-            title={
-              !canCreateActivity
-                ? 'You do not have permission to create activities'
-                : undefined
-            }
-          >
-            <Plus className="h-4 w-4" />
-            New activity
-          </Button>
+          canCreateActivity ? (
+            <Button asChild>
+              <Link to="/create-activity">
+                <Plus className="h-4 w-4" />
+                New activity
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              disabled
+              title="You do not have permission to create activities"
+            >
+              <Plus className="h-4 w-4" />
+              New activity
+            </Button>
+          )
         }
       />
 
