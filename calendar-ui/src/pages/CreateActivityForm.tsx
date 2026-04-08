@@ -29,6 +29,7 @@ import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
+import { formatActivityNumericIdPadded } from '../lib/activity-toast-options';
 import {
   ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
   ACCESS_DENIED_TITLE,
@@ -58,6 +59,7 @@ export const CreateActivityForm: FC = () => {
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
+  const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
 
   const {
     form,
@@ -102,25 +104,45 @@ export const CreateActivityForm: FC = () => {
         ...(notes ? { activityHistoryNotes: notes } : {}),
       } as CreateActivityRequest;
 
-      await createMutation.mutateAsync(payload);
+      const created = await createMutation.mutateAsync(payload);
+      const newActivityId = created.id;
 
       // Close the dialog before toast/navigation so we are not animating the portal while the route tears down.
       setShowConfirmModal(false);
       setValidatedData(null);
       setIsSubmitting(false);
 
+      const toastId = `activity-created-${newActivityId}`;
+      const titleLine = titleForToast
+        ? titleForToast
+        : 'Your activity has been created.';
+      const activityIdForDisplay = formatActivityNumericIdPadded(newActivityId);
+      const description = `${titleLine}\nActivity ID: ${activityIdForDisplay}`;
+
       toast.success('Activity created', {
-        id: 'activity-created',
-        description: titleForToast
-          ? `${titleForToast}`
-          : 'Your activity has been created.',
+        id: toastId,
+        description,
         duration: 7000,
+        ...(canViewActivity
+          ? {
+              action: {
+                label: 'View activity',
+                onClick: () => {
+                  toast.dismiss(toastId);
+                  void navigate(`/activity/${newActivityId}`);
+                },
+              },
+            }
+          : {}),
       });
 
       void navigate(listOrBackPath, { replace: true });
     } catch (error) {
       logger.error('Failed to create activity', error);
-      showErrorToast(error, 'Your activity could not be created.');
+      showErrorToast(
+        error,
+        'Your activity could not be created. If the problem persists, please contact calendar admins.'
+      );
       setIsSubmitting(false);
     }
   };

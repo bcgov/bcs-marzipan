@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { getActivityUpdatedToastOptions } from './activity-toast-options';
+import {
+  formatActivityNumericIdPadded,
+  getActivityUpdatedToastOptions,
+} from './activity-toast-options';
+
+describe('formatActivityNumericIdPadded', () => {
+  it('pads ids shorter than 6 digits with leading zeros', () => {
+    expect(formatActivityNumericIdPadded(1)).toBe('000001');
+    expect(formatActivityNumericIdPadded(42)).toBe('000042');
+    expect(formatActivityNumericIdPadded(999999)).toBe('999999');
+  });
+
+  it('does not change ids that are already 6 or more digits', () => {
+    expect(formatActivityNumericIdPadded(1_000_000)).toBe('1000000');
+  });
+});
 
 describe('getActivityUpdatedToastOptions', () => {
   it('returns id activity-updated-{id} and description with displayId and title', () => {
