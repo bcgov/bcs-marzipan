@@ -329,4 +329,199 @@ describe('ActivitiesController (API integration)', () => {
         });
     });
   });
+
+  describe('/activities/:id/soft-delete (DELETE)', () => {
+    let softDeleteTargetId: number;
+
+    beforeAll(async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .post('/activities')
+        .send(createMockActivityRequest({ title: 'E2E Soft Delete Target' }))
+        .expect(201);
+      softDeleteTargetId = res.body.data.id;
+    });
+
+    it('should soft delete an activity', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .delete(`/activities/${softDeleteTargetId}/soft-delete`)
+        .send({ reason: 'No longer relevant for the calendar' })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id', softDeleteTargetId);
+      expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
+    });
+
+    it('should return 404 when soft deleting a non-existent activity', () => {
+      return createAuthRequest(app, accessToken)
+        .delete('/activities/999999/soft-delete')
+        .send({ reason: 'No longer relevant for the calendar' })
+        .expect(404)
+        .expect((res) => {
+          expectProblemDetails(res, 404);
+          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
+        });
+    });
+
+    it('should return 400 when reason is missing', () => {
+      return createAuthRequest(app, accessToken)
+        .delete(`/activities/${createdActivityId}/soft-delete`)
+        .send({})
+        .expect(400)
+        .expect((res) => {
+          expectProblemDetails(res, 400);
+        });
+    });
+
+    it('should return 400 when reason is too short', () => {
+      return createAuthRequest(app, accessToken)
+        .delete(`/activities/${createdActivityId}/soft-delete`)
+        .send({ reason: 'Too short' })
+        .expect(400)
+        .expect((res) => {
+          expectProblemDetails(res, 400);
+        });
+    });
+  });
+
+  describe('/activities/:id/request-delete (POST)', () => {
+    let requestDeleteTargetId: number;
+    let alreadyRequestedId: number;
+
+    beforeAll(async () => {
+      const [res1, res2] = await Promise.all([
+        createAuthRequest(app, accessToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({
+              title: 'E2E Request Delete Target',
+              leadTeamId: 9,
+            })
+          )
+          .expect(201),
+        createAuthRequest(app, accessToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({
+              title: 'E2E Already Requested',
+              leadTeamId: 9,
+            })
+          )
+          .expect(201),
+      ]);
+      requestDeleteTargetId = res1.body.data.id;
+      alreadyRequestedId = res2.body.data.id;
+
+      // Pre-set the conflict activity to delete_requested
+      await createAuthRequest(app, accessToken)
+        .post(`/activities/${alreadyRequestedId}/request-delete`)
+        .send({ reason: 'Setting up conflict test state for e2e' })
+        .expect(200);
+    });
+
+    it('should request delete on an activity', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .post(`/activities/${requestDeleteTargetId}/request-delete`)
+        .send({ reason: 'This activity duplicates another one' })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id', requestDeleteTargetId);
+      expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
+    });
+
+    it('should return 409 when activity is already delete_requested', () => {
+      return createAuthRequest(app, accessToken)
+        .post(`/activities/${alreadyRequestedId}/request-delete`)
+        .send({ reason: 'This activity duplicates another one' })
+        .expect(409)
+        .expect((res) => {
+          expectProblemDetails(res, 409);
+        });
+    });
+
+    it('should return 400 when reason is missing', () => {
+      return createAuthRequest(app, accessToken)
+        .post(`/activities/${createdActivityId}/request-delete`)
+        .send({})
+        .expect(400)
+        .expect((res) => {
+          expectProblemDetails(res, 400);
+        });
+    });
+  });
+
+  describe('/activities/:id/restore (POST)', () => {
+    let restoreFromRequestedId: number;
+    let restoreFromDeletedId: number;
+
+    beforeAll(async () => {
+      const [res1, res2] = await Promise.all([
+        createAuthRequest(app, accessToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({
+              title: 'E2E Restore From Requested',
+              leadTeamId: 9,
+            })
+          )
+          .expect(201),
+        createAuthRequest(app, accessToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({ title: 'E2E Restore From Deleted' })
+          )
+          .expect(201),
+      ]);
+      restoreFromRequestedId = res1.body.data.id;
+      restoreFromDeletedId = res2.body.data.id;
+
+      // Set up delete_requested state for first activity
+      await createAuthRequest(app, accessToken)
+        .post(`/activities/${restoreFromRequestedId}/request-delete`)
+        .send({ reason: 'Setting up restore test state from requested' })
+        .expect(200);
+
+      // Set up deleted state for second activity via soft-delete
+      await createAuthRequest(app, accessToken)
+        .delete(`/activities/${restoreFromDeletedId}/soft-delete`)
+        .send({ reason: 'Setting up restore test state from deleted' })
+        .expect(200);
+    });
+
+    it('should restore an activity from delete_requested status', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .post(`/activities/${restoreFromRequestedId}/restore`)
+        .send({ note: 'Restoring after further review' })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id', restoreFromRequestedId);
+      expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
+    });
+
+    it('should restore an activity from deleted status', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .post(`/activities/${restoreFromDeletedId}/restore`)
+        .send({ note: 'Restoring from deleted state' })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id', restoreFromDeletedId);
+    });
+
+    it('should return 400 when activity is not in delete_requested or deleted status', () => {
+      return createAuthRequest(app, accessToken)
+        .post(`/activities/${createdActivityId}/restore`)
+        .send({})
+        .expect(400)
+        .expect((res) => {
+          expectProblemDetails(res, 400);
+        });
+    });
+  });
 });
