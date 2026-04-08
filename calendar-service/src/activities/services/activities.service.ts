@@ -28,11 +28,13 @@ import {
   activityTranslationsRequired,
   categories,
   commsMaterials,
+  dateStatuses,
   deletionAudit,
   favoriteActivities,
   ministries,
   pitchRequiredStatuses,
   teams,
+  timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
   userTeams,
@@ -58,6 +60,7 @@ import type {
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  applyFieldLevelWritePolicy,
   buildReviewDiffLookups,
   buildReviewSnapshot,
   diffReviewFields,
@@ -834,6 +837,40 @@ export class ActivitiesService {
   }
 
   /**
+   * Resolve the first (lowest sort_order) date and time status IDs for use as
+   * server-side defaults when the create request omits them.
+   */
+  private async resolveDefaultDateTimeStatusIds(): Promise<{
+    dateStatusId: number;
+    timeStatusId: number;
+  }> {
+    const [dateRow] = await this.databaseService.db
+      .select({ id: dateStatuses.id })
+      .from(dateStatuses)
+      .orderBy(dateStatuses.sortOrder)
+      .limit(1);
+    const [timeRow] = await this.databaseService.db
+      .select({ id: timeStatuses.id })
+      .from(timeStatuses)
+      .orderBy(timeStatuses.sortOrder)
+      .limit(1);
+    if (dateRow?.id == null) {
+      throw new InternalServerErrorException(
+        'No date statuses configured in lookups.'
+      );
+    }
+    if (timeRow?.id == null) {
+      throw new InternalServerErrorException(
+        'No time statuses configured in lookups.'
+      );
+    }
+    return {
+      dateStatusId: dateRow.id,
+      timeStatusId: timeRow.id,
+    };
+  }
+
+  /**
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
@@ -848,6 +885,14 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    // Strip fields the user lacks field-level edit permission for (server applies defaults)
+    if (context?.permissions && context.roleName) {
+      applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+        permissions: context.permissions,
+        roleName: context.roleName,
+      });
+    }
+
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
@@ -935,13 +980,20 @@ export class ActivitiesService {
     const {
       pitchRequiredStatusId: dtoPitchStatus,
       translationsRequiredStatusId: dtoTranslationStatus,
+      dateStatusId: dtoDateStatus,
+      timeStatusId: dtoTimeStatus,
       significance: dtoSignificance,
       ...activityRowWithoutDefaults
     } = activityDataWithResolvedMinistry;
 
+    const defaultDateTimeStatuses =
+      await this.resolveDefaultDateTimeStatusIds();
+
     const activityRowForInsert = {
       ...activityRowWithoutDefaults,
       significance: dtoSignificance ?? null,
+      dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
+      timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
       pitchRequiredStatusId:
         dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
       translationsRequiredStatusId:
@@ -1170,7 +1222,7 @@ export class ActivitiesService {
     // Broadcast to all clients that a new activity was created
     // Only broadcast if the activity was successfully fetched
     if (createdActivity) {
-      this.activitiesGateway.broadcastActivityCreated(createdActivity);
+      this.activitiesGateway.broadcastActivityCreated(createdActivity.id);
     }
 
     return createdActivity;
@@ -1655,6 +1707,14 @@ export class ActivitiesService {
       throw new ConflictException(
         `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
       );
+    }
+
+    // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
+    if (context?.permissions && context.roleName) {
+      applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+        permissions: context.permissions,
+        roleName: context.roleName,
+      });
     }
 
     // Extract junction table IDs and venue address from DTO; omit activityStatusId and markAsReviewed (backend sets status)
@@ -2224,11 +2284,10 @@ export class ActivitiesService {
     // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
     // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
     const gateway = this.activitiesGateway;
-    const notifyPayload = result;
     const notifyActivityId = id;
     setImmediate(() => {
       try {
-        gateway.notifyActivityUpdate(notifyActivityId, notifyPayload);
+        gateway.notifyActivityUpdate(notifyActivityId);
       } catch (err: unknown) {
         this.logger.error(
           'notifyActivityUpdate failed (deferred)',

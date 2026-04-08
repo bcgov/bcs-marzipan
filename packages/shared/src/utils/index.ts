@@ -8,3 +8,5 @@ export * from './activity-review-diff';
 export * from './activity-field-labels';
 export * from './build-review-diff-lookups';
 export * from './report-settings';
+export * from './redact-activity-response';
+export * from './apply-field-level-write-policy';

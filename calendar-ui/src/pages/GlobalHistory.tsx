@@ -67,6 +67,7 @@ type FilterOption = {
   label: string;
 };
 
+<<<<<<< feat/CORPCAL-198-history-pagination-scoping
 /** Format a Date using local date parts to avoid UTC off-by-one in timezones ahead of UTC */
 function formatLocalDate(date: Date): string {
   const y = date.getFullYear();
@@ -76,6 +77,9 @@ function formatLocalDate(date: Date): string {
 }
 
 function truncateChangeLogValue(value: string): string {
+=======
+export function truncateChangeLogValue(value: string): string {
+>>>>>>> main
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
 
   if (normalizedValue.length <= MAX_CHANGE_VALUE_LENGTH) {
@@ -85,11 +89,12 @@ function truncateChangeLogValue(value: string): string {
   return `${normalizedValue.slice(0, MAX_CHANGE_VALUE_LENGTH - 3).trimEnd()}...`;
 }
 
-function formatActorUsername(username?: string | null): string | null {
+export function formatActorUsername(username?: string | null): string | null {
   if (!username) {
     return null;
   }
 
+  const hadDomain = username.includes('\\');
   const normalizedUsername = username.split('\\').at(-1)?.split('@')[0]?.trim();
 
   if (!normalizedUsername) {
@@ -97,6 +102,13 @@ function formatActorUsername(username?: string | null): string | null {
   }
 
   if (!/[._-]/.test(normalizedUsername)) {
+    if (hadDomain) {
+      return (
+        normalizedUsername.charAt(0).toUpperCase() +
+        normalizedUsername.slice(1).toLocaleLowerCase()
+      );
+    }
+
     return normalizedUsername;
   }
 
@@ -118,7 +130,7 @@ function getActorDisplayName(entry: GlobalActivityHistoryEntry): string {
   );
 }
 
-function getActorInitials(entry: GlobalActivityHistoryEntry): string {
+export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
   const displayName = getActorDisplayName(entry);
   const parts = displayName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) {
@@ -147,7 +159,7 @@ function formatDateHeading(date: Date): string {
       });
 }
 
-function isEntryInDateRange(
+export function isEntryInDateRange(
   entry: GlobalActivityHistoryEntry,
   range: DateRangeValue
 ): boolean {
@@ -179,7 +191,7 @@ function isEntryInDateRange(
   return true;
 }
 
-function matchesSearch(
+export function matchesSearch(
   entry: GlobalActivityHistoryEntry,
   query: string
 ): boolean {

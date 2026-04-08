@@ -2,6 +2,7 @@ import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
+import { canViewActivityFieldScope } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
   ResponsiveFilterRow,
@@ -13,6 +14,7 @@ import {
 } from '@/components/table/SortDropdown';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import { useAuth } from '@/hooks/useAuth';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import {
@@ -61,11 +63,22 @@ export interface ActivityTableFiltersProps {
     appliedFrom: { id: number; name: string }
   ) => void;
   activeSavedFilterId?: number | null;
+  /** When omitted, derived from the current user (for tests). */
+  pitchFieldVisibility?: {
+    canViewPitchStatus: boolean;
+    canViewPitchDate: boolean;
+  };
 }
 
 export function hasAnyActivityTableFilterActive(
-  filterState: ActivityFilterState
+  filterState: ActivityFilterState,
+  pitchVisibility?: {
+    canViewPitchStatus: boolean;
+    canViewPitchDate: boolean;
+  }
 ): boolean {
+  const canViewPitchStatus = pitchVisibility?.canViewPitchStatus ?? true;
+  const canViewPitchDate = pitchVisibility?.canViewPitchDate ?? true;
   const {
     dateRange,
     categoryNames,
@@ -87,10 +100,12 @@ export function hasAnyActivityTableFilterActive(
   const pitchDateRangeActive =
     pitchDateFilter.kind === 'scheduled' &&
     isDateRangeActive(pitchDateFilter.dateRange);
-  const pitchActive =
-    pitchRequiredStatusNames.length > 0 ||
-    pitchDateFilter.kind !== 'any' ||
-    pitchDateRangeActive;
+  const pitchStatusPartActive =
+    canViewPitchStatus && pitchRequiredStatusNames.length > 0;
+  const pitchDatePartActive =
+    canViewPitchDate &&
+    (pitchDateFilter.kind !== 'any' || pitchDateRangeActive);
+  const pitchActive = pitchStatusPartActive || pitchDatePartActive;
   const lookAheadActive =
     lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
   const leadsActive =
@@ -142,7 +157,21 @@ export function ActivityTableFilters({
   savedFilters,
   onApplySavedFilter,
   activeSavedFilterId = null,
+  pitchFieldVisibility: pitchFieldVisibilityProp,
 }: ActivityTableFiltersProps) {
+  const { user } = useAuth();
+  const pitchFieldVisibility = useMemo(() => {
+    if (pitchFieldVisibilityProp) return pitchFieldVisibilityProp;
+    if (!user) {
+      return { canViewPitchStatus: false, canViewPitchDate: false };
+    }
+    const ctx = { permissions: user.permissions, roleName: user.roleName };
+    return {
+      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
+      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
+    };
+  }, [pitchFieldVisibilityProp, user]);
+
   const summaryContext = useMemo((): ActivityFilterSummaryContext => {
     return {
       statusOptions,
@@ -301,6 +330,10 @@ export function ActivityTableFilters({
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
+
+  const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
+  const canViewPitchDate = pitchFieldVisibility.canViewPitchDate;
+  const showPitchFilter = canViewPitchStatus || canViewPitchDate;
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
     () => [
@@ -481,32 +514,60 @@ export function ActivityTableFilters({
           clearAriaLabel: 'Clear Tags filter',
         },
       },
-      {
-        key: 'pitch',
-        label: 'Pitch',
-        panel: (
-          <PitchFilterPanel
-            filterState={filterState}
-            onFilterStateChange={onFilterStateChange}
-            pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.pitchRequiredStatusNames.length > 0 ||
-            filterState.pitchDateFilter.kind !== 'any',
-          count:
-            filterState.pitchRequiredStatusNames.length +
-            (filterState.pitchDateFilter.kind !== 'any' ? 1 : 0),
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              pitchRequiredStatusNames: [],
-              pitchDateFilter: { kind: 'any' },
-            }),
-          clearAriaLabel: 'Clear Pitch filter',
-        },
-      },
+      ...(showPitchFilter
+        ? [
+            {
+              key: 'pitch',
+              label: 'Pitch',
+              panel: (
+                <PitchFilterPanel
+                  filterState={filterState}
+                  onFilterStateChange={onFilterStateChange}
+                  pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+                  canViewPitchStatus={canViewPitchStatus}
+                  canViewPitchDate={canViewPitchDate}
+                />
+              ),
+              triggerProps: {
+                active: (() => {
+                  const pitchDateRangeActive =
+                    filterState.pitchDateFilter.kind === 'scheduled' &&
+                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
+                  const statusPart =
+                    canViewPitchStatus &&
+                    filterState.pitchRequiredStatusNames.length > 0;
+                  const datePart =
+                    canViewPitchDate &&
+                    (filterState.pitchDateFilter.kind !== 'any' ||
+                      pitchDateRangeActive);
+                  return statusPart || datePart;
+                })(),
+                count: (() => {
+                  const pitchDateRangeActive =
+                    filterState.pitchDateFilter.kind === 'scheduled' &&
+                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
+                  return (
+                    (canViewPitchStatus
+                      ? filterState.pitchRequiredStatusNames.length
+                      : 0) +
+                    (canViewPitchDate &&
+                    (filterState.pitchDateFilter.kind !== 'any' ||
+                      pitchDateRangeActive)
+                      ? 1
+                      : 0)
+                  );
+                })(),
+                onClear: () =>
+                  onFilterStateChange({
+                    ...filterState,
+                    pitchRequiredStatusNames: [],
+                    pitchDateFilter: { kind: 'any' },
+                  }),
+                clearAriaLabel: 'Clear Pitch filter',
+              },
+            } satisfies ResponsiveFilterSlot,
+          ]
+        : []),
     ],
     [
       filterState,
@@ -529,6 +590,9 @@ export function ActivityTableFilters({
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      showPitchFilter,
+      canViewPitchStatus,
+      canViewPitchDate,
     ]
   );
 

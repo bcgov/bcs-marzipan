@@ -71,8 +71,8 @@ export function mapResponseToFormData(
 
   const translationLanguageIds =
     lookups?.translationLanguageNameToId &&
-    response.translationsRequired?.length > 0
-      ? response.translationsRequired
+    (response.translationsRequired?.length ?? 0) > 0
+      ? (response.translationsRequired ?? [])
           .map((name) => lookups.translationLanguageNameToId?.(name))
           .filter((id): id is number => id !== undefined)
       : undefined;
@@ -127,8 +127,8 @@ export function mapResponseToFormData(
     significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
     strategy: response.strategy ?? undefined,
-    dateStatusId: response.dateStatusId,
-    timeStatusId: response.timeStatusId,
+    dateStatusId: response.dateStatusId ?? undefined,
+    timeStatusId: response.timeStatusId ?? undefined,
     venueStatusId: response.venueStatusId ?? undefined,
     activityStatusId: response.activityStatusId,
     isIssue: response.isIssue,

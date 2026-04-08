@@ -29,7 +29,7 @@ import {
 } from 'react';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -216,8 +216,20 @@ function toSentenceCase(s: string): string {
 // Cell sub-components
 // ---------------------------------------------------------------------------
 
-function OverviewCell({ row }: { row: ActivityTableRow }) {
-  const pitchLabel = row.pitchRequiredStatus ?? row.pitchDate;
+/**
+ * List Overview: only pitch **status** is gated by `activities.pitchStatus.view`.
+ */
+function OverviewCell({
+  row,
+  canViewPitchStatus,
+}: {
+  row: ActivityTableRow;
+  canViewPitchStatus: boolean;
+}) {
+  const pitchLabel =
+    (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
+    row.pitchDate ??
+    null;
   const displayIdText = row.displayId ?? String(row.id);
 
   return (
@@ -681,6 +693,16 @@ export function ActivityTable({
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const pitchFieldVisibility = useMemo(() => {
+    if (!user) {
+      return { canViewPitchStatus: false, canViewPitchDate: false };
+    }
+    const ctx = { permissions: user.permissions, roleName: user.roleName };
+    return {
+      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
+      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
+    };
+  }, [user]);
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -892,7 +914,7 @@ export function ActivityTable({
       suppressedByClear: defaultSuppressedByClearRef.current,
       hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
       hasRestoredActivePreferences:
-        hasAnyActivityTableFilterActive(filterState) ||
+        hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
         searchKeyword.trim().length > 0,
       hasDefaultFilter: savedFiltersHook.defaultFilter != null,
     });
@@ -941,6 +963,7 @@ export function ActivityTable({
     setActiveSavedFilter,
     validFilterLookupsForDefaultApply,
     savedFilterDefaultLookupsReady,
+    pitchFieldVisibility,
   ]);
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
@@ -1190,7 +1213,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'activityId' as const },
         ...getActivityColumnSizes('overview'),
-        cell: ({ row }) => <OverviewCell row={row.original} />,
+        cell: ({ row }) => (
+          <OverviewCell
+            row={row.original}
+            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+          />
+        ),
       }),
 
       columnHelper.accessor('summary', {
@@ -1292,6 +1320,7 @@ export function ActivityTable({
       effectiveSortKey,
       effectiveSortDirection,
       handleSortChange,
+      pitchFieldVisibility.canViewPitchStatus,
     ]
   );
 
@@ -1404,7 +1433,8 @@ export function ActivityTable({
   );
 
   const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
+    hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
+    searchKeyword.trim() !== '';
 
   const filterDetailLines = useMemo(
     () =>
@@ -1436,7 +1466,8 @@ export function ActivityTable({
   }, [setPreferences, setActiveSavedFilter]);
 
   const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
-    filterState
+    filterState,
+    pitchFieldVisibility
   )
     ? handleClearPanelFilters
     : undefined;
@@ -1466,6 +1497,7 @@ export function ActivityTable({
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
+      pitchFieldVisibility={pitchFieldVisibility}
       savedFilters={savedFiltersHook}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
       onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {

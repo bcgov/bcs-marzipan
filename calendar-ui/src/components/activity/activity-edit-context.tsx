@@ -14,13 +14,20 @@
  * For new fields: wire `readOnly` from {@link useActivityEdit} for standard
  * controls. Pass `readOnly={readOnly}` to primitives that support it
  * (`FormSelect`, `Combobox`, `Checkbox`, `ScheduledDatePopoverField`, etc.) so
- * view-only users see full-contrast fields. Use `disabled={...}` only when the
- * control should look muted (true disable), not for context read-only alone.
+ * view-only users see full-contrast fields. Use `disabled` when the control
+ * should look muted (field scope view-but-not-edit: `useActivityFieldScopeControl`
+ * and `ActivityFieldScopePermissionTooltip`), not for activity-level read-only alone.
  */
 import { createContext, useContext, type ReactNode } from 'react';
 
+import type { ActivityFieldScope } from '@corpcal/shared';
+
 export type ActivityEditContextValue = {
   readOnly: boolean;
+  /** When omitted, scoped fields fail closed (not shown as editable). `ActivityFormBody` wires auth-based callbacks. */
+  canViewFieldScope?: (scope: ActivityFieldScope) => boolean;
+  /** When omitted, scoped fields fail closed. */
+  canEditFieldScope?: (scope: ActivityFieldScope) => boolean;
 };
 
 const defaultValue: ActivityEditContextValue = {

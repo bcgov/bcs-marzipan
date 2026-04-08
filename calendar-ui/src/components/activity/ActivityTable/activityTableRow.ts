@@ -105,25 +105,25 @@ export function mapActivityResponseToTableRow(
     // Overview
     title: activity.title,
     activityCategories: activity.category,
-    pitchDate: activity.pitchDate,
-    pitchRequiredStatus: activity.pitchRequiredStatus,
+    pitchDate: activity.pitchDate ?? null,
+    pitchRequiredStatus: activity.pitchRequiredStatus ?? null,
     isConfidential: activity.isConfidential,
     isIssue: activity.isIssue,
 
     // Summary
     summary: activity.summary,
     tags: activity.tags,
-    lookAheadStatus: activity.lookAheadStatus,
-    lookAheadSection: activity.lookAheadSection,
+    lookAheadStatus: activity.lookAheadStatus ?? null,
+    lookAheadSection: activity.lookAheadSection ?? null,
 
     // Scheduling
     allDay: activity.isAllDay,
     startDate: activity.startDate,
     endDate: activity.endDate,
-    dateStatus: activity.dateStatus,
+    dateStatus: activity.dateStatus ?? '',
     startTime: activity.startTime,
     endTime: activity.endTime,
-    timeStatus: activity.timeStatus,
+    timeStatus: activity.timeStatus ?? '',
     venue: formatVenueAddress(activity.venueAddress),
     premierRequested: activity.premierRequested,
     activityRepresentatives: activity.representativesAttending,
@@ -141,8 +141,8 @@ export function mapActivityResponseToTableRow(
     commsContactLeadUserId: commsLead?.userId ?? null,
 
     // Materials
-    translationsRequired: activity.translationsRequired,
-    translationsRequiredStatus: activity.translationsRequiredStatus,
+    translationsRequired: activity.translationsRequired ?? [],
+    translationsRequiredStatus: activity.translationsRequiredStatus ?? null,
     commsMaterials: activity.commsMaterials,
 
     // Status

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   filterActivitiesQuerySchema,
   lookupQueryParamsSchema,
+  reportDataQuerySchema,
+  reportDataQueryToActivityFindAllFilters,
 } from './query-params.schema';
 
 describe('lookupQueryParamsSchema', () => {
@@ -194,5 +196,38 @@ describe('filterActivitiesQuerySchema', () => {
       filterActivitiesQuerySchema.parse({ includeDeleted: 'false' })
         .includeDeleted
     ).toBe(false);
+  });
+});
+
+describe('reportDataQuerySchema', () => {
+  it('defaults page to 1 and limit to 500', () => {
+    const result = reportDataQuerySchema.parse({});
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(500);
+  });
+
+  it('accepts search and maps startDate/endDate aliases', () => {
+    const parsed = reportDataQuerySchema.parse({
+      search: ' briefing',
+      startDate: '2025-06-01',
+      endDate: '2025-06-30',
+    });
+    const filters = reportDataQueryToActivityFindAllFilters(parsed);
+    expect(filters.startDateFrom).toBe('2025-06-01');
+    expect(filters.startDateTo).toBe('2025-06-30');
+    expect('search' in filters).toBe(false);
+  });
+
+  it('does not override explicit startDateFrom with startDate alias', () => {
+    const parsed = reportDataQuerySchema.parse({
+      startDateFrom: '2025-01-01',
+      startDate: '2025-06-01',
+    });
+    const filters = reportDataQueryToActivityFindAllFilters(parsed);
+    expect(filters.startDateFrom).toBe('2025-01-01');
+  });
+
+  it('rejects limit above 500', () => {
+    expect(() => reportDataQuerySchema.parse({ limit: '501' })).toThrow();
   });
 });

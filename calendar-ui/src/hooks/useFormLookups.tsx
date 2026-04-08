@@ -68,7 +68,7 @@ export interface FormLookupData {
   // Comms Materials - for Badge components
   commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
 
-  // Translation Languages - for Badge components (shortcode is BCP 47 when set)
+  // Translation Languages - for Badge components (shortcode is an internal language code when set)
   translationLanguages: Array<{
     id: number;
     name: string;

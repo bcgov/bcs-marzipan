@@ -79,7 +79,7 @@ const ACTION_BUTTON_SNIPPET = `<a href="#" onclick="window.open('#', '_blank')" 
  * Targets a div whose class contains `flex-1` (matches DEFAULT_BANNER_CONTENT).
  * Falls back to inserting inside the outer items-center row, or appending.
  */
-function insertActionIntoContent(content: string) {
+export function insertActionIntoContent(content: string) {
   // match: <div ... class="... flex-1 ...">CONTENT</div>
   const containerRe =
     /(<div[^>]*class="[^"]*\bflex-1\b[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/i;

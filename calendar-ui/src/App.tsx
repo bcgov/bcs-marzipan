@@ -42,6 +42,11 @@ const LookAheadReport = lazyWithRetry(() =>
     default: m.LookAheadReport,
   }))
 );
+const ReportsPage = lazyWithRetry(() =>
+  import('./pages/ReportsPage').then((m) => ({
+    default: m.ReportsPage,
+  }))
+);
 const GlobalHistory = lazyWithRetry(() =>
   import('./pages/GlobalHistory').then((m) => ({
     default: m.GlobalHistory,
@@ -127,6 +132,14 @@ function App() {
                 element={
                   <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
                     <LookAheadReport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="reports"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
+                    <ReportsPage />
                   </ProtectedRoute>
                 }
               />

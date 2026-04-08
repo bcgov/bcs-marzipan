@@ -47,10 +47,12 @@ import {
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
 } from '../activity-lead-team-field-config';
+import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
 /** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
@@ -167,7 +169,13 @@ export const ActivityOverviewSection: React.FC<
     ...defaultActivityLeadTeamFieldConfig,
     ...leadTeamFieldProp,
   };
-  const { readOnly } = useActivityEdit();
+  const { readOnly, canViewFieldScope } = useActivityEdit();
+  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? false;
+  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? false;
+  const canViewNotes = canViewFieldScope?.('notes') ?? false;
+  const pitchStatusScope = useActivityFieldScopeControl('pitchStatus');
+  const pitchDateScope = useActivityFieldScopeControl('pitchDate');
+  const notesScope = useActivityFieldScopeControl('notes');
   const form = useFormContext<ActivityFormData>();
   const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
@@ -526,111 +534,135 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="pitchRequiredStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
-              readOnly={readOnly}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
-              onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
-              }
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select status" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {pitchRequiredStatuses.map((status) => (
-                  <SelectItem key={status.id} value={String(status.id)}>
-                    {status.displayName ?? status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelect>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="pitchDate"
-        render={({ field }) => {
-          const raw = field.value ?? '';
-          const pitchLabel = raw
-            ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-            : 'Select pitch date';
-          return (
+      {canViewPitchStatus ? (
+        <FormField
+          control={form.control}
+          name="pitchRequiredStatusId"
+          render={({ field }) => (
             <FormItem>
               <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <FormControl className="w-full" data-field={field.name}>
-                <ScheduledDatePopoverField
-                  triggerVariant="form"
-                  value={raw}
-                  onChange={(iso) => field.onChange(iso || undefined)}
-                  label={pitchLabel}
-                  triggerMuted={!raw}
-                  readOnly={readOnly}
-                  popoverTitle="Select pitch date"
-                  presets={PRESETS_FUTURE_SHORT}
-                  getPresetAnchor={getPresetAnchorToday}
-                  headerRight={
-                    raw && !readOnly ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-primary text-sm"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    ) : null
-                  }
-                />
-              </FormControl>
+              <FormSelect
+                readOnly={pitchStatusScope.readOnly}
+                disabled={pitchStatusScope.fieldScopeDisabled}
+                value={
+                  field.value !== undefined && field.value !== null
+                    ? String(field.value)
+                    : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(value === '' ? undefined : Number(value))
+                }
+              >
+                <ActivityFieldScopePermissionTooltip scope="pitchStatus">
+                  <FormControl data-field={field.name}>
+                    <FormSelectTrigger
+                      readOnly={
+                        pitchStatusScope.readOnly &&
+                        !pitchStatusScope.fieldScopeDisabled
+                      }
+                    >
+                      <SelectValue placeholder="Select status" />
+                    </FormSelectTrigger>
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
+                <SelectContent>
+                  {pitchRequiredStatuses.map((status) => (
+                    <SelectItem key={status.id} value={String(status.id)}>
+                      {status.displayName ?? status.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </FormSelect>
               <FormMessage />
             </FormItem>
-          );
-        }}
-      />
+          )}
+        />
+      ) : null}
 
-      <FormSectionDivider />
+      {canViewPitchDate ? (
+        <FormField
+          control={form.control}
+          name="pitchDate"
+          render={({ field }) => {
+            const raw = field.value ?? '';
+            const pitchLabel = raw
+              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
+              : 'Select pitch date';
+            return (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <ActivityFieldScopePermissionTooltip scope="pitchDate">
+                  <FormControl className="w-full" data-field={field.name}>
+                    <ScheduledDatePopoverField
+                      triggerVariant="form"
+                      value={raw}
+                      onChange={(iso) => field.onChange(iso || undefined)}
+                      label={pitchLabel}
+                      triggerMuted={!raw}
+                      readOnly={pitchDateScope.readOnly}
+                      disabled={pitchDateScope.fieldScopeDisabled}
+                      popoverTitle="Select pitch date"
+                      presets={PRESETS_FUTURE_SHORT}
+                      getPresetAnchor={getPresetAnchorToday}
+                      headerRight={
+                        raw &&
+                        !pitchDateScope.readOnly &&
+                        !pitchDateScope.fieldScopeDisabled ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary text-sm"
+                            onClick={() => field.onChange(undefined)}
+                          >
+                            Clear
+                          </Button>
+                        ) : null
+                      }
+                    />
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
+        />
+      ) : null}
 
-      <FormField
-        control={form.control}
-        name="notes"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <Textarea
-                placeholder="Enter notes"
-                readOnly={readOnly}
-                rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
-                value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {canViewNotes && (
+        <>
+          <FormSectionDivider />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <ActivityFieldScopePermissionTooltip scope="notes">
+                  <FormControl data-field={field.name}>
+                    <Textarea
+                      placeholder="Enter notes"
+                      readOnly={notesScope.readOnly}
+                      disabled={notesScope.fieldScopeDisabled}
+                      rows={4}
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        field.onChange(v === '' ? undefined : v);
+                      }}
+                    />
+                  </FormControl>
+                </ActivityFieldScopePermissionTooltip>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </>
+      )}
 
       <FormField
         control={form.control}
