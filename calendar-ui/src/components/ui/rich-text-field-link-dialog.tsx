@@ -58,8 +58,7 @@ export function RichTextLinkDialog({
         <DialogHeader>
           <DialogTitle>Link</DialogTitle>
           <DialogDescription>
-            Set the URL and optional display text. Leave the URL empty and save
-            to remove the link from the selected text.
+            Set a link URL and optional display text.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
