@@ -177,7 +177,12 @@ export function ActivityPage({
   const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
   const [handoffAwaitingCompletion, setHandoffAwaitingCompletion] =
     useState(false);
+  const handoffAwaitingCompletionRef = useRef(false);
   const handoffToastHandleRef = useRef<LockHandoffToastHandle | null>(null);
+
+  useEffect(() => {
+    handoffAwaitingCompletionRef.current = handoffAwaitingCompletion;
+  }, [handoffAwaitingCompletion]);
 
   useEffect(() => {
     setHandoffAwaitingCompletion(false);
@@ -251,8 +256,13 @@ export function ActivityPage({
   useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
+        const wasHandoff = handoffAwaitingCompletionRef.current;
         setHandoffAwaitingCompletion(false);
-        handoffToastHandleRef.current?.notifyLockAcquired();
+        if (wasHandoff) {
+          handoffToastHandleRef.current?.dismissLoadingOnly();
+        } else {
+          handoffToastHandleRef.current?.notifyLockAcquired();
+        }
         void refreshLockFromServer();
         return;
       }
@@ -284,6 +294,36 @@ export function ActivityPage({
     onLockHandoffCancelled: () => {
       handoffToastHandleRef.current?.notifyHandoffCancelled();
       setHandoffAwaitingCompletion(false);
+    },
+    onLockHandoffResolved: (payload) => {
+      setHandoffAwaitingCompletion(false);
+      if (payload.outcome === 'cancelled') {
+        handoffToastHandleRef.current?.notifyHandoffCancelled();
+        return;
+      }
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = null;
+      if (payload.outcome === 'completed') {
+        if (payload.role === 'holder') {
+          toast.info(
+            `Edit access was transferred to ${payload.counterpartUsername}.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.success('The activity is ready to edit.', {
+            id: `lock-handoff-success-${payload.activityId}`,
+            duration: 5000,
+          });
+          void refreshLockFromServer();
+        }
+        return;
+      }
+      if (payload.outcome === 'aborted_no_holder_lock') {
+        toast.warning(
+          'Lock transfer could not complete. The activity is no longer held by the original editor.',
+          { duration: 8000 }
+        );
+      }
     },
   });
 

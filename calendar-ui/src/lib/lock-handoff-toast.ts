@@ -7,6 +7,19 @@ export type LockHandoffPendingPayload = {
   role: 'holder' | 'requester';
 };
 
+export type LockHandoffResolvedOutcome =
+  | 'completed'
+  | 'cancelled'
+  | 'aborted_no_holder_lock';
+
+export type LockHandoffResolvedPayload = {
+  activityId: number;
+  outcome: LockHandoffResolvedOutcome;
+  role: 'holder' | 'requester';
+  counterpartUsername: string;
+  newLockHolder?: { userId: number; username: string };
+};
+
 export type LockHandoffToastHandle = {
   dispose: () => void;
   /** Requester: call when this user has acquired the edit lock (e.g. after `lockAcquired`). */
@@ -15,6 +28,11 @@ export type LockHandoffToastHandle = {
    * Holder: show cancellation message. Requester: dismiss countdown without success toast.
    */
   notifyHandoffCancelled: () => void;
+  /**
+   * Requester during handoff: `lockAcquired` fired but terminal copy comes from `lockHandoffResolved`;
+   * dismiss the loading/countdown toast only (no success toast yet).
+   */
+  dismissLoadingOnly: () => void;
 };
 
 const SUCCESS_TOAST_DURATION_MS = 5000;
@@ -74,6 +92,12 @@ export function startLockHandoffCountdownToast(
     });
   };
 
+  const dismissLoadingOnly = (): void => {
+    if (disposed || completed) return;
+    clearTick();
+    toast.dismiss(toastId);
+  };
+
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
@@ -122,5 +146,10 @@ export function startLockHandoffCountdownToast(
   run();
   intervalId = window.setInterval(run, 1000) as unknown as number;
 
-  return { dispose, notifyLockAcquired, notifyHandoffCancelled };
+  return {
+    dispose,
+    notifyLockAcquired,
+    notifyHandoffCancelled,
+    dismissLoadingOnly,
+  };
 }
