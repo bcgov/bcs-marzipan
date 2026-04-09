@@ -229,7 +229,7 @@ export class ActivityHistoryService {
   }
 
   async getActivityHistoryForActivityIdsPaged(
-    activityIds: number[],
+    activityIds: number[] | null,
     opts: {
       startDate?: string;
       endDate?: string;
@@ -252,7 +252,7 @@ export class ActivityHistoryService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, opts.pageSize ?? 50));
 
-    if (activityIds.length === 0) {
+    if (activityIds !== null && activityIds.length === 0) {
       return {
         items: [],
         page,
@@ -284,9 +284,10 @@ export class ActivityHistoryService {
       }
     }
 
-    const whereClauses: unknown[] = [
-      inArray(activityHistory.activityId, activityIds),
-    ];
+    const whereClauses: unknown[] = [];
+    if (activityIds !== null) {
+      whereClauses.push(inArray(activityHistory.activityId, activityIds));
+    }
 
     if (opts.startDate) {
       // startDate expected in YYYY-MM-DD
@@ -457,8 +458,7 @@ export class ActivityHistoryService {
       query.offset(offset);
     }
 
-    // Build count query using same joins/where to get total matching rows
-    // Build count query using same joins/where to get total matching rows
+    // Build count query using same joins/where to get total matching rows.
     // For keyset pagination we avoid expensive COUNT(*) and return 0 for totalItems
     let totalCount = 0;
     if (!useKeyset) {

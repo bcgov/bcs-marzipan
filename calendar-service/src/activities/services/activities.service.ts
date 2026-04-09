@@ -2397,11 +2397,13 @@ export class ActivitiesService {
 
   /**
    * Returns visible activity IDs based on the request context's data scope.
-   * Only fetches IDs (not full rows) to minimize data transfer.
+   * Returns null when all activities are visible (admin/bypass) to avoid fetching
+   * all IDs and passing them as a large IN clause — the caller should omit the
+   * activity-ID filter entirely in that case.
    */
   private async getVisibleActivityIds(
     ctx?: RequestContextType
-  ): Promise<number[]> {
+  ): Promise<number[] | null> {
     const dataScope = ctx?.dataScope;
     if (dataScope && !dataScope.bypass) {
       const visibleSet = await this.getVisibleActivityIdsForTeams(
@@ -2409,10 +2411,8 @@ export class ActivitiesService {
       );
       return Array.from(visibleSet);
     }
-    const rows = await this.databaseService.db
-      .select({ id: activities.id })
-      .from(activities);
-    return rows.map((r) => r.id);
+    // Admin / no scope: all activities are visible — return null to skip IN filter
+    return null;
   }
 
   /**
@@ -2423,9 +2423,7 @@ export class ActivitiesService {
   private async enrichHistoryPage(
     historyItems: ActivityHistoryEntry[]
   ): Promise<GlobalActivityHistoryEntry[]> {
-    const pageActivityIds = [
-      ...new Set(historyItems.map((e) => e.activityId)),
-    ];
+    const pageActivityIds = [...new Set(historyItems.map((e) => e.activityId))];
     if (pageActivityIds.length === 0) return [];
 
     const [pageActivityRows, { namesMap: categoriesMap }] = await Promise.all([
@@ -2468,7 +2466,8 @@ export class ActivitiesService {
     totalItems: number;
   }> {
     const visibleActivityIds = await this.getVisibleActivityIds(ctx);
-    if (visibleActivityIds.length === 0) {
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
       return {
         items: [],
         page: 1,
@@ -2532,7 +2531,8 @@ export class ActivitiesService {
     totalItems: number;
   }> {
     const visibleActivityIds = await this.getVisibleActivityIds(ctx);
-    if (visibleActivityIds.length === 0) {
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
       return {
         items: [],
         page: opts.page ?? 1,
@@ -2545,12 +2545,29 @@ export class ActivitiesService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.max(1, opts.pageSize ?? 50);
 
+    // Apply a default 30-day window when neither bound is provided to prevent
+    // unbounded history scans and expensive COUNT(*) over all-time data.
+    const now = new Date();
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const defaultEndDate = formatDate(now);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const defaultStartDate = formatDate(thirtyDaysAgo);
+
+    const startDate =
+      opts.startDate ??
+      (opts.endDate === undefined ? defaultStartDate : undefined);
+    const endDate =
+      opts.endDate ??
+      (opts.startDate === undefined ? defaultEndDate : undefined);
+
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
         visibleActivityIds,
         {
-          startDate: opts.startDate,
-          endDate: opts.endDate,
+          startDate,
+          endDate,
           page,
           pageSize,
           query: opts.query,
