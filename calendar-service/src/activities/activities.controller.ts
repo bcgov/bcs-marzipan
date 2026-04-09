@@ -271,7 +271,7 @@ export class ActivitiesController {
         page: parsedPage,
         pageSize: parsedPageSize,
         query,
-        order: order as 'asc' | 'desc' | undefined,
+        order: order,
       },
       ctx
     );
