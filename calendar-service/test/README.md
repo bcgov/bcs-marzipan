@@ -63,7 +63,7 @@ Located in `src/` alongside the source files.
 Located in `test/` directory.
 
 - **Integration Tests** (`activities.e2e-spec.ts`): Test complete request/response cycle
-- **Lock / handoff** (`locks.e2e-spec.ts`): Two users (Editor + Admin seeds): acquire conflict (423), PATCH without lock (423), `DELETE /locks/:id` invalid/not-owned (404), force handoff after grace rewind + `processAllDueHandoffs`, early save transfer via PATCH, cancel pending handoff, duplicate handoff (409), `cleanupExpiredLocks`. Does not use wall-clock grace waits.
+- **Lock / handoff** (`locks.e2e-spec.ts`): Two users (Editor + Admin seeds): acquire conflict (423), PATCH without lock (423), `DELETE /locks/:id` invalid/not-owned (204 idempotent), force handoff after grace rewind + `processAllDueHandoffs`, early save transfer via PATCH, cancel pending handoff, duplicate handoff (409), `cleanupExpiredLocks`. Does not use wall-clock grace waits.
 - Tests run against the full application stack
 - Use actual database (configured in test environment)
 
@@ -72,7 +72,7 @@ Located in `test/` directory.
 - After the last authenticated **calendar WebSocket** disconnects, locks (and pending force handoffs requested by that user) are released/cancelled after a short debounce so brief reconnects do not drop them. Other clients without that socket are unaffected.
 - `PATCH /activities/:id` requires an active edit lock held by the caller (except missing activities still return 404 first).
 - Terminal force-handoff outcomes are delivered to holder and requester via targeted `lockHandoffResolved` (and optional `lockHandoffCancelled` for cancel).
-- Canceling a pending force handoff uses `DELETE /locks/activity/:id/force-handoff`; releasing a lock uses `DELETE /locks/:lockId` (404 if missing or not owned).
+- Canceling a pending force handoff uses `DELETE /locks/activity/:id/force-handoff`; releasing a lock uses `DELETE /locks/:lockId` (204 idempotent when missing or not owned).
 
 ## Test Coverage
 

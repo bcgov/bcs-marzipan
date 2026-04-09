@@ -132,10 +132,30 @@ describe('LocksController (API integration)', () => {
   });
 
   describe('DELETE /locks/:lockId', () => {
-    it('returns 404 when lock does not exist or is not owned', async () => {
+    it('returns 204 when lock does not exist or is not owned (idempotent)', async () => {
       await createAuthRequest(app, holderToken)
         .delete('/locks/999999999')
-        .expect(404);
+        .expect(204);
+    });
+
+    it('returns 204 when deleting a lock already auto-released by PATCH', async () => {
+      const acquireRes = await createAuthRequest(app, holderToken)
+        .post('/locks')
+        .send({ entityType: 'activity', entityId: activityId })
+        .expect(201);
+      const lockId = acquireRes.body.id as number;
+
+      const updateDto = createMockUpdateRequest({
+        title: `Auto release then delete ${Date.now()}`,
+      });
+      await createAuthRequest(app, holderToken)
+        .patch(`/activities/${activityId}`)
+        .send(updateDto)
+        .expect(200);
+
+      await createAuthRequest(app, holderToken)
+        .delete(`/locks/${lockId}`)
+        .expect(204);
     });
   });
 

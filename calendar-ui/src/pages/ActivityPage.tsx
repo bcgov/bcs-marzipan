@@ -513,7 +513,6 @@ export function ActivityPage({
             displayId: activity.displayId ?? undefined,
           })
         );
-        await release();
         void navigate('/');
       } catch (err) {
         logger.error('Failed to update activity', err);

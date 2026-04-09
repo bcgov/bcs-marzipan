@@ -6,7 +6,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -196,8 +195,10 @@ export class LocksController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Release a lock' })
   @ApiParam({ name: 'lockId', type: Number })
-  @ApiResponse({ status: 204, description: 'Lock released' })
-  @ApiResponse({ status: 404, description: 'Lock not found or not owner' })
+  @ApiResponse({
+    status: 204,
+    description: 'Lock released (idempotent when lock is absent or not owned)',
+  })
   async release(
     @Param('lockId', ParseIntPipe) lockId: number,
     @CurrentUser() user: AuthUser
@@ -206,11 +207,7 @@ export class LocksController {
       lockId,
       user.id
     );
-    if (result.kind === 'notFound') {
-      throw new NotFoundException(
-        'Lock not found or you do not hold this lock.'
-      );
-    }
+    if (result.kind === 'notFound') return;
     if (result.kind === 'released' && result.lock.entityType === 'activity') {
       this.activitiesGateway.notifyLockReleased(result.lock.entityId);
     }

@@ -25,34 +25,15 @@ export type FormSelectProps = ComponentProps<typeof Select> & {
   readOnly?: boolean;
 };
 
-export function FormSelect({
-  readOnly,
-  disabled,
-  open,
-  ...props
-}: FormSelectProps) {
+export function FormSelect({ readOnly, disabled, ...props }: FormSelectProps) {
   const isMuted = Boolean(disabled);
   const viewOnly = Boolean(readOnly) && !isMuted;
 
   if (viewOnly) {
-    return (
-      <Select
-        {...props}
-        disabled={false}
-        open={false}
-        onOpenChange={() => {}}
-      />
-    );
+    return <Select {...props} disabled={false} />;
   }
 
-  return (
-    <Select
-      {...props}
-      disabled={isMuted}
-      open={open}
-      onOpenChange={(nextOpen) => props.onOpenChange?.(nextOpen)}
-    />
-  );
+  return <Select {...props} disabled={isMuted} />;
 }
 
 export type FormSelectTriggerProps = ComponentProps<typeof SelectTrigger> & {
