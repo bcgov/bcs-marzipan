@@ -379,13 +379,19 @@ export class LocksService {
       return { kind: 'notFound' };
     }
 
-    if (lock.entityType === 'activity') {
-      await this.completeHandoffAfterHolderSaveIfPending(lock.entityId, userId);
-    }
+    const didFinalizeHandoff =
+      lock.entityType === 'activity'
+        ? await this.completeHandoffAfterHolderSaveIfPending(
+            lock.entityId,
+            userId
+          )
+        : false;
 
     const stillHeld = await this.getLockById(lockId);
     if (!stillHeld || stillHeld.userId !== userId) {
-      return { kind: 'handoffFinalized' };
+      return didFinalizeHandoff
+        ? { kind: 'handoffFinalized' }
+        : { kind: 'notFound' };
     }
 
     const released = await this.releaseLock(lockId, userId);
@@ -639,7 +645,7 @@ export class LocksService {
   async completeHandoffAfterHolderSaveIfPending(
     activityId: number,
     holderUserId: number
-  ): Promise<void> {
+  ): Promise<boolean> {
     let finalized = false;
     await this.databaseService.db.transaction(async (tx) => {
       const [claimed] = await tx
@@ -662,6 +668,7 @@ export class LocksService {
     if (finalized) {
       this.handoffDeadlineKick.clearScheduledKick(activityId);
     }
+    return finalized;
   }
 
   /**

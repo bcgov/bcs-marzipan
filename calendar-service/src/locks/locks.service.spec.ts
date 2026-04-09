@@ -260,7 +260,7 @@ describe('LocksService', () => {
         .fn()
         .mockResolvedValueOnce({ ...baseLock })
         .mockResolvedValueOnce(null);
-      const completeHandoff = vi.fn().mockResolvedValue(undefined);
+      const completeHandoff = vi.fn().mockResolvedValue(true);
       const releaseLock = vi.fn();
 
       const localModule = await Test.createTestingModule({
@@ -306,7 +306,7 @@ describe('LocksService', () => {
         .fn()
         .mockResolvedValueOnce({ ...baseLock })
         .mockResolvedValueOnce({ ...baseLock });
-      const completeHandoff = vi.fn().mockResolvedValue(undefined);
+      const completeHandoff = vi.fn().mockResolvedValue(false);
       const releaseLock = vi.fn().mockResolvedValue(released);
 
       const localModule = await Test.createTestingModule({
@@ -344,6 +344,51 @@ describe('LocksService', () => {
       expect(result).toEqual({ kind: 'released', lock: released });
       expect(completeHandoff).toHaveBeenCalledWith(42, 100);
       expect(releaseLock).toHaveBeenCalledWith(7, 100);
+    });
+
+    it('returns notFound when lock disappears after recheck without a finalized handoff', async () => {
+      const getLockById = vi
+        .fn()
+        .mockResolvedValueOnce({ ...baseLock })
+        .mockResolvedValueOnce(null);
+      const completeHandoff = vi.fn().mockResolvedValue(false);
+      const releaseLock = vi.fn();
+
+      const localModule = await Test.createTestingModule({
+        providers: [
+          LocksService,
+          {
+            provide: DatabaseService,
+            useValue: { db: { transaction } },
+          },
+          { provide: ApplicationSettingsService, useValue: {} },
+          {
+            provide: ActivitiesGateway,
+            useValue: { notifyLockHandoffCancelled },
+          },
+          {
+            provide: LockHandoffDeadlineKickService,
+            useValue: { clearScheduledKick, scheduleHandoffKick },
+          },
+        ],
+      }).compile();
+
+      const localService = localModule.get(LocksService);
+      vi.spyOn(localService, 'getLockById').mockImplementation(getLockById);
+      vi.spyOn(
+        localService,
+        'completeHandoffAfterHolderSaveIfPending'
+      ).mockImplementation(completeHandoff);
+      vi.spyOn(localService, 'releaseLock').mockImplementation(releaseLock);
+
+      const result = await localService.releaseLockOrFinalizePendingHandoff(
+        7,
+        100
+      );
+
+      expect(result).toEqual({ kind: 'notFound' });
+      expect(completeHandoff).toHaveBeenCalledWith(42, 100);
+      expect(releaseLock).not.toHaveBeenCalled();
     });
 
     it('returns null when the user does not hold the lock', async () => {
