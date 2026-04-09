@@ -50,6 +50,7 @@ import {
 } from '@corpcal/shared';
 import type {
   ActivityFormData,
+  ActivityHistoryEntry,
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
@@ -2137,6 +2138,9 @@ export class ActivitiesService {
       ]),
     ]);
 
+    // Note: previously published category/tag refresh events to Redis here.
+    // Redis worker removed; propagation handled synchronously or via DB jobs if needed.
+
     const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
 
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -2391,56 +2395,205 @@ export class ActivitiesService {
     return this.activityHistoryService.getActivityHistory(id);
   }
 
-  async getGlobalHistory(
+  /**
+   * Returns visible activity IDs based on the request context's data scope.
+   * Returns null when all activities are visible (admin/bypass) to avoid fetching
+   * all IDs and passing them as a large IN clause — the caller should omit the
+   * activity-ID filter entirely in that case.
+   */
+  private async getVisibleActivityIds(
     ctx?: RequestContextType
-  ): Promise<GlobalActivityHistoryEntry[]> {
-    let activityRows = await this.databaseService.db.select().from(activities);
-
+  ): Promise<number[] | null> {
     const dataScope = ctx?.dataScope;
     if (dataScope && !dataScope.bypass) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
+      const visibleSet = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
-      activityRows = activityRows.filter((activity) =>
-        visibleIds.has(activity.id)
-      );
+      return Array.from(visibleSet);
     }
+    // Admin / no scope: all activities are visible — return null to skip IN filter
+    return null;
+  }
 
-    const activityIds = activityRows.map((activity) => activity.id);
-    if (activityIds.length === 0) {
-      return [];
-    }
+  /**
+   * Enriches a page of history entries with activity metadata (title, displayId,
+   * leadTeamId, categories). Only fetches data for activity IDs present on the
+   * current page, keeping each paginated request lightweight.
+   */
+  private async enrichHistoryPage(
+    historyItems: ActivityHistoryEntry[]
+  ): Promise<GlobalActivityHistoryEntry[]> {
+    const pageActivityIds = [...new Set(historyItems.map((e) => e.activityId))];
+    if (pageActivityIds.length === 0) return [];
 
-    const historyEntries =
-      await this.activityHistoryService.getActivityHistoryForActivityIds(
-        activityIds
-      );
-
-    if (historyEntries.length === 0) {
-      return [];
-    }
-
-    const { namesMap: categoriesMap } = (
-      await this.fetchRelatedForActivityIds(activityIds, activityRows)
-    ).categoriesResult;
+    const [pageActivityRows, { namesMap: categoriesMap }] = await Promise.all([
+      this.databaseService.db
+        .select({
+          id: activities.id,
+          displayId: activities.displayId,
+          title: activities.title,
+          leadTeamId: activities.leadTeamId,
+        })
+        .from(activities)
+        .where(inArray(activities.id, pageActivityIds)),
+      this.dataFetcherService.fetchCategoriesForActivities(pageActivityIds),
+    ]);
 
     const activityMap = new Map(
-      activityRows.map((activity) => [
-        activity.id,
+      pageActivityRows.map((a) => [
+        a.id,
         {
-          id: activity.id,
-          displayId: activity.displayId,
-          title: activity.title,
-          leadTeamId: activity.leadTeamId,
-          categories: categoriesMap.get(activity.id) ?? [],
+          id: a.id,
+          displayId: a.displayId,
+          title: a.title,
+          leadTeamId: a.leadTeamId,
+          categories: categoriesMap.get(a.id) ?? [],
         },
       ])
     );
 
-    return historyEntries.flatMap((entry) => {
+    return historyItems.flatMap((entry) => {
       const activity = activityMap.get(entry.activityId);
       return activity ? [{ ...entry, activity }] : [];
     });
+  }
+
+  async getGlobalHistory(ctx?: RequestContextType): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
+      return {
+        items: [],
+        page: 1,
+        pageSize: 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    // Default scope: today (server local date)
+    const now = new Date();
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        visibleActivityIds,
+        {
+          startDate: todayDateStr,
+          endDate: todayDateStr,
+          page: 1,
+          pageSize: 50,
+        }
+      );
+
+    if (historyPage.items.length === 0) {
+      return {
+        items: [],
+        page: 1,
+        pageSize: 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const items = await this.enrichHistoryPage(historyPage.items);
+
+    return {
+      items,
+      page: 1,
+      pageSize: 50,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems ?? 0,
+    };
+  }
+
+  async getGlobalHistoryPaged(
+    opts: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      pageSize?: number;
+      query?: string;
+      order?: 'asc' | 'desc';
+    },
+    ctx?: RequestContextType
+  ): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
+      return {
+        items: [],
+        page: opts.page ?? 1,
+        pageSize: opts.pageSize ?? 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const page = Math.max(1, opts.page ?? 1);
+    const pageSize = Math.max(1, opts.pageSize ?? 50);
+
+    // Apply a default 30-day window when neither bound is provided to prevent
+    // unbounded history scans and expensive COUNT(*) over all-time data.
+    const now = new Date();
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const defaultEndDate = formatDate(now);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const defaultStartDate = formatDate(thirtyDaysAgo);
+
+    const startDate =
+      opts.startDate ??
+      (opts.endDate === undefined ? defaultStartDate : undefined);
+    const endDate =
+      opts.endDate ??
+      (opts.startDate === undefined ? defaultEndDate : undefined);
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        visibleActivityIds,
+        {
+          startDate,
+          endDate,
+          page,
+          pageSize,
+          query: opts.query,
+          order: opts.order,
+        }
+      );
+
+    if (historyPage.items.length === 0) {
+      return {
+        items: [],
+        page,
+        pageSize,
+        hasNext: false,
+        totalItems: historyPage.totalItems ?? 0,
+      };
+    }
+
+    const items = await this.enrichHistoryPage(historyPage.items);
+
+    return {
+      items,
+      page,
+      pageSize,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems,
+    };
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {

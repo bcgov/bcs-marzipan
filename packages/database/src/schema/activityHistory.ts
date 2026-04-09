@@ -34,6 +34,11 @@ export const activityHistory = pgTable(
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    activityTitle: text('activity_title'),
+    activityDisplayId: text('activity_display_id'),
+    actorDisplayName: text('actor_display_name'),
+    actorUsername: text('actor_username'),
+    categoryTagsText: text('category_tags_text'),
   },
   (table) => [
     index('activity_history_activity_id_idx').on(table.activityId),
