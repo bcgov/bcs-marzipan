@@ -60,7 +60,6 @@ import type {
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
-  applyFieldLevelWritePolicy,
   buildReviewDiffLookups,
   buildReviewSnapshot,
   diffReviewFields,
@@ -885,14 +884,6 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
-    // Strip fields the user lacks field-level edit permission for (server applies defaults)
-    if (context?.permissions && context.roleName) {
-      applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
-        permissions: context.permissions,
-        roleName: context.roleName,
-      });
-    }
-
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
@@ -1710,12 +1701,7 @@ export class ActivitiesService {
     }
 
     // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
-    if (context?.permissions && context.roleName) {
-      applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
-        permissions: context.permissions,
-        roleName: context.roleName,
-      });
-    }
+    // Note: Field-level write policy enforcement may be implemented in authorization guards
 
     // Extract junction table IDs and venue address from DTO; omit activityStatusId and markAsReviewed (backend sets status)
     const {
