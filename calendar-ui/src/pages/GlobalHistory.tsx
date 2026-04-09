@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
@@ -44,6 +44,7 @@ import {
   useTeams,
   useUsers,
 } from '@/hooks/useLookups';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   formatHistoryFieldValue,
   getActionText,
@@ -343,6 +344,7 @@ function DateFilter({
 }
 
 export function GlobalHistory() {
+  const location = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<HistoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1024,6 +1026,7 @@ export function GlobalHistory() {
                                 </span>
                                 <Link
                                   to={`/activity/${entry.activity.id}`}
+                                  {...activityFormLinkState(location)}
                                   className="font-medium text-blue-700 hover:underline"
                                 >
                                   {entry.activity.displayId ||

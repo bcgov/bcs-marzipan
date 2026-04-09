@@ -62,7 +62,11 @@ export function useCreateActivity() {
   return useMutation({
     mutationFn: createActivity,
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['activities'] });
+      // Mark list/history stale without refetching while still on create (avoids extra API churn before navigate).
+      void qc.invalidateQueries({
+        queryKey: ['activities'],
+        refetchType: 'none',
+      });
     },
   });
 }

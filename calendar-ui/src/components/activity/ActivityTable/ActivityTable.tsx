@@ -17,7 +17,7 @@ import {
   NotebookText,
   Users,
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   useCallback,
@@ -86,6 +86,7 @@ import {
   getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
 } from '@/lib/activity-filter-summary';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
@@ -693,6 +694,7 @@ export function ActivityTable({
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const pitchFieldVisibility = useMemo(() => {
     if (!user) {
@@ -1680,7 +1682,10 @@ export function ActivityTable({
                         )
                           return;
                         if (window.getSelection()?.toString().trim()) return;
-                        void navigate(`/activity/${row.original.id}`);
+                        void navigate(
+                          `/activity/${row.original.id}`,
+                          activityFormLinkState(location)
+                        );
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1689,7 +1694,10 @@ export function ActivityTable({
                         )
                           return;
                         e.preventDefault();
-                        void navigate(`/activity/${row.original.id}`);
+                        void navigate(
+                          `/activity/${row.original.id}`,
+                          activityFormLinkState(location)
+                        );
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

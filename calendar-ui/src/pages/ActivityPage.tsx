@@ -1,5 +1,5 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -63,13 +63,15 @@ import {
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
+import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import {
   buildMarkReviewedOnlyPayload,
   buildPayloadForUpdate,
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
 import { computeFormChanges } from '../lib/activity-history-format';
-import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
+import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
+import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
@@ -89,6 +91,7 @@ export function ActivityPage({
   refreshActivity,
 }: ActivityPageProps): React.ReactElement {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
 
@@ -137,6 +140,7 @@ export function ActivityPage({
   const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
+  const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canForceHandoff = hasPermission(
     PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF
@@ -363,13 +367,17 @@ export function ActivityPage({
     (!isBlockedStatus || canEditWhenBlocked);
 
   const handleGoBack = useCallback(() => {
-    // New tab / direct loads have no prior history entry; send users to the activity list.
+    const fromState = getActivityFormBackTarget(location.state);
+    if (fromState != null) {
+      void navigate(fromState);
+      return;
+    }
     if (window.history.length > 1) {
       void navigate(-1);
     } else {
       void navigate('/');
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
@@ -505,19 +513,32 @@ export function ActivityPage({
           } as UpdateActivityRequest;
         }
 
-        await updateMutation.mutateAsync({ id, data: submitData });
+        const updated = await updateMutation.mutateAsync({
+          id,
+          data: submitData,
+        });
         const titleForToast =
           mode.kind === 'reviewOnly'
             ? (activity.title ?? '')
             : (mode.validatedData.title ?? '');
-        toast.success(
-          'Activity updated',
-          getActivityUpdatedToastOptions({
-            id: String(id),
-            title: titleForToast,
-            displayId: activity.displayId ?? undefined,
-          })
-        );
+        const subtitleTitle =
+          titleForToast.trim().length > 0
+            ? titleForToast
+            : (updated.title ?? '');
+        showActivityMutationSuccessToast({
+          toastId: `activity-updated-${id}`,
+          kind: 'updated',
+          displayId: resolveActivityToastDisplayId(
+            updated.displayId,
+            updated.id
+          ),
+          title: subtitleTitle,
+          activityId: id,
+          showViewButton: canViewActivity,
+          onViewNavigate: (aid) => {
+            void navigate(`/activity/${aid}`);
+          },
+        });
         // Backend update flow already releases the lock; clear local hold to
         // avoid keepalive release during unmount/navigation.
         applyExternalLockReleased();
@@ -541,7 +562,7 @@ export function ActivityPage({
       updateMutation,
       form,
       activity.title,
-      activity.displayId,
+      canViewActivity,
       applyExternalLockReleased,
       navigate,
     ]
