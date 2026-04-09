@@ -2079,10 +2079,18 @@ export class ActivitiesService {
     });
 
     if (existingLock && existingLock.userId === userId) {
-      await this.locksService.releaseLockOrFinalizePendingHandoff(
-        existingLock.id,
-        userId
-      );
+      const releaseResult =
+        await this.locksService.releaseLockOrFinalizePendingHandoff(
+          existingLock.id,
+          userId
+        );
+      // Broadcast explicit lock release so other viewers clear lock UI without reload.
+      if (
+        releaseResult?.kind === 'released' &&
+        releaseResult.lock.entityType === 'activity'
+      ) {
+        this.activitiesGateway.notifyLockReleased(releaseResult.lock.entityId);
+      }
     }
 
     // Fetch related data for the updated activity

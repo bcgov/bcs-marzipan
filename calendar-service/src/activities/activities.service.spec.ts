@@ -109,6 +109,7 @@ describe('ActivitiesService', () => {
   // Mock activities gateway
   const mockActivitiesGateway = {
     notifyActivityUpdate: vi.fn(),
+    notifyLockReleased: vi.fn(),
     broadcastActivityCreated: vi.fn(),
     server: {
       to: vi.fn().mockReturnThis(),
@@ -166,7 +167,9 @@ describe('ActivitiesService', () => {
   const mockLocksService = {
     getLockForEntity: vi.fn().mockResolvedValue(null),
     releaseLock: vi.fn().mockResolvedValue(null),
-    releaseLockOrFinalizePendingHandoff: vi.fn().mockResolvedValue(null),
+    releaseLockOrFinalizePendingHandoff: vi
+      .fn()
+      .mockResolvedValue({ kind: 'notFound' }),
     tryAcquireLock: vi.fn().mockResolvedValue({}),
     completeHandoffAfterHolderSaveIfPending: vi
       .fn()
@@ -1095,6 +1098,22 @@ describe('ActivitiesService', () => {
         lastActivityAt: new Date(),
         idleExpiresAt: new Date(Date.now() + 60_000),
       });
+      mockLocksService.releaseLockOrFinalizePendingHandoff.mockResolvedValue({
+        kind: 'released',
+        lock: {
+          id: 99,
+          userId: 1,
+          entityType: 'activity',
+          entityId: 1,
+          username: 'editor',
+          sessionId: null,
+          acquiredAt: new Date(),
+          expiresAt: new Date(Date.now() + 60_000),
+          lastRenewedAt: new Date(),
+          lastActivityAt: new Date(),
+          idleExpiresAt: new Date(Date.now() + 60_000),
+        },
+      });
 
       mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         const tx = {
@@ -1171,6 +1190,7 @@ describe('ActivitiesService', () => {
       expect(
         mockLocksService.releaseLockOrFinalizePendingHandoff
       ).toHaveBeenCalledWith(99, 1);
+      expect(mockActivitiesGateway.notifyLockReleased).toHaveBeenCalledWith(1);
       expect(
         mockLocksService.completeHandoffAfterHolderSaveIfPending
       ).not.toHaveBeenCalled();

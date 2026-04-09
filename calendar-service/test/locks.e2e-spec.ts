@@ -123,7 +123,8 @@ describe('LocksController (API integration)', () => {
       const updateDto = createMockUpdateRequest({
         title: `No lock patch ${Date.now()}`,
       });
-      const res = await createAuthRequest(app, holderToken)
+      // Use admin user to avoid team-scope permission 403 masking lock checks.
+      const res = await createAuthRequest(app, adminToken)
         .patch(`/activities/${activityId}`)
         .send(updateDto)
         .expect(423);
@@ -139,7 +140,8 @@ describe('LocksController (API integration)', () => {
     });
 
     it('returns 204 when deleting a lock already auto-released by PATCH', async () => {
-      const acquireRes = await createAuthRequest(app, holderToken)
+      // Use admin user to guarantee patch permission in all seeded datasets.
+      const acquireRes = await createAuthRequest(app, adminToken)
         .post('/locks')
         .send({ entityType: 'activity', entityId: activityId })
         .expect(201);
@@ -148,12 +150,12 @@ describe('LocksController (API integration)', () => {
       const updateDto = createMockUpdateRequest({
         title: `Auto release then delete ${Date.now()}`,
       });
-      await createAuthRequest(app, holderToken)
+      await createAuthRequest(app, adminToken)
         .patch(`/activities/${activityId}`)
         .send(updateDto)
         .expect(200);
 
-      await createAuthRequest(app, holderToken)
+      await createAuthRequest(app, adminToken)
         .delete(`/locks/${lockId}`)
         .expect(204);
     });

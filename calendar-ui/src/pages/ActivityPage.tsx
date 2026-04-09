@@ -513,6 +513,9 @@ export function ActivityPage({
             displayId: activity.displayId ?? undefined,
           })
         );
+        // Backend update flow already releases the lock; clear local hold to
+        // avoid keepalive release during unmount/navigation.
+        applyExternalLockReleased();
         void navigate('/');
       } catch (err) {
         logger.error('Failed to update activity', err);
@@ -534,7 +537,7 @@ export function ActivityPage({
       form,
       activity.title,
       activity.displayId,
-      release,
+      applyExternalLockReleased,
       navigate,
     ]
   );
