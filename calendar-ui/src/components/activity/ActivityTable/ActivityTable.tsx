@@ -50,6 +50,7 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
@@ -369,7 +370,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             overflow: 'hidden',
           }}
         >
-          {row.summary}
+          <ActivityRichTextContent value={row.summary} stopLinkPropagation />
         </div>
 
         {needsTruncation &&

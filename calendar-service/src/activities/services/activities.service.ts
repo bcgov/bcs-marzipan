@@ -67,6 +67,8 @@ import {
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
+  plainTextFromActivityRichField,
+  tipTapDocJsonFromPlainText,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -458,10 +460,12 @@ export class ActivitiesService {
         continue;
       }
       if (key === 'summary') {
-        prior.summary =
-          current.summary.length > 48
-            ? current.summary.slice(0, current.summary.length - 24).trimEnd()
-            : `[Prior reviewed text] ${current.summary}`;
+        const plain = plainTextFromActivityRichField(current.summary);
+        const shortened =
+          plain.length > 48
+            ? plain.slice(0, plain.length - 24).trimEnd()
+            : `[Prior reviewed text] ${plain}`;
+        prior.summary = tipTapDocJsonFromPlainText(shortened);
         continue;
       }
       if (key === 'title') {
@@ -499,7 +503,9 @@ export class ActivitiesService {
     const snap = buildReviewSnapshot(prior);
     const diff = diffReviewFields(current, snap);
     if (diff.length === 0) {
-      prior.summary = `[Prior reviewed text] ${current.summary}`;
+      prior.summary = tipTapDocJsonFromPlainText(
+        `[Prior reviewed text] ${plainTextFromActivityRichField(current.summary)}`
+      );
     }
 
     return prior;

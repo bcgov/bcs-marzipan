@@ -276,15 +276,20 @@ export function ActivityPage({
       }
     },
     onLockReleased: () => {
+      const initialData = initialFormDataRef.current;
+      // Revert unsaved edits when we lose the lock while in edit mode; baseline is kept in initialFormDataRef.
+      const shouldResetForm = isEditing && initialData != null;
       clearLockedByOther();
       applyExternalLockReleased();
       setFormUiEpoch((epoch) => epoch + 1);
-      setIsEditing((editing) => {
-        if (editing && initialFormDataRef.current) {
-          form.reset(initialFormDataRef.current);
-        }
-        return false;
-      });
+      setIsEditing(false);
+      if (shouldResetForm) {
+        // Do not call form.reset (and thus TipTap setContent via RHF) during React render or commit phases.
+        // queueMicrotask matches rich-text-field deferred sync and avoids render-phase editor updates.
+        queueMicrotask(() => {
+          form.reset(initialData);
+        });
+      }
       void refreshActivity();
     },
     onDataUpdated: () => {
@@ -780,8 +785,7 @@ export function ActivityPage({
                 {showRequestDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => setShowRequestDeleteModal(true));
@@ -794,8 +798,7 @@ export function ActivityPage({
                 {showDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => void handleOpenDeleteModal());

@@ -10,3 +10,4 @@ export * from './build-review-diff-lookups';
 export * from './report-settings';
 export * from './redact-activity-response';
 export * from './apply-field-level-write-policy';
+export * from './activity-rich-text';
