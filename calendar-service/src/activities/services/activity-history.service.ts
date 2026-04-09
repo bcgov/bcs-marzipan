@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 
-import { activities, activityHistory, users } from '@corpcal/database/schema';
+import {
+  activities,
+  activityCategories,
+  activityHistory,
+  activitySubscriptions,
+  categories,
+  tags,
+  users,
+} from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import type {
   ActivityHistoryEntry,
@@ -115,7 +123,39 @@ export class ActivityHistoryService {
     tx?: Database
   ): Promise<ActivityHistory> {
     const db = tx ?? this.databaseService.db;
+    // Fetch denormalized fields in the caller to avoid expensive triggers on write
+    const [activityRow] = await db
+      .select({ title: activities.title, displayId: activities.displayId })
+      .from(activities)
+      .where(eq(activities.id, activityId))
+      .limit(1);
 
+    const [userRow] = await db
+      .select({ displayName: users.adDisplayName, username: users.adUsername })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const categoryRows = await db
+      .select({ name: categories.displayName })
+      .from(activityCategories)
+      .leftJoin(categories, eq(activityCategories.categoryId, categories.id))
+      .where(eq(activityCategories.activityId, activityId));
+
+    const tagRows = await db
+      .select({ name: tags.displayName })
+      .from(activitySubscriptions)
+      .leftJoin(tags, eq(activitySubscriptions.tagId, tags.id))
+      .where(eq(activitySubscriptions.activityId, activityId));
+
+    const categoryTagsText = [
+      ...(categoryRows.map((r: any) => r.name).filter(Boolean) as string[]),
+      ...(tagRows.map((r: any) => r.name).filter(Boolean) as string[]),
+    ].join(' ');
+
+    // Insert denormalized fields. The TypeScript DB schema may not include
+    // these new columns yet, so cast the values to `any` to avoid type errors
+    // while the DB migration is staged separately.
     const [historyEntry] = await db
       .insert(activityHistory)
       .values({
@@ -124,6 +164,11 @@ export class ActivityHistoryService {
         actionType,
         changes: changes ? (changes as unknown) : null,
         notes: notes || null,
+        activityTitle: activityRow?.title ?? null,
+        activityDisplayId: activityRow?.displayId ?? null,
+        actorDisplayName: userRow?.displayName ?? null,
+        actorUsername: userRow?.username ?? null,
+        categoryTagsText: categoryTagsText || null,
       })
       .returning();
 
