@@ -619,6 +619,42 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     '30/60/90 day report showing activities in upcoming 30, 60, and 90 day periods',
     1,
     1
+  ),
+  (
+    3,
+    'exec',
+    'Executive Look Ahead Report',
+    3,
+    true,
+    'team',
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "executiveSummary", "summary", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection"], "sections": [{"id": "events", "name": "Events", "order": 1, "filter": {"lookAheadSection": "events"}}, {"id": "issues", "name": "Issues", "order": 2, "filter": {"lookAheadSection": "issues"}}]}'::jsonb,
+    'Executive look ahead report with the same layout as Look Ahead (events and issues)',
+    1,
+    1
+  ),
+  (
+    4,
+    'planning',
+    'Planning Report',
+    4,
+    true,
+    'team',
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "category", "isIssue", "newsReleaseOrigin", "strategy"], "sections": [{"id": "all", "name": "All Activities", "order": 1}]}'::jsonb,
+    'Planning report for activities with strategy and scheduling context',
+    1,
+    1
+  ),
+  (
+    5,
+    'custom',
+    'Custom',
+    5,
+    true,
+    'team',
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "executiveSummary", "summary", "category", "isIssue", "newsReleaseOrigin"], "sections": [{"id": "results", "name": "Results", "order": 1}]}'::jsonb,
+    'Custom report: filter activities as needed; non-confidential items only in the data view',
+    1,
+    1
   )
 ON CONFLICT (id) DO NOTHING;
 

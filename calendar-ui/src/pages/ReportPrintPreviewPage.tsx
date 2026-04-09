@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   fetchReportData,
   type ReportDataRequestParams,
 } from '@/api/reportsApi';
 import { StatusMessage } from '@/components/shared';
-import { getReportTemplateHtml } from '@/lib/report-export';
+import { Button } from '@/components/ui/button';
+import { showErrorToast } from '@/lib/error-toast';
+import {
+  getReportTemplateHtml,
+  handleReportExport,
+  type ReportExportFormat,
+} from '@/lib/report-export';
 import { REPORT_PRINT_PREVIEW_STORAGE_KEY } from '@/lib/report-print-preview';
 
 const DEFAULT_PARAMS: ReportDataRequestParams = {
@@ -35,6 +41,7 @@ function readSnapshotParams(reportType: string): ReportDataRequestParams {
 export function ReportPrintPreviewPage() {
   const [searchParams] = useSearchParams();
   const reportType = (searchParams.get('type') ?? '').trim();
+  const [isExporting, setIsExporting] = useState(false);
 
   const requestParams = useMemo(
     () => readSnapshotParams(reportType),
@@ -51,6 +58,28 @@ export function ReportPrintPreviewPage() {
     if (!data || !reportType) return '';
     return getReportTemplateHtml(reportType, data);
   }, [data, reportType]);
+
+  const runExport = async (format: ReportExportFormat) => {
+    if (!reportType) return;
+    setIsExporting(true);
+    try {
+      await handleReportExport({
+        reportType,
+        format,
+        data,
+        queryParams: requestParams,
+      });
+    } catch (err) {
+      const label =
+        format === 'pdf' ? 'PDF' : format === 'csv' ? 'CSV' : 'spreadsheet';
+      showErrorToast(err, `Failed to export ${label}. Please try again.`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportControlsDisabled =
+    !data || isLoading || isFetching || isExporting;
 
   if (!reportType) {
     return (
@@ -78,23 +107,59 @@ export function ReportPrintPreviewPage() {
     );
   }
 
-  if (isLoading || isFetching) {
-    return (
-      <div className="bg-muted/40 min-h-screen py-6">
-        <div className="bg-background text-muted-foreground mx-auto max-w-[1200px] px-4 py-12 text-center text-sm shadow-md">
-          Loading print preview…
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-200 py-6 print:bg-white print:py-0">
       <div className="mx-auto max-w-[1200px] bg-white px-4 py-6 shadow-md print:max-w-none print:shadow-none">
         <div
-          className="report-print-preview-root min-w-0"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+          className="mb-4 flex flex-col items-end gap-2 print:hidden"
+          aria-busy={isExporting}
+        >
+          {isExporting ? (
+            <span className="text-muted-foreground text-sm">
+              Export in progress…
+            </span>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportControlsDisabled}
+              onClick={() => void runExport('pdf')}
+            >
+              Export PDF
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportControlsDisabled}
+              onClick={() => void runExport('csv')}
+            >
+              Export CSV
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exportControlsDisabled}
+              onClick={() => void runExport('xlsx')}
+            >
+              Export XLSX
+            </Button>
+          </div>
+        </div>
+
+        {isLoading || isFetching ? (
+          <div className="text-muted-foreground py-12 text-center text-sm">
+            Loading print preview…
+          </div>
+        ) : (
+          <div
+            className="report-print-preview-root min-w-0"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
       </div>
     </div>
   );
