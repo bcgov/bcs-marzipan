@@ -4,7 +4,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -448,6 +448,36 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => expect(mockAcquire).toHaveBeenCalledTimes(1));
   });
 
+  it('does not acquire edit lock while initial lock status is still checking', async () => {
+    mockLockState = 'checking';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
+  });
+
+  it('does not acquire edit lock from intent while lock state is acquiring', async () => {
+    mockLockState = 'acquiring';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
+  });
+
   it('resets form and shows error toast when lock acquisition fails', async () => {
     mockAcquire.mockResolvedValue(false);
     const user = userEvent.setup();
@@ -495,6 +525,9 @@ describe('ActivityPage optimistic inline edit', () => {
     renderActivityPage();
 
     await screen.findByText(/Lead team/);
-    expect(screen.getByText(/Other User/)).toBeInTheDocument();
+    const lockBanner = screen.getByRole('alert');
+    expect(lockBanner).toHaveTextContent(/Other User/);
+    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    expect(titleTextarea).toHaveAttribute('readonly');
   });
 });

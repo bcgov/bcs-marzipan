@@ -11,6 +11,7 @@ export type LockInfo = {
   username: string;
   acquiredAt: string;
   expiresAt: string;
+  idleExpiresAt: string;
 };
 
 export type LockStatusResponse = {
@@ -22,10 +23,26 @@ export type LockStatusResponse = {
     username: string;
     acquiredAt: string;
     expiresAt: string;
+    idleExpiresAt: string;
   };
 };
 
 export type AcquireLockResponse = LockInfo;
+
+export type HeartbeatLockResponse = {
+  serverTime: string;
+  idleExpiresAt: string;
+  throttled: boolean;
+};
+
+export type ForceHandoffResponse = {
+  graceEndsAt: string;
+  pendingHandoffId: number;
+};
+
+export type IdleTimeoutConfigResponse = {
+  idleTimeoutMinutes: number;
+};
 
 /** 423 Locked - activity is being edited by another user */
 export const LOCKED_STATUS = 423;
@@ -55,6 +72,28 @@ export async function getLockStatus(
   return res.data;
 }
 
+function locksApiBaseUrl(): string {
+  const base = import.meta.env.VITE_API_BASE_URL || '/api';
+  return base.replace(/\/$/, '');
+}
+
+/**
+ * Best-effort release during `pagehide` / document unload. Browsers often abort
+ * in-flight XHR/fetch without `keepalive`, so the normal Axios path can fail on
+ * tab close or hard navigation even though React cleanup runs.
+ */
+export function releaseLockWithKeepalive(lockId: number): void {
+  const url = `${locksApiBaseUrl()}/locks/${lockId}`;
+  void fetch(url, {
+    method: 'DELETE',
+    credentials: 'include',
+    keepalive: true,
+    headers: {
+      'X-Correlation-ID': crypto.randomUUID(),
+    },
+  });
+}
+
 export async function releaseLock(lockId: number): Promise<void> {
   try {
     await api.delete(`/locks/${lockId}`);
@@ -62,4 +101,44 @@ export async function releaseLock(lockId: number): Promise<void> {
     logger.warn('Release lock failed', error);
     throw error;
   }
+}
+
+export async function heartbeatLock(
+  lockId: number
+): Promise<HeartbeatLockResponse> {
+  const res = await api.post<HeartbeatLockResponse>(
+    `/locks/heartbeat/${lockId}`
+  );
+  return res.data;
+}
+
+export async function requestForceHandoff(
+  activityId: number
+): Promise<ForceHandoffResponse> {
+  const res = await api.post<ForceHandoffResponse>(
+    `/locks/activity/${activityId}/force-handoff`
+  );
+  return res.data;
+}
+
+export async function cancelForceHandoff(activityId: number): Promise<void> {
+  await api.delete(`/locks/activity/${activityId}/force-handoff`);
+}
+
+export async function fetchIdleTimeoutConfig(): Promise<IdleTimeoutConfigResponse> {
+  const res = await api.get<{
+    success: boolean;
+    data: IdleTimeoutConfigResponse;
+  }>('/locks/idle-timeout-config');
+  return res.data.data;
+}
+
+export async function patchIdleTimeoutConfig(
+  idleTimeoutMinutes: number
+): Promise<IdleTimeoutConfigResponse> {
+  const res = await api.patch<{
+    success: boolean;
+    data: IdleTimeoutConfigResponse;
+  }>('/locks/idle-timeout-config', { idleTimeoutMinutes });
+  return res.data.data;
 }

@@ -1,4 +1,5 @@
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 
 /**
  * Report-only keyword filter on API activities.
@@ -27,7 +28,8 @@ function activityResponseSearchableFieldValues(
   return [
     activity.title,
     activity.displayId ?? '',
-    activity.summary,
+    plainTextFromActivityRichField(activity.summary),
+    plainTextFromActivityRichField(activity.executiveSummary ?? ''),
     activity.category.join(' '),
     activity.tags.map((t) => t.text).join(' '),
     activity.lookAheadStatus ?? '',

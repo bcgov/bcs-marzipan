@@ -4,6 +4,7 @@ import {
   Building2,
   FileText,
   FolderTree,
+  Lock,
   MapPin,
   Megaphone,
   Palette,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { BannerSettingsAdmin } from '@/components/admin';
+import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
 import {
   ActivityStatusesAdmin,
   CategoriesAdmin,
@@ -26,6 +28,7 @@ import {
 
 type Section =
   | 'banner'
+  | 'edit-lock-idle'
   | 'categories'
   | 'cities'
   | 'comms'
@@ -38,6 +41,11 @@ type Section =
 
 const sections = [
   { id: 'banner' as Section, label: 'System Banner', icon: Megaphone },
+  {
+    id: 'edit-lock-idle' as Section,
+    label: 'Edit lock idle',
+    icon: Lock,
+  },
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
   { id: 'cities' as Section, label: 'Cities', icon: MapPin },
   { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
@@ -118,6 +126,10 @@ export function Settings() {
         <div className="space-y-8">
           <div id="section-banner">
             <BannerSettingsAdmin />
+          </div>
+
+          <div id="section-edit-lock-idle">
+            <EditLockIdleSettingsAdmin />
           </div>
 
           <div id="section-categories">

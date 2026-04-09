@@ -5,11 +5,24 @@ import {
   CALENDAR_SOCKET_IO_OPTIONS,
   getCalendarSocketUrl,
 } from '@/lib/calendar-socket';
+import type {
+  LockHandoffPendingPayload,
+  LockHandoffResolvedPayload,
+} from '@/lib/lock-handoff-toast';
+
+export type LockHandoffPendingSocketPayload = LockHandoffPendingPayload;
+export type LockHandoffResolvedSocketPayload = LockHandoffResolvedPayload;
 
 interface UseActivityWebSocketOptions {
   onLockAcquired?: (lockedBy: { userId: number; username: string }) => void;
   onLockReleased?: () => void;
   onDataUpdated?: () => void;
+  /** User-targeted: admin handoff grace countdown (same socket connection). */
+  onLockHandoffPending?: (payload: LockHandoffPendingSocketPayload) => void;
+  /** User-targeted: requester cancelled pending force handoff. */
+  onLockHandoffCancelled?: () => void;
+  /** User-targeted: terminal handoff outcome (completed, cancelled, or aborted). */
+  onLockHandoffResolved?: (payload: LockHandoffResolvedSocketPayload) => void;
 }
 
 /**
@@ -59,6 +72,27 @@ export function useActivityWebSocket(
       }
     });
 
+    socket.on('lockHandoffPending', (data: LockHandoffPendingSocketPayload) => {
+      if (data.activityId === activityId) {
+        optionsRef.current.onLockHandoffPending?.(data);
+      }
+    });
+
+    socket.on('lockHandoffCancelled', (data: { activityId: number }) => {
+      if (data.activityId === activityId) {
+        optionsRef.current.onLockHandoffCancelled?.();
+      }
+    });
+
+    socket.on(
+      'lockHandoffResolved',
+      (data: LockHandoffResolvedSocketPayload) => {
+        if (data.activityId === activityId) {
+          optionsRef.current.onLockHandoffResolved?.(data);
+        }
+      }
+    );
+
     return () => {
       socket.emit('leaveActivity', activityId);
       socket.off('connect', emitViewActivity);
@@ -66,6 +100,9 @@ export function useActivityWebSocket(
       socket.off('lockAcquired');
       socket.off('lockReleased');
       socket.off('dataUpdated');
+      socket.off('lockHandoffPending');
+      socket.off('lockHandoffCancelled');
+      socket.off('lockHandoffResolved');
       socket.disconnect();
     };
   }, [activityId]);

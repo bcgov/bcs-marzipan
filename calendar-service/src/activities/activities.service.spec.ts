@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -107,6 +109,7 @@ describe('ActivitiesService', () => {
   // Mock activities gateway
   const mockActivitiesGateway = {
     notifyActivityUpdate: vi.fn(),
+    notifyLockReleased: vi.fn(),
     broadcastActivityCreated: vi.fn(),
     server: {
       to: vi.fn().mockReturnThis(),
@@ -163,8 +166,14 @@ describe('ActivitiesService', () => {
   // Mock locks service (added when ActivitiesService started using LocksService)
   const mockLocksService = {
     getLockForEntity: vi.fn().mockResolvedValue(null),
-    releaseLock: vi.fn().mockResolvedValue(undefined),
+    releaseLock: vi.fn().mockResolvedValue(null),
+    releaseLockOrFinalizePendingHandoff: vi
+      .fn()
+      .mockResolvedValue({ kind: 'notFound' }),
     tryAcquireLock: vi.fn().mockResolvedValue({}),
+    completeHandoffAfterHolderSaveIfPending: vi
+      .fn()
+      .mockResolvedValue(undefined),
   };
 
   // Mock policy service (for delete context: comms/lead-team when no delete.any)
@@ -935,6 +944,47 @@ describe('ActivitiesService', () => {
   });
 
   describe('update', () => {
+    const ownEditLockForUser1Activity1 = {
+      id: 99,
+      userId: 1,
+      entityType: 'activity' as const,
+      entityId: 1,
+      username: 'editor',
+      sessionId: null as string | null,
+      acquiredAt: new Date(),
+      expiresAt: new Date(Date.now() + 300_000),
+      lastRenewedAt: new Date(),
+      lastActivityAt: new Date(),
+      idleExpiresAt: new Date(Date.now() + 300_000),
+    };
+
+    beforeEach(() => {
+      mockLocksService.getLockForEntity.mockResolvedValue(
+        ownEditLockForUser1Activity1
+      );
+    });
+
+    it('throws HttpException 423 when caller holds no edit lock', async () => {
+      mockLocksService.getLockForEntity.mockResolvedValue(null);
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      const updateDto = createMockUpdateRequest({ title: 'No lock' });
+      let thrown: unknown;
+      try {
+        await service.update(1, updateDto, 1);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect((thrown as HttpException).getStatus()).toBe(HttpStatus.LOCKED);
+      const body = (thrown as HttpException).getResponse() as {
+        lockRequired?: boolean;
+      };
+      expect(body.lockRequired).toBe(true);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
     it('should update an activity and return a valid ActivityResponse', async () => {
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({
@@ -1026,6 +1076,124 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
       ).toBe('updated');
+    });
+
+    it('releases lock via releaseLockOrFinalizePendingHandoff after update when the updater holds the lock', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+      });
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+      mockLocksService.releaseLockOrFinalizePendingHandoff.mockResolvedValue({
+        kind: 'released',
+        lock: {
+          id: 99,
+          userId: 1,
+          entityType: 'activity',
+          entityId: 1,
+          username: 'editor',
+          sessionId: null,
+          acquiredAt: new Date(),
+          expiresAt: new Date(Date.now() + 60_000),
+          lastRenewedAt: new Date(),
+          lastActivityAt: new Date(),
+          idleExpiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            const joinChain = {
+              ...fetchChain,
+              where: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(joinChain);
+            fetchChain.leftJoin.mockReturnValue(joinChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      const updateDto = createMockUpdateRequest({ title: 'Updated Activity' });
+      await service.update(1, updateDto, 1);
+
+      expect(
+        mockLocksService.releaseLockOrFinalizePendingHandoff
+      ).toHaveBeenCalledWith(99, 1);
+      expect(mockActivitiesGateway.notifyLockReleased).toHaveBeenCalledWith(1);
+      expect(
+        mockLocksService.completeHandoffAfterHolderSaveIfPending
+      ).not.toHaveBeenCalled();
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {

@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
@@ -11,7 +11,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
-  ActivityFormStickyBack,
+  ActivityFormStickyHeader,
   ActivityPageHeader,
   ActivityStatusBanner,
 } from '@/components/activity';
@@ -22,13 +22,22 @@ import { EditActivityConfirmModal } from '@/components/activity/activities/EditA
 import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
 import { ReviewActionButtonLabel } from '@/components/activity/activities/ReviewActionButtonLabel';
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
-import { FormErrorFallback, LockBanner } from '@/components/shared';
+import {
+  FormErrorFallback,
+  LockBanner,
+  LockBannerContent,
+} from '@/components/shared';
 import { Badge, normalizeActivityStatus } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
+import {
+  startLockHandoffCountdownToast,
+  type LockHandoffToastHandle,
+} from '@/lib/lock-handoff-toast';
 
 import { fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
+import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
 import {
   Popover,
   PopoverContent,
@@ -51,19 +60,26 @@ import {
   EDIT_LOCK_CONFLICT_TOAST,
   useEditLockIntent,
 } from '../hooks/useEditLockIntent';
+import { useEditLockSession } from '../hooks/useEditLockSession';
+import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
+import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import {
   buildMarkReviewedOnlyPayload,
   buildPayloadForUpdate,
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
 import { computeFormChanges } from '../lib/activity-history-format';
-import { getActivityUpdatedToastOptions } from '../lib/activity-toast-options';
+import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
+import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
+
+/** Match sticky back bar height (py-3 + h-8 sm button ≈ 56px). IO rootMargin only accepts px or %. */
+const LOCK_BANNER_INTERSECTION_ROOT_MARGIN = '-56px 0px 0px 0px';
 
 export type ActivityPageProps = {
   activity: ActivityResponse;
@@ -75,6 +91,7 @@ export function ActivityPage({
   refreshActivity,
 }: ActivityPageProps): React.ReactElement {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
 
@@ -123,7 +140,11 @@ export function ActivityPage({
   const normalizedStatus = normalizeActivityStatus(activityStatusName);
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
+  const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
+  const canForceHandoff = hasPermission(
+    PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF
+  );
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
   const canEditWhenBlocked = canDeleteAny;
@@ -143,15 +164,46 @@ export function ActivityPage({
     !canDelete;
 
   const {
+    lock,
     lockState,
     lockedByUsername,
     acquire,
     release,
+    refreshLockFromServer,
+    sendHeartbeat,
+    applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
-  } = useActivityLock(id);
+  } = useActivityLock(id, user?.id);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [forceHandoffPending, setForceHandoffPending] = useState(false);
+  const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
+  const [handoffAwaitingCompletion, setHandoffAwaitingCompletion] =
+    useState(false);
+  const handoffAwaitingCompletionRef = useRef(false);
+  const handoffToastHandleRef = useRef<LockHandoffToastHandle | null>(null);
+
+  useEffect(() => {
+    handoffAwaitingCompletionRef.current = handoffAwaitingCompletion;
+  }, [handoffAwaitingCompletion]);
+
+  useEffect(() => {
+    setHandoffAwaitingCompletion(false);
+    return () => {
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = null;
+    };
+  }, [id]);
+
+  useEditLockSession({
+    form,
+    activityId: id,
+    lockState,
+    lock,
+    isEditing,
+    sendHeartbeat,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -164,6 +216,11 @@ export function ActivityPage({
   >(undefined);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  /**
+   * Forces remount of form-body UI controls (combobox/popover/select internals)
+   * when edit lock is externally lost, so open overlays cannot remain stuck.
+   */
+  const [formUiEpoch, setFormUiEpoch] = useState(0);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isRequestDeleteSubmitting, setIsRequestDeleteSubmitting] =
     useState(false);
@@ -180,9 +237,42 @@ export function ActivityPage({
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
 
+  const handleRequestForceHandoff = useCallback(async () => {
+    setForceHandoffPending(true);
+    try {
+      await requestForceHandoff(id);
+      setHandoffAwaitingCompletion(true);
+    } catch (err) {
+      showErrorToast(err, 'Could not request lock transfer');
+    } finally {
+      setForceHandoffPending(false);
+    }
+  }, [id]);
+
+  const handleCancelForceHandoff = useCallback(async () => {
+    setCancelHandoffPending(true);
+    try {
+      await cancelForceHandoff(id);
+      handoffToastHandleRef.current?.notifyHandoffCancelled();
+      setHandoffAwaitingCompletion(false);
+    } catch (err) {
+      showErrorToast(err, 'Could not cancel unlock request');
+    } finally {
+      setCancelHandoffPending(false);
+    }
+  }, [id]);
+
   useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
+        const wasHandoff = handoffAwaitingCompletionRef.current;
+        setHandoffAwaitingCompletion(false);
+        if (wasHandoff) {
+          handoffToastHandleRef.current?.dismissLoadingOnly();
+        } else {
+          handoffToastHandleRef.current?.notifyLockAcquired();
+        }
+        void refreshLockFromServer();
         return;
       }
       if (lockState !== 'owned') {
@@ -190,16 +280,69 @@ export function ActivityPage({
       }
     },
     onLockReleased: () => {
+      const initialData = initialFormDataRef.current;
+      // Revert unsaved edits when we lose the lock while in edit mode; baseline is kept in initialFormDataRef.
+      const shouldResetForm = isEditing && initialData != null;
       clearLockedByOther();
+      applyExternalLockReleased();
+      setFormUiEpoch((epoch) => epoch + 1);
+      setIsEditing(false);
+      if (shouldResetForm) {
+        // Do not call form.reset (and thus TipTap setContent via RHF) during React render or commit phases.
+        // queueMicrotask matches rich-text-field deferred sync and avoids render-phase editor updates.
+        queueMicrotask(() => {
+          form.reset(initialData);
+        });
+      }
+      void refreshActivity();
     },
     onDataUpdated: () => {
       void refreshActivity();
     },
+    onLockHandoffPending: (payload) => {
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = startLockHandoffCountdownToast(payload);
+      if (payload.role === 'requester') {
+        setHandoffAwaitingCompletion(true);
+      }
+    },
+    onLockHandoffCancelled: () => {
+      handoffToastHandleRef.current?.notifyHandoffCancelled();
+      setHandoffAwaitingCompletion(false);
+    },
+    onLockHandoffResolved: (payload) => {
+      setHandoffAwaitingCompletion(false);
+      if (payload.outcome === 'cancelled') {
+        handoffToastHandleRef.current?.notifyHandoffCancelled();
+        return;
+      }
+      handoffToastHandleRef.current?.dispose();
+      handoffToastHandleRef.current = null;
+      if (payload.outcome === 'completed') {
+        if (payload.role === 'holder') {
+          toast.info(
+            `Edit access was transferred to ${payload.counterpartUsername}.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.success('The activity is ready to edit.', {
+            id: `lock-handoff-success-${payload.activityId}`,
+            duration: 5000,
+          });
+          void refreshLockFromServer();
+        }
+        return;
+      }
+      if (payload.outcome === 'aborted_no_holder_lock') {
+        toast.warning(
+          'Lock transfer could not complete. The activity is no longer held by the original editor.',
+          { duration: 8000 }
+        );
+      }
+    },
   });
 
   const isDirty = form.formState.isDirty;
-  const dirtyFieldsCount = Object.keys(form.formState.dirtyFields ?? {}).length;
-  const dirtyFieldsSignature = JSON.stringify(form.formState.dirtyFields ?? {});
   const isFormValid = form.formState.isValid;
   const missingFields = getMissingRequiredFields(
     form.formState,
@@ -219,16 +362,22 @@ export function ActivityPage({
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
+    lockState !== 'checking' &&
+    lockState !== 'acquiring' &&
     (!isBlockedStatus || canEditWhenBlocked);
 
   const handleGoBack = useCallback(() => {
-    // New tab / direct loads have no prior history entry; send users to the activity list.
+    const fromState = getActivityFormBackTarget(location.state);
+    if (fromState != null) {
+      void navigate(fromState);
+      return;
+    }
     if (window.history.length > 1) {
       void navigate(-1);
     } else {
       void navigate('/');
     }
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
@@ -236,6 +385,15 @@ export function ActivityPage({
   const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
+  const isLockedByOther = lockState === 'locked-by-other';
+  const [lockBannerSentinel, setLockBannerSentinel] =
+    useState<HTMLDivElement | null>(null);
+  const lockBannerInView = useElementIsIntersecting(
+    lockBannerSentinel,
+    isLockedByOther,
+    LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
+    0
+  );
   const canSubmitWithoutValidationErrors =
     isFormValid || missingFields.length === 0;
 
@@ -257,9 +415,6 @@ export function ActivityPage({
   useEditLockIntent({
     formHydrated: isFormHydrated,
     hydrationGeneration,
-    isDirty,
-    dirtyFieldsCount,
-    dirtyFieldsSignature,
     mayEdit,
     isEditing,
     setIsEditing,
@@ -358,20 +513,35 @@ export function ActivityPage({
           } as UpdateActivityRequest;
         }
 
-        await updateMutation.mutateAsync({ id, data: submitData });
+        const updated = await updateMutation.mutateAsync({
+          id,
+          data: submitData,
+        });
         const titleForToast =
           mode.kind === 'reviewOnly'
             ? (activity.title ?? '')
             : (mode.validatedData.title ?? '');
-        toast.success(
-          'Activity updated',
-          getActivityUpdatedToastOptions({
-            id: String(id),
-            title: titleForToast,
-            displayId: activity.displayId ?? undefined,
-          })
-        );
-        await release();
+        const subtitleTitle =
+          titleForToast.trim().length > 0
+            ? titleForToast
+            : (updated.title ?? '');
+        showActivityMutationSuccessToast({
+          toastId: `activity-updated-${id}`,
+          kind: 'updated',
+          displayId: resolveActivityToastDisplayId(
+            updated.displayId,
+            updated.id
+          ),
+          title: subtitleTitle,
+          activityId: id,
+          showViewButton: canViewActivity,
+          onViewNavigate: (aid) => {
+            void navigate(`/activity/${aid}`);
+          },
+        });
+        // Backend update flow already releases the lock; clear local hold to
+        // avoid keepalive release during unmount/navigation.
+        applyExternalLockReleased();
         void navigate('/');
       } catch (err) {
         logger.error('Failed to update activity', err);
@@ -392,8 +562,8 @@ export function ActivityPage({
       updateMutation,
       form,
       activity.title,
-      activity.displayId,
-      release,
+      canViewActivity,
+      applyExternalLockReleased,
       navigate,
     ]
   );
@@ -518,7 +688,31 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyBack onBack={handleGoBack} />
+      <ActivityFormStickyHeader
+        onBack={handleGoBack}
+        lockStrip={
+          isLockedByOther ? (
+            <LockBannerContent
+              lockedByUsername={lockedByUsername}
+              onRequestTakeLock={
+                canForceHandoff
+                  ? () => void handleRequestForceHandoff()
+                  : undefined
+              }
+              requestTakeLockPending={forceHandoffPending}
+              handoffActive={handoffAwaitingCompletion}
+              onCancelHandoff={
+                canForceHandoff
+                  ? () => void handleCancelForceHandoff()
+                  : undefined
+              }
+              cancelHandoffPending={cancelHandoffPending}
+              className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
+            />
+          ) : undefined
+        }
+        lockStripVisible={isLockedByOther && !lockBannerInView}
+      />
       <ActivityPageHeader
         displayId={displayId}
         title={activity.title ?? ''}
@@ -529,8 +723,26 @@ export function ActivityPage({
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
       />
-      {lockState === 'locked-by-other' && (
-        <LockBanner lockedByUsername={lockedByUsername} />
+      {isLockedByOther && (
+        <div ref={setLockBannerSentinel}>
+          <LockBanner
+            inert={!lockBannerInView}
+            lockedByUsername={lockedByUsername}
+            onRequestTakeLock={
+              canForceHandoff
+                ? () => void handleRequestForceHandoff()
+                : undefined
+            }
+            requestTakeLockPending={forceHandoffPending}
+            handoffActive={handoffAwaitingCompletion}
+            onCancelHandoff={
+              canForceHandoff
+                ? () => void handleCancelForceHandoff()
+                : undefined
+            }
+            cancelHandoffPending={cancelHandoffPending}
+          />
+        </div>
       )}
       {isBlockedStatus && (
         <ActivityStatusBanner
@@ -566,6 +778,7 @@ export function ActivityPage({
             </div>
           )}
           <ActivityFormBody
+            key={formUiEpoch}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
@@ -593,8 +806,7 @@ export function ActivityPage({
                 {showRequestDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => setShowRequestDeleteModal(true));
@@ -607,8 +819,7 @@ export function ActivityPage({
                 {showDeleteButton && (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="text-destructive border-destructive hover:bg-destructive/10"
+                    variant="destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       ensureEditThen(() => void handleOpenDeleteModal());

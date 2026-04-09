@@ -706,6 +706,16 @@ describe('filterActivityRowsByKeyword', () => {
     expect(filterActivityRowsByKeyword(rows, 'summary')).toEqual([rows[0]]);
   });
 
+  it('matches in Tip Tap JSON summary by plain text', () => {
+    const doc =
+      '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Quarterly report highlights"}]}]}';
+    const rows = [
+      makeRow({ id: 1, summary: doc }),
+      makeRow({ id: 2, summary: 'Other' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'highlights')).toEqual([rows[0]]);
+  });
+
   it('matches in displayId', () => {
     const rows = [
       makeRow({ id: 1, displayId: 'AG-000123' }),

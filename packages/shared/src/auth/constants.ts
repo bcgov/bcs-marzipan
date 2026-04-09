@@ -91,6 +91,8 @@ export const PERMISSIONS = {
     PITCH_STATUS_VIEW: 'activities.pitchStatus.view',
     PITCH_STATUS_EDIT: 'activities.pitchStatus.edit',
     PITCH_DATE_EDIT: 'activities.pitchDate.edit',
+    /** Take edit lock from another user after grace period (admin). */
+    LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
   },
   DRAFTS: {
     VIEW: 'drafts.view',
