@@ -277,12 +277,15 @@ export function ActivityPage({
     },
     onLockReleased: () => {
       const initialData = initialFormDataRef.current;
+      // Revert unsaved edits when we lose the lock while in edit mode; baseline is kept in initialFormDataRef.
       const shouldResetForm = isEditing && initialData != null;
       clearLockedByOther();
       applyExternalLockReleased();
       setFormUiEpoch((epoch) => epoch + 1);
       setIsEditing(false);
       if (shouldResetForm) {
+        // Do not call form.reset (and thus TipTap setContent via RHF) during React render or commit phases.
+        // queueMicrotask matches rich-text-field deferred sync and avoids render-phase editor updates.
         queueMicrotask(() => {
           form.reset(initialData);
         });

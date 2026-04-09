@@ -190,6 +190,8 @@ export function RichTextField({
     editor?.setEditable(editable);
   }, [editor, editable]);
 
+  // Keep TipTap in sync with the RHF `value` prop without calling setContent during React render/commit
+  // (e.g. form.reset after lock release). Deferred work runs as a microtask; see ActivityPage onLockReleased.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const args = getSetContentArgs(value);
