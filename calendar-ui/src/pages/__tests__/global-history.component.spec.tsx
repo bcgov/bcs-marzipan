@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
-import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
+import { fetchGlobalActivityHistoryPaged } from '@/api/activitiesApi';
 
 import { GlobalHistory } from '../GlobalHistory';
 
@@ -18,7 +18,7 @@ vi.mock('../../hooks/useAuth', () => ({
 }));
 
 vi.mock('@/api/activitiesApi', () => ({
-  fetchGlobalActivityHistory: vi.fn(),
+  fetchGlobalActivityHistoryPaged: vi.fn(),
 }));
 
 const createQueryClient = () =>
@@ -26,24 +26,30 @@ const createQueryClient = () =>
 
 describe('GlobalHistory component', () => {
   beforeEach(() => {
-    (fetchGlobalActivityHistory as unknown as any).mockResolvedValue([
-      {
-        id: 1,
-        timestamp: new Date().toISOString(),
-        userId: 42,
-        userName: 'alice',
-        actor: { displayName: 'Alice Tester', username: 'alice' },
-        actionType: 'UPDATE',
-        activity: {
-          id: 11,
-          displayId: 'ACT-11',
-          title: 'Event 11',
-          categories: [],
+    (fetchGlobalActivityHistoryPaged as unknown as any).mockResolvedValue({
+      items: [
+        {
+          id: 1,
+          timestamp: new Date().toISOString(),
+          userId: 42,
+          userName: 'alice',
+          actor: { displayName: 'Alice Tester', username: 'alice' },
+          actionType: 'UPDATE',
+          activity: {
+            id: 11,
+            displayId: 'ACT-11',
+            title: 'Event 11',
+            categories: [],
+          },
+          notes: 'note',
+          changes: [],
         },
-        notes: 'note',
-        changes: [],
-      },
-    ]);
+      ],
+      page: 1,
+      pageSize: 25,
+      hasNext: false,
+      totalItems: 1,
+    });
   });
 
   it('renders entries and supports search filter', async () => {
