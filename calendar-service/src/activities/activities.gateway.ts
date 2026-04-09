@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   OnGatewayConnection,
@@ -15,6 +20,13 @@ import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
 import { AuthService, type JwtPayload } from '../auth/auth.service';
 import { getCorsAllowedOrigins } from '../common/config/cors-allowed-origins';
 import { AppLogger } from '../common/logger/logger.service';
+import { LocksService } from '../locks/locks.service';
+
+/**
+ * After the last authenticated socket for a user disconnects, wait this long
+ * before releasing locks / cancelling handoffs so brief reconnects do not drop them.
+ */
+export const ACTIVITIES_LAST_AUTH_SOCKET_DEBOUNCE_MS = 20_000;
 
 /** Id-only payloads so field-level HTTP redaction cannot be bypassed via WebSocket. */
 type ActivityTableSocketPayload = { activityId: number };
@@ -26,6 +38,21 @@ export type LockHandoffPendingPayload = {
   role: 'holder' | 'requester';
 };
 
+/** Terminal force-handoff outcome (includes explicit cancel and server-aborted cases). */
+export type LockHandoffResolvedOutcome =
+  | 'completed'
+  | 'cancelled'
+  | 'aborted_no_holder_lock';
+
+export type LockHandoffResolvedPayload = {
+  activityId: number;
+  outcome: LockHandoffResolvedOutcome;
+  role: 'holder' | 'requester';
+  counterpartUsername: string;
+  /** Populated when outcome is completed — requester is now the lock holder. */
+  newLockHolder?: { userId: number; username: string };
+};
+
 @WebSocketGateway({
   cors: {
     origin: getCorsAllowedOrigins(),
@@ -34,18 +61,60 @@ export type LockHandoffPendingPayload = {
 })
 @Injectable()
 export class ActivitiesGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    OnModuleDestroy
 {
   @WebSocketServer()
   server!: Server;
 
   private readonly logger = new AppLogger(ActivitiesGateway.name);
   private readonly viewingActivities = new Map<string, Set<number>>();
+  /** Count of open sockets per authenticated user (ref-count for multi-tab). */
+  private readonly authenticatedSocketCounts = new Map<number, number>();
+  private readonly pendingUserTeardownTimers = new Map<
+    number,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    @Inject(forwardRef(() => LocksService))
+    private readonly locksService: LocksService
   ) {}
+
+  onModuleDestroy(): void {
+    for (const timer of this.pendingUserTeardownTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingUserTeardownTimers.clear();
+  }
+
+  private clearScheduledUserTeardown(userId: number): void {
+    const t = this.pendingUserTeardownTimers.get(userId);
+    if (t !== undefined) {
+      clearTimeout(t);
+      this.pendingUserTeardownTimers.delete(userId);
+    }
+  }
+
+  private scheduleLocksReleaseIfNoSockets(userId: number): void {
+    this.clearScheduledUserTeardown(userId);
+    const timer = setTimeout(() => {
+      this.pendingUserTeardownTimers.delete(userId);
+      const stillOpen = this.authenticatedSocketCounts.get(userId) ?? 0;
+      if (stillOpen > 0) {
+        return;
+      }
+      void this.locksService.releaseLocksAndCancelHandoffsAfterLastWsDisconnect(
+        userId
+      );
+    }, ACTIVITIES_LAST_AUTH_SOCKET_DEBOUNCE_MS);
+    this.pendingUserTeardownTimers.set(userId, timer);
+  }
 
   afterInit(server: Server): void {
     server.use((socket, next) => {
@@ -87,6 +156,9 @@ export class ActivitiesGateway
   handleConnection(client: Socket) {
     const user = client.data.authUser as AuthUser | undefined;
     if (user) {
+      this.clearScheduledUserTeardown(user.id);
+      const next = (this.authenticatedSocketCounts.get(user.id) ?? 0) + 1;
+      this.authenticatedSocketCounts.set(user.id, next);
       void client.join(`user:${user.id}`);
     }
     this.logger.log(
@@ -98,6 +170,20 @@ export class ActivitiesGateway
     this.logger.log(`Client disconnected: ${client.id}`);
     this.viewingActivities.delete(client.id);
     void client.leave('activities-table');
+
+    const user = client.data.authUser as AuthUser | undefined;
+    if (user) {
+      const prev = this.authenticatedSocketCounts.get(user.id) ?? 0;
+      const next = Math.max(0, prev - 1);
+      if (next === 0) {
+        this.authenticatedSocketCounts.delete(user.id);
+        if (prev > 0) {
+          this.scheduleLocksReleaseIfNoSockets(user.id);
+        }
+      } else {
+        this.authenticatedSocketCounts.set(user.id, next);
+      }
+    }
   }
 
   @SubscribeMessage('viewActivity')
@@ -224,5 +310,15 @@ export class ActivitiesGateway
     this.server
       .to(`user:${requesterUserId}`)
       .emit('lockHandoffCancelled', payload);
+  }
+
+  /**
+   * Targeted terminal outcome for holder or requester (transfer completed, cancelled, or aborted).
+   */
+  notifyLockHandoffResolved(
+    userId: number,
+    payload: LockHandoffResolvedPayload
+  ): void {
+    this.server.to(`user:${userId}`).emit('lockHandoffResolved', payload);
   }
 }

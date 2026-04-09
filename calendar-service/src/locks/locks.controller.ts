@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -201,13 +202,17 @@ export class LocksController {
     @Param('lockId', ParseIntPipe) lockId: number,
     @CurrentUser() user: AuthUser
   ) {
-    const released =
-      await this.locksService.releaseLockOrFinalizePendingHandoff(
-        lockId,
-        user.id
+    const result = await this.locksService.releaseLockOrFinalizePendingHandoff(
+      lockId,
+      user.id
+    );
+    if (result.kind === 'notFound') {
+      throw new NotFoundException(
+        'Lock not found or you do not hold this lock.'
       );
-    if (released?.entityType === 'activity') {
-      this.activitiesGateway.notifyLockReleased(released.entityId);
+    }
+    if (result.kind === 'released' && result.lock.entityType === 'activity') {
+      this.activitiesGateway.notifyLockReleased(result.lock.entityId);
     }
   }
 }

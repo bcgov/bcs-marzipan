@@ -74,13 +74,24 @@ describe('ActivitiesController (API integration)', () => {
 
     accessToken = await e2eLogin(app);
 
-    // Ensure we have an activity ID for get/update tests (from create or from list)
+    // Prefer an activity that can be PATCHed (not delete_requested / deleted)
     const listRes = await createAuthRequest(app, accessToken)
       .get('/activities')
       .expect(200);
-    const data = listRes.body?.data;
-    if (Array.isArray(data) && data.length > 0 && data[0]?.id != null) {
-      createdActivityId = data[0].id;
+    const data = listRes.body?.data as
+      | Array<{ id: number; activityStatus?: string }>
+      | undefined;
+    if (Array.isArray(data) && data.length > 0) {
+      const patchable = data.find(
+        (a) =>
+          a.activityStatus !== 'Delete requested' &&
+          a.activityStatus !== 'Deleted'
+      );
+      if (patchable?.id != null) {
+        createdActivityId = patchable.id;
+      } else if (data[0]?.id != null) {
+        createdActivityId = data[0].id;
+      }
     }
   });
 
@@ -93,6 +104,9 @@ describe('ActivitiesController (API integration)', () => {
       const createActivityDto = createMockActivityRequest({
         title: 'Integration Test Activity',
         summary: 'This is a test activity created via API integration tests',
+        // thomas.garcia (18) is on lead team 2; user 1 is not on team 1 for default mock comms.
+        leadTeamId: 2,
+        commsContacts: [{ userId: 18, isLead: true }],
       });
 
       const res = await createAuthRequest(app, accessToken)
@@ -243,23 +257,38 @@ describe('ActivitiesController (API integration)', () => {
   });
 
   describe('/activities/:id (PATCH)', () => {
-    it('should update an activity', () => {
+    it('should update an activity', async () => {
+      const acquireRes = await createAuthRequest(app, accessToken)
+        .post('/locks')
+        .send({
+          entityType: 'activity',
+          entityId: createdActivityId,
+        })
+        .expect(201);
+      const lockId = acquireRes.body.id as number;
+
       const updateDto = createMockUpdateRequest({
         title: 'Updated Integration Test Activity',
         summary: 'This activity has been updated via API integration tests',
       });
 
-      return createAuthRequest(app, accessToken)
-        .patch(`/activities/${createdActivityId}`)
-        .send(updateDto)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(res.body.data).toHaveProperty('id', createdActivityId);
-          expect(res.body.data).toHaveProperty('title', updateDto.title);
-          expect(res.body.data).toHaveProperty('summary', updateDto.summary);
-        });
+      try {
+        await createAuthRequest(app, accessToken)
+          .patch(`/activities/${createdActivityId}`)
+          .send(updateDto)
+          .expect(200)
+          .expect((res) => {
+            expect(res.body).toHaveProperty('success', true);
+            expect(res.body).toHaveProperty('data');
+            expect(res.body.data).toHaveProperty('id', createdActivityId);
+            expect(res.body.data).toHaveProperty('title', updateDto.title);
+            expect(res.body.data).toHaveProperty('summary', updateDto.summary);
+          });
+      } finally {
+        await createAuthRequest(app, accessToken)
+          .delete(`/locks/${lockId}`)
+          .expect(204);
+      }
     });
 
     it('should return 404 when updating non-existent activity', () => {

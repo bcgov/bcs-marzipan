@@ -63,6 +63,12 @@ export interface LockForEntity {
   idleExpiresAt: Date;
 }
 
+/** Result of releasing a lock or completing an in-flight force handoff during release. */
+export type ReleaseLockOrHandoffResult =
+  | { kind: 'released'; lock: LockForEntity }
+  | { kind: 'handoffFinalized' }
+  | { kind: 'notFound' };
+
 @Injectable()
 export class LocksService {
   private readonly logger = new Logger(LocksService.name);
@@ -259,6 +265,89 @@ export class LocksService {
   }
 
   /**
+   * All non-expired edit locks held by the user (any entity type).
+   */
+  private async listActiveLocksForUser(
+    userId: number
+  ): Promise<LockForEntity[]> {
+    const now = new Date();
+    const rows = await this.databaseService.db
+      .select()
+      .from(editLocks)
+      .where(
+        and(
+          eq(editLocks.userId, userId),
+          gt(editLocks.expiresAt, now),
+          gt(editLocks.idleExpiresAt, now)
+        )
+      );
+    return rows.map((row) => this.rowToLockForEntity(row as EditLockRow));
+  }
+
+  private async cancelAllPendingForceHandoffsForRequester(
+    requesterUserId: number
+  ): Promise<void> {
+    const cancelled = await this.databaseService.db
+      .delete(editLockPendingHandoffs)
+      .where(
+        and(
+          eq(editLockPendingHandoffs.status, 'pending'),
+          eq(editLockPendingHandoffs.toUserId, requesterUserId)
+        )
+      )
+      .returning({
+        activityId: editLockPendingHandoffs.activityId,
+        fromUserId: editLockPendingHandoffs.fromUserId,
+        toUserId: editLockPendingHandoffs.toUserId,
+      });
+
+    for (const row of cancelled) {
+      this.handoffDeadlineKick.clearScheduledKick(row.activityId);
+      this.activitiesGateway.notifyLockHandoffCancelled(
+        row.activityId,
+        row.fromUserId,
+        row.toUserId
+      );
+      await this.emitLockHandoffResolvedCancelled(
+        row.activityId,
+        row.fromUserId,
+        row.toUserId
+      );
+    }
+  }
+
+  /**
+   * When the user's last calendar WebSocket has been gone for the debounce window,
+   * withdraw any pending force handoffs they requested and release edit locks they hold
+   * (same semantics as HTTP DELETE lock / cancel handoff).
+   */
+  async releaseLocksAndCancelHandoffsAfterLastWsDisconnect(
+    userId: number
+  ): Promise<void> {
+    try {
+      await this.cancelAllPendingForceHandoffsForRequester(userId);
+      const locks = await this.listActiveLocksForUser(userId);
+      for (const lock of locks) {
+        const result = await this.releaseLockOrFinalizePendingHandoff(
+          lock.id,
+          userId
+        );
+        if (
+          result.kind === 'released' &&
+          result.lock.entityType === 'activity'
+        ) {
+          this.activitiesGateway.notifyLockReleased(result.lock.entityId);
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `releaseLocksAndCancelHandoffsAfterLastWsDisconnect failed userId=${userId}`,
+        err instanceof Error ? err.stack : String(err)
+      );
+    }
+  }
+
+  /**
    * Deletes the lock if it exists and belongs to the user.
    * Returns the removed row (for notifications) or null if nothing was deleted.
    */
@@ -279,15 +368,15 @@ export class LocksService {
    * pending from this holder, finalizes the transfer to the requester first
    * (same as after a successful save). Otherwise deletes the lock row.
    * When a handoff completes, the holder's lock row is removed inside finalization
-   * and this returns null (WebSocket notifications are sent there).
+   * and this returns `{ kind: 'handoffFinalized' }` (WebSocket notifications are sent there).
    */
   async releaseLockOrFinalizePendingHandoff(
     lockId: number,
     userId: number
-  ): Promise<LockForEntity | null> {
+  ): Promise<ReleaseLockOrHandoffResult> {
     const lock = await this.getLockById(lockId);
     if (!lock || lock.userId !== userId) {
-      return null;
+      return { kind: 'notFound' };
     }
 
     if (lock.entityType === 'activity') {
@@ -296,10 +385,14 @@ export class LocksService {
 
     const stillHeld = await this.getLockById(lockId);
     if (!stillHeld || stillHeld.userId !== userId) {
-      return null;
+      return { kind: 'handoffFinalized' };
     }
 
-    return this.releaseLock(lockId, userId);
+    const released = await this.releaseLock(lockId, userId);
+    if (!released) {
+      return { kind: 'notFound' };
+    }
+    return { kind: 'released', lock: released };
   }
 
   async cleanupExpiredLocks(): Promise<number> {
@@ -511,6 +604,33 @@ export class LocksService {
       cancelled.fromUserId,
       cancelled.toUserId
     );
+    await this.emitLockHandoffResolvedCancelled(
+      activityId,
+      cancelled.fromUserId,
+      cancelled.toUserId
+    );
+  }
+
+  /** Emits terminal `lockHandoffResolved` with counterpart display names (post-DB work). */
+  private async emitLockHandoffResolvedCancelled(
+    activityId: number,
+    fromUserId: number,
+    toUserId: number
+  ): Promise<void> {
+    const holderName = await this.getLockUsernameForUserId(fromUserId);
+    const requesterName = await this.getLockUsernameForUserId(toUserId);
+    this.activitiesGateway.notifyLockHandoffResolved(fromUserId, {
+      activityId,
+      outcome: 'cancelled',
+      role: 'holder',
+      counterpartUsername: requesterName,
+    });
+    this.activitiesGateway.notifyLockHandoffResolved(toUserId, {
+      activityId,
+      outcome: 'cancelled',
+      role: 'requester',
+      counterpartUsername: holderName,
+    });
   }
 
   /**
@@ -628,6 +748,35 @@ export class LocksService {
       await tx
         .delete(editLockPendingHandoffs)
         .where(eq(editLockPendingHandoffs.id, pendingHandoffId));
+
+      const holderName = await this.getLockUsernameForUserId(fromUserId, tx);
+      const requesterName = await this.getLockUsernameForUserId(toUserId, tx);
+
+      this.logger.warn(
+        `Handoff aborted (no holder lock) activityId=${activityId} fromUserId=${fromUserId} toUserId=${toUserId}`
+      );
+
+      setImmediate(() => {
+        try {
+          this.activitiesGateway.notifyLockHandoffResolved(fromUserId, {
+            activityId,
+            outcome: 'aborted_no_holder_lock',
+            role: 'holder',
+            counterpartUsername: requesterName,
+          });
+          this.activitiesGateway.notifyLockHandoffResolved(toUserId, {
+            activityId,
+            outcome: 'aborted_no_holder_lock',
+            role: 'requester',
+            counterpartUsername: holderName,
+          });
+        } catch (e) {
+          this.logger.error(
+            'notify handoff aborted failed',
+            e instanceof Error ? e.stack : String(e)
+          );
+        }
+      });
       return;
     }
 
@@ -653,12 +802,27 @@ export class LocksService {
       .delete(editLockPendingHandoffs)
       .where(eq(editLockPendingHandoffs.id, pendingHandoffId));
 
+    const holderUsername = lock.username;
+
     setImmediate(() => {
       try {
         this.activitiesGateway.notifyLockReleased(activityId);
         this.activitiesGateway.notifyLockAcquired(activityId, {
           userId: toUserId,
           username: toUsername,
+        });
+        this.activitiesGateway.notifyLockHandoffResolved(fromUserId, {
+          activityId,
+          outcome: 'completed',
+          role: 'holder',
+          counterpartUsername: toUsername,
+        });
+        this.activitiesGateway.notifyLockHandoffResolved(toUserId, {
+          activityId,
+          outcome: 'completed',
+          role: 'requester',
+          counterpartUsername: holderUsername,
+          newLockHolder: { userId: toUserId, username: toUsername },
         });
       } catch (e) {
         this.logger.error(

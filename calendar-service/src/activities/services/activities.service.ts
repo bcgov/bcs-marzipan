@@ -1655,11 +1655,34 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    // Resolve existence first so missing IDs return 404 instead of lock-required 423.
+    const [oldActivity] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!oldActivity) {
+      throw new NotFoundException(`Activity with ID ${id} not found`);
+    }
+
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
       id
     );
-    if (existingLock && existingLock.userId !== userId) {
+    if (!existingLock) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message:
+            'You must acquire an edit lock before updating this activity.',
+          locked: true,
+          lockRequired: true,
+        },
+        HttpStatus.LOCKED
+      );
+    }
+    if (existingLock.userId !== userId) {
       throw new HttpException(
         {
           statusCode: HttpStatus.LOCKED,
@@ -1670,21 +1693,11 @@ export class ActivitiesService {
             username: existingLock.username,
             acquiredAt: existingLock.acquiredAt,
             expiresAt: existingLock.expiresAt,
+            idleExpiresAt: existingLock.idleExpiresAt,
           },
         },
         HttpStatus.LOCKED
       );
-    }
-
-    // Get current activity state to track changes
-    const [oldActivity] = await this.databaseService.db
-      .select()
-      .from(activities)
-      .where(eq(activities.id, id))
-      .limit(1);
-
-    if (!oldActivity) {
-      throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
     // Reject update when activity is delete_requested or deleted

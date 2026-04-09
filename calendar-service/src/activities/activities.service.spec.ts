@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -939,6 +941,47 @@ describe('ActivitiesService', () => {
   });
 
   describe('update', () => {
+    const ownEditLockForUser1Activity1 = {
+      id: 99,
+      userId: 1,
+      entityType: 'activity' as const,
+      entityId: 1,
+      username: 'editor',
+      sessionId: null as string | null,
+      acquiredAt: new Date(),
+      expiresAt: new Date(Date.now() + 300_000),
+      lastRenewedAt: new Date(),
+      lastActivityAt: new Date(),
+      idleExpiresAt: new Date(Date.now() + 300_000),
+    };
+
+    beforeEach(() => {
+      mockLocksService.getLockForEntity.mockResolvedValue(
+        ownEditLockForUser1Activity1
+      );
+    });
+
+    it('throws HttpException 423 when caller holds no edit lock', async () => {
+      mockLocksService.getLockForEntity.mockResolvedValue(null);
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      const updateDto = createMockUpdateRequest({ title: 'No lock' });
+      let thrown: unknown;
+      try {
+        await service.update(1, updateDto, 1);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect((thrown as HttpException).getStatus()).toBe(HttpStatus.LOCKED);
+      const body = (thrown as HttpException).getResponse() as {
+        lockRequired?: boolean;
+      };
+      expect(body.lockRequired).toBe(true);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
     it('should update an activity and return a valid ActivityResponse', async () => {
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({
