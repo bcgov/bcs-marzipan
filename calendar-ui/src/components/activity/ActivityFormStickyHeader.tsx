@@ -1,12 +1,15 @@
 import { ArrowLeft } from 'lucide-react';
-import type { ReactElement, ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, type ReactElement, type ReactNode } from 'react';
 
 import { PAGE_CONTAINER_DEFAULT_LAYOUT } from '@/components/layout/PageContainer';
 import { Button } from '@/components/ui/button';
+import { getActivityFormBackTarget } from '@/lib/activity-form-navigation-state';
 import { cn } from '@/lib/utils';
 
 type ActivityFormStickyHeaderProps = {
-  onBack: () => void;
+  /** Custom back handler. When omitted, uses `location.state.from` (via `activityFormLinkState` on entry links) or `/`. */
+  onBack?: () => void;
   className?: string;
   /**
    * Optional trailing slot (e.g. lock message and actions). Fades in/out via `lockStripVisible`.
@@ -24,11 +27,20 @@ type ActivityFormStickyHeaderProps = {
  * horizontal inset as siblings (`PAGE_CONTAINER_DEFAULT_LAYOUT`).
  */
 export function ActivityFormStickyHeader({
-  onBack,
+  onBack: onBackProp,
   className,
   lockStrip,
   lockStripVisible = false,
 }: ActivityFormStickyHeaderProps): ReactElement {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const defaultOnBack = useCallback(() => {
+    const target = getActivityFormBackTarget(location.state);
+    void navigate(target ?? '/');
+  }, [navigate, location.state]);
+
+  const onBack = onBackProp ?? defaultOnBack;
   const showLockStrip = lockStrip != null;
 
   return (

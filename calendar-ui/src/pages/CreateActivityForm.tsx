@@ -10,7 +10,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
-  ActivityFormStickyBack,
+  ActivityFormStickyHeader,
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
 import { PageHeader } from '@/components/layout';
@@ -211,7 +211,7 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyBack />
+      <ActivityFormStickyHeader />
       <PageHeader
         title="Create New Activity"
         description="Fill in the activity details below"
