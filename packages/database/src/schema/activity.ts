@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   date,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -161,6 +162,15 @@ export const activities = pgTable(
     check(
       'lead_org_at_most_one',
       sql`NOT (${table.leadOrgId} IS NOT NULL AND ${table.leadOrgName} IS NOT NULL)`
+    ),
+    // Trigram indexes for ILIKE search
+    index('idx_activities_title_trgm').using(
+      'gin',
+      sql`lower(${table.title}) gin_trgm_ops`
+    ),
+    index('idx_activities_display_id_trgm').using(
+      'gin',
+      sql`lower(${table.displayId}) gin_trgm_ops`
     ),
   ]
 );

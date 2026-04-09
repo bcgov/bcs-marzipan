@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -54,29 +55,41 @@ export const activityStatuses = pgTable('activity_statuses', {
  * - visibility = 'global': Category is viewable by all teams
  * - visibility = 'team': Category is viewable only by teams listed in the teamCategories junction table
  */
-export const categories = pgTable('categories', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team'
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
+export const categories = pgTable(
+  'categories',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    visibility: varchar('visibility', { length: 50 })
+      .notNull()
+      .default('global'), // 'global' or 'team'
+    isActive: boolean('is_active').notNull().default(true),
+    description: text('description'),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    // Trigram index for ILIKE search on display_name
+    index('idx_categories_display_name_trgm').using(
+      'gin',
+      sql`lower(${table.displayName}) gin_trgm_ops`
+    ),
+  ]
+);
 
 /**
  * DateStatus lookup table - Date statuses
@@ -373,29 +386,41 @@ export const themes = pgTable('themes', {
  * - visibility = 'team': Tag is viewable only by specific teams (future feature - not yet implemented)
  * NOTE: All tags are currently global. Team visibility is a future feature flag.
  */
-export const tags = pgTable('tags', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  visibility: varchar('visibility', { length: 50 }).notNull().default('global'), // 'global' or 'team' - future feature flag use `global` for now
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
+export const tags = pgTable(
+  'tags',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    visibility: varchar('visibility', { length: 50 })
+      .notNull()
+      .default('global'), // 'global' or 'team' - future feature flag use `global` for now
+    isActive: boolean('is_active').notNull().default(true),
+    description: text('description'),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    // Trigram index for ILIKE search on display_name
+    index('idx_tags_display_name_trgm').using(
+      'gin',
+      sql`lower(${table.displayName}) gin_trgm_ops`
+    ),
+  ]
+);
 
 /**
  * PitchStatus lookup table - Pitch approval statuses
