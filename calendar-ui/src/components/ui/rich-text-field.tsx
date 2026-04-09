@@ -197,16 +197,22 @@ export function RichTextField({
       if (JSON.stringify(args.content) === JSON.stringify(editor.getJSON())) {
         return;
       }
-      editor.commands.setContent(args.content, { emitUpdate: false });
+      queueMicrotask(() => {
+        if (!editor || editor.isDestroyed) return;
+        editor.commands.setContent(args.content, { emitUpdate: false });
+      });
       return;
     }
     const md = editor.getMarkdown?.() ?? '';
     if (md === value) {
       return;
     }
-    editor.commands.setContent(args.content, {
-      contentType: 'markdown',
-      emitUpdate: false,
+    queueMicrotask(() => {
+      if (!editor || editor.isDestroyed) return;
+      editor.commands.setContent(args.content, {
+        contentType: 'markdown',
+        emitUpdate: false,
+      });
     });
   }, [editor, value]);
 

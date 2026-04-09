@@ -276,15 +276,17 @@ export function ActivityPage({
       }
     },
     onLockReleased: () => {
+      const initialData = initialFormDataRef.current;
+      const shouldResetForm = isEditing && initialData != null;
       clearLockedByOther();
       applyExternalLockReleased();
       setFormUiEpoch((epoch) => epoch + 1);
-      setIsEditing((editing) => {
-        if (editing && initialFormDataRef.current) {
-          form.reset(initialFormDataRef.current);
-        }
-        return false;
-      });
+      setIsEditing(false);
+      if (shouldResetForm) {
+        queueMicrotask(() => {
+          form.reset(initialData);
+        });
+      }
       void refreshActivity();
     },
     onDataUpdated: () => {
