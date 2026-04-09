@@ -1,5 +1,7 @@
 import type { ActivityResponse } from '@corpcal/shared/api/types';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import { tableBodyRow, tableTd } from '@/components/table/tableConstants';
+import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Badge } from '@/components/ui/badge';
 import { CopyableText } from '@/components/ui/copyable-text';
 import { formatExactDate, formatTime12h } from '@/lib/datetime-utils';
@@ -134,24 +136,24 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           {activity.category.includes('FYI') && (
             <div className="text-xs font-medium text-slate-600">FYI</div>
           )}
-          {/* Summary */}
-          {activity.summary && (
+          {plainTextFromActivityRichField(activity.summary).length > 0 && (
             <div className="text-xs font-medium text-slate-600">
-              {activity.summary}
+              <ActivityRichTextContent value={activity.summary} />
             </div>
           )}
-          {/* Executive Summary */}
-          {activity.executiveSummary && (
+          {plainTextFromActivityRichField(activity.executiveSummary ?? '')
+            .length > 0 && (
             <div className="text-xs leading-relaxed text-slate-600">
-              <p className="break-words whitespace-normal">
-                {activity.executiveSummary}
-              </p>
+              <div className="break-words whitespace-normal">
+                <ActivityRichTextContent value={activity.executiveSummary} />
+              </div>
             </div>
           )}
           {/* Significance */}
-          {activity.significance && (
+          {plainTextFromActivityRichField(activity.significance ?? '').length >
+            0 && (
             <div className="text-xs font-medium text-slate-600">
-              {activity.significance}
+              <ActivityRichTextContent value={activity.significance} />
             </div>
           )}
           {/* Event Planner Lead */}

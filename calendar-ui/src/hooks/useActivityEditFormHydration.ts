@@ -11,10 +11,16 @@ import { activityToFormData } from '../lib/activity-form-mapper';
 import type { FormLookupData } from './useFormLookups';
 
 /**
- * Resets the activity edit form when server data or reference lookups change,
- * then runs a deferred second reset to clear spurious dirty state from
- * controlled fields. Exposes {@link isFormHydrated} and a monotonic
- * {@link hydrationGeneration} for lock-intent logic.
+ * Resets the activity edit form once when server data changes **and** all
+ * reference lookups have finished loading, then runs a deferred second reset
+ * to clear spurious dirty state from controlled fields.
+ *
+ * Lookups are accessed via a ref so that individual query settlements do not
+ * cascade repeated resets; only the ready-state transition (`lookupsReady`)
+ * and the activity sync key trigger re-hydration.
+ *
+ * Exposes {@link isFormHydrated} and a monotonic {@link hydrationGeneration}
+ * for lock-intent logic.
  */
 export function useActivityEditFormHydration(
   activity: ActivityResponse,
@@ -28,16 +34,21 @@ export function useActivityEditFormHydration(
   const initialFormDataRef = useRef<ActivityFormData | null>(null);
   const activityRef = useRef(activity);
   activityRef.current = activity;
+  const lookupsRef = useRef(lookups);
+  lookupsRef.current = lookups;
 
   const [isFormHydrated, setIsFormHydrated] = useState(false);
   const [hydrationGeneration, setHydrationGeneration] = useState(0);
 
   const activitySyncKey = `${activity.id}\0${activity.lastUpdatedDateTime}`;
+  const lookupsReady = !lookups.isLoading && !lookups.hasError;
 
   useEffect(() => {
+    if (!lookupsReady) return;
+
     setIsFormHydrated(false);
     const mapped = canonicalizeActivityFormData(
-      activityToFormData(activityRef.current, lookups)
+      activityToFormData(activityRef.current, lookupsRef.current)
     );
     form.reset(mapped);
     initialFormDataRef.current = mapped;
@@ -53,7 +64,7 @@ export function useActivityEditFormHydration(
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activitySyncKey, lookups, form]);
+  }, [activitySyncKey, lookupsReady, form]);
 
   return {
     isFormHydrated,

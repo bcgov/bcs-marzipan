@@ -6,6 +6,7 @@ import {
   diffReviewFields,
   getEmptyReviewBaseline,
 } from './activity-review-diff';
+import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 
 function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
   return {
@@ -27,7 +28,7 @@ describe('getEmptyReviewBaseline', () => {
   it('returns a canonical empty form', () => {
     const baseline = getEmptyReviewBaseline();
     expect(baseline.title).toBe('');
-    expect(baseline.summary).toBe('');
+    expect(baseline.summary).toBe(EMPTY_RICH_TEXT_DOC);
     expect(baseline.categoryIds).toEqual([]);
     expect(baseline.venueAddress).toEqual({
       venueName: null,

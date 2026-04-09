@@ -2,7 +2,10 @@ import { useFormContext } from 'react-hook-form';
 
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
+import {
+  FormSelectSafe,
+  FormSelectTrigger,
+} from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -305,8 +308,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
+            <FormSelectSafe
               readOnly={readOnly}
+              optionValues={newsReleaseOriginOptions.map((o) => o.value)}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -324,7 +328,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </FormSelect>
+            </FormSelectSafe>
             <FormMessage />
           </FormItem>
         )}
@@ -336,8 +340,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
+            <FormSelectSafe
               readOnly={readOnly}
+              optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
               onValueChange={(value) =>
                 field.onChange(value ? parseInt(value, 10) : null)
               }
@@ -355,7 +360,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </FormSelect>
+            </FormSelectSafe>
             <FormMessage />
           </FormItem>
         )}
@@ -367,9 +372,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
+            <FormSelectSafe
               readOnly={translationsScope.readOnly}
               disabled={translationsScope.fieldScopeDisabled}
+              optionValues={translationRequiredStatuses.map((s) =>
+                String(s.id)
+              )}
               value={
                 field.value !== undefined && field.value !== null
                   ? String(field.value)
@@ -398,7 +406,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </FormSelect>
+            </FormSelectSafe>
             <FormMessage />
           </FormItem>
         )}

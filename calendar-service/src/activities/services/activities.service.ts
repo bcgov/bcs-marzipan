@@ -67,6 +67,8 @@ import {
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
+  plainTextFromActivityRichField,
+  tipTapDocJsonFromPlainText,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -458,10 +460,12 @@ export class ActivitiesService {
         continue;
       }
       if (key === 'summary') {
-        prior.summary =
-          current.summary.length > 48
-            ? current.summary.slice(0, current.summary.length - 24).trimEnd()
-            : `[Prior reviewed text] ${current.summary}`;
+        const plain = plainTextFromActivityRichField(current.summary);
+        const shortened =
+          plain.length > 48
+            ? plain.slice(0, plain.length - 24).trimEnd()
+            : `[Prior reviewed text] ${plain}`;
+        prior.summary = tipTapDocJsonFromPlainText(shortened);
         continue;
       }
       if (key === 'title') {
@@ -499,7 +503,9 @@ export class ActivitiesService {
     const snap = buildReviewSnapshot(prior);
     const diff = diffReviewFields(current, snap);
     if (diff.length === 0) {
-      prior.summary = `[Prior reviewed text] ${current.summary}`;
+      prior.summary = tipTapDocJsonFromPlainText(
+        `[Prior reviewed text] ${plainTextFromActivityRichField(current.summary)}`
+      );
     }
 
     return prior;
@@ -1655,11 +1661,34 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    // Resolve existence first so missing IDs return 404 instead of lock-required 423.
+    const [oldActivity] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!oldActivity) {
+      throw new NotFoundException(`Activity with ID ${id} not found`);
+    }
+
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
       id
     );
-    if (existingLock && existingLock.userId !== userId) {
+    if (!existingLock) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message:
+            'You must acquire an edit lock before updating this activity.',
+          locked: true,
+          lockRequired: true,
+        },
+        HttpStatus.LOCKED
+      );
+    }
+    if (existingLock.userId !== userId) {
       throw new HttpException(
         {
           statusCode: HttpStatus.LOCKED,
@@ -1670,21 +1699,11 @@ export class ActivitiesService {
             username: existingLock.username,
             acquiredAt: existingLock.acquiredAt,
             expiresAt: existingLock.expiresAt,
+            idleExpiresAt: existingLock.idleExpiresAt,
           },
         },
         HttpStatus.LOCKED
       );
-    }
-
-    // Get current activity state to track changes
-    const [oldActivity] = await this.databaseService.db
-      .select()
-      .from(activities)
-      .where(eq(activities.id, id))
-      .limit(1);
-
-    if (!oldActivity) {
-      throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
     // Reject update when activity is delete_requested or deleted
@@ -2066,7 +2085,18 @@ export class ActivitiesService {
     });
 
     if (existingLock && existingLock.userId === userId) {
-      await this.locksService.releaseLock(existingLock.id, userId);
+      const releaseResult =
+        await this.locksService.releaseLockOrFinalizePendingHandoff(
+          existingLock.id,
+          userId
+        );
+      // Broadcast explicit lock release so other viewers clear lock UI without reload.
+      if (
+        releaseResult?.kind === 'released' &&
+        releaseResult.lock.entityType === 'activity'
+      ) {
+        this.activitiesGateway.notifyLockReleased(releaseResult.lock.entityId);
+      }
     }
 
     // Fetch related data for the updated activity

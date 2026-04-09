@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 
+import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { LocksModule } from '../locks/locks.module';
 import { PolicyModule } from '../policy/policy.module';
@@ -15,7 +16,13 @@ import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
 @Module({
-  imports: [DatabaseModule, LocksModule, PolicyModule, TeamsModule],
+  imports: [
+    DatabaseModule,
+    AuthModule,
+    forwardRef(() => LocksModule),
+    PolicyModule,
+    TeamsModule,
+  ],
   providers: [
     ActivityResponseRedactionInterceptor,
     ActivitiesService,

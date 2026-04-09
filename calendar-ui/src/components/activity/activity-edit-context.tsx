@@ -13,10 +13,13 @@
  *
  * For new fields: wire `readOnly` from {@link useActivityEdit} for standard
  * controls. Pass `readOnly={readOnly}` to primitives that support it
- * (`FormSelect`, `Combobox`, `Checkbox`, `ScheduledDatePopoverField`, etc.) so
- * view-only users see full-contrast fields. Use `disabled` when the control
- * should look muted (field scope view-but-not-edit: `useActivityFieldScopeControl`
- * and `ActivityFieldScopePermissionTooltip`), not for activity-level read-only alone.
+ * (`FormSelectSafe`, `Combobox`, `Checkbox`, `ScheduledDatePopoverField`, etc.)
+ * so view-only users see full-contrast fields. For Radix Select fields with
+ * async-loaded options, prefer `FormSelectSafe` over `FormSelect` to suppress
+ * phantom `onValueChange` emissions during option reconciliation. Use `disabled`
+ * when the control should look muted (field scope view-but-not-edit:
+ * `useActivityFieldScopeControl` and `ActivityFieldScopePermissionTooltip`),
+ * not for activity-level read-only alone.
  */
 import { createContext, useContext, type ReactNode } from 'react';
 

@@ -1,6 +1,7 @@
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { canonicalizeActivityFormData } from './activity-form-canonicalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
+import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 import { isDeepEqual } from './isDeepEqual';
 
 /**
@@ -22,7 +23,7 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
 export function getEmptyReviewBaseline(): ActivityFormData {
   return canonicalizeActivityFormData({
     title: '',
-    summary: '',
+    summary: EMPTY_RICH_TEXT_DOC,
     dateStatusId: 0,
     timeStatusId: 0,
     isIssue: false,

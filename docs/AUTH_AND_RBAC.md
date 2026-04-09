@@ -146,6 +146,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | activities.review                     |        |        |            |             | x           | x         |
 | activities.publish                    |        |        |            |             | x           | x         |
 | activities.unpublish                  |        |        |            |             | x           | x         |
+| activities.lock.forceHandoff          |        |        |            |             | x           | x         |
 | drafts.\*                             | view   | all    | view       | all+recover | all         | all       |
 | reports.view/export                   | view   | view   | view       | view+export | all         | all       |
 | reports.create_custom                 |        |        |            |             | x           | x         |
@@ -164,6 +165,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 - **Delete (soft and hard)**: Requires `activities.delete` **and** (comms contact or lead-team member or `activities.delete.any`). Without `activities.delete.any`, the service allows delete only when the user is a comms contact or lead-team member for the activity. Enforced by `CanDeleteActivityGuard` and by the activities service for context.
 - **Edit page when Delete requested or Deleted**: When an activity is in **Delete requested** or **Deleted** status, only **Admin** and **System Admin** may access the edit page. Other users (including those with `activities.edit`) can view the activity and use Restore from the banner if allowed; the UI redirects non-admins away from the edit page. No new permission is used; enforcement is role-based in the UI and via redirect. (Edit is implemented as a mode of the same activity page; the URL reflects edit state and non-admins are redirected to view when in delete_requested/deleted status.)
 - **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
+- **activities.lock.forceHandoff** (Admin / System Admin): may `POST /locks/activity/:activityId/force-handoff` to start a timed handoff of the edit lock, and may `DELETE /locks/activity/:activityId/force-handoff` to cancel a **pending** handoff. Only the user who requested the handoff (`to_user_id`) can cancel; other holders of the permission cannot cancel someone else's request.
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
 ## Database Schema

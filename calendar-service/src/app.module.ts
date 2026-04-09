@@ -4,6 +4,7 @@ import * as path from 'path';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { ActivitiesModule } from './activities/activities.module';
 import { AppController } from './app.controller';
@@ -46,6 +47,7 @@ function resolveRootEnvPath(): string {
       // Load .env from root directory
       envFilePath: resolveRootEnvPath(),
     }),
+    ScheduleModule.forRoot(),
     LoggerModule,
     DatabaseModule,
     PolicyModule,

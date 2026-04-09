@@ -8,6 +8,7 @@ import {
 } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
+import { normalizeActivityRichTextFormFields } from './normalize-activity-rich-text-form';
 
 function buildFormLookups(
   lookups: Pick<
@@ -30,7 +31,9 @@ export function activityToFormData(
   activity: ActivityResponse,
   lookups: FormLookupData
 ): ActivityFormData {
-  const base = mapResponseToFormData(activity, buildFormLookups(lookups));
+  const base = normalizeActivityRichTextFormFields(
+    mapResponseToFormData(activity, buildFormLookups(lookups))
+  );
   const reps = lookups.governmentRepresentatives;
   if (!reps?.length) {
     return base;
