@@ -212,6 +212,11 @@ export function ActivityPage({
   >(undefined);
   const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
     useState(false);
+  /**
+   * Forces remount of form-body UI controls (combobox/popover/select internals)
+   * when edit lock is externally lost, so open overlays cannot remain stuck.
+   */
+  const [formUiEpoch, setFormUiEpoch] = useState(0);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isRequestDeleteSubmitting, setIsRequestDeleteSubmitting] =
     useState(false);
@@ -273,6 +278,7 @@ export function ActivityPage({
     onLockReleased: () => {
       clearLockedByOther();
       applyExternalLockReleased();
+      setFormUiEpoch((epoch) => epoch + 1);
       setIsEditing((editing) => {
         if (editing && initialFormDataRef.current) {
           form.reset(initialFormDataRef.current);
@@ -744,6 +750,7 @@ export function ActivityPage({
             </div>
           )}
           <ActivityFormBody
+            key={formUiEpoch}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
