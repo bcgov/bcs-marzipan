@@ -29,7 +29,8 @@ import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
-import { formatActivityNumericIdPadded } from '../lib/activity-toast-options';
+import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
+import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import {
   ACCESS_DENIED_CREATE_ACTIVITY_MESSAGE,
   ACCESS_DENIED_TITLE,
@@ -113,27 +114,23 @@ export const CreateActivityForm: FC = () => {
       setIsSubmitting(false);
 
       const toastId = `activity-created-${newActivityId}`;
-      const titleLine = titleForToast
-        ? titleForToast
-        : 'Your activity has been created.';
-      const activityIdForDisplay = formatActivityNumericIdPadded(newActivityId);
-      const description = `${titleLine}\nActivity ID: ${activityIdForDisplay}`;
-
-      toast.success('Activity created', {
-        id: toastId,
-        description,
-        duration: 7000,
-        ...(canViewActivity
-          ? {
-              action: {
-                label: 'View activity',
-                onClick: () => {
-                  toast.dismiss(toastId);
-                  void navigate(`/activity/${newActivityId}`);
-                },
-              },
-            }
-          : {}),
+      const subtitleTitle =
+        (titleForToast ?? '').trim().length > 0
+          ? (titleForToast ?? '')
+          : (created.title ?? '');
+      showActivityMutationSuccessToast({
+        toastId,
+        kind: 'created',
+        displayId: resolveActivityToastDisplayId(
+          created.displayId,
+          newActivityId
+        ),
+        title: subtitleTitle,
+        activityId: newActivityId,
+        showViewButton: canViewActivity,
+        onViewNavigate: (aid) => {
+          void navigate(`/activity/${aid}`);
+        },
       });
 
       void navigate(listOrBackPath, { replace: true });
