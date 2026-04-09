@@ -6,18 +6,6 @@ import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 
 import api from './axios';
 
-export interface LookAheadSectionData {
-  id: string;
-  name: string;
-  order: number;
-  activities: ActivityResponse[];
-}
-
-export interface LookAheadResponse {
-  report: ReportResponse | null;
-  sections: LookAheadSectionData[];
-}
-
 export interface ReportSectionData {
   id: string;
   name: string;
@@ -30,17 +18,7 @@ export interface ReportDataResponse {
   sections: ReportSectionData[];
 }
 
-export async function fetchLookAheadData(params?: {
-  startDate?: string;
-  endDate?: string;
-}): Promise<LookAheadResponse> {
-  const response = await api.get<LookAheadResponse>('/look-ahead', {
-    params,
-  });
-  return response.data;
-}
-
-/** Query params for `/reports/data/:type` and CSV export (strings as sent in the URL). */
+/** Query params for `/reports/data/:type` and CSV/XLSX export (strings as sent in the URL). */
 export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
 
 export async function fetchReportData(
@@ -58,24 +36,11 @@ export async function fetchReportsList(): Promise<ReportResponse[]> {
   return response.data;
 }
 
-export type ReportExportFormat = 'csv' | 'xlsx' | 'pdf';
-
-const EXPORT_EXT: Record<ReportExportFormat, string> = {
-  csv: 'csv',
-  xlsx: 'xlsx',
-  pdf: 'pdf',
-};
-
-/**
- * Download a report export (same query params as {@link fetchReportData}).
- * Uses shared server-side formatters; not tied to a specific page layout.
- */
-export async function downloadReportExport(
+async function downloadReportFile(
   type: string,
-  format: ReportExportFormat,
+  ext: 'csv' | 'xlsx',
   params?: ReportDataRequestParams
 ): Promise<void> {
-  const ext = EXPORT_EXT[format];
   const response = await api.get(`/reports/export/${type}/${ext}`, {
     params,
     responseType: 'blob',
@@ -91,9 +56,18 @@ export async function downloadReportExport(
   window.URL.revokeObjectURL(url);
 }
 
+/** Download CSV (`GET /reports/export/:type/csv`). Same query params as `fetchReportData`. */
 export async function downloadReportCsv(
   type: string,
   params?: ReportDataRequestParams
 ): Promise<void> {
-  return downloadReportExport(type, 'csv', params);
+  return downloadReportFile(type, 'csv', params);
+}
+
+/** Download XLSX (`GET /reports/export/:type/xlsx`). Same query params as `fetchReportData`. */
+export async function downloadReportXlsx(
+  type: string,
+  params?: ReportDataRequestParams
+): Promise<void> {
+  return downloadReportFile(type, 'xlsx', params);
 }

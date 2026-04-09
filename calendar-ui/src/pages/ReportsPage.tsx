@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Download } from 'lucide-react';
+import { ChevronDown, Download, Printer } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import {
-  downloadReportCsv,
   fetchReportData,
   fetchReportsList,
   type ReportSectionData,
@@ -25,8 +24,12 @@ import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityStatuses } from '@/hooks/useLookups';
 import { showErrorToast } from '@/lib/error-toast';
+import {
+  handleReportExport,
+  type ReportExportFormat,
+} from '@/lib/report-export';
 import { buildReportDataRequestParamsFromActivityPreferences } from '@/lib/report-from-activity-filters';
-import { exportReportToPdf } from '@/lib/report-pdf-export';
+import { REPORT_PRINT_PREVIEW_STORAGE_KEY } from '@/lib/report-print-preview';
 import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
@@ -131,28 +134,43 @@ export function ReportsPage() {
     sessionStorage.setItem(REPORTS_TAB_STORAGE_KEY, reportName);
   };
 
-  const handleExportCsv = async () => {
+  const runExport = async (format: ReportExportFormat) => {
     if (!activeReport) return;
     setIsExporting(true);
     try {
-      await downloadReportCsv(activeReport, reportQueryParams);
+      await handleReportExport({
+        reportType: activeReport,
+        format,
+        data,
+        queryParams: reportQueryParams,
+      });
     } catch (err) {
-      showErrorToast(err, 'Failed to export CSV. Please try again.');
+      const label =
+        format === 'pdf' ? 'PDF' : format === 'csv' ? 'CSV' : 'spreadsheet';
+      showErrorToast(err, `Failed to export ${label}. Please try again.`);
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleExportPdf = () => {
-    if (!data) return;
-    setIsExporting(true);
+  const handlePrintPreview = () => {
+    if (!activeReport) return;
     try {
-      exportReportToPdf(data);
-    } catch (err) {
-      showErrorToast(err, 'Failed to export PDF. Please try again.');
-    } finally {
-      setIsExporting(false);
+      sessionStorage.setItem(
+        REPORT_PRINT_PREVIEW_STORAGE_KEY,
+        JSON.stringify({
+          type: activeReport,
+          params: reportQueryParams,
+        })
+      );
+    } catch {
+      /* ignore quota / private mode */
     }
+    window.open(
+      `/reports/print-preview?type=${encodeURIComponent(activeReport)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   if (error && activeReport) {
@@ -173,43 +191,66 @@ export function ReportsPage() {
         title="Reports"
         description="Generate and export various activity reports"
         action={
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={!data || isExporting}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-2">
-              <button
-                type="button"
-                onClick={() => void handleExportCsv()}
-                disabled={isExporting}
-                className={cn(
-                  'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
-                  isExporting && 'cursor-not-allowed opacity-50'
-                )}
-              >
-                {isExporting ? 'Exporting...' : 'Export as CSV'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleExportPdf()}
-                disabled={isExporting}
-                className={cn(
-                  'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
-                  isExporting && 'cursor-not-allowed opacity-50'
-                )}
-              >
-                {isExporting ? 'Exporting...' : 'Export as PDF'}
-              </button>
-            </PopoverContent>
-          </Popover>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!data || isExporting || !activeReport}
+              className="gap-2"
+              onClick={handlePrintPreview}
+            >
+              <Printer className="h-4 w-4" />
+              Print Preview
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={!data || isExporting}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-2">
+                <button
+                  type="button"
+                  onClick={() => void runExport('csv')}
+                  disabled={isExporting}
+                  className={cn(
+                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
+                    isExporting && 'cursor-not-allowed opacity-50'
+                  )}
+                >
+                  {isExporting ? 'Exporting...' : 'Export as CSV'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runExport('pdf')}
+                  disabled={isExporting || !data}
+                  className={cn(
+                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
+                    isExporting && 'cursor-not-allowed opacity-50'
+                  )}
+                >
+                  {isExporting ? 'Exporting...' : 'Export as PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runExport('xlsx')}
+                  disabled={isExporting}
+                  className={cn(
+                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
+                    isExporting && 'cursor-not-allowed opacity-50'
+                  )}
+                >
+                  {isExporting ? 'Exporting...' : 'Export as XLSX'}
+                </button>
+              </PopoverContent>
+            </Popover>
+          </div>
         }
       />
 

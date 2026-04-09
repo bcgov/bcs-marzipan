@@ -37,14 +37,14 @@ const ActivityLayout = lazyWithRetry(() =>
 const Login = lazyWithRetry(() =>
   import('./pages/Login').then((m) => ({ default: m.Login }))
 );
-const LookAheadReport = lazyWithRetry(() =>
-  import('./pages/LookAheadReport').then((m) => ({
-    default: m.LookAheadReport,
-  }))
-);
 const ReportsPage = lazyWithRetry(() =>
   import('./pages/ReportsPage').then((m) => ({
     default: m.ReportsPage,
+  }))
+);
+const ReportPrintPreviewPage = lazyWithRetry(() =>
+  import('./pages/ReportPrintPreviewPage').then((m) => ({
+    default: m.ReportPrintPreviewPage,
   }))
 );
 const GlobalHistory = lazyWithRetry(() =>
@@ -128,18 +128,18 @@ function App() {
                 }
               />
               <Route
-                path="reports/look-ahead"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
-                    <LookAheadReport />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="reports"
                 element={
                   <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
                     <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="reports/print-preview"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
+                    <ReportPrintPreviewPage />
                   </ProtectedRoute>
                 }
               />

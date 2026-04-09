@@ -80,11 +80,10 @@ export default defineConfig({
           // Libraries only reached via dynamic import() — return undefined so
           // Rollup keeps them in the importing async chunk instead of vendor.
           //  - chart.js / react-chartjs-2: lazy-loaded DashboardBarChart
-          //  - jspdf / sanitize-html: dynamic PDF export in LookAheadReport
+          //  - sanitize-html: banner-html and similar
           if (
             normalizedId.includes('node_modules/chart.js/') ||
             normalizedId.includes('node_modules/react-chartjs-2/') ||
-            normalizedId.includes('node_modules/jspdf/') ||
             normalizedId.includes('node_modules/sanitize-html/')
           ) {
             return undefined;
