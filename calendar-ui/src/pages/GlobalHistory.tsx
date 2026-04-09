@@ -67,7 +67,6 @@ type FilterOption = {
   label: string;
 };
 
-<<<<<<< feat/CORPCAL-198-history-pagination-scoping
 /** Format a Date using local date parts to avoid UTC off-by-one in timezones ahead of UTC */
 function formatLocalDate(date: Date): string {
   const y = date.getFullYear();
@@ -76,10 +75,7 @@ function formatLocalDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function truncateChangeLogValue(value: string): string {
-=======
 export function truncateChangeLogValue(value: string): string {
->>>>>>> main
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
 
   if (normalizedValue.length <= MAX_CHANGE_VALUE_LENGTH) {
