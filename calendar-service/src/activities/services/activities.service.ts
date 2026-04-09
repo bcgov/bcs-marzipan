@@ -2066,7 +2066,10 @@ export class ActivitiesService {
     });
 
     if (existingLock && existingLock.userId === userId) {
-      await this.locksService.releaseLock(existingLock.id, userId);
+      await this.locksService.releaseLockOrFinalizePendingHandoff(
+        existingLock.id,
+        userId
+      );
     }
 
     // Fetch related data for the updated activity
@@ -2281,8 +2284,6 @@ export class ActivitiesService {
         );
       }
     });
-
-    await this.locksService.completeHandoffAfterHolderSaveIfPending(id, userId);
 
     return result;
   }

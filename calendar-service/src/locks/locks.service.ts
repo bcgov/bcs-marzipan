@@ -274,6 +274,34 @@ export class LocksService {
     return this.rowToLockForEntity(result[0]);
   }
 
+  /**
+   * Release a lock held by the user. For activity locks, if a force handoff is
+   * pending from this holder, finalizes the transfer to the requester first
+   * (same as after a successful save). Otherwise deletes the lock row.
+   * When a handoff completes, the holder's lock row is removed inside finalization
+   * and this returns null (WebSocket notifications are sent there).
+   */
+  async releaseLockOrFinalizePendingHandoff(
+    lockId: number,
+    userId: number
+  ): Promise<LockForEntity | null> {
+    const lock = await this.getLockById(lockId);
+    if (!lock || lock.userId !== userId) {
+      return null;
+    }
+
+    if (lock.entityType === 'activity') {
+      await this.completeHandoffAfterHolderSaveIfPending(lock.entityId, userId);
+    }
+
+    const stillHeld = await this.getLockById(lockId);
+    if (!stillHeld || stillHeld.userId !== userId) {
+      return null;
+    }
+
+    return this.releaseLock(lockId, userId);
+  }
+
   async cleanupExpiredLocks(): Promise<number> {
     const now = new Date();
     const result = await this.databaseService.db

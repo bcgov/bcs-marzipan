@@ -201,7 +201,11 @@ export class LocksController {
     @Param('lockId', ParseIntPipe) lockId: number,
     @CurrentUser() user: AuthUser
   ) {
-    const released = await this.locksService.releaseLock(lockId, user.id);
+    const released =
+      await this.locksService.releaseLockOrFinalizePendingHandoff(
+        lockId,
+        user.id
+      );
     if (released?.entityType === 'activity') {
       this.activitiesGateway.notifyLockReleased(released.entityId);
     }
