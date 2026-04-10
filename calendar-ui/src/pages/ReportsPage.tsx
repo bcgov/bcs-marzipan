@@ -10,7 +10,7 @@ import {
   type ReportSectionData,
 } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
-import { ReportActivityFiltersBar } from '@/components/reports/ReportActivityFiltersBar';
+import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
@@ -20,15 +20,18 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityStatuses } from '@/hooks/useLookups';
+import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import { showErrorToast } from '@/lib/error-toast';
 import {
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
-import { buildReportDataRequestParamsFromActivityPreferences } from '@/lib/report-from-activity-filters';
+import {
+  buildReportDataRequestParamsFromActivityPreferences,
+  stableSerializeReportQueryParams,
+} from '@/lib/report-from-activity-filters';
 import { appendReportDataRequestParams } from '@/lib/report-print-preview';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +44,7 @@ export function ReportsPage() {
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
   const { preferences, setPreferences } =
-    useActivityTablePreferences(canSeeDeleted);
+    useReportsTablePreferences(canSeeDeleted);
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
 
   const statusArchiveIds = useMemo(() => {
@@ -63,6 +66,11 @@ export function ReportsPage() {
         canSeeDeleted
       ),
     [preferences, statusArchiveIds, canSeeDeleted]
+  );
+
+  const reportQueryParamsKey = useMemo(
+    () => stableSerializeReportQueryParams(reportQueryParams),
+    [reportQueryParams]
   );
 
   const [activeReport, setActiveReport] = useState<string>('');
@@ -120,13 +128,19 @@ export function ReportsPage() {
   }, [activeReport, preferences.filterState, setPreferences]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['report-data', activeReport, reportQueryParams],
+    queryKey: ['report-data', activeReport, reportQueryParamsKey],
     queryFn: () =>
       activeReport
         ? fetchReportData(activeReport, reportQueryParams)
         : Promise.reject(new Error('No report selected')),
     enabled: !!activeReport,
   });
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[Reports] reportQueryParams', reportQueryParams);
+    }
+  }, [reportQueryParams]);
 
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
@@ -264,7 +278,7 @@ export function ReportsPage() {
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
             <div className="shrink-0">
-              <ReportActivityFiltersBar
+              <ReportFiltersBar
                 preferences={preferences}
                 setPreferences={setPreferences}
               />

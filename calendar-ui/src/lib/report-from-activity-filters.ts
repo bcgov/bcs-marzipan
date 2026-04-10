@@ -1,12 +1,34 @@
 import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 import type { ReportDataRequestParams } from '@/api/reportsApi';
-import type { ActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
+import type { ActivityTablePreferences } from '@/lib/activityTablePreferencesParams';
 
 /**
- * Maps activity table preferences (same persisted state as Activity List) to Reports API query params.
- * Only fields supported by {@link FilterActivitiesQueryParams} are sent; multi-select filters that
- * the list applies client-side are included when exactly one value is selected (same idea as
- * narrowing to a single server filter).
+ * Stable string for React Query `queryKey` so refetches track param *values*, not object identity.
+ */
+export function stableSerializeReportQueryParams(
+  params: ReportDataRequestParams
+): string {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined)
+        .sort(([a], [b]) => a.localeCompare(b))
+    )
+  );
+}
+
+/**
+ * Maps activity table preferences to `GET /reports/data/:type` query params.
+ *
+ * **Supported by {@link ReportDataQueryParams} / activities `findAll`:** scheduled start window
+ * (`dateRange` → `startDateFrom` / `startDateTo`), keyword `search` (report post-filters results),
+ * `includeCompleted` / `includeDeleted`, and single-value narrowing: `activityStatusId`,
+ * `leadMinistryId`, `commsContactLeadUserId`, `lookAheadSection`.
+ *
+ * **Not representable on the API (activity list applies these client-side):** `categoryNames`,
+ * `tagIds`, `leadOrgIds`, `eventPlannerLeadIds`, translation IDs, pitch / look-ahead status
+ * strings, and any multi-select beyond one ID where the schema allows only one. Those do not
+ * change the request until the backend schema gains matching fields.
  */
 export function buildReportDataRequestParamsFromActivityPreferences(
   prefs: ActivityTablePreferences,
@@ -32,10 +54,19 @@ export function buildReportDataRequestParamsFromActivityPreferences(
     ? statusIncludesDeleted && canSeeDeleted
     : prefs.showDeleted && canSeeDeleted;
 
+  const trimmedKeyword = prefs.searchKeyword.trim();
+  // Report pipeline runs `filterActivityResponsesBySearchKeyword` over categories/tags text.
+  // Best-effort: if the user picked exactly one category and left the box empty, search by that label.
+  let search: string | undefined = trimmedKeyword || undefined;
+  if (!search && fs.categoryNames.length === 1) {
+    const only = fs.categoryNames[0]?.trim();
+    search = only !== '' ? only : undefined;
+  }
+
   const params: ReportDataRequestParams = {
     page: 1,
     limit: 500,
-    search: prefs.searchKeyword.trim() || undefined,
+    search,
     includeCompleted: effectiveShowCompleted,
     includeDeleted: canSeeDeleted ? effectiveShowDeleted : false,
   };
