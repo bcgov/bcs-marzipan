@@ -18,6 +18,10 @@ export interface PitchFilterPanelProps {
   filterState: ActivityFilterState;
   onFilterStateChange: (state: ActivityFilterState) => void;
   pitchRequiredStatusOptions: OptionItem[];
+  /** When false, pitch status filters are hidden (field scope). Default true. */
+  canViewPitchStatus?: boolean;
+  /** When false, pitch date filters are hidden (field scope). Default true. */
+  canViewPitchDate?: boolean;
 }
 
 export type PitchFilterProps = PitchFilterPanelProps;
@@ -35,6 +39,8 @@ export function PitchFilterPanel({
   filterState,
   onFilterStateChange,
   pitchRequiredStatusOptions,
+  canViewPitchStatus = true,
+  canViewPitchDate = true,
 }: PitchFilterPanelProps) {
   const { pitchRequiredStatusNames, pitchDateFilter } = filterState;
 
@@ -109,76 +115,88 @@ export function PitchFilterPanel({
 
   return (
     <>
-      <FilterSectionLabel
-        onClearAll={
-          pitchRequiredStatusNames.length > 0
-            ? handleClearPitchStatus
-            : undefined
-        }
-      >
-        Pitch status
-      </FilterSectionLabel>
-      {pitchRequiredStatusOptions.length === 0 ? (
-        <p className="text-muted-foreground px-2 py-2 text-center text-sm">
-          No results
-        </p>
-      ) : (
-        pitchRequiredStatusOptions.map((opt) => (
-          <FilterCheckboxItem
-            key={opt.value}
-            checked={pitchRequiredStatusNames.includes(opt.value)}
-            onCheckedChange={() => handlePitchStatusToggle(opt.value)}
+      {canViewPitchStatus ? (
+        <>
+          <FilterSectionLabel
+            onClearAll={
+              pitchRequiredStatusNames.length > 0
+                ? handleClearPitchStatus
+                : undefined
+            }
           >
-            {opt.label}
-          </FilterCheckboxItem>
-        ))
-      )}
-      <div className="border-t" role="separator" />
-      <FilterSectionLabel
-        onClearAll={
-          pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
-        }
-      >
-        Pitch date
-      </FilterSectionLabel>
-      <FilterCheckboxItem
-        checked={pitchDateFilter.kind === 'not_scheduled'}
-        onCheckedChange={handlePitchDateNotScheduledChange}
-      >
-        Not scheduled for panel
-      </FilterCheckboxItem>
-      <FilterCheckboxItem
-        checked={pitchDateFilter.kind === 'scheduled'}
-        onCheckedChange={(checked) => handlePitchDateScheduledChange(checked)}
-      >
-        Scheduled for panel
-      </FilterCheckboxItem>
-
-      {pitchDateFilter.kind === 'scheduled' && (
-        <div className="border-t px-2 pt-2 pb-2">
-          <div className="mb-2 flex w-full items-center justify-between gap-2">
-            <span className="text-muted-foreground text-xs font-normal uppercase">
-              Panel date
-            </span>
-            {isDateRangeActive(pitchDateFilter.dateRange) ? (
-              <button
-                type="button"
-                onClick={handleClearDatesClick}
-                className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
-                aria-label="Clear panel date range"
+            Pitch status
+          </FilterSectionLabel>
+          {pitchRequiredStatusOptions.length === 0 ? (
+            <p className="text-muted-foreground px-2 py-2 text-center text-sm">
+              No results
+            </p>
+          ) : (
+            pitchRequiredStatusOptions.map((opt) => (
+              <FilterCheckboxItem
+                key={opt.value}
+                checked={pitchRequiredStatusNames.includes(opt.value)}
+                onCheckedChange={() => handlePitchStatusToggle(opt.value)}
               >
-                Clear dates
-              </button>
-            ) : null}
-          </div>
-          <ScheduledDateRangeFields
-            value={pitchDateFilter.dateRange}
-            onChange={handlePitchDateRangeChange}
-            endNoDateLabel="No end date (all upcoming pitches)"
-            showClearButton={false}
-          />
-        </div>
-      )}
+                {opt.label}
+              </FilterCheckboxItem>
+            ))
+          )}
+        </>
+      ) : null}
+      {canViewPitchStatus && canViewPitchDate ? (
+        <div className="border-t" role="separator" />
+      ) : null}
+      {canViewPitchDate ? (
+        <>
+          <FilterSectionLabel
+            onClearAll={
+              pitchDateFilter.kind !== 'any' ? handleClearPitchDate : undefined
+            }
+          >
+            Pitch date
+          </FilterSectionLabel>
+          <FilterCheckboxItem
+            checked={pitchDateFilter.kind === 'not_scheduled'}
+            onCheckedChange={handlePitchDateNotScheduledChange}
+          >
+            Not scheduled for panel
+          </FilterCheckboxItem>
+          <FilterCheckboxItem
+            checked={pitchDateFilter.kind === 'scheduled'}
+            onCheckedChange={(checked) =>
+              handlePitchDateScheduledChange(checked)
+            }
+          >
+            Scheduled for panel
+          </FilterCheckboxItem>
+
+          {pitchDateFilter.kind === 'scheduled' && (
+            <div className="border-t px-2 pt-2 pb-2">
+              <div className="mb-2 flex w-full items-center justify-between gap-2">
+                <span className="text-muted-foreground text-xs font-normal uppercase">
+                  Panel date
+                </span>
+                {isDateRangeActive(pitchDateFilter.dateRange) ? (
+                  <button
+                    type="button"
+                    onClick={handleClearDatesClick}
+                    className="text-primary focus-visible:ring-ring shrink-0 text-xs font-normal hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                    aria-label="Clear panel date range"
+                  >
+                    Clear dates
+                  </button>
+                ) : null}
+              </div>
+              <ScheduledDateRangeFields
+                value={pitchDateFilter.dateRange}
+                onChange={handlePitchDateRangeChange}
+                endNoDateLabel="No end date (all upcoming pitches)"
+                showClearButton={false}
+              />
+            </div>
+          )}
+        </>
+      ) : null}
     </>
   );
 }

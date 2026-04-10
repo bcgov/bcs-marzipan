@@ -1,23 +1,21 @@
 /**
- * Builds toast options for activity-updated toasts (e.g. used by EditActivityForm
- * for consistent id and description; stable ids enable Sonner deduplication).
+ * Helpers for activity create/update success toasts (display id resolution;
+ * stable toast ids for Sonner deduplication live at call sites).
  */
-export interface ActivityUpdatedToastParams {
-  id: string;
-  title?: string;
-  displayId?: string | null;
+
+/** Zero-pad the numeric activity id to at least 6 characters (e.g. 42 → "000042"), matching the id segment used in activity display IDs. */
+export function formatActivityNumericIdPadded(id: number): string {
+  return String(id).padStart(6, '0');
 }
 
-const DURATION_MS = 5000;
-
-export function getActivityUpdatedToastOptions(
-  params: ActivityUpdatedToastParams
-): { id: string; description: string; duration: number } {
-  const { id, title = '', displayId } = params;
-  const prefix = displayId ?? `ACT-${id}`;
-  return {
-    id: `activity-updated-${id}`,
-    description: title ? `${prefix}: ${title}` : prefix,
-    duration: DURATION_MS,
-  };
+/**
+ * Prefer API `displayId` (includes ministry/team prefix). Fallback matches prior
+ * toast copy when the backend has not set displayId yet.
+ */
+export function resolveActivityToastDisplayId(
+  displayId: string | null | undefined,
+  numericId: number
+): string {
+  if (displayId) return displayId;
+  return `CAL-${formatActivityNumericIdPadded(numericId)}`;
 }

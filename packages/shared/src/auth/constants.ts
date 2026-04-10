@@ -83,6 +83,16 @@ export const PERMISSIONS = {
     REVIEW: 'activities.review',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
+    NOTES_VIEW: 'activities.notes.view',
+    NOTES_EDIT: 'activities.notes.edit',
+    LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
+    LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
+    TRANSLATIONS_EDIT: 'activities.translations.edit',
+    PITCH_STATUS_VIEW: 'activities.pitchStatus.view',
+    PITCH_STATUS_EDIT: 'activities.pitchStatus.edit',
+    PITCH_DATE_EDIT: 'activities.pitchDate.edit',
+    /** Take edit lock from another user after grace period (admin). */
+    LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

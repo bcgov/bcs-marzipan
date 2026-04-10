@@ -7,6 +7,8 @@ export default defineConfig({
     include: ['**/*.e2e-spec.ts'],
     globals: true,
     root: './',
+    /** Avoid flaky lock integration tests fighting activities tests over the same activity row. */
+    fileParallelism: false,
     coverage: {
       reportsDirectory: resolve(__dirname, '../coverage/service-e2e'),
     },

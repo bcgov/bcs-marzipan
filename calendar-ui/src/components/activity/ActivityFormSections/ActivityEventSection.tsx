@@ -10,7 +10,10 @@ import type {
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
-import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
+import {
+  FormSelectSafe,
+  FormSelectTrigger,
+} from '@/components/app/form-select';
 import {
   AddressAutocomplete,
   type AddressData,
@@ -418,8 +421,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelect
+            <FormSelectSafe
               readOnly={readOnly}
+              optionValues={premierRequestedOptions.map((o) => o.value)}
               onValueChange={(value) => {
                 const parsed = value ? parseInt(value, 10) : null;
                 field.onChange(isNaN(parsed as number) ? null : parsed);
@@ -438,7 +442,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </FormSelect>
+            </FormSelectSafe>
             <FormMessage />
           </FormItem>
         )}

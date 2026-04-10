@@ -452,15 +452,14 @@ export const commsMaterials = pgTable('comms_materials', {
 });
 
 /**
- * TranslatedLanguage lookup table - Languages for translations
- * Values: 'Arabic','Chinese Simplified','Chinese Traditional','Dutch','Farsi','Finnish','French','Gujarati','Hebrew','Hindi','Indonesian','Japanese','Korean','Portuguese','Punjabi','Russian','Somali','Spanish','Swahili','Tagalog','Ukrainian','Urdu','Vietnamese' (user editable)
- * shortcode: BCP 47 language tag for use in UI (e.g. lang attributes) or external systems.
+ * TranslatedLanguage lookup table - Languages for translations (user-editable list).
+ * shortcode: internal language code for display and APIs (not necessarily BCP 47).
  */
 export const translatedLanguages = pgTable('translated_languages', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
-  /** BCP 47 language tag (e.g. ar, zh-Hans, fr) */
+  /** Internal language code (e.g. AR, SC, FR) */
   shortcode: varchar('shortcode', { length: 15 }),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),

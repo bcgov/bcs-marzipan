@@ -62,10 +62,10 @@ export const activityDbFieldsSchema = z.object({
   isAllDay: z.boolean(),
   startDate: z.string().nullable(),
   endDate: z.string().nullable(),
-  dateStatusId: z.number().int(),
+  dateStatusId: z.number().int().optional(),
   startTime: z.string().nullable(),
   endTime: z.string().nullable(),
-  timeStatusId: z.number().int(),
+  timeStatusId: z.number().int().optional(),
   venueStatusId: z.number().int().nullable(),
   schedulingNotes: z.string().nullable(),
   strategy: z.string().nullable(),
@@ -77,14 +77,14 @@ export const activityDbFieldsSchema = z.object({
 
   // Look Ahead
   executiveSummary: z.string().nullable(),
-  lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable(),
-  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable(),
+  lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(), // Omitted when user lacks lookAhead view
+  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable().optional(), // Omitted when user lacks lookAhead view
 
-  // Notes and additional fields
-  notes: z.string().nullable(),
-  pitchDate: z.string().nullable(), // Date when activity was or will be pitched
-  pitchRequiredStatusId: z.number().int().nullable(),
-  translationsRequiredStatusId: z.number().int().nullable(),
+  // notes / pitch: omitted from API when user lacks view for that scope. Translation fields are not view-redacted.
+  notes: z.string().nullable().optional(),
+  pitchDate: z.string().nullable().optional(),
+  pitchRequiredStatusId: z.number().int().nullable().optional(),
+  translationsRequiredStatusId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
@@ -151,7 +151,7 @@ export const activityComputedFieldsSchema = z.object({
   category: z.array(z.string()).default([]),
   tags: z.array(tagSchema).default([]),
   commsMaterials: z.array(z.string()).default([]),
-  translationsRequired: z.array(z.string()).default([]),
+  translationsRequired: z.array(z.string()).default([]).optional(),
   representativesAttending: z.array(z.string()).default([]), // Representative display names
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
   commsContacts: z
@@ -175,9 +175,9 @@ export const activityComputedFieldsSchema = z.object({
   // Event planner lookup IDs for this activity (for client-side filtering; derived from eventPlannerDetails)
   eventPlannerLeadIds: z.array(z.number().int()).default([]),
 
-  // Computed status names (from lookup table joins)
-  dateStatus: z.string(),
-  timeStatus: z.string(),
+  // Computed status names (from lookup joins; optional if lookup missing). Not view-redacted.
+  dateStatus: z.string().optional(),
+  timeStatus: z.string().optional(),
   venueStatus: z.string().nullable(),
   activityStatus: z.string(),
 
@@ -185,8 +185,8 @@ export const activityComputedFieldsSchema = z.object({
   newsReleaseOrigin: z.string().nullable(),
   newsReleaseDistribution: z.string().nullable(),
   premierRequested: z.string().nullable(),
-  pitchRequiredStatus: z.string().nullable(),
-  translationsRequiredStatus: z.string().nullable(),
+  pitchRequiredStatus: z.string().nullable().optional(),
+  translationsRequiredStatus: z.string().nullable().optional(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),
   /** Lead team label for display (team + ministry); independent of lead-options scope. */

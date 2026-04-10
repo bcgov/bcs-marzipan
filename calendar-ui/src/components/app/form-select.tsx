@@ -6,8 +6,12 @@
  * Use `disabled` only for field-level rules that should look muted. When both apply,
  * `disabled` wins (muted). When only `readOnly` is true, the trigger keeps
  * full-contrast styling and the menu stays closed.
+ *
+ * For fields whose options are loaded asynchronously, use {@link FormSelectSafe}
+ * instead. It suppresses phantom `onValueChange('')` emissions that Radix fires
+ * when the current value has no matching `SelectItem` during option reconciliation.
  */
-import type { ComponentProps } from 'react';
+import { useCallback, useMemo, useRef, type ComponentProps } from 'react';
 
 import { Select, SelectTrigger } from '@/components/ui/select';
 import {
@@ -21,34 +25,15 @@ export type FormSelectProps = ComponentProps<typeof Select> & {
   readOnly?: boolean;
 };
 
-export function FormSelect({
-  readOnly,
-  disabled,
-  open,
-  ...props
-}: FormSelectProps) {
+export function FormSelect({ readOnly, disabled, ...props }: FormSelectProps) {
   const isMuted = Boolean(disabled);
   const viewOnly = Boolean(readOnly) && !isMuted;
 
   if (viewOnly) {
-    return (
-      <Select
-        {...props}
-        disabled={false}
-        open={false}
-        onOpenChange={() => {}}
-      />
-    );
+    return <Select {...props} disabled={false} />;
   }
 
-  return (
-    <Select
-      {...props}
-      disabled={isMuted}
-      open={open}
-      onOpenChange={(nextOpen) => props.onOpenChange?.(nextOpen)}
-    />
-  );
+  return <Select {...props} disabled={isMuted} />;
 }
 
 export type FormSelectTriggerProps = ComponentProps<typeof SelectTrigger> & {
@@ -71,6 +56,57 @@ export function FormSelectTrigger({
         className
       )}
       {...props}
+    />
+  );
+}
+
+export type FormSelectSafeProps = FormSelectProps & {
+  /**
+   * Known option values. When the set is non-empty, `onValueChange` calls
+   * with values not in this set (e.g. Radix phantom `''` during async option
+   * reconciliation) are suppressed.
+   */
+  optionValues?: string[];
+};
+
+/**
+ * Drop-in replacement for {@link FormSelect} that guards against phantom
+ * `onValueChange('')` emissions from Radix Select during async option loading.
+ */
+export function FormSelectSafe({
+  optionValues,
+  readOnly,
+  ...props
+}: FormSelectSafeProps) {
+  const onValueChangeRef = useRef<((value: string) => void) | undefined>(
+    undefined
+  );
+  onValueChangeRef.current =
+    props.onValueChange === undefined
+      ? undefined
+      : (value: string) => {
+          props.onValueChange?.(value);
+        };
+
+  const allowedValues = useMemo(
+    () => (optionValues?.length ? new Set(optionValues) : null),
+    [optionValues]
+  );
+
+  const safeOnValueChange = useCallback(
+    (value: string) => {
+      if (readOnly) return;
+      if (allowedValues && !allowedValues.has(value)) return;
+      onValueChangeRef.current?.(value);
+    },
+    [readOnly, allowedValues]
+  );
+
+  return (
+    <FormSelect
+      {...props}
+      readOnly={readOnly}
+      onValueChange={safeOnValueChange}
     />
   );
 }

@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, type Resolver, type UseFormReturn } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type Resolver,
+  type UseFormReturn,
+} from 'react-hook-form';
 import { useEffect } from 'react';
 
 import type {
@@ -77,7 +82,10 @@ export function useActivityFormSetup({
     defaultValues: getDefaultFormValues(),
   });
 
-  const watchedLeadTeamId: number | undefined = form.watch('leadTeamId');
+  const watchedLeadTeamId = useWatch({
+    control: form.control,
+    name: 'leadTeamId',
+  });
   const canFetchCommsForLeadTeam =
     hasCreateAny ||
     (watchedLeadTeamId != null &&

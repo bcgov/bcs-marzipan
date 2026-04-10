@@ -5,6 +5,10 @@ export { default as DashboardBarChart } from './DashboardBarChart';
 export { ErrorDetails, StatusMessage } from './StatusMessage';
 export { ErrorState } from './ErrorState';
 export { FormErrorFallback } from './FormErrorFallback';
-export { LockBanner } from './LockBanner';
+export {
+  LockBanner,
+  LockBannerContent,
+  type LockBannerProps,
+} from './LockBanner';
 export { ResponsiveFilterRow } from './ResponsiveFilterRow';
 export { UserSwitcher } from './UserSwitcher';
