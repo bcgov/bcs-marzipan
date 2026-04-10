@@ -18,7 +18,7 @@ export interface ReportDataResponse {
   sections: ReportSectionData[];
 }
 
-/** Query params for `/reports/data/:type` and CSV/XLSX export (strings as sent in the URL). */
+/** Query params for `/reports/data/:type` and CSV/XLSX/PDF export (strings as sent in the URL). */
 export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
 
 export async function fetchReportData(
@@ -38,12 +38,13 @@ export async function fetchReportsList(): Promise<ReportResponse[]> {
 
 async function downloadReportFile(
   type: string,
-  ext: 'csv' | 'xlsx',
+  ext: 'csv' | 'xlsx' | 'pdf',
   params?: ReportDataRequestParams
 ): Promise<void> {
   const response = await api.get(`/reports/export/${type}/${ext}`, {
     params,
     responseType: 'blob',
+    timeout: ext === 'pdf' ? 120_000 : undefined,
   });
 
   const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -70,4 +71,12 @@ export async function downloadReportXlsx(
   params?: ReportDataRequestParams
 ): Promise<void> {
   return downloadReportFile(type, 'xlsx', params);
+}
+
+/** Download PDF (`GET /reports/export/:type/pdf`). Same query params as `fetchReportData`. */
+export async function downloadReportPdf(
+  type: string,
+  params?: ReportDataRequestParams
+): Promise<void> {
+  return downloadReportFile(type, 'pdf', params);
 }

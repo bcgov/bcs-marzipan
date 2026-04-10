@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   fetchReportData,
@@ -14,45 +14,37 @@ import {
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
-import { REPORT_PRINT_PREVIEW_STORAGE_KEY } from '@/lib/report-print-preview';
+import { parseReportDataRequestParamsFromUrl } from '@/lib/report-print-preview';
 
+/** Fallback when the URL omits pagination (matches Reports page builder defaults). */
 const DEFAULT_PARAMS: ReportDataRequestParams = {
   page: 1,
   limit: 500,
 };
-
-function readSnapshotParams(reportType: string): ReportDataRequestParams {
-  try {
-    const raw = sessionStorage.getItem(REPORT_PRINT_PREVIEW_STORAGE_KEY);
-    if (!raw) return DEFAULT_PARAMS;
-    const parsed = JSON.parse(raw) as {
-      type?: string;
-      params?: ReportDataRequestParams;
-    };
-    if (parsed.type === reportType && parsed.params) {
-      return { ...DEFAULT_PARAMS, ...parsed.params };
-    }
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_PARAMS;
-}
 
 export function ReportPrintPreviewPage() {
   const [searchParams] = useSearchParams();
   const reportType = (searchParams.get('type') ?? '').trim();
   const [isExporting, setIsExporting] = useState(false);
 
-  const requestParams = useMemo(
-    () => readSnapshotParams(reportType),
-    [reportType]
-  );
+  const requestParams = useMemo(() => {
+    const fromUrl = parseReportDataRequestParamsFromUrl(searchParams);
+    return { ...DEFAULT_PARAMS, ...fromUrl };
+  }, [searchParams]);
 
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ['report-print-preview', reportType, requestParams],
     queryFn: () => fetchReportData(reportType, requestParams),
     enabled: reportType.length > 0,
   });
+
+  useEffect(() => {
+    console.log('Preview Query Params:', requestParams);
+  }, [requestParams]);
+
+  useEffect(() => {
+    console.log('Preview Data:', data);
+  }, [data]);
 
   const html = useMemo(() => {
     if (!data || !reportType) return '';

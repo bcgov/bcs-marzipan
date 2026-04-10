@@ -4,13 +4,18 @@ import { and, eq } from 'drizzle-orm';
 import { activityReportSettings, reports } from '@corpcal/database/schema';
 import type { Visibility } from '@corpcal/shared';
 import type {
-  ActivityResponse,
+  ReportDataResponse,
   ReportResponse,
+  ReportSectionData,
 } from '@corpcal/shared/api/types';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
 } from '@corpcal/shared/reports/reportExportFormat';
+import {
+  getReportTemplateHtml,
+  wrapReportHtmlDocument,
+} from '@corpcal/shared/reports/reportPrintHtml';
 import {
   mergeReportFilters,
   reportConfigSchema,
@@ -23,7 +28,7 @@ import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
-import { renderReportTableToPdfBuffer } from './formatters/report-pdf.formatter';
+import { PdfGeneratorService } from './pdf-generator.service';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
 function pickDefinedActivityFilters(
@@ -60,7 +65,8 @@ export class ReportsService {
 
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly activitiesService: ActivitiesService
+    private readonly activitiesService: ActivitiesService,
+    private readonly pdfGeneratorService: PdfGeneratorService
   ) {}
 
   /**
@@ -501,24 +507,24 @@ export class ReportsService {
   }
 
   /**
-   * Generate PDF bytes for a report (tabular layout driven by {@link ReportExportTable}).
+   * Generate PDF bytes using the same HTML templates as print preview (Puppeteer).
    */
-  async generateReportPdfBuffer(data: ReportDataResponse): Promise<Buffer> {
-    const table = buildReportExportTable(data);
-    return renderReportTableToPdfBuffer(table, {
-      title: data.report.displayName,
-    });
+  async generateReportPdfBuffer(
+    reportType: string,
+    data: ReportDataResponse
+  ): Promise<Buffer> {
+    const inner = getReportTemplateHtml(reportType, data).trim();
+    if (!inner) {
+      throw new NotFoundException(
+        `No printable HTML for report '${reportType}'.`
+      );
+    }
+    const html = wrapReportHtmlDocument(inner);
+    return this.pdfGeneratorService.generatePdfFromHtml(html);
   }
 }
 
-export interface ReportSectionData {
-  id: string;
-  name: string;
-  order: number;
-  activities: ActivityResponse[];
-}
-
-export interface ReportDataResponse {
-  report: ReportResponse;
-  sections: ReportSectionData[];
-}
+export type {
+  ReportDataResponse,
+  ReportSectionData,
+} from '@corpcal/shared/api/types';

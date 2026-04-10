@@ -29,7 +29,7 @@ import {
   type ReportExportFormat,
 } from '@/lib/report-export';
 import { buildReportDataRequestParamsFromActivityPreferences } from '@/lib/report-from-activity-filters';
-import { REPORT_PRINT_PREVIEW_STORAGE_KEY } from '@/lib/report-print-preview';
+import { appendReportDataRequestParams } from '@/lib/report-print-preview';
 import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
@@ -155,19 +155,11 @@ export function ReportsPage() {
 
   const handlePrintPreview = () => {
     if (!activeReport) return;
-    try {
-      sessionStorage.setItem(
-        REPORT_PRINT_PREVIEW_STORAGE_KEY,
-        JSON.stringify({
-          type: activeReport,
-          params: reportQueryParams,
-        })
-      );
-    } catch {
-      /* ignore quota / private mode */
-    }
+    const qs = new URLSearchParams();
+    qs.set('type', activeReport);
+    appendReportDataRequestParams(qs, reportQueryParams);
     window.open(
-      `/reports/print-preview?type=${encodeURIComponent(activeReport)}`,
+      `/reports/print-preview?${qs.toString()}`,
       '_blank',
       'noopener,noreferrer'
     );
