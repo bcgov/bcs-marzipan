@@ -38,6 +38,7 @@ export interface FormLookupData {
     id: number;
     name: string;
     displayName?: string;
+    visibility?: string;
   }>;
 
   // Organizations - for Select/Combobox (id is number; coerce to string where UI requires). ministryId used for Lead Org sync from Lead Team.
@@ -193,6 +194,7 @@ export function useFormLookups(): FormLookupData {
         id: item.id,
         name: item.name || item.label,
         displayName: item.displayName || item.label,
+        visibility: item.visibility,
       })) || [];
 
     // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
@@ -308,6 +310,7 @@ export function useFormLookups(): FormLookupData {
         id: number;
         name: string;
         displayName?: string;
+        visibility?: string;
       }>,
       organizations,
       ministries,
