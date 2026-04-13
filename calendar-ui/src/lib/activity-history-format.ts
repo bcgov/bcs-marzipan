@@ -26,6 +26,7 @@ const ACTION_TEXT_MAP: Record<string, string> = {
   assigned: 'Assigned',
   unassigned: 'Unassigned',
   status_changed: 'Status changed',
+  comms_lead_transferred: 'Transferred',
 };
 
 export function getActionText(actionType: string): string {

@@ -29,11 +29,16 @@ import type {
   UserListItem,
 } from '@corpcal/shared/api/types';
 
+import { ActivityHistoryService } from '../activities/services/activity-history.service';
+import type { Database } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activityHistoryService: ActivityHistoryService
+  ) {}
 
   private async recordUserHistory(
     userId: number,
@@ -620,6 +625,26 @@ export class UsersService {
       return { transferredCount: 0 };
     }
 
+    const userRowsForHistory = await this.databaseService.db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(users)
+      .where(inArray(users.id, [sourceUserId, dto.targetUserId]));
+
+    const displayNameById = new Map(
+      userRowsForHistory.map((u) => [
+        u.id,
+        u.adDisplayName || u.adUsername || `User ${u.id}`,
+      ])
+    );
+    const sourceDisplayName =
+      displayNameById.get(sourceUserId) ?? `User ${sourceUserId}`;
+    const targetDisplayName =
+      displayNameById.get(dto.targetUserId) ?? `User ${dto.targetUserId}`;
+
     const transferredCount = await this.databaseService.db.transaction(
       async (tx) => {
         let count = 0;
@@ -668,6 +693,24 @@ export class UsersService {
                 )
               );
           }
+
+          if (row.isLead) {
+            await this.activityHistoryService.recordChange(
+              row.activityId,
+              changedByUserId,
+              'comms_lead_transferred',
+              [
+                {
+                  field: 'commsContactLeadId',
+                  oldValue: sourceDisplayName,
+                  newValue: targetDisplayName,
+                },
+              ],
+              undefined,
+              tx as unknown as Database
+            );
+          }
+
           count += 1;
         }
         return count;
