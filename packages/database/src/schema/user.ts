@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  index,
   integer,
   pgTable,
   serial,
@@ -18,39 +19,55 @@ import { roles } from './rbac';
  * roleId references roles table for RBAC (replaces legacy role varchar)
  */
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  roleId: integer('role_id')
-    .notNull()
-    .references(() => roles.id),
-  groupId: integer('group_id'), // FK to Groups TODO
-  isActive: boolean('is_active').notNull().default(true),
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    roleId: integer('role_id')
+      .notNull()
+      .references(() => roles.id),
+    groupId: integer('group_id'), // FK to Groups TODO
+    isActive: boolean('is_active').notNull().default(true),
 
-  // Active Directory
-  externalId: varchar('external_id', { length: 255 }), // Active Directory user ID
-  adUsername: varchar('ad_username', { length: 255 }), // Active Directory username
-  adDisplayName: varchar('ad_display_name', { length: 255 }), // Active Directory display name
-  adEmail: varchar('ad_email', { length: 255 }), // Active Directory email
-  adPhone: varchar('ad_phone', { length: 50 }), // Active Directory phone
-  adDivision: varchar('ad_division', { length: 255 }), // Active Directory division
-  adDepartment: varchar('ad_department', { length: 255 }), // Active Directory department
-  adJobTitle: varchar('ad_job_title', { length: 255 }), // Active Directory job title
-  // Additional user info
-  phone: varchar('phone', { length: 50 }),
-  notes: text('notes'),
+    // Active Directory
+    externalId: varchar('external_id', { length: 255 }), // Active Directory user ID
+    adUsername: varchar('ad_username', { length: 255 }), // Active Directory username
+    adDisplayName: varchar('ad_display_name', { length: 255 }), // Active Directory display name
+    adEmail: varchar('ad_email', { length: 255 }), // Active Directory email
+    adPhone: varchar('ad_phone', { length: 50 }), // Active Directory phone
+    adDivision: varchar('ad_division', { length: 255 }), // Active Directory division
+    adDepartment: varchar('ad_department', { length: 255 }), // Active Directory department
+    adJobTitle: varchar('ad_job_title', { length: 255 }), // Active Directory job title
+    // Additional user info
+    phone: varchar('phone', { length: 50 }),
+    notes: text('notes'),
 
-  // Audit fields
-  lastLoginDateTime: timestamp('last_login_date_time', { withTimezone: true }),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true }),
-  createdBy: integer('created_by'), // FK to User (self-reference)
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  }),
-  lastUpdatedBy: integer('last_updated_by'), // FK to User (self-reference)
-  timestamp: timestamp('timestamp', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+    // Audit fields
+    lastLoginDateTime: timestamp('last_login_date_time', {
+      withTimezone: true,
+    }),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true }),
+    createdBy: integer('created_by'), // FK to User (self-reference)
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    }),
+    lastUpdatedBy: integer('last_updated_by'), // FK to User (self-reference)
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Trigram indexes for ILIKE search
+    index('idx_users_ad_display_name_trgm').using(
+      'gin',
+      sql`lower(${table.adDisplayName}) gin_trgm_ops`
+    ),
+    index('idx_users_ad_username_trgm').using(
+      'gin',
+      sql`lower(${table.adUsername}) gin_trgm_ops`
+    ),
+  ]
+);
 
 // Relations for User
 export const usersRelations = relations(users, ({ one, many }) => ({
