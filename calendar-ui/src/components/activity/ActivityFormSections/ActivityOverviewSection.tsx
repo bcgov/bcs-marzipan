@@ -21,6 +21,7 @@ import {
   ComboboxChip,
   ComboboxChips,
   ComboboxChipsInput,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
@@ -406,37 +407,31 @@ export const ActivityOverviewSection: React.FC<
                   </ComboboxChips>
                   <ComboboxContent anchor={categoriesAnchorRef}>
                     <ComboboxEmpty>No categories found.</ComboboxEmpty>
-                    {teamCategoryOptions.length > 0 ? (
-                      <>
-                        <ComboboxGroup items={teamCategoryOptions}>
-                          <ComboboxList>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </ComboboxGroup>
-                        <ComboboxSeparator />
-                        <ComboboxGroup items={globalCategoryOptions}>
-                          <ComboboxList>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </ComboboxGroup>
-                      </>
-                    ) : (
-                      <ComboboxList>
-                        {(option: OptionItem) => (
-                          <ComboboxItem key={option.value} value={option}>
-                            {option.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    )}
+                    <ComboboxList>
+                      {teamCategoryOptions.length > 0 && (
+                        <>
+                          <ComboboxGroup items={teamCategoryOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                          <ComboboxSeparator />
+                        </>
+                      )}
+                      <ComboboxGroup items={globalCategoryOptions}>
+                        <ComboboxCollection>
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxGroup>
+                    </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
