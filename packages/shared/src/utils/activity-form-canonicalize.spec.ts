@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { canonicalizeActivityFormData } from './activity-form-canonicalize';
+import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 import { isDeepEqual } from './isDeepEqual';
 
 function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
@@ -93,9 +94,9 @@ describe('canonicalizeActivityFormData', () => {
     const withEmpty = canonicalizeActivityFormData(
       minimalForm({ summary: '' })
     );
-    expect(withUndefined.summary).toBe('');
-    expect(withNull.summary).toBe('');
-    expect(withEmpty.summary).toBe('');
+    expect(withUndefined.summary).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(withNull.summary).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(withEmpty.summary).toBe(EMPTY_RICH_TEXT_DOC);
     expect(isDeepEqual(withUndefined.summary, withEmpty.summary)).toBe(true);
   });
 });

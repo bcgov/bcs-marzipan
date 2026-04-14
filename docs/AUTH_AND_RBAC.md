@@ -146,6 +146,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 | activities.review                     |        |        |            |             | x           | x         |
 | activities.publish                    |        |        |            |             | x           | x         |
 | activities.unpublish                  |        |        |            |             | x           | x         |
+| activities.lock.forceHandoff          |        |        |            |             | x           | x         |
 | drafts.\*                             | view   | all    | view       | all+recover | all         | all       |
 | reports.view/export                   | view   | view   | view       | view+export | all         | all       |
 | reports.create_custom                 |        |        |            |             | x           | x         |
@@ -164,6 +165,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 - **Delete (soft and hard)**: Requires `activities.delete` **and** (comms contact or lead-team member or `activities.delete.any`). Without `activities.delete.any`, the service allows delete only when the user is a comms contact or lead-team member for the activity. Enforced by `CanDeleteActivityGuard` and by the activities service for context.
 - **Edit page when Delete requested or Deleted**: When an activity is in **Delete requested** or **Deleted** status, only **Admin** and **System Admin** may access the edit page. Other users (including those with `activities.edit`) can view the activity and use Restore from the banner if allowed; the UI redirects non-admins away from the edit page. No new permission is used; enforcement is role-based in the UI and via redirect. (Edit is implemented as a mode of the same activity page; the URL reflects edit state and non-admins are redirected to view when in delete_requested/deleted status.)
 - **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
+- **activities.lock.forceHandoff** (Admin / System Admin): may `POST /locks/activity/:activityId/force-handoff` to start a timed handoff of the edit lock, and may `DELETE /locks/activity/:activityId/force-handoff` to cancel a **pending** handoff. Only the user who requested the handoff (`to_user_id`) can cancel; other holders of the permission cannot cancel someone else's request.
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
 ## Database Schema
@@ -476,6 +478,12 @@ Users who can see an activity only because it is **shared with** one of their te
 
 - **CanEditActivityGuard**: Used on PATCH/PUT activity, PUT categories, PUT tags, PUT shared-with, and PUT themes. The user must have `activities.edit` (enforced by `@RequirePermission`) and at least one of: (a) comms contact for the activity, (b) member of the activity's lead team, or (c) Admin / System Admin. Otherwise the request is rejected with 403 (view-only for shared-with).
 - **Response field `canEdit`**: The activity API response includes an optional `canEdit: boolean` when the request is authenticated. It is `true` when the user may edit (comms, lead team, or bypass) and `false` when the user has only shared-with access. The frontend uses this to hide the Edit button and keep the form read-only for shared-with-only users.
+
+#### Activity response field-level read (redaction)
+
+List and detail activity responses run `redactActivityResponse` in the activities controller. For scopes that have an `activities.<scope>.view` permission, the user must hold that permission, the matching `activities.<scope>.edit` permission (edit implies view), or a role that bypasses field view checks (Advanced Viewer, Advanced Editor, Admin, System Admin). Otherwise those response fields are omitted.
+
+Some scopes **do not** define a view permission: **translations** and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
 
 #### Using dataScope in controllers and services
 

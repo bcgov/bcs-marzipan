@@ -5,6 +5,11 @@ import {
   LOOK_AHEAD_STATUS,
   VISIBILITY,
 } from '../constants/constants';
+import {
+  ACTIVITY_RICH_TEXT_MAX_BYTES,
+  isActivityRichTextStorageRefine,
+  plainTextFromActivityRichField,
+} from '../utils/activity-rich-text';
 
 /**
  * Activity Zod Schemas
@@ -55,6 +60,16 @@ export type VenueAddress = z.infer<typeof venueAddressFieldsSchema>;
  */
 const emptyStringToNull = (val: unknown) => (val === '' ? null : val);
 
+const ACTIVITY_RICH_TEXT_INVALID_STORAGE =
+  'Must be empty, plain/markdown, or valid Tip Tap document (JSON)';
+
+const activityRichTextStoredStringSchema = z
+  .string()
+  .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
+  .refine(isActivityRichTextStorageRefine, {
+    message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+  });
+
 // ============================================================================
 // Database Field Schemas (for request validation)
 // ============================================================================
@@ -66,10 +81,20 @@ const emptyStringToNull = (val: unknown) => (val === '' ? null : val);
 const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.string().min(1).max(255),
-  summary: z.string().max(1000),
+  summary: activityRichTextStoredStringSchema,
   significance: z.preprocess(
-    (val) => (val === '' ? null : val),
-    z.union([z.string().max(1000), z.null()]).optional()
+    emptyStringToNull,
+    z
+      .union([
+        z
+          .string()
+          .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
+          .refine(isActivityRichTextStorageRefine, {
+            message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+          }),
+        z.null(),
+      ])
+      .optional()
   ),
   schedulingNotes: z.string().max(500).optional().nullable(),
   strategy: z.string().nullable().optional(),
@@ -78,8 +103,8 @@ const activityCoreFieldsSchema = z.object({
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
   // activityStatusId is optional on create; backend sets it from markAsReviewed + role (new or reviewed).
-  dateStatusId: z.number().int(),
-  timeStatusId: z.number().int(),
+  dateStatusId: z.number().int().optional(), // Optional: server applies lookup defaults when omitted on create
+  timeStatusId: z.number().int().optional(), // Optional: server applies lookup defaults when omitted on create
   venueStatusId: z.number().int().nullable().optional(),
   activityStatusId: z.number().int().optional(),
 
@@ -100,7 +125,20 @@ const activityCoreFieldsSchema = z.object({
 
   // Optional text fields
   notes: z.string().nullable().optional(), // Maps to legacy Comments
-  executiveSummary: z.string().nullable().optional(),
+  executiveSummary: z.preprocess(
+    emptyStringToNull,
+    z
+      .union([
+        z
+          .string()
+          .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
+          .refine(isActivityRichTextStorageRefine, {
+            message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+          }),
+        z.null(),
+      ])
+      .optional()
+  ),
   pitchRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
   translationsRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
 
@@ -287,6 +325,8 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
+const SUMMARY_REQUIRED_MESSAGE = 'Summary is required.';
+
 export const createActivityRequestSchema = createBaseSchema
   .refine(createLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
@@ -295,7 +335,14 @@ export const createActivityRequestSchema = createBaseSchema
   .refine(eventPlannerLeadRefine, {
     message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
-  });
+  })
+  .refine(
+    (data) => plainTextFromActivityRichField(data.summary).trim().length > 0,
+    {
+      message: SUMMARY_REQUIRED_MESSAGE,
+      path: ['summary'],
+    }
+  );
 
 /**
  * Schema for updating an activity via HTTP request

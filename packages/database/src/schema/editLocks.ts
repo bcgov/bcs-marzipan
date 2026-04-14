@@ -32,6 +32,12 @@ export const editLocks = pgTable(
     lastRenewedAt: timestamp('last_renewed_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    lastActivityAt: timestamp('last_activity_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    idleExpiresAt: timestamp('idle_expires_at', {
+      withTimezone: true,
+    }).notNull(),
   },
   (table) => ({
     uniqueEntity: uniqueIndex('edit_locks_entity_type_entity_id_unique').on(
@@ -40,6 +46,9 @@ export const editLocks = pgTable(
     ),
     expiresAtIdx: index('edit_locks_expires_at_idx').on(table.expiresAt),
     userIdIdx: index('edit_locks_user_id_idx').on(table.userId),
+    idleExpiresAtIdx: index('edit_locks_idle_expires_at_idx').on(
+      table.idleExpiresAt
+    ),
   })
 );
 

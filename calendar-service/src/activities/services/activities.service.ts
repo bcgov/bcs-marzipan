@@ -28,11 +28,13 @@ import {
   activityTranslationsRequired,
   categories,
   commsMaterials,
+  dateStatuses,
   deletionAudit,
   favoriteActivities,
   ministries,
   pitchRequiredStatuses,
   teams,
+  timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
   userTeams,
@@ -48,6 +50,7 @@ import {
 } from '@corpcal/shared';
 import type {
   ActivityFormData,
+  ActivityHistoryEntry,
   ActivityResponse,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
@@ -64,6 +67,8 @@ import {
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
+  plainTextFromActivityRichField,
+  tipTapDocJsonFromPlainText,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -455,10 +460,12 @@ export class ActivitiesService {
         continue;
       }
       if (key === 'summary') {
-        prior.summary =
-          current.summary.length > 48
-            ? current.summary.slice(0, current.summary.length - 24).trimEnd()
-            : `[Prior reviewed text] ${current.summary}`;
+        const plain = plainTextFromActivityRichField(current.summary);
+        const shortened =
+          plain.length > 48
+            ? plain.slice(0, plain.length - 24).trimEnd()
+            : `[Prior reviewed text] ${plain}`;
+        prior.summary = tipTapDocJsonFromPlainText(shortened);
         continue;
       }
       if (key === 'title') {
@@ -496,7 +503,9 @@ export class ActivitiesService {
     const snap = buildReviewSnapshot(prior);
     const diff = diffReviewFields(current, snap);
     if (diff.length === 0) {
-      prior.summary = `[Prior reviewed text] ${current.summary}`;
+      prior.summary = tipTapDocJsonFromPlainText(
+        `[Prior reviewed text] ${plainTextFromActivityRichField(current.summary)}`
+      );
     }
 
     return prior;
@@ -833,6 +842,40 @@ export class ActivitiesService {
   }
 
   /**
+   * Resolve the first (lowest sort_order) date and time status IDs for use as
+   * server-side defaults when the create request omits them.
+   */
+  private async resolveDefaultDateTimeStatusIds(): Promise<{
+    dateStatusId: number;
+    timeStatusId: number;
+  }> {
+    const [dateRow] = await this.databaseService.db
+      .select({ id: dateStatuses.id })
+      .from(dateStatuses)
+      .orderBy(dateStatuses.sortOrder)
+      .limit(1);
+    const [timeRow] = await this.databaseService.db
+      .select({ id: timeStatuses.id })
+      .from(timeStatuses)
+      .orderBy(timeStatuses.sortOrder)
+      .limit(1);
+    if (dateRow?.id == null) {
+      throw new InternalServerErrorException(
+        'No date statuses configured in lookups.'
+      );
+    }
+    if (timeRow?.id == null) {
+      throw new InternalServerErrorException(
+        'No time statuses configured in lookups.'
+      );
+    }
+    return {
+      dateStatusId: dateRow.id,
+      timeStatusId: timeRow.id,
+    };
+  }
+
+  /**
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
@@ -934,13 +977,20 @@ export class ActivitiesService {
     const {
       pitchRequiredStatusId: dtoPitchStatus,
       translationsRequiredStatusId: dtoTranslationStatus,
+      dateStatusId: dtoDateStatus,
+      timeStatusId: dtoTimeStatus,
       significance: dtoSignificance,
       ...activityRowWithoutDefaults
     } = activityDataWithResolvedMinistry;
 
+    const defaultDateTimeStatuses =
+      await this.resolveDefaultDateTimeStatusIds();
+
     const activityRowForInsert = {
       ...activityRowWithoutDefaults,
       significance: dtoSignificance ?? null,
+      dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
+      timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
       pitchRequiredStatusId:
         dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
       translationsRequiredStatusId:
@@ -1169,7 +1219,7 @@ export class ActivitiesService {
     // Broadcast to all clients that a new activity was created
     // Only broadcast if the activity was successfully fetched
     if (createdActivity) {
-      this.activitiesGateway.broadcastActivityCreated(createdActivity);
+      this.activitiesGateway.broadcastActivityCreated(createdActivity.id);
     }
 
     return createdActivity;
@@ -1611,11 +1661,34 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    // Resolve existence first so missing IDs return 404 instead of lock-required 423.
+    const [oldActivity] = await this.databaseService.db
+      .select()
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+
+    if (!oldActivity) {
+      throw new NotFoundException(`Activity with ID ${id} not found`);
+    }
+
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
       id
     );
-    if (existingLock && existingLock.userId !== userId) {
+    if (!existingLock) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message:
+            'You must acquire an edit lock before updating this activity.',
+          locked: true,
+          lockRequired: true,
+        },
+        HttpStatus.LOCKED
+      );
+    }
+    if (existingLock.userId !== userId) {
       throw new HttpException(
         {
           statusCode: HttpStatus.LOCKED,
@@ -1626,21 +1699,11 @@ export class ActivitiesService {
             username: existingLock.username,
             acquiredAt: existingLock.acquiredAt,
             expiresAt: existingLock.expiresAt,
+            idleExpiresAt: existingLock.idleExpiresAt,
           },
         },
         HttpStatus.LOCKED
       );
-    }
-
-    // Get current activity state to track changes
-    const [oldActivity] = await this.databaseService.db
-      .select()
-      .from(activities)
-      .where(eq(activities.id, id))
-      .limit(1);
-
-    if (!oldActivity) {
-      throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
     // Reject update when activity is delete_requested or deleted
@@ -1655,6 +1718,9 @@ export class ActivitiesService {
         `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
       );
     }
+
+    // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
+    // Note: Field-level write policy enforcement may be implemented in authorization guards
 
     // Extract junction table IDs and venue address from DTO; omit activityStatusId and markAsReviewed (backend sets status)
     const {
@@ -2019,7 +2085,18 @@ export class ActivitiesService {
     });
 
     if (existingLock && existingLock.userId === userId) {
-      await this.locksService.releaseLock(existingLock.id, userId);
+      const releaseResult =
+        await this.locksService.releaseLockOrFinalizePendingHandoff(
+          existingLock.id,
+          userId
+        );
+      // Broadcast explicit lock release so other viewers clear lock UI without reload.
+      if (
+        releaseResult?.kind === 'released' &&
+        releaseResult.lock.entityType === 'activity'
+      ) {
+        this.activitiesGateway.notifyLockReleased(releaseResult.lock.entityId);
+      }
     }
 
     // Fetch related data for the updated activity
@@ -2076,6 +2153,9 @@ export class ActivitiesService {
         { id: updated.id, leadTeamId: updated.leadTeamId },
       ]),
     ]);
+
+    // Note: previously published category/tag refresh events to Redis here.
+    // Redis worker removed; propagation handled synchronously or via DB jobs if needed.
 
     const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
 
@@ -2220,11 +2300,10 @@ export class ActivitiesService {
     // Push Socket.IO work off the HTTP critical path so PATCH can respond even if
     // broadcast/serialization is slow (and to avoid stacking work behind prior requests).
     const gateway = this.activitiesGateway;
-    const notifyPayload = result;
     const notifyActivityId = id;
     setImmediate(() => {
       try {
-        gateway.notifyActivityUpdate(notifyActivityId, notifyPayload);
+        gateway.notifyActivityUpdate(notifyActivityId);
       } catch (err: unknown) {
         this.logger.error(
           'notifyActivityUpdate failed (deferred)',
@@ -2332,56 +2411,205 @@ export class ActivitiesService {
     return this.activityHistoryService.getActivityHistory(id);
   }
 
-  async getGlobalHistory(
+  /**
+   * Returns visible activity IDs based on the request context's data scope.
+   * Returns null when all activities are visible (admin/bypass) to avoid fetching
+   * all IDs and passing them as a large IN clause — the caller should omit the
+   * activity-ID filter entirely in that case.
+   */
+  private async getVisibleActivityIds(
     ctx?: RequestContextType
-  ): Promise<GlobalActivityHistoryEntry[]> {
-    let activityRows = await this.databaseService.db.select().from(activities);
-
+  ): Promise<number[] | null> {
     const dataScope = ctx?.dataScope;
     if (dataScope && !dataScope.bypass) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
+      const visibleSet = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
-      activityRows = activityRows.filter((activity) =>
-        visibleIds.has(activity.id)
-      );
+      return Array.from(visibleSet);
     }
+    // Admin / no scope: all activities are visible — return null to skip IN filter
+    return null;
+  }
 
-    const activityIds = activityRows.map((activity) => activity.id);
-    if (activityIds.length === 0) {
-      return [];
-    }
+  /**
+   * Enriches a page of history entries with activity metadata (title, displayId,
+   * leadTeamId, categories). Only fetches data for activity IDs present on the
+   * current page, keeping each paginated request lightweight.
+   */
+  private async enrichHistoryPage(
+    historyItems: ActivityHistoryEntry[]
+  ): Promise<GlobalActivityHistoryEntry[]> {
+    const pageActivityIds = [...new Set(historyItems.map((e) => e.activityId))];
+    if (pageActivityIds.length === 0) return [];
 
-    const historyEntries =
-      await this.activityHistoryService.getActivityHistoryForActivityIds(
-        activityIds
-      );
-
-    if (historyEntries.length === 0) {
-      return [];
-    }
-
-    const { namesMap: categoriesMap } = (
-      await this.fetchRelatedForActivityIds(activityIds, activityRows)
-    ).categoriesResult;
+    const [pageActivityRows, { namesMap: categoriesMap }] = await Promise.all([
+      this.databaseService.db
+        .select({
+          id: activities.id,
+          displayId: activities.displayId,
+          title: activities.title,
+          leadTeamId: activities.leadTeamId,
+        })
+        .from(activities)
+        .where(inArray(activities.id, pageActivityIds)),
+      this.dataFetcherService.fetchCategoriesForActivities(pageActivityIds),
+    ]);
 
     const activityMap = new Map(
-      activityRows.map((activity) => [
-        activity.id,
+      pageActivityRows.map((a) => [
+        a.id,
         {
-          id: activity.id,
-          displayId: activity.displayId,
-          title: activity.title,
-          leadTeamId: activity.leadTeamId,
-          categories: categoriesMap.get(activity.id) ?? [],
+          id: a.id,
+          displayId: a.displayId,
+          title: a.title,
+          leadTeamId: a.leadTeamId,
+          categories: categoriesMap.get(a.id) ?? [],
         },
       ])
     );
 
-    return historyEntries.flatMap((entry) => {
+    return historyItems.flatMap((entry) => {
       const activity = activityMap.get(entry.activityId);
       return activity ? [{ ...entry, activity }] : [];
     });
+  }
+
+  async getGlobalHistory(ctx?: RequestContextType): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
+      return {
+        items: [],
+        page: 1,
+        pageSize: 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    // Default scope: today (server local date)
+    const now = new Date();
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        visibleActivityIds,
+        {
+          startDate: todayDateStr,
+          endDate: todayDateStr,
+          page: 1,
+          pageSize: 50,
+        }
+      );
+
+    if (historyPage.items.length === 0) {
+      return {
+        items: [],
+        page: 1,
+        pageSize: 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const items = await this.enrichHistoryPage(historyPage.items);
+
+    return {
+      items,
+      page: 1,
+      pageSize: 50,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems ?? 0,
+    };
+  }
+
+  async getGlobalHistoryPaged(
+    opts: {
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      pageSize?: number;
+      query?: string;
+      order?: 'asc' | 'desc';
+    },
+    ctx?: RequestContextType
+  ): Promise<{
+    items: GlobalActivityHistoryEntry[];
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    totalItems: number;
+  }> {
+    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
+    // null = admin/bypass (all visible); empty array = no visible activities
+    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
+      return {
+        items: [],
+        page: opts.page ?? 1,
+        pageSize: opts.pageSize ?? 50,
+        hasNext: false,
+        totalItems: 0,
+      };
+    }
+
+    const page = Math.max(1, opts.page ?? 1);
+    const pageSize = Math.max(1, opts.pageSize ?? 50);
+
+    // Apply a default 30-day window when neither bound is provided to prevent
+    // unbounded history scans and expensive COUNT(*) over all-time data.
+    const now = new Date();
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const defaultEndDate = formatDate(now);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const defaultStartDate = formatDate(thirtyDaysAgo);
+
+    const startDate =
+      opts.startDate ??
+      (opts.endDate === undefined ? defaultStartDate : undefined);
+    const endDate =
+      opts.endDate ??
+      (opts.startDate === undefined ? defaultEndDate : undefined);
+
+    const historyPage =
+      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
+        visibleActivityIds,
+        {
+          startDate,
+          endDate,
+          page,
+          pageSize,
+          query: opts.query,
+          order: opts.order,
+        }
+      );
+
+    if (historyPage.items.length === 0) {
+      return {
+        items: [],
+        page,
+        pageSize,
+        hasNext: false,
+        totalItems: historyPage.totalItems ?? 0,
+      };
+    }
+
+    const items = await this.enrichHistoryPage(historyPage.items);
+
+    return {
+      items,
+      page,
+      pageSize,
+      hasNext: historyPage.hasNext,
+      totalItems: historyPage.totalItems,
+    };
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {

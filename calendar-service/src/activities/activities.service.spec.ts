@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -69,6 +71,7 @@ describe('ActivitiesService', () => {
         where: vi.fn().mockResolvedValue([]),
         leftJoin: vi.fn().mockReturnThis(),
         innerJoin: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue([]),
       };
       const joinChain = {
@@ -106,6 +109,7 @@ describe('ActivitiesService', () => {
   // Mock activities gateway
   const mockActivitiesGateway = {
     notifyActivityUpdate: vi.fn(),
+    notifyLockReleased: vi.fn(),
     broadcastActivityCreated: vi.fn(),
     server: {
       to: vi.fn().mockReturnThis(),
@@ -162,8 +166,14 @@ describe('ActivitiesService', () => {
   // Mock locks service (added when ActivitiesService started using LocksService)
   const mockLocksService = {
     getLockForEntity: vi.fn().mockResolvedValue(null),
-    releaseLock: vi.fn().mockResolvedValue(undefined),
+    releaseLock: vi.fn().mockResolvedValue(null),
+    releaseLockOrFinalizePendingHandoff: vi
+      .fn()
+      .mockResolvedValue({ kind: 'notFound' }),
     tryAcquireLock: vi.fn().mockResolvedValue({}),
+    completeHandoffAfterHolderSaveIfPending: vi
+      .fn()
+      .mockResolvedValue(undefined),
   };
 
   // Mock policy service (for delete context: comms/lead-team when no delete.any)
@@ -532,6 +542,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -542,6 +553,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -618,6 +630,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -628,6 +641,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 2 }]),
           };
         }
@@ -703,6 +717,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -713,6 +728,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -900,6 +916,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([{ id: 5, name: 'Team', ministryId: 1 }]),
@@ -908,6 +925,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
@@ -926,6 +944,47 @@ describe('ActivitiesService', () => {
   });
 
   describe('update', () => {
+    const ownEditLockForUser1Activity1 = {
+      id: 99,
+      userId: 1,
+      entityType: 'activity' as const,
+      entityId: 1,
+      username: 'editor',
+      sessionId: null as string | null,
+      acquiredAt: new Date(),
+      expiresAt: new Date(Date.now() + 300_000),
+      lastRenewedAt: new Date(),
+      lastActivityAt: new Date(),
+      idleExpiresAt: new Date(Date.now() + 300_000),
+    };
+
+    beforeEach(() => {
+      mockLocksService.getLockForEntity.mockResolvedValue(
+        ownEditLockForUser1Activity1
+      );
+    });
+
+    it('throws HttpException 423 when caller holds no edit lock', async () => {
+      mockLocksService.getLockForEntity.mockResolvedValue(null);
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      const updateDto = createMockUpdateRequest({ title: 'No lock' });
+      let thrown: unknown;
+      try {
+        await service.update(1, updateDto, 1);
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect((thrown as HttpException).getStatus()).toBe(HttpStatus.LOCKED);
+      const body = (thrown as HttpException).getResponse() as {
+        lockRequired?: boolean;
+      };
+      expect(body.lockRequired).toBe(true);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
     it('should update an activity and return a valid ActivityResponse', async () => {
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({
@@ -1017,6 +1076,124 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
       ).toBe('updated');
+    });
+
+    it('releases lock via releaseLockOrFinalizePendingHandoff after update when the updater holds the lock', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+      });
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+      mockLocksService.releaseLockOrFinalizePendingHandoff.mockResolvedValue({
+        kind: 'released',
+        lock: {
+          id: 99,
+          userId: 1,
+          entityType: 'activity',
+          entityId: 1,
+          username: 'editor',
+          sessionId: null,
+          acquiredAt: new Date(),
+          expiresAt: new Date(Date.now() + 60_000),
+          lastRenewedAt: new Date(),
+          lastActivityAt: new Date(),
+          idleExpiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            const joinChain = {
+              ...fetchChain,
+              where: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(joinChain);
+            fetchChain.leftJoin.mockReturnValue(joinChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      const updateDto = createMockUpdateRequest({ title: 'Updated Activity' });
+      await service.update(1, updateDto, 1);
+
+      expect(
+        mockLocksService.releaseLockOrFinalizePendingHandoff
+      ).toHaveBeenCalledWith(99, 1);
+      expect(mockActivitiesGateway.notifyLockReleased).toHaveBeenCalledWith(1);
+      expect(
+        mockLocksService.completeHandoffAfterHolderSaveIfPending
+      ).not.toHaveBeenCalled();
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -1442,6 +1619,24 @@ describe('ActivitiesService', () => {
       ).rejects.toThrow(ConflictException);
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
+
+    it('should throw NotFoundException when activity does not exist', async () => {
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      await expect(
+        service.requestDelete(999, 'A valid reason here', 10)
+      ).rejects.toThrow(NotFoundException);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
   });
 
   describe('restore', () => {
@@ -1628,6 +1823,82 @@ describe('ActivitiesService', () => {
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
+
+    it('should throw NotFoundException when activity does not exist', async () => {
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      await expect(service.restore(999, 10, undefined)).rejects.toThrow(
+        NotFoundException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('should restore activity from deleted status', async () => {
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 4,
+      });
+      const restoredActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 2,
+      });
+      mockActivityHistoryService.getPreviousStatusIdBeforeDelete.mockResolvedValue(
+        2
+      );
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ name: 'deleted' }]),
+        };
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([restoredActivity]),
+            }),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      const result = await service.restore(1, 10, 'Restored from deletion', {
+        roleName: 'Admin',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(1);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        10,
+        'restored',
+        [
+          {
+            field: 'activityStatusId',
+            oldValue: existingActivity.activityStatusId,
+            newValue: 2,
+          },
+        ],
+        'Restored from deletion',
+        expect.anything()
+      );
+    });
   });
 
   describe('remove', () => {
@@ -1785,6 +2056,27 @@ describe('ActivitiesService', () => {
         1
       );
     });
+
+    it('should throw NotFoundException when activity does not exist', async () => {
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      await expect(
+        service.remove(999, 10, {
+          permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY],
+          teamIds: [],
+        })
+      ).rejects.toThrow(NotFoundException);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
   });
 
   describe('softDelete', () => {
@@ -1817,6 +2109,275 @@ describe('ActivitiesService', () => {
         10
       );
     });
+
+    it('should set status to deleted and record soft_deleted history', async () => {
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 2,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 5,
+      });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: 5 }]),
+        };
+      });
+
+      const clearSnapshotChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      };
+      const statusUpdateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([updatedActivity]),
+        }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi
+            .fn()
+            .mockReturnValueOnce(clearSnapshotChain)
+            .mockReturnValue(statusUpdateChain),
+        };
+        return await callback(tx);
+      });
+
+      const result = await service.softDelete(
+        1,
+        'No longer needed for the event',
+        10,
+        { permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY], teamIds: [] }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(1);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        10,
+        'soft_deleted',
+        [
+          {
+            field: 'activityStatusId',
+            oldValue: existingActivity.activityStatusId,
+            newValue: 5,
+          },
+        ],
+        'No longer needed for the event',
+        expect.anything()
+      );
+    });
+
+    it('should clear the review snapshot before updating status', async () => {
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 2,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 5,
+      });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: 5 }]),
+        };
+      });
+
+      const clearSnapshotChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      };
+      const statusUpdateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([updatedActivity]),
+        }),
+      };
+      let capturedTx: any;
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        capturedTx = {
+          update: vi
+            .fn()
+            .mockReturnValueOnce(clearSnapshotChain)
+            .mockReturnValue(statusUpdateChain),
+        };
+        return await callback(capturedTx);
+      });
+
+      await service.softDelete(1, 'No longer needed for the event', 10, {
+        permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY],
+        teamIds: [],
+      });
+
+      expect(capturedTx.update).toHaveBeenCalledTimes(2);
+      expect(clearSnapshotChain.set).toHaveBeenCalledWith(
+        expect.objectContaining({ reviewedFieldSnapshot: null })
+      );
+    });
+
+    it('should throw BadRequestException when reason is empty', async () => {
+      await expect(
+        service.softDelete(1, '', 10, {
+          permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY],
+          teamIds: [],
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when reason is whitespace only', async () => {
+      await expect(
+        service.softDelete(1, '   ', 10, {
+          permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY],
+          teamIds: [],
+        })
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when activity does not exist', async () => {
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+      });
+
+      await expect(
+        service.softDelete(999, 'No longer needed', 10, {
+          permissions: [PERMISSIONS.ACTIVITIES.DELETE_ANY],
+          teamIds: [],
+        })
+      ).rejects.toThrow(NotFoundException);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('should allow soft delete when user lacks delete.any but is comms contact', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(true);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 2,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 5,
+      });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: 5 }]),
+        };
+      });
+
+      const clearSnapshotChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      };
+      const statusUpdateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([updatedActivity]),
+        }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi
+            .fn()
+            .mockReturnValueOnce(clearSnapshotChain)
+            .mockReturnValue(statusUpdateChain),
+        };
+        return await callback(tx);
+      });
+
+      const result = await service.softDelete(1, 'No longer needed', 10, {
+        permissions: ['activities.delete'],
+        teamIds: [99],
+      });
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(1);
+      expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
+        1,
+        10
+      );
+    });
+
+    it('should allow soft delete when user lacks delete.any but is lead-team member', async () => {
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 2,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: 5,
+      });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: 5 }]),
+        };
+      });
+
+      const clearSnapshotChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      };
+      const statusUpdateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([updatedActivity]),
+        }),
+      };
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi
+            .fn()
+            .mockReturnValueOnce(clearSnapshotChain)
+            .mockReturnValue(statusUpdateChain),
+        };
+        return await callback(tx);
+      });
+
+      const result = await service.softDelete(1, 'No longer needed', 10, {
+        permissions: ['activities.delete'],
+        teamIds: [10, 20],
+      });
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe(1);
+      expect(mockPolicyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(
+        1
+      );
+    });
   });
 
   describe('comms contacts validation against lead team', () => {
@@ -1837,6 +2398,7 @@ describe('ActivitiesService', () => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
           limit: vi.fn(),
         };
         chain.limit
@@ -1878,12 +2440,16 @@ describe('ActivitiesService', () => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
           limit: vi.fn(),
         };
         chain.limit
-          .mockResolvedValueOnce(statusRow)
-          .mockResolvedValueOnce(teamRow)
-          .mockResolvedValueOnce([{ id: 1 }])
+          .mockResolvedValueOnce(statusRow) // pitch pending status
+          .mockResolvedValueOnce(statusRow) // translation pending status
+          .mockResolvedValueOnce([{ id: 1 }]) // default dateStatusId
+          .mockResolvedValueOnce([{ id: 1 }]) // default timeStatusId
+          .mockResolvedValueOnce(teamRow) // team lookup
+          .mockResolvedValueOnce([{ id: 1 }]) // remaining lookups
           .mockResolvedValueOnce([{ id: 1 }]);
         return chain;
       });

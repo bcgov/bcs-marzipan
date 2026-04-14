@@ -229,6 +229,10 @@ The schema is defined in `src/schema/`:
 - `calendar.ts` - Legacy calendar table (to be merged with activity)
 - Other lookup and relation tables
 
+## Field-level activity permissions
+
+Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions exist for `notes`, `lookAhead`, and `pitchStatus` (API may omit those fields when the user lacks view access). **Pitch date** and **translations** use **edit-only** field permissions where applicable (no separate view permission for pitch date; anyone who can view the activity sees those values).
+
 ## Types
 
 Types are automatically inferred from Drizzle schemas in `src/types.ts`:
@@ -239,9 +243,10 @@ Types are automatically inferred from Drizzle schemas in `src/types.ts`:
 ## Usage
 
 ```typescript
+import { eq } from 'drizzle-orm';
+
 import { db } from '@corpcal/database';
 import { activities } from '@corpcal/database/schema';
-import { eq } from 'drizzle-orm';
 
 // Query
 const allActivities = await db.select().from(activities);

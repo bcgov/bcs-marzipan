@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,6 +11,7 @@ import {
   Put,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -21,7 +23,10 @@ import {
 
 import type { Category } from '@corpcal/database/types';
 import type { AuthUser } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api';
+import type {
+  ActivityResponse,
+  GlobalActivityHistoryEntry,
+} from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
   createActivityRequestSchema,
@@ -69,10 +74,12 @@ import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.gua
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 
 @ApiTags('activities')
 @Controller('activities')
+@UseInterceptors(ActivityResponseRedactionInterceptor)
 export class ActivitiesController {
   private readonly logger = new AppLogger(ActivitiesController.name);
 
@@ -201,11 +208,74 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get('global-history')
-  async getGlobalHistory(@RequestContext() ctx: RequestContextType): Promise<{
+  async getGlobalHistory(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('query') query?: string,
+    @Query('order') order?: string,
+    @RequestContext() ctx?: RequestContextType
+  ): Promise<{
     success: boolean;
-    data: Awaited<ReturnType<ActivitiesService['getGlobalHistory']>>;
+    data: {
+      items: GlobalActivityHistoryEntry[];
+      page: number;
+      pageSize: number;
+      hasNext: boolean;
+      totalItems: number;
+    };
   }> {
-    const result = await this.activitiesService.getGlobalHistory(ctx);
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (startDate !== undefined && !DATE_RE.test(startDate)) {
+      throw new BadRequestException(
+        'startDate must be a valid date in YYYY-MM-DD format'
+      );
+    }
+    if (endDate !== undefined && !DATE_RE.test(endDate)) {
+      throw new BadRequestException(
+        'endDate must be a valid date in YYYY-MM-DD format'
+      );
+    }
+    if (order !== undefined && order !== 'asc' && order !== 'desc') {
+      throw new BadRequestException('order must be "asc" or "desc"');
+    }
+
+    const MAX_PAGE_SIZE = 100;
+    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const parsedPageSize = pageSize
+      ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
+      : 50;
+
+    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
+    const hasPagingOrDate =
+      startDate !== undefined ||
+      endDate !== undefined ||
+      page !== undefined ||
+      pageSize !== undefined ||
+      query !== undefined ||
+      order !== undefined;
+
+    if (!hasPagingOrDate) {
+      const result = await this.activitiesService.getGlobalHistory(ctx);
+      return {
+        success: true,
+        data: result,
+      };
+    }
+
+    const result = await this.activitiesService.getGlobalHistoryPaged(
+      {
+        startDate,
+        endDate,
+        page: parsedPage,
+        pageSize: parsedPageSize,
+        query,
+        order: order,
+      },
+      ctx
+    );
+
     return {
       success: true,
       data: result,

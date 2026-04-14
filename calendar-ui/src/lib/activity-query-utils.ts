@@ -4,6 +4,7 @@ import type {
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
 import type { OptionItem } from '@/schemas/types';
@@ -24,7 +25,7 @@ export function filterActivityRowsByKeyword(
     const searchableValues: string[] = [
       row.title,
       row.displayId ?? '',
-      row.summary,
+      plainTextFromActivityRichField(row.summary),
       row.activityCategories.join(' '),
       row.tags.map((t) => t.text).join(' '),
       row.lookAheadStatus ?? '',

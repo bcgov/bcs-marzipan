@@ -17,7 +17,7 @@ import {
   NotebookText,
   Users,
 } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   useCallback,
@@ -29,7 +29,7 @@ import {
 } from 'react';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -50,6 +50,7 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
@@ -85,6 +86,7 @@ import {
   getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
 } from '@/lib/activity-filter-summary';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
@@ -216,8 +218,20 @@ function toSentenceCase(s: string): string {
 // Cell sub-components
 // ---------------------------------------------------------------------------
 
-function OverviewCell({ row }: { row: ActivityTableRow }) {
-  const pitchLabel = row.pitchRequiredStatus ?? row.pitchDate;
+/**
+ * List Overview: only pitch **status** is gated by `activities.pitchStatus.view`.
+ */
+function OverviewCell({
+  row,
+  canViewPitchStatus,
+}: {
+  row: ActivityTableRow;
+  canViewPitchStatus: boolean;
+}) {
+  const pitchLabel =
+    (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
+    row.pitchDate ??
+    null;
   const displayIdText = row.displayId ?? String(row.id);
 
   return (
@@ -357,7 +371,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             overflow: 'hidden',
           }}
         >
-          {row.summary}
+          <ActivityRichTextContent value={row.summary} stopLinkPropagation />
         </div>
 
         {needsTruncation &&
@@ -680,7 +694,18 @@ export function ActivityTable({
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const pitchFieldVisibility = useMemo(() => {
+    if (!user) {
+      return { canViewPitchStatus: false, canViewPitchDate: false };
+    }
+    const ctx = { permissions: user.permissions, roleName: user.roleName };
+    return {
+      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
+      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
+    };
+  }, [user]);
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -892,7 +917,7 @@ export function ActivityTable({
       suppressedByClear: defaultSuppressedByClearRef.current,
       hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
       hasRestoredActivePreferences:
-        hasAnyActivityTableFilterActive(filterState) ||
+        hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
         searchKeyword.trim().length > 0,
       hasDefaultFilter: savedFiltersHook.defaultFilter != null,
     });
@@ -941,6 +966,7 @@ export function ActivityTable({
     setActiveSavedFilter,
     validFilterLookupsForDefaultApply,
     savedFilterDefaultLookupsReady,
+    pitchFieldVisibility,
   ]);
 
   const hasStatusFilter = filterState.activityStatusIds.length > 0;
@@ -1190,7 +1216,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'activityId' as const },
         ...getActivityColumnSizes('overview'),
-        cell: ({ row }) => <OverviewCell row={row.original} />,
+        cell: ({ row }) => (
+          <OverviewCell
+            row={row.original}
+            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+          />
+        ),
       }),
 
       columnHelper.accessor('summary', {
@@ -1292,6 +1323,7 @@ export function ActivityTable({
       effectiveSortKey,
       effectiveSortDirection,
       handleSortChange,
+      pitchFieldVisibility.canViewPitchStatus,
     ]
   );
 
@@ -1404,7 +1436,8 @@ export function ActivityTable({
   );
 
   const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(filterState) || searchKeyword.trim() !== '';
+    hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
+    searchKeyword.trim() !== '';
 
   const filterDetailLines = useMemo(
     () =>
@@ -1436,7 +1469,8 @@ export function ActivityTable({
   }, [setPreferences, setActiveSavedFilter]);
 
   const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
-    filterState
+    filterState,
+    pitchFieldVisibility
   )
     ? handleClearPanelFilters
     : undefined;
@@ -1466,6 +1500,7 @@ export function ActivityTable({
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
+      pitchFieldVisibility={pitchFieldVisibility}
       savedFilters={savedFiltersHook}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
       onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {
@@ -1647,7 +1682,10 @@ export function ActivityTable({
                         )
                           return;
                         if (window.getSelection()?.toString().trim()) return;
-                        void navigate(`/activity/${row.original.id}`);
+                        void navigate(
+                          `/activity/${row.original.id}`,
+                          activityFormLinkState(location)
+                        );
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1656,7 +1694,10 @@ export function ActivityTable({
                         )
                           return;
                         e.preventDefault();
-                        void navigate(`/activity/${row.original.id}`);
+                        void navigate(
+                          `/activity/${row.original.id}`,
+                          activityFormLinkState(location)
+                        );
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

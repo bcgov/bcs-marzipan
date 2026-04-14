@@ -56,7 +56,7 @@ describe('useLookAheadWebSocket', () => {
     it('calls onActivityUpdate when activityCreated fires', () => {
       const onActivityUpdate = vi.fn();
       render(<TestWrapper onActivityUpdate={onActivityUpdate} />);
-      getFakeSocket().emitEvent('activityCreated', { id: 1, title: 'Test' });
+      getFakeSocket().emitEvent('activityCreated', { activityId: 1 });
 
       expect(onActivityUpdate).toHaveBeenCalledTimes(1);
     });
@@ -66,7 +66,7 @@ describe('useLookAheadWebSocket', () => {
     it('calls onActivityUpdate when activityUpdated fires', () => {
       const onActivityUpdate = vi.fn();
       render(<TestWrapper onActivityUpdate={onActivityUpdate} />);
-      getFakeSocket().emitEvent('activityUpdated', { id: 1, title: 'Test' });
+      getFakeSocket().emitEvent('activityUpdated', { activityId: 1 });
 
       expect(onActivityUpdate).toHaveBeenCalledTimes(1);
     });

@@ -14,6 +14,8 @@ export * from './venue-address';
 export * from './venue-presets';
 export * from './rbac';
 export * from './editLocks';
+export * from './editLockPendingHandoffs';
+export * from './applicationSettings';
 export * from './sessions';
 export * from './bannerSettings';
 export * from './activitySavedFilters';

@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
-import { fetchGlobalActivityHistory } from '@/api/activitiesApi';
+import {
+  fetchGlobalActivityHistoryPaged,
+  type PagedResult,
+} from '@/api/activitiesApi';
 import {
   fetchDateStatuses,
   fetchNewsReleaseDistributions,
@@ -21,6 +24,7 @@ import {
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
+import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -40,6 +44,7 @@ import {
   useTeams,
   useUsers,
 } from '@/hooks/useLookups';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   formatHistoryFieldValue,
   getActionText,
@@ -63,7 +68,15 @@ type FilterOption = {
   label: string;
 };
 
-function truncateChangeLogValue(value: string): string {
+/** Format a Date using local date parts to avoid UTC off-by-one in timezones ahead of UTC */
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function truncateChangeLogValue(value: string): string {
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
 
   if (normalizedValue.length <= MAX_CHANGE_VALUE_LENGTH) {
@@ -73,11 +86,12 @@ function truncateChangeLogValue(value: string): string {
   return `${normalizedValue.slice(0, MAX_CHANGE_VALUE_LENGTH - 3).trimEnd()}...`;
 }
 
-function formatActorUsername(username?: string | null): string | null {
+export function formatActorUsername(username?: string | null): string | null {
   if (!username) {
     return null;
   }
 
+  const hadDomain = username.includes('\\');
   const normalizedUsername = username.split('\\').at(-1)?.split('@')[0]?.trim();
 
   if (!normalizedUsername) {
@@ -85,6 +99,13 @@ function formatActorUsername(username?: string | null): string | null {
   }
 
   if (!/[._-]/.test(normalizedUsername)) {
+    if (hadDomain) {
+      return (
+        normalizedUsername.charAt(0).toUpperCase() +
+        normalizedUsername.slice(1).toLocaleLowerCase()
+      );
+    }
+
     return normalizedUsername;
   }
 
@@ -106,7 +127,7 @@ function getActorDisplayName(entry: GlobalActivityHistoryEntry): string {
   );
 }
 
-function getActorInitials(entry: GlobalActivityHistoryEntry): string {
+export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
   const displayName = getActorDisplayName(entry);
   const parts = displayName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) {
@@ -135,7 +156,7 @@ function formatDateHeading(date: Date): string {
       });
 }
 
-function isEntryInDateRange(
+export function isEntryInDateRange(
   entry: GlobalActivityHistoryEntry,
   range: DateRangeValue
 ): boolean {
@@ -167,7 +188,7 @@ function isEntryInDateRange(
   return true;
 }
 
-function matchesSearch(
+export function matchesSearch(
   entry: GlobalActivityHistoryEntry,
   query: string
 ): boolean {
@@ -323,6 +344,7 @@ function DateFilter({
 }
 
 export function GlobalHistory() {
+  const location = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<HistoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -334,10 +356,44 @@ export function GlobalHistory() {
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
     () => new Set()
   );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset to page 1 whenever any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [
+    dateRange.startDate,
+    dateRange.endDate,
+    searchQuery,
+    activeTab,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedCategories,
+    selectedLeadTeamIds,
+  ]);
 
   const historyQuery = useQuery({
-    queryKey: ['activities', 'global-history'],
-    queryFn: fetchGlobalActivityHistory,
+    queryKey: [
+      'activities',
+      'global-history',
+      page,
+      pageSize,
+      dateRange.startDate,
+      dateRange.endDate,
+      searchQuery,
+    ],
+    queryFn: (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
+      fetchGlobalActivityHistoryPaged({
+        page,
+        pageSize,
+        startDate: dateRange.startDate || undefined,
+        endDate: dateRange.endDate || undefined,
+        query: searchQuery || undefined,
+        order: 'desc',
+      }),
+    placeholderData: (prev) => prev,
   });
 
   const teamsQuery = useTeams();
@@ -389,7 +445,10 @@ export function GlobalHistory() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const entries = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  const entries = useMemo(
+    () => historyQuery.data?.items ?? [],
+    [historyQuery.data]
+  );
 
   const actionTypeOptions = useMemo<FilterOption[]>(() => {
     const values = [...new Set(entries.map((entry) => entry.actionType))];
@@ -713,6 +772,41 @@ export function GlobalHistory() {
     return [...groups.entries()];
   }, [filteredEntries]);
 
+  // Derive which quick-select preset is active from the current dateRange.
+  // Returns null when no preset matches (including on initial load with no date set).
+  const activePreset = useMemo(() => {
+    if (!isDateRangeActive(dateRange)) return null;
+    const now = new Date();
+    const todayStr = formatLocalDate(
+      new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    );
+    if (dateRange.startDate === todayStr && dateRange.endDate === todayStr)
+      return 'today';
+    const last7Start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    last7Start.setDate(last7Start.getDate() - 6);
+    if (
+      dateRange.startDate === formatLocalDate(last7Start) &&
+      dateRange.endDate === todayStr
+    )
+      return 'last7';
+    const last30Start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    last30Start.setDate(last30Start.getDate() - 29);
+    if (
+      dateRange.startDate === formatLocalDate(last30Start) &&
+      dateRange.endDate === todayStr
+    )
+      return 'last30';
+    return null;
+  }, [dateRange]);
+
   return (
     <>
       <PageHeader title="History" />
@@ -729,7 +823,7 @@ export function GlobalHistory() {
         </div>
       </Tabs>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
         <div className="relative w-[240px] max-w-[240px] min-w-[240px]">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
@@ -770,6 +864,103 @@ export function GlobalHistory() {
         />
       </div>
 
+      {/* Quick-select date presets */}
+      <div className="mb-4 flex items-center gap-2">
+        {(
+          [
+            {
+              key: 'today',
+              label: 'Today',
+              getRange: () => {
+                const now = new Date();
+                const d = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const s = formatLocalDate(d);
+                return {
+                  startDate: s,
+                  endDate: s,
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+            {
+              key: 'last7',
+              label: 'Last 7 days',
+              getRange: () => {
+                const now = new Date();
+                const end = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const start = new Date(end);
+                start.setDate(start.getDate() - 6);
+                return {
+                  startDate: formatLocalDate(start),
+                  endDate: formatLocalDate(end),
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+            {
+              key: 'last30',
+              label: 'Last 30 days',
+              getRange: () => {
+                const now = new Date();
+                const end = new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate()
+                );
+                const start = new Date(end);
+                start.setDate(start.getDate() - 29);
+                return {
+                  startDate: formatLocalDate(start),
+                  endDate: formatLocalDate(end),
+                  noStartDate: false,
+                  noEndDate: false,
+                };
+              },
+            },
+          ] as const
+        ).map(({ key, label, getRange }) => {
+          const isActive = activePreset === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() =>
+                isActive
+                  ? setDateRange(EMPTY_DATE_RANGE)
+                  : setDateRange(getRange())
+              }
+              className={
+                isActive
+                  ? 'rounded bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-blue-300'
+                  : 'rounded bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200'
+              }
+              aria-pressed={isActive}
+            >
+              {label}
+            </button>
+          );
+        })}
+        {activePreset !== null && (
+          <button
+            type="button"
+            className="rounded px-2 py-1 text-sm text-slate-500 hover:underline"
+            onClick={() => setDateRange(EMPTY_DATE_RANGE)}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {historyQuery.isLoading ? (
         <div className="text-sm text-slate-500">Loading history...</div>
       ) : historyQuery.isError ? (
@@ -780,98 +971,118 @@ export function GlobalHistory() {
         />
       ) : groupedEntries.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          No matching history found.
+          {isDateRangeActive(dateRange) ? (
+            <div>No changes in the selected timeframe.</div>
+          ) : (
+            <div>No matching history found.</div>
+          )}
         </div>
       ) : (
-        <TableScrollContainer>
-          <div className="space-y-8 p-5">
-            {groupedEntries.map(([heading, dayEntries]) => (
-              <section key={heading} className="space-y-4">
-                <h2 className="text-base font-normal text-slate-700">
-                  {heading}
-                </h2>
-                <div className="space-y-[2.5px]">
-                  {dayEntries.map((entry) => {
-                    const timestamp = new Date(entry.timestamp);
-                    const teamName = leadTeamLabelMap.get(
-                      entry.activity.leadTeamId
-                    );
-                    const hasChanges = (entry.changes?.length ?? 0) > 0;
-                    const isExpanded = expandedEntries.has(entry.id);
+        <>
+          <TableScrollContainer ref={tableScrollRef}>
+            <div className="space-y-8 p-5">
+              {groupedEntries.map(([heading, dayEntries]) => (
+                <section key={heading} className="space-y-4">
+                  <h2 className="text-base font-normal text-slate-700">
+                    {heading}
+                  </h2>
+                  <div className="space-y-[2.5px]">
+                    {dayEntries.map((entry) => {
+                      const timestamp = new Date(entry.timestamp);
+                      const teamName = leadTeamLabelMap.get(
+                        entry.activity.leadTeamId
+                      );
+                      const hasChanges = (entry.changes?.length ?? 0) > 0;
+                      const isExpanded = expandedEntries.has(entry.id);
 
-                    return (
-                      <article
-                        key={entry.id}
-                        className="flex items-start justify-between gap-6 rounded-lg bg-white"
-                      >
-                        <div className="flex min-w-0 flex-1 gap-3">
-                          <Avatar
-                            className="h-9 w-9"
-                            title={getActorDisplayName(entry)}
-                          >
-                            <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
-                              {getActorInitials(entry)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 space-y-1.5">
-                            <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
-                              <span className="font-medium text-slate-900">
-                                {getActorDisplayName(entry)}
-                              </span>
-                              {teamName ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                                  {teamName}
+                      return (
+                        <article
+                          key={entry.id}
+                          className="flex items-start justify-between gap-6 rounded-lg bg-white"
+                        >
+                          <div className="flex min-w-0 flex-1 gap-3">
+                            <Avatar
+                              className="h-9 w-9"
+                              title={getActorDisplayName(entry)}
+                            >
+                              <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
+                                {getActorInitials(entry)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 space-y-1.5">
+                              <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
+                                <span className="font-medium text-slate-900">
+                                  {getActorDisplayName(entry)}
                                 </span>
-                              ) : null}
-                              <span>
-                                {getActionText(entry.actionType).toLowerCase()}
-                              </span>
-                              <Link
-                                to={`/activity/${entry.activity.id}`}
-                                className="font-medium text-blue-700 hover:underline"
-                              >
-                                {entry.activity.displayId ||
-                                  `Activity ${entry.activity.id}`}
-                              </Link>
-                            </div>
-
-                            <div className="text-sm font-bold text-slate-900">
-                              {entry.activity.title}
-                            </div>
-
-                            {entry.notes ? (
-                              <div className="text-sm text-slate-700">
-                                {entry.notes}
+                                {teamName ? (
+                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                                    {teamName}
+                                  </span>
+                                ) : null}
+                                <span>
+                                  {getActionText(
+                                    entry.actionType
+                                  ).toLowerCase()}
+                                </span>
+                                <Link
+                                  to={`/activity/${entry.activity.id}`}
+                                  {...activityFormLinkState(location)}
+                                  className="font-medium text-blue-700 hover:underline"
+                                >
+                                  {entry.activity.displayId ||
+                                    `Activity ${entry.activity.id}`}
+                                </Link>
                               </div>
-                            ) : null}
 
-                            {hasChanges ? (
-                              <div className="space-y-1 pt-1">
-                                {isExpanded ? (
-                                  <>
-                                    {entry.changes?.map((change, index) => (
-                                      <div
-                                        key={`${entry.id}-${index}`}
-                                        className="text-foreground text-sm"
+                              <div className="text-sm font-bold text-slate-900">
+                                {entry.activity.title}
+                              </div>
+
+                              {entry.notes ? (
+                                <div className="text-sm text-slate-700">
+                                  {entry.notes}
+                                </div>
+                              ) : null}
+
+                              {hasChanges ? (
+                                <div className="space-y-1 pt-1">
+                                  {isExpanded ? (
+                                    <>
+                                      {entry.changes?.map((change, index) => (
+                                        <div
+                                          key={`${entry.id}-${index}`}
+                                          className="text-foreground text-sm"
+                                        >
+                                          <span className="text-foreground font-medium">
+                                            {getHistoryFieldLabel(change.field)}
+                                            :
+                                          </span>{' '}
+                                          <span className="text-muted-foreground">
+                                            {formatChangeValue(
+                                              change.field,
+                                              change.oldValue
+                                            )}
+                                          </span>{' '}
+                                          <span aria-hidden>→</span>{' '}
+                                          <span>
+                                            {formatChangeValue(
+                                              change.field,
+                                              change.newValue
+                                            )}
+                                          </span>
+                                        </div>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          toggleExpandedEntry(entry.id)
+                                        }
+                                        className="text-sm font-medium text-blue-700 hover:underline"
                                       >
-                                        <span className="text-foreground font-medium">
-                                          {getHistoryFieldLabel(change.field)}:
-                                        </span>{' '}
-                                        <span className="text-muted-foreground">
-                                          {formatChangeValue(
-                                            change.field,
-                                            change.oldValue
-                                          )}
-                                        </span>{' '}
-                                        <span aria-hidden>→</span>{' '}
-                                        <span>
-                                          {formatChangeValue(
-                                            change.field,
-                                            change.newValue
-                                          )}
-                                        </span>
-                                      </div>
-                                    ))}
+                                        Show less
+                                      </button>
+                                    </>
+                                  ) : (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -879,35 +1090,37 @@ export function GlobalHistory() {
                                       }
                                       className="text-sm font-medium text-blue-700 hover:underline"
                                     >
-                                      Show less
+                                      Show more
                                     </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      toggleExpandedEntry(entry.id)
-                                    }
-                                    className="text-sm font-medium text-blue-700 hover:underline"
-                                  >
-                                    Show more
-                                  </button>
-                                )}
-                              </div>
-                            ) : null}
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                        <div className="shrink-0 text-sm text-slate-500">
-                          {formatExactDate(timestamp, { includeTime: true })}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        </TableScrollContainer>
+                          <div className="shrink-0 text-sm text-slate-500">
+                            {formatExactDate(timestamp, { includeTime: true })}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </TableScrollContainer>
+          <TablePagination
+            totalItems={historyQuery.data?.totalItems ?? 0}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(ps) => {
+              setPageSize(ps);
+              setPage(1);
+            }}
+            scrollContainerRef={tableScrollRef}
+            aria-label="History pagination"
+          />
+        </>
       )}
     </>
   );

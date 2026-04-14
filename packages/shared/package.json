@@ -59,6 +59,18 @@
       "import": "./dist/esm/test-utils/index.js",
       "require": "./dist/cjs/test-utils/index.js",
       "default": "./dist/esm/test-utils/index.js"
+    },
+    "./reports/reportTypeConfig": {
+      "types": "./dist/esm/reports/reportTypeConfig.d.ts",
+      "import": "./dist/esm/reports/reportTypeConfig.js",
+      "require": "./dist/cjs/reports/reportTypeConfig.js",
+      "default": "./dist/esm/reports/reportTypeConfig.js"
+    },
+    "./reports/reportExportFormat": {
+      "types": "./dist/esm/reports/reportExportFormat.d.ts",
+      "import": "./dist/esm/reports/reportExportFormat.js",
+      "require": "./dist/cjs/reports/reportExportFormat.js",
+      "default": "./dist/esm/reports/reportExportFormat.js"
     }
   },
   "scripts": {
