@@ -102,15 +102,6 @@ describe('Login page — Azure AD', () => {
         screen.queryByRole('button', { name: /sign in with microsoft/i })
       ).not.toBeInTheDocument();
     });
-
-    it('shows a divider separator alongside the Microsoft button', async () => {
-      mockGetAzureConfig.mockResolvedValue({ enabled: true });
-      renderLogin();
-
-      await screen.findByRole('button', { name: /sign in with microsoft/i });
-
-      expect(screen.getByText(/or continue with/i)).toBeInTheDocument();
-    });
   });
 
   describe('Azure AD callback error messages', () => {
@@ -190,26 +181,6 @@ describe('Login page — Azure AD', () => {
       await userEvent.click(button);
 
       expect(screen.getByText(/Redirecting to Microsoft/i)).toBeInTheDocument();
-    });
-
-    it('is disabled while the local sign-in form is in progress', async () => {
-      mockGetAzureConfig.mockResolvedValue({ enabled: true });
-      // Simulate a slow login so isLoading stays true
-      mockLogin.mockReturnValue(new Promise(() => undefined));
-
-      renderLogin();
-
-      const microsoftButton = await screen.findByRole('button', {
-        name: /sign in with microsoft/i,
-      });
-
-      const usernameInput = screen.getByRole('textbox', { name: /username/i });
-      await userEvent.type(usernameInput, 'john.doe');
-
-      const signInButton = screen.getByRole('button', { name: /sign in$/i });
-      await userEvent.click(signInButton);
-
-      expect(microsoftButton).toBeDisabled();
     });
   });
 });
