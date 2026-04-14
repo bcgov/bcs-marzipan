@@ -645,6 +645,24 @@ export class UsersService {
     const targetDisplayName =
       displayNameById.get(dto.targetUserId) ?? `User ${dto.targetUserId}`;
 
+    const trimmedTransferNote = dto.notes?.trim() ?? '';
+    const activityTitleById = new Map<number, string>();
+    if (trimmedTransferNote.length > 0) {
+      const leadActivityIds = [
+        ...new Set(sourceRows.filter((r) => r.isLead).map((r) => r.activityId)),
+      ];
+      if (leadActivityIds.length > 0) {
+        const titleRows = await this.databaseService.db
+          .select({ id: activities.id, title: activities.title })
+          .from(activities)
+          .where(inArray(activities.id, leadActivityIds));
+        for (const r of titleRows) {
+          const label = r.title?.trim() || `Activity ${r.id}`;
+          activityTitleById.set(r.id, label);
+        }
+      }
+    }
+
     const transferredCount = await this.databaseService.db.transaction(
       async (tx) => {
         let count = 0;
@@ -695,6 +713,11 @@ export class UsersService {
           }
 
           if (row.isLead) {
+            let historyNotes: string | undefined;
+            if (trimmedTransferNote.length > 0) {
+              historyNotes = `${trimmedTransferNote}`;
+            }
+
             await this.activityHistoryService.recordChange(
               row.activityId,
               changedByUserId,
@@ -706,7 +729,7 @@ export class UsersService {
                   newValue: targetDisplayName,
                 },
               ],
-              undefined,
+              historyNotes,
               tx as unknown as Database
             );
           }
