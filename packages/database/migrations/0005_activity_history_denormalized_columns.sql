@@ -1,2 +1,0 @@
--- Migration: activity_history pagination index
--- The composite keyset pagination index has been moved into the Drizzle schema (activityHistory.ts).

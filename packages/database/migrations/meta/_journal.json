@@ -5,8 +5,22 @@
     {
       "idx": 0,
       "version": "7",
+      "when": 1776099099939,
+      "tag": "0004_add_trigram_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
       "when": 1775594716883,
       "tag": "0000_20260407_force_unlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776123239799,
+      "tag": "0001_20260413_history_pagination",
       "breakpoints": true
     }
   ]
