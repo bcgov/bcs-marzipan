@@ -170,11 +170,13 @@ export function formatHistoryFieldValue(
  * Keys intentionally excluded from form comparison.
  * activityHistoryNotes is edit metadata (the "reason for change" note),
  * not a user-editable data field.
+ * markAsReviewed / markAsCompleted are submit flags; status is compared via activityStatusId.
  * commsContactLeadId is legacy UI convenience; lead is represented via commsContacts.
  */
 type ExcludedFromCompare =
   | 'activityHistoryNotes'
   | 'markAsReviewed'
+  | 'markAsCompleted'
   | 'commsContactLeadId';
 
 const FIELDS_TO_COMPARE = [

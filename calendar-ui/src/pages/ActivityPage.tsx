@@ -16,6 +16,8 @@ import {
   ActivityStatusBanner,
 } from '@/components/activity';
 import ActivityHistory from '@/components/activity/activities/ActivityHistory';
+import { CompleteActionButtonLabel } from '@/components/activity/activities/CompleteActionButtonLabel';
+import { CompleteActivityModal } from '@/components/activity/activities/CompleteActivityModal';
 import { DeleteActivityModal } from '@/components/activity/activities/DeleteActivityModal';
 import { DiscardActivityChangesDialog } from '@/components/activity/activities/DiscardActivityChangesDialog';
 import { EditActivityConfirmModal } from '@/components/activity/activities/EditActivityConfirmModal';
@@ -141,6 +143,10 @@ export function ActivityPage({
   const isBlockedStatus =
     normalizedStatus === 'delete_requested' || normalizedStatus === 'deleted';
   const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
+  const canCompleteActivities = hasPermission(PERMISSIONS.ACTIVITIES.COMPLETE);
+  const markCompleteEligible =
+    (activity as ActivityResponse & { markCompleteEligible?: boolean })
+      .markCompleteEligible ?? false;
   const canDelete = hasPermission(PERMISSIONS.ACTIVITIES.DELETE);
   const canForceHandoff = hasPermission(
     PERMISSIONS.ACTIVITIES.LOCK_FORCE_HANDOFF
@@ -209,6 +215,7 @@ export function ActivityPage({
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showRequestDeleteModal, setShowRequestDeleteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
@@ -401,6 +408,8 @@ export function ActivityPage({
     lockState,
     mayEditFormFields,
     canReviewActivities,
+    canCompleteActivities,
+    markCompleteEligible,
     hasEditLock,
     canSubmitWithoutValidationErrors,
     isSubmitting,
@@ -488,6 +497,15 @@ export function ActivityPage({
         kind: 'reviewWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+      }
+    | {
+        kind: 'completeOnly';
+        notes?: string;
+      }
+    | {
+        kind: 'completeWithSave';
+        validatedData: ActivityFormData;
+        notes?: string;
       };
 
   const runSubmitUpdate = useCallback(
@@ -500,9 +518,18 @@ export function ActivityPage({
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
           } as UpdateActivityRequest;
+        } else if (mode.kind === 'completeOnly') {
+          submitData = {
+            markAsCompleted: true,
+            ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+          } as UpdateActivityRequest;
         } else {
           const opts: UpdatePayloadOptions =
-            mode.kind === 'reviewWithSave' ? { markAsReviewed: true } : {};
+            mode.kind === 'reviewWithSave'
+              ? { markAsReviewed: true }
+              : mode.kind === 'completeWithSave'
+                ? { markAsCompleted: true }
+                : {};
           submitData = {
             ...buildPayloadForUpdate(
               mode.validatedData,
@@ -518,7 +545,7 @@ export function ActivityPage({
           data: submitData,
         });
         const titleForToast =
-          mode.kind === 'reviewOnly'
+          mode.kind === 'reviewOnly' || mode.kind === 'completeOnly'
             ? (activity.title ?? '')
             : (mode.validatedData.title ?? '');
         const subtitleTitle =
@@ -554,6 +581,7 @@ export function ActivityPage({
         setIsSubmitting(false);
         setShowConfirmModal(false);
         setShowReviewModal(false);
+        setShowCompleteModal(false);
         setValidatedData(null);
       }
     },
@@ -600,6 +628,20 @@ export function ActivityPage({
       }, onError)();
     } else {
       await runSubmitUpdate({ kind: 'reviewOnly', notes });
+    }
+  };
+
+  const handleCompleteConfirm = async (notes?: string) => {
+    if (isDirty) {
+      await form.handleSubmit(async (data) => {
+        await runSubmitUpdate({
+          kind: 'completeWithSave',
+          validatedData: data,
+          notes,
+        });
+      }, onError)();
+    } else {
+      await runSubmitUpdate({ kind: 'completeOnly', notes });
     }
   };
 
@@ -853,7 +895,11 @@ export function ActivityPage({
                       <Button
                         type="submit"
                         disabled={true}
-                        variant={canReviewActivities ? 'outline' : 'default'}
+                        variant={
+                          canReviewActivities || actionFlags.showCompleteAction
+                            ? 'outline'
+                            : 'default'
+                        }
                         className="cursor-not-allowed"
                       >
                         {isSubmitting ? 'Saving...' : 'Save'}
@@ -880,7 +926,11 @@ export function ActivityPage({
               ) : (
                 <Button
                   type="submit"
-                  variant={canReviewActivities ? 'outline' : 'default'}
+                  variant={
+                    canReviewActivities || actionFlags.showCompleteAction
+                      ? 'outline'
+                      : 'default'
+                  }
                   disabled={!actionFlags.canSubmitUpdate}
                 >
                   {isSubmitting ? 'Saving...' : 'Save'}
@@ -894,6 +944,18 @@ export function ActivityPage({
                   onClick={() => ensureEditThen(() => setShowReviewModal(true))}
                 >
                   <ReviewActionButtonLabel isDirty={isDirty} />
+                </Button>
+              )}
+              {actionFlags.showCompleteAction && (
+                <Button
+                  type="button"
+                  aria-label={isDirty ? 'Save and complete' : 'Complete'}
+                  disabled={!actionFlags.completeActionEnabled}
+                  onClick={() =>
+                    ensureEditThen(() => setShowCompleteModal(true))
+                  }
+                >
+                  <CompleteActionButtonLabel isDirty={isDirty} />
                 </Button>
               )}
             </div>
@@ -934,6 +996,14 @@ export function ActivityPage({
         isDirty={isDirty}
         isSubmitting={isSubmitting}
         onConfirm={(notes) => void handleReviewConfirm(notes)}
+        displayId={displayId}
+      />
+      <CompleteActivityModal
+        open={showCompleteModal}
+        onOpenChange={setShowCompleteModal}
+        isDirty={isDirty}
+        isSubmitting={isSubmitting}
+        onConfirm={(notes) => void handleCompleteConfirm(notes)}
         displayId={displayId}
       />
       <RequestDeleteActivityModal

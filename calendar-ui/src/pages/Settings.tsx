@@ -9,10 +9,12 @@ import {
   Megaphone,
   Palette,
   Tag,
+  Timer,
   Users,
 } from 'lucide-react';
 
 import { BannerSettingsAdmin } from '@/components/admin';
+import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
 import {
   ActivityStatusesAdmin,
@@ -29,6 +31,7 @@ import {
 type Section =
   | 'banner'
   | 'edit-lock-idle'
+  | 'activity-completion'
   | 'categories'
   | 'cities'
   | 'comms'
@@ -45,6 +48,11 @@ const sections = [
     id: 'edit-lock-idle' as Section,
     label: 'Edit lock idle',
     icon: Lock,
+  },
+  {
+    id: 'activity-completion' as Section,
+    label: 'Activity completion',
+    icon: Timer,
   },
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
   { id: 'cities' as Section, label: 'Cities', icon: MapPin },
@@ -130,6 +138,10 @@ export function Settings() {
 
           <div id="section-edit-lock-idle">
             <EditLockIdleSettingsAdmin />
+          </div>
+
+          <div id="section-activity-completion">
+            <ActivityCompletionSettingsAdmin />
           </div>
 
           <div id="section-categories">
