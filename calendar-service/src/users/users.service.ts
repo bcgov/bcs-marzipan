@@ -29,11 +29,16 @@ import type {
   UserListItem,
 } from '@corpcal/shared/api/types';
 
+import { ActivityHistoryService } from '../activities/services/activity-history.service';
+import type { Database } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activityHistoryService: ActivityHistoryService
+  ) {}
 
   private async recordUserHistory(
     userId: number,
@@ -594,13 +599,146 @@ export class UsersService {
     if (contactFilter)
       updateConditions.push(eq(activityCommsContacts.isLead, false));
 
-    const result = await this.databaseService.db
-      .update(activityCommsContacts)
-      .set({ userId: dto.targetUserId })
-      .where(and(...updateConditions))
-      .returning({ activityId: activityCommsContacts.activityId });
+    const sourceRows = await this.databaseService.db
+      .select({
+        activityId: activityCommsContacts.activityId,
+        isLead: activityCommsContacts.isLead,
+      })
+      .from(activityCommsContacts)
+      .where(and(...updateConditions));
 
-    const transferredCount = result.length;
+    if (sourceRows.length === 0) {
+      await this.recordUserHistory(
+        sourceUserId,
+        changedByUserId,
+        'activities_transferred',
+        [
+          {
+            field: 'targetUserId',
+            oldValue: null,
+            newValue: dto.targetUserId,
+          },
+          { field: 'activityCount', oldValue: null, newValue: 0 },
+        ],
+        dto.notes ?? null
+      );
+      return { transferredCount: 0 };
+    }
+
+    const userRowsForHistory = await this.databaseService.db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(users)
+      .where(inArray(users.id, [sourceUserId, dto.targetUserId]));
+
+    const displayNameById = new Map(
+      userRowsForHistory.map((u) => [
+        u.id,
+        u.adDisplayName || u.adUsername || `User ${u.id}`,
+      ])
+    );
+    const sourceDisplayName =
+      displayNameById.get(sourceUserId) ?? `User ${sourceUserId}`;
+    const targetDisplayName =
+      displayNameById.get(dto.targetUserId) ?? `User ${dto.targetUserId}`;
+
+    const trimmedTransferNote = dto.notes?.trim() ?? '';
+    const activityTitleById = new Map<number, string>();
+    if (trimmedTransferNote.length > 0) {
+      const leadActivityIds = [
+        ...new Set(sourceRows.filter((r) => r.isLead).map((r) => r.activityId)),
+      ];
+      if (leadActivityIds.length > 0) {
+        const titleRows = await this.databaseService.db
+          .select({ id: activities.id, title: activities.title })
+          .from(activities)
+          .where(inArray(activities.id, leadActivityIds));
+        for (const r of titleRows) {
+          const label = r.title?.trim() || `Activity ${r.id}`;
+          activityTitleById.set(r.id, label);
+        }
+      }
+    }
+
+    const transferredCount = await this.databaseService.db.transaction(
+      async (tx) => {
+        let count = 0;
+        for (const row of sourceRows) {
+          const [targetRow] = await tx
+            .select({
+              isLead: activityCommsContacts.isLead,
+            })
+            .from(activityCommsContacts)
+            .where(
+              and(
+                eq(activityCommsContacts.activityId, row.activityId),
+                eq(activityCommsContacts.userId, dto.targetUserId)
+              )
+            )
+            .limit(1);
+
+          if (targetRow) {
+            await tx
+              .delete(activityCommsContacts)
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, sourceUserId)
+                )
+              );
+            await tx
+              .update(activityCommsContacts)
+              .set({
+                isLead: row.isLead || targetRow.isLead,
+              })
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, dto.targetUserId)
+                )
+              );
+          } else {
+            await tx
+              .update(activityCommsContacts)
+              .set({ userId: dto.targetUserId })
+              .where(
+                and(
+                  eq(activityCommsContacts.activityId, row.activityId),
+                  eq(activityCommsContacts.userId, sourceUserId)
+                )
+              );
+          }
+
+          if (row.isLead) {
+            let historyNotes: string | undefined;
+            if (trimmedTransferNote.length > 0) {
+              historyNotes = `${trimmedTransferNote}`;
+            }
+
+            await this.activityHistoryService.recordChange(
+              row.activityId,
+              changedByUserId,
+              'comms_lead_transferred',
+              [
+                {
+                  field: 'commsContactLeadId',
+                  oldValue: sourceDisplayName,
+                  newValue: targetDisplayName,
+                },
+              ],
+              historyNotes,
+              tx as unknown as Database
+            );
+          }
+
+          count += 1;
+        }
+        return count;
+      }
+    );
 
     await this.recordUserHistory(
       sourceUserId,

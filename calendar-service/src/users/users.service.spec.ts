@@ -55,6 +55,8 @@ describe('UsersService', () => {
       update: vi.fn().mockReturnThis(),
       set: vi.fn().mockReturnThis(),
       returning: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      transaction: vi.fn(),
     },
   };
 
@@ -540,13 +542,28 @@ describe('UsersService', () => {
     });
 
     it('should update activity_comms_contacts and return transferredCount', async () => {
+      mockDatabaseService.db.transaction = vi.fn(
+        async (cb: (tx: typeof mockDatabaseService.db) => Promise<number>) =>
+          cb(mockDatabaseService.db)
+      );
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(
+          createChain(
+            [
+              { activityId: 10, isLead: true },
+              { activityId: 11, isLead: false },
+            ],
+            'where'
+          )
+        )
+        .mockReturnValueOnce(createChain([], 'limit'))
+        .mockReturnValueOnce(createChain([], 'limit'));
+
       mockDatabaseService.db.update = vi.fn().mockReturnValue({
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnValue({
-          returning: vi
-            .fn()
-            .mockResolvedValue([{ activityId: 10 }, { activityId: 11 }]),
-        }),
+        where: vi.fn().mockResolvedValue(undefined),
       });
 
       mockDatabaseService.db.insert = vi.fn().mockReturnValue({
@@ -565,6 +582,7 @@ describe('UsersService', () => {
       );
 
       expect(result).toEqual({ transferredCount: 2 });
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
     });
   });
 });

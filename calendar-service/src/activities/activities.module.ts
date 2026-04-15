@@ -34,6 +34,6 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     ActivityUtilsService,
   ],
   controllers: [ActivitiesController],
-  exports: [ActivitiesService, ActivitiesGateway],
+  exports: [ActivitiesService, ActivitiesGateway, ActivityHistoryService],
 })
 export class ActivitiesModule {}
