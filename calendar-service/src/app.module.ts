@@ -7,6 +7,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { ActivitiesModule } from './activities/activities.module';
+import { ActivityCompletionModule } from './activity-completion/activity-completion.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -54,6 +55,7 @@ function resolveRootEnvPath(): string {
     AuthModule,
     BannerModule,
     ActivitiesModule,
+    ActivityCompletionModule,
     LocksModule,
     LookupsModule,
     DraftsModule,
