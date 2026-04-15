@@ -9,7 +9,7 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
-import { PERMISSIONS } from '@corpcal/shared';
+import { PERMISSIONS, REVIEW_SNAPSHOT_VERSION } from '@corpcal/shared';
 import {
   activityResponseSchema,
   type UpdateActivityRequest,
@@ -18,6 +18,7 @@ import {
 import {
   createMockActivity,
   createMockActivityRequest,
+  createMockActivityResponse,
   createMockUpdateRequest,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
@@ -1194,6 +1195,198 @@ describe('ActivitiesService', () => {
       expect(
         mockLocksService.completeHandoffAfterHolderSaveIfPending
       ).not.toHaveBeenCalled();
+    });
+
+    it('keeps New on update when current status is New and user does not mark reviewed', async () => {
+      const newStatusId = 7;
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: newStatusId,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+        activityStatusId: newStatusId,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'new' }] : [{ id: newStatusId }]
+            ),
+        };
+      });
+
+      const updateDto = createMockUpdateRequest({ title: 'Updated Activity' });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: ['activities.edit'],
+        roleName: 'Editor',
+      });
+
+      expect(result.activityStatusId).toBe(newStatusId);
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('updated');
+    });
+
+    it('keeps New when user has activities.review but does not send markAsReviewed', async () => {
+      const newStatusId = 7;
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: newStatusId,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Touched',
+        activityStatusId: newStatusId,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi
+            .fn()
+            .mockResolvedValue(
+              isStatusNameQuery ? [{ name: 'new' }] : [{ id: newStatusId }]
+            ),
+        };
+      });
+
+      const result = await service.update(
+        1,
+        createMockUpdateRequest({ title: 'Touched' }),
+        1,
+        {
+          permissions: ['activities.review', 'activities.edit'],
+          roleName: 'Admin',
+        }
+      );
+
+      expect(result.activityStatusId).toBe(newStatusId);
+    });
+
+    it('sets Reviewed when activity is New and reviewer sends markAsReviewed', async () => {
+      const newStatusId = 7;
+      const reviewedStatusId = 2;
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: newStatusId,
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Updated Activity',
+        activityStatusId: reviewedStatusId,
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn().mockReturnValue(createMockQueryChain([])),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        const selectArg = args[0];
+        const isStatusNameQuery =
+          selectArg && typeof selectArg === 'object' && 'name' in selectArg;
+        if (isStatusNameQuery) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'new' }]),
+          };
+        }
+        return {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: reviewedStatusId }]),
+        };
+      });
+
+      const result = await service.update(
+        1,
+        createMockUpdateRequest({ markAsReviewed: true }),
+        1,
+        {
+          permissions: ['activities.review'],
+          roleName: 'Admin',
+        }
+      );
+
+      expect(result.activityStatusId).toBe(reviewedStatusId);
+      expect(
+        mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
+      ).toBe('reviewed');
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -2470,6 +2663,43 @@ describe('ActivitiesService', () => {
       ).rejects.toThrow('STOP: validation passed');
 
       expect(mockTeamsService.getEligibleCommsUserIds).toHaveBeenCalledWith(5);
+    });
+  });
+
+  describe('computeChangedFieldsSinceReview', () => {
+    it('returns empty array when activity status is New (display label)', () => {
+      const response = createMockActivityResponse({ activityStatus: 'New' });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION
+      );
+      expect(paths).toEqual([]);
+    });
+
+    it('diffs against empty baseline when not New and snapshot is null', () => {
+      const response = createMockActivityResponse({
+        activityStatus: 'Reviewed',
+        title: 'Filled title',
+      });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION
+      );
+      expect(paths).toContain('title');
+    });
+
+    it('returns undefined when snapshot version mismatches', () => {
+      const response = createMockActivityResponse({
+        activityStatus: 'Changed',
+      });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION + 1
+      );
+      expect(paths).toBeUndefined();
     });
   });
 });
