@@ -9,7 +9,10 @@ import {
 export type ReportExportFormat = 'pdf' | 'csv' | 'xlsx';
 
 /** Re-export shared template HTML (print preview uses the same layout as server PDF). */
-export { getReportTemplateHtml } from '@corpcal/shared/reports/reportPrintHtml';
+export {
+  buildCustomReportHtml,
+  getReportTemplateHtml,
+} from '@corpcal/shared/reports/reportPrintHtml';
 
 export async function handleReportExport(options: {
   reportType: string;

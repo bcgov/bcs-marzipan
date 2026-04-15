@@ -10,6 +10,7 @@ import {
   type ReportSectionData,
 } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
+import { EditReportModal } from '@/components/reports/EditReportModal';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
@@ -74,6 +75,7 @@ export function ReportsPage() {
   );
 
   const [activeReport, setActiveReport] = useState<string>('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
@@ -177,6 +179,10 @@ export function ReportsPage() {
       '_blank',
       'noopener,noreferrer'
     );
+  };
+
+  const handleEditReportClick = () => {
+    setIsEditModalOpen(true);
   };
 
   if (error && activeReport) {
@@ -299,13 +305,27 @@ export function ReportsPage() {
                     defaultValue={data.sections[0]?.id ?? 'section-1'}
                     className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
                   >
-                    <TabsList className="mb-4 shrink-0">
-                      {data.sections.map((section: ReportSectionData) => (
-                        <TabsTrigger key={section.id} value={section.id}>
-                          {section.name} ({section.activities.length})
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                    <div className="mb-4 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3">
+                      <TabsList className="mb-0 min-w-0 shrink">
+                        {data.sections.map((section: ReportSectionData) => (
+                          <TabsTrigger key={section.id} value={section.id}>
+                            {section.name} ({section.activities.length})
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {report.name === 'custom' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="shrink-0"
+                          aria-expanded={isEditModalOpen}
+                          aria-haspopup="dialog"
+                          onClick={handleEditReportClick}
+                        >
+                          Edit Report
+                        </Button>
+                      ) : null}
+                    </div>
                     {data.sections.map((section: ReportSectionData) => (
                       <TabsContent
                         key={section.id}
@@ -328,6 +348,11 @@ export function ReportsPage() {
           </div>
         </Tabs>
       </div>
+
+      <EditReportModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { buildCustomReportHtml } from './print/customReportPrintHtml';
 import { buildExecLookAheadPrintHTML } from './print/execLookAheadPrintHTML';
 import { buildLookAheadLegacyPrintHtml } from './print/lookAheadLegacyPrintHtml';
 
@@ -38,6 +39,8 @@ export function getReportTemplateHtml(
       return buildLookAheadLegacyPrintHtml(data);
     case 'planning':
       return buildPlanningPrintHtml(data);
+    case 'custom':
+      return buildCustomReportHtml(data);
     default:
       return '<div class="p-4 text-sm text-gray-600">No print layout for this report.</div>';
   }
