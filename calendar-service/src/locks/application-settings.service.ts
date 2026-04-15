@@ -69,11 +69,13 @@ export class ApplicationSettingsService {
   // Activity completion automation settings
   // --------------------------------------------------------------------------
 
-  async getCompletionSettings(): Promise<{
+  async getCompletionSettings(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<{
     schedule: CompletionSchedule;
     bufferMinutes: CompletionBufferMinutes;
   }> {
-    const rows = await this.databaseService.db
+    const rows = await executor
       .select()
       .from(applicationSettings)
       .where(

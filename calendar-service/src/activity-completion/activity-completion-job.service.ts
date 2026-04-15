@@ -80,7 +80,7 @@ export class ActivityCompletionJobService {
         }
 
         const { bufferMinutes } =
-          await this.applicationSettings.getCompletionSettings();
+          await this.applicationSettings.getCompletionSettings(tx);
 
         const updated = await this.completeEligibleActivities(
           tx,
