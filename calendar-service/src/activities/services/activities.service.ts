@@ -42,6 +42,7 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
+  normalizeActivityStatusLabel,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   REVIEW_SNAPSHOT_VERSION,
@@ -246,7 +247,8 @@ export class ActivitiesService {
 
   /**
    * Compute changedFieldsSinceReview from the stored snapshot vs current response.
-   * Returns the diff paths array, or undefined when snapshot is absent / version mismatch.
+   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed);
+   * otherwise the diff paths vs last Reviewed snapshot (empty baseline when snapshot is null).
    */
   computeChangedFieldsSinceReview(
     response: ActivityResponse,
@@ -256,6 +258,9 @@ export class ActivitiesService {
   ): string[] | undefined {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
+    }
+    if (normalizeActivityStatusLabel(response.activityStatus) === 'new') {
+      return [];
     }
     const currentFormData = mapResponseToFormData(response, lookups);
     const baseline = snapshot
@@ -1741,11 +1746,17 @@ export class ActivitiesService {
       ...activityUpdateData
     } = dto;
 
-    // Compute new status: user with activities.review and markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
+    // Compute new status. Do not use DTO activityStatusId.
     const canReview =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const newStatusName: ActivityStatusName =
-      canReview && dto.markAsReviewed === true ? 'reviewed' : 'changed';
+    let newStatusName: ActivityStatusName;
+    if (canReview && dto.markAsReviewed === true) {
+      newStatusName = 'reviewed';
+    } else if (currentStatusName === 'new') {
+      newStatusName = 'new';
+    } else {
+      newStatusName = 'changed';
+    }
     const computedStatusId =
       await this.getActivityStatusIdByName(newStatusName);
 
