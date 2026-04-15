@@ -74,13 +74,15 @@ describe('LookupsController', () => {
     it('should return all categories', async () => {
       mockLookupsService.getCategories.mockResolvedValue(mockLookupItems);
 
-      const result = await controller.getCategories();
+      const result = await controller.getCategories(mockUser);
 
       expect(result).toEqual({
         success: true,
         data: mockLookupItems,
       });
-      expect(mockLookupsService.getCategories).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.getCategories).toHaveBeenCalledWith(
+        mockUser.teamIds
+      );
     });
   });
 

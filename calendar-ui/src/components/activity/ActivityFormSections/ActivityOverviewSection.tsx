@@ -21,11 +21,14 @@ import {
   ComboboxChip,
   ComboboxChips,
   ComboboxChipsInput,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxSeparator,
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
@@ -309,6 +312,7 @@ type ActivityOverviewSectionProps = {
     id: number;
     name: string;
     displayName?: string;
+    visibility?: string;
   }>;
   organizations: LeadOrganizationOption[];
   tags: Array<{ id: number; text: string }>;
@@ -344,10 +348,19 @@ export const ActivityOverviewSection: React.FC<
   const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
 
-  const categoryOptions = categories.map((c) => ({
-    value: String(c.id),
-    label: c.displayName ?? c.name,
-  }));
+  const teamCategoryOptions = categories
+    .filter((c) => c.visibility === 'team')
+    .map((c) => ({
+      value: String(c.id),
+      label: c.displayName ?? c.name,
+    }));
+  const globalCategoryOptions = categories
+    .filter((c) => c.visibility !== 'team')
+    .map((c) => ({
+      value: String(c.id),
+      label: c.displayName ?? c.name,
+    }));
+  const categoryOptions = [...teamCategoryOptions, ...globalCategoryOptions];
   const tagOptions = tags.map((t) => ({
     value: String(t.id),
     label: t.text,
@@ -395,11 +408,29 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={categoriesAnchorRef}>
                     <ComboboxEmpty>No categories found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: OptionItem) => (
-                        <ComboboxItem key={option.value} value={option}>
-                          {option.label}
-                        </ComboboxItem>
+                      {teamCategoryOptions.length > 0 && (
+                        <>
+                          <ComboboxGroup items={teamCategoryOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                          <ComboboxSeparator />
+                        </>
                       )}
+                      <ComboboxGroup items={globalCategoryOptions}>
+                        <ComboboxCollection>
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxGroup>
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>

@@ -64,6 +64,7 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
   displayName: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
+  visibility: z.enum(VISIBILITY),
 });
 
 // ============================================

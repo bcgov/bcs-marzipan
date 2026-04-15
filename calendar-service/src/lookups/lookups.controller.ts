@@ -111,15 +111,12 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('categories')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getCategories(): Promise<{
+  @Header('Cache-Control', `private, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getCategories(@CurrentUser() user: AuthUser): Promise<{
     success: boolean;
     data: CategoryLookupItem[];
   }> {
-    // TODO: Retrieve user teams from authentication context when user team retrieval is implemented
-    // For now, passing undefined returns only global categories
-    const userTeams: number[] | undefined = undefined;
-    const data = await this.lookupsService.getCategories(userTeams);
+    const data = await this.lookupsService.getCategories(user.teamIds);
     return { success: true, data };
   }
 

@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -48,6 +48,13 @@ export const activityHistory = pgTable(
     index('activity_history_activity_id_timestamp_idx').on(
       table.activityId,
       table.timestamp
+    ),
+    // Composite index for keyset pagination (ORDER BY timestamp DESC, id DESC)
+    index('idx_activity_history_ts_id').on(table.timestamp, table.id),
+    // Trigram index for ILIKE search on notes
+    index('idx_activity_history_notes_trgm').using(
+      'gin',
+      sql`lower(${table.notes}) gin_trgm_ops`
     ),
   ]
 );
