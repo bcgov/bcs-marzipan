@@ -87,11 +87,6 @@ export function normalizeActivityStatusLabel(status: string): string {
 export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
 
 /**
- * Delay in minutes after activity end before status is set to completed (scheduler job).
- */
-export const ACTIVITY_COMPLETED_DELAY_MINUTES = 15;
-
-/**
  * Current version of the reviewedFieldSnapshot JSON shape.
  * Bump when adding/removing tracked fields or changing normalisation rules.
  * On read, snapshots with an older version can be ignored (treated as "no snapshot")

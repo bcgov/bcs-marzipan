@@ -206,6 +206,10 @@ export const activityComputedFieldsSchema = z.object({
   // Dotted field paths that have changed since the last Reviewed snapshot.
   // Only included for users with activities.review permission; omitted for non-reviewers.
   changedFieldsSinceReview: z.array(z.string()).optional(),
+
+  // Whether the activity is eligible for manual completion (activities.complete permission).
+  // Only included for users with activities.complete; omitted otherwise.
+  markCompleteEligible: z.boolean().optional(),
 });
 
 /**
