@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import {
   createMockAddUserToTeamBody,
   createMockTransferActivitiesBody,
@@ -60,6 +61,10 @@ describe('UsersService', () => {
     },
   };
 
+  const mockActivityHistoryService = {
+    recordChange: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -67,6 +72,10 @@ describe('UsersService', () => {
         {
           provide: DatabaseService,
           useValue: mockDatabaseService,
+        },
+        {
+          provide: ActivityHistoryService,
+          useValue: mockActivityHistoryService,
         },
       ],
     }).compile();
@@ -558,6 +567,7 @@ describe('UsersService', () => {
             'where'
           )
         )
+        .mockReturnValueOnce(createChain([], 'where'))
         .mockReturnValueOnce(createChain([], 'limit'))
         .mockReturnValueOnce(createChain([], 'limit'));
 
