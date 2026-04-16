@@ -357,7 +357,7 @@ export function GlobalHistory() {
     () => new Set()
   );
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
   // Reset to page 1 whenever any filter changes
