@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   activities,
@@ -16,10 +16,13 @@ import {
 } from '@corpcal/shared';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 
 const ADVISORY_LOCK_KEY = 900_100;
+
+const PREVIEW_LIST_LIMIT = 500;
 
 @Injectable()
 export class ActivityCompletionJobService {
@@ -105,6 +108,55 @@ export class ActivityCompletionJobService {
   }
 
   /**
+   * Preview activities that would be completed by the next automated batch,
+   * using the same eligibility rules and buffer as persisted settings (read-only).
+   */
+  async previewEligibleActivities(): Promise<{
+    count: number;
+    items: Array<{ displayId: string | null; title: string }>;
+    listTruncated: boolean;
+  }> {
+    const { bufferMinutes } =
+      await this.applicationSettings.getCompletionSettings();
+
+    const lookups = await this.loadAutomationCompletionLookups(
+      this.databaseService.db,
+      bufferMinutes
+    );
+    if (!lookups) {
+      return { count: 0, items: [], listTruncated: false };
+    }
+
+    const { whereClause } = lookups;
+
+    const [countRow] = await this.databaseService.db
+      .select({ n: count() })
+      .from(activities)
+      .where(whereClause);
+
+    const total = Number(countRow?.n ?? 0);
+
+    const rows = await this.databaseService.db
+      .select({
+        displayId: activities.displayId,
+        title: activities.title,
+      })
+      .from(activities)
+      .where(whereClause)
+      .limit(PREVIEW_LIST_LIMIT + 1);
+
+    const listTruncated = rows.length > PREVIEW_LIST_LIMIT;
+    const items = (
+      listTruncated ? rows.slice(0, PREVIEW_LIST_LIMIT) : rows
+    ).map((r) => ({
+      displayId: r.displayId,
+      title: r.title,
+    }));
+
+    return { count: total, items, listTruncated };
+  }
+
+  /**
    * Find and update all activities eligible for automated completion.
    *
    * Eligibility (automation):
@@ -113,56 +165,18 @@ export class ActivityCompletionJobService {
    *   - now >= effectiveEnd + buffer
    */
   private async completeEligibleActivities(
-    tx: Parameters<
-      Parameters<typeof this.databaseService.db.transaction>[0]
-    >[0],
+    tx: DrizzleDbExecutor,
     bufferMinutes: number
   ): Promise<number> {
-    const [reviewedStatus] = await tx
-      .select({ id: activityStatuses.id })
-      .from(activityStatuses)
-      .where(eq(activityStatuses.name, 'reviewed' satisfies ActivityStatusName))
-      .limit(1);
-
-    const [completedStatus] = await tx
-      .select({ id: activityStatuses.id })
-      .from(activityStatuses)
-      .where(
-        eq(activityStatuses.name, 'completed' satisfies ActivityStatusName)
-      )
-      .limit(1);
-
-    if (!reviewedStatus || !completedStatus) {
-      this.logger.warn(
-        'Could not resolve reviewed/completed status IDs — skipping'
-      );
+    const lookups = await this.loadAutomationCompletionLookups(
+      tx,
+      bufferMinutes
+    );
+    if (!lookups) {
       return 0;
     }
 
-    const [confirmedDate] = await tx
-      .select({ id: dateStatuses.id })
-      .from(dateStatuses)
-      .where(eq(dateStatuses.name, 'confirmed'))
-      .limit(1);
-
-    const [confirmedTime] = await tx
-      .select({ id: timeStatuses.id })
-      .from(timeStatuses)
-      .where(eq(timeStatuses.name, 'confirmed'))
-      .limit(1);
-
-    if (!confirmedDate || !confirmedTime) {
-      this.logger.warn(
-        'Could not resolve confirmed date/time status IDs — skipping'
-      );
-      return 0;
-    }
-
-    // Build the effective-end expression in SQL (Pacific = UTC-7).
-    // Timed: (end_date || 'T' || end_time || '-07:00')::timestamptz
-    // All-day: (end_date::date + 1)::timestamp AT TIME ZONE 'UTC-7'
-    // We use now() >= effective_end + buffer to match the shared helper.
-    const bufferInterval = sql.raw(`'${bufferMinutes} minutes'::interval`);
+    const { whereClause, completedStatus } = lookups;
 
     const candidates = await tx
       .select({
@@ -170,22 +184,7 @@ export class ActivityCompletionJobService {
         activityStatusId: activities.activityStatusId,
       })
       .from(activities)
-      .where(
-        and(
-          eq(activities.activityStatusId, reviewedStatus.id),
-          eq(activities.dateStatusId, confirmedDate.id),
-          eq(activities.timeStatusId, confirmedTime.id),
-          // Effective end + buffer is in the past
-          sql`CASE
-            WHEN ${activities.isAllDay} THEN
-              (${activities.endDate}::date + 1)::timestamp + INTERVAL '7 hours' + ${bufferInterval} <= now()
-            ELSE
-              ${activities.endDate} IS NOT NULL
-              AND ${activities.endTime} IS NOT NULL
-              AND (${activities.endDate} || 'T' || ${activities.endTime} || '-07:00')::timestamptz + ${bufferInterval} <= now()
-          END`
-        )
-      );
+      .where(whereClause);
 
     if (candidates.length === 0) return 0;
 
@@ -220,5 +219,72 @@ export class ActivityCompletionJobService {
     }
 
     return candidates.length;
+  }
+
+  private async loadAutomationCompletionLookups(
+    tx: DrizzleDbExecutor,
+    bufferMinutes: number
+  ): Promise<{
+    whereClause: ReturnType<typeof and>;
+    reviewedStatus: { id: number };
+    completedStatus: { id: number };
+  } | null> {
+    const [reviewedStatus] = await tx
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'reviewed' satisfies ActivityStatusName))
+      .limit(1);
+
+    const [completedStatus] = await tx
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(
+        eq(activityStatuses.name, 'completed' satisfies ActivityStatusName)
+      )
+      .limit(1);
+
+    if (!reviewedStatus || !completedStatus) {
+      this.logger.warn(
+        'Could not resolve reviewed/completed status IDs — skipping'
+      );
+      return null;
+    }
+
+    const [confirmedDate] = await tx
+      .select({ id: dateStatuses.id })
+      .from(dateStatuses)
+      .where(eq(dateStatuses.name, 'confirmed'))
+      .limit(1);
+
+    const [confirmedTime] = await tx
+      .select({ id: timeStatuses.id })
+      .from(timeStatuses)
+      .where(eq(timeStatuses.name, 'confirmed'))
+      .limit(1);
+
+    if (!confirmedDate || !confirmedTime) {
+      this.logger.warn(
+        'Could not resolve confirmed date/time status IDs — skipping'
+      );
+      return null;
+    }
+
+    const bufferInterval = sql.raw(`'${bufferMinutes} minutes'::interval`);
+
+    const whereClause = and(
+      eq(activities.activityStatusId, reviewedStatus.id),
+      eq(activities.dateStatusId, confirmedDate.id),
+      eq(activities.timeStatusId, confirmedTime.id),
+      sql`CASE
+        WHEN ${activities.isAllDay} THEN
+          (${activities.endDate}::date + 1)::timestamp + INTERVAL '7 hours' + ${bufferInterval} <= now()
+        ELSE
+          ${activities.endDate} IS NOT NULL
+          AND ${activities.endTime} IS NOT NULL
+          AND (${activities.endDate} || 'T' || ${activities.endTime} || '-07:00')::timestamptz + ${bufferInterval} <= now()
+      END`
+    );
+
+    return { whereClause, reviewedStatus, completedStatus };
   }
 }

@@ -2,6 +2,12 @@ import type { ActivityCompletionSettings } from '@corpcal/shared/schemas';
 
 import api from './axios';
 
+export type CompletionRunPreview = {
+  count: number;
+  items: Array<{ displayId: string | null; title: string }>;
+  listTruncated: boolean;
+};
+
 export async function fetchCompletionSettings(): Promise<ActivityCompletionSettings> {
   const res = await api.get<{
     success: boolean;
@@ -28,5 +34,13 @@ export async function runCompletionJobNow(): Promise<{
     success: boolean;
     data: { updated: number; skipped: boolean };
   }>('/settings/activity-completion/run');
+  return res.data.data;
+}
+
+export async function fetchCompletionRunPreview(): Promise<CompletionRunPreview> {
+  const res = await api.get<{
+    success: boolean;
+    data: CompletionRunPreview;
+  }>('/settings/activity-completion/run-preview');
   return res.data.data;
 }

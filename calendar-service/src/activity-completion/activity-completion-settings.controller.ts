@@ -58,6 +58,18 @@ export class ActivityCompletionSettingsController {
     };
   }
 
+  @Get('run-preview')
+  @ApiOperation({
+    summary:
+      'Preview activities that would be completed by a manual run (saved settings)',
+  })
+  @ApiResponse({ status: 200, description: 'Eligibility preview' })
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
+  async previewRun() {
+    const data = await this.completionJob.previewEligibleActivities();
+    return { success: true, data };
+  }
+
   @Post('run')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
