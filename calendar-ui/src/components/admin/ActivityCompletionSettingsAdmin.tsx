@@ -44,9 +44,11 @@ import {
 import { usePermission } from '@/hooks/usePermissions';
 
 const SCHEDULE_LABELS: Record<CompletionSchedule, string> = {
+  every_15_minutes: 'Every 15 minutes',
   hourly: 'Hourly',
   twice_daily: 'Twice daily (00:00 and 12:00)',
   daily: 'Daily (00:00)',
+  never: 'Never (manual runs only)',
 };
 
 const BUFFER_LABELS: Record<CompletionBufferMinutes, string> = {
@@ -102,16 +104,17 @@ function BufferInfoTrigger(): ReactElement {
           are not completed the instant they end).
         </p>
         <p>
-          It also sets when the scheduled CRON job runs (Pacific Time UTC-7):
+          The buffer also offsets the CRON job run time (Pacific Time UTC-7):
           the job only runs on the scheduled hours where the clock minute equals
-          the buffer (0, 15, 30, or 45).
+          the buffer :00, :15, :30, or :45 (except when schedule is Every 15
+          minutes).
         </p>
         <p>
           Example: 15-minute buffer on an hourly schedule
           <br />
           Runs occur at 00:15, 01:15, 02:15, etc. For the run at 01:15, activies
           ending up to 01:00 are marked Completed; activities ending at 01:15
-          would not be eligible (end time plus buffer is 01:30)
+          would not be eligible (end time plus buffer is 01:30).
         </p>
       </PopoverContent>
     </Popover>

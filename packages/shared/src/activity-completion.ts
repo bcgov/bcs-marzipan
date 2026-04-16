@@ -102,13 +102,20 @@ export function isManualCompleteEligible(
 // Cron tick gating
 // ============================================================================
 
-export type CompletionSchedule = 'hourly' | 'twice_daily' | 'daily';
+export type CompletionSchedule =
+  | 'every_15_minutes'
+  | 'hourly'
+  | 'twice_daily'
+  | 'daily'
+  | 'never';
 export type CompletionBufferMinutes = 0 | 15 | 30 | 45;
 
 export const COMPLETION_SCHEDULES: readonly CompletionSchedule[] = [
+  'every_15_minutes',
   'hourly',
   'twice_daily',
   'daily',
+  'never',
 ] as const;
 
 export const COMPLETION_BUFFER_OPTIONS: readonly CompletionBufferMinutes[] = [
@@ -132,6 +139,9 @@ export function toPacificHourMinute(utcMs: number): {
 /**
  * Whether the current quarter-hour tick should execute the completion batch,
  * given the configured schedule and buffer.
+ *
+ * For `every_15_minutes`, the batch runs on every tick (buffer affects eligibility only).
+ * For `hourly`, `twice_daily`, and `daily`, the Pacific minute must equal `buffer`.
  */
 export function shouldRunCompletionJob(
   schedule: CompletionSchedule,
@@ -139,6 +149,8 @@ export function shouldRunCompletionJob(
   pacificHour: number,
   pacificMinute: number
 ): boolean {
+  if (schedule === 'never') return false;
+  if (schedule === 'every_15_minutes') return true;
   if (pacificMinute !== buffer) return false;
 
   switch (schedule) {

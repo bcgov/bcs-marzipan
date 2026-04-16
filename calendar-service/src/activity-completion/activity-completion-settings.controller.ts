@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import {
+  PERMISSIONS,
+  type CompletionBufferMinutes,
+  type CompletionSchedule,
+} from '@corpcal/shared';
 import { activityCompletionSettingsSchema } from '@corpcal/shared/schemas';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -50,8 +54,8 @@ export class ActivityCompletionSettingsController {
     }
   ) {
     await this.applicationSettings.setCompletionSettings(
-      body.schedule as 'hourly' | 'twice_daily' | 'daily',
-      body.bufferMinutes as 0 | 15 | 30 | 45
+      body.schedule as CompletionSchedule,
+      body.bufferMinutes as CompletionBufferMinutes
     );
     return {
       success: true,

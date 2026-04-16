@@ -163,6 +163,20 @@ describe('activity completion advisory lock constants', () => {
 });
 
 describe('shouldRunCompletionJob', () => {
+  it('every_15_minutes: fires on every quarter hour regardless of buffer', () => {
+    for (const buffer of [0, 15, 30, 45] as const) {
+      expect(shouldRunCompletionJob('every_15_minutes', buffer, 0, 0)).toBe(
+        true
+      );
+      expect(shouldRunCompletionJob('every_15_minutes', buffer, 3, 15)).toBe(
+        true
+      );
+      expect(shouldRunCompletionJob('every_15_minutes', buffer, 23, 45)).toBe(
+        true
+      );
+    }
+  });
+
   it('daily + buffer 0: fires only at 00:00', () => {
     expect(shouldRunCompletionJob('daily', 0, 0, 0)).toBe(true);
     expect(shouldRunCompletionJob('daily', 0, 12, 0)).toBe(false);
@@ -185,5 +199,11 @@ describe('shouldRunCompletionJob', () => {
       expect(shouldRunCompletionJob('hourly', 45, h, 45)).toBe(true);
       expect(shouldRunCompletionJob('hourly', 45, h, 0)).toBe(false);
     }
+  });
+
+  it('never: never fires (manual runs only)', () => {
+    expect(shouldRunCompletionJob('never', 0, 0, 0)).toBe(false);
+    expect(shouldRunCompletionJob('never', 15, 0, 15)).toBe(false);
+    expect(shouldRunCompletionJob('never', 45, 12, 45)).toBe(false);
   });
 });

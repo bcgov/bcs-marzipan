@@ -38,7 +38,8 @@ export class ActivityCompletionJobService {
 
   /**
    * Quarter-hour cron tick. Loads settings and returns early unless
-   * the current Pacific wall time matches the configured cadence.
+   * the current Pacific wall time matches the configured cadence (or cadence is
+   * every 15 minutes, which runs on every tick).
    */
   @Cron('0 0,15,30,45 * * * *')
   async onTick(): Promise<void> {
