@@ -1,5 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
+import type { HTMLAttributes } from 'react';
+
+import { normalizeActivityStatusLabel } from '@corpcal/shared';
 
 import { cn } from '../../lib/utils';
 
@@ -65,7 +67,7 @@ export type ActivityStatusBadgeVariant =
  * lookup name (e.g. "delete_requested") or displayName (e.g. "Delete requested").
  */
 export function normalizeActivityStatus(status: string): string {
-  return status.toLowerCase().trim().replace(/\s+/g, '_');
+  return normalizeActivityStatusLabel(status);
 }
 
 export function getActivityStatusBadgeVariant(
@@ -93,9 +95,7 @@ export function getActivityStatusBadgeVariant(
 }
 
 export interface BadgeProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+  extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (

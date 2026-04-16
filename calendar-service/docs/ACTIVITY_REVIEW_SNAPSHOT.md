@@ -17,7 +17,7 @@ Two columns on the `activities` table:
 | `reviewed_field_snapshot`         | `jsonb`   | Yes      | `NULL`  | Canonical form-data snapshot at last Reviewed transition |
 | `reviewed_field_snapshot_version` | `integer` | No       | `1`     | Schema version of the snapshot shape (see Versioning)    |
 
-When `reviewed_field_snapshot` is `NULL`, the baseline is the **canonical empty form** (all fields at their default/empty values). This means New activities that have never been Reviewed will show all populated fields as "changed since last review."
+When `reviewed_field_snapshot` is `NULL`, the baseline for diff purposes is the **canonical empty form** (all fields at their default/empty values). Activities in **New** status never show review-diff badges: `changedFieldsSinceReview` is an empty list for reviewers until the activity has left **New** (there is no "last review" yet). For **Changed** or **Reviewed** rows with a null snapshot (e.g. after restore from **Deleted**), the empty-form baseline applies and non-empty fields may appear in the diff.
 
 ## Baseline Definition
 
@@ -27,16 +27,17 @@ When no snapshot exists (never Reviewed, or cleared by Deleted), the baseline is
 
 ## Status Lifecycle Rules
 
-| Status Transition                 | Snapshot Behaviour                                  |
-| --------------------------------- | --------------------------------------------------- |
-| **Create as New**                 | No snapshot written; `NULL` baseline (empty form)   |
-| **Create as Reviewed**            | Snapshot written from the created activity state    |
-| **Update to Reviewed**            | Snapshot replaced with the post-update state        |
-| **Update to Changed**             | Snapshot unchanged (baseline remains last Reviewed) |
-| **Delete requested**              | Snapshot unchanged                                  |
-| **Soft delete (Deleted)**         | Snapshot cleared (`NULL`), version reset            |
-| **Restore from Deleted**          | Snapshot remains `NULL` (cleared state persists)    |
-| **Restore from Delete requested** | Snapshot unchanged                                  |
+| Status Transition                 | Snapshot Behaviour                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| **Create as New**                 | No snapshot written; `NULL` baseline (empty form)                                    |
+| **Update while New**              | Status stays **New** until reviewed; no snapshot; reviewers get no review-diff paths |
+| **Create as Reviewed**            | Snapshot written from the created activity state                                     |
+| **Update to Reviewed**            | Snapshot replaced with the post-update state                                         |
+| **Update to Changed**             | Snapshot unchanged (baseline remains last Reviewed)                                  |
+| **Delete requested**              | Snapshot unchanged                                                                   |
+| **Soft delete (Deleted)**         | Snapshot cleared (`NULL`), version reset                                             |
+| **Restore from Deleted**          | Snapshot remains `NULL` (cleared state persists)                                     |
+| **Restore from Delete requested** | Snapshot unchanged                                                                   |
 
 ## API Response
 
@@ -48,7 +49,8 @@ changedFieldsSinceReview?: string[]
 
 - **Included** only when the requesting user has `activities.review` permission.
 - **Omitted** for non-reviewers (not present on the response object).
-- Contains dotted field paths matching RHF form field names (e.g. `title`, `venueAddress.city`, `categoryIds`).
+- For activities in **New** status, included as an **empty** array (no "changed since last review" until the first **Reviewed** transition).
+- Otherwise contains dotted field paths matching RHF form field names (e.g. `title`, `venueAddress.city`, `categoryIds`).
 
 ## UI Indicators
 
