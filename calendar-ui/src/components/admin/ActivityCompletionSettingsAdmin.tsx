@@ -97,21 +97,21 @@ function BufferInfoTrigger(): ReactElement {
         side="top"
       >
         <p>
-          The buffer serves 2 purposes: it is added to an activity&apos;s end
-          time to determine if it can be marked Completed by the CRON automation
-          (so activities are not completed the instant they end).
+          The buffer time is added to an activity&apos;s end time to determine
+          if it can be marked Completed by the CRON automation (so activities
+          are not completed the instant they end).
         </p>
         <p>
-          It also sets which minute the scheduled CRON job runs in Pacific Time
-          (UTC-7): the job only runs on quarter-hour ticks where the clock
-          minute equals the buffer (0, 15, 30, or 45).
+          It also sets when the scheduled CRON job runs (Pacific Time UTC-7):
+          the job only runs on the scheduled hours where the clock minute equals
+          the buffer (0, 15, 30, or 45).
         </p>
         <p>
-          Example for a 15-minute buffer: on an hourly schedule, runs occur at
-          1:15, 2:15, etc. <br />
-          For the run at 1:15, activies ending up to 1:00 are marked Completed
-          (activities ending at 1:15 would not be eligible, because the end time
-          plus buffer is 1:30)
+          Example: 15-minute buffer on an hourly schedule
+          <br />
+          Runs occur at 00:15, 01:15, 02:15, etc. For the run at 01:15, activies
+          ending up to 01:00 are marked Completed; activities ending at 01:15
+          would not be eligible (end time plus buffer is 01:30)
         </p>
       </PopoverContent>
     </Popover>
@@ -187,7 +187,15 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
         queryKey: ['settings', 'activity-completion', 'run-preview'],
       });
       if (result.skipped) {
-        toast.info('Completion job is already running');
+        if (result.skipReason === 'advisory_lock') {
+          toast.info(
+            'Another instance is running the completion job. Try again shortly.'
+          );
+        } else if (result.skipReason === 'in_flight') {
+          toast.info('Completion job is already running on this server.');
+        } else {
+          toast.info('Completion job did not run.');
+        }
       } else {
         toast.success(
           `Completion job completed: ${result.updated} activity(s) updated`
@@ -292,8 +300,7 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
-                  Buffers offset CRON job run time and activities eligible for
-                  completion
+                  Offsets CRON job run time and activity end times eligible
                 </p>
               </div>
             </div>

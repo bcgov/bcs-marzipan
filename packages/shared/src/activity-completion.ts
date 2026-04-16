@@ -163,7 +163,32 @@ export const ACTIVITY_COMPLETION_BUFFER_KEY =
   'activity_completion_buffer_minutes' as const;
 
 /**
+ * Result of one activity-completion batch run (cron or manual).
+ * Used by calendar-service and calendar-ui for a stable API contract.
+ */
+export type ActivityCompletionBatchSkipReason =
+  | 'in_flight'
+  | 'advisory_lock'
+  | 'error';
+
+export type ActivityCompletionBatchRunResult = {
+  updated: number;
+  skipped: boolean;
+  skipReason?: ActivityCompletionBatchSkipReason;
+};
+
+/**
  * Well-known ID for the seeded system user used by automated jobs.
- * Must match the database seed (0005_system_user_and_completion_permissions).
+ * Must match the database seed (e.g. `0008_20260415_completion_permission_seed.sql`).
  */
 export const CALENDAR_SYSTEM_USER_ID = 999;
+
+/**
+ * Postgres `pg_try_advisory_xact_lock(int, int)` class key for the completion batch job.
+ * Two-argument locks avoid collision with edit locks, which use the single-argument
+ * `pg_advisory_xact_lock(abs(hashtext(...)))` form.
+ */
+export const ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS = 7_881_903;
+
+/** Second argument to `pg_try_advisory_xact_lock` for the completion batch (reserved for future use). */
+export const ACTIVITY_COMPLETION_JOB_ADVISORY_KEY = 1;

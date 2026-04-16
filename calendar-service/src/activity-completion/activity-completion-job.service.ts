@@ -9,9 +9,12 @@ import {
   timeStatuses,
 } from '@corpcal/database/schema';
 import {
+  ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS,
+  ACTIVITY_COMPLETION_JOB_ADVISORY_KEY,
   CALENDAR_SYSTEM_USER_ID,
   shouldRunCompletionJob,
   toPacificHourMinute,
+  type ActivityCompletionBatchRunResult,
   type ActivityStatusName,
 } from '@corpcal/shared';
 
@@ -19,8 +22,6 @@ import { ActivityHistoryService } from '../activities/services/activity-history.
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
-
-const ADVISORY_LOCK_KEY = 900_100;
 
 const PREVIEW_LIST_LIMIT = 500;
 
@@ -41,8 +42,6 @@ export class ActivityCompletionJobService {
    */
   @Cron('0 0,15,30,45 * * * *')
   async onTick(): Promise<void> {
-    if (this.inFlight) return;
-
     const now = Date.now();
     const { schedule, bufferMinutes } =
       await this.applicationSettings.getCompletionSettings();
@@ -52,20 +51,40 @@ export class ActivityCompletionJobService {
       return;
     }
 
+    if (this.inFlight) {
+      this.logger.warn(
+        `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')}) but batch already in flight on this pod — skipping`
+      );
+      return;
+    }
+
     this.logger.log(
       `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')})`
     );
 
-    await this.runBatch();
+    const result = await this.runBatch();
+    if (
+      result.skipped &&
+      (result.skipReason === 'in_flight' ||
+        result.skipReason === 'advisory_lock')
+    ) {
+      this.logger.warn(
+        `Completion tick matched but batch was skipped (${result.skipReason})`
+      );
+    }
   }
 
   /**
    * Run the completion batch. Used by the cron tick and the manual "run now" endpoint.
    * Acquires a Postgres advisory lock so only one pod executes per invocation.
+   *
+   * **Connection pool:** All database work inside the transaction must use the `tx`
+   * executor (including `getCompletionSettings(tx)`). Calling `DatabaseService.db`
+   * while this transaction holds a pooled connection can deadlock a small pool (`max: 1`).
    */
-  async runBatch(): Promise<{ updated: number; skipped: boolean }> {
+  async runBatch(): Promise<ActivityCompletionBatchRunResult> {
     if (this.inFlight) {
-      return { updated: 0, skipped: true };
+      return { updated: 0, skipped: true, skipReason: 'in_flight' };
     }
     this.inFlight = true;
     const start = Date.now();
@@ -73,13 +92,13 @@ export class ActivityCompletionJobService {
     try {
       return await this.databaseService.db.transaction(async (tx) => {
         const [lockResult] = await tx.execute(
-          sql`SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY}) AS acquired`
+          sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_COMPLETION_JOB_ADVISORY_KEY}::integer) AS acquired`
         );
         if (!(lockResult as { acquired: boolean }).acquired) {
           this.logger.debug(
-            'Completion job: another pod holds the advisory lock — skipping'
+            'Completion job: another session holds the completion advisory lock — skipping'
           );
-          return { updated: 0, skipped: true };
+          return { updated: 0, skipped: true, skipReason: 'advisory_lock' };
         }
 
         const { bufferMinutes } =
@@ -101,7 +120,7 @@ export class ActivityCompletionJobService {
         'Completion job failed',
         err instanceof Error ? err.stack : String(err)
       );
-      return { updated: 0, skipped: false };
+      return { updated: 0, skipped: true, skipReason: 'error' };
     } finally {
       this.inFlight = false;
     }

@@ -1,3 +1,4 @@
+import type { ActivityCompletionBatchRunResult } from '@corpcal/shared';
 import type { ActivityCompletionSettings } from '@corpcal/shared/schemas';
 
 import api from './axios';
@@ -26,13 +27,10 @@ export async function patchCompletionSettings(
   return res.data.data;
 }
 
-export async function runCompletionJobNow(): Promise<{
-  updated: number;
-  skipped: boolean;
-}> {
+export async function runCompletionJobNow(): Promise<ActivityCompletionBatchRunResult> {
   const res = await api.post<{
     success: boolean;
-    data: { updated: number; skipped: boolean };
+    data: ActivityCompletionBatchRunResult;
   }>('/settings/activity-completion/run');
   return res.data.data;
 }

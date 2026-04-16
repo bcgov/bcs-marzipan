@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS,
+  ACTIVITY_COMPLETION_JOB_ADVISORY_KEY,
   computeEffectiveEndMs,
   isManualCompleteEligible,
   shouldRunCompletionJob,
@@ -144,6 +146,21 @@ describe('toPacificHourMinute', () => {
 // ============================================================================
 // shouldRunCompletionJob
 // ============================================================================
+
+describe('activity completion advisory lock constants', () => {
+  it('uses int32-safe values for pg_try_advisory_xact_lock(int, int)', () => {
+    expect(Number.isInteger(ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS)).toBe(true);
+    expect(Number.isInteger(ACTIVITY_COMPLETION_JOB_ADVISORY_KEY)).toBe(true);
+    expect(ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS).toBeGreaterThan(0);
+    expect(ACTIVITY_COMPLETION_JOB_ADVISORY_CLASS).toBeLessThanOrEqual(
+      2 ** 31 - 1
+    );
+    expect(ACTIVITY_COMPLETION_JOB_ADVISORY_KEY).toBeGreaterThanOrEqual(0);
+    expect(ACTIVITY_COMPLETION_JOB_ADVISORY_KEY).toBeLessThanOrEqual(
+      2 ** 31 - 1
+    );
+  });
+});
 
 describe('shouldRunCompletionJob', () => {
   it('daily + buffer 0: fires only at 00:00', () => {

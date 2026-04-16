@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
   Patch,
   Post,
   UseGuards,
@@ -79,6 +80,9 @@ export class ActivityCompletionSettingsController {
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
   async runNow() {
     const result = await this.completionJob.runBatch();
+    if (result.skipReason === 'error') {
+      throw new InternalServerErrorException('Completion job failed');
+    }
     return { success: true, data: result };
   }
 }
