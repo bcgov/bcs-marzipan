@@ -21,7 +21,12 @@ export class AppLogger extends Logger {
    */
   debug(message: string, context?: string, correlationId?: string): void {
     if (process.env.NODE_ENV !== 'production') {
-      super.debug(this.formatMessage(message, correlationId), context);
+      const formatted = this.formatMessage(message, correlationId);
+      if (context !== undefined) {
+        super.debug(formatted, context);
+      } else {
+        super.debug(formatted);
+      }
     }
   }
 
@@ -29,14 +34,24 @@ export class AppLogger extends Logger {
    * Log an info message
    */
   log(message: string, context?: string, correlationId?: string): void {
-    super.log(this.formatMessage(message, correlationId), context);
+    const formatted = this.formatMessage(message, correlationId);
+    if (context !== undefined) {
+      super.log(formatted, context);
+    } else {
+      super.log(formatted);
+    }
   }
 
   /**
    * Log a warning message
    */
   warn(message: string, context?: string, correlationId?: string): void {
-    super.warn(this.formatMessage(message, correlationId), context);
+    const formatted = this.formatMessage(message, correlationId);
+    if (context !== undefined) {
+      super.warn(formatted, context);
+    } else {
+      super.warn(formatted);
+    }
   }
 
   /**
@@ -48,7 +63,18 @@ export class AppLogger extends Logger {
     context?: string,
     correlationId?: string
   ): void {
-    super.error(this.formatMessage(message, correlationId), trace, context);
+    const formatted = this.formatMessage(message, correlationId);
+    if (trace !== undefined) {
+      if (context !== undefined) {
+        super.error(formatted, trace, context);
+      } else {
+        super.error(formatted, trace);
+      }
+    } else if (context !== undefined) {
+      super.error(formatted, context);
+    } else {
+      super.error(formatted);
+    }
   }
 
   /**
@@ -56,7 +82,12 @@ export class AppLogger extends Logger {
    */
   verbose(message: string, context?: string, correlationId?: string): void {
     if (process.env.NODE_ENV !== 'production') {
-      super.verbose(this.formatMessage(message, correlationId), context);
+      const formatted = this.formatMessage(message, correlationId);
+      if (context !== undefined) {
+        super.verbose(formatted, context);
+      } else {
+        super.verbose(formatted);
+      }
     }
   }
 }
