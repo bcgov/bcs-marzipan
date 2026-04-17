@@ -39,7 +39,8 @@ export class ActivityCompletionJobService {
   /**
    * Quarter-hour cron tick. Loads settings and returns early unless
    * the current Pacific wall time matches the configured cadence (or cadence is
-   * every 15 minutes, which runs on every tick).
+   * every 15 minutes, which runs on every tick). Logs at debug level when the
+   * cadence does not match so operators can confirm ticks without a matching run.
    */
   @Cron('0 0,15,30,45 * * * *')
   async onTick(): Promise<void> {
@@ -49,6 +50,9 @@ export class ActivityCompletionJobService {
     const { hour, minute } = toPacificHourMinute(now);
 
     if (!shouldRunCompletionJob(schedule, bufferMinutes, hour, minute)) {
+      this.logger.debug(
+        `Completion tick skipped: schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')} (cadence did not match)`
+      );
       return;
     }
 

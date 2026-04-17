@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
@@ -149,5 +150,29 @@ describe('ActivityCompletionJobService', () => {
     const serialized = JSON.stringify(sqlArg.queryChunks ?? sqlArg);
     expect(serialized).toContain('pg_try_advisory_xact_lock');
     expect(serialized).toMatch(/::integer.*::integer/s);
+  });
+
+  it('logs debug when completion cadence does not match', async () => {
+    const debugSpy = vi
+      .spyOn(Logger.prototype, 'debug')
+      .mockImplementation(() => undefined);
+
+    vi.useFakeTimers();
+    // 19:00 UTC -> synthetic PT 12:00 (daily + buffer 0 only matches 00:00)
+    vi.setSystemTime(new Date(Date.UTC(2026, 3, 17, 19, 0, 0)));
+
+    try {
+      await service.onTick();
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Completion tick skipped')
+      );
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/schedule=daily, buffer=0/)
+      );
+    } finally {
+      vi.useRealTimers();
+      debugSpy.mockRestore();
+    }
   });
 });
