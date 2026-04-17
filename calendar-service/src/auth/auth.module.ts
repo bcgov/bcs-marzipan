@@ -10,6 +10,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AzureOidcService } from './azure-oidc.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { SessionCleanupService } from './session-cleanup.service';
 
 @Module({
   imports: [
@@ -46,7 +47,12 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtAuthGuard, AzureOidcService],
+  providers: [
+    AuthService,
+    JwtAuthGuard,
+    AzureOidcService,
+    SessionCleanupService,
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, JwtModule, AzureOidcService],
 })

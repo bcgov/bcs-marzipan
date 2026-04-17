@@ -157,7 +157,7 @@ export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = 'pending' as const;
 // ============================================================================
 
 /**
- * Default JWT token expiration time in seconds (1 hour)
+ * Default JWT token expiration time in seconds (12 hours)
  * Used when JWT_EXPIRES_IN environment variable is not set
  */
-export const DEFAULT_JWT_EXPIRES_IN = 3600;
+export const DEFAULT_JWT_EXPIRES_IN = 43200;

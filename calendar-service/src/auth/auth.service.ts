@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   Injectable,
   NotImplementedException,
@@ -6,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
+import { eq, sessions } from '@corpcal/database';
 import type { AuthUser } from '@corpcal/shared';
 
 import { DatabaseService } from '../database/database.service';
@@ -150,6 +152,15 @@ export class AuthService {
       { expiresIn }
     );
 
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    await this.databaseService.db.insert(sessions).values({
+      userId: dbUser.id,
+      token: tokenHash,
+      expiresAt,
+      lastAccessedAt: new Date(),
+    });
+
     return {
       user,
       accessToken,
@@ -174,8 +185,10 @@ export class AuthService {
     };
   }
 
-  logout(): { message: string } {
-    // Stateless JWT: client discards token. Future: invalidate refresh token/session.
+  async logout(userId: number): Promise<{ message: string }> {
+    await this.databaseService.db
+      .delete(sessions)
+      .where(eq(sessions.userId, userId));
     return { message: 'Logged out' };
   }
 
