@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  formatActivityEndDateTimeLabel,
   formatDateRange,
   formatExactDate,
   formatLongDate,
@@ -138,6 +139,30 @@ describe('formatExactDate', () => {
     const d = new Date(2026, 0, 23, 14, 30, 0);
     const result = formatExactDate(d, { includeTime: true, includeYear: true });
     expect(result).toMatch(/^Jan 23, 2026 at \d{1,2}:\d{2}\s*[AP]M$/i);
+  });
+});
+
+describe('formatActivityEndDateTimeLabel', () => {
+  it('returns null when endDate is missing', () => {
+    expect(formatActivityEndDateTimeLabel(null, '14:30', false)).toBeNull();
+    expect(formatActivityEndDateTimeLabel('', '14:30', false)).toBeNull();
+  });
+
+  it('formats all-day end as date only', () => {
+    expect(formatActivityEndDateTimeLabel('2026-04-10', null, true)).toBe(
+      'Apr 10, 2026'
+    );
+  });
+
+  it('formats timed end with date and time', () => {
+    const s = formatActivityEndDateTimeLabel('2026-04-10', '14:30', false);
+    expect(s).toMatch(/^Apr 10, 2026 at \d{1,2}:\d{2}\s*[AP]M$/i);
+  });
+
+  it('uses date only when isAllDay is false but endTime is empty', () => {
+    expect(formatActivityEndDateTimeLabel('2026-04-10', null, false)).toBe(
+      'Apr 10, 2026'
+    );
   });
 });
 

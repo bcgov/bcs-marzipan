@@ -74,6 +74,7 @@ import {
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
+import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
 import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
@@ -417,6 +418,16 @@ export function ActivityPage({
     isDirty,
   });
 
+  const reviewModalActivityEndedAtLabel = useMemo(
+    () =>
+      formatActivityEndDateTimeLabel(
+        activity.endDate,
+        activity.endTime,
+        activity.isAllDay
+      ),
+    [activity.endDate, activity.endTime, activity.isAllDay]
+  );
+
   const onEditLockAcquireConflict = useCallback(() => {
     toast.error(EDIT_LOCK_CONFLICT_TOAST);
   }, []);
@@ -617,7 +628,24 @@ export function ActivityPage({
     });
   };
 
-  const handleReviewConfirm = async (notes?: string) => {
+  const handleReviewConfirm = async (
+    notes?: string,
+    markAsCompleted?: boolean
+  ) => {
+    if (markAsCompleted) {
+      if (isDirty) {
+        await form.handleSubmit(async (data) => {
+          await runSubmitUpdate({
+            kind: 'completeWithSave',
+            validatedData: data,
+            notes,
+          });
+        }, onError)();
+      } else {
+        await runSubmitUpdate({ kind: 'completeOnly', notes });
+      }
+      return;
+    }
     if (isDirty) {
       await form.handleSubmit(async (data) => {
         await runSubmitUpdate({
@@ -946,18 +974,19 @@ export function ActivityPage({
                   <ReviewActionButtonLabel isDirty={isDirty} />
                 </Button>
               )}
-              {actionFlags.showCompleteAction && (
-                <Button
-                  type="button"
-                  aria-label={isDirty ? 'Save and complete' : 'Complete'}
-                  disabled={!actionFlags.completeActionEnabled}
-                  onClick={() =>
-                    ensureEditThen(() => setShowCompleteModal(true))
-                  }
-                >
-                  <CompleteActionButtonLabel isDirty={isDirty} />
-                </Button>
-              )}
+              {actionFlags.showCompleteAction &&
+                !actionFlags.showReviewAction && (
+                  <Button
+                    type="button"
+                    aria-label={isDirty ? 'Save and complete' : 'Complete'}
+                    disabled={!actionFlags.completeActionEnabled}
+                    onClick={() =>
+                      ensureEditThen(() => setShowCompleteModal(true))
+                    }
+                  >
+                    <CompleteActionButtonLabel isDirty={isDirty} />
+                  </Button>
+                )}
             </div>
           </div>
         </form>
@@ -995,8 +1024,12 @@ export function ActivityPage({
         onOpenChange={setShowReviewModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes) => void handleReviewConfirm(notes)}
+        onConfirm={(notes, markAsCompleted) =>
+          void handleReviewConfirm(notes, markAsCompleted)
+        }
         displayId={displayId}
+        showMarkAsCompletedOption={actionFlags.showCompleteAction}
+        activityEndedAtLabel={reviewModalActivityEndedAtLabel}
       />
       <CompleteActivityModal
         open={showCompleteModal}
