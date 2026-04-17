@@ -1,4 +1,5 @@
 import { format, startOfDay } from 'date-fns';
+import { Info } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
@@ -494,30 +495,10 @@ export function ActivityScheduleSection({
           <FormItem>
             <FormLabel className="flex items-center gap-1">
               {getActivityFieldLabel(field.name)}
-              <span className="text-muted-foreground ml-1">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="inline-block"
-                >
-                  <circle
-                    cx="8"
-                    cy="8"
-                    r="7"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <path
-                    d="M8 7V11M8 5V5.01"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
+              <Info
+                className="text-muted-foreground ml-1 size-4 shrink-0"
+                aria-hidden
+              />
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea

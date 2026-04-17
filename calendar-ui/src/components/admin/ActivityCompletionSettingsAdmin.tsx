@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Label } from '@/components/ui/label';
 import {
   Popover,
@@ -58,40 +59,14 @@ const BUFFER_LABELS: Record<CompletionBufferMinutes, string> = {
   45: '45 minutes',
 };
 
-/** Matches the scheduling notes info mark in `ActivityScheduleSection`. */
-function FieldInfoIcon(): ReactElement {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="inline-block"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M8 7V11M8 5V5.01"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+/** Aligns with `FormLabel` (`min-h-[18px]`, `gap-2`) so label rows match when a trailing control exists. */
+const SETTINGS_FIELD_LABEL_ROW_CLASS = 'flex min-h-[18px] items-center gap-2';
 
 function BufferInfoTrigger(): ReactElement {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 -mr-0.5 inline-flex shrink-0 rounded-full p-0.5 transition-colors outline-none focus-visible:ring-[3px]"
-          aria-label="About the buffer setting"
-        >
-          <FieldInfoIcon />
-        </button>
+        <InfoIconButton aria-label="About the buffer setting" />
       </PopoverTrigger>
       <PopoverContent
         className="w-80 max-w-[calc(100vw-2rem)] space-y-2 text-sm"
@@ -258,7 +233,9 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
           <div className="max-w-4xl space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
               <div className="space-y-2">
-                <Label htmlFor="completion-schedule">Schedule</Label>
+                <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
+                  <Label htmlFor="completion-schedule">Schedule</Label>
+                </div>
                 <Select
                   value={schedule}
                   onValueChange={(v) => setSchedule(v as CompletionSchedule)}
@@ -280,7 +257,7 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
                 </p>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center gap-1">
+                <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
                   <Label htmlFor="completion-buffer">Buffer</Label>
                   <BufferInfoTrigger />
                 </div>
