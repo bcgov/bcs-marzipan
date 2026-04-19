@@ -139,6 +139,8 @@ export const PERMISSIONS = {
     MANAGE: 'settings.manage',
     /** Configure automated activity completion (schedule, buffer). System Admin only. */
     MANAGE_ACTIVITY_COMPLETE: 'settings.manage.activity_complete',
+    /** Configure Look Ahead status reset window and run manual clear. */
+    MANAGE_LOOK_AHEAD_RESET: 'settings.manage.look_ahead_reset',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

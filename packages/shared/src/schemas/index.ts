@@ -1,6 +1,7 @@
 // Shared Zod schemas for validation
 export * from './activity.schema';
 export * from './activity-completion-settings.schema';
+export * from './look-ahead-reset.schema';
 export * from './activity-response.schema';
 export * from './activity-junction.schema';
 export * from './banner.schema';
@@ -11,8 +12,4 @@ export * from './query-params.schema';
 export * from './saved-filter.schema';
 export * from './user.schema';
 export * from './team.schema';
-export {
-  createResponseWrapperSchema,
-  createArrayResponseWrapperSchema,
-  type ResponseWrapper,
-} from './response-wrapper.schema';
+export * from './response-wrapper.schema';

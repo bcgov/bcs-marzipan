@@ -1,5 +1,6 @@
 export * from './activity-filter-state';
 export * from './activity-completion';
+export * from './look-ahead-reset';
 export * from './schemas';
 export * from './utils';
 
