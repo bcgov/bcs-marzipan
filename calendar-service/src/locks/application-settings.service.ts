@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { eq, inArray } from 'drizzle-orm';
 
 import { applicationSettings } from '@corpcal/database/schema';
@@ -9,10 +9,11 @@ import {
   COMPLETION_SCHEDULES,
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
-  DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  invalidStoredLookAheadResetWindowDays,
   LOOK_AHEAD_RESET_WINDOW_DAYS_KEY,
   MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
   MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  normalizeLookAheadResetWindowDays,
   type CompletionBufferMinutes,
   type CompletionSchedule,
 } from '@corpcal/shared';
@@ -147,19 +148,13 @@ export class ApplicationSettingsService {
       .from(applicationSettings)
       .where(eq(applicationSettings.key, LOOK_AHEAD_RESET_WINDOW_DAYS_KEY))
       .limit(1);
-    if (!row?.value) return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
-    const n = Number.parseInt(row.value, 10);
-    if (
-      !Number.isFinite(n) ||
-      n < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
-      n > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
-    ) {
+    const raw = row?.value;
+    if (invalidStoredLookAheadResetWindowDays(raw)) {
       this.logger.warn(
-        `Invalid ${LOOK_AHEAD_RESET_WINDOW_DAYS_KEY}=${row.value}, using default`
+        `Invalid ${LOOK_AHEAD_RESET_WINDOW_DAYS_KEY}=${raw}, using default`
       );
-      return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
     }
-    return n;
+    return normalizeLookAheadResetWindowDays(raw);
   }
 
   async setLookAheadResetWindowDays(
@@ -170,7 +165,7 @@ export class ApplicationSettingsService {
       windowDaysAfterToday < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
       windowDaysAfterToday > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
     ) {
-      throw new Error(
+      throw new BadRequestException(
         `windowDaysAfterToday must be between ${MIN_LOOK_AHEAD_RESET_WINDOW_DAYS} and ${MAX_LOOK_AHEAD_RESET_WINDOW_DAYS}`
       );
     }

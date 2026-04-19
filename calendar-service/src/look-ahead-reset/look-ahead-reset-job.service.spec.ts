@@ -45,7 +45,7 @@ describe('LookAheadResetJobService', () => {
         },
         {
           provide: ActivityHistoryService,
-          useValue: { recordChange: vi.fn() },
+          useValue: { recordLookAheadStatusResetBatch: vi.fn() },
         },
       ],
     }).compile();

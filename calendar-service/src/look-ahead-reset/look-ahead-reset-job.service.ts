@@ -233,23 +233,14 @@ export class LookAheadResetJobService {
       })
       .where(inArray(activities.id, candidateIds));
 
-    for (const candidate of candidates) {
-      const oldStatus = candidate.lookAheadStatus;
-      await this.activityHistoryService.recordChange(
-        candidate.id,
-        actorUserId,
-        'updated',
-        [
-          {
-            field: 'lookAheadStatus',
-            oldValue: oldStatus,
-            newValue: 'none',
-          },
-        ],
-        notes,
-        tx
-      );
-    }
+    await this.activityHistoryService.recordLookAheadStatusResetBatch(tx, {
+      actorUserId,
+      notes,
+      entries: candidates.map((c) => ({
+        activityId: c.id,
+        oldLookAheadStatus: c.lookAheadStatus,
+      })),
+    });
 
     return candidates.length;
   }
