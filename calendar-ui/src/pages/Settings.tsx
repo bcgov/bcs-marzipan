@@ -2,6 +2,7 @@ import {
   Activity,
   Bookmark,
   Building2,
+  Eraser,
   FileText,
   FolderTree,
   Lock,
@@ -16,6 +17,7 @@ import {
 import { BannerSettingsAdmin } from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
+import { LookAheadResetSettingsAdmin } from '@/components/admin/LookAheadResetSettingsAdmin';
 import {
   ActivityStatusesAdmin,
   CategoriesAdmin,
@@ -32,6 +34,7 @@ type Section =
   | 'banner'
   | 'edit-lock-idle'
   | 'activity-completion'
+  | 'look-ahead-reset'
   | 'categories'
   | 'cities'
   | 'comms'
@@ -53,6 +56,11 @@ const sections = [
     id: 'activity-completion' as Section,
     label: 'Activity completion',
     icon: Timer,
+  },
+  {
+    id: 'look-ahead-reset' as Section,
+    label: 'Look Ahead reset',
+    icon: Eraser,
   },
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
   { id: 'cities' as Section, label: 'Cities', icon: MapPin },
@@ -142,6 +150,10 @@ export function Settings() {
 
           <div id="section-activity-completion">
             <ActivityCompletionSettingsAdmin />
+          </div>
+
+          <div id="section-look-ahead-reset">
+            <LookAheadResetSettingsAdmin />
           </div>
 
           <div id="section-categories">

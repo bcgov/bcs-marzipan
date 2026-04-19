@@ -9,6 +9,10 @@ import {
   COMPLETION_SCHEDULES,
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
+  DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  LOOK_AHEAD_RESET_WINDOW_DAYS_KEY,
+  MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
   type CompletionBufferMinutes,
   type CompletionSchedule,
 } from '@corpcal/shared';
@@ -129,5 +133,61 @@ export class ApplicationSettingsService {
       upsert(ACTIVITY_COMPLETION_SCHEDULE_KEY, schedule),
       upsert(ACTIVITY_COMPLETION_BUFFER_KEY, String(bufferMinutes)),
     ]);
+  }
+
+  // --------------------------------------------------------------------------
+  // Look Ahead reset window (days after today for inclusive end date)
+  // --------------------------------------------------------------------------
+
+  async getLookAheadResetWindowDays(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<number> {
+    const [row] = await executor
+      .select()
+      .from(applicationSettings)
+      .where(eq(applicationSettings.key, LOOK_AHEAD_RESET_WINDOW_DAYS_KEY))
+      .limit(1);
+    if (!row?.value) return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
+    const n = Number.parseInt(row.value, 10);
+    if (
+      !Number.isFinite(n) ||
+      n < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
+      n > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
+    ) {
+      this.logger.warn(
+        `Invalid ${LOOK_AHEAD_RESET_WINDOW_DAYS_KEY}=${row.value}, using default`
+      );
+      return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
+    }
+    return n;
+  }
+
+  async setLookAheadResetWindowDays(
+    windowDaysAfterToday: number
+  ): Promise<void> {
+    if (
+      !Number.isFinite(windowDaysAfterToday) ||
+      windowDaysAfterToday < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
+      windowDaysAfterToday > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
+    ) {
+      throw new Error(
+        `windowDaysAfterToday must be between ${MIN_LOOK_AHEAD_RESET_WINDOW_DAYS} and ${MAX_LOOK_AHEAD_RESET_WINDOW_DAYS}`
+      );
+    }
+    const now = new Date();
+    await this.databaseService.db
+      .insert(applicationSettings)
+      .values({
+        key: LOOK_AHEAD_RESET_WINDOW_DAYS_KEY,
+        value: String(windowDaysAfterToday),
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: applicationSettings.key,
+        set: {
+          value: String(windowDaysAfterToday),
+          updatedAt: now,
+        },
+      });
   }
 }
