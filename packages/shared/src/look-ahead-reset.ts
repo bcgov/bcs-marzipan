@@ -26,13 +26,17 @@ export const MAX_LOOK_AHEAD_RESET_WINDOW_DAYS = 364;
 
 /**
  * Nest `@Cron` six-field: second minute hour day-of-month month day-of-week.
- * At **06:55 UTC** daily (= **23:55** on the previous Pacific fixed UTC-7 calendar date).
+ * At **06:45 UTC** daily (= **23:45** on the previous Pacific fixed UTC-7 calendar date).
+ * Fires **15 minutes** before the Pacific-fixed day rolls at **07:00 UTC** so delayed
+ * handler start is less likely to cross that boundary; scheduled runs should still pass
+ * a captured `referenceUtcMs` from the handler (see calendar-service job) rather than
+ * `Date.now()` deep inside the transaction.
  *
  * Always pair with `{ timeZone: LOOK_AHEAD_RESET_CRON_TIMEZONE }` on `@Cron` so runs
  * are independent of `process.env.TZ` (unlike activity completion, which uses a frequent
  * tick and `toPacificHourMinute` for Pacific gating).
  */
-export const LOOK_AHEAD_RESET_CRON_UTC = '0 55 6 * * *' as const;
+export const LOOK_AHEAD_RESET_CRON_UTC = '0 45 6 * * *' as const;
 
 /** IANA timezone for the Look Ahead reset cron (UTC wall clock for hour/minute). */
 export const LOOK_AHEAD_RESET_CRON_TIMEZONE = 'UTC' as const;

@@ -54,7 +54,7 @@ function WindowDaysInfoTrigger(): ReactElement {
           UTC-7). Default 7 means eight calendar days total. Eligibility follows
           those calendar dates only.
         </p>
-        <p>The scheduled job runs daily at 23:55 Pacific (UTC-7).</p>
+        <p>The scheduled job runs daily at 23:45 Pacific (UTC-7).</p>
       </PopoverContent>
     </Popover>
   );

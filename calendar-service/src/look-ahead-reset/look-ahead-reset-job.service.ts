@@ -32,7 +32,8 @@ export class LookAheadResetJobService {
   ) {}
 
   /**
-   * Daily at 06:55 UTC (= 23:55 previous Pacific fixed UTC-7 date).
+   * Daily at 06:45 UTC (= 23:45 previous Pacific fixed UTC-7 date), with margin before
+   * the 07:00 UTC Pacific-fixed calendar rollover.
    * `timeZone: 'UTC'` matches how we document the expression; activity completion
    * instead uses quarter-hour ticks + `toPacificHourMinute` for Pacific gating.
    */
@@ -44,10 +45,13 @@ export class LookAheadResetJobService {
       );
       return;
     }
+    /** Anchor window to cron entry, not `Date.now()` after locks/settings in `runBatch`. */
+    const referenceUtcMs = Date.now();
     this.logger.log('Look Ahead reset cron tick');
     const result = await this.runBatch({
       actorUserId: CALENDAR_SYSTEM_USER_ID,
       trigger: 'schedule',
+      referenceUtcMs,
     });
     if (
       result.skipped &&
@@ -69,6 +73,12 @@ export class LookAheadResetJobService {
   async runBatch(params: {
     actorUserId: number;
     trigger: 'schedule' | 'manual';
+    /**
+     * Scheduled runs: capture synchronously in the cron handler and pass through so the
+     * reset window does not drift if the transaction starts after the Pacific-fixed day
+     * boundary (07:00 UTC). Manual runs use `Date.now()` at computation time.
+     */
+    referenceUtcMs?: number;
     /** Manual only; when omitted, uses persisted window days inside the transaction. */
     daysOverride?: number;
   }): Promise<LookAheadResetBatchRunResult> {
@@ -97,8 +107,13 @@ export class LookAheadResetJobService {
             ? params.daysOverride
             : persistedDays;
 
+        const windowUtcMs =
+          params.trigger === 'schedule' && params.referenceUtcMs !== undefined
+            ? params.referenceUtcMs
+            : Date.now();
+
         const { rangeStart, rangeEnd } = computeLookAheadResetWindow(
-          Date.now(),
+          windowUtcMs,
           n
         );
 

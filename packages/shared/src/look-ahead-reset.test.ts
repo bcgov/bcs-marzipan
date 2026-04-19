@@ -9,8 +9,8 @@ import {
 
 describe('pacificCalendarDateFromUtcMs', () => {
   it('maps UTC instant to Pacific fixed UTC-7 calendar date', () => {
-    // 2026-04-18 06:55:00 UTC = 2026-04-17 23:55 Pacific (UTC-7)
-    const utcMs = Date.UTC(2026, 3, 18, 6, 55, 0);
+    // 2026-04-18 06:45:00 UTC = 2026-04-17 23:45 Pacific (UTC-7); aligns with LOOK_AHEAD_RESET_CRON_UTC
+    const utcMs = Date.UTC(2026, 3, 18, 6, 45, 0);
     expect(pacificCalendarDateFromUtcMs(utcMs)).toBe('2026-04-17');
   });
 });
@@ -27,7 +27,7 @@ describe('addCalendarDaysToIsoDate', () => {
 
 describe('computeLookAheadResetWindow', () => {
   it('returns today through today+n for default-style n=7', () => {
-    const utcMs = Date.UTC(2026, 3, 18, 6, 55, 0);
+    const utcMs = Date.UTC(2026, 3, 18, 6, 45, 0);
     expect(computeLookAheadResetWindow(utcMs, 7)).toEqual({
       rangeStart: '2026-04-17',
       rangeEnd: '2026-04-24',
