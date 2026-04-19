@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addCalendarDaysToIsoDate,
   computeLookAheadResetWindow,
+  invalidStoredLookAheadResetWindowDays,
   normalizeLookAheadResetWindowDays,
   pacificCalendarDateFromUtcMs,
 } from './look-ahead-reset';
@@ -45,5 +46,24 @@ describe('normalizeLookAheadResetWindowDays', () => {
   it('returns parsed int in range', () => {
     expect(normalizeLookAheadResetWindowDays('0')).toBe(0);
     expect(normalizeLookAheadResetWindowDays('364')).toBe(364);
+  });
+});
+
+describe('invalidStoredLookAheadResetWindowDays', () => {
+  it('is false for empty or undefined', () => {
+    expect(invalidStoredLookAheadResetWindowDays(undefined)).toBe(false);
+    expect(invalidStoredLookAheadResetWindowDays('')).toBe(false);
+  });
+
+  it('is true when stored value is not a valid in-range integer', () => {
+    expect(invalidStoredLookAheadResetWindowDays('abc')).toBe(true);
+    expect(invalidStoredLookAheadResetWindowDays('-1')).toBe(true);
+    expect(invalidStoredLookAheadResetWindowDays('999')).toBe(true);
+  });
+
+  it('is false for valid stored values', () => {
+    expect(invalidStoredLookAheadResetWindowDays('0')).toBe(false);
+    expect(invalidStoredLookAheadResetWindowDays('7')).toBe(false);
+    expect(invalidStoredLookAheadResetWindowDays('364')).toBe(false);
   });
 });

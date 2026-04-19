@@ -108,19 +108,30 @@ export function computeLookAheadResetWindow(
 }
 
 /**
+ * True when `raw` is non-empty but not a valid in-range integer window days value.
+ * Used for logging alongside {@link normalizeLookAheadResetWindowDays}.
+ */
+export function invalidStoredLookAheadResetWindowDays(
+  raw: string | undefined
+): boolean {
+  if (raw == null || raw === '') return false;
+  const n = Number.parseInt(raw, 10);
+  return (
+    !Number.isFinite(n) ||
+    n < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
+    n > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
+  );
+}
+
+/**
  * Clamp and validate window days from persisted settings.
  */
 export function normalizeLookAheadResetWindowDays(
   raw: string | undefined
 ): number {
   if (raw == null || raw === '') return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
-  const n = Number.parseInt(raw, 10);
-  if (
-    !Number.isFinite(n) ||
-    n < MIN_LOOK_AHEAD_RESET_WINDOW_DAYS ||
-    n > MAX_LOOK_AHEAD_RESET_WINDOW_DAYS
-  ) {
+  if (invalidStoredLookAheadResetWindowDays(raw)) {
     return DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
   }
-  return n;
+  return Number.parseInt(raw, 10);
 }
