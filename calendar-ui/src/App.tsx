@@ -42,11 +42,6 @@ const ReportsPage = lazyWithRetry(() =>
     default: m.ReportsPage,
   }))
 );
-const ReportPrintPreviewPage = lazyWithRetry(() =>
-  import('./pages/ReportPrintPreviewPage').then((m) => ({
-    default: m.ReportPrintPreviewPage,
-  }))
-);
 const GlobalHistory = lazyWithRetry(() =>
   import('./pages/GlobalHistory').then((m) => ({
     default: m.GlobalHistory,
@@ -132,14 +127,6 @@ function App() {
                 element={
                   <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
                     <ReportsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="reports/print-preview"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
-                    <ReportPrintPreviewPage />
                   </ProtectedRoute>
                 }
               />

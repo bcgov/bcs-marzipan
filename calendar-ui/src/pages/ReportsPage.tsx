@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Download, Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
@@ -34,7 +34,6 @@ import {
   buildReportDataRequestParamsFromActivityPreferences,
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
-import { appendReportDataRequestParams } from '@/lib/report-print-preview';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
 
@@ -201,18 +200,6 @@ export function ReportsPage() {
     }
   };
 
-  const handlePrintPreview = () => {
-    if (!activeReport) return;
-    const qs = new URLSearchParams();
-    qs.set('type', activeReport);
-    appendReportDataRequestParams(qs, reportQueryParams);
-    window.open(
-      `/reports/print-preview?${qs.toString()}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
-  };
-
   const handleEditReportClick = () => {
     setIsEditModalOpen(true);
   };
@@ -248,16 +235,6 @@ export function ReportsPage() {
         description="Generate and export various activity reports"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!data || isExporting || !activeReport}
-              className="gap-2"
-              onClick={handlePrintPreview}
-            >
-              <Printer className="h-4 w-4" />
-              Print Preview
-            </Button>
             <Button
               type="button"
               variant="outline"
