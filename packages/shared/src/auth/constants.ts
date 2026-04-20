@@ -93,6 +93,8 @@ export const PERMISSIONS = {
     PITCH_DATE_EDIT: 'activities.pitchDate.edit',
     /** Take edit lock from another user after grace period (admin). */
     LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
+    /** Manually progress an activity to Completed status. */
+    COMPLETE: 'activities.complete',
   },
   DRAFTS: {
     VIEW: 'drafts.view',
@@ -135,6 +137,8 @@ export const PERMISSIONS = {
   SETTINGS: {
     VIEW: 'settings.view',
     MANAGE: 'settings.manage',
+    /** Configure automated activity completion (schedule, buffer). System Admin only. */
+    MANAGE_ACTIVITY_COMPLETE: 'settings.manage.activity_complete',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

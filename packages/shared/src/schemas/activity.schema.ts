@@ -316,6 +316,8 @@ const createBaseSchema = activityCoreFieldsSchema
     activityHistoryNotes: z.string().max(1000).optional(),
     /** When true and user is admin/sysAdmin, backend sets initial status to reviewed; otherwise new. Ignored for non-admin. */
     markAsReviewed: z.boolean().optional(),
+    /** When true and user has activities.complete, backend sets status to completed. Mutually exclusive with markAsReviewed. */
+    markAsCompleted: z.boolean().optional(),
   });
 
 /**
@@ -363,7 +365,15 @@ export const updateActivityRequestSchema = createBaseSchema
   .refine(eventPlannerLeadRefine, {
     message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
-  });
+  })
+  .refine(
+    (data) => !(data.markAsReviewed === true && data.markAsCompleted === true),
+    {
+      message:
+        'markAsReviewed and markAsCompleted are mutually exclusive; set at most one.',
+      path: ['markAsCompleted'],
+    }
+  );
 
 /**
  * Schema for soft deleting an activity

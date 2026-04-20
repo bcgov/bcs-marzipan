@@ -17,7 +17,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import { isDeepEqual } from '@corpcal/shared/utils';
 
-import type { Database } from '../../database/database.provider';
+import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
 // Raw row shape returned by DB queries for activity history
@@ -120,7 +120,7 @@ export class ActivityHistoryService {
     actionType: string,
     changes?: HistoryChange[],
     notes?: string,
-    tx?: Database
+    tx?: DrizzleDbExecutor
   ): Promise<ActivityHistory> {
     const db = tx ?? this.databaseService.db;
     // Fetch denormalized fields in the caller to avoid expensive triggers on write

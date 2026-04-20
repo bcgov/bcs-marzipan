@@ -125,6 +125,53 @@ export function formatExactDate(
 }
 
 /**
+ * Local calendar date/time for an activity's scheduled end (`endDate` + `endTime` in the user's timezone).
+ * All-day or missing `endTime`: date only (midnight local on `endDate`).
+ */
+export function getActivityEndLocalDate(
+  endDate: string | null | undefined,
+  endTime: string | null | undefined,
+  isAllDay: boolean
+): Date | null {
+  if (endDate == null || endDate === '') return null;
+  const parts = endDate.split('-').map((p) => parseInt(p, 10));
+  if (parts.length < 3) return null;
+  const [y, m, d] = parts;
+  if (
+    !Number.isFinite(y) ||
+    !Number.isFinite(m) ||
+    !Number.isFinite(d) ||
+    m < 1 ||
+    m > 12 ||
+    d < 1 ||
+    d > 31
+  ) {
+    return null;
+  }
+  if (isAllDay || !endTime?.trim()) {
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+  const [hhStr, mmStr] = endTime.trim().split(':');
+  const hh = parseInt(hhStr ?? '0', 10);
+  const mm = parseInt((mmStr ?? '0').padStart(2, '0'), 10);
+  const hour = Number.isFinite(hh) ? Math.min(23, Math.max(0, hh)) : 0;
+  const minute = Number.isFinite(mm) ? Math.min(59, Math.max(0, mm)) : 0;
+  return new Date(y, m - 1, d, hour, minute, 0, 0);
+}
+
+/** Display string for "This activity ended at …" in review/complete flows. */
+export function formatActivityEndDateTimeLabel(
+  endDate: string | null | undefined,
+  endTime: string | null | undefined,
+  isAllDay: boolean
+): string | null {
+  const d = getActivityEndLocalDate(endDate, endTime, isAllDay);
+  if (!d) return null;
+  const includeTime = !isAllDay && Boolean(endTime?.trim());
+  return formatExactDate(d, { includeTime, includeYear: true });
+}
+
+/**
  * Format a date range. Year is always shown.
  * Same year: year once after the end date (e.g. "Dec 1 – Dec 4, 2026").
  * Different years: both years shown (e.g. "Dec 1, 2026 – Jan 31, 2027").

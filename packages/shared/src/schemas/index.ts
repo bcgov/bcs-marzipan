@@ -1,5 +1,6 @@
 // Shared Zod schemas for validation
 export * from './activity.schema';
+export * from './activity-completion-settings.schema';
 export * from './activity-response.schema';
 export * from './activity-junction.schema';
 export * from './banner.schema';
