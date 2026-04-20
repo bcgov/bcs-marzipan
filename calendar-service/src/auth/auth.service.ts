@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
 import { eq, sessions } from '@corpcal/database';
-import type { AuthUser } from '@corpcal/shared';
+import { DEFAULT_JWT_EXPIRES_IN, type AuthUser } from '@corpcal/shared';
 
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
@@ -135,8 +135,11 @@ export class AuthService {
       bypassDataScoping: effective.bypass,
     };
 
-    const raw = this.configService.get<string | number>('JWT_EXPIRES_IN', 3600);
-    const expiresIn = Number(raw ?? 3600);
+    const raw = this.configService.get<string | number>(
+      'JWT_EXPIRES_IN',
+      DEFAULT_JWT_EXPIRES_IN
+    );
+    const expiresIn = Number(raw ?? DEFAULT_JWT_EXPIRES_IN);
     const accessToken = this.jwtService.sign(
       {
         sub: user.id,
