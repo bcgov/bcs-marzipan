@@ -21,22 +21,11 @@ export class SessionCleanupService {
     this.inFlight = true;
 
     try {
-      const result = await this.databaseService.db
+      await this.databaseService.db
         .delete(sessions)
         .where(lt(sessions.expiresAt, new Date()));
 
-      const deletedCount =
-        typeof result === 'number'
-          ? result
-          : typeof result?.rowCount === 'number'
-            ? result.rowCount
-            : 0;
-
-      if (deletedCount > 0) {
-        this.logger.debug(
-          `Session cleanup: removed ${deletedCount} expired sessions`,
-        );
-      }
+      this.logger.debug('Session cleanup: removed expired sessions');
     } catch (error) {
       this.logger.error('Session cleanup failed', error);
     } finally {

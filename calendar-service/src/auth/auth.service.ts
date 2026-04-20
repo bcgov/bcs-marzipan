@@ -185,32 +185,10 @@ export class AuthService {
     };
   }
 
-  private extractBearerToken(authorizationHeader: string): string {
-    const [scheme, token] = authorizationHeader.trim().split(/\s+/, 2);
-
-    if (scheme?.toLowerCase() !== 'bearer' || !token) {
-      throw new UnauthorizedException('A valid bearer token is required.');
-    }
-
-    return token;
-  }
-
-  private hashSessionToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
-
-  async logout(
-    userId: number,
-    authorizationHeader: string
-  ): Promise<{ message: string }> {
-    const token = this.extractBearerToken(authorizationHeader);
-    const tokenHash = this.hashSessionToken(token);
-
+  async logout(userId: number): Promise<{ message: string }> {
     await this.databaseService.db
       .delete(sessions)
-      .where(
-        eq(sessions.userId, userId) && eq(sessions.tokenHash, tokenHash)
-      );
+      .where(eq(sessions.userId, userId));
     return { message: 'Logged out' };
   }
 
