@@ -13,12 +13,18 @@ export type ActivityEditActionFlags = {
   showReviewAction: boolean;
   /** Review button is clickable (not submitting, not blocked by another user's lock). */
   reviewActionEnabled: boolean;
+  /** Show Complete / Save and complete for users with activities.complete when eligible. */
+  showCompleteAction: boolean;
+  /** Complete button is clickable. */
+  completeActionEnabled: boolean;
 };
 
 type UseActivityEditActionsInput = {
   lockState: LockState;
   mayEditFormFields: boolean;
   canReviewActivities: boolean;
+  canCompleteActivities: boolean;
+  markCompleteEligible: boolean;
   hasEditLock: boolean;
   canSubmitWithoutValidationErrors: boolean;
   isSubmitting: boolean;
@@ -34,6 +40,8 @@ export function useActivityEditActions({
   lockState,
   mayEditFormFields,
   canReviewActivities,
+  canCompleteActivities,
+  markCompleteEligible,
   hasEditLock,
   canSubmitWithoutValidationErrors,
   isSubmitting,
@@ -54,10 +62,20 @@ export function useActivityEditActions({
 
   const reviewActionEnabled = showReviewAction && !isSubmitting;
 
+  const showCompleteAction =
+    canCompleteActivities &&
+    markCompleteEligible &&
+    mayEditFormFields &&
+    !isLockedByOther;
+
+  const completeActionEnabled = showCompleteAction && !isSubmitting;
+
   return {
     isLockedByOther,
     canSubmitUpdate,
     showReviewAction,
     reviewActionEnabled,
+    showCompleteAction,
+    completeActionEnabled,
   };
 }

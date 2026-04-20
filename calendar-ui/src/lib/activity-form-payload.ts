@@ -45,12 +45,13 @@ export function buildPayloadForCreate(
 
 export type UpdatePayloadOptions = {
   markAsReviewed?: boolean;
+  markAsCompleted?: boolean;
 };
 
 /**
  * Builds the request payload for updating an activity from form values.
  * Includes commsContacts and normalized reportSettings.
- * Backend computes activityStatusId from markAsReviewed + role; do not send activityStatusId.
+ * Backend computes activityStatusId from markAsReviewed/markAsCompleted + role; do not send activityStatusId.
  */
 export function buildPayloadForUpdate(
   data: ActivityFormData,
@@ -60,13 +61,16 @@ export function buildPayloadForUpdate(
   const normalizedReportSettings = normalizeReportSettings(
     formValues.reportSettings
   );
-  const { markAsReviewed } = options ?? {};
+  const { markAsReviewed, markAsCompleted } = options ?? {};
   const payload: Record<string, unknown> = {
     ...buildPayloadForCreate(data, formValues),
     reportSettings: normalizedReportSettings,
   };
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;
+  }
+  if (markAsCompleted !== undefined) {
+    payload.markAsCompleted = markAsCompleted;
   }
   return payload;
 }

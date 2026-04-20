@@ -42,6 +42,8 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
+  isManualCompleteEligible,
+  normalizeActivityStatusLabel,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   REVIEW_SNAPSHOT_VERSION,
@@ -72,7 +74,7 @@ import {
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
-import type { Database } from '../../database/database.provider';
+import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
@@ -213,7 +215,7 @@ export class ActivitiesService {
    * Called inside a transaction when status transitions to 'reviewed'.
    */
   private async persistReviewSnapshot(
-    db: Database,
+    db: DrizzleDbExecutor,
     activityId: number,
     response: ActivityResponse,
     lookups?: MapResponseToFormDataLookups
@@ -232,7 +234,7 @@ export class ActivitiesService {
    * Clear the review snapshot (e.g. on soft delete).
    */
   private async clearReviewSnapshot(
-    db: Database,
+    db: DrizzleDbExecutor,
     activityId: number
   ): Promise<void> {
     await db
@@ -246,7 +248,8 @@ export class ActivitiesService {
 
   /**
    * Compute changedFieldsSinceReview from the stored snapshot vs current response.
-   * Returns the diff paths array, or undefined when snapshot is absent / version mismatch.
+   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed);
+   * otherwise the diff paths vs last Reviewed snapshot (empty baseline when snapshot is null).
    */
   computeChangedFieldsSinceReview(
     response: ActivityResponse,
@@ -256,6 +259,9 @@ export class ActivitiesService {
   ): string[] | undefined {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
+    }
+    if (normalizeActivityStatusLabel(response.activityStatus) === 'new') {
+      return [];
     }
     const currentFormData = mapResponseToFormData(response, lookups);
     const baseline = snapshot
@@ -799,6 +805,24 @@ export class ActivitiesService {
       .where(eq(activityStatuses.id, id))
       .limit(1);
     return row?.name ?? null;
+  }
+
+  private async getDateStatusNameById(id: number): Promise<string> {
+    const [row] = await this.databaseService.db
+      .select({ name: dateStatuses.name })
+      .from(dateStatuses)
+      .where(eq(dateStatuses.id, id))
+      .limit(1);
+    return row?.name ?? 'unknown';
+  }
+
+  private async getTimeStatusNameById(id: number): Promise<string> {
+    const [row] = await this.databaseService.db
+      .select({ name: timeStatuses.name })
+      .from(timeStatuses)
+      .where(eq(timeStatuses.id, id))
+      .limit(1);
+    return row?.name ?? 'unknown';
   }
 
   /**
@@ -1645,6 +1669,24 @@ export class ActivitiesService {
       );
     }
 
+    const canComplete =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.COMPLETE) ??
+      false;
+    if (canComplete) {
+      const statusName = related.activityStatusesMap.get(activity.id);
+      const dateStatusName = related.dateStatusesMap?.get(activity.id);
+      const timeStatusName = related.timeStatusesMap?.get(activity.id);
+      const eligibility = isManualCompleteEligible(Date.now(), {
+        activityStatusName: normalizeActivityStatusLabel(statusName ?? ''),
+        dateStatusName: normalizeActivityStatusLabel(dateStatusName ?? ''),
+        timeStatusName: normalizeActivityStatusLabel(timeStatusName ?? ''),
+        endDate: activity.endDate ? String(activity.endDate) : null,
+        endTime: activity.endTime ?? null,
+        isAllDay: activity.isAllDay,
+      });
+      response.markCompleteEligible = eligibility.eligible;
+    }
+
     return response;
   }
 
@@ -1722,7 +1764,7 @@ export class ActivitiesService {
     // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
     // Note: Field-level write policy enforcement may be implemented in authorization guards
 
-    // Extract junction table IDs and venue address from DTO; omit activityStatusId and markAsReviewed (backend sets status)
+    // Extract junction table IDs and venue address from DTO; omit activityStatusId, markAsReviewed, markAsCompleted (backend sets status)
     const {
       categoryIds,
       tagIds,
@@ -1737,15 +1779,57 @@ export class ActivitiesService {
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed: _markAsReviewedIgnored,
+      markAsCompleted: _markAsCompletedIgnored,
       commsContactLeadId: _commsContactLeadIdUiIgnored,
       ...activityUpdateData
     } = dto;
 
-    // Compute new status: user with activities.review and markAsReviewed -> reviewed, else changed. Do not use DTO activityStatusId.
+    // Compute new status. Do not use DTO activityStatusId.
     const canReview =
       context?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const newStatusName: ActivityStatusName =
-      canReview && dto.markAsReviewed === true ? 'reviewed' : 'changed';
+    const canComplete =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.COMPLETE) ?? false;
+
+    let newStatusName: ActivityStatusName;
+
+    if (dto.markAsCompleted === true) {
+      if (!canComplete) {
+        throw new ForbiddenException(
+          'You do not have permission to complete activities.'
+        );
+      }
+
+      // Validate eligibility for manual completion
+      const eligibility = isManualCompleteEligible(Date.now(), {
+        activityStatusName: currentStatusName ?? '',
+        dateStatusName: await this.getDateStatusNameById(
+          oldActivity.dateStatusId
+        ),
+        timeStatusName: await this.getTimeStatusNameById(
+          oldActivity.timeStatusId
+        ),
+        endDate: oldActivity.endDate ? String(oldActivity.endDate) : null,
+        endTime: oldActivity.endTime ?? null,
+        isAllDay: oldActivity.isAllDay,
+      });
+
+      if (!eligibility.eligible) {
+        throw new ConflictException(
+          `Activity cannot be completed: ${eligibility.reason}`
+        );
+      }
+
+      newStatusName = 'completed';
+    } else if (canReview && dto.markAsReviewed === true) {
+      newStatusName = 'reviewed';
+    } else if (currentStatusName === 'new') {
+      newStatusName = 'new';
+    } else if (currentStatusName === 'completed' && canComplete) {
+      newStatusName = 'completed';
+    } else {
+      newStatusName = 'changed';
+    }
+
     const computedStatusId =
       await this.getActivityStatusIdByName(newStatusName);
 
@@ -2269,13 +2353,22 @@ export class ActivitiesService {
       // ignore debug log failure
     }
 
+    const completedByUser = dto.markAsCompleted === true && canComplete;
     const reviewedByUser = canReview && dto.markAsReviewed === true;
-    const historyActionType = reviewedByUser ? 'reviewed' : 'updated';
-    const defaultHistoryNote = reviewedByUser
+    const historyActionType = completedByUser
+      ? 'completed'
+      : reviewedByUser
+        ? 'reviewed'
+        : 'updated';
+    const defaultHistoryNote = completedByUser
       ? allChanges.length > 0
-        ? 'Activity reviewed and updated'
-        : 'Activity reviewed'
-      : 'Activity updated';
+        ? 'Activity completed and updated'
+        : 'Activity completed'
+      : reviewedByUser
+        ? allChanges.length > 0
+          ? 'Activity reviewed and updated'
+          : 'Activity reviewed'
+        : 'Activity updated';
 
     // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
@@ -2748,7 +2841,7 @@ export class ActivitiesService {
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
       // Clear snapshot before the status update so `.returning()` matches DB state.
-      await this.clearReviewSnapshot(tx as unknown as Database, id);
+      await this.clearReviewSnapshot(tx, id);
 
       const [updatedActivity] = await tx
         .update(activities)
@@ -2772,7 +2865,7 @@ export class ActivitiesService {
           },
         ],
         reason.trim(),
-        tx as unknown as Database
+        tx
       );
 
       return updatedActivity;
@@ -2899,7 +2992,7 @@ export class ActivitiesService {
           },
         ],
         reason.trim(),
-        tx as unknown as Database
+        tx
       );
 
       return updatedActivity;
@@ -3010,7 +3103,7 @@ export class ActivitiesService {
           },
         ],
         note?.trim() || 'Activity restored',
-        tx as unknown as Database
+        tx
       );
 
       return updatedActivity;

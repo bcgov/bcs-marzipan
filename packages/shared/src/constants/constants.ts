@@ -73,14 +73,18 @@ export const ACTIVITY_STATUS = [
 export type ActivityStatusName = (typeof ACTIVITY_STATUS)[number];
 
 /**
+ * Normalize activity status for comparison. Accepts API/lookup display strings
+ * (e.g. "New", "Delete requested") or internal names (e.g. "new", "delete_requested").
+ * Matches calendar-ui badge normalization for consistent behavior across client and server.
+ */
+export function normalizeActivityStatusLabel(status: string): string {
+  return status.toLowerCase().trim().replace(/\s+/g, '_');
+}
+
+/**
  * Default activity status for new entries
  */
 export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
-
-/**
- * Delay in minutes after activity end before status is set to completed (scheduler job).
- */
-export const ACTIVITY_COMPLETED_DELAY_MINUTES = 15;
 
 /**
  * Current version of the reviewedFieldSnapshot JSON shape.
