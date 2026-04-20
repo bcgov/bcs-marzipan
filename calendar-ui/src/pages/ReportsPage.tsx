@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Download, Printer } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
@@ -10,22 +10,23 @@ import {
   type ReportSectionData,
 } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
+import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityStatuses } from '@/hooks/useLookups';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
+import {
+  loadCustomReportConfig,
+  saveCustomReportConfig,
+} from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
 import {
+  getReportTemplateHtml,
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
@@ -34,9 +35,34 @@ import {
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
 import { appendReportDataRequestParams } from '@/lib/report-print-preview';
-import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
+
+/**
+ * Report tabs that use shared print HTML as the primary in-page view (API `report.name`).
+ * Maps to {@link getReportTemplateHtml}: look-ahead / thirty-sixty-ninety → look-ahead legacy;
+ * exec / exec-look-ahead → exec look-ahead; planning → planning stub.
+ */
+function isReportHtmlPrimaryView(reportName: string): boolean {
+  switch (reportName) {
+    case 'look-ahead':
+    case 'exec':
+    case 'exec-look-ahead':
+    case 'thirty-sixty-ninety':
+    case 'planning':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function getExportConfig(reportType: string) {
+  if (reportType === 'custom') {
+    return { label: 'Export XLSX', format: 'xlsx' as const };
+  }
+
+  return { label: 'Export PDF', format: 'pdf' as const };
+}
 
 export function ReportsPage() {
   const { user } = useAuth();
@@ -75,7 +101,11 @@ export function ReportsPage() {
   );
 
   const [activeReport, setActiveReport] = useState<string>('');
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [customReportFields, setCustomReportFields] = useState(() =>
+    loadCustomReportConfig()
+  );
   const [isExporting, setIsExporting] = useState(false);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
@@ -159,6 +189,8 @@ export function ReportsPage() {
         format,
         data,
         queryParams: reportQueryParams,
+        customReportFields:
+          activeReport === 'custom' ? customReportFields : undefined,
       });
     } catch (err) {
       const label =
@@ -184,6 +216,18 @@ export function ReportsPage() {
   const handleEditReportClick = () => {
     setIsEditModalOpen(true);
   };
+
+  const handleSaveCustomReportConfig = () => {
+    saveCustomReportConfig(customReportFields);
+    setIsEditModalOpen(false);
+  };
+
+  const exportConfig = getExportConfig(activeReport);
+
+  const reportTemplateHtml = useMemo(() => {
+    if (!data || !activeReport) return '';
+    return getReportTemplateHtml(activeReport, data);
+  }, [data, activeReport]);
 
   if (error && activeReport) {
     return (
@@ -214,54 +258,16 @@ export function ReportsPage() {
               <Printer className="h-4 w-4" />
               Print Preview
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  disabled={!data || isExporting}
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Export
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-2">
-                <button
-                  type="button"
-                  onClick={() => void runExport('csv')}
-                  disabled={isExporting}
-                  className={cn(
-                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
-                    isExporting && 'cursor-not-allowed opacity-50'
-                  )}
-                >
-                  {isExporting ? 'Exporting...' : 'Export as CSV'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void runExport('pdf')}
-                  disabled={isExporting || !data}
-                  className={cn(
-                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
-                    isExporting && 'cursor-not-allowed opacity-50'
-                  )}
-                >
-                  {isExporting ? 'Exporting...' : 'Export as PDF'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void runExport('xlsx')}
-                  disabled={isExporting}
-                  className={cn(
-                    'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm',
-                    isExporting && 'cursor-not-allowed opacity-50'
-                  )}
-                >
-                  {isExporting ? 'Exporting...' : 'Export as XLSX'}
-                </button>
-              </PopoverContent>
-            </Popover>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!data || isExporting || !activeReport}
+              className="gap-2"
+              onClick={() => void runExport(exportConfig.format)}
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : exportConfig.label}
+            </Button>
           </div>
         }
       />
@@ -301,41 +307,82 @@ export function ReportsPage() {
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
-                  <Tabs
-                    defaultValue={data.sections[0]?.id ?? 'section-1'}
-                    className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
-                  >
-                    <div className="mb-4 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3">
-                      <TabsList className="mb-0 min-w-0 shrink">
-                        {data.sections.map((section: ReportSectionData) => (
-                          <TabsTrigger key={section.id} value={section.id}>
-                            {section.name} ({section.activities.length})
-                          </TabsTrigger>
-                        ))}
-                      </TabsList>
-                      {report.name === 'custom' ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="shrink-0"
-                          aria-expanded={isEditModalOpen}
-                          aria-haspopup="dialog"
-                          onClick={handleEditReportClick}
+                  isReportHtmlPrimaryView(report.name) ? (
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
+                        <div
+                          className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
+                          aria-label="Report preview"
                         >
-                          Edit Report
-                        </Button>
+                          <div
+                            className="report-print-preview-root min-w-0"
+                            dangerouslySetInnerHTML={{
+                              __html: reportTemplateHtml,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <Tabs
+                        defaultValue={data.sections[0]?.id ?? 'section-1'}
+                        className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
+                      >
+                        <div className="mb-4 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3">
+                          <TabsList className="mb-0 min-w-0 shrink">
+                            {data.sections.map((section: ReportSectionData) => (
+                              <TabsTrigger key={section.id} value={section.id}>
+                                {section.name} ({section.activities.length})
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                          {report.name === 'custom' ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="shrink-0"
+                              aria-expanded={isEditModalOpen}
+                              aria-haspopup="dialog"
+                              onClick={handleEditReportClick}
+                            >
+                              Edit Report
+                            </Button>
+                          ) : null}
+                        </div>
+                        {data.sections.map((section: ReportSectionData) => (
+                          <TabsContent
+                            key={section.id}
+                            value={section.id}
+                            className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
+                          >
+                            {report.name === 'custom' ? (
+                              <CustomReportPreviewSection
+                                section={section}
+                                config={customReportFields}
+                                onFieldsChange={setCustomReportFields}
+                              />
+                            ) : (
+                              <ReportSection section={section} />
+                            )}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                      {report.name !== 'custom' ? (
+                        <div
+                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full shrink-0 overflow-y-auto border-t bg-white px-6 py-6"
+                          aria-label="Print layout preview"
+                        >
+                          <div
+                            className="report-print-preview-root min-w-0"
+                            dangerouslySetInnerHTML={{
+                              __html: reportTemplateHtml,
+                            }}
+                          />
+                        </div>
                       ) : null}
                     </div>
-                    {data.sections.map((section: ReportSectionData) => (
-                      <TabsContent
-                        key={section.id}
-                        value={section.id}
-                        className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
-                      >
-                        <ReportSection section={section} />
-                      </TabsContent>
-                    ))}
-                  </Tabs>
+                  )
                 ) : (
                   <div className="flex min-h-0 flex-1 items-center justify-center py-12">
                     <p className="text-muted-foreground">
@@ -352,6 +399,9 @@ export function ReportsPage() {
       <EditReportModal
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
+        fields={customReportFields}
+        onFieldsChange={setCustomReportFields}
+        onSave={handleSaveCustomReportConfig}
       />
     </div>
   );

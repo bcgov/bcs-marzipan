@@ -1,106 +1,49 @@
-import { useEffect, useState } from 'react';
-
+import {
+  CUSTOM_REPORT_SECTIONS,
+  type CustomReportFieldConfig,
+} from '@corpcal/shared/reports/customReportFieldConfig';
 import { AdminModal } from '@/components/admin';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-type EditReportFieldRow = {
-  id: string;
-  name: string;
-  selected: boolean;
-  label: string;
-};
-
-type EditReportSection = {
-  title: string;
-  fields: EditReportFieldRow[];
-};
-
-function createInitialEditReportSections(): EditReportSection[] {
-  return [
-    {
-      title: 'General',
-      fields: [
-        { id: 'title', name: 'Title', selected: true, label: 'Title' },
-        { id: 'summary', name: 'Summary', selected: true, label: 'Summary' },
-      ],
-    },
-    {
-      title: 'Scheduling',
-      fields: [
-        {
-          id: 'startDate',
-          name: 'Start Date',
-          selected: true,
-          label: 'Start Date',
-        },
-        { id: 'time', name: 'Time', selected: true, label: 'Time' },
-      ],
-    },
-  ];
-}
+const SECTION_DISPLAY_ORDER = Object.values(CUSTOM_REPORT_SECTIONS);
 
 export interface EditReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  fields: CustomReportFieldConfig[];
+  onFieldsChange: (fields: CustomReportFieldConfig[]) => void;
+  /** Persist config and close modal (invoked when user clicks Save). */
+  onSave: () => void;
 }
 
 /**
- * Scaffold for customizing custom report columns/labels. Uses the same {@link AdminModal}
- * pattern as Settings admin sections (e.g. Categories).
+ * Custom report column picker: {@link CustomReportFieldConfig} state, grouped by section.
+ * Uses the same {@link AdminModal} pattern as Settings admin sections (e.g. Categories).
  */
-export function EditReportModal({ open, onOpenChange }: EditReportModalProps) {
-  const [sections, setSections] = useState(createInitialEditReportSections);
+export function EditReportModal({
+  open,
+  onOpenChange,
+  fields,
+  onFieldsChange,
+  onSave,
+}: EditReportModalProps) {
+  const sectionsToRender = SECTION_DISPLAY_ORDER.filter((sectionTitle) =>
+    fields.some((f) => f.section === sectionTitle)
+  );
 
-  useEffect(() => {
-    if (open) {
-      setSections(createInitialEditReportSections());
-    }
-  }, [open]);
-
-  const setFieldSelected = (
-    sectionIndex: number,
-    fieldId: string,
-    selected: boolean
-  ) => {
-    setSections((prev) =>
-      prev.map((section, si) =>
-        si !== sectionIndex
-          ? section
-          : {
-              ...section,
-              fields: section.fields.map((f) =>
-                f.id === fieldId ? { ...f, selected } : f
-              ),
-            }
-      )
-    );
+  const setFieldSelected = (key: string, selected: boolean) => {
+    onFieldsChange(fields.map((f) => (f.key === key ? { ...f, selected } : f)));
   };
 
-  const setFieldLabel = (
-    sectionIndex: number,
-    fieldId: string,
-    label: string
-  ) => {
-    setSections((prev) =>
-      prev.map((section, si) =>
-        si !== sectionIndex
-          ? section
-          : {
-              ...section,
-              fields: section.fields.map((f) =>
-                f.id === fieldId ? { ...f, label } : f
-              ),
-            }
-      )
-    );
+  const setFieldLabel = (key: string, label: string) => {
+    onFieldsChange(fields.map((f) => (f.key === key ? { ...f, label } : f)));
   };
 
   const handleSave = () => {
-    console.log('Save clicked');
-    onOpenChange(false);
+    onSave();
   };
 
   return (
@@ -114,57 +57,58 @@ export function EditReportModal({ open, onOpenChange }: EditReportModalProps) {
       cancelLabel="Cancel"
     >
       <div className="max-h-[min(60vh,28rem)] space-y-6 overflow-y-auto pr-1">
-        {sections.map((section, sectionIndex) => (
-          <div
-            key={section.title}
-            className={cn(sectionIndex > 0 && 'border-border border-t pt-6')}
-          >
-            <h3 className="text-foreground mb-3 text-sm font-semibold">
-              Section: {section.title}
-            </h3>
-            <div className="space-y-3">
-              {section.fields.map((field) => {
-                const controlId = `edit-report-field-${field.id}`;
-                return (
-                  <div
-                    key={field.id}
-                    className="flex flex-wrap items-center gap-3 sm:flex-nowrap"
-                  >
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Checkbox
-                        id={controlId}
-                        checked={field.selected}
-                        onCheckedChange={(checked) =>
-                          setFieldSelected(
-                            sectionIndex,
-                            field.id,
-                            checked === true
-                          )
+        {sectionsToRender.map((sectionTitle, sectionIndex) => {
+          const sectionFields = fields.filter(
+            (f) => f.section === sectionTitle
+          );
+          return (
+            <div
+              key={sectionTitle}
+              className={cn(sectionIndex > 0 && 'border-border border-t pt-6')}
+            >
+              <h3 className="text-foreground mb-3 text-sm font-semibold">
+                Section: {sectionTitle}
+              </h3>
+              <div className="space-y-3">
+                {sectionFields.map((field) => {
+                  const controlId = `edit-report-field-${field.key}`;
+                  return (
+                    <div
+                      key={field.key}
+                      className="flex flex-wrap items-center gap-3 sm:flex-nowrap"
+                    >
+                      <div className="flex min-w-0 shrink-0 items-center gap-2">
+                        <Checkbox
+                          id={controlId}
+                          checked={field.selected}
+                          onCheckedChange={(checked) =>
+                            setFieldSelected(field.key, checked === true)
+                          }
+                          aria-label={`Include ${field.key}`}
+                        />
+                        <Label
+                          htmlFor={controlId}
+                          className="font-mono text-xs font-medium text-slate-700"
+                        >
+                          {field.key}
+                        </Label>
+                      </div>
+                      <Input
+                        value={field.label}
+                        onChange={(e) =>
+                          setFieldLabel(field.key, e.target.value)
                         }
-                        aria-label={`Include ${field.name}`}
+                        placeholder="Column label"
+                        className="min-w-0 flex-1 sm:max-w-[240px]"
+                        aria-label={`Label for ${field.key}`}
                       />
-                      <Label
-                        htmlFor={controlId}
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        {field.name}
-                      </Label>
                     </div>
-                    <Input
-                      value={field.label}
-                      onChange={(e) =>
-                        setFieldLabel(sectionIndex, field.id, e.target.value)
-                      }
-                      placeholder="Column label"
-                      className="min-w-0 flex-1 sm:max-w-[220px]"
-                      aria-label={`Label for ${field.name}`}
-                    />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </AdminModal>
   );

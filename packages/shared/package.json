@@ -77,6 +77,12 @@
       "import": "./dist/esm/reports/reportPrintHtml.js",
       "require": "./dist/cjs/reports/reportPrintHtml.js",
       "default": "./dist/esm/reports/reportPrintHtml.js"
+    },
+    "./reports/customReportFieldConfig": {
+      "types": "./dist/esm/reports/customReportFieldConfig.d.ts",
+      "import": "./dist/esm/reports/customReportFieldConfig.js",
+      "require": "./dist/cjs/reports/customReportFieldConfig.js",
+      "default": "./dist/esm/reports/customReportFieldConfig.js"
     }
   },
   "scripts": {
