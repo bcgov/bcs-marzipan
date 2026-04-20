@@ -201,7 +201,6 @@ export function Login() {
             {configLoaded && azureEnabled && (
               <Button
                 type="button"
-                variant="outline"
                 className="h-11 w-full"
                 disabled={isLoading || isAzureLoading}
                 onClick={handleAzureLogin}
@@ -212,7 +211,7 @@ export function Login() {
                     Redirecting to Microsoft...
                   </>
                 ) : (
-                  'Sign in with Microsoft'
+                  'Sign in with IDIR'
                 )}
               </Button>
             )}
