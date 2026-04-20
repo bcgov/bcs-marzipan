@@ -27,6 +27,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
+import {
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from '@/components/table/tableConstants';
 import { resolveCustomReportColumnWidthPx } from '@/lib/custom-report-column-widths';
 import { getSelectedCustomReportColumns } from '@/lib/custom-report-columns';
 import { formatCustomReportCell } from '@/lib/custom-report-preview-format';
@@ -114,7 +121,8 @@ function SortableReportHeader({
       scope="col"
       style={style}
       className={cn(
-        'text-foreground relative border-b border-slate-200 px-0 py-2 text-left align-top text-sm font-semibold [overflow-wrap:anywhere] break-words whitespace-normal',
+        tableTh,
+        'text-foreground relative font-semibold [overflow-wrap:anywhere] break-words whitespace-normal',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
       )}
@@ -123,7 +131,7 @@ function SortableReportHeader({
         <button
           type="button"
           className={cn(
-            'text-foreground min-w-0 flex-1 cursor-grab border-0 bg-transparent px-3 py-0 text-left text-sm font-semibold [overflow-wrap:anywhere] break-words whitespace-normal active:cursor-grabbing',
+            'text-foreground min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left text-sm font-semibold [overflow-wrap:anywhere] break-words whitespace-normal active:cursor-grabbing',
             dragDisabled && 'cursor-default'
           )}
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
@@ -310,96 +318,93 @@ export function CustomReportPreviewTable({
   const dragDisabled = !onFieldsChange;
 
   return (
-    <div
-      className={cn('rounded-md border border-slate-200 bg-white', className)}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
     >
-      <div className="custom-report-table-container w-full overflow-x-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <table
-            className="border-collapse text-sm"
-            style={{
-              width: table.getTotalSize(),
-              minWidth: '100%',
-              tableLayout: 'fixed',
-            }}
-          >
-            <thead>
-              {headerGroup ? (
-                <tr className="border-b border-slate-200 bg-slate-100">
-                  <SortableContext
-                    items={columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                  >
-                    {columnOrder.map((columnId) => {
-                      const header = headerGroup.headers.find(
-                        (h) => h.column.id === columnId
-                      );
-                      if (!header) return null;
-                      return (
-                        <SortableReportHeader
-                          key={header.id}
-                          header={header}
-                          canResize={Boolean(
-                            header.column.getCanResize() && onFieldsChange
-                          )}
-                          onResizePointerDown={(e) => {
-                            header.getResizeHandler()(e);
-                          }}
-                          onResizeTouchStart={(e) => {
-                            header.getResizeHandler()(e);
-                          }}
-                          isResizing={header.column.getIsResizing()}
-                          dragDisabled={dragDisabled}
-                        />
-                      );
-                    })}
-                  </SortableContext>
-                </tr>
-              ) : null}
-            </thead>
-            <tbody>
-              {activities.length === 0 ? (
-                <tr>
+      <table
+        className={cn(tableTable, 'text-sm', className)}
+        style={{
+          width: table.getTotalSize(),
+          minWidth: '100%',
+          tableLayout: 'fixed',
+        }}
+      >
+        <thead className={tableThead}>
+          {headerGroup ? (
+            <tr>
+              <SortableContext
+                items={columnOrder}
+                strategy={horizontalListSortingStrategy}
+              >
+                {columnOrder.map((columnId) => {
+                  const header = headerGroup.headers.find(
+                    (h) => h.column.id === columnId
+                  );
+                  if (!header) return null;
+                  return (
+                    <SortableReportHeader
+                      key={header.id}
+                      header={header}
+                      canResize={Boolean(
+                        header.column.getCanResize() && onFieldsChange
+                      )}
+                      onResizePointerDown={(e) => {
+                        header.getResizeHandler()(e);
+                      }}
+                      onResizeTouchStart={(e) => {
+                        header.getResizeHandler()(e);
+                      }}
+                      isResizing={header.column.getIsResizing()}
+                      dragDisabled={dragDisabled}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </tr>
+          ) : null}
+        </thead>
+        <tbody>
+          {activities.length === 0 ? (
+            <tr>
+              <td
+                colSpan={visibleLeafCount || 1}
+                className={cn(
+                  tableTd,
+                  'text-muted-foreground py-8 text-center text-sm whitespace-normal'
+                )}
+              >
+                No activities to display.
+              </td>
+            </tr>
+          ) : (
+            table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                className={cn(tableBodyRow, 'odd:bg-white even:bg-slate-50/60')}
+              >
+                {row.getVisibleCells().map((cell) => (
                   <td
-                    colSpan={visibleLeafCount || 1}
-                    className="text-muted-foreground px-3 py-8 text-center text-sm whitespace-normal"
+                    key={cell.id}
+                    className={cn(
+                      tableTd,
+                      'text-foreground text-sm [overflow-wrap:anywhere] break-words whitespace-normal'
+                    )}
+                    style={{
+                      width: cell.column.getSize(),
+                      minWidth: cell.column.getSize(),
+                      maxWidth: cell.column.getSize(),
+                    }}
                   >
-                    No activities to display.
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-slate-100 odd:bg-white even:bg-slate-50/60"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className="text-foreground px-3 py-2 align-top text-sm [overflow-wrap:anywhere] break-words whitespace-normal"
-                        style={{
-                          width: cell.column.getSize(),
-                          minWidth: cell.column.getSize(),
-                          maxWidth: cell.column.getSize(),
-                        }}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </DndContext>
-      </div>
-    </div>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </DndContext>
   );
 }
