@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { and, asc, eq, inArray, isNotNull, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
@@ -11,6 +11,7 @@ import {
   eventPlanners,
   governmentRepresentatives,
   ministries,
+  ministryGroups,
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
@@ -32,11 +33,13 @@ import {
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
+  ActivityTeamSharingQuickShare,
   CategoryLookupItem,
   CommsMaterialsLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
   LookupQueryParams,
+  MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
   PitchStatusLookupItem,
@@ -983,6 +986,7 @@ export class LookupsService {
         ministerName: ministries.ministerName,
         sortOrder: ministries.sortOrder,
         isActive: ministries.isActive,
+        ministryGroupId: ministries.ministryGroupId,
       })
       .from(ministries)
       .orderBy(ministries.sortOrder);
@@ -997,7 +1001,115 @@ export class LookupsService {
       ministerName: ministry.ministerName,
       sortOrder: ministry.sortOrder,
       isActive: ministry.isActive,
+      ministryGroupId: ministry.ministryGroupId,
     }));
+  }
+
+  /**
+   * Ministry groups for admin / activity "Shared with" shortcuts (derived from ministries FK).
+   */
+  async getMinistryGroups(): Promise<MinistryGroupResponse[]> {
+    const rows = await this.databaseService.db
+      .select({
+        id: ministryGroups.id,
+        name: ministryGroups.name,
+        sortOrder: ministryGroups.sortOrder,
+      })
+      .from(ministryGroups)
+      .orderBy(asc(ministryGroups.sortOrder), asc(ministryGroups.id));
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      sortOrder: r.sortOrder,
+    }));
+  }
+
+  async createMinistryGroup(
+    data: { name: string; sortOrder: number },
+    currentUserId: number
+  ): Promise<typeof ministryGroups.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(ministryGroups)
+      .values({
+        name: data.name,
+        sortOrder: data.sortOrder,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  async updateMinistryGroup(
+    id: number,
+    data: Partial<{ name: string; sortOrder: number }>,
+    currentUserId: number
+  ): Promise<typeof ministryGroups.$inferSelect | undefined> {
+    const updateData: Partial<typeof ministryGroups.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+
+    const [result] = await this.databaseService.db
+      .update(ministryGroups)
+      .set(updateData)
+      .where(eq(ministryGroups.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMinistryGroup(id: number): Promise<void> {
+    const deleted = await this.databaseService.db
+      .delete(ministryGroups)
+      .where(eq(ministryGroups.id, id))
+      .returning({ id: ministryGroups.id });
+    if (deleted.length === 0) {
+      throw new NotFoundException(`Ministry group ${id} not found`);
+    }
+  }
+
+  /**
+   * Quick-share groups for GET /lookups/activity-team-sharing (membership from ministries.ministry_group_id).
+   */
+  async getActivityTeamSharingQuickShare(): Promise<ActivityTeamSharingQuickShare | null> {
+    const groupRows = await this.getMinistryGroups();
+
+    if (groupRows.length === 0) {
+      return null;
+    }
+
+    const db = this.databaseService.db;
+    const ministryRows = await db
+      .select({
+        id: ministries.id,
+        ministryGroupId: ministries.ministryGroupId,
+      })
+      .from(ministries)
+      .where(isNotNull(ministries.ministryGroupId));
+
+    const byGroup = new Map<number, number[]>();
+    for (const row of ministryRows) {
+      const gid = row.ministryGroupId;
+      if (gid == null) continue;
+      const list = byGroup.get(gid) ?? [];
+      list.push(row.id);
+      byGroup.set(gid, list);
+    }
+
+    return {
+      groups: groupRows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        sortOrder: g.sortOrder,
+        ministryIds: (byGroup.get(g.id) ?? []).sort((a, b) => a - b),
+      })),
+    };
   }
 
   /**
@@ -1243,6 +1355,7 @@ export class LookupsService {
       ministerName?: string | null;
       sortOrder: number;
       isActive?: boolean;
+      ministryGroupId?: number | null;
     },
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
@@ -1256,6 +1369,7 @@ export class LookupsService {
         ministerName: data.ministerName ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
+        ministryGroupId: data.ministryGroupId ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
         createdDateTime: now,
@@ -1543,6 +1657,7 @@ export class LookupsService {
       ministerName: string | null;
       sortOrder: number;
       isActive: boolean;
+      ministryGroupId: number | null;
     }>,
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect | undefined> {
@@ -1561,6 +1676,10 @@ export class LookupsService {
       updateData.ministerName = data.ministerName ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.ministryGroupId !== undefined) {
+      updateData.ministryGroupId =
+        data.ministryGroupId === null ? null : data.ministryGroupId;
+    }
 
     const [result] = await this.databaseService.db
       .update(ministries)

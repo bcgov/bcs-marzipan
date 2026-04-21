@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { AuthUser } from '@corpcal/shared';
 import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
 
+import { TeamsService } from '../teams/teams.service';
 import { LookupsController } from './lookups.controller';
 import { LookupsService } from './lookups.service';
 
@@ -46,6 +47,11 @@ describe('LookupsController', () => {
     createVenuePreset: vi.fn(),
     updateVenuePreset: vi.fn(),
     deleteVenuePreset: vi.fn(),
+    getActivityTeamSharingQuickShare: vi.fn(),
+  };
+
+  const mockTeamsService = {
+    findAll: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -55,6 +61,10 @@ describe('LookupsController', () => {
         {
           provide: LookupsService,
           useValue: mockLookupsService,
+        },
+        {
+          provide: TeamsService,
+          useValue: mockTeamsService,
         },
       ],
     }).compile();

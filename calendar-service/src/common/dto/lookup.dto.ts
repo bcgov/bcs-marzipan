@@ -11,6 +11,7 @@ import {
   createCityRequestSchema,
   createCommsMaterialRequestSchema,
   createGovernmentRepresentativeRequestSchema,
+  createMinistryGroupRequestSchema,
   createMinistryRequestSchema,
   createResponseWrapperSchema,
   createTagRequestSchema,
@@ -18,6 +19,7 @@ import {
   createVenuePresetRequestSchema,
   governmentRepresentativeResponseSchema,
   lookupItemSchema,
+  ministryGroupResponseSchema,
   ministryResponseSchema,
   tagResponseSchema,
   themeResponseSchema,
@@ -26,6 +28,7 @@ import {
   updateCityRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
+  updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
@@ -157,6 +160,31 @@ export class MinistryResponseDto extends createZodDto(ministryResponseSchema) {}
  */
 export class MinistryResponseWrapperDto extends createZodDto(
   createResponseWrapperSchema(ministryResponseSchema)
+) {}
+
+// ============================================
+// Ministry group DTOs
+// ============================================
+
+export class CreateMinistryGroupDto extends createZodDto(
+  createMinistryGroupRequestSchema
+) {}
+
+export class UpdateMinistryGroupDto extends createZodDto(
+  updateMinistryGroupRequestSchema
+) {}
+
+export class MinistryGroupResponseDto extends createZodDto(
+  ministryGroupResponseSchema
+) {}
+
+export class MinistryGroupResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(ministryGroupResponseSchema)
+) {}
+
+/** Wrapped list: `{ success: true, data: MinistryGroupResponse[] }` */
+export class MinistryGroupArrayResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(ministryGroupResponseSchema)
 ) {}
 
 // ============================================
