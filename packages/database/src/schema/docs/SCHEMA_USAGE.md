@@ -1,6 +1,6 @@
 # Schema Usage Guide
 
-This document provides detailed usage information, examples, and behavioral patterns for the new database schema. For field mappings and structural information, see [SCHEMA_MAPPING.md](./SCHEMA_MAPPING.md).
+This document provides detailed usage information, examples, and behavioral patterns for the new database schema. For field mappings and structural information, see [SCHEMA_MAPPING.md](./SCHEMA_MAPPING.md). For how a ministry’s designated minister is stored (ministry row → government representative, no `ministry_id` on the rep), see [Ministries and government representatives](./SCHEMA_MAPPING.md#ministries-and-government-representatives).
 
 ## Table of Contents
 

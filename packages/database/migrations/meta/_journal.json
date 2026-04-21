@@ -29,6 +29,20 @@
       "when": 1776799779124,
       "tag": "0003_20260421_ministry_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776806000698,
+      "tag": "0004_20260421_ministry_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776806192548,
+      "tag": "0005_20260421_ministry_groups",
+      "breakpoints": true
     }
   ]
 }

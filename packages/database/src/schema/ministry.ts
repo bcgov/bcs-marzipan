@@ -31,8 +31,11 @@ export const ministries = pgTable('ministries', {
   displayName: varchar('display_name', { length: 255 }).notNull(),
   abbreviation: varchar('abbreviation', { length: 10 }).notNull(),
 
-  // Minister information
-  ministerName: varchar('minister_name', { length: 255 }),
+  /**
+   * Designated minister (government representative) for this ministry.
+   * FK to government_representatives.id is enforced in SQL migrations (avoids circular schema inference).
+   */
+  ministerGovernmentRepId: integer('minister_government_rep_id'),
 
   // Contacts
   contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
@@ -76,10 +79,13 @@ export const ministriesRelations = relations(ministries, ({ one, many }) => ({
     fields: [ministries.ministryGroupId],
     references: [ministryGroups.id],
   }),
+  ministerRep: one(governmentRepresentatives, {
+    fields: [ministries.ministerGovernmentRepId],
+    references: [governmentRepresentatives.id],
+  }),
   children: many(ministries, { relationName: 'parent' }),
   activities: many(activities),
   ministryUsers: many(ministryUsers),
-  governmentRepresentatives: many(governmentRepresentatives),
   podMinistries: many(podMinistries, { relationName: 'ministryPodMinistries' }),
 }));
 
