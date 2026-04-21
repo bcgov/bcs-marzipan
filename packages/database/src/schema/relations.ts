@@ -436,6 +436,40 @@ export const teamCategoriesRelations = relations(teamCategories, ({ one }) => ({
 }));
 
 /**
+ * TeamTags junction table - Many-to-many relationship between Tags and Teams
+ * Controls which teams can view specific tags.
+ * If a tag has no entries in this table, it is viewable by all teams.
+ * If a tag has entries, only those teams can view it.
+ */
+export const teamTags = pgTable(
+  'team_tags',
+  {
+    tagId: integer('tag_id')
+      .notNull()
+      .references(() => tags.id),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.tagId, table.teamId] })]
+);
+
+export const teamTagsRelations = relations(teamTags, ({ one }) => ({
+  tag: one(tags, {
+    fields: [teamTags.tagId],
+    references: [tags.id],
+  }),
+  team: one(teams, {
+    fields: [teamTags.teamId],
+    references: [teams.id],
+  }),
+}));
+
+/**
  * ActivityTags junction table - Many-to-many relationship between Activities and Tags
  * Renamed from activityKeywords. This table links activities to tags.
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/ActivityKeywords.cs

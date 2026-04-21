@@ -96,6 +96,14 @@ export async function fetchTags(): Promise<TagLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchAllTags(): Promise<TagLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
+    '/lookups/tags',
+    { params: { includeAll: 'true' } }
+  );
+  return res.data.data;
+}
+
 export async function fetchActivityStatuses(): Promise<
   ActivityStatusLookupItem[]
 > {

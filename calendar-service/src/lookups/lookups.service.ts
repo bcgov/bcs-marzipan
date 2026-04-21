@@ -48,6 +48,7 @@ import type {
 
 import { DatabaseService } from '../database/database.service';
 import { getVisibleCategoryIds } from '../policy/category-scoping.helper';
+import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 
 @Injectable()
 export class LookupsService {
@@ -182,10 +183,44 @@ export class LookupsService {
   }
 
   /**
-   * Get all active tags
-   * All tags are currently global (visibility='global'). Team visibility is a future feature flag.
+   * Get tags visible to the user based on their team memberships.
+   * Returns global tags plus any team-scoped tags for the user's teams.
+   * @param userTeams - Optional array of team IDs the user belongs to
+   * @param includeAll - When true (admin), returns all tags regardless of visibility or isActive
    */
-  async getTags(): Promise<TagLookupItem[]> {
+  async getTags(
+    userTeams?: number[],
+    includeAll?: boolean
+  ): Promise<TagLookupItem[]> {
+    if (includeAll) {
+      const results = await this.databaseService.db
+        .select({
+          id: tags.id,
+          name: tags.name,
+          displayName: tags.displayName,
+          sortOrder: tags.sortOrder,
+          isActive: tags.isActive,
+          visibility: tags.visibility,
+        })
+        .from(tags)
+        .orderBy(tags.sortOrder);
+
+      return results.map((tag) => ({
+        id: tag.id,
+        label: tag.displayName,
+        value: tag.id,
+        name: tag.name,
+        displayName: tag.displayName,
+        sortOrder: tag.sortOrder,
+        isActive: tag.isActive,
+        visibility: tag.visibility as 'global' | 'team',
+      }));
+    }
+
+    const ids = await getVisibleTagIds(this.databaseService.db, userTeams);
+    if (ids.length === 0) {
+      return [];
+    }
     const results = await this.databaseService.db
       .select({
         id: tags.id,
@@ -193,8 +228,10 @@ export class LookupsService {
         displayName: tags.displayName,
         sortOrder: tags.sortOrder,
         isActive: tags.isActive,
+        visibility: tags.visibility,
       })
       .from(tags)
+      .where(and(eq(tags.isActive, true), inArray(tags.id, ids)))
       .orderBy(tags.sortOrder);
 
     return results.map((tag) => ({
@@ -205,6 +242,7 @@ export class LookupsService {
       displayName: tag.displayName,
       sortOrder: tag.sortOrder,
       isActive: tag.isActive,
+      visibility: tag.visibility as 'global' | 'team',
     }));
   }
 

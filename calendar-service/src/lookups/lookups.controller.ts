@@ -282,7 +282,8 @@ export class LookupsController {
 
   @ApiOperation({
     summary: 'Get all tags',
-    description: 'Retrieves all available tags. Results are cached for 1 hour.',
+    description:
+      'Retrieves tags visible to the current user. Admins with lookups.manage can pass includeAll=true to see all tags regardless of visibility.',
   })
   @ApiResponse({
     status: 200,
@@ -290,9 +291,17 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('tags')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
-  async getTags(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getTags();
+  @Header('Cache-Control', `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`)
+  async getTags(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    const data = await this.lookupsService.getTags(
+      shouldIncludeAll ? undefined : user.teamIds,
+      shouldIncludeAll
+    );
     return { success: true, data };
   }
 

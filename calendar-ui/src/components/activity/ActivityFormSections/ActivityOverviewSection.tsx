@@ -315,7 +315,7 @@ type ActivityOverviewSectionProps = {
     visibility?: string;
   }>;
   organizations: LeadOrganizationOption[];
-  tags: Array<{ id: number; text: string }>;
+  tags: Array<{ id: number; text: string; visibility?: string }>;
   pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
   leadTeamField?: ActivityLeadTeamFieldConfig;
 };
@@ -365,6 +365,12 @@ export const ActivityOverviewSection: React.FC<
     value: String(t.id),
     label: t.text,
   }));
+  const teamTagOptions = tags
+    .filter((t) => t.visibility === 'team')
+    .map((t) => ({ value: String(t.id), label: t.text }));
+  const globalTagOptions = tags
+    .filter((t) => t.visibility !== 'team')
+    .map((t) => ({ value: String(t.id), label: t.text }));
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.overview}>
@@ -754,11 +760,29 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={tagsAnchorRef}>
                     <ComboboxEmpty>No tags found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: OptionItem) => (
-                        <ComboboxItem key={option.value} value={option}>
-                          {option.label}
-                        </ComboboxItem>
+                      {teamTagOptions.length > 0 && (
+                        <>
+                          <ComboboxGroup items={teamTagOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                          <ComboboxSeparator />
+                        </>
                       )}
+                      <ComboboxGroup items={globalTagOptions}>
+                        <ComboboxCollection>
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxGroup>
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>

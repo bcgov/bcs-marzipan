@@ -9,12 +9,12 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 import {
   fetchActivityStatuses,
+  fetchAllTags,
   fetchCategories,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
-  fetchTags,
   fetchThemes,
   fetchVenuePresets,
   type LookupItem,
@@ -53,6 +53,7 @@ type GovernmentRepresentative = LookupItem & {
 type Tag = LookupItem & {
   name?: string;
   displayName?: string | null;
+  visibility?: 'global' | 'team';
 };
 
 /** Ministry list item; API may include ministerName on list responses */
@@ -421,10 +422,27 @@ export function TagsAdmin() {
       description="Manage activity tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
-      queryKey="tags"
-      queryFn={fetchTags as () => Promise<Tag[]>}
+      queryKey="tags-admin"
+      queryFn={fetchAllTags as () => Promise<Tag[]>}
       formFields={tagFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span
+              className={
+                row.original.visibility === 'team'
+                  ? 'font-medium text-blue-600'
+                  : 'text-slate-500'
+              }
+            >
+              {row.original.visibility === 'team' ? 'Team' : 'Global'}
+            </span>
+          ),
+        } as ColumnDef<Tag>,
+      ]}
     />
   );
 }

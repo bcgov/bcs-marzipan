@@ -90,6 +90,7 @@ export const tagResponseSchema = z.object({
 export const tagLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
+  visibility: z.enum(['global', 'team']),
 });
 
 // ============================================

@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { ministries } from './ministry';
-import { teamCategories } from './relations';
+import { teamCategories, teamTags } from './relations';
 import { users } from './user';
 
 /**
@@ -381,10 +381,9 @@ export const themes = pgTable('themes', {
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Keyword.cs
  *
  * Access Control:
- * Tags can be restricted to specific teams via the visibility field (future feature flag).
- * - visibility = 'global': Tag is viewable by all teams (current default - all tags are global)
- * - visibility = 'team': Tag is viewable only by specific teams (future feature - not yet implemented)
- * NOTE: All tags are currently global. Team visibility is a future feature flag.
+ * Tags can be restricted to specific teams via the visibility field and teamTags junction table.
+ * - visibility = 'global': Tag is viewable by all teams
+ * - visibility = 'team': Tag is viewable only by teams listed in the teamTags junction table
  */
 export const tags = pgTable(
   'tags',
@@ -691,4 +690,8 @@ export const governmentRepresentativesRelations = relations(
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   teamCategories: many(teamCategories),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  teamTags: many(teamTags),
 }));
