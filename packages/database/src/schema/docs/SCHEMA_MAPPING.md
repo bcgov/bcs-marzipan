@@ -466,6 +466,30 @@ Pods use an explicit visibility model with three levels: 'global', 'team', and '
 
 ---
 
+## Ministry groups
+
+**Legacy Table Name:** _N/A_  
+**New Table Name:** `ministry_groups`
+
+**Description:** Named groups used as shortcuts in the activity form (“Shared with teams”). Each ministry may optionally belong to one group via `ministries.ministry_group_id` (`ON DELETE SET NULL`). The UI resolves a group to team IDs via `teams.ministry_id`. Separate from `pods`.
+
+### `ministry_groups`
+
+| New Field Name | New Type       | New Constraints      | Description                                 |
+| -------------- | -------------- | -------------------- | ------------------------------------------- |
+| `id`           | `serial`       | primary key          |                                             |
+| `name`         | `varchar(200)` | `notNull`            | Group label (e.g. Social, Resource)         |
+| `sort_order`   | `integer`      | `notNull`, default 0 | Display order                               |
+| Audit columns  |                |                      | `created_by`, `last_updated_by`, timestamps |
+
+### `ministries.ministry_group_id`
+
+| New Field Name      | New Type  | New Constraints                                         | Description             |
+| ------------------- | --------- | ------------------------------------------------------- | ----------------------- |
+| `ministry_group_id` | `integer` | nullable, FK to `ministry_groups`, `ON DELETE SET NULL` | Optional shortcut group |
+
+---
+
 ## Reports
 
 **Legacy Table Name:** _N/A (New table)_  

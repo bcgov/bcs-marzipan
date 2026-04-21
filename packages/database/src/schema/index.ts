@@ -5,6 +5,7 @@ export * from './user';
 export * from './userHistory';
 export * from './teamHistory';
 export * from './ministry';
+export * from './ministry-groups';
 export * from './organizations';
 export * from './lookups';
 export * from './relations';

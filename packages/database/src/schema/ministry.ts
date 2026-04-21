@@ -11,6 +11,7 @@ import {
 
 import { activities } from './activity';
 import { governmentRepresentatives } from './lookups';
+import { ministryGroups } from './ministry-groups';
 import { ministryUsers } from './relations';
 import { teams } from './teams';
 import { users } from './user';
@@ -39,6 +40,11 @@ export const ministries = pgTable('ministries', {
     () => users.id
   ), // FK to User
 
+  ministryGroupId: integer('ministry_group_id').references(
+    () => ministryGroups.id,
+    { onDelete: 'set null' }
+  ),
+
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -66,12 +72,23 @@ export const ministriesRelations = relations(ministries, ({ one, many }) => ({
     references: [users.id],
     relationName: 'secondContactUser',
   }),
+  ministryGroup: one(ministryGroups, {
+    fields: [ministries.ministryGroupId],
+    references: [ministryGroups.id],
+  }),
   children: many(ministries, { relationName: 'parent' }),
   activities: many(activities),
   ministryUsers: many(ministryUsers),
   governmentRepresentatives: many(governmentRepresentatives),
   podMinistries: many(podMinistries, { relationName: 'ministryPodMinistries' }),
 }));
+
+export const ministryGroupsRelations = relations(
+  ministryGroups,
+  ({ many }) => ({
+    ministries: many(ministries),
+  })
+);
 
 /**
  * Pods table - Collections of ministries defined by users
