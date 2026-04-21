@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
 ALTER TABLE "activity_history" ADD COLUMN "activity_title" text;--> statement-breakpoint
 ALTER TABLE "activity_history" ADD COLUMN "activity_display_id" text;--> statement-breakpoint
 ALTER TABLE "activity_history" ADD COLUMN "actor_display_name" text;--> statement-breakpoint
