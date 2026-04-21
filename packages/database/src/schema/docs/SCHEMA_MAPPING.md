@@ -51,6 +51,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 12. [UserTeams](#userteams)
 13. [Venue addresses](#venue-addresses)
 14. [Venue Presets](#venue-presets)
+15. [Ministries and government representatives](#ministries-and-government-representatives)
 
 ---
 
@@ -487,6 +488,19 @@ Pods use an explicit visibility model with three levels: 'global', 'team', and '
 | New Field Name      | New Type  | New Constraints                                         | Description             |
 | ------------------- | --------- | ------------------------------------------------------- | ----------------------- |
 | `ministry_group_id` | `integer` | nullable, FK to `ministry_groups`, `ON DELETE SET NULL` | Optional shortcut group |
+
+---
+
+## Ministries and government representatives
+
+**Description:** A ministry’s **designated minister** (or premier for the Office of the Premier) is stored only on the ministry row: `ministries.minister_government_rep_id` → `government_representatives.id` (`ON DELETE SET NULL`). The `government_representatives` table **does not** have a `ministry_id` column; that relationship was removed in favor of this single source of truth. Admin UX assigns the minister from **Settings → Ministries**; when `minister_government_rep_id` is set, the lookups service clears the same representative from any **other** ministry that previously pointed at it.
+
+| Table / field                             | Notes                                                                                                                                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ministries.minister_government_rep_id`   | Nullable FK to `government_representatives.id`. Display name for the minister in lists comes from a join on that representative.                                                 |
+| `ministries.minister_name`                | **Removed** (replaced by the representative row + join).                                                                                                                         |
+| `government_representatives.ministry_id`  | **Removed**. Portfolio link exists only on `ministries`.                                                                                                                         |
+| GET `/lookups/government-representatives` | May include a derived **`ministryId`** on each item: the ministry whose `minister_government_rep_id` equals that representative’s `id`, if any (left join). Not a stored column. |
 
 ---
 

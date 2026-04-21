@@ -140,7 +140,7 @@ export const ministryResponseSchema = z.object({
   abbreviation: z.string(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
-  ministerName: z.string().nullable(),
+  ministerGovernmentRepId: z.number().int().nullable(),
   ministryGroupId: z.number().int().nullable().optional(),
 });
 
@@ -151,6 +151,9 @@ export const ministryLookupItemSchema = z.object({
   name: z.string(),
   displayName: z.string(),
   abbreviation: z.string().nullable(),
+  ministerGovernmentRepId: z.number().int().nullable().optional(),
+  /** Joined from government_representatives when minister_government_rep_id is set */
+  ministerDisplayName: z.string().nullable().optional(),
   ministryGroupId: z.number().int().nullable().optional(),
 });
 
@@ -427,7 +430,6 @@ export const governmentRepresentativeResponseSchema = z.object({
   isActive: z.boolean(),
   title: z.string().nullable(),
   email: z.string().nullable(),
-  ministryId: z.number().int().nullable(),
   representativeType: z.enum(REPRESENTATIVE_TYPE).nullable(),
 });
 
@@ -436,7 +438,9 @@ export const governmentRepresentativeLookupItemSchema = lookupItemSchema.extend(
     name: z.string(),
     displayName: z.string(),
     title: z.string().nullable(),
-    ministryId: z.number().int().nullable(),
+    /** Derived: ministry id when this rep is that ministry’s designated minister */
+    ministryId: z.number().int().nullable().optional(),
+    representativeType: z.enum(REPRESENTATIVE_TYPE).nullable(),
   }
 );
 
@@ -663,7 +667,7 @@ export const createMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   abbreviation: z.string().min(1).max(10),
-  ministerName: z.string().max(255).nullable().optional(),
+  ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   ministryGroupId: z.number().int().nullable().optional(),
@@ -676,7 +680,7 @@ export const updateMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   displayName: z.string().min(1).max(255).optional(),
   abbreviation: z.string().min(1).max(10).optional(),
-  ministerName: z.string().max(255).nullable().optional(),
+  ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
   ministryGroupId: z.number().int().nullable().optional(),
@@ -708,7 +712,6 @@ export const createGovernmentRepresentativeRequestSchema = z.object({
   title: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
-  ministryId: z.number().int().nullable().optional(),
   representativeType: z.enum(REPRESENTATIVE_TYPE).nullable().optional(),
 });
 

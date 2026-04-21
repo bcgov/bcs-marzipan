@@ -270,7 +270,6 @@ export const governmentRepresentatives = pgTable('government_representatives', {
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   title: varchar('title', { length: 255 }),
-  ministryId: integer('ministry_id').references(() => ministries.id), // Nullable FK - links ministers to ministries
   representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'cabinet_member', 'mla', 'other'
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
@@ -681,9 +680,10 @@ export const reports = pgTable('reports', {
 export const governmentRepresentativesRelations = relations(
   governmentRepresentatives,
   ({ one }) => ({
-    ministry: one(ministries, {
-      fields: [governmentRepresentatives.ministryId],
-      references: [ministries.id],
+    /** Ministry that designates this rep as its minister (via ministries.minister_government_rep_id). */
+    ministryAsPortfolio: one(ministries, {
+      fields: [governmentRepresentatives.id],
+      references: [ministries.ministerGovernmentRepId],
     }),
   })
 );

@@ -393,55 +393,79 @@ ON CONFLICT (id) DO NOTHING;
 -- Representatives for activities
 -- ============================================================================
 
--- PREMIER
-INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type, created_by, last_updated_by) VALUES
-  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', 1, 'premier', 1, 1)
+-- PREMIER (portfolio link is ministries.minister_government_rep_id, not on this row)
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
+  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', 'premier', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
       sort_order = EXCLUDED.sort_order,
       is_active = EXCLUDED.is_active,
       title = EXCLUDED.title,
-      ministry_id = EXCLUDED.ministry_id,
       representative_type = EXCLUDED.representative_type,
       created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
 
 -- MINISTERS
-INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, ministry_id, representative_type, created_by, last_updated_by) VALUES
-  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', 2, 'minister', 1, 1),
-  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', 3, 'minister', 1, 1),
-  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', 4, 'minister', 1, 1),
-  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', 5, 'minister', 1, 1),
-  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', 6, 'minister', 1, 1),
-  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', 7, 'minister', 1, 1),
-  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', 8, 'minister', 1, 1),
-  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', 9, 'minister', 1, 1),
-  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', 10, 'minister', 1, 1),
-  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', 11, 'minister', 1, 1),
-  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', 12, 'minister', 1, 1),
-  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', 13, 'minister', 1, 1),
-  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', 14, 'minister', 1, 1),
-  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', 15, 'minister', 1, 1),
-  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', 17, 'minister', 1, 1),
-  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', 18, 'minister', 1, 1),
-  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', 19, 'minister', 1, 1),
-  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', 20, 'minister', 1, 1),
-  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', 21, 'minister', 1, 1),
-  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', 22, 'minister', 1, 1),
-  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', 23, 'minister', 1, 1),
-  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', 24, 'minister', 1, 1),
-  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', 25, 'minister', 1, 1)
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
+  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', 'minister', 1, 1),
+  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', 'minister', 1, 1),
+  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', 'minister', 1, 1),
+  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', 'minister', 1, 1),
+  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', 'minister', 1, 1),
+  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', 'minister', 1, 1),
+  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', 'minister', 1, 1),
+  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', 'minister', 1, 1),
+  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', 'minister', 1, 1),
+  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', 'minister', 1, 1),
+  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', 'minister', 1, 1),
+  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', 'minister', 1, 1),
+  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', 'minister', 1, 1),
+  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', 'minister', 1, 1),
+  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', 'minister', 1, 1),
+  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', 'minister', 1, 1),
+  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', 'minister', 1, 1),
+  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', 'minister', 1, 1),
+  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', 'minister', 1, 1),
+  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', 'minister', 1, 1),
+  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', 'minister', 1, 1),
+  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', 'minister', 1, 1),
+  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', 'minister', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
       sort_order = EXCLUDED.sort_order,
       is_active = EXCLUDED.is_active,
       title = EXCLUDED.title,
-      ministry_id = EXCLUDED.ministry_id,
       representative_type = EXCLUDED.representative_type,
       created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
+
+-- Designated minister per ministry (source of truth on ministries row)
+UPDATE ministries SET minister_government_rep_id = 1000 WHERE id = 1;
+UPDATE ministries SET minister_government_rep_id = 2002 WHERE id = 2;
+UPDATE ministries SET minister_government_rep_id = 2003 WHERE id = 3;
+UPDATE ministries SET minister_government_rep_id = 2004 WHERE id = 4;
+UPDATE ministries SET minister_government_rep_id = 2005 WHERE id = 5;
+UPDATE ministries SET minister_government_rep_id = 2006 WHERE id = 6;
+UPDATE ministries SET minister_government_rep_id = 2007 WHERE id = 7;
+UPDATE ministries SET minister_government_rep_id = 2008 WHERE id = 8;
+UPDATE ministries SET minister_government_rep_id = 2009 WHERE id = 9;
+UPDATE ministries SET minister_government_rep_id = 2010 WHERE id = 10;
+UPDATE ministries SET minister_government_rep_id = 2011 WHERE id = 11;
+UPDATE ministries SET minister_government_rep_id = 2012 WHERE id = 12;
+UPDATE ministries SET minister_government_rep_id = 2013 WHERE id = 13;
+UPDATE ministries SET minister_government_rep_id = 2014 WHERE id = 14;
+UPDATE ministries SET minister_government_rep_id = 2015 WHERE id = 15;
+UPDATE ministries SET minister_government_rep_id = 2017 WHERE id = 17;
+UPDATE ministries SET minister_government_rep_id = 2018 WHERE id = 18;
+UPDATE ministries SET minister_government_rep_id = 2019 WHERE id = 19;
+UPDATE ministries SET minister_government_rep_id = 2020 WHERE id = 20;
+UPDATE ministries SET minister_government_rep_id = 2021 WHERE id = 21;
+UPDATE ministries SET minister_government_rep_id = 2022 WHERE id = 22;
+UPDATE ministries SET minister_government_rep_id = 2023 WHERE id = 23;
+UPDATE ministries SET minister_government_rep_id = 2024 WHERE id = 24;
+UPDATE ministries SET minister_government_rep_id = 2025 WHERE id = 25;
 
 -- -- ============================================================================
 -- -- TAGS
