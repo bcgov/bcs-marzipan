@@ -136,6 +136,7 @@ export const ministryResponseSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   ministerName: z.string().nullable(),
+  ministryGroupId: z.number().int().nullable().optional(),
 });
 
 export const ministryLookupItemSchema = z.object({
@@ -145,6 +146,7 @@ export const ministryLookupItemSchema = z.object({
   name: z.string(),
   displayName: z.string(),
   abbreviation: z.string().nullable(),
+  ministryGroupId: z.number().int().nullable().optional(),
 });
 
 // ============================================
@@ -651,6 +653,7 @@ export const createMinistryRequestSchema = z.object({
   ministerName: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
+  ministryGroupId: z.number().int().nullable().optional(),
 });
 
 /**
@@ -663,6 +666,7 @@ export const updateMinistryRequestSchema = z.object({
   ministerName: z.string().max(255).nullable().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  ministryGroupId: z.number().int().nullable().optional(),
 });
 
 /**

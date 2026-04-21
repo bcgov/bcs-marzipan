@@ -6,6 +6,7 @@ export * from './activity-junction.schema';
 export * from './banner.schema';
 export * from './history.schema';
 export * from './lookup.schema';
+export * from './ministry-groups.schema';
 export * from './report-config.schema';
 export * from './query-params.schema';
 export * from './saved-filter.schema';
