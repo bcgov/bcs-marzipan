@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Header,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -24,9 +25,11 @@ import {
   type AuthUser,
 } from '@corpcal/shared';
 import type {
+  ActivityTeamSharingResponse,
   CategoryLookupItem,
   LookupItem,
   LookupQueryParams,
+  MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
@@ -38,6 +41,7 @@ import {
   createCityRequestSchema,
   createCommsMaterialRequestSchema,
   createGovernmentRepresentativeRequestSchema,
+  createMinistryGroupRequestSchema,
   createMinistryRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
@@ -47,6 +51,7 @@ import {
   updateCityRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
+  updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
@@ -65,11 +70,14 @@ import {
   CreateCommsMaterialDto,
   CreateGovernmentRepresentativeDto,
   CreateMinistryDto,
+  CreateMinistryGroupDto,
   CreateTagDto,
   CreateThemeDto,
   CreateVenuePresetDto,
   GovernmentRepresentativeResponseWrapperDto,
   LookupArrayResponseWrapperDto,
+  MinistryGroupArrayResponseWrapperDto,
+  MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
@@ -79,6 +87,7 @@ import {
   UpdateCommsMaterialDto,
   UpdateGovernmentRepresentativeDto,
   UpdateMinistryDto,
+  UpdateMinistryGroupDto,
   UpdateTagDto,
   UpdateThemeDto,
   UpdateVenuePresetDto,
@@ -90,6 +99,7 @@ import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { TeamsService } from '../teams/teams.service';
 import { LookupsService } from './lookups.service';
 
 @ApiTags('lookups')
@@ -98,7 +108,29 @@ import { LookupsService } from './lookups.service';
 export class LookupsController {
   private readonly logger = new AppLogger(LookupsController.name);
 
-  constructor(private readonly lookupsService: LookupsService) {}
+  constructor(
+    private readonly lookupsService: LookupsService,
+    private readonly teamsService: TeamsService
+  ) {}
+
+  @ApiOperation({
+    summary: 'Teams and ministry quick-share for activity Shared with',
+    description:
+      'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
+  })
+  @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
+  @Get('activity-team-sharing')
+  @Header('Cache-Control', `private, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getActivityTeamSharing(): Promise<{
+    success: boolean;
+    data: ActivityTeamSharingResponse;
+  }> {
+    const [teams, quickShare] = await Promise.all([
+      this.teamsService.findAll(true),
+      this.lookupsService.getActivityTeamSharingQuickShare(),
+    ]);
+    return { success: true, data: { teams, quickShare } };
+  }
 
   @ApiOperation({
     summary: 'Get all categories',
@@ -754,6 +786,86 @@ export class LookupsController {
       user.id
     );
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all ministry groups' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministry groups retrieved successfully',
+    type: MinistryGroupArrayResponseWrapperDto,
+  })
+  @Get('ministry-groups')
+  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  async getMinistryGroups(): Promise<{
+    success: boolean;
+    data: MinistryGroupResponse[];
+  }> {
+    const data = await this.lookupsService.getMinistryGroups();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a ministry group' })
+  @ApiResponse({
+    status: 201,
+    description: 'Ministry group created successfully',
+    type: MinistryGroupResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateMinistryGroupDto })
+  @RequirePermission('lookups.manage')
+  @Post('ministry-groups')
+  async createMinistryGroup(
+    @Body(new ZodValidationPipe(createMinistryGroupRequestSchema))
+    body: CreateMinistryGroupDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: MinistryGroupResponse }> {
+    const row = await this.lookupsService.createMinistryGroup(body, user.id);
+    return {
+      success: true,
+      data: { id: row.id, name: row.name, sortOrder: row.sortOrder },
+    };
+  }
+
+  @ApiOperation({ summary: 'Update a ministry group' })
+  @ApiResponse({
+    status: 200,
+    description: 'Ministry group updated successfully',
+    type: MinistryGroupResponseWrapperDto,
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Ministry group ID' })
+  @ApiBody({ type: UpdateMinistryGroupDto })
+  @RequirePermission('lookups.manage')
+  @Patch('ministry-groups/:id')
+  async updateMinistryGroup(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateMinistryGroupRequestSchema))
+    body: UpdateMinistryGroupDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: MinistryGroupResponse }> {
+    const row = await this.lookupsService.updateMinistryGroup(
+      Number(id),
+      body,
+      user.id
+    );
+    if (!row) {
+      throw new NotFoundException(`Ministry group ${id} not found`);
+    }
+    return {
+      success: true,
+      data: { id: row.id, name: row.name, sortOrder: row.sortOrder },
+    };
+  }
+
+  @ApiOperation({ summary: 'Delete a ministry group' })
+  @ApiResponse({ status: 200, description: 'Ministry group deleted' })
+  @ApiResponse({ status: 404, description: 'Ministry group not found' })
+  @ApiParam({ name: 'id', type: Number, description: 'Ministry group ID' })
+  @RequirePermission('lookups.manage')
+  @Delete('ministry-groups/:id')
+  async deleteMinistryGroup(
+    @Param('id') id: string
+  ): Promise<{ success: boolean }> {
+    await this.lookupsService.deleteMinistryGroup(Number(id));
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Get all date statuses' })
