@@ -29,7 +29,7 @@ interface BaseLookupItem {
   displayName?: string | null;
   sortOrder?: number;
   isActive?: boolean;
-  [key: string]: unknown; // Allow additional properties (e.g. abbreviation, ministerName)
+  [key: string]: unknown; // Allow additional properties (e.g. abbreviation, ministerDisplayName)
 }
 
 export interface RenderModalContentProps {
@@ -65,6 +65,14 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   softDelete?: boolean;
   /** When false, hides active/inactive filter (entities without isActive). Default true. */
   showStatusFilter?: boolean;
+  /**
+   * When set, runs instead of the default POST/PATCH mutations (e.g. multi-step saves).
+   * Caller should invalidate relevant queries; this component only closes the modal on success.
+   */
+  submitOverride?: (args: {
+    formData: Record<string, any>;
+    editingItem: T | null;
+  }) => Promise<void>;
 }
 
 /**
@@ -92,9 +100,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   additionalInvalidateKeys,
   softDelete,
   showStatusFilter = true,
+  submitOverride,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [submitOverridePending, setSubmitOverridePending] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -250,7 +260,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     [additionalColumns, deleteMutation, entityType, getItemName]
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let processedData = { ...formData };
 
     // Convert numeric fields
@@ -264,6 +274,19 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
           v === '__none__' || v === '' || v == null ? null : Number(v);
       }
     });
+
+    if (submitOverride) {
+      try {
+        setSubmitOverridePending(true);
+        await submitOverride({ formData: processedData, editingItem });
+        setShowModal(false);
+        setEditingItem(null);
+        setFormData({});
+      } finally {
+        setSubmitOverridePending(false);
+      }
+      return;
+    }
 
     if (transformSubmitData) {
       processedData = transformSubmitData(processedData);
@@ -330,15 +353,24 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             ? `Update ${entityType.toLowerCase()} details`
             : `Create a new ${entityType.toLowerCase()}`
         }
-        onConfirm={handleSubmit}
+        onConfirm={() => {
+          void handleSubmit();
+        }}
         confirmLabel={editingItem ? 'Update' : 'Create'}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        isLoading={
+          createMutation.isPending ||
+          updateMutation.isPending ||
+          submitOverridePending
+        }
       >
         {renderModalContent ? (
           renderModalContent({
             initialData: editingItem ?? EMPTY_INITIAL,
             onChange: setFormData as (data: Record<string, unknown>) => void,
-            isSubmitting: createMutation.isPending || updateMutation.isPending,
+            isSubmitting:
+              createMutation.isPending ||
+              updateMutation.isPending ||
+              submitOverridePending,
           })
         ) : (
           <LookupForm

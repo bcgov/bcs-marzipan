@@ -5,10 +5,11 @@
  * using the GenericLookupAdmin template.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import api from '@/api/axios';
 import {
   fetchActivityStatuses,
   fetchAllTags,
@@ -26,11 +27,18 @@ import {
   type ThemeLookupItem,
 } from '@/api/lookupsApi';
 import { fetchTeams } from '@/api/usersApi';
+import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 import { NONE_SELECT_VALUE } from '.';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
+import {
+  filterMinisterPickerReps,
+  MinistryAdminModalForm,
+  type GovernmentRepMinisterListItem,
+  type MinisterFormSelection,
+} from './MinistryAdminModalForm';
 import { VenuePresetForm } from './VenuePresetForm';
 
 // Type definitions - these extend the base LookupItem from the API
@@ -55,6 +63,8 @@ type GovernmentRepresentative = LookupItem & {
   name?: string;
   displayName?: string | null;
   title?: string | null;
+  ministryId?: number | null;
+  representativeType?: string | null;
 };
 
 type Tag = LookupItem & {
@@ -65,9 +75,10 @@ type Tag = LookupItem & {
   teamIds?: number[];
 };
 
-/** Ministry list item; API may include ministerName on list responses */
+/** Ministry list item from admin API (includes joined minister display name). */
 type MinistryAdminItem = MinistryLookupItem & {
-  ministerName?: string | null;
+  ministerGovernmentRepId?: number | null;
+  ministerDisplayName?: string | null;
   ministryGroupId?: number | null;
 };
 
@@ -223,7 +234,8 @@ const tagFields: FormField[] = [
   },
 ];
 
-const ministryFieldsBase: FormField[] = [
+/** Ministry form fields handled by {@link MinistryAdminModalForm} (minister is a combobox). */
+const ministryCoreFields: FormField[] = [
   {
     name: 'name',
     label: 'Name',
@@ -245,12 +257,6 @@ const ministryFieldsBase: FormField[] = [
     required: true,
     placeholder: 'e.g., AG',
   },
-  {
-    name: 'ministerName',
-    label: 'Minister Name',
-    type: 'text',
-    placeholder: 'Current minister',
-  },
   { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
@@ -259,6 +265,100 @@ const ministryFieldsBase: FormField[] = [
     placeholder: 'Item is active',
   },
 ];
+
+function stringField(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value).trim();
+  }
+  return '';
+}
+
+async function persistMinistryWithMinister({
+  formData,
+  editingItem,
+}: {
+  formData: Record<string, unknown>;
+  editingItem: MinistryAdminItem | null;
+}): Promise<void> {
+  const name = stringField(formData.name);
+  const displayName = stringField(formData.displayName);
+  const abbreviation = stringField(formData.abbreviation);
+  if (!name || !displayName || !abbreviation) {
+    window.alert('Name, display name, and abbreviation are required.');
+    throw new Error('Validation failed');
+  }
+
+  const ministerPick = (formData._ministerSelection as
+    | MinisterFormSelection
+    | undefined) ?? {
+    mode: 'none',
+  };
+
+  const rawGid = formData.ministryGroupId;
+  const ministryGroupId =
+    rawGid === '__none__' || rawGid === '' || rawGid == null
+      ? null
+      : Number(rawGid);
+
+  const coreBody = {
+    name,
+    displayName,
+    abbreviation,
+    sortOrder: Number(formData.sortOrder ?? 0),
+    isActive: formData.isActive !== false,
+    ministryGroupId,
+  };
+
+  let ministryId: number;
+  if (editingItem) {
+    ministryId = editingItem.id;
+  } else {
+    const res = await api.post<{ success?: boolean; data?: { id: number } }>(
+      '/lookups/ministries',
+      {
+        ...coreBody,
+        ministerGovernmentRepId: null,
+      }
+    );
+    const created = res.data?.data ?? (res.data as { id?: number });
+    if (created?.id == null) {
+      throw new Error('Ministry create response missing id');
+    }
+    ministryId = created.id;
+  }
+
+  let designatedRepId: number | null = null;
+
+  if (ministerPick.mode === 'none') {
+    designatedRepId = null;
+  } else if (ministerPick.mode === 'existing') {
+    designatedRepId = ministerPick.repId;
+  } else {
+    const trimmed = ministerPick.name.trim();
+    const postRes = await api.post<{
+      success?: boolean;
+      data?: { id: number };
+    }>('/lookups/government-representatives', {
+      name: trimmed,
+      displayName: trimmed,
+      title: 'Minister',
+      sortOrder: 0,
+      isActive: true,
+      representativeType: 'minister',
+    });
+    const newRep = postRes.data?.data ?? (postRes.data as { id?: number });
+    if (newRep?.id == null) {
+      throw new Error('Government representative create response missing id');
+    }
+    designatedRepId = newRep.id;
+  }
+
+  await api.patch(`/lookups/ministries/${ministryId}`, {
+    ...coreBody,
+    ministerGovernmentRepId: designatedRepId,
+  });
+}
 
 const ministryGroupFields: FormField[] = [
   {
@@ -413,7 +513,7 @@ export function GovernmentRepresentativesAdmin() {
   return (
     <GenericLookupAdmin<GovernmentRepresentative>
       title="Government Representatives"
-      description="Manage government representatives"
+      description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
@@ -526,29 +626,74 @@ export function MinistryGroupsAdmin() {
 }
 
 export function MinistriesAdmin() {
+  const queryClient = useQueryClient();
   const groupsQuery = useQuery({
     queryKey: lookupQueryKeys.ministryGroups(),
     queryFn: fetchMinistryGroups,
   });
+  const repsQuery = useQuery({
+    queryKey: lookupQueryKeys.governmentRepresentatives(),
+    queryFn: fetchGovernmentRepresentatives as () => Promise<
+      GovernmentRepresentative[]
+    >,
+  });
 
-  const ministryFields = useMemo((): FormField[] => {
-    const opts = [
+  const sharingGroupSelectOptions = useMemo(() => {
+    return [
       { value: '__none__', label: 'None' },
       ...(groupsQuery.data ?? []).map((g) => ({
         value: String(g.id),
         label: g.name,
       })),
     ];
+  }, [groupsQuery.data]);
+
+  const ministryFields = useMemo((): FormField[] => {
     return [
-      ...ministryFieldsBase,
+      ...ministryCoreFields,
       {
         name: 'ministryGroupId',
         label: 'Sharing group',
         type: 'select',
-        options: opts,
+        options: sharingGroupSelectOptions,
       },
     ];
-  }, [groupsQuery.data]);
+  }, [sharingGroupSelectOptions]);
+
+  const ministerRepOptions: FreeformComboboxOption[] = useMemo(() => {
+    const reps = filterMinisterPickerReps(
+      (repsQuery.data ?? []) as GovernmentRepMinisterListItem[]
+    );
+    return reps.map((r) => ({
+      value: String(r.id),
+      label: r.displayName || r.name,
+    }));
+  }, [repsQuery.data]);
+
+  const submitOverride = useCallback(
+    async ({
+      formData,
+      editingItem,
+    }: {
+      formData: Record<string, unknown>;
+      editingItem: MinistryAdminItem | null;
+    }) => {
+      await persistMinistryWithMinister({
+        formData,
+        editingItem,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.ministries(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.governmentRepresentatives(),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.activityTeamSharing(),
+      });
+    },
+    [queryClient]
+  );
 
   const ministryExtraColumns = useMemo(
     (): ColumnDef<MinistryAdminItem>[] => [
@@ -562,11 +707,11 @@ export function MinistriesAdmin() {
         ),
       },
       {
-        accessorKey: 'ministerName',
+        accessorKey: 'ministerDisplayName',
         header: 'Minister',
         cell: ({ row }) => (
           <span className="text-slate-600">
-            {row.original.ministerName || '—'}
+            {row.original.ministerDisplayName || '—'}
           </span>
         ),
       },
@@ -589,7 +734,7 @@ export function MinistriesAdmin() {
   return (
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
-      description="Manage BC government ministries"
+      description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       queryKey={lookupQueryKeys.ministries()}
@@ -598,6 +743,14 @@ export function MinistriesAdmin() {
       additionalColumns={ministryExtraColumns}
       additionalInvalidateKeys={[lookupQueryKeys.activityTeamSharing()]}
       getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+      renderModalContent={(props) => (
+        <MinistryAdminModalForm
+          {...props}
+          sharingGroupSelectOptions={sharingGroupSelectOptions}
+          ministerRepOptions={ministerRepOptions}
+        />
+      )}
+      submitOverride={submitOverride}
     />
   );
 }

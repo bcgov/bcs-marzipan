@@ -793,11 +793,16 @@ export class LookupsService {
         name: governmentRepresentatives.name,
         displayName: governmentRepresentatives.displayName,
         title: governmentRepresentatives.title,
-        ministryId: governmentRepresentatives.ministryId,
+        ministryId: ministries.id,
+        representativeType: governmentRepresentatives.representativeType,
         sortOrder: governmentRepresentatives.sortOrder,
         isActive: governmentRepresentatives.isActive,
       })
       .from(governmentRepresentatives)
+      .leftJoin(
+        ministries,
+        eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
+      )
       .orderBy(governmentRepresentatives.sortOrder);
 
     return results.map((rep) => ({
@@ -808,6 +813,9 @@ export class LookupsService {
       displayName: rep.displayName,
       title: rep.title,
       ministryId: rep.ministryId,
+      representativeType: rep.representativeType as NonNullable<
+        GovernmentRepresentativeLookupItem['representativeType']
+      > | null,
       sortOrder: rep.sortOrder,
       isActive: rep.isActive,
     }));
@@ -983,12 +991,17 @@ export class LookupsService {
         name: ministries.name,
         displayName: ministries.displayName,
         abbreviation: ministries.abbreviation,
-        ministerName: ministries.ministerName,
+        ministerGovernmentRepId: ministries.ministerGovernmentRepId,
+        ministerRepDisplayName: governmentRepresentatives.displayName,
         sortOrder: ministries.sortOrder,
         isActive: ministries.isActive,
         ministryGroupId: ministries.ministryGroupId,
       })
       .from(ministries)
+      .leftJoin(
+        governmentRepresentatives,
+        eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
+      )
       .orderBy(ministries.sortOrder);
 
     return results.map((ministry) => ({
@@ -998,7 +1011,8 @@ export class LookupsService {
       name: ministry.name,
       displayName: ministry.displayName,
       abbreviation: ministry.abbreviation,
-      ministerName: ministry.ministerName,
+      ministerGovernmentRepId: ministry.ministerGovernmentRepId,
+      ministerDisplayName: ministry.ministerRepDisplayName ?? null,
       sortOrder: ministry.sortOrder,
       isActive: ministry.isActive,
       ministryGroupId: ministry.ministryGroupId,
@@ -1271,7 +1285,6 @@ export class LookupsService {
       title?: string | null;
       sortOrder: number;
       isActive?: boolean;
-      ministryId?: number | null;
       representativeType?: string | null;
     },
     currentUserId: number
@@ -1285,7 +1298,6 @@ export class LookupsService {
         title: data.title ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
-        ministryId: data.ministryId ?? undefined,
         representativeType: data.representativeType ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
@@ -1352,7 +1364,7 @@ export class LookupsService {
       name: string;
       displayName: string;
       abbreviation: string; // Required by schema
-      ministerName?: string | null;
+      ministerGovernmentRepId?: number | null;
       sortOrder: number;
       isActive?: boolean;
       ministryGroupId?: number | null;
@@ -1360,13 +1372,32 @@ export class LookupsService {
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
     const now = new Date();
+    if (
+      data.ministerGovernmentRepId != null &&
+      data.ministerGovernmentRepId !== undefined
+    ) {
+      await this.databaseService.db
+        .update(ministries)
+        .set({
+          ministerGovernmentRepId: null,
+          lastUpdatedBy: currentUserId,
+          lastUpdatedDateTime: now,
+        })
+        .where(
+          eq(ministries.ministerGovernmentRepId, data.ministerGovernmentRepId)
+        );
+    }
     const [result] = await this.databaseService.db
       .insert(ministries)
       .values({
         name: data.name,
         displayName: data.displayName,
         abbreviation: data.abbreviation,
-        ministerName: data.ministerName ?? undefined,
+        ministerGovernmentRepId:
+          data.ministerGovernmentRepId === null ||
+          data.ministerGovernmentRepId === undefined
+            ? undefined
+            : data.ministerGovernmentRepId,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
         ministryGroupId: data.ministryGroupId ?? undefined,
@@ -1555,7 +1586,6 @@ export class LookupsService {
       title: string | null;
       sortOrder: number;
       isActive: boolean;
-      ministryId: number | null;
       representativeType: string | null;
     }>,
     currentUserId: number
@@ -1572,8 +1602,6 @@ export class LookupsService {
     if (data.title !== undefined) updateData.title = data.title ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.ministryId !== undefined)
-      updateData.ministryId = data.ministryId ?? undefined;
     if (data.representativeType !== undefined)
       updateData.representativeType = data.representativeType ?? undefined;
 
@@ -1654,7 +1682,7 @@ export class LookupsService {
       name: string;
       displayName: string;
       abbreviation: string;
-      ministerName: string | null;
+      ministerGovernmentRepId: number | null;
       sortOrder: number;
       isActive: boolean;
       ministryGroupId: number | null;
@@ -1672,13 +1700,39 @@ export class LookupsService {
       updateData.displayName = data.displayName;
     if (data.abbreviation !== undefined)
       updateData.abbreviation = data.abbreviation;
-    if (data.ministerName !== undefined)
-      updateData.ministerName = data.ministerName ?? undefined;
+    if (data.ministerGovernmentRepId !== undefined) {
+      updateData.ministerGovernmentRepId =
+        data.ministerGovernmentRepId === null
+          ? null
+          : data.ministerGovernmentRepId;
+    }
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.ministryGroupId !== undefined) {
       updateData.ministryGroupId =
         data.ministryGroupId === null ? null : data.ministryGroupId;
+    }
+
+    if (
+      data.ministerGovernmentRepId !== undefined &&
+      data.ministerGovernmentRepId !== null
+    ) {
+      await this.databaseService.db
+        .update(ministries)
+        .set({
+          ministerGovernmentRepId: null,
+          lastUpdatedBy: currentUserId,
+          lastUpdatedDateTime: new Date(),
+        })
+        .where(
+          and(
+            eq(
+              ministries.ministerGovernmentRepId,
+              data.ministerGovernmentRepId
+            ),
+            ne(ministries.id, id)
+          )
+        );
     }
 
     const [result] = await this.databaseService.db

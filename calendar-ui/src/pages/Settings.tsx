@@ -70,16 +70,16 @@ const sections = [
     label: 'Ministry groups',
     icon: Share2,
   },
-  { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
-  { id: 'cities' as Section, label: 'Cities', icon: MapPin },
-  { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
+  { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
   {
     id: 'representatives' as Section,
     label: 'Government Representatives',
     icon: Users,
   },
+  { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
+  { id: 'cities' as Section, label: 'Cities', icon: MapPin },
+  { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
   { id: 'tags' as Section, label: 'Tags', icon: Tag },
-  { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
   { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
   { id: 'themes' as Section, label: 'Themes', icon: Palette },
   {
@@ -168,6 +168,14 @@ export function Settings() {
             <MinistryGroupsAdmin />
           </div>
 
+          <div id="section-ministries">
+            <MinistriesAdmin />
+          </div>
+
+          <div id="section-representatives">
+            <GovernmentRepresentativesAdmin />
+          </div>
+
           <div id="section-categories">
             <CategoriesAdmin />
           </div>
@@ -180,16 +188,8 @@ export function Settings() {
             <CommsMaterialsAdmin />
           </div>
 
-          <div id="section-representatives">
-            <GovernmentRepresentativesAdmin />
-          </div>
-
           <div id="section-tags">
             <TagsAdmin />
-          </div>
-
-          <div id="section-ministries">
-            <MinistriesAdmin />
           </div>
 
           <div id="section-statuses">
