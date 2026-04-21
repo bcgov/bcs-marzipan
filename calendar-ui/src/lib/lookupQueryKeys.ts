@@ -30,6 +30,8 @@ export const lookupQueryKeys = {
     ['lookups', 'government-representatives'] as const,
   ministries: () => ['lookups', 'ministries'] as const,
   ministryGroups: () => ['lookups', 'ministry-groups'] as const,
+  /** Teams + ministry quick-share payload for activity Shared with (`GET /lookups/activity-team-sharing`). */
+  activityTeamSharing: () => ['lookups', 'activity-team-sharing'] as const,
   themes: () => ['lookups', 'themes'] as const,
   venuePresets: () => ['lookups', 'venue-presets'] as const,
   venueStatuses: () => ['lookups', 'venue-statuses'] as const,

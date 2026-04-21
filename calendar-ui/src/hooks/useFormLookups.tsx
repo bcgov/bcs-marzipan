@@ -11,6 +11,7 @@ import type { OptionItem } from '@/schemas/types';
 
 import {
   useActivityStatuses,
+  useActivityTeamSharing,
   useCategories,
   useCommsMaterials,
   useDateStatuses,
@@ -24,7 +25,6 @@ import {
   usePitchStatuses,
   usePremierRequested,
   useTags,
-  useTeams,
   useTimeStatuses,
   useTranslationLanguages,
   useTranslationRequiredStatuses,
@@ -95,7 +95,20 @@ export interface FormLookupData {
   newsReleaseOrigins: OptionItem[];
 
   // Teams - for Shared With resolution (name to id in mapper) and dropdown options
-  sharedWithTeams: Array<{ id: number; name: string; displayName?: string }>;
+  sharedWithTeams: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+    ministryId: number | null;
+  }>;
+
+  /** Ministry quick-share groups (activity form); empty if not configured. */
+  quickShareGroups: Array<{
+    id: number;
+    name: string;
+    sortOrder: number;
+    ministryIds: number[];
+  }>;
 
   // Date Statuses - for Schedule section and confirm modals
   dateStatuses: DateStatusLookupItem[];
@@ -134,7 +147,7 @@ export function useFormLookups(): FormLookupData {
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
   const premierRequestedQuery = usePremierRequested();
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
-  const teamsQuery = useTeams();
+  const activityTeamSharingQuery = useActivityTeamSharing();
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
@@ -156,7 +169,7 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.isLoading ||
     premierRequestedQuery.isLoading ||
     newsReleaseOriginsQuery.isLoading ||
-    teamsQuery.isLoading ||
+    activityTeamSharingQuery.isLoading ||
     dateStatusesQuery.isLoading ||
     timeStatusesQuery.isLoading ||
     venueStatusesQuery.isLoading ||
@@ -178,7 +191,7 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.isError ||
     premierRequestedQuery.isError ||
     newsReleaseOriginsQuery.isError ||
-    teamsQuery.isError ||
+    activityTeamSharingQuery.isError ||
     dateStatusesQuery.isError ||
     timeStatusesQuery.isError ||
     venueStatusesQuery.isError ||
@@ -299,11 +312,21 @@ export function useFormLookups(): FormLookupData {
       })) || [];
 
     // Teams for Shared With dropdown and response->form mapping (name to id)
+    const sharingPayload = activityTeamSharingQuery.data;
     const sharedWithTeams =
-      teamsQuery.data?.map((t) => ({
+      sharingPayload?.teams.map((t) => ({
         id: t.id,
         name: t.name,
         displayName: t.displayName ?? undefined,
+        ministryId: t.ministryId,
+      })) ?? [];
+
+    const quickShareGroups =
+      sharingPayload?.quickShare?.groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        sortOrder: g.sortOrder,
+        ministryIds: g.ministryIds,
       })) ?? [];
 
     return {
@@ -353,6 +376,7 @@ export function useFormLookups(): FormLookupData {
       premierRequested,
       newsReleaseOrigins,
       sharedWithTeams,
+      quickShareGroups,
       dateStatuses: dateStatusesQuery.data ?? [],
       timeStatuses: timeStatusesQuery.data ?? [],
       venueStatuses: venueStatusesQuery.data ?? [],
@@ -378,7 +402,7 @@ export function useFormLookups(): FormLookupData {
     pitchStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
-    teamsQuery.data,
+    activityTeamSharingQuery.data,
     timeStatusesQuery.data,
     venueStatusesQuery.data,
     translationLanguagesQuery.data,

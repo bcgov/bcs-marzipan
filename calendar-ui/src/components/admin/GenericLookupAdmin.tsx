@@ -63,6 +63,8 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When true, "delete" sets isActive=false via PATCH instead of issuing a DELETE request.
    * Use for entities that may be referenced by other records (e.g. tags on activities). */
   softDelete?: boolean;
+  /** When false, hides active/inactive filter (entities without isActive). Default true. */
+  showStatusFilter?: boolean;
 }
 
 /**
@@ -89,6 +91,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   renderModalContent,
   additionalInvalidateKeys,
   softDelete,
+  showStatusFilter = true,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -163,10 +166,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
 
   const filteredData = useMemo(() => {
     if (!data) return [];
+    if (!showStatusFilter) return data;
     if (filter === 'active') return data.filter((item) => item.isActive);
     if (filter === 'inactive') return data.filter((item) => !item.isActive);
     return data;
-  }, [data, filter]);
+  }, [data, filter, showStatusFilter]);
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -254,6 +258,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       if (field.type === 'number' && processedData[field.name]) {
         processedData[field.name] = Number(processedData[field.name]);
       }
+      if (field.type === 'select' && field.name === 'ministryGroupId') {
+        const v = processedData[field.name];
+        processedData[field.name] =
+          v === '__none__' || v === '' || v == null ? null : Number(v);
+      }
     });
 
     if (transformSubmitData) {
@@ -281,16 +290,21 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}
       headerAction={
-        <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        showStatusFilter ? (
+          <Select
+            value={filter}
+            onValueChange={(value: any) => setFilter(value)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : undefined
       }
     >
       {error && (
