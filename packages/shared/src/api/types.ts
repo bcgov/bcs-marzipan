@@ -51,6 +51,16 @@ export type {
   UpdateTeamBody,
 } from '../schemas/team.schema';
 
+// Ministry groups (activity "Shared with" shortcuts + group CRUD)
+export type {
+  ActivityTeamSharingResponse,
+  ActivityTeamSharingQuickShare,
+  MinistryQuickShareGroupResponse,
+  MinistryGroupResponse,
+  CreateMinistryGroupRequest,
+  UpdateMinistryGroupRequest,
+} from '../schemas/ministry-groups.schema';
+
 // Lookup types - re-exported from lookup schema
 export type {
   LookupItem,
