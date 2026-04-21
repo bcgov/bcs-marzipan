@@ -6,6 +6,7 @@ import type {
   DateStatusLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
+  MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
   PitchRequiredStatusLookupItem,
@@ -26,6 +27,7 @@ import type {
   CreateCityRequest,
   CreateCommsMaterialRequest,
   CreateGovernmentRepresentativeRequest,
+  CreateMinistryGroupRequest,
   CreateMinistryRequest,
   CreateTagRequest,
   CreateThemeRequest,
@@ -35,6 +37,7 @@ import type {
   UpdateCityRequest,
   UpdateCommsMaterialRequest,
   UpdateGovernmentRepresentativeRequest,
+  UpdateMinistryGroupRequest,
   UpdateMinistryRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
@@ -243,6 +246,24 @@ export async function fetchMinistries(): Promise<MinistryLookupItem[]> {
   return res.data.data;
 }
 
+/** Ministry shortcut groups (admin); includes displayName for GenericLookupAdmin table. */
+export type MinistryGroupListItem = MinistryGroupResponse & {
+  displayName: string;
+  isActive: boolean;
+};
+
+export async function fetchMinistryGroups(): Promise<MinistryGroupListItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: MinistryGroupResponse[];
+  }>('/lookups/ministry-groups');
+  return res.data.data.map((g) => ({
+    ...g,
+    displayName: g.name,
+    isActive: true,
+  }));
+}
+
 export async function fetchThemes(): Promise<ThemeLookupItem[]> {
   const res = await api.get<{ success: boolean; data: ThemeLookupItem[] }>(
     '/lookups/themes'
@@ -377,6 +398,36 @@ export async function updateMinistry(
   const res = await api.patch<{ success: boolean; data: any }>(
     `/lookups/ministries/${id}`,
     data
+  );
+  return res.data;
+}
+
+export async function createMinistryGroup(
+  data: CreateMinistryGroupRequest
+): Promise<{ success: boolean; data: MinistryGroupResponse }> {
+  const res = await api.post<{
+    success: boolean;
+    data: MinistryGroupResponse;
+  }>('/lookups/ministry-groups', data);
+  return res.data;
+}
+
+export async function updateMinistryGroup(
+  id: number,
+  data: UpdateMinistryGroupRequest
+): Promise<{ success: boolean; data: MinistryGroupResponse }> {
+  const res = await api.patch<{
+    success: boolean;
+    data: MinistryGroupResponse;
+  }>(`/lookups/ministry-groups/${id}`, data);
+  return res.data;
+}
+
+export async function deleteMinistryGroup(
+  id: number
+): Promise<{ success: boolean }> {
+  const res = await api.delete<{ success: boolean }>(
+    `/lookups/ministry-groups/${id}`
   );
   return res.data;
 }

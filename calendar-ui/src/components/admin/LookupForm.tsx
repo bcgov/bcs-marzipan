@@ -3,13 +3,22 @@ import { useEffect, useState } from 'react';
 import { Checkbox } from '../ui/checkbox';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'checkbox';
+  type: 'text' | 'number' | 'checkbox' | 'select';
   required?: boolean;
   placeholder?: string;
+  /** Options for type "select"; use empty string value for "none" / null. */
+  options?: { value: string; label: string }[];
 }
 
 interface LookupFormProps {
@@ -66,6 +75,31 @@ export function LookupForm({ fields, initialData, onChange }: LookupFormProps) {
                 {field.placeholder || 'Enabled'}
               </label>
             </div>
+          ) : field.type === 'select' ? (
+            <Select
+              value={(() => {
+                const raw = formData[field.name];
+                if (raw == null || raw === '' || raw === '__none__') {
+                  return '__none__';
+                }
+                return String(raw);
+              })()}
+              onValueChange={(v) => handleChange(field.name, v)}
+            >
+              <SelectTrigger id={field.name} className="w-full">
+                <SelectValue placeholder={field.placeholder ?? 'Select…'} />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.options ?? []).map((opt) => (
+                  <SelectItem
+                    key={`${opt.value}-${opt.label}`}
+                    value={opt.value}
+                  >
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <Input
               id={field.name}

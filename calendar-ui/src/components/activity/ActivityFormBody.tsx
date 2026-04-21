@@ -179,10 +179,8 @@ export function ActivityFormBody({
             />
 
             <ActivitySharingSection
-              sharedWithTeamOptions={lookups.sharedWithTeams.map((t) => ({
-                value: String(t.id),
-                label: t.displayName ?? t.name,
-              }))}
+              sharedWithTeams={lookups.sharedWithTeams}
+              quickShareGroups={lookups.quickShareGroups}
             />
           </div>
         </div>

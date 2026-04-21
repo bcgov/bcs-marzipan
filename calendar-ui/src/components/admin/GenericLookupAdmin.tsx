@@ -50,6 +50,10 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   getItemName?: (item: T) => string;
   /** When provided, renders custom modal body instead of LookupForm (e.g. for address search). */
   renderModalContent?: (props: RenderModalContentProps) => ReactNode;
+  /** When false, hides active/inactive filter (entities without isActive). Default true. */
+  showStatusFilter?: boolean;
+  /** When true, invalidates the list query after create/update instead of merging cache. */
+  refetchOnMutationSuccess?: boolean;
 }
 
 /**
@@ -72,6 +76,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     return typeof v === 'string' ? v : String(item.id);
   },
   renderModalContent,
+  showStatusFilter = true,
+  refetchOnMutationSuccess = false,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -89,11 +95,22 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       const response = await api.post(apiEndpoint, data);
       return response.data;
     },
-    onSuccess: (newData) => {
-      queryClient.setQueryData([queryKey], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
-      });
+    onSuccess: (newData: { success?: boolean; data?: T } | T) => {
+      const item =
+        newData != null &&
+        typeof newData === 'object' &&
+        'data' in newData &&
+        (newData as { data?: T }).data != null
+          ? (newData as { data: T }).data
+          : (newData as T);
+      if (refetchOnMutationSuccess) {
+        void queryClient.invalidateQueries({ queryKey: [queryKey] });
+      } else {
+        queryClient.setQueryData([queryKey], (old: any) => {
+          if (!old) return [item];
+          return [...old, item];
+        });
+      }
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -106,13 +123,18 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       const response = await api.patch(`${apiEndpoint}/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
-      queryClient.setQueryData([queryKey], (old: any) => {
-        if (!old) return [updatedData];
-        return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
-        );
-      });
+    onSuccess: (updatedData: { success?: boolean; data?: T }) => {
+      const next = updatedData?.data;
+      if (refetchOnMutationSuccess) {
+        void queryClient.invalidateQueries({ queryKey: [queryKey] });
+      } else if (next) {
+        queryClient.setQueryData([queryKey], (old: any) => {
+          if (!old) return [next];
+          return old.map((item: any) =>
+            item.id === (next as { id: number }).id ? next : item
+          );
+        });
+      }
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -134,10 +156,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
 
   const filteredData = useMemo(() => {
     if (!data) return [];
+    if (!showStatusFilter) return data;
     if (filter === 'active') return data.filter((item) => item.isActive);
     if (filter === 'inactive') return data.filter((item) => !item.isActive);
     return data;
-  }, [data, filter]);
+  }, [data, filter, showStatusFilter]);
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -225,6 +248,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       if (field.type === 'number' && processedData[field.name]) {
         processedData[field.name] = Number(processedData[field.name]);
       }
+      if (field.type === 'select' && field.name === 'ministryGroupId') {
+        const v = processedData[field.name];
+        processedData[field.name] =
+          v === '__none__' || v === '' || v == null ? null : Number(v);
+      }
     });
 
     if (editingItem) {
@@ -248,16 +276,21 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}
       headerAction={
-        <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        showStatusFilter ? (
+          <Select
+            value={filter}
+            onValueChange={(value: any) => setFilter(value)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : undefined
       }
     >
       {error && (

@@ -8,6 +8,7 @@ import {
   MapPin,
   Megaphone,
   Palette,
+  Share2,
   Tag,
   Timer,
   Users,
@@ -23,6 +24,7 @@ import {
   CommsMaterialsAdmin,
   GovernmentRepresentativesAdmin,
   MinistriesAdmin,
+  MinistryGroupsAdmin,
   TagsAdmin,
   ThemesAdmin,
   VenuePresetsAdmin,
@@ -32,6 +34,7 @@ type Section =
   | 'banner'
   | 'edit-lock-idle'
   | 'activity-completion'
+  | 'ministry-groups'
   | 'categories'
   | 'cities'
   | 'comms'
@@ -53,6 +56,11 @@ const sections = [
     id: 'activity-completion' as Section,
     label: 'Activity completion',
     icon: Timer,
+  },
+  {
+    id: 'ministry-groups' as Section,
+    label: 'Ministry groups',
+    icon: Share2,
   },
   { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
   { id: 'cities' as Section, label: 'Cities', icon: MapPin },
@@ -142,6 +150,10 @@ export function Settings() {
 
           <div id="section-activity-completion">
             <ActivityCompletionSettingsAdmin />
+          </div>
+
+          <div id="section-ministry-groups">
+            <MinistryGroupsAdmin />
           </div>
 
           <div id="section-categories">

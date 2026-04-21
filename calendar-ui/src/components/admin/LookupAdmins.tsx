@@ -5,7 +5,9 @@
  * using the GenericLookupAdmin template.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useMemo } from 'react';
 
 import {
   fetchActivityStatuses,
@@ -14,10 +16,12 @@ import {
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
+  fetchMinistryGroups,
   fetchTags,
   fetchThemes,
   fetchVenuePresets,
   type LookupItem,
+  type MinistryGroupListItem,
   type MinistryLookupItem,
   type ThemeLookupItem,
 } from '@/api/lookupsApi';
@@ -58,6 +62,7 @@ type Tag = LookupItem & {
 /** Ministry list item; API may include ministerName on list responses */
 type MinistryAdminItem = MinistryLookupItem & {
   ministerName?: string | null;
+  ministryGroupId?: number | null;
 };
 
 type ActivityStatus = LookupItem & {
@@ -212,7 +217,7 @@ const tagFields: FormField[] = [
   },
 ];
 
-const ministryFields: FormField[] = [
+const ministryFieldsBase: FormField[] = [
   {
     name: 'name',
     label: 'Name',
@@ -247,6 +252,17 @@ const ministryFields: FormField[] = [
     type: 'checkbox',
     placeholder: 'Item is active',
   },
+];
+
+const ministryGroupFields: FormField[] = [
+  {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'e.g., Social, Resource',
+  },
+  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
 ];
 
 const statusFields: FormField[] = [
@@ -429,7 +445,84 @@ export function TagsAdmin() {
   );
 }
 
+export function MinistryGroupsAdmin() {
+  return (
+    <GenericLookupAdmin<MinistryGroupListItem>
+      title="Ministry groups"
+      description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
+      entityType="Ministry group"
+      apiEndpoint="/lookups/ministry-groups"
+      queryKey="ministry-groups"
+      queryFn={fetchMinistryGroups}
+      formFields={ministryGroupFields}
+      showStatusFilter={false}
+      refetchOnMutationSuccess
+      getItemName={(item) => item.name ?? String(item.id)}
+    />
+  );
+}
+
 export function MinistriesAdmin() {
+  const groupsQuery = useQuery({
+    queryKey: ['ministry-groups'],
+    queryFn: fetchMinistryGroups,
+  });
+
+  const ministryFields = useMemo((): FormField[] => {
+    const opts = [
+      { value: '__none__', label: 'None' },
+      ...(groupsQuery.data ?? []).map((g) => ({
+        value: String(g.id),
+        label: g.name,
+      })),
+    ];
+    return [
+      ...ministryFieldsBase,
+      {
+        name: 'ministryGroupId',
+        label: 'Sharing group',
+        type: 'select',
+        options: opts,
+      },
+    ];
+  }, [groupsQuery.data]);
+
+  const ministryExtraColumns = useMemo(
+    (): ColumnDef<MinistryAdminItem>[] => [
+      {
+        accessorKey: 'abbreviation',
+        header: 'Abbreviation',
+        cell: ({ row }) => (
+          <span className="font-mono text-sm text-slate-600">
+            {row.original.abbreviation || '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'ministerName',
+        header: 'Minister',
+        cell: ({ row }) => (
+          <span className="text-slate-600">
+            {row.original.ministerName || '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'ministryGroupId',
+        header: 'Group',
+        cell: ({ row }) => {
+          const gid = row.original.ministryGroupId;
+          const name =
+            gid == null
+              ? null
+              : (groupsQuery.data ?? []).find((g) => g.id === gid)?.name;
+          return <span className="text-slate-600">{name ?? '—'}</span>;
+        },
+      },
+    ],
+    [groupsQuery.data]
+  );
+
   return (
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
@@ -439,26 +532,7 @@ export function MinistriesAdmin() {
       queryKey="ministries"
       queryFn={fetchMinistries as () => Promise<MinistryAdminItem[]>}
       formFields={ministryFields}
-      additionalColumns={[
-        {
-          accessorKey: 'abbreviation',
-          header: 'Abbreviation',
-          cell: ({ row }) => (
-            <span className="font-mono text-sm text-slate-600">
-              {row.original.abbreviation || '—'}
-            </span>
-          ),
-        },
-        {
-          accessorKey: 'ministerName',
-          header: 'Minister',
-          cell: ({ row }) => (
-            <span className="text-slate-600">
-              {row.original.ministerName || '—'}
-            </span>
-          ),
-        },
-      ]}
+      additionalColumns={ministryExtraColumns}
       getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
     />
   );
