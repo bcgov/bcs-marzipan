@@ -21,7 +21,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -41,10 +41,15 @@ export class JwtAuthGuard implements CanActivate {
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);
       request.user = this.authService.validatePayload(payload);
-      return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    await this.authService.validateAndTouchSession(
+      this.authService.hashToken(token)
+    );
+
+    return true;
   }
 
   /**

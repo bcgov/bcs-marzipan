@@ -245,14 +245,16 @@ export class AuthController {
     description: 'Log out and clear auth cookie',
   })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  logout(
-    @CurrentUser() user: AuthUser,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     // Clear the httpOnly auth cookie
     res.clearCookie(ACCESS_TOKEN_COOKIE, this.getAuthCookieOptions(req));
-    return this.authService.logout(user.id);
+
+    const raw = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : (req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined);
+
+    const tokenHash = raw ? this.authService.hashToken(raw) : '';
+    return this.authService.logout(tokenHash);
   }
 
   // TODO: Implement refresh token.
