@@ -62,6 +62,7 @@ import type {
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
   diffReviewFields,
@@ -295,6 +296,36 @@ export class ActivitiesService {
       ? (snapshot as ReturnType<typeof buildReviewSnapshot>)
       : getEmptyReviewBaseline();
     return diffReviewFields(currentFormData, baseline);
+  }
+
+  /**
+   * Decide whether an update to a currently-Reviewed activity should keep the
+   * status as Reviewed rather than transitioning it to Changed.
+   *
+   * Builds the "before" form representation from the current persisted row,
+   * merges the partial DTO on top to get the "after" shape, and runs the
+   * review-diff comparison. Fields in
+   * {@link ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS} (e.g. sharing/visibility)
+   * are ignored by {@link diffReviewFields}, so updates that touch only
+   * exempt fields preserve Reviewed.
+   */
+  private async shouldPreserveReviewedStatus(
+    activityId: number,
+    oldActivity: Activity,
+    dto: UpdateActivityRequest
+  ): Promise<boolean> {
+    const lookups = await this.getReviewDiffLookups();
+    const related = await this.fetchRelatedForActivityIds(
+      [activityId],
+      [oldActivity]
+    );
+    const beforeResponse = this.mapFetchedActivityToResponseDto(
+      oldActivity,
+      related
+    );
+    const beforeForm = mapResponseToFormData(beforeResponse, lookups);
+    const afterForm = applyUpdateActivityRequestToFormData(beforeForm, dto);
+    return diffReviewFields(afterForm, beforeForm).length === 0;
   }
 
   /**
@@ -1856,6 +1887,13 @@ export class ActivitiesService {
       newStatusName = 'new';
     } else if (currentStatusName === 'completed' && canComplete) {
       newStatusName = 'completed';
+    } else if (
+      currentStatusName === 'reviewed' &&
+      (await this.shouldPreserveReviewedStatus(id, oldActivity, dto))
+    ) {
+      // Updates that touch only review-exempt fields (e.g. sharing/visibility)
+      // must not regress a Reviewed activity back to Changed.
+      newStatusName = 'reviewed';
     } else {
       newStatusName = 'changed';
     }
