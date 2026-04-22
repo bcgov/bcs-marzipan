@@ -71,6 +71,18 @@
       "import": "./dist/esm/reports/reportExportFormat.js",
       "require": "./dist/cjs/reports/reportExportFormat.js",
       "default": "./dist/esm/reports/reportExportFormat.js"
+    },
+    "./reports/reportPrintHtml": {
+      "types": "./dist/esm/reports/reportPrintHtml.d.ts",
+      "import": "./dist/esm/reports/reportPrintHtml.js",
+      "require": "./dist/cjs/reports/reportPrintHtml.js",
+      "default": "./dist/esm/reports/reportPrintHtml.js"
+    },
+    "./reports/customReportFieldConfig": {
+      "types": "./dist/esm/reports/customReportFieldConfig.d.ts",
+      "import": "./dist/esm/reports/customReportFieldConfig.js",
+      "require": "./dist/cjs/reports/customReportFieldConfig.js",
+      "default": "./dist/esm/reports/customReportFieldConfig.js"
     }
   },
   "scripts": {
@@ -87,11 +99,18 @@
   },
   "dependencies": {
     "@corpcal/database": "*",
+    "@tiptap/core": "^3.22.3",
+    "@tiptap/extension-link": "^3.22.3",
+    "@tiptap/html": "^3.22.3",
+    "@tiptap/markdown": "^3.22.3",
+    "@tiptap/starter-kit": "^3.22.3",
     "drizzle-orm": "^0.44.7",
+    "sanitize-html": "^2.17.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@types/sanitize-html": "^2.16.1",
     "typescript": "^5.3.3"
   }
 }

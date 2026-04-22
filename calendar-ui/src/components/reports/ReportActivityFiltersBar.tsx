@@ -3,7 +3,6 @@ import { useCallback, useMemo } from 'react';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { ActivityTableFilters } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import type { SortColumnConfig } from '@/components/table/SortDropdown';
-import type { ActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
@@ -17,6 +16,7 @@ import {
   useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
+import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 
 /** Kept in sync with ActivityTable sort columns (no shared export to avoid touching ActivityTable). */
 const DEFAULT_SORT_KEY = 'startDate';

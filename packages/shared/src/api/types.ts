@@ -87,3 +87,5 @@ export type {
   TranslationRequiredStatusLookupItem,
   VenuePresetItem,
 } from '../schemas/lookup.schema';
+
+export type { ReportDataResponse, ReportSectionData } from './report-data';

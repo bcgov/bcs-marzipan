@@ -37,11 +37,6 @@ const ActivityLayout = lazyWithRetry(() =>
 const Login = lazyWithRetry(() =>
   import('./pages/Login').then((m) => ({ default: m.Login }))
 );
-const LookAheadReport = lazyWithRetry(() =>
-  import('./pages/LookAheadReport').then((m) => ({
-    default: m.LookAheadReport,
-  }))
-);
 const ReportsPage = lazyWithRetry(() =>
   import('./pages/ReportsPage').then((m) => ({
     default: m.ReportsPage,
@@ -124,14 +119,6 @@ function App() {
                 element={
                   <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
                     <Users />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="reports/look-ahead"
-                element={
-                  <ProtectedRoute requiredPermission={PERMISSIONS.REPORTS.VIEW}>
-                    <LookAheadReport />
                   </ProtectedRoute>
                 }
               />

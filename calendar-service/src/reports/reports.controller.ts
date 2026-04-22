@@ -124,7 +124,10 @@ export class ReportsController {
     @RequestContext() ctx: RequestContextType
   ): Promise<void> {
     const data = await this.reportsService.getReportData(type, query, ctx);
-    const buffer = await this.reportsService.generateReportPdfBuffer(data);
+    const buffer = await this.reportsService.generateReportPdfBuffer(
+      type,
+      data
+    );
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
