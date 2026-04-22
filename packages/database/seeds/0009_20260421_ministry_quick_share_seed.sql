@@ -10,11 +10,6 @@ VALUES
   (3, 'Economical', 2, 999, 999)
 ON CONFLICT (id) DO NOTHING;
 
-SELECT setval(
-  'ministry_groups_id_seq',
-  COALESCE((SELECT MAX(id) FROM ministry_groups), 1)
-);
-
 UPDATE ministries SET ministry_group_id = 1 WHERE id IN (
   5, 3, 4, 6, 12, 14, 20, 21, 22, 23
 );

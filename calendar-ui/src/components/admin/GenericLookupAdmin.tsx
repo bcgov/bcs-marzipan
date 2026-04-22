@@ -107,6 +107,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const [submitOverridePending, setSubmitOverridePending] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
+  /** Bumps on each "Add" open so `resetKey` changes every create session. */
+  const [createFormSession, setCreateFormSession] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   // Memoized only on editingItem to avoid re-creating the object every render,
@@ -263,10 +265,27 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const handleSubmit = async () => {
     let processedData = { ...formData };
 
-    // Convert numeric fields
+    if (typeof processedData.name === 'string') {
+      processedData.name = processedData.name.trim();
+    }
+    if (typeof processedData.displayName === 'string') {
+      processedData.displayName = processedData.displayName.trim();
+    }
+
+    // Default display name from name when left empty (API schemas require both)
+    const nameStr =
+      typeof processedData.name === 'string' ? processedData.name : '';
+    const isDisplayEmpty =
+      processedData.displayName == null || processedData.displayName === '';
+    if (isDisplayEmpty && nameStr !== '') {
+      processedData.displayName = nameStr;
+    }
+
+    // Convert numeric fields (including 0 and empty -> 0 for sort order, etc.)
     formFields.forEach((field) => {
-      if (field.type === 'number' && processedData[field.name]) {
-        processedData[field.name] = Number(processedData[field.name]);
+      if (field.type === 'number') {
+        const raw = processedData[field.name];
+        processedData[field.name] = raw === '' || raw == null ? 0 : Number(raw);
       }
       if (field.type === 'select' && field.name === 'ministryGroupId') {
         const v = processedData[field.name];
@@ -302,6 +321,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const handleOpenModal = () => {
     setEditingItem(null);
     setFormData({});
+    setCreateFormSession((n) => n + 1);
     setShowModal(true);
   };
 
@@ -375,6 +395,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ) : (
           <LookupForm
             fields={formFields}
+            resetKey={
+              editingItem != null
+                ? String(editingItem.id)
+                : `create-${createFormSession}`
+            }
             initialData={resolvedInitialData}
             onChange={setFormData}
           />
