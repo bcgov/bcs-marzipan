@@ -20,6 +20,8 @@ import {
   reports,
   roles,
   tags,
+  teams,
+  teamTags,
   themes,
   timeStatuses,
   translatedLanguages,
@@ -205,6 +207,39 @@ export class LookupsService {
         .from(tags)
         .orderBy(tags.sortOrder);
 
+      // For team-scoped tags, fetch team display names in a single query
+      const teamScopedIds = results
+        .filter((t) => t.visibility === 'team')
+        .map((t) => t.id);
+
+      const teamNamesByTagId = new Map<number, string[]>();
+      const teamIdsByTagId = new Map<number, number[]>();
+      if (teamScopedIds.length > 0) {
+        const rows = await this.databaseService.db
+          .select({
+            tagId: teamTags.tagId,
+            teamId: teamTags.teamId,
+            teamName: teams.displayName,
+          })
+          .from(teamTags)
+          .innerJoin(teams, eq(teamTags.teamId, teams.id))
+          .where(
+            and(
+              inArray(teamTags.tagId, teamScopedIds),
+              eq(teamTags.isActive, true)
+            )
+          );
+
+        for (const row of rows) {
+          const name = row.teamName ?? '';
+          if (!teamNamesByTagId.has(row.tagId))
+            teamNamesByTagId.set(row.tagId, []);
+          teamNamesByTagId.get(row.tagId)!.push(name);
+          if (!teamIdsByTagId.has(row.tagId)) teamIdsByTagId.set(row.tagId, []);
+          teamIdsByTagId.get(row.tagId)!.push(row.teamId);
+        }
+      }
+
       return results.map((tag) => ({
         id: tag.id,
         label: tag.displayName,
@@ -214,6 +249,8 @@ export class LookupsService {
         sortOrder: tag.sortOrder,
         isActive: tag.isActive,
         visibility: tag.visibility as 'global' | 'team',
+        teamNames: teamNamesByTagId.get(tag.id) ?? [],
+        teamIds: teamIdsByTagId.get(tag.id) ?? [],
       }));
     }
 
@@ -1154,22 +1191,25 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       visibility?: 'global' | 'team';
       description?: string | null;
+      teamId?: number | null;
     },
     currentUserId: number
   ): Promise<typeof tags.$inferSelect> {
     const now = new Date();
+    // Derive visibility from teamId if not explicit
+    const visibility = data.teamId ? 'team' : data.visibility || 'global';
     const [result] = await this.databaseService.db
       .insert(tags)
       .values({
         name: data.name,
         displayName: data.displayName ?? data.name,
-        sortOrder: data.sortOrder,
+        sortOrder: data.sortOrder ?? 0,
         isActive: data.isActive ?? true,
-        visibility: data.visibility || 'global',
+        visibility,
         description: data.description ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
@@ -1177,6 +1217,15 @@ export class LookupsService {
         lastUpdatedDateTime: now,
       })
       .returning();
+
+    if (data.teamId && visibility === 'team') {
+      await this.databaseService.db.insert(teamTags).values({
+        tagId: result.id,
+        teamId: data.teamId,
+        isActive: true,
+      });
+    }
+
     return result;
   }
 
@@ -1428,9 +1477,14 @@ export class LookupsService {
       isActive: boolean;
       visibility: 'global' | 'team';
       description: string | null;
+      teamId: number | null;
     }>,
     currentUserId: number
   ): Promise<typeof tags.$inferSelect | undefined> {
+    // Derive visibility from teamId if provided
+    const visibility =
+      'teamId' in data ? (data.teamId ? 'team' : 'global') : data.visibility;
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof tags.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -1442,7 +1496,7 @@ export class LookupsService {
       updateData.displayName = data.displayName ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (visibility !== undefined) updateData.visibility = visibility;
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 
@@ -1451,6 +1505,25 @@ export class LookupsService {
       .set(updateData)
       .where(eq(tags.id, id))
       .returning();
+
+    // Manage team_tags: deactivate all existing entries, then upsert if a team is selected
+    if ('teamId' in data) {
+      await this.databaseService.db
+        .update(teamTags)
+        .set({ isActive: false })
+        .where(eq(teamTags.tagId, id));
+
+      if (data.teamId) {
+        await this.databaseService.db
+          .insert(teamTags)
+          .values({ tagId: id, teamId: data.teamId, isActive: true })
+          .onConflictDoUpdate({
+            target: [teamTags.tagId, teamTags.teamId],
+            set: { isActive: true },
+          });
+      }
+    }
+
     return result;
   }
 

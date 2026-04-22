@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -17,6 +18,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 
 import {
   DYNAMIC_LOOKUP_CACHE_SECONDS,
@@ -291,13 +293,21 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('tags')
-  @Header('Cache-Control', `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`)
   async getTags(
     @CurrentUser() user: AuthUser,
-    @Query('includeAll') includeAll?: string
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
   ): Promise<{ success: boolean; data: LookupItem[] }> {
     const shouldIncludeAll =
       includeAll === 'true' && user.permissions.includes('lookups.manage');
+    // Admin path: no-store so the browser always hits the server after mutations.
+    // Non-admin path: short private cache to reduce server load.
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll
+        ? 'no-store'
+        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+    );
     const data = await this.lookupsService.getTags(
       shouldIncludeAll ? undefined : user.teamIds,
       shouldIncludeAll

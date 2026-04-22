@@ -48,8 +48,14 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   formFields: FormField[];
   additionalColumns?: ColumnDef<T>[];
   getItemName?: (item: T) => string;
+  /** Transform an item into its initial form data (e.g. to derive computed fields). */
+  getInitialData?: (item: T) => Record<string, unknown>;
+  /** Transform form data before submitting (e.g. convert sentinel values to null). */
+  transformSubmitData?: (data: Record<string, any>) => Record<string, any>;
   /** When provided, renders custom modal body instead of LookupForm (e.g. for address search). */
   renderModalContent?: (props: RenderModalContentProps) => ReactNode;
+  /** Additional query keys to invalidate on create/update (e.g. to bust related caches). */
+  additionalInvalidateKeys?: string[][];
 }
 
 /**
@@ -71,13 +77,25 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     const v = item.name ?? item.displayName ?? item.label ?? item.id;
     return typeof v === 'string' ? v : String(item.id);
   },
+  getInitialData,
+  transformSubmitData,
   renderModalContent,
+  additionalInvalidateKeys,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  // Memoized only on editingItem to avoid re-creating the object every render,
+  // which would cause an infinite loop via LookupForm's initialData useEffect.
+
+  const resolvedInitialData = useMemo(() => {
+    if (!editingItem) return EMPTY_INITIAL;
+    return getInitialData ? getInitialData(editingItem) : editingItem;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingItem]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: [queryKey],
@@ -89,11 +107,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       const response = await api.post(apiEndpoint, data);
       return response.data;
     },
-    onSuccess: (newData) => {
-      queryClient.setQueryData([queryKey], (old: any) => {
-        if (!old) return [newData];
-        return [...old, newData];
-      });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [queryKey] });
+      for (const key of additionalInvalidateKeys ?? []) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -106,13 +124,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       const response = await api.patch(`${apiEndpoint}/${id}`, updateData);
       return response.data;
     },
-    onSuccess: (updatedData) => {
-      queryClient.setQueryData([queryKey], (old: any) => {
-        if (!old) return [updatedData];
-        return old.map((item: any) =>
-          item.id === updatedData.data.id ? updatedData.data : item
-        );
-      });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [queryKey] });
+      for (const key of additionalInvalidateKeys ?? []) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -218,7 +234,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   );
 
   const handleSubmit = () => {
-    const processedData = { ...formData };
+    let processedData = { ...formData };
 
     // Convert numeric fields
     formFields.forEach((field) => {
@@ -226,6 +242,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         processedData[field.name] = Number(processedData[field.name]);
       }
     });
+
+    if (transformSubmitData) {
+      processedData = transformSubmitData(processedData);
+    }
 
     if (editingItem) {
       updateMutation.mutate({ ...editingItem, ...processedData } as T);
@@ -296,7 +316,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ) : (
           <LookupForm
             fields={formFields}
-            initialData={editingItem ?? EMPTY_INITIAL}
+            initialData={resolvedInitialData}
             onChange={setFormData}
           />
         )}

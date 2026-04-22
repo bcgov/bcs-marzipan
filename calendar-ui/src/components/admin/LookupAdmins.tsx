@@ -5,6 +5,7 @@
  * using the GenericLookupAdmin template.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import {
@@ -21,7 +22,9 @@ import {
   type MinistryLookupItem,
   type ThemeLookupItem,
 } from '@/api/lookupsApi';
+import { fetchTeams } from '@/api/usersApi';
 
+import { NONE_SELECT_VALUE } from '.';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
 import { VenuePresetForm } from './VenuePresetForm';
@@ -54,6 +57,8 @@ type Tag = LookupItem & {
   name?: string;
   displayName?: string | null;
   visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
 };
 
 /** Ministry list item; API may include ministerName on list responses */
@@ -416,6 +421,30 @@ export function GovernmentRepresentativesAdmin() {
 }
 
 export function TagsAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams'],
+    queryFn: fetchTeams,
+  });
+
+  const teamOptions = [
+    { value: NONE_SELECT_VALUE, label: 'Global (no team restriction)' },
+    ...teams.map((t) => ({
+      value: String(t.id),
+      label: t.displayName ?? t.name ?? String(t.id),
+    })),
+  ];
+
+  const tagFormFields: FormField[] = [
+    ...tagFields,
+    {
+      name: 'teamId',
+      label: 'Visible to',
+      type: 'select' as const,
+      options: teamOptions,
+      placeholder: 'Global (no team restriction)',
+    },
+  ];
+
   return (
     <GenericLookupAdmin<Tag>
       title="Tags"
@@ -424,23 +453,38 @@ export function TagsAdmin() {
       apiEndpoint="/lookups/tags"
       queryKey="tags-admin"
       queryFn={fetchAllTags as () => Promise<Tag[]>}
-      formFields={tagFields}
+      additionalInvalidateKeys={[['lookups', 'tags']]}
+      formFields={tagFormFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
+      getInitialData={(item) => ({
+        ...item,
+        teamId:
+          item.teamIds?.[0] != null
+            ? String(item.teamIds[0])
+            : NONE_SELECT_VALUE,
+      })}
+      transformSubmitData={(data) => ({
+        ...data,
+        teamId:
+          data.teamId == null || data.teamId === NONE_SELECT_VALUE
+            ? null
+            : Number(data.teamId),
+      })}
       additionalColumns={[
         {
           accessorKey: 'visibility',
           header: 'Visibility',
-          cell: ({ row }) => (
-            <span
-              className={
-                row.original.visibility === 'team'
-                  ? 'font-medium text-blue-600'
-                  : 'text-slate-500'
-              }
-            >
-              {row.original.visibility === 'team' ? 'Team' : 'Global'}
-            </span>
-          ),
+          cell: ({ row }) => {
+            const { visibility, teamNames } = row.original;
+            if (visibility === 'team') {
+              const label =
+                teamNames && teamNames.length > 0
+                  ? teamNames.join(', ')
+                  : 'Team (unassigned)';
+              return <span>{label}</span>;
+            }
+            return <span className="text-slate-500">Global</span>;
+          },
         } as ColumnDef<Tag>,
       ]}
     />
