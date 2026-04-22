@@ -614,6 +614,7 @@ export function ActivityTableFilters({
           activeSavedFilterId={activeSavedFilterId}
           filterSummaryContext={summaryContext}
           parseSavedFilterForDraft={parseSavedFilterForDraft}
+          validFilterLookups={validFilterLookupsForPreview}
         />
       </div>
       <div className="flex shrink-0 items-center gap-2">

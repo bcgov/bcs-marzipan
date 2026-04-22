@@ -71,6 +71,7 @@ import {
   isSavedFilterDuplicateNameConflict,
   SAVED_FILTER_DUPLICATE_NAME_INLINE,
 } from '@/lib/savedFilterDuplicateName';
+import type { ValidFilterLookups } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
 
 /** Draft filter + keyword for save/update/edit dialogs (chip editing). */
@@ -385,6 +386,9 @@ export interface ResponsiveFilterRowProps {
     filterState: ActivityFilterState;
     searchKeyword: string;
   };
+  /** Valid lookup ID sets used to strip stale IDs when applying a saved filter.
+   * Pass the same sets used by the activity table filter validation. */
+  validFilterLookups?: ValidFilterLookups;
 }
 
 /**
@@ -409,6 +413,7 @@ export function ResponsiveFilterRow({
   activeSavedFilterId = null,
   filterSummaryContext,
   parseSavedFilterForDraft,
+  validFilterLookups,
 }: ResponsiveFilterRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const containerWidth = useElementWidth(containerRef, {
@@ -511,12 +516,17 @@ export function ResponsiveFilterRow({
 
   const handleApplySavedFilter = useCallback(
     (sf: SavedFilterResponse) => {
-      applySavedFilterSelection(sf, onApplySavedFilter, () => {
-        setMyFiltersOpen(false);
-        setOverflowMenuOpen(false);
-      });
+      applySavedFilterSelection(
+        sf,
+        onApplySavedFilter,
+        () => {
+          setMyFiltersOpen(false);
+          setOverflowMenuOpen(false);
+        },
+        validFilterLookups
+      );
     },
-    [onApplySavedFilter]
+    [onApplySavedFilter, validFilterLookups]
   );
 
   const handleRemoveCreateChip = useCallback((chipKey: string) => {
