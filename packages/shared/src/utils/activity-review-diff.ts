@@ -17,6 +17,20 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Top-level {@link ActivityFormData} keys that editors may change without
+ * counting as a "review impact": they do not appear in
+ * {@link diffReviewFields} output and do not flip a Reviewed activity to
+ * Changed on save. Editors still see RHF dirty state and "Changed" badges for
+ * these fields; the exemption is purely about review workflow.
+ *
+ * Extend this set when product expands the rule to additional fields.
+ */
+export const ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS: ReadonlySet<string> = new Set([
+  'visibility',
+  'sharedWithTeamIds',
+]);
+
+/**
  * Canonical empty baseline representing a brand-new form with no data.
  * Used when no prior Reviewed snapshot exists (e.g. New activities).
  */
@@ -119,6 +133,7 @@ export function diffReviewFields(
 
   for (const key of allKeys) {
     if (EXCLUDED_FIELDS.has(key)) continue;
+    if (ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS.has(key)) continue;
 
     const curVal = (currentCanon as Record<string, unknown>)[key];
     const baseVal = (baselineCanon as Record<string, unknown>)[key];
