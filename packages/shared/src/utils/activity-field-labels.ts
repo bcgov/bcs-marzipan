@@ -51,7 +51,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   tagIds: 'Tags',
   commsMaterialIds: 'Comms materials',
   translationLanguageIds: 'Translation languages',
-  sharedWithTeamIds: 'Shared with teams',
+  sharedWithTeamIds: 'Share with',
   visibility: 'Visibility',
   notes: 'Notes',
   strategy: 'Strategy',

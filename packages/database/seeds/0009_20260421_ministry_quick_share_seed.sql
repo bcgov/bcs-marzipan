@@ -7,7 +7,7 @@ INSERT INTO ministry_groups (id, name, sort_order, created_by, last_updated_by)
 VALUES
   (1, 'Social', 0, 999, 999),
   (2, 'Resource', 1, 999, 999),
-  (3, 'Economical', 2, 999, 999)
+  (3, 'Economic', 2, 999, 999)
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE ministries SET ministry_group_id = 1 WHERE id IN (

@@ -69,6 +69,11 @@ function setsEqualAsSets(a: number[], b: number[]): boolean {
   return a.every((id) => sb.has(id));
 }
 
+/** Quick-pick row label: "Share with all social" from group name "Social". */
+function quickShareGroupLabel(groupName: string): string {
+  return `Share with ${groupName.toLowerCase()}`;
+}
+
 type ShortcutRowProps = {
   label: string;
   checked: boolean;
@@ -89,7 +94,7 @@ function SharingShortcutRow({
       type="button"
       disabled={disabled || readOnly}
       className={cn(
-        'relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        'relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50',
         !disabled && !readOnly && 'hover:bg-accent hover:text-accent-foreground'
       )}
       onClick={(e) => {
@@ -171,10 +176,13 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="global">All ministries</SelectItem>
+                <SelectItem value="global">Everyone</SelectItem>
                 <SelectItem value="team">My team only</SelectItem>
               </SelectContent>
             </FormSelect>
+            <FormDescription>
+              Activities are always visible to exec and admins.
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
@@ -262,7 +270,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                         return (
                           <SharingShortcutRow
                             key={g.id}
-                            label={g.name}
+                            label={quickShareGroupLabel(g.name)}
                             checked={groupChecked}
                             disabled={empty}
                             readOnly={readOnly}
@@ -288,7 +296,8 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                 </Combobox>
               </FormControl>
               <FormDescription>
-                Teams selected can see the activity in their Shared with tab.
+                Teams selected will see this activity in their &apos;Shared
+                with&apos; tab.
               </FormDescription>
               <FormMessage />
             </FormItem>
