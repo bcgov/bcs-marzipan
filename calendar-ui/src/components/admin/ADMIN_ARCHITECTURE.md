@@ -386,6 +386,15 @@ All components follow WCAG 2.1 AA standards:
 - ✅ ARIA labels
 - ✅ Color contrast ratios
 
+## System settings (non–lookup) sections
+
+The Settings page also includes **infrastructure and workflow** admin blocks that are not built with `GenericLookupAdmin`, for example:
+
+- `BannerSettingsAdmin`, `EditLockIdleSettingsAdmin`, `ActivityCompletionSettingsAdmin`
+- `ReviewExemptFieldsSettingsAdmin` — which top-level activity form fields are **review-exempt** (see `calendar-service/docs/ACTIVITY_REVIEW_EXEMPT_SETTINGS.md` and `packages/shared/src/review-exempt-settings.ts`).
+
+When adding a similar custom section, follow the existing pattern: `AdminSection` + `usePermission` + TanStack Query + API module under `src/api/`.
+
 ## Future Enhancements
 
 1. **Bulk operations** - Select multiple items for batch delete/update
