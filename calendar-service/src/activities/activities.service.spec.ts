@@ -24,6 +24,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { LocksService } from '../locks/locks.service';
 import { PolicyService } from '../policy/policy.service';
+import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
@@ -33,6 +34,10 @@ import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
+
+vi.mock('../policy/tag-scoping.helper', () => ({
+  getVisibleTagIds: vi.fn(),
+}));
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -942,6 +947,151 @@ describe('ActivitiesService', () => {
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.id).toBe(3);
     });
+
+    it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const createDto = createMockActivityRequest({ tagIds: [99] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow(BadRequestException);
+      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+    });
+
+    it('includes the forbidden tag IDs in the error message', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const createDto = createMockActivityRequest({ tagIds: [99] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Tag IDs not available to your teams: 99');
+    });
+
+    it('bypasses tag visibility check when user has CREATE_ANY permission', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const createDto = createMockActivityRequest({
+        tagIds: [99],
+        leadTeamId: 5,
+      });
+      const createdActivity = createMockActivity({
+        id: 4,
+        title: 'Test Activity',
+        leadTeamId: 5,
+      });
+      const mockInsert = {
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([createdActivity]),
+      };
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const ministryQuery = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ abbreviation: 'MIN' }]),
+        };
+        const tx = {
+          insert: vi.fn().mockReturnValue(mockInsert),
+          select: vi.fn((...args) => {
+            if (args.length > 0 && typeof args[0] === 'object')
+              return ministryQuery;
+            return createMockQueryChain([createdActivity]);
+          }),
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([createdActivity]),
+          }),
+        };
+        return await callback(tx);
+      });
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 5, name: 'Any Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([createdActivity]);
+      });
+
+      await service.create(createDto, 1, {
+        roleName: 'Admin',
+        permissions: [PERMISSIONS.ACTIVITIES.CREATE_ANY],
+        teamIds: [],
+      });
+
+      expect(getVisibleTagIds).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {
@@ -1829,6 +1979,171 @@ describe('ActivitiesService', () => {
         service.requestDelete(999, 'A valid reason here', 10)
       ).rejects.toThrow(NotFoundException);
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateTagIds on update', () => {
+    const ownLock = {
+      id: 99,
+      userId: 1,
+      entityType: 'activity' as const,
+      entityId: 1,
+      username: 'editor',
+      sessionId: null as string | null,
+      acquiredAt: new Date(),
+      expiresAt: new Date(Date.now() + 300_000),
+      lastRenewedAt: new Date(),
+      lastActivityAt: new Date(),
+      idleExpiresAt: new Date(Date.now() + 300_000),
+    };
+
+    const setupUpdateSelectMock = () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      let noArgsCount = 0;
+      let withArgsCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCount++;
+          return createMockQueryChain(
+            noArgsCount === 1 ? [existingActivity] : []
+          );
+        }
+        withArgsCount++;
+        if (withArgsCount === 1) {
+          // getActivityStatusNameById
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withArgsCount === 2) {
+          // getActivityStatusIdByName
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        // existingComms, existingRepresentatives, existingReportSettings
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        return fetchChain;
+      });
+    };
+
+    beforeEach(() => {
+      mockLocksService.getLockForEntity.mockResolvedValue(ownLock);
+    });
+
+    it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const updateDto = createMockUpdateRequest({ tagIds: [99] });
+
+      setupUpdateSelectMock();
+      await expect(
+        service.update(1, updateDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.edit'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow(BadRequestException);
+      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+    });
+
+    it('includes the forbidden tag IDs in the error message on update', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const updateDto = createMockUpdateRequest({ tagIds: [99] });
+
+      setupUpdateSelectMock();
+      await expect(
+        service.update(1, updateDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.edit'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Tag IDs not available to your teams: 99');
+    });
+
+    it('bypasses tag visibility check when user has CREATE_ANY permission on update', async () => {
+      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({ id: 1, title: 'Updated' });
+      const updateDto = createMockUpdateRequest({ tagIds: [99] });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) return createMockQueryChain([]);
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCount = 0;
+      let withArgsCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCount++;
+          return createMockQueryChain(
+            noArgsCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withArgsCount++;
+        if (withArgsCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withArgsCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      await service.update(1, updateDto, 1, {
+        roleName: 'Admin',
+        permissions: [PERMISSIONS.ACTIVITIES.CREATE_ANY],
+        teamIds: [],
+      });
+
+      expect(getVisibleTagIds).not.toHaveBeenCalled();
     });
   });
 

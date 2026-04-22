@@ -6,6 +6,7 @@ import { showErrorToast } from '@/lib/error-toast';
 import {
   sanitizeSavedFilterPayload,
   type SavedFilterPayload,
+  type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 
 export type AppliedSavedFilterMeta = { id: number; name: string };
@@ -23,12 +24,13 @@ export type OnApplySavedFilterRow = (
 export function applySavedFilterSelection(
   sf: SavedFilterResponse,
   onApply: OnApplySavedFilterRow | undefined,
-  onAppliedUi: () => void
+  onAppliedUi: () => void,
+  lookups?: ValidFilterLookups
 ): void {
   if (!onApply) return;
   try {
     const { filterState, searchKeyword, hadInvalidValues } =
-      sanitizeSavedFilterPayload(sf as unknown as SavedFilterPayload);
+      sanitizeSavedFilterPayload(sf as unknown as SavedFilterPayload, lookups);
     onApply(filterState, searchKeyword, { id: sf.id, name: sf.name });
     onAppliedUi();
     if (hadInvalidValues) {

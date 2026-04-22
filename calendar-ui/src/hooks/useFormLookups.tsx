@@ -58,7 +58,7 @@ export interface FormLookupData {
   eventPlanners: OptionItem[];
 
   // Tags - for Badge components
-  tags: Array<{ id: number; text: string }>;
+  tags: Array<{ id: number; text: string; visibility: 'global' | 'team' }>;
 
   // Pitch Statuses - for Select
   pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
@@ -232,6 +232,7 @@ export function useFormLookups(): FormLookupData {
       tagsQuery.data?.map((item) => ({
         id: item.id,
         text: item.displayName || item.name || item.label,
+        visibility: item.visibility,
       })) || [];
 
     // Transform pitch statuses for Select
@@ -316,7 +317,11 @@ export function useFormLookups(): FormLookupData {
       ministries,
       users,
       eventPlanners,
-      tags: tags as Array<{ id: number; text: string }>,
+      tags: tags as Array<{
+        id: number;
+        text: string;
+        visibility: 'global' | 'team';
+      }>,
       pitchStatuses: pitchStatuses as Array<{
         id: number;
         name: string;

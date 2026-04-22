@@ -90,6 +90,11 @@ export const tagResponseSchema = z.object({
 export const tagLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
+  visibility: z.enum(['global', 'team']),
+  /** Team display names for team-scoped tags. Populated only on admin responses (includeAll=true). */
+  teamNames: z.array(z.string()).optional(),
+  /** Team IDs for team-scoped tags. Populated only on admin responses (includeAll=true). */
+  teamIds: z.array(z.number().int()).optional(),
 });
 
 // ============================================
@@ -612,11 +617,19 @@ export const updateCategoryRequestSchema =
  */
 export const createTagRequestSchema = z.object({
   name: z.string().min(1).max(255),
-  displayName: z.string().min(1).max(255),
-  sortOrder: z.number().int(),
+  displayName: z.preprocess(
+    (v) => (v === '' ? null : v),
+    z.string().min(1).max(255).nullable().optional()
+  ),
+  sortOrder: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.number().int().default(0).optional()
+  ),
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(['global', 'team']).default('global').optional(),
   description: z.string().nullable().optional(),
+  /** When visibility='team', the team this tag is scoped to. Null/absent = global. */
+  teamId: z.number().int().nullable().optional(),
 });
 
 /**

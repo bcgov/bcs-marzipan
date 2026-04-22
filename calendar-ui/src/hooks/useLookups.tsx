@@ -88,7 +88,7 @@ export function useTags() {
   return useQuery<TagLookupItem[]>({
     queryKey: ['lookups', 'tags'],
     queryFn: () => fetchTags(),
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+    staleTime: DYNAMIC_LOOKUP_CACHE_MS, // user-specific results; don't cache as long as static lookups
   });
 }
 
