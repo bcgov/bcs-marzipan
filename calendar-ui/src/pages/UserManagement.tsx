@@ -19,6 +19,7 @@ import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserHistoryDrawer } from '@/components/users/UserHistoryDrawer';
 import { UsersTabContent } from '@/components/users/UsersTabContent';
 import { useAuth } from '@/hooks/useAuth';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 export function Users() {
   const [activeTab, setActiveTab] = useState<'users' | 'teams'>('users');
@@ -82,7 +83,7 @@ export function Users() {
   const deactivateTeamMutation = useMutation({
     mutationFn: (teamId: number) => updateTeam(teamId, { isActive: false }),
     onSuccess: (_data, teamId) => {
-      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
       toast.success('Team deactivated', { id: `team-deactivated-${teamId}` });
     },
     onError: (err: Error, teamId) => {
@@ -212,7 +213,9 @@ export function Users() {
           setTeamToEdit(null);
         }}
         onSaved={() => {
-          void queryClient.invalidateQueries({ queryKey: ['teams'] });
+          void queryClient.invalidateQueries({
+            queryKey: lookupQueryKeys.teams(),
+          });
           setShowCreateTeam(false);
           setTeamToEdit(null);
         }}

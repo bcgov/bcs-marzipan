@@ -45,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
 const createUserFormSchema = z.object({
@@ -105,7 +106,7 @@ export function UserCreateModal({
   });
 
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
     enabled: open,
   });

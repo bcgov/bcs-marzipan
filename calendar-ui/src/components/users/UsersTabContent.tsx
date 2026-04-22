@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const IDIR_PLACEHOLDER = 'MYIDIR';
 const SKELETON_ROW_COUNT = 8;
@@ -174,7 +175,7 @@ export function UsersTabContent({
   }, [isLoading]);
 
   const { data: teamsForFilter = [] } = useQuery({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
   });
 

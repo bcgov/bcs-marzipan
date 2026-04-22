@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
 
 import { fetchCommsContactCandidates } from '../api/teamsApi';
+import { lookupQueryKeys } from '../lib/lookupQueryKeys';
 
 /**
  * Eligible comms contact candidates for a given lead team.
@@ -16,7 +17,7 @@ export function useCommsContactCandidates(
   fetchEnabled = true
 ) {
   return useQuery<CommsContactCandidate[]>({
-    queryKey: ['teams', teamId, 'comms-contact-candidates'] as const,
+    queryKey: lookupQueryKeys.teamsCommsContactCandidates(teamId ?? 0),
     queryFn: () => fetchCommsContactCandidates(teamId!),
     enabled: teamId != null && teamId > 0 && fetchEnabled,
     staleTime: 60_000,

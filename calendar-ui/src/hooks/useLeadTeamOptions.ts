@@ -3,8 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TeamListItem } from '@corpcal/shared/api/types';
 
 import { fetchLeadTeamOptions } from '../api/teamsApi';
-
-const LEAD_TEAM_OPTIONS_QUERY_KEY = ['teams', 'lead-options'] as const;
+import { lookupQueryKeys } from '../lib/lookupQueryKeys';
 
 /**
  * Teams the current user may choose as activity lead team (for create/edit forms).
@@ -14,7 +13,7 @@ const LEAD_TEAM_OPTIONS_QUERY_KEY = ['teams', 'lead-options'] as const;
  */
 export function useLeadTeamOptions(enabled: boolean) {
   return useQuery<TeamListItem[]>({
-    queryKey: LEAD_TEAM_OPTIONS_QUERY_KEY,
+    queryKey: lookupQueryKeys.teamsLeadOptions(),
     queryFn: () => fetchLeadTeamOptions(),
     enabled,
     staleTime: 60_000,

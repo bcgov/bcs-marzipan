@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 interface UserEditModalProps {
   user: UserListItem;
@@ -65,7 +66,7 @@ export function UserEditModal({
   });
 
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
   });
 

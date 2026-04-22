@@ -1,12 +1,13 @@
 /**
- * Centralized React Query key factory for lookup data.
+ * Centralized React Query key factory for lookup and lookup-style lists.
  *
  * All keys are rooted at `['lookups']` so callers can invalidate the entire
- * lookup cache with `invalidateQueries({ queryKey: lookupQueryKeys.root })`.
+ * tree with `invalidateQueries({ queryKey: lookupQueryKeys.root })` (see `teams`
+ * and `teamsList` for the users API list that uses this prefix for the same
+ * reason).
  *
- * Second segments mirror the backend URL segment (kebab-case) for each
- * `/lookups/<segment>` route, which keeps them easy to audit against the
- * controller and gives a single place to add future lookups.
+ * For `/lookups/<segment>` routes, the second segment mirrors the backend path
+ * (kebab-case) so keys stay easy to audit against the controller.
  *
  * Tag list has two variants that share the `['lookups', 'tags']` prefix:
  * - `tags()` - user-scoped list (no `includeAll`) used by forms, pickers, etc.
@@ -57,6 +58,26 @@ export const lookupQueryKeys = {
 
   /** Reports list (single source of truth for Settings/Reports page and activity form). */
   reports: () => ['lookups', 'reports'] as const,
+
+  /**
+   * Team options from `GET /users/teams` (`fetchTeams`). Shared prefix with lookups
+   * so global `['lookups']` invalidation refreshes team pickers after lookup/seed work.
+   */
+  teams: () => ['lookups', 'teams'] as const,
+  /**
+   * Teams admin table list (`fetchTeamsList`). Inherits the `['lookups', 'teams']`
+   * prefix so it refetches with the same invalidation as `teams()`.
+   */
+  teamsList: (showInactive: boolean) =>
+    ['lookups', 'teams', 'list', showInactive] as const,
+  /**
+   * Comms contact candidate list for a team (`/teams/:id/comms-contact-candidates`).
+   * Shares the `['lookups', 'teams', ...]` prefix for invalidation.
+   */
+  teamsCommsContactCandidates: (teamId: number) =>
+    ['lookups', 'teams', teamId, 'comms-contact-candidates'] as const,
+  /** Lead team picker options (`GET /teams/lead-options` for activity forms). */
+  teamsLeadOptions: () => ['lookups', 'teams', 'lead-options'] as const,
 } as const;
 
 /** Readonly array variant of any factory return; useful for `GenericLookupAdmin` props. */

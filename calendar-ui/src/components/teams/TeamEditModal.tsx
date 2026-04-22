@@ -96,7 +96,7 @@ export function TeamEditModal({
   const createMutation = useMutation({
     mutationFn: createTeam,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
       toast.success('Team created', { id: 'team-created' });
       onSaved();
       onClose();
@@ -117,7 +117,7 @@ export function TeamEditModal({
       body: Parameters<typeof updateTeam>[1];
     }) => updateTeam(id, body),
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
       toast.success('Team updated', { id: `team-updated-${variables.id}` });
       onSaved();
       onClose();

@@ -79,7 +79,7 @@ export function useUsers(params?: LookupQueryParams) {
 
 export function useTeams() {
   return useQuery<TeamLookupItem[]>({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });

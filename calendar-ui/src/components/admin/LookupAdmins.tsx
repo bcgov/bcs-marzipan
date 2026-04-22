@@ -423,7 +423,7 @@ export function GovernmentRepresentativesAdmin() {
 
 export function TagsAdmin() {
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
   });
 
