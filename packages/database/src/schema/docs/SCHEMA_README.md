@@ -30,6 +30,10 @@ These are **hand-maintained** (see file headers in `packages/shared`). They defi
 
 Field transformations (dates/times as ISO strings, etc.) are implemented in the service mapper, not by a generated `drizzle-zod` pipeline.
 
+#### Review-exempt form fields (workflow, not a separate table)
+
+`application_settings` stores an optional key `activity_review_exempt_field_keys` (JSON array of top-level form field names). That list is **not** part of the Drizzle `activities` table; it configures which fields System Admins may mark as review-exempt. Shared allowlist and product rules: `packages/shared/src/review-exempt-settings.ts`. **When you add or change top-level activity form fields,** update that file (and the field playbook) as described in [ACTIVITY_REVIEW_EXEMPT_SETTINGS.md](../../../../../calendar-service/docs/ACTIVITY_REVIEW_EXEMPT_SETTINGS.md) in `calendar-service/docs`.
+
 #### Recent database-facing changes
 
 See [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (e.g. nullable `significance`, category rules on create).

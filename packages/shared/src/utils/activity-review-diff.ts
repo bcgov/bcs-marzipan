@@ -1,3 +1,7 @@
+import {
+  buildEffectiveReviewExemptKeys,
+  DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
+} from '../review-exempt-settings';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { canonicalizeActivityFormData } from './activity-form-canonicalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
@@ -16,19 +20,13 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'leadMinistryId',
 ]);
 
-/**
- * Top-level {@link ActivityFormData} keys that editors may change without
- * counting as a "review impact": they do not appear in
- * {@link diffReviewFields} output and do not flip a Reviewed activity to
- * Changed on save. Editors still see RHF dirty state and "Changed" badges for
- * these fields; the exemption is purely about review workflow.
- *
- * Extend this set when product expands the rule to additional fields.
- */
-export const ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS: ReadonlySet<string> = new Set([
-  'visibility',
-  'sharedWithTeamIds',
-]);
+export type DiffReviewFieldsOptions = {
+  /** Merged set of code + admin review-exempt top-level form keys. */
+  exemptFieldKeys: ReadonlySet<string>;
+};
+
+const DEFAULT_REVIEW_EXEMPT_FOR_DIFF: ReadonlySet<string> =
+  buildEffectiveReviewExemptKeys(DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS);
 
 /**
  * Canonical empty baseline representing a brand-new form with no data.
@@ -120,8 +118,12 @@ function sortObjectArray<T extends Record<string, unknown>>(
  */
 export function diffReviewFields(
   current: ActivityFormData,
-  baseline: ActivityFormData
+  baseline: ActivityFormData,
+  options: DiffReviewFieldsOptions = {
+    exemptFieldKeys: DEFAULT_REVIEW_EXEMPT_FOR_DIFF,
+  }
 ): string[] {
+  const { exemptFieldKeys } = options;
   const changed: string[] = [];
   const currentCanon = canonicalizeActivityFormData(current);
   const baselineCanon = canonicalizeActivityFormData(baseline);
@@ -133,7 +135,7 @@ export function diffReviewFields(
 
   for (const key of allKeys) {
     if (EXCLUDED_FIELDS.has(key)) continue;
-    if (ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS.has(key)) continue;
+    if (exemptFieldKeys.has(key)) continue;
 
     const curVal = (currentCanon as Record<string, unknown>)[key];
     const baseVal = (baselineCanon as Record<string, unknown>)[key];
