@@ -39,7 +39,6 @@ function makeChain(resolvedValue: unknown = []) {
   // Terminal method returns a Promise
   chain['limit'].mockResolvedValue(resolvedValue);
   chain['values'].mockResolvedValue(resolvedValue);
-  chain['where'].mockResolvedValue(resolvedValue);
   chain['catch'].mockResolvedValue(resolvedValue);
   return chain;
 }
