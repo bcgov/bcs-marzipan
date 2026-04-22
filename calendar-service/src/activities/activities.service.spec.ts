@@ -1066,6 +1066,7 @@ describe('ActivitiesService', () => {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
+              orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
@@ -1076,6 +1077,7 @@ describe('ActivitiesService', () => {
           return {
             from: vi.fn().mockReturnThis(),
             where: vi.fn().mockReturnThis(),
+            orderBy: vi.fn().mockReturnThis(),
             limit: vi.fn().mockResolvedValue([{ id: 1 }]),
           };
         }
