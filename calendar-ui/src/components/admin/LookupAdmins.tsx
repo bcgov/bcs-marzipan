@@ -7,6 +7,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
 import { useCallback, useMemo } from 'react';
 
 import api from '@/api/axios';
@@ -27,6 +28,7 @@ import {
   type ThemeLookupItem,
 } from '@/api/lookupsApi';
 import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
+import { ClientValidationError } from '@/lib/error-toast';
 
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
@@ -279,8 +281,8 @@ async function persistMinistryWithMinister({
   const displayName = stringField(formData.displayName);
   const abbreviation = stringField(formData.abbreviation);
   if (!name || !displayName || !abbreviation) {
-    window.alert('Name, display name, and abbreviation are required.');
-    throw new Error('Validation failed');
+    toast.error('Name, display name, and abbreviation are required.');
+    throw new ClientValidationError();
   }
 
   const ministerPick = (formData._ministerSelection as

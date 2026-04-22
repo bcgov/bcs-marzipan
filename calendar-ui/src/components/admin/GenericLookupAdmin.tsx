@@ -20,6 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  ClientValidationError,
+  showErrorToast,
+  showSuccessToast,
+} from '@/lib/error-toast';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -126,6 +131,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
+      showSuccessToast(`${entityType} created`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -150,6 +159,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
+      showSuccessToast(`${entityType} updated`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -163,6 +176,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         if (!old) return [];
         return old.filter((item: any) => item.id !== deletedId);
       });
+      showSuccessToast(`${entityType} deleted`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -288,9 +305,17 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       try {
         setSubmitOverridePending(true);
         await submitOverride({ formData: processedData, editingItem });
+        showSuccessToast(
+          editingItem ? `${entityType} updated` : `${entityType} created`
+        );
         setShowModal(false);
         setEditingItem(null);
         setFormData({});
+      } catch (error: unknown) {
+        if (error instanceof ClientValidationError) {
+          return;
+        }
+        showErrorToast(error);
       } finally {
         setSubmitOverridePending(false);
       }
