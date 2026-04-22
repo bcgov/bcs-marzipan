@@ -4,6 +4,7 @@ import {
   Building2,
   FileText,
   FolderTree,
+  ListChecks,
   Lock,
   MapPin,
   Megaphone,
@@ -29,11 +30,13 @@ import {
   ThemesAdmin,
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
+import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
 
 type Section =
   | 'banner'
   | 'edit-lock-idle'
   | 'activity-completion'
+  | 'review-exempt-fields'
   | 'ministry-groups'
   | 'categories'
   | 'cities'
@@ -56,6 +59,11 @@ const sections = [
     id: 'activity-completion' as Section,
     label: 'Activity completion',
     icon: Timer,
+  },
+  {
+    id: 'review-exempt-fields' as Section,
+    label: 'Review-exempt fields',
+    icon: ListChecks,
   },
   {
     id: 'ministry-groups' as Section,
@@ -150,6 +158,10 @@ export function Settings() {
 
           <div id="section-activity-completion">
             <ActivityCompletionSettingsAdmin />
+          </div>
+
+          <div id="section-review-exempt-fields">
+            <ReviewExemptFieldsSettingsAdmin />
           </div>
 
           <div id="section-ministry-groups">
