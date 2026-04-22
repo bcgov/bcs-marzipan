@@ -117,6 +117,13 @@ export const REFERENCE_LOOKUP_CACHE_MS = REFERENCE_LOOKUP_CACHE_SECONDS * 1000; 
 export const DYNAMIC_LOOKUP_CACHE_SECONDS = 300; // 5 minutes
 export const DYNAMIC_LOOKUP_CACHE_MS = DYNAMIC_LOOKUP_CACHE_SECONDS * 1000; // 300000 ms
 
+/**
+ * GET /lookups/activity-team-sharing (teams + ministry quick-share).
+ * Shorter than reference cache because quick-share data changes when admins edit groups
+ * or ministry assignments. Same duration as dynamic lookups.
+ */
+export const ACTIVITY_TEAM_SHARING_CACHE_SECONDS = DYNAMIC_LOOKUP_CACHE_SECONDS;
+
 // ============================================================================
 // Default Values Constants
 // ============================================================================

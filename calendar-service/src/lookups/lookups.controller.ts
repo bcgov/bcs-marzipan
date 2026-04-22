@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 
 import {
+  ACTIVITY_TEAM_SHARING_CACHE_SECONDS,
   DYNAMIC_LOOKUP_CACHE_SECONDS,
   REFERENCE_LOOKUP_CACHE_SECONDS,
   type AuthUser,
@@ -120,7 +121,10 @@ export class LookupsController {
   })
   @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
   @Get('activity-team-sharing')
-  @Header('Cache-Control', `private, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header(
+    'Cache-Control',
+    `private, max-age=${ACTIVITY_TEAM_SHARING_CACHE_SECONDS}`
+  )
   async getActivityTeamSharing(): Promise<{
     success: boolean;
     data: ActivityTeamSharingResponse;

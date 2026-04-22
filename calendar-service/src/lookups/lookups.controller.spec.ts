@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
 import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
+import type { TeamListItem } from '@corpcal/shared/schemas';
 
 import { TeamsService } from '../teams/teams.service';
 import { LookupsController } from './lookups.controller';
@@ -78,6 +79,74 @@ describe('LookupsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('getActivityTeamSharing', () => {
+    const mockTeams: TeamListItem[] = [
+      {
+        id: 1,
+        name: 'Team A',
+        displayName: 'Team A',
+        description: null,
+        sortOrder: 0,
+        isActive: true,
+        roleId: null,
+        memberCount: 2,
+        ministryId: 5,
+        ministryName: 'M1',
+      },
+    ];
+
+    it('returns teams and quick share groups', async () => {
+      mockTeamsService.findAll.mockResolvedValue(mockTeams);
+      mockLookupsService.getActivityTeamSharingQuickShare.mockResolvedValue({
+        groups: [
+          {
+            id: 1,
+            name: 'Social',
+            sortOrder: 0,
+            ministryIds: [5],
+          },
+        ],
+      });
+
+      const result = await controller.getActivityTeamSharing();
+
+      expect(result).toEqual({
+        success: true,
+        data: {
+          teams: mockTeams,
+          quickShare: {
+            groups: [
+              {
+                id: 1,
+                name: 'Social',
+                sortOrder: 0,
+                ministryIds: [5],
+              },
+            ],
+          },
+        },
+      });
+      expect(mockTeamsService.findAll).toHaveBeenCalledWith(true);
+      expect(
+        mockLookupsService.getActivityTeamSharingQuickShare
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns quickShare null when there are no ministry groups', async () => {
+      mockTeamsService.findAll.mockResolvedValue([]);
+      mockLookupsService.getActivityTeamSharingQuickShare.mockResolvedValue(
+        null
+      );
+
+      const result = await controller.getActivityTeamSharing();
+
+      expect(result).toEqual({
+        success: true,
+        data: { teams: [], quickShare: null },
+      });
+    });
   });
 
   describe('getCategories', () => {

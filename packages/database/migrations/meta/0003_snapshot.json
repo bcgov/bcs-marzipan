@@ -1,5 +1,5 @@
 {
-  "id": "77af4a84-0eb5-4611-b5df-1a7400c413be",
+  "id": "128d5570-c880-4318-b22a-cb12ba401694",
   "prevId": "437e7cc7-93b9-4892-9e20-fe9f527be68a",
   "version": "7",
   "dialect": "postgresql",
@@ -1594,7 +1594,23 @@
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "ministry_groups_name_lower_unique": {
+          "name": "ministry_groups_name_lower_unique",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "ministry_groups_created_by_users_id_fk": {
           "name": "ministry_groups_created_by_users_id_fk",

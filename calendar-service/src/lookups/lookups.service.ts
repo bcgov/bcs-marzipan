@@ -946,6 +946,7 @@ export class LookupsService {
 
   /**
    * Ministry groups for admin / activity "Shared with" shortcuts (derived from ministries FK).
+   * Returns all rows: there is no isActive on `ministry_groups` (retire by delete or reassign ministries).
    */
   async getMinistryGroups(): Promise<MinistryGroupResponse[]> {
     const rows = await this.databaseService.db
@@ -964,6 +965,10 @@ export class LookupsService {
     }));
   }
 
+  /**
+   * Insert a ministry group. Duplicate name (case-insensitive) causes SQLSTATE 23505;
+   * the HTTP layer maps that to 409 Conflict.
+   */
   async createMinistryGroup(
     data: { name: string; sortOrder: number },
     currentUserId: number
@@ -983,6 +988,10 @@ export class LookupsService {
     return result;
   }
 
+  /**
+   * Update a ministry group. Renaming to an existing name (case-insensitive) causes SQLSTATE 23505;
+   * the HTTP layer maps that to 409 Conflict.
+   */
   async updateMinistryGroup(
     id: number,
     data: Partial<{ name: string; sortOrder: number }>,

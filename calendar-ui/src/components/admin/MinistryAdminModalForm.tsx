@@ -275,7 +275,7 @@ export function MinistryAdminModalForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="ministry-group" className="text-sm font-medium">
-          Sharing group
+          Ministry group
         </Label>
         <Select
           value={ministryGroupId}
