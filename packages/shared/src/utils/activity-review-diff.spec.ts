@@ -171,14 +171,6 @@ describe('diffReviewFields', () => {
       );
     });
 
-    it('detects sharedWithTeamIds change', () => {
-      const baseline = minimalForm({ sharedWithTeamIds: [] });
-      const current = minimalForm({ sharedWithTeamIds: [30] });
-      expect(diffReviewFields(current, baseline)).toContain(
-        'sharedWithTeamIds'
-      );
-    });
-
     it('does not flag junction fields when both empty', () => {
       const baseline = minimalForm({
         commsMaterialIds: [],
@@ -193,6 +185,39 @@ describe('diffReviewFields', () => {
       const result = diffReviewFields(current, baseline);
       expect(result).not.toContain('commsMaterialIds');
       expect(result).not.toContain('translationLanguageIds');
+      expect(result).not.toContain('sharedWithTeamIds');
+    });
+  });
+
+  describe('review-impact exempt fields', () => {
+    it('does not flag sharedWithTeamIds changes', () => {
+      const baseline = minimalForm({ sharedWithTeamIds: [] });
+      const current = minimalForm({ sharedWithTeamIds: [30, 31] });
+      expect(diffReviewFields(current, baseline)).not.toContain(
+        'sharedWithTeamIds'
+      );
+    });
+
+    it('does not flag visibility changes', () => {
+      const baseline = minimalForm({ visibility: 'global' });
+      const current = minimalForm({ visibility: 'team' });
+      expect(diffReviewFields(current, baseline)).not.toContain('visibility');
+    });
+
+    it('still flags non-exempt changes alongside exempt changes', () => {
+      const baseline = minimalForm({
+        title: 'Original',
+        visibility: 'global',
+        sharedWithTeamIds: [],
+      });
+      const current = minimalForm({
+        title: 'Updated',
+        visibility: 'team',
+        sharedWithTeamIds: [30],
+      });
+      const result = diffReviewFields(current, baseline);
+      expect(result).toContain('title');
+      expect(result).not.toContain('visibility');
       expect(result).not.toContain('sharedWithTeamIds');
     });
   });
