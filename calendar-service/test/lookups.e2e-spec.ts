@@ -190,4 +190,59 @@ describe('LookupsController (e2e)', () => {
       }
     });
   });
+
+  describe('/lookups/tags (GET)', () => {
+    it('should return tags visible to the current user', () => {
+      return createAuthRequest(app, accessToken)
+        .get('/lookups/tags')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('success', true);
+          expect(res.body).toHaveProperty('data');
+          expect(Array.isArray(res.body.data)).toBe(true);
+
+          if (res.body.data.length > 0) {
+            const tag = res.body.data[0];
+            expect(tag).toHaveProperty('id');
+            expect(tag).toHaveProperty('label');
+          }
+        });
+    });
+
+    it('should set Cache-Control: private on the normal (scoped) request', () => {
+      return createAuthRequest(app, accessToken)
+        .get('/lookups/tags')
+        .expect(200)
+        .expect('Cache-Control', /private/);
+    });
+
+    it('should NOT set Cache-Control: public on the scoped request', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .get('/lookups/tags')
+        .expect(200);
+
+      expect(res.headers['cache-control']).not.toMatch(/public/);
+    });
+
+    it('should set Cache-Control: no-store when includeAll=true (admin user)', () => {
+      // The default e2e user (thomas.garcia) has the Admin role which includes
+      // lookups.manage, so the server honours includeAll=true.
+      return createAuthRequest(app, accessToken)
+        .get('/lookups/tags')
+        .query({ includeAll: 'true' })
+        .expect(200)
+        .expect('Cache-Control', /no-store/);
+    });
+
+    it('should return all tags (including team-scoped) when includeAll=true', () => {
+      return createAuthRequest(app, accessToken)
+        .get('/lookups/tags')
+        .query({ includeAll: 'true' })
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('success', true);
+          expect(Array.isArray(res.body.data)).toBe(true);
+        });
+    });
+  });
 });
