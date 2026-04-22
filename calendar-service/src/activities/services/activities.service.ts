@@ -42,6 +42,8 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
+  buildEffectiveReviewExemptKeys,
+  DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
   PERMISSIONS,
@@ -77,6 +79,7 @@ import {
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
+import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
@@ -102,9 +105,18 @@ export class ActivitiesService {
     private readonly mapperService: ActivityMapperService,
     private readonly utilsService: ActivityUtilsService,
     private readonly locksService: LocksService,
+    private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
     private readonly teamsService: TeamsService
   ) {}
+
+  private async getEffectiveReviewExemptFieldKeys(
+    executor?: DrizzleDbExecutor
+  ): Promise<ReadonlySet<string>> {
+    const fromDb =
+      await this.applicationSettings.getReviewExemptFieldKeys(executor);
+    return buildEffectiveReviewExemptKeys(fromDb);
+  }
 
   /**
    * Normalize venue address data by trimming whitespace and converting empty strings to null.
@@ -283,7 +295,10 @@ export class ActivitiesService {
     response: ActivityResponse,
     snapshot: unknown,
     snapshotVersion: number,
-    lookups?: MapResponseToFormDataLookups
+    lookups?: MapResponseToFormDataLookups,
+    exemptFieldKeys: ReadonlySet<string> = buildEffectiveReviewExemptKeys(
+      DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS
+    )
   ): string[] | undefined {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
@@ -295,7 +310,7 @@ export class ActivitiesService {
     const baseline = snapshot
       ? (snapshot as ReturnType<typeof buildReviewSnapshot>)
       : getEmptyReviewBaseline();
-    return diffReviewFields(currentFormData, baseline);
+    return diffReviewFields(currentFormData, baseline, { exemptFieldKeys });
   }
 
   /**
@@ -304,17 +319,19 @@ export class ActivitiesService {
    *
    * Builds the "before" form representation from the current persisted row,
    * merges the partial DTO on top to get the "after" shape, and runs the
-   * review-diff comparison. Fields in
-   * {@link ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS} (e.g. sharing/visibility)
-   * are ignored by {@link diffReviewFields}, so updates that touch only
-   * exempt fields preserve Reviewed.
+   * review-diff comparison. Code- and admin-configured review-exempt top-level
+   * fields are ignored by {@link diffReviewFields}, so updates that touch only
+   * those fields preserve Reviewed.
    */
   private async shouldPreserveReviewedStatus(
     activityId: number,
     oldActivity: Activity,
     dto: UpdateActivityRequest
   ): Promise<boolean> {
-    const lookups = await this.getReviewDiffLookups();
+    const [lookups, exemptFieldKeys] = await Promise.all([
+      this.getReviewDiffLookups(),
+      this.getEffectiveReviewExemptFieldKeys(),
+    ]);
     const related = await this.fetchRelatedForActivityIds(
       [activityId],
       [oldActivity]
@@ -325,7 +342,9 @@ export class ActivitiesService {
     );
     const beforeForm = mapResponseToFormData(beforeResponse, lookups);
     const afterForm = applyUpdateActivityRequestToFormData(beforeForm, dto);
-    return diffReviewFields(afterForm, beforeForm).length === 0;
+    return (
+      diffReviewFields(afterForm, beforeForm, { exemptFieldKeys }).length === 0
+    );
   }
 
   /**
@@ -418,15 +437,24 @@ export class ActivitiesService {
       .from(activities)
       .where(eq(activities.activityStatusId, changedId));
 
-    const lookups = await this.getReviewDiffLookups();
+    const [lookups, reviewExemptFieldKeys] = await Promise.all([
+      this.getReviewDiffLookups(),
+      this.getEffectiveReviewExemptFieldKeys(),
+    ]);
     let updated = 0;
     for (const row of targets) {
       const related = await this.fetchRelatedForActivityIds([row.id], [row]);
       const response = this.mapFetchedActivityToResponseDto(row, related);
       const currentForm = mapResponseToFormData(response, lookups);
-      const priorForm = this.buildMockPriorReviewForm(currentForm, row.id);
+      const priorForm = this.buildMockPriorReviewForm(
+        currentForm,
+        row.id,
+        reviewExemptFieldKeys
+      );
       const snapshot = buildReviewSnapshot(priorForm);
-      const diff = diffReviewFields(currentForm, snapshot);
+      const diff = diffReviewFields(currentForm, snapshot, {
+        exemptFieldKeys: reviewExemptFieldKeys,
+      });
       if (diff.length === 0) {
         continue;
       }
@@ -475,7 +503,8 @@ export class ActivitiesService {
    */
   private buildMockPriorReviewForm(
     current: ActivityFormData,
-    activityId: number
+    activityId: number,
+    exemptFieldKeys: ReadonlySet<string>
   ): ActivityFormData {
     const prior = structuredClone(current);
     const targetCount = 1 + (activityId % 6);
@@ -565,11 +594,12 @@ export class ActivitiesService {
     }
 
     const snap = buildReviewSnapshot(prior);
-    const diff = diffReviewFields(current, snap);
+    const diff = diffReviewFields(current, snap, { exemptFieldKeys });
     if (diff.length === 0) {
-      prior.summary = tipTapDocJsonFromPlainText(
-        `[Prior reviewed text] ${plainTextFromActivityRichField(current.summary)}`
-      );
+      const t = current.title;
+      prior.title = t.endsWith('(prior title)')
+        ? t
+        : `${t.slice(0, Math.min(120, t.length))} (prior title)`;
     }
 
     return prior;
@@ -1576,9 +1606,12 @@ export class ActivitiesService {
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups] = await Promise.all([
+    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
       this.fetchRelatedForActivityIds(activityIds, activityResults),
       canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+      canReview
+        ? this.getEffectiveReviewExemptFieldKeys()
+        : Promise.resolve(undefined),
     ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
@@ -1639,7 +1672,8 @@ export class ActivitiesService {
             response,
             activity.reviewedFieldSnapshot,
             activity.reviewedFieldSnapshotVersion,
-            reviewLookups
+            reviewLookups,
+            reviewExemptFieldKeys
           );
       }
       return response;
@@ -1699,9 +1733,12 @@ export class ActivitiesService {
     // Fetch related data
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups] = await Promise.all([
+    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
       this.fetchRelatedForActivityIds([id], [activity]),
       canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+      canReview
+        ? this.getEffectiveReviewExemptFieldKeys()
+        : Promise.resolve(undefined),
     ]);
     const commsContacts = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
@@ -1726,7 +1763,8 @@ export class ActivitiesService {
         response,
         activity.reviewedFieldSnapshot,
         activity.reviewedFieldSnapshotVersion,
-        reviewLookups
+        reviewLookups,
+        reviewExemptFieldKeys
       );
     }
 
