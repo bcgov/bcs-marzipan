@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermissions';
+import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 
 import { SystemBanner } from '../layout/SystemBanner';
 
@@ -230,12 +231,10 @@ export function BannerSettingsAdmin() {
     onSuccess: (savedBanner) => {
       queryClient.setQueryData(['banner', 'settings'], savedBanner);
       void queryClient.invalidateQueries({ queryKey: ['banner', 'active'] });
-      toast.success('Banner settings saved');
+      showSuccessToast('Banner settings saved');
     },
     onError: (err) => {
-      const message =
-        err instanceof Error ? err.message : 'Failed to save banner settings';
-      toast.error(message);
+      showErrorToast(err);
     },
   });
 

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Play } from 'lucide-react';
-import { toast } from 'sonner';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import {
@@ -43,6 +42,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePermission } from '@/hooks/usePermissions';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from '@/lib/error-toast';
 
 const SCHEDULE_LABELS: Record<CompletionSchedule, string> = {
   every_15_minutes: 'Every 15 minutes',
@@ -150,10 +154,10 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
       void queryClient.invalidateQueries({
         queryKey: ['settings', 'activity-completion'],
       });
-      toast.success('Activity completion settings updated');
+      showSuccessToast('Activity completion settings updated');
     },
-    onError: () => {
-      toast.error('Failed to update completion settings');
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -166,22 +170,22 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
       });
       if (result.skipped) {
         if (result.skipReason === 'advisory_lock') {
-          toast.info(
+          showInfoToast(
             'Another instance is running the completion job. Try again shortly.'
           );
         } else if (result.skipReason === 'in_flight') {
-          toast.info('Completion job is already running on this server.');
+          showInfoToast('Completion job is already running on this server.');
         } else {
-          toast.info('Completion job did not run.');
+          showInfoToast('Completion job did not run.');
         }
       } else {
-        toast.success(
+        showSuccessToast(
           `Completion job completed: ${result.updated} activity(s) updated`
         );
       }
     },
-    onError: () => {
-      toast.error('Failed to run completion job');
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 

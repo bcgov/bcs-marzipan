@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermissions';
+import { showErrorToast } from '@/lib/error-toast';
 
 export function EditLockIdleSettingsAdmin(): React.ReactElement | null {
   const queryClient = useQueryClient();
@@ -42,8 +43,8 @@ export function EditLockIdleSettingsAdmin(): React.ReactElement | null {
       });
       toast.success('Edit lock idle timeout updated');
     },
-    onError: () => {
-      toast.error('Failed to update idle timeout');
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
