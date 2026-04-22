@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
 import { NotImplementedException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Mock } from 'vitest';
 
 import { DatabaseService } from '../database/database.service';
+import { PolicyService } from '../policy/policy.service';
 import { AuthService } from './auth.service';
 
 // ---------------------------------------------------------------------------
@@ -59,21 +62,20 @@ describe('AuthService — session methods', () => {
           provide: DatabaseService,
           useValue: { db: mockDb },
         },
-        // AuthService needs these but we're only testing session methods
-        { provide: 'PolicyService', useValue: {} },
         {
-          provide: 'JwtService',
+          provide: PolicyService,
+          useValue: {},
+        },
+        {
+          provide: JwtService,
           useValue: { sign: vi.fn().mockReturnValue('token') },
         },
         {
-          provide: 'ConfigService',
+          provide: ConfigService,
           useValue: { get: vi.fn().mockReturnValue(undefined) },
         },
       ],
-    })
-      .overrideProvider('PolicyService')
-      .useValue({})
-      .compile();
+    }).compile();
 
     service = module.get<AuthService>(AuthService);
   });
