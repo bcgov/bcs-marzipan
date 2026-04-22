@@ -117,15 +117,30 @@ This rewrites `reviewed_field_snapshot` using the updated mapping (with lookups)
 
 For production environments, do not use this CLI command. If historical snapshot realignment is needed, ship a reviewed migration/runbook specifically for production data handling.
 
-## Excluded Fields
+## Excluded and review-exempt fields
 
-The following fields are excluded from the review diff (they are system-managed, not user-editable):
+`diffReviewFields` (used for both `changedFieldsSinceReview` and for deciding whether a save moves **Reviewed** → **Changed**) takes an **effective review-exempt** set, passed in from the server. Two mechanisms apply:
+
+### System-excluded keys (`EXCLUDED_FIELDS`)
+
+The following top-level keys are **never** compared in the review diff (they are system- or workflow-managed, not free-form “content” the reviewer compares):
 
 - `activityStatusId`
 - `markAsReviewed`
 - `activityHistoryNotes`
 - `commsContactLeadId`
 - `leadMinistryId`
+
+Defined in `packages/shared/src/utils/activity-review-diff.ts`.
+
+### Review-exempt keys (code + admin)
+
+Additional top-level keys may be **omitted** from the diff: edits to those keys do not produce paths in `changedFieldsSinceReview` and do not, by themselves, cause a **Reviewed** activity to move to **Changed**. That set is the union of:
+
+- **Code-exempt** — `ACTIVITY_REVIEW_EXEMPT_CODE_KEYS` in `packages/shared/src/review-exempt-settings.ts`
+- **Admin-configurable** — stored in `application_settings`, validated allowlist; defaults include sharing/visibility–style fields
+
+**Documentation:** [ACTIVITY_REVIEW_EXEMPT_SETTINGS.md](./ACTIVITY_REVIEW_EXEMPT_SETTINGS.md) (API, permissions, settings UI, and what to update when the form schema changes).
 
 ## Future: List Page Highlighting
 

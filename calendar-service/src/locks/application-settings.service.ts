@@ -5,10 +5,13 @@ import { applicationSettings } from '@corpcal/database/schema';
 import {
   ACTIVITY_COMPLETION_BUFFER_KEY,
   ACTIVITY_COMPLETION_SCHEDULE_KEY,
+  ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET,
+  ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING,
   COMPLETION_BUFFER_OPTIONS,
   COMPLETION_SCHEDULES,
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
+  DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   type CompletionBufferMinutes,
   type CompletionSchedule,
 } from '@corpcal/shared';
@@ -129,5 +132,74 @@ export class ApplicationSettingsService {
       upsert(ACTIVITY_COMPLETION_SCHEDULE_KEY, schedule),
       upsert(ACTIVITY_COMPLETION_BUFFER_KEY, String(bufferMinutes)),
     ]);
+  }
+
+  // --------------------------------------------------------------------------
+  // Review-exempt form fields (admin-configurable, JSON array in value)
+  // --------------------------------------------------------------------------
+
+  async getReviewExemptFieldKeys(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<string[]> {
+    const [row] = await executor
+      .select()
+      .from(applicationSettings)
+      .where(
+        eq(applicationSettings.key, ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING)
+      )
+      .limit(1);
+
+    if (!row?.value) {
+      return [...DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS];
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(row.value);
+      if (!Array.isArray(parsed)) {
+        this.logger.warn(
+          `Invalid ${ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING} (not array), using default`
+        );
+        return [...DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS];
+      }
+      const out: string[] = [];
+      for (const item of parsed) {
+        if (
+          typeof item === 'string' &&
+          ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET.has(item)
+        ) {
+          out.push(item);
+        }
+      }
+      return out.length > 0
+        ? out
+        : [...DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS];
+    } catch {
+      this.logger.warn(
+        `Invalid JSON for ${ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING}, using default`
+      );
+      return [...DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS];
+    }
+  }
+
+  async setReviewExemptFieldKeys(fieldKeys: string[]): Promise<void> {
+    const filtered = fieldKeys.filter((k) =>
+      ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET.has(k)
+    );
+    const unique = [...new Set(filtered)];
+    const now = new Date();
+    await this.databaseService.db
+      .insert(applicationSettings)
+      .values({
+        key: ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING,
+        value: JSON.stringify(unique),
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: applicationSettings.key,
+        set: {
+          value: JSON.stringify(unique),
+          updatedAt: now,
+        },
+      });
   }
 }

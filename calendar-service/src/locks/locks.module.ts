@@ -8,6 +8,7 @@ import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.ser
 import { LockHandoffPoller } from './lock-handoff-poller.service';
 import { LocksController } from './locks.controller';
 import { LocksService } from './locks.service';
+import { ReviewExemptFieldsController } from './review-exempt-fields.controller';
 
 @Module({
   imports: [DatabaseModule, AuthModule, forwardRef(() => ActivitiesModule)],
@@ -17,7 +18,7 @@ import { LocksService } from './locks.service';
     LocksService,
     LockHandoffPoller,
   ],
-  controllers: [LocksController],
+  controllers: [LocksController, ReviewExemptFieldsController],
   exports: [LocksService, ApplicationSettingsService],
 })
 export class LocksModule {}

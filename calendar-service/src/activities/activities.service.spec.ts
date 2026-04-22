@@ -22,6 +22,7 @@ import {
   createMockUpdateRequest,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
 import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
@@ -189,6 +190,12 @@ describe('ActivitiesService', () => {
     findCommsContactCandidates: vi.fn().mockResolvedValue([]),
   };
 
+  const mockApplicationSettings = {
+    getReviewExemptFieldKeys: vi
+      .fn()
+      .mockResolvedValue(['visibility', 'sharedWithTeamIds']),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -229,6 +236,10 @@ describe('ActivitiesService', () => {
         {
           provide: TeamsService,
           useValue: mockTeamsService,
+        },
+        {
+          provide: ApplicationSettingsService,
+          useValue: mockApplicationSettings,
         },
       ],
     }).compile();
