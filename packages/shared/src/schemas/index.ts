@@ -9,6 +9,7 @@ export * from './lookup.schema';
 export * from './ministry-groups.schema';
 export * from './report-config.schema';
 export * from './query-params.schema';
+export * from './review-exempt-field-keys.schema';
 export * from './saved-filter.schema';
 export * from './user.schema';
 export * from './team.schema';

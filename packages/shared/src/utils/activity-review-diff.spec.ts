@@ -128,12 +128,12 @@ describe('diffReviewFields', () => {
     );
   });
 
-  it('empty baseline vs filled form flags all user fields', () => {
+  it('empty baseline vs filled form flags non–code-exempt user fields', () => {
     const baseline = getEmptyReviewBaseline();
     const form = minimalForm({ title: 'Test', summary: 'Desc' });
     const result = diffReviewFields(form, baseline);
     expect(result).toContain('title');
-    expect(result).toContain('summary');
+    expect(result).not.toContain('summary');
     expect(result).toContain('categoryIds');
     expect(result).toContain('leadTeamId');
   });

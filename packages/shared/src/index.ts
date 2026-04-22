@@ -1,5 +1,6 @@
 export * from './activity-filter-state';
 export * from './activity-completion';
+export * from './review-exempt-settings';
 export * from './schemas';
 export * from './utils';
 

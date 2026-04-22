@@ -139,6 +139,11 @@ export const PERMISSIONS = {
     MANAGE: 'settings.manage',
     /** Configure automated activity completion (schedule, buffer). System Admin only. */
     MANAGE_ACTIVITY_COMPLETE: 'settings.manage.activity_complete',
+    /**
+     * Configure which top-level activity form fields are review-exempt (in addition
+     * to product-defined code-exempt fields). System Admin only.
+     */
+    MANAGE_REVIEW_EXEMPT_FIELDS: 'settings.manage.review_exempt_fields',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',
