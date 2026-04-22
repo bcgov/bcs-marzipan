@@ -20,11 +20,7 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
-import {
-  DYNAMIC_LOOKUP_CACHE_SECONDS,
-  REFERENCE_LOOKUP_CACHE_SECONDS,
-  type AuthUser,
-} from '@corpcal/shared';
+import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
 import type {
   CategoryLookupItem,
   LookupItem,
@@ -92,6 +88,7 @@ import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { lookupGetCacheControl } from './cache-control';
 import { LookupsService } from './lookups.service';
 
 @ApiTags('lookups')
@@ -113,7 +110,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('categories')
-  @Header('Cache-Control', `private, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getCategories(@CurrentUser() user: AuthUser): Promise<{
     success: boolean;
     data: CategoryLookupItem[];
@@ -197,7 +194,7 @@ export class LookupsController {
     description: 'Filter to a specific organization by ID',
   })
   @Get('organizations')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getOrganizations(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
@@ -217,7 +214,7 @@ export class LookupsController {
     description: 'Roles retrieved successfully',
   })
   @Get('roles')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getRoles(): Promise<{
     success: boolean;
     data: { id: number; name: string; description: string | null }[];
@@ -262,7 +259,7 @@ export class LookupsController {
       'Comma-separated list of user IDs to filter by (e.g., "1,2,3")',
   })
   @Get('users')
-  @Header('Cache-Control', `public, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getUsers(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
@@ -425,7 +422,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('activity-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getActivityStatuses(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -487,7 +484,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('pitch-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getPitchStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getPitchStatuses();
     return { success: true, data };
@@ -500,7 +497,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('comms-materials')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getCommsMaterials(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getCommsMaterials();
     return { success: true, data };
@@ -555,7 +552,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('translation-languages')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getTranslationLanguages(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -571,7 +568,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('government-representatives')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getGovernmentRepresentatives(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -636,7 +633,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('event-planners')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getEventPlanners(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getEventPlanners();
     return { success: true, data };
@@ -649,7 +646,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('news-release-distributions')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getNewsReleaseDistributions(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -665,7 +662,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('premier-requested')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getPremierRequested(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -681,7 +678,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('news-release-origins')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getNewsReleaseOrigins(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -713,7 +710,7 @@ export class LookupsController {
     description: 'Filter activities by user role',
   })
   @Get('activities')
-  @Header('Cache-Control', `public, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getActivitiesForLookup(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string
@@ -730,7 +727,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('cities')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getCities(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getCities();
     return { success: true, data };
@@ -789,7 +786,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('ministries')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getMinistries(): Promise<{
     success: boolean;
     data: MinistryLookupItem[];
@@ -847,7 +844,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('date-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getDateStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getDateStatuses();
     return { success: true, data };
@@ -860,7 +857,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('time-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getTimeStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getTimeStatuses();
     return { success: true, data };
@@ -873,7 +870,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('venue-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getVenueStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getVenueStatuses();
     return { success: true, data };
@@ -886,7 +883,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('pitch-required-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getPitchRequiredStatuses(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -902,7 +899,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('translation-required-statuses')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getTranslationRequiredStatuses(): Promise<{
     success: boolean;
     data: LookupItem[];
@@ -918,7 +915,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('reports')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getReports(): Promise<{ success: boolean; data: any[] }> {
     const data = await this.lookupsService.getReports();
     return { success: true, data };
@@ -931,7 +928,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('themes')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getThemes(): Promise<{ success: boolean; data: ThemeLookupItem[] }> {
     const data = await this.lookupsService.getThemes();
     return { success: true, data };
@@ -990,7 +987,7 @@ export class LookupsController {
     type: VenuePresetArrayResponseWrapperDto,
   })
   @Get('venue-presets')
-  @Header('Cache-Control', `public, max-age=${REFERENCE_LOOKUP_CACHE_SECONDS}`)
+  @Header('Cache-Control', lookupGetCacheControl())
   async getVenuePresets(): Promise<{
     success: boolean;
     data: VenuePresetItem[];
