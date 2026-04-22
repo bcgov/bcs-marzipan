@@ -1202,31 +1202,34 @@ export class LookupsService {
     const now = new Date();
     // Derive visibility from teamId if not explicit
     const visibility = data.teamId ? 'team' : data.visibility || 'global';
-    const [result] = await this.databaseService.db
-      .insert(tags)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        sortOrder: data.sortOrder ?? 0,
-        isActive: data.isActive ?? true,
-        visibility,
-        description: data.description ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
 
-    if (data.teamId && visibility === 'team') {
-      await this.databaseService.db.insert(teamTags).values({
-        tagId: result.id,
-        teamId: data.teamId,
-        isActive: true,
-      });
-    }
+    return this.databaseService.db.transaction(async (tx) => {
+      const [result] = await tx
+        .insert(tags)
+        .values({
+          name: data.name,
+          displayName: data.displayName ?? data.name,
+          sortOrder: data.sortOrder ?? 0,
+          isActive: data.isActive ?? true,
+          visibility,
+          description: data.description ?? undefined,
+          createdBy: currentUserId,
+          lastUpdatedBy: currentUserId,
+          createdDateTime: now,
+          lastUpdatedDateTime: now,
+        })
+        .returning();
 
-    return result;
+      if (data.teamId && visibility === 'team') {
+        await tx.insert(teamTags).values({
+          tagId: result.id,
+          teamId: data.teamId,
+          isActive: true,
+        });
+      }
+
+      return result;
+    });
   }
 
   /**
@@ -1500,31 +1503,35 @@ export class LookupsService {
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 
-    const [result] = await this.databaseService.db
-      .update(tags)
-      .set(updateData)
-      .where(eq(tags.id, id))
-      .returning();
+    // Wrap the tag update and team_tags sync in a transaction so the two
+    // tables cannot diverge if one write succeeds and the other fails.
+    return this.databaseService.db.transaction(async (tx) => {
+      const [result] = await tx
+        .update(tags)
+        .set(updateData)
+        .where(eq(tags.id, id))
+        .returning();
 
-    // Manage team_tags: deactivate all existing entries, then upsert if a team is selected
-    if ('teamId' in data) {
-      await this.databaseService.db
-        .update(teamTags)
-        .set({ isActive: false })
-        .where(eq(teamTags.tagId, id));
+      // Manage team_tags: deactivate all existing entries, then upsert if a team is selected
+      if ('teamId' in data) {
+        await tx
+          .update(teamTags)
+          .set({ isActive: false })
+          .where(eq(teamTags.tagId, id));
 
-      if (data.teamId) {
-        await this.databaseService.db
-          .insert(teamTags)
-          .values({ tagId: id, teamId: data.teamId, isActive: true })
-          .onConflictDoUpdate({
-            target: [teamTags.tagId, teamTags.teamId],
-            set: { isActive: true },
-          });
+        if (data.teamId) {
+          await tx
+            .insert(teamTags)
+            .values({ tagId: id, teamId: data.teamId, isActive: true })
+            .onConflictDoUpdate({
+              target: [teamTags.tagId, teamTags.teamId],
+              set: { isActive: true },
+            });
+        }
       }
-    }
 
-    return result;
+      return result;
+    });
   }
 
   async updateMinistry(
