@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
 interface TeamEditModalProps {
@@ -59,7 +60,7 @@ export function TeamEditModal({
     });
 
   const { data: ministries = [] } = useQuery({
-    queryKey: ['lookups', 'ministries'],
+    queryKey: lookupQueryKeys.ministries(),
     queryFn: fetchMinistries,
     enabled: open,
   });

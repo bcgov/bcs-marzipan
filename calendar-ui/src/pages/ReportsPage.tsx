@@ -4,11 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
-import {
-  fetchReportData,
-  fetchReportsList,
-  type ReportSectionData,
-} from '@/api/reportsApi';
+import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
@@ -18,7 +14,7 @@ import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityStatuses } from '@/hooks/useLookups';
+import { useActivityStatuses, useReports } from '@/hooks/useLookups';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
   loadCustomReportConfig,
@@ -109,10 +105,7 @@ export function ReportsPage() {
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
 
-  const { data: reports = [] } = useQuery({
-    queryKey: ['reports'],
-    queryFn: fetchReportsList,
-  });
+  const { data: reports = [] } = useReports();
 
   useEffect(() => {
     if (initialTabAppliedRef.current || reports.length === 0) return;

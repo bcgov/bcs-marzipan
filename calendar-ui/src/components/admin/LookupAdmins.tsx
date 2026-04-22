@@ -23,6 +23,7 @@ import {
   type ThemeLookupItem,
 } from '@/api/lookupsApi';
 import { fetchTeams } from '@/api/usersApi';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 import { NONE_SELECT_VALUE } from '.';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
@@ -338,7 +339,7 @@ export function CategoriesAdmin() {
       description="Manage activity categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
-      queryKey="categories"
+      queryKey={lookupQueryKeys.categories()}
       queryFn={fetchCategories as () => Promise<Category[]>}
       formFields={categoryFields}
     />
@@ -352,7 +353,7 @@ export function CitiesAdmin() {
       description="Manage city locations"
       entityType="City"
       apiEndpoint="/lookups/cities"
-      queryKey="cities"
+      queryKey={lookupQueryKeys.cities()}
       queryFn={fetchCities as () => Promise<City[]>}
       formFields={cityFields}
       additionalColumns={[
@@ -386,7 +387,7 @@ export function CommsMaterialsAdmin() {
       description="Manage communication material types"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
-      queryKey="commsMaterials"
+      queryKey={lookupQueryKeys.commsMaterials()}
       queryFn={fetchCommsMaterials as () => Promise<CommsMaterial[]>}
       formFields={commsMaterialFields}
     />
@@ -400,7 +401,7 @@ export function GovernmentRepresentativesAdmin() {
       description="Manage government representatives"
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
-      queryKey="governmentRepresentatives"
+      queryKey={lookupQueryKeys.governmentRepresentatives()}
       queryFn={
         fetchGovernmentRepresentatives as () => Promise<
           GovernmentRepresentative[]
@@ -451,10 +452,10 @@ export function TagsAdmin() {
       description="Manage activity tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
-      queryKey="tags-admin"
+      queryKey={lookupQueryKeys.tagsAdmin()}
       queryFn={fetchAllTags as () => Promise<Tag[]>}
       softDelete
-      additionalInvalidateKeys={[['lookups', 'tags']]}
+      additionalInvalidateKeys={[lookupQueryKeys.tags()]}
       formFields={tagFormFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
       getInitialData={(item) => ({
@@ -499,7 +500,7 @@ export function MinistriesAdmin() {
       description="Manage BC government ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
-      queryKey="ministries"
+      queryKey={lookupQueryKeys.ministries()}
       queryFn={fetchMinistries as () => Promise<MinistryAdminItem[]>}
       formFields={ministryFields}
       additionalColumns={[
@@ -534,7 +535,7 @@ export function ActivityStatusesAdmin() {
       description="Manage activity status types"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
-      queryKey="activityStatuses"
+      queryKey={lookupQueryKeys.activityStatuses()}
       queryFn={fetchActivityStatuses as () => Promise<ActivityStatus[]>}
       formFields={statusFields}
     />
@@ -548,7 +549,7 @@ export function ThemesAdmin() {
       description="Manage activity themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
-      queryKey="themes"
+      queryKey={lookupQueryKeys.themes()}
       queryFn={fetchThemes}
       formFields={themeFields}
       getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
@@ -596,7 +597,7 @@ export function VenuePresetsAdmin() {
       description="Manage venue presets for the activity form"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
-      queryKey="venuePresets"
+      queryKey={lookupQueryKeys.venuePresets()}
       queryFn={fetchVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}
       additionalColumns={venuePresetAdditionalColumns}

@@ -43,7 +43,11 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   description: string;
   entityType: string;
   apiEndpoint: string;
-  queryKey: string;
+  /**
+   * React Query key for the list query. Prefer a key from `lookupQueryKeys`
+   * so admin and consumer caches stay aligned and type-safe.
+   */
+  queryKey: readonly unknown[];
   queryFn: () => Promise<T[]>;
   formFields: FormField[];
   additionalColumns?: ColumnDef<T>[];
@@ -55,7 +59,7 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When provided, renders custom modal body instead of LookupForm (e.g. for address search). */
   renderModalContent?: (props: RenderModalContentProps) => ReactNode;
   /** Additional query keys to invalidate on create/update (e.g. to bust related caches). */
-  additionalInvalidateKeys?: string[][];
+  additionalInvalidateKeys?: readonly (readonly unknown[])[];
   /** When true, "delete" sets isActive=false via PATCH instead of issuing a DELETE request.
    * Use for entities that may be referenced by other records (e.g. tags on activities). */
   softDelete?: boolean;
@@ -102,9 +106,19 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   }, [editingItem]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [queryKey],
+    queryKey,
     queryFn: queryFn,
+    // Always refetch when an admin section mounts so Settings reflects any
+    // mutation or seed/schema change from another tab or the backend.
+    refetchOnMount: 'always',
   });
+
+  const invalidateListCaches = () => {
+    void queryClient.invalidateQueries({ queryKey });
+    for (const key of additionalInvalidateKeys ?? []) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<T>) => {
@@ -112,10 +126,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       return response.data;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [queryKey] });
-      for (const key of additionalInvalidateKeys ?? []) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
+      invalidateListCaches();
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -129,10 +140,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       return response.data;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [queryKey] });
-      for (const key of additionalInvalidateKeys ?? []) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
+      invalidateListCaches();
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
@@ -149,10 +157,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       return id;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [queryKey] });
-      for (const key of additionalInvalidateKeys ?? []) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
+      invalidateListCaches();
     },
   });
 

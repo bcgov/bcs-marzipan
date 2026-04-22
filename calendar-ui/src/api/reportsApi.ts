@@ -1,8 +1,6 @@
-import type {
-  ActivityResponse,
-  ReportResponse,
-} from '@corpcal/shared/api/types';
+import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
+import type { ReportResponse } from '@corpcal/shared/schemas/lookup.schema';
 
 import api from './axios';
 
@@ -28,11 +26,6 @@ export async function fetchReportData(
   const response = await api.get<ReportDataResponse>(`/reports/data/${type}`, {
     params,
   });
-  return response.data;
-}
-
-export async function fetchReportsList(): Promise<ReportResponse[]> {
-  const response = await api.get<ReportResponse[]>('/reports');
   return response.data;
 }
 
