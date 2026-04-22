@@ -80,6 +80,7 @@ import { LocksService } from '../../locks/locks.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
+import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
@@ -144,6 +145,32 @@ export class ActivitiesService {
           ? venue.country.trim() || null
           : (venue.country ?? null),
     };
+  }
+
+  /**
+   * Validates that all submitted tag IDs are within the set of tags visible
+   * to the user's teams (global tags + team-scoped tags for those teams).
+   * Users with ACTIVITIES.CREATE_ANY bypass this check — they act on behalf
+   * of any team and may legitimately use any tag.
+   */
+  private async validateTagIds(
+    tagIds: number[],
+    teamIds: number[] | undefined,
+    permissions: string[] | undefined
+  ): Promise<void> {
+    if (!tagIds.length) return;
+    const canUseAny =
+      permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
+    if (canUseAny) return;
+
+    const visibleIds = await getVisibleTagIds(this.databaseService.db, teamIds);
+    const visibleSet = new Set(visibleIds);
+    const forbidden = tagIds.filter((id) => !visibleSet.has(id));
+    if (forbidden.length > 0) {
+      throw new BadRequestException(
+        `Tag IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
   }
 
   /**
@@ -995,6 +1022,9 @@ export class ActivitiesService {
       throw new BadRequestException('At least one category is required.');
     }
     await this.utilsService.validateCategoryIds(categoryIds);
+    if (tagIds?.length) {
+      await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
+    }
 
     const pendingStatuses =
       await this.resolvePendingPitchAndTranslationStatusIds();
@@ -1927,6 +1957,9 @@ export class ActivitiesService {
     // connection while borrowing another from the pool (pool starvation under load).
     if (categoryIds !== undefined) {
       await this.utilsService.validateCategoryIds(categoryIds);
+    }
+    if (tagIds?.length) {
+      await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
