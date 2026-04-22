@@ -1568,6 +1568,174 @@ describe('ActivitiesService', () => {
       ).toBe('updated');
     });
 
+    describe('review-impact exempt fields (sharing/visibility)', () => {
+      const reviewedStatusId = 2;
+      const changedStatusId = 3;
+
+      /**
+       * Select mock covering: the initial activity select, status-name/id
+       * lookups, and the {@link getReviewDiffLookups} calls used by the
+       * reviewed-preservation gate (multi-key selects whose `.where()` is
+       * awaited directly, resolving to empty lookup rows).
+       */
+      const mockSelectForReviewedGate = (
+        existingActivity: Activity,
+        updatedActivity: Activity,
+        currentStatusName: 'reviewed',
+        targetStatusId: number
+      ) => {
+        let noArgsCallCount = 0;
+        return vi.fn((...args: unknown[]) => {
+          if (args.length === 0) {
+            noArgsCallCount++;
+            return createMockQueryChain(
+              noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+            );
+          }
+          const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+          const keys = Object.keys(selectArg);
+          const isLookupQuery =
+            keys.length >= 2 && 'id' in selectArg && 'name' in selectArg;
+          if (isLookupQuery) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+            };
+          }
+          const isStatusNameQuery = keys.length === 1 && 'name' in selectArg;
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi
+              .fn()
+              .mockResolvedValue(
+                isStatusNameQuery
+                  ? [{ name: currentStatusName }]
+                  : [{ id: targetStatusId }]
+              ),
+          };
+        });
+      };
+
+      const makeTxMock = (updatedActivity: Activity) =>
+        vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+          const tx = {
+            update: vi.fn().mockReturnValue({
+              set: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              returning: vi.fn().mockResolvedValue([updatedActivity]),
+            }),
+            select: vi.fn().mockReturnValue(createMockQueryChain([])),
+            delete: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(undefined),
+            }),
+          };
+          return await callback(tx);
+        });
+
+      it('keeps status Reviewed when only sharedWithTeamIds changes', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          reviewedStatusId
+        );
+
+        const result = await service.update(
+          1,
+          { sharedWithTeamIds: [42] } as UpdateActivityRequest,
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: 'Editor',
+          }
+        );
+
+        expect(result.activityStatusId).toBe(reviewedStatusId);
+      });
+
+      it('keeps status Reviewed when only visibility changes', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          visibility: 'global',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          visibility: 'team',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          reviewedStatusId
+        );
+
+        const result = await service.update(
+          1,
+          { visibility: 'team' } as UpdateActivityRequest,
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: 'Editor',
+          }
+        );
+
+        expect(result.activityStatusId).toBe(reviewedStatusId);
+      });
+
+      it('falls back to Changed when a non-exempt field changes', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          title: 'Before',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: changedStatusId,
+          title: 'After',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          changedStatusId
+        );
+
+        const result = await service.update(
+          1,
+          {
+            title: 'After',
+            sharedWithTeamIds: [42],
+          } as UpdateActivityRequest,
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: 'Editor',
+          }
+        );
+
+        expect(result.activityStatusId).toBe(changedStatusId);
+      });
+    });
+
     it('should throw ConflictException when activity status is delete_requested', async () => {
       const existingActivity = createMockActivity({
         id: 1,
