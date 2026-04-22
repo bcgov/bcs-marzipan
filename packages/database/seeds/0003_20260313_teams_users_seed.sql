@@ -52,9 +52,6 @@ INSERT INTO teams (id, name, display_name, description, sort_order, is_active, c
   (36, 'EAO', 'EAO', 'Environmental Assessment Office', 36, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Reset sequence so future inserts get ids > 36
-SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
-
 -- ----------------------------------------------------------------------------
 -- TEAM_CATEGORIES
 -- Links team-scoped categories (categories.visibility = team) to teams.

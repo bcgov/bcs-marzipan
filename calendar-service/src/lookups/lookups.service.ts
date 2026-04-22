@@ -1,5 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, inArray, isNotNull, ne, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
 import {
   activities,
@@ -1306,6 +1315,17 @@ export class LookupsService {
           eq(ministries.ministerGovernmentRepId, data.ministerGovernmentRepId)
         );
     }
+
+    // Seeds insert explicit ministry ids; PostgreSQL does not advance the serial sequence,
+    // so the next DEFAULT id can collide. Sync without requiring a migration.
+    await this.databaseService.db.execute(sql`
+      SELECT setval(
+        pg_get_serial_sequence('public.ministries', 'id'),
+        COALESCE((SELECT MAX(id) FROM ministries), 1),
+        EXISTS (SELECT 1 FROM ministries)
+      )
+    `);
+
     const [result] = await this.databaseService.db
       .insert(ministries)
       .values({
@@ -1373,6 +1393,13 @@ export class LookupsService {
     currentUserId: number
   ): Promise<any> {
     const now = new Date();
+    await this.databaseService.db.execute(sql`
+      SELECT setval(
+        pg_get_serial_sequence('public.themes', 'id'),
+        COALESCE((SELECT MAX(id) FROM themes), 1),
+        EXISTS (SELECT 1 FROM themes)
+      )
+    `);
     const [result] = await this.databaseService.db
       .insert(themes)
       .values({

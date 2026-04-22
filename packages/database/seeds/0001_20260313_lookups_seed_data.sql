@@ -3,6 +3,9 @@
 -- Based on the current schema definitions
 -- Run this after applying the base migration (0000_20250121_initial_tables.sql)
 --
+-- Serial sequences for explicit-id inserts are reset once at end of pipeline:
+-- packages/database/seeds/9999_20260423_sync_serial_sequences_seed.sql
+--
 -- IMPORTANT: Users must be seeded first as other tables reference them
 -- via created_by and last_updated_by foreign keys
 
@@ -659,71 +662,6 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- UPDATE SEQUENCES
--- Reset sequences to prevent conflicts when inserting new records
--- This ensures that after seeding with explicit IDs, the sequences are
--- synchronized to the maximum ID value, preventing primary key conflicts
--- when new records are inserted via application code.
--- ============================================================================
-
--- Activity statuses sequence
-SELECT setval('activity_statuses_id_seq', COALESCE((SELECT MAX(id) FROM activity_statuses), 1), true);
-
--- Pitch statuses sequence
-SELECT setval('pitch_statuses_id_seq', COALESCE((SELECT MAX(id) FROM pitch_statuses), 1), true);
-
--- Date statuses sequence
-SELECT setval('date_statuses_id_seq', COALESCE((SELECT MAX(id) FROM date_statuses), 1), true);
-
--- Time statuses sequence
-SELECT setval('time_statuses_id_seq', COALESCE((SELECT MAX(id) FROM time_statuses), 1), true);
-
--- Venue statuses sequence
-SELECT setval('venue_statuses_id_seq', COALESCE((SELECT MAX(id) FROM venue_statuses), 1), true);
-
--- Users sequence
-SELECT setval('users_id_seq', COALESCE((SELECT MAX(id) FROM users), 1), true);
-
--- Categories sequence
-SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1), true);
-
--- Comms materials sequence
-SELECT setval('comms_materials_id_seq', COALESCE((SELECT MAX(id) FROM comms_materials), 1), true);
-
--- Translated languages sequence
-SELECT setval('translated_languages_id_seq', COALESCE((SELECT MAX(id) FROM translated_languages), 1), true);
-
--- Cities sequence
-SELECT setval('cities_id_seq', COALESCE((SELECT MAX(id) FROM cities), 1), true);
-
--- Government representatives sequence
-SELECT setval('government_representatives_id_seq', COALESCE((SELECT MAX(id) FROM government_representatives), 1), true);
-
--- Tags sequence
-SELECT setval('tags_id_seq', COALESCE((SELECT MAX(id) FROM tags), 1), true);
-
--- Comms contacts sequence
-SELECT setval('comms_contacts_id_seq', COALESCE((SELECT MAX(id) FROM comms_contacts), 1), true);
-
--- Event planners sequence
-SELECT setval('event_planners_id_seq', COALESCE((SELECT MAX(id) FROM event_planners), 1), true);
-
--- News release origins sequence
-SELECT setval('news_release_origins_id_seq', COALESCE((SELECT MAX(id) FROM news_release_origins), 1), true);
-
--- News release distributions sequence
-SELECT setval('news_release_distributions_id_seq', COALESCE((SELECT MAX(id) FROM news_release_distributions), 1), true);
-
--- Premier requested sequence
-SELECT setval('premier_requested_id_seq', COALESCE((SELECT MAX(id) FROM premier_requested), 1), true);
-
--- Reports sequence
-SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true);
-
--- Teams sequence
-SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
-
--- ============================================================================
 -- VENUE PRESETS
 -- Admin-defined named venues for the activity form.
 -- Pinned presets appear as quick-select badges beneath the Venue Name input.
@@ -736,6 +674,3 @@ SELECT * FROM (VALUES
   ('Government House', '1401 Rockland Ave', 'Victoria', 'British Columbia', 'Canada', 3, true, true, 3, 1, 1)
 ) AS v(venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_presets LIMIT 1);
-
--- Venue presets sequence
-SELECT setval('venue_presets_id_seq', COALESCE((SELECT MAX(id) FROM venue_presets), 1), true);

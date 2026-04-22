@@ -19,7 +19,7 @@ This document describes the new reusable admin component architecture for managi
                │
                ├─► LookupAdmins.tsx (wraps GenericLookupAdmin)
                │   • CategoriesAdmin
-               │   • CitiesAdmin  
+               │   • CitiesAdmin
                │   • CommsMaterialsAdmin
                │   • etc. (8 total)
                │
@@ -40,6 +40,7 @@ This document describes the new reusable admin component architecture for managi
 **Purpose:** Reusable container for admin sections with consistent layout.
 
 **Features:**
+
 - BC Government brand colors
 - Optional add button
 - Custom header actions (filters, etc.)
@@ -47,6 +48,7 @@ This document describes the new reusable admin component architecture for managi
 - Responsive design
 
 **Usage:**
+
 ```tsx
 <AdminSection
   title="Categories"
@@ -65,6 +67,7 @@ This document describes the new reusable admin component architecture for managi
 **Purpose:** Standardized modal for add/edit/delete operations.
 
 **Features:**
+
 - Loading states with spinner
 - Destructive variant for delete confirmations
 - Consistent button placement
@@ -72,6 +75,7 @@ This document describes the new reusable admin component architecture for managi
 - Auto-focus management
 
 **Usage:**
+
 ```tsx
 <AdminModal
   open={showModal}
@@ -91,12 +95,14 @@ This document describes the new reusable admin component architecture for managi
 **Purpose:** Dynamic form generator for lookup data.
 
 **Features:**
+
 - Configurable field types (text, number, checkbox)
 - Required field validation
 - Auto-managed form state
 - onChange callback for parent components
 
 **Usage:**
+
 ```tsx
 const fields: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
@@ -105,16 +111,22 @@ const fields: FormField[] = [
 
 <LookupForm
   fields={fields}
+  resetKey={
+    editingItem != null ? String(editingItem.id) : `create-${createFormSession}`
+  }
   initialData={editingItem || {}}
   onChange={setFormData}
-/>
+/>;
 ```
+
+`createFormSession` is incremented in the "Add" handler (see `GenericLookupAdmin` / `CategoriesAdmin`).
 
 ### 4. GenericLookupAdmin
 
 **Purpose:** Complete CRUD interface template for any lookup type.
 
 **Features:**
+
 - Full CRUD operations (Create, Read, Update, Delete)
 - Filtering (All/Active/Inactive)
 - Custom additional columns
@@ -122,6 +134,7 @@ const fields: FormField[] = [
 - Optimistic updates
 
 **Usage:**
+
 ```tsx
 <GenericLookupAdmin<Category>
   title="Categories"
@@ -131,7 +144,11 @@ const fields: FormField[] = [
   queryKey="categories"
   queryFn={fetchCategories}
   formFields={categoryFields}
-  additionalColumns={[/* extra columns */]}
+  additionalColumns={
+    [
+      /* extra columns */
+    ]
+  }
 />
 ```
 
@@ -142,7 +159,7 @@ const fields: FormField[] = [
 ```tsx
 // Repetitive code for each lookup type:
 // - 8 separate modal states
-// - 8 separate editing states  
+// - 8 separate editing states
 // - 8 create mutations
 // - 8 update mutations
 // - Manual column definitions
@@ -151,6 +168,7 @@ const fields: FormField[] = [
 ```
 
 **Problems:**
+
 - Difficult to maintain consistency
 - Changes require updating 8+ places
 - High risk of bugs from copy-paste errors
@@ -189,6 +207,7 @@ export function CategoriesAdmin() {
 ```
 
 **Benefits:**
+
 - Single source of truth for admin UI
 - Updates apply to all sections automatically
 - Consistent UX across all lookups
@@ -200,6 +219,7 @@ export function CategoriesAdmin() {
 To add a new lookup admin section:
 
 ### Step 1: Define the type
+
 ```tsx
 type NewLookup = {
   id: number | string;
@@ -212,6 +232,7 @@ type NewLookup = {
 ```
 
 ### Step 2: Create API function
+
 ```tsx
 export async function fetchNewLookups(): Promise<NewLookup[]> {
   const response = await api.get('/lookups/new-lookups');
@@ -220,6 +241,7 @@ export async function fetchNewLookups(): Promise<NewLookup[]> {
 ```
 
 ### Step 3: Define form fields
+
 ```tsx
 const newLookupFields: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
@@ -229,6 +251,7 @@ const newLookupFields: FormField[] = [
 ```
 
 ### Step 4: Create the admin component
+
 ```tsx
 export function NewLookupsAdmin() {
   return (
@@ -246,12 +269,13 @@ export function NewLookupsAdmin() {
 ```
 
 ### Step 5: Add to Settings page
+
 ```tsx
 import { NewLookupsAdmin } from '@/components/admin/LookupAdmins';
 
 <div id="section-new-lookups">
   <NewLookupsAdmin />
-</div>
+</div>;
 ```
 
 **Total time:** ~5 minutes (vs. ~2 hours copying & modifying old code)
@@ -261,21 +285,24 @@ import { NewLookupsAdmin } from '@/components/admin/LookupAdmins';
 All components use Tailwind CSS with BC Government brand colors:
 
 ### CSS Variables (globals.css)
+
 ```css
---bc-blue: 210 100% 20%;        /* #003366 */
---bc-blue-light: 210 100% 35%;  /* #0056A3 */
---bc-gold: 45 98% 55%;          /* #fcba19 */
---bc-gold-dark: 45 100% 45%;    /* #e5a500 */
+--bc-blue: 210 100% 20%; /* #003366 */
+--bc-blue-light: 210 100% 35%; /* #0056A3 */
+--bc-gold: 45 98% 55%; /* #fcba19 */
+--bc-gold-dark: 45 100% 45%; /* #e5a500 */
 ```
 
 ### Tailwind Utilities
+
 ```tsx
-className="bg-bc-blue text-white"
-className="text-bc-gold hover:text-bc-gold-dark"
-className="border-bc-blue-light"
+className = 'bg-bc-blue text-white';
+className = 'text-bc-gold hover:text-bc-gold-dark';
+className = 'border-bc-blue-light';
 ```
 
 ### Component Variants
+
 ```tsx
 <Badge variant="success" />   // Green checkmark
 <Badge variant="warning" />   // BC Gold
@@ -315,14 +342,16 @@ calendar-ui/src/
 ### Switch to the new Settings page:
 
 1. **Update your route:**
+
 ```tsx
 // In App.tsx or router config
 import { SettingsModern } from './pages/SettingsModern';
 
-<Route path="/settings" element={<SettingsModern />} />
+<Route path="/settings" element={<SettingsModern />} />;
 ```
 
 2. **Test CRUD operations:**
+
 - ✅ Create new items
 - ✅ Edit existing items
 - ✅ Delete items (with confirmation)
@@ -331,6 +360,7 @@ import { SettingsModern } from './pages/SettingsModern';
 - ✅ Quick navigation between sections
 
 3. **Verify styling:**
+
 - ✅ BC Government brand colors
 - ✅ Responsive layout
 - ✅ Consistent spacing
@@ -338,13 +368,13 @@ import { SettingsModern } from './pages/SettingsModern';
 
 ## Performance Benefits
 
-| Metric | Old Settings.tsx | New Architecture | Improvement |
-|--------|------------------|------------------|-------------|
-| **Lines of Code** | 1,735 | ~500 | -71% |
-| **Bundle Size** | ~45 KB | ~32 KB | -29% |
-| **Maintainability** | Low | High | ++ |
-| **Type Safety** | Partial | Full | ++ |
-| **Reusability** | 0% | 95% | ++ |
+| Metric              | Old Settings.tsx | New Architecture | Improvement |
+| ------------------- | ---------------- | ---------------- | ----------- |
+| **Lines of Code**   | 1,735            | ~500             | -71%        |
+| **Bundle Size**     | ~45 KB           | ~32 KB           | -29%        |
+| **Maintainability** | Low              | High             | ++          |
+| **Type Safety**     | Partial          | Full             | ++          |
+| **Reusability**     | 0%               | 95%              | ++          |
 
 ## Accessibility
 
@@ -398,6 +428,7 @@ resolve: {
 **Problem:** `Type 'X' does not satisfy constraint 'BaseLookupItem'`
 
 **Solution:** Ensure your type extends the base interface:
+
 ```tsx
 type YourType = {
   id: number | string;
@@ -405,12 +436,13 @@ type YourType = {
   sortOrder: number;
   isActive: boolean;
   // ... custom fields
-}
+};
 ```
 
 ## Support
 
 For questions or issues with the admin architecture:
+
 1. Check this documentation
 2. Review existing implementations in `LookupAdmins.tsx`
 3. Consult the GenericLookupAdmin source code

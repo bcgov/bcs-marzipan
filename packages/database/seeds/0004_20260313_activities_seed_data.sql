@@ -2260,11 +2260,3 @@ INSERT INTO activity_comms_contacts (activity_id, user_id, is_lead, is_active, t
   (100, 7, true, true, now()),
   (100, 29, false, true, now())
 ON CONFLICT (activity_id, user_id) DO NOTHING;
-
--- ============================================================================
--- UPDATE SEQUENCES
--- ============================================================================
-
-SELECT setval('activities_id_seq', COALESCE((SELECT MAX(id) FROM activities), 1), true);
-SELECT setval('activity_representatives_id_seq', COALESCE((SELECT MAX(id) FROM activity_representatives), 1), true);
-SELECT setval('venue_addresses_id_seq', COALESCE((SELECT MAX(id) FROM venue_addresses), 1), true);
