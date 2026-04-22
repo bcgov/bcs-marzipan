@@ -453,6 +453,7 @@ export function TagsAdmin() {
       apiEndpoint="/lookups/tags"
       queryKey="tags-admin"
       queryFn={fetchAllTags as () => Promise<Tag[]>}
+      softDelete
       additionalInvalidateKeys={[['lookups', 'tags']]}
       formFields={tagFormFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}

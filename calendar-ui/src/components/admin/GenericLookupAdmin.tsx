@@ -56,6 +56,9 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   renderModalContent?: (props: RenderModalContentProps) => ReactNode;
   /** Additional query keys to invalidate on create/update (e.g. to bust related caches). */
   additionalInvalidateKeys?: string[][];
+  /** When true, "delete" sets isActive=false via PATCH instead of issuing a DELETE request.
+   * Use for entities that may be referenced by other records (e.g. tags on activities). */
+  softDelete?: boolean;
 }
 
 /**
@@ -81,6 +84,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   transformSubmitData,
   renderModalContent,
   additionalInvalidateKeys,
+  softDelete,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -137,14 +141,18 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number | string) => {
-      await api.delete(`${apiEndpoint}/${id}`);
+      if (softDelete) {
+        await api.patch(`${apiEndpoint}/${id}`, { isActive: false });
+      } else {
+        await api.delete(`${apiEndpoint}/${id}`);
+      }
       return id;
     },
-    onSuccess: (deletedId) => {
-      queryClient.setQueryData([queryKey], (old: any) => {
-        if (!old) return [];
-        return old.filter((item: any) => item.id !== deletedId);
-      });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [queryKey] });
+      for (const key of additionalInvalidateKeys ?? []) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
     },
   });
 
