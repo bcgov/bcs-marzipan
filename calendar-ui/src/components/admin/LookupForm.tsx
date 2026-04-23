@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { NONE_SELECT_VALUE } from '.';
 import { Checkbox } from '../ui/checkbox';
@@ -27,8 +27,25 @@ export interface FormField {
   options?: SelectOption[];
 }
 
+function buildDefaultFormData(
+  initialData?: Record<string, any>
+): Record<string, any> {
+  return {
+    isActive: true,
+    sortOrder: 0,
+    ...(initialData ?? {}),
+  };
+}
+
 interface LookupFormProps {
   fields: FormField[];
+  /**
+   * When this value changes (e.g. create vs edit, or one row vs another), the form
+   * resets from `initialData`. Use a stable id string per record. For create, use a
+   * value that changes on every new add (e.g. `create-${session}` incremented when
+   * opening the modal) so the form clears if the dialog keeps the same mount.
+   */
+  resetKey: string;
   initialData?: Record<string, any>;
   onChange: (data: Record<string, any>) => void;
 }
@@ -37,15 +54,30 @@ interface LookupFormProps {
  * LookupForm - Reusable form for admin lookup data
  * Provides consistent form styling and data handling for admin forms.
  */
-export function LookupForm({ fields, initialData, onChange }: LookupFormProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({
-    isActive: true,
-    ...initialData,
-  });
+export function LookupForm({
+  fields,
+  resetKey,
+  initialData,
+  onChange,
+}: LookupFormProps) {
+  const [formData, setFormData] = useState<Record<string, any>>(() =>
+    buildDefaultFormData(initialData)
+  );
 
+  const lastResetKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    setFormData({ isActive: true, ...initialData });
-  }, [initialData]);
+    if (lastResetKeyRef.current === null) {
+      lastResetKeyRef.current = resetKey;
+      return;
+    }
+    if (lastResetKeyRef.current === resetKey) {
+      return;
+    }
+    lastResetKeyRef.current = resetKey;
+    setFormData(buildDefaultFormData(initialData));
+    // Only reset on `resetKey` changes; `initialData` is the snapshot for that key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   useEffect(() => {
     onChange(formData);

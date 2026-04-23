@@ -20,6 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  ClientValidationError,
+  showErrorToast,
+  showSuccessToast,
+} from '@/lib/error-toast';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -29,7 +34,7 @@ interface BaseLookupItem {
   displayName?: string | null;
   sortOrder?: number;
   isActive?: boolean;
-  [key: string]: unknown; // Allow additional properties (e.g. abbreviation, ministerName)
+  [key: string]: unknown; // Allow additional properties (e.g. abbreviation, ministerDisplayName)
 }
 
 export interface RenderModalContentProps {
@@ -63,6 +68,16 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When true, "delete" sets isActive=false via PATCH instead of issuing a DELETE request.
    * Use for entities that may be referenced by other records (e.g. tags on activities). */
   softDelete?: boolean;
+  /** When false, hides active/inactive filter (entities without isActive). Default true. */
+  showStatusFilter?: boolean;
+  /**
+   * When set, runs instead of the default POST/PATCH mutations (e.g. multi-step saves).
+   * Caller should invalidate relevant queries; this component only closes the modal on success.
+   */
+  submitOverride?: (args: {
+    formData: Record<string, any>;
+    editingItem: T | null;
+  }) => Promise<void>;
 }
 
 /**
@@ -89,11 +104,16 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   renderModalContent,
   additionalInvalidateKeys,
   softDelete,
+  showStatusFilter = true,
+  submitOverride,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [submitOverridePending, setSubmitOverridePending] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
+  /** Bumps on each "Add" open so `resetKey` changes every create session. */
+  const [createFormSession, setCreateFormSession] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   // Memoized only on editingItem to avoid re-creating the object every render,
@@ -130,6 +150,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
+      showSuccessToast(`${entityType} created`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -144,6 +168,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       setShowModal(false);
       setEditingItem(null);
       setFormData({});
+      showSuccessToast(`${entityType} updated`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
@@ -158,15 +186,20 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     },
     onSuccess: () => {
       invalidateListCaches();
+      showSuccessToast(`${entityType} deleted`);
+    },
+    onError: (error: unknown) => {
+      showErrorToast(error);
     },
   });
 
   const filteredData = useMemo(() => {
     if (!data) return [];
+    if (!showStatusFilter) return data;
     if (filter === 'active') return data.filter((item) => item.isActive);
     if (filter === 'inactive') return data.filter((item) => !item.isActive);
     return data;
-  }, [data, filter]);
+  }, [data, filter, showStatusFilter]);
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -246,15 +279,58 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     [additionalColumns, deleteMutation, entityType, getItemName]
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let processedData = { ...formData };
 
-    // Convert numeric fields
+    if (typeof processedData.name === 'string') {
+      processedData.name = processedData.name.trim();
+    }
+    if (typeof processedData.displayName === 'string') {
+      processedData.displayName = processedData.displayName.trim();
+    }
+
+    // Default display name from name when left empty (API schemas require both)
+    const nameStr =
+      typeof processedData.name === 'string' ? processedData.name : '';
+    const isDisplayEmpty =
+      processedData.displayName == null || processedData.displayName === '';
+    if (isDisplayEmpty && nameStr !== '') {
+      processedData.displayName = nameStr;
+    }
+
+    // Convert numeric fields (including 0 and empty -> 0 for sort order, etc.)
     formFields.forEach((field) => {
-      if (field.type === 'number' && processedData[field.name]) {
-        processedData[field.name] = Number(processedData[field.name]);
+      if (field.type === 'number') {
+        const raw = processedData[field.name];
+        processedData[field.name] = raw === '' || raw == null ? 0 : Number(raw);
+      }
+      if (field.type === 'select' && field.name === 'ministryGroupId') {
+        const v = processedData[field.name];
+        processedData[field.name] =
+          v === '__none__' || v === '' || v == null ? null : Number(v);
       }
     });
+
+    if (submitOverride) {
+      try {
+        setSubmitOverridePending(true);
+        await submitOverride({ formData: processedData, editingItem });
+        showSuccessToast(
+          editingItem ? `${entityType} updated` : `${entityType} created`
+        );
+        setShowModal(false);
+        setEditingItem(null);
+        setFormData({});
+      } catch (error: unknown) {
+        if (error instanceof ClientValidationError) {
+          return;
+        }
+        showErrorToast(error);
+      } finally {
+        setSubmitOverridePending(false);
+      }
+      return;
+    }
 
     if (transformSubmitData) {
       processedData = transformSubmitData(processedData);
@@ -270,6 +346,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const handleOpenModal = () => {
     setEditingItem(null);
     setFormData({});
+    setCreateFormSession((n) => n + 1);
     setShowModal(true);
   };
 
@@ -281,16 +358,21 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}
       headerAction={
-        <Select value={filter} onValueChange={(value: any) => setFilter(value)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        showStatusFilter ? (
+          <Select
+            value={filter}
+            onValueChange={(value: any) => setFilter(value)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : undefined
       }
     >
       {error && (
@@ -316,19 +398,33 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             ? `Update ${entityType.toLowerCase()} details`
             : `Create a new ${entityType.toLowerCase()}`
         }
-        onConfirm={handleSubmit}
+        onConfirm={() => {
+          void handleSubmit();
+        }}
         confirmLabel={editingItem ? 'Update' : 'Create'}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        isLoading={
+          createMutation.isPending ||
+          updateMutation.isPending ||
+          submitOverridePending
+        }
       >
         {renderModalContent ? (
           renderModalContent({
             initialData: editingItem ?? EMPTY_INITIAL,
             onChange: setFormData as (data: Record<string, unknown>) => void,
-            isSubmitting: createMutation.isPending || updateMutation.isPending,
+            isSubmitting:
+              createMutation.isPending ||
+              updateMutation.isPending ||
+              submitOverridePending,
           })
         ) : (
           <LookupForm
             fields={formFields}
+            resetKey={
+              editingItem != null
+                ? String(editingItem.id)
+                : `create-${createFormSession}`
+            }
             initialData={resolvedInitialData}
             onChange={setFormData}
           />

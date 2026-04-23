@@ -32,6 +32,17 @@ import { ApiError, NetworkError } from '../api/errors';
  */
 
 /**
+ * Throw after client-side validation has already called `toast.error` so
+ * `submitOverride` callers can abort without `showErrorToast` duplicating noise.
+ */
+export class ClientValidationError extends Error {
+  constructor(message = 'Validation failed') {
+    super(message);
+    this.name = 'ClientValidationError';
+  }
+}
+
+/**
  * Get a human-readable title for an HTTP status code
  */
 function getErrorTitle(status: number): string {

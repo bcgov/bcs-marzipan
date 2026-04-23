@@ -47,6 +47,7 @@ export function CategoriesAdmin() {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Category | null>(null);
+  const [createFormSession, setCreateFormSession] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   const { data, isLoading, error } = useQuery({
@@ -186,10 +187,23 @@ export function CategoriesAdmin() {
   const handleSubmit = () => {
     const processedData = { ...formData };
 
-    // Convert sortOrder to number
-    if (processedData.sortOrder) {
-      processedData.sortOrder = Number(processedData.sortOrder);
+    if (typeof processedData.name === 'string') {
+      processedData.name = processedData.name.trim();
     }
+    if (typeof processedData.displayName === 'string') {
+      processedData.displayName = processedData.displayName.trim();
+    }
+    const nameStr =
+      typeof processedData.name === 'string' ? processedData.name : '';
+    if (
+      (processedData.displayName == null || processedData.displayName === '') &&
+      nameStr !== ''
+    ) {
+      processedData.displayName = nameStr;
+    }
+
+    const so = processedData.sortOrder;
+    processedData.sortOrder = so === '' || so == null ? 0 : Number(so);
 
     if (editingItem) {
       updateMutation.mutate({ ...editingItem, ...processedData });
@@ -201,6 +215,7 @@ export function CategoriesAdmin() {
   const handleOpenModal = () => {
     setEditingItem(null);
     setFormData({});
+    setCreateFormSession((n) => n + 1);
     setShowModal(true);
   };
 
@@ -249,6 +264,11 @@ export function CategoriesAdmin() {
       >
         <LookupForm
           fields={formFields}
+          resetKey={
+            editingItem != null
+              ? String(editingItem.id)
+              : `create-${createFormSession}`
+          }
           initialData={editingItem || {}}
           onChange={setFormData}
         />

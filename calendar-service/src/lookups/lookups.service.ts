@@ -1,5 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne, type SQL } from 'drizzle-orm';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
 import {
   activities,
@@ -11,6 +20,7 @@ import {
   eventPlanners,
   governmentRepresentatives,
   ministries,
+  ministryGroups,
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
@@ -32,11 +42,13 @@ import {
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
 import type {
+  ActivityTeamSharingQuickShare,
   CategoryLookupItem,
   CommsMaterialsLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
   LookupQueryParams,
+  MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
   PitchStatusLookupItem,
@@ -790,11 +802,16 @@ export class LookupsService {
         name: governmentRepresentatives.name,
         displayName: governmentRepresentatives.displayName,
         title: governmentRepresentatives.title,
-        ministryId: governmentRepresentatives.ministryId,
+        ministryId: ministries.id,
+        representativeType: governmentRepresentatives.representativeType,
         sortOrder: governmentRepresentatives.sortOrder,
         isActive: governmentRepresentatives.isActive,
       })
       .from(governmentRepresentatives)
+      .leftJoin(
+        ministries,
+        eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
+      )
       .orderBy(governmentRepresentatives.sortOrder);
 
     return results.map((rep) => ({
@@ -805,6 +822,9 @@ export class LookupsService {
       displayName: rep.displayName,
       title: rep.title,
       ministryId: rep.ministryId,
+      representativeType: rep.representativeType as NonNullable<
+        GovernmentRepresentativeLookupItem['representativeType']
+      > | null,
       sortOrder: rep.sortOrder,
       isActive: rep.isActive,
     }));
@@ -980,11 +1000,17 @@ export class LookupsService {
         name: ministries.name,
         displayName: ministries.displayName,
         abbreviation: ministries.abbreviation,
-        ministerName: ministries.ministerName,
+        ministerGovernmentRepId: ministries.ministerGovernmentRepId,
+        ministerRepDisplayName: governmentRepresentatives.displayName,
         sortOrder: ministries.sortOrder,
         isActive: ministries.isActive,
+        ministryGroupId: ministries.ministryGroupId,
       })
       .from(ministries)
+      .leftJoin(
+        governmentRepresentatives,
+        eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
+      )
       .orderBy(ministries.sortOrder);
 
     return results.map((ministry) => ({
@@ -994,10 +1020,128 @@ export class LookupsService {
       name: ministry.name,
       displayName: ministry.displayName,
       abbreviation: ministry.abbreviation,
-      ministerName: ministry.ministerName,
+      ministerGovernmentRepId: ministry.ministerGovernmentRepId,
+      ministerDisplayName: ministry.ministerRepDisplayName ?? null,
       sortOrder: ministry.sortOrder,
       isActive: ministry.isActive,
+      ministryGroupId: ministry.ministryGroupId,
     }));
+  }
+
+  /**
+   * Ministry groups for admin / activity "Shared with" shortcuts (derived from ministries FK).
+   * Returns all rows: there is no isActive on `ministry_groups` (retire by delete or reassign ministries).
+   */
+  async getMinistryGroups(): Promise<MinistryGroupResponse[]> {
+    const rows = await this.databaseService.db
+      .select({
+        id: ministryGroups.id,
+        name: ministryGroups.name,
+        sortOrder: ministryGroups.sortOrder,
+      })
+      .from(ministryGroups)
+      .orderBy(asc(ministryGroups.sortOrder), asc(ministryGroups.id));
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      sortOrder: r.sortOrder,
+    }));
+  }
+
+  /**
+   * Insert a ministry group. Duplicate name (case-insensitive) causes SQLSTATE 23505;
+   * the HTTP layer maps that to 409 Conflict.
+   */
+  async createMinistryGroup(
+    data: { name: string; sortOrder: number },
+    currentUserId: number
+  ): Promise<typeof ministryGroups.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(ministryGroups)
+      .values({
+        name: data.name,
+        sortOrder: data.sortOrder,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
+   * Update a ministry group. Renaming to an existing name (case-insensitive) causes SQLSTATE 23505;
+   * the HTTP layer maps that to 409 Conflict.
+   */
+  async updateMinistryGroup(
+    id: number,
+    data: Partial<{ name: string; sortOrder: number }>,
+    currentUserId: number
+  ): Promise<typeof ministryGroups.$inferSelect | undefined> {
+    const updateData: Partial<typeof ministryGroups.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+
+    const [result] = await this.databaseService.db
+      .update(ministryGroups)
+      .set(updateData)
+      .where(eq(ministryGroups.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMinistryGroup(id: number): Promise<void> {
+    const deleted = await this.databaseService.db
+      .delete(ministryGroups)
+      .where(eq(ministryGroups.id, id))
+      .returning({ id: ministryGroups.id });
+    if (deleted.length === 0) {
+      throw new NotFoundException(`Ministry group ${id} not found`);
+    }
+  }
+
+  /**
+   * Quick-share groups for GET /lookups/activity-team-sharing (membership from ministries.ministry_group_id).
+   */
+  async getActivityTeamSharingQuickShare(): Promise<ActivityTeamSharingQuickShare | null> {
+    const groupRows = await this.getMinistryGroups();
+
+    if (groupRows.length === 0) {
+      return null;
+    }
+
+    const db = this.databaseService.db;
+    const ministryRows = await db
+      .select({
+        id: ministries.id,
+        ministryGroupId: ministries.ministryGroupId,
+      })
+      .from(ministries)
+      .where(isNotNull(ministries.ministryGroupId));
+
+    const byGroup = new Map<number, number[]>();
+    for (const row of ministryRows) {
+      const gid = row.ministryGroupId;
+      if (gid == null) continue;
+      const list = byGroup.get(gid) ?? [];
+      list.push(row.id);
+      byGroup.set(gid, list);
+    }
+
+    return {
+      groups: groupRows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        sortOrder: g.sortOrder,
+        ministryIds: (byGroup.get(g.id) ?? []).sort((a, b) => a - b),
+      })),
+    };
   }
 
   /**
@@ -1159,7 +1303,6 @@ export class LookupsService {
       title?: string | null;
       sortOrder: number;
       isActive?: boolean;
-      ministryId?: number | null;
       representativeType?: string | null;
     },
     currentUserId: number
@@ -1173,7 +1316,6 @@ export class LookupsService {
         title: data.title ?? undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
-        ministryId: data.ministryId ?? undefined,
         representativeType: data.representativeType ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
@@ -1240,22 +1382,54 @@ export class LookupsService {
       name: string;
       displayName: string;
       abbreviation: string; // Required by schema
-      ministerName?: string | null;
+      ministerGovernmentRepId?: number | null;
       sortOrder: number;
       isActive?: boolean;
+      ministryGroupId?: number | null;
     },
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
     const now = new Date();
+    if (
+      data.ministerGovernmentRepId != null &&
+      data.ministerGovernmentRepId !== undefined
+    ) {
+      await this.databaseService.db
+        .update(ministries)
+        .set({
+          ministerGovernmentRepId: null,
+          lastUpdatedBy: currentUserId,
+          lastUpdatedDateTime: now,
+        })
+        .where(
+          eq(ministries.ministerGovernmentRepId, data.ministerGovernmentRepId)
+        );
+    }
+
+    // Seeds insert explicit ministry ids; PostgreSQL does not advance the serial sequence,
+    // so the next DEFAULT id can collide. Sync without requiring a migration.
+    await this.databaseService.db.execute(sql`
+      SELECT setval(
+        pg_get_serial_sequence('public.ministries', 'id'),
+        COALESCE((SELECT MAX(id) FROM ministries), 1),
+        EXISTS (SELECT 1 FROM ministries)
+      )
+    `);
+
     const [result] = await this.databaseService.db
       .insert(ministries)
       .values({
         name: data.name,
         displayName: data.displayName,
         abbreviation: data.abbreviation,
-        ministerName: data.ministerName ?? undefined,
+        ministerGovernmentRepId:
+          data.ministerGovernmentRepId === null ||
+          data.ministerGovernmentRepId === undefined
+            ? undefined
+            : data.ministerGovernmentRepId,
         sortOrder: data.sortOrder,
         isActive: data.isActive ?? true,
+        ministryGroupId: data.ministryGroupId ?? undefined,
         createdBy: currentUserId,
         lastUpdatedBy: currentUserId,
         createdDateTime: now,
@@ -1309,6 +1483,13 @@ export class LookupsService {
     currentUserId: number
   ): Promise<any> {
     const now = new Date();
+    await this.databaseService.db.execute(sql`
+      SELECT setval(
+        pg_get_serial_sequence('public.themes', 'id'),
+        COALESCE((SELECT MAX(id) FROM themes), 1),
+        EXISTS (SELECT 1 FROM themes)
+      )
+    `);
     const [result] = await this.databaseService.db
       .insert(themes)
       .values({
@@ -1441,7 +1622,6 @@ export class LookupsService {
       title: string | null;
       sortOrder: number;
       isActive: boolean;
-      ministryId: number | null;
       representativeType: string | null;
     }>,
     currentUserId: number
@@ -1458,8 +1638,6 @@ export class LookupsService {
     if (data.title !== undefined) updateData.title = data.title ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.ministryId !== undefined)
-      updateData.ministryId = data.ministryId ?? undefined;
     if (data.representativeType !== undefined)
       updateData.representativeType = data.representativeType ?? undefined;
 
@@ -1540,9 +1718,10 @@ export class LookupsService {
       name: string;
       displayName: string;
       abbreviation: string;
-      ministerName: string | null;
+      ministerGovernmentRepId: number | null;
       sortOrder: number;
       isActive: boolean;
+      ministryGroupId: number | null;
     }>,
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect | undefined> {
@@ -1557,10 +1736,40 @@ export class LookupsService {
       updateData.displayName = data.displayName;
     if (data.abbreviation !== undefined)
       updateData.abbreviation = data.abbreviation;
-    if (data.ministerName !== undefined)
-      updateData.ministerName = data.ministerName ?? undefined;
+    if (data.ministerGovernmentRepId !== undefined) {
+      updateData.ministerGovernmentRepId =
+        data.ministerGovernmentRepId === null
+          ? null
+          : data.ministerGovernmentRepId;
+    }
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.ministryGroupId !== undefined) {
+      updateData.ministryGroupId =
+        data.ministryGroupId === null ? null : data.ministryGroupId;
+    }
+
+    if (
+      data.ministerGovernmentRepId !== undefined &&
+      data.ministerGovernmentRepId !== null
+    ) {
+      await this.databaseService.db
+        .update(ministries)
+        .set({
+          ministerGovernmentRepId: null,
+          lastUpdatedBy: currentUserId,
+          lastUpdatedDateTime: new Date(),
+        })
+        .where(
+          and(
+            eq(
+              ministries.ministerGovernmentRepId,
+              data.ministerGovernmentRepId
+            ),
+            ne(ministries.id, id)
+          )
+        );
+    }
 
     const [result] = await this.databaseService.db
       .update(ministries)

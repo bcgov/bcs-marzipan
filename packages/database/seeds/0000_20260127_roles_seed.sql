@@ -22,6 +22,3 @@ ON CONFLICT (id) DO UPDATE SET
   description = EXCLUDED.description,
   is_system = EXCLUDED.is_system,
   is_active = EXCLUDED.is_active;
-
--- Reset sequence to prevent conflicts when inserting new records
-SELECT setval('roles_id_seq', COALESCE((SELECT MAX(id) FROM roles), 1), true);

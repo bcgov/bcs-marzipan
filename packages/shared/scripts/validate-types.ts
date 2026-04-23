@@ -185,7 +185,6 @@ const _govRepResponseCheck: {
   displayName: GovernmentRepresentative['displayName'];
   isActive: GovernmentRepresentative['isActive'];
   title: GovernmentRepresentative['title'];
-  ministryId: GovernmentRepresentative['ministryId'];
 } = {} as never;
 
 // ============================================================================

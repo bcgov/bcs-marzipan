@@ -11,6 +11,7 @@ import {
 
 import { activities } from './activity';
 import { governmentRepresentatives } from './lookups';
+import { ministryGroups } from './ministry-groups';
 import { ministryUsers } from './relations';
 import { teams } from './teams';
 import { users } from './user';
@@ -30,14 +31,22 @@ export const ministries = pgTable('ministries', {
   displayName: varchar('display_name', { length: 255 }).notNull(),
   abbreviation: varchar('abbreviation', { length: 10 }).notNull(),
 
-  // Minister information
-  ministerName: varchar('minister_name', { length: 255 }),
+  /**
+   * Designated minister (government representative) for this ministry.
+   * FK to government_representatives.id is enforced in SQL migrations (avoids circular schema inference).
+   */
+  ministerGovernmentRepId: integer('minister_government_rep_id'),
 
   // Contacts
   contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
   secondContactUserId: integer('second_contact_user_id').references(
     () => users.id
   ), // FK to User
+
+  ministryGroupId: integer('ministry_group_id').references(
+    () => ministryGroups.id,
+    { onDelete: 'set null' }
+  ),
 
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
@@ -66,12 +75,26 @@ export const ministriesRelations = relations(ministries, ({ one, many }) => ({
     references: [users.id],
     relationName: 'secondContactUser',
   }),
+  ministryGroup: one(ministryGroups, {
+    fields: [ministries.ministryGroupId],
+    references: [ministryGroups.id],
+  }),
+  ministerRep: one(governmentRepresentatives, {
+    fields: [ministries.ministerGovernmentRepId],
+    references: [governmentRepresentatives.id],
+  }),
   children: many(ministries, { relationName: 'parent' }),
   activities: many(activities),
   ministryUsers: many(ministryUsers),
-  governmentRepresentatives: many(governmentRepresentatives),
   podMinistries: many(podMinistries, { relationName: 'ministryPodMinistries' }),
 }));
+
+export const ministryGroupsRelations = relations(
+  ministryGroups,
+  ({ many }) => ({
+    ministries: many(ministries),
+  })
+);
 
 /**
  * Pods table - Collections of ministries defined by users

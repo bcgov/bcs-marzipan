@@ -5,6 +5,7 @@ import {
   REFERENCE_LOOKUP_CACHE_MS,
 } from '@corpcal/shared';
 import type {
+  ActivityTeamSharingResponse,
   DateStatusLookupItem,
   PitchRequiredStatusLookupItem,
   ReportResponse,
@@ -13,6 +14,7 @@ import type {
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 
+import { fetchActivityTeamSharing } from '../api/activityTeamSharingApi';
 import {
   fetchActivitiesForLookup,
   fetchActivityStatuses,
@@ -52,6 +54,17 @@ import { fetchTeams } from '../api/usersApi';
 import { lookupQueryKeys } from '../lib/lookupQueryKeys';
 
 type TeamLookupItem = Awaited<ReturnType<typeof fetchTeams>>[number];
+
+/**
+ * Teams plus ministry quick-share groups for activity create/edit (single payload).
+ */
+export function useActivityTeamSharing() {
+  return useQuery<ActivityTeamSharingResponse>({
+    queryKey: lookupQueryKeys.activityTeamSharing(),
+    queryFn: fetchActivityTeamSharing,
+    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+  });
+}
 
 export function useCategories() {
   return useQuery<CategoryLookupItem[]>({
