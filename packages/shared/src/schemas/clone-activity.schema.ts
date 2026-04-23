@@ -109,6 +109,7 @@ export const CLONE_ADVANCED_SECTIONS = [
   'overview',
   'comms',
   'reports',
+  'schedule',
   'event',
   'sharing',
 ] as const;
@@ -132,12 +133,12 @@ export const CLONE_ADVANCED_FIELD_GROUPS: Record<
   readonly string[]
 > = {
   overview: [
-    'tagIds',
-    'significance',
+    'leadOrgId',
     'isConfidential',
     'isIssue',
-    'leadOrgId',
+    'significance',
     'notes',
+    'tagIds',
   ],
   comms: [
     'strategy',
@@ -146,13 +147,13 @@ export const CLONE_ADVANCED_FIELD_GROUPS: Record<
     'newsReleaseDistributionId',
   ],
   reports: ['reportSettings'],
+  schedule: ['schedulingNotes'],
   event: [
+    'premierRequestedId',
+    'representatives',
     'venueStatusId',
     'venueAddress',
     'eventPlanners',
-    'representatives',
-    'premierRequestedId',
-    'schedulingNotes',
   ],
   sharing: ['visibility', 'sharedWithTeamIds'],
 } as const;

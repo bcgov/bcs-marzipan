@@ -1,3 +1,4 @@
+import { format, startOfDay } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -28,10 +29,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { TimePicker } from '@/components/ui/time-picker';
+import {
+  getPresetAnchorToday,
+  parseIsoDateLocal,
+  PRESETS_FUTURE_FROM_ANCHOR,
+  PRESETS_PAST_FROM_ANCHOR,
+} from '@/lib/scheduled-date-presets';
 
 import { useAuth } from '../../../hooks/useAuth';
 import type { FormLookupData } from '../../../hooks/useFormLookups';
@@ -54,6 +62,7 @@ const SECTION_LABELS: Record<CloneAdvancedSection, string> = {
   overview: ACTIVITY_FORM_SECTION_LABELS.overview,
   comms: ACTIVITY_FORM_SECTION_LABELS.comms,
   reports: ACTIVITY_FORM_SECTION_LABELS.reports,
+  schedule: ACTIVITY_FORM_SECTION_LABELS.schedule,
   event: ACTIVITY_FORM_SECTION_LABELS.event,
   sharing: ACTIVITY_FORM_SECTION_LABELS.sharing,
 };
@@ -68,6 +77,28 @@ for (const scope of ACTIVITY_FIELD_SCOPES) {
     FIELD_PATH_TO_SCOPE[field] = scope;
   }
 }
+
+const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
+const INLINE_STATUS_FORM_ITEM_CLASS = 'shrink-0 space-y-0';
+const PRIMARY_AND_STATUS_ROW_CLASS =
+  'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
+
+const parseTimeToMinutes = (value: string): number | null => {
+  const [hourPart, minutePart] = value.trim().split(':');
+  const hours = Number.parseInt(hourPart ?? '', 10);
+  const minutes = Number.parseInt(minutePart ?? '', 10);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
 
 export interface CloneActivityModalProps {
   open: boolean;
@@ -112,7 +143,10 @@ export function CloneActivityModal({
     defaultTimeStatusId
   );
   const [notes, setNotes] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [activeTimePopover, setActiveTimePopover] = useState<
+    'start' | 'end' | null
+  >(null);
 
   const editableFieldGroups = useMemo<
     Record<CloneAdvancedSection, string[]>
@@ -156,7 +190,8 @@ export function CloneActivityModal({
     setDateStatusId(defaultDateStatusId);
     setTimeStatusId(defaultTimeStatusId);
     setNotes('');
-    setShowAdvanced(false);
+    setShowMoreOptions(false);
+    setActiveTimePopover(null);
     setIncludedPaths(new Set(editablePaths));
   }, [
     open,
@@ -165,6 +200,47 @@ export function CloneActivityModal({
     defaultTimeStatusId,
     editablePaths,
   ]);
+
+  useEffect(() => {
+    if (isAllDay) {
+      setActiveTimePopover((prev) => (prev === 'end' ? null : prev));
+    }
+  }, [isAllDay]);
+
+  const startStr = String(startDate ?? '');
+  const endStr = String(endDate ?? '');
+  const startTimeStr = String(startTime ?? '').trim();
+  const endTimeStr = String(endTime ?? '').trim();
+
+  const endPresetAnchor = () =>
+    startStr ? startOfDay(parseIsoDateLocal(startStr)) : startOfDay(new Date());
+
+  const startButtonLabel = startStr
+    ? format(parseIsoDateLocal(startStr), 'MMM d, yyyy')
+    : 'Select start date';
+  const endButtonLabel = endStr
+    ? format(parseIsoDateLocal(endStr), 'MMM d, yyyy')
+    : 'Select end date';
+
+  const isEndBeforeStart = (date: Date) =>
+    Boolean(startStr && date < new Date(startStr + 'T00:00:00'));
+
+  const hasDateOrderWarning =
+    Boolean(startStr) &&
+    Boolean(endStr) &&
+    endStr.slice(0, 10) < startStr.slice(0, 10);
+  const isSameDayOrDateUnspecified =
+    !startStr || !endStr || startStr.slice(0, 10) === endStr.slice(0, 10);
+  const startTimeMinutes = parseTimeToMinutes(startTimeStr);
+  const endTimeMinutes = parseTimeToMinutes(endTimeStr);
+  const hasTimeOrderWarning =
+    !isAllDay &&
+    isSameDayOrDateUnspecified &&
+    startTimeStr.length > 0 &&
+    endTimeStr.length > 0 &&
+    startTimeMinutes !== null &&
+    endTimeMinutes !== null &&
+    endTimeMinutes <= startTimeMinutes;
 
   const titleIsValid = title.trim().length > 0;
   const disableConfirm = isSubmitting || !titleIsValid;
@@ -206,7 +282,7 @@ export function CloneActivityModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Clone activity</DialogTitle>
           <DialogDescription>
@@ -217,12 +293,16 @@ export function CloneActivityModal({
 
         <div className="max-h-[65vh] space-y-5 overflow-y-auto pr-1">
           <div className="space-y-2">
-            <Label htmlFor="clone-activity-title">Title</Label>
-            <Input
+            <Label htmlFor="clone-activity-title">
+              {getActivityFieldLabel('title')}
+            </Label>
+            <Textarea
               id="clone-activity-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={CLONE_TITLE_MAX_LENGTH}
+              rows={2}
+              placeholder="Enter activity title"
               autoFocus
             />
             {!titleIsValid && (
@@ -234,48 +314,82 @@ export function CloneActivityModal({
 
           <div className="space-y-3">
             <Label>Date</Label>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-start-date"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  Start date
-                </Label>
-                <Input
-                  id="clone-start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setStartDate(v);
-                    if (endDate && v && endDate < v) {
-                      setEndDate(v);
+            <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1 space-y-0">
+                  <Label className="sr-only">
+                    {getActivityFieldLabel('startDate')}
+                  </Label>
+                  <ScheduledDatePopoverField
+                    value={startDate}
+                    onChange={(iso) => {
+                      const next = iso || '';
+                      setStartDate(next);
+                      if (endDate && next && endDate < next) {
+                        setEndDate(next);
+                      }
+                    }}
+                    label={startButtonLabel}
+                    triggerMuted={!startStr}
+                    readOnly={false}
+                    popoverTitle="Select start date"
+                    presets={PRESETS_PAST_FROM_ANCHOR}
+                    getPresetAnchor={getPresetAnchorToday}
+                    triggerAriaLabel="Activity start date"
+                    triggerVariant="form"
+                    headerRight={
+                      startStr ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary text-sm"
+                          onClick={() => setStartDate('')}
+                        >
+                          Clear
+                        </Button>
+                      ) : null
                     }
-                  }}
-                />
+                  />
+                </div>
+                <span className="text-muted-foreground shrink-0" aria-hidden>
+                  →
+                </span>
+                <div className="min-w-0 flex-1 space-y-0">
+                  <Label className="sr-only">
+                    {getActivityFieldLabel('endDate')}
+                  </Label>
+                  <ScheduledDatePopoverField
+                    value={endDate}
+                    onChange={(iso) => setEndDate(iso || '')}
+                    label={endButtonLabel}
+                    triggerMuted={!endStr}
+                    readOnly={false}
+                    popoverTitle="Select end date"
+                    presets={PRESETS_FUTURE_FROM_ANCHOR}
+                    getPresetAnchor={endPresetAnchor}
+                    isDateDisabled={isEndBeforeStart}
+                    triggerAriaLabel="Activity end date"
+                    triggerVariant="form"
+                    headerRight={
+                      endStr ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary text-sm"
+                          onClick={() => setEndDate('')}
+                        >
+                          Clear
+                        </Button>
+                      ) : null
+                    }
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-end-date"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  End date
-                </Label>
-                <Input
-                  id="clone-end-date"
-                  type="date"
-                  value={endDate}
-                  min={startDate || undefined}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-date-status"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  Date status
+              <div className={INLINE_STATUS_FORM_ITEM_CLASS}>
+                <Label htmlFor="clone-date-status" className="sr-only">
+                  {getActivityFieldLabel('dateStatusId')}
                 </Label>
                 <FormSelectSafe
                   optionValues={lookups.dateStatuses.map((s) => String(s.id))}
@@ -286,8 +400,8 @@ export function CloneActivityModal({
                 >
                   <FormSelectTrigger
                     id="clone-date-status"
-                    className="min-w-36"
-                    aria-label="Date status"
+                    className={STATUS_SELECT_MIN_WIDTH}
+                    aria-label={getActivityFieldLabel('dateStatusId')}
                   >
                     <SelectValue placeholder="Date status" />
                   </FormSelectTrigger>
@@ -301,47 +415,95 @@ export function CloneActivityModal({
                 </FormSelectSafe>
               </div>
             </div>
+            {hasDateOrderWarning ? (
+              <p className="text-sm font-medium text-amber-700">
+                End date must be later than or equal to start date.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-3">
             <Label>Time</Label>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-start-time"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  Start time
-                </Label>
-                <Input
-                  id="clone-start-time"
-                  type="time"
-                  value={startTime}
-                  disabled={isAllDay}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
+            <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1 space-y-0">
+                  <Label className="sr-only">
+                    {getActivityFieldLabel('startTime')}
+                  </Label>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <TimePicker
+                      allDay={{
+                        isAllDay,
+                        onAllDayChange: (checked) => setIsAllDay(checked),
+                        label: getActivityFieldLabel('isAllDay'),
+                      }}
+                      ariaLabel="Activity start time"
+                      readOnly={false}
+                      placeholderMuted={
+                        !isAllDay && !String(startTime ?? '').trim()
+                      }
+                      value={String(startTime ?? '')}
+                      onChange={(next) =>
+                        setStartTime(
+                          next === undefined || next === '' ? '' : next
+                        )
+                      }
+                      popoverOpen={activeTimePopover === 'start'}
+                      onPopoverOpenChange={(open) => {
+                        if (open) setActiveTimePopover('start');
+                        else
+                          setActiveTimePopover((prev) =>
+                            prev === 'start' ? null : prev
+                          );
+                      }}
+                    />
+                  </div>
+                </div>
+                {!isAllDay ? (
+                  <>
+                    <span
+                      className="text-muted-foreground shrink-0"
+                      aria-hidden
+                    >
+                      →
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-0">
+                      <Label className="sr-only">
+                        {getActivityFieldLabel('endTime')}
+                      </Label>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <TimePicker
+                          allDay={{
+                            isAllDay,
+                            onAllDayChange: (checked) => setIsAllDay(checked),
+                            label: getActivityFieldLabel('isAllDay'),
+                          }}
+                          ariaLabel="Activity end time"
+                          readOnly={false}
+                          placeholderMuted={!String(endTime ?? '').trim()}
+                          value={String(endTime ?? '')}
+                          onChange={(next) =>
+                            setEndTime(
+                              next === undefined || next === '' ? '' : next
+                            )
+                          }
+                          popoverOpen={activeTimePopover === 'end'}
+                          onPopoverOpenChange={(open) => {
+                            if (open) setActiveTimePopover('end');
+                            else
+                              setActiveTimePopover((prev) =>
+                                prev === 'end' ? null : prev
+                              );
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-end-time"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  End time
-                </Label>
-                <Input
-                  id="clone-end-time"
-                  type="time"
-                  value={endTime}
-                  disabled={isAllDay}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="clone-time-status"
-                  className="text-muted-foreground text-xs font-normal"
-                >
-                  Time status
+              <div className={INLINE_STATUS_FORM_ITEM_CLASS}>
+                <Label htmlFor="clone-time-status" className="sr-only">
+                  {getActivityFieldLabel('timeStatusId')}
                 </Label>
                 <FormSelectSafe
                   optionValues={lookups.timeStatuses.map((s) => String(s.id))}
@@ -352,8 +514,8 @@ export function CloneActivityModal({
                 >
                   <FormSelectTrigger
                     id="clone-time-status"
-                    className="min-w-36"
-                    aria-label="Time status"
+                    className={STATUS_SELECT_MIN_WIDTH}
+                    aria-label={getActivityFieldLabel('timeStatusId')}
                   >
                     <SelectValue placeholder="Time status" />
                   </FormSelectTrigger>
@@ -367,47 +529,27 @@ export function CloneActivityModal({
                 </FormSelectSafe>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="clone-is-all-day"
-                checked={isAllDay}
-                onCheckedChange={(checked) => setIsAllDay(checked === true)}
-              />
-              <Label
-                htmlFor="clone-is-all-day"
-                className="cursor-pointer text-sm font-normal"
-              >
-                All day
-              </Label>
-            </div>
+            {hasTimeOrderWarning ? (
+              <p className="text-sm font-medium text-amber-700">
+                End time must be later than start time.
+              </p>
+            ) : null}
           </div>
 
-          <div className="space-y-2">
-            {!showAdvanced && (
+          <div className="space-y-3">
+            <div className="flex">
               <button
                 type="button"
-                onClick={() => setShowAdvanced(true)}
+                onClick={() => setShowMoreOptions((v) => !v)}
                 className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800"
               >
-                Advanced
+                {showMoreOptions ? 'Hide options' : 'More options'}
               </button>
-            )}
-            {showAdvanced && (
+            </div>
+            {showMoreOptions ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">
-                    Fields to copy from the source
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(false)}
-                    className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800"
-                  >
-                    Hide
-                  </button>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  Unchecked fields start empty on the new activity.
+                <p className="text-sm font-medium">
+                  Select fields to clone. Unchecked fields will be left empty.
                 </p>
                 <div className="space-y-4">
                   {CLONE_ADVANCED_SECTIONS.map((section) => {
@@ -446,14 +588,13 @@ export function CloneActivityModal({
                   })}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="clone-activity-notes">Add a note (optional)</Label>
             <Textarea
               id="clone-activity-notes"
-              placeholder="Optional context; recorded on both activities' history."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
