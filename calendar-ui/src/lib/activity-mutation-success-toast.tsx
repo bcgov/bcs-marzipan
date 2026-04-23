@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 export const ACTIVITY_MUTATION_SUCCESS_TOAST_DURATION_MS = 7000;
 
-export type ActivityMutationSuccessKind = 'created' | 'updated';
+export type ActivityMutationSuccessKind = 'created' | 'updated' | 'cloned';
 
 export type ShowActivityMutationSuccessToastParams = {
   toastId: string;
@@ -37,14 +37,18 @@ export function showActivityMutationSuccessToast(
   const headline =
     kind === 'created'
       ? `Created activity ${displayId}`
-      : `Updated activity ${displayId}`;
+      : kind === 'cloned'
+        ? `Cloned activity ${displayId}`
+        : `Updated activity ${displayId}`;
   const trimmed = title.trim();
   const subtitle =
     trimmed.length > 0
       ? trimmed
       : kind === 'created'
         ? 'Your activity has been created.'
-        : 'Your activity has been updated.';
+        : kind === 'cloned'
+          ? 'Your activity has been cloned.'
+          : 'Your activity has been updated.';
 
   toast.success(
     <div className="flex min-w-0 flex-1 flex-col gap-1">
