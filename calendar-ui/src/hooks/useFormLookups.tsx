@@ -330,48 +330,17 @@ export function useFormLookups(): FormLookupData {
       })) ?? [];
 
     return {
-      categories: categories as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-        visibility?: string;
-      }>,
+      categories: categories,
       organizations,
       ministries,
       users,
       eventPlanners,
-      tags: tags as Array<{
-        id: number;
-        text: string;
-        visibility: 'global' | 'team';
-      }>,
-      pitchStatuses: pitchStatuses as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-      }>,
-      activityStatuses: activityStatuses as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-      }>,
-      commsMaterials: commsMaterials as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-      }>,
-      translationLanguages: translationLanguages as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-        shortcode?: string | null;
-      }>,
-      governmentRepresentatives: governmentRepresentatives as Array<{
-        id: number;
-        name: string;
-        displayName?: string;
-        title?: string;
-      }>,
+      tags: tags,
+      pitchStatuses: pitchStatuses,
+      activityStatuses: activityStatuses,
+      commsMaterials: commsMaterials,
+      translationLanguages: translationLanguages,
+      governmentRepresentatives: governmentRepresentatives,
       newsReleaseDistributions,
       premierRequested,
       newsReleaseOrigins,

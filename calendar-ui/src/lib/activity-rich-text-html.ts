@@ -18,7 +18,7 @@ function emptyParagraphsToLineBreak(html: string): string {
 function docFromStoredValue(value: string): JSONContent {
   const parsed = tryParseTipTapDoc(value);
   if (parsed) {
-    return parsed as JSONContent;
+    return parsed;
   }
   return markdownManagerForRichText().parse(value);
 }

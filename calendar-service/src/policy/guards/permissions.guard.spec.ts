@@ -5,7 +5,6 @@ import type { Mock } from 'vitest';
 
 import { SYSTEM_ROLE_IDS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 
-import { type PermissionsMetadata } from '../decorators/require-permission.decorator';
 import { PermissionsGuard } from './permissions.guard';
 
 describe('PermissionsGuard', () => {
@@ -71,7 +70,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: [],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       mockExecutionContext = createMockExecutionContext();
 
       const result = guard.canActivate(mockExecutionContext);
@@ -85,7 +84,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view'],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       mockExecutionContext = createMockExecutionContext(undefined);
 
       expect(() => guard.canActivate(mockExecutionContext)).toThrow(
@@ -100,7 +99,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view'],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       const userWithoutPermissions = {
         id: 1,
         username: 'test',
@@ -126,7 +125,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view', 'activities.create'],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -148,7 +147,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view', 'activities.create'],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -170,7 +169,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view', 'activities.create'],
         mode: 'any',
-      } as PermissionsMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -205,7 +204,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view', 'activities.create'],
         mode: 'all',
-      } as PermissionsMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -231,7 +230,7 @@ describe('PermissionsGuard', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         keys: ['activities.view', 'activities.create', 'activities.delete'],
         mode: 'all',
-      } as PermissionsMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',

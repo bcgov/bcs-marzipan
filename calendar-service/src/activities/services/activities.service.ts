@@ -58,7 +58,6 @@ import type {
   FilterActivitiesQueryParams,
   GlobalActivityHistoryEntry,
   UpdateActivityRequest,
-  VenueAddress,
   VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
@@ -1133,7 +1132,7 @@ export class ActivitiesService {
           await this.junctionService.insertVenueAddress(
             tx,
             activityId,
-            normalizedVenue as VenueAddress
+            normalizedVenue
           );
         }
       }
@@ -2069,7 +2068,7 @@ export class ActivitiesService {
         await this.junctionService.upsertVenueAddress(
           tx,
           id,
-          normalizedVenueAddress as VenueAddress | null
+          normalizedVenueAddress
         );
       }
 
@@ -2314,8 +2313,8 @@ export class ActivitiesService {
     // Convert Activity objects to generic records for comparison
     // Activity is a plain object that can be treated as Record<string, unknown>
     const mainChanges = this.activityHistoryService.generateChangeList(
-      oldActivity as Record<string, unknown>,
-      updated as Record<string, unknown>
+      oldActivity,
+      updated
     );
 
     // Collect all changes from this update into a single array
@@ -3206,7 +3205,7 @@ export class ActivitiesService {
       .from(categories)
       .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
       .orderBy(categories.name);
-    return rows as Category[];
+    return rows;
   }
 
   /**

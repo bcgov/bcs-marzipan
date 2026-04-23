@@ -67,7 +67,7 @@ describe('ZodValidationPipe', () => {
       const res = (e as { getResponse: () => unknown }).getResponse();
       const msg =
         typeof res === 'object' && res !== null && 'message' in res
-          ? (res as { message: unknown }).message
+          ? res.message
           : res;
       expect(msg).toBe('Validation failed');
     }

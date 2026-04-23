@@ -5,7 +5,6 @@ import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { showErrorToast } from '@/lib/error-toast';
 import {
   sanitizeSavedFilterPayload,
-  type SavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 
@@ -30,7 +29,7 @@ export function applySavedFilterSelection(
   if (!onApply) return;
   try {
     const { filterState, searchKeyword, hadInvalidValues } =
-      sanitizeSavedFilterPayload(sf as unknown as SavedFilterPayload, lookups);
+      sanitizeSavedFilterPayload(sf, lookups);
     onApply(filterState, searchKeyword, { id: sf.id, name: sf.name });
     onAppliedUi();
     if (hadInvalidValues) {

@@ -5,7 +5,6 @@ import type { Mock } from 'vitest';
 
 import { SYSTEM_ROLE_IDS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 
-import { type RolesMetadata } from '../decorators/require-role.decorator';
 import { RolesGuard } from './roles.guard';
 
 describe('RolesGuard', () => {
@@ -69,7 +68,7 @@ describe('RolesGuard', () => {
     it('should return true when metadata.roleNames is empty array', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [],
-      } as RolesMetadata);
+      });
       mockExecutionContext = createMockExecutionContext();
 
       const result = guard.canActivate(mockExecutionContext);
@@ -82,7 +81,7 @@ describe('RolesGuard', () => {
     it('should throw ForbiddenException when request.user is undefined', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [SYSTEM_ROLES.ADMIN],
-      } as RolesMetadata);
+      });
       mockExecutionContext = createMockExecutionContext(undefined);
 
       expect(() => guard.canActivate(mockExecutionContext)).toThrow(
@@ -96,7 +95,7 @@ describe('RolesGuard', () => {
     it('should throw ForbiddenException when user.roleName is undefined', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [SYSTEM_ROLES.ADMIN],
-      } as RolesMetadata);
+      });
       const userWithoutRoleName = {
         id: 1,
         username: 'test',
@@ -121,7 +120,7 @@ describe('RolesGuard', () => {
     it('should return true when user role is in allowed list', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.EDITOR],
-      } as RolesMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -142,7 +141,7 @@ describe('RolesGuard', () => {
     it('should throw ForbiddenException when user role is not in allowed list', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [SYSTEM_ROLES.ADMIN, SYSTEM_ROLES.SYSTEM_ADMIN],
-      } as RolesMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',
@@ -174,7 +173,7 @@ describe('RolesGuard', () => {
     it('should return true when user role matches exactly', () => {
       mockReflector.getAllAndOverride.mockReturnValue({
         roleNames: [SYSTEM_ROLES.ADMIN],
-      } as RolesMetadata);
+      });
       const user: AuthUser = {
         id: 1,
         username: 'test',

@@ -144,7 +144,7 @@ export function startLockHandoffCountdownToast(
   };
 
   run();
-  intervalId = window.setInterval(run, 1000) as unknown as number;
+  intervalId = window.setInterval(run, 1000);
 
   return {
     dispose,

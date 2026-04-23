@@ -5,7 +5,7 @@ import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from './application-settings.service';
 import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.service';
-import { LocksService, type LockForEntity } from './locks.service';
+import { LocksService } from './locks.service';
 
 describe('LocksService', () => {
   const notifyLockHandoffCancelled = vi.fn();
@@ -531,7 +531,7 @@ describe('LocksService', () => {
         .spyOn(localService, 'releaseLockOrFinalizePendingHandoff')
         .mockResolvedValue({
           kind: 'released',
-          lock: { ...lockRow } as LockForEntity,
+          lock: { ...lockRow },
         });
 
       await localService.releaseLocksAndCancelHandoffsAfterLastWsDisconnect(99);

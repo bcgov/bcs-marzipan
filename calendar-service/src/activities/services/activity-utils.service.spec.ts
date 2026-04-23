@@ -77,7 +77,7 @@ describe('ActivityUtilsService', () => {
         const res = (e as { getResponse: () => unknown }).getResponse();
         const msg =
           typeof res === 'object' && res !== null && 'message' in res
-            ? String((res as { message: unknown }).message)
+            ? String(res.message)
             : String(res);
         expect(msg).toContain('2');
         expect(msg).toContain('3');

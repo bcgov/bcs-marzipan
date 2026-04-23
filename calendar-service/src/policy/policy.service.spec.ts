@@ -14,7 +14,7 @@ describe('PolicyService', () => {
 
   beforeEach(async () => {
     mockDatabaseService = {
-      db: {} as any,
+      db: {},
     };
 
     const module: TestingModule = await Test.createTestingModule({

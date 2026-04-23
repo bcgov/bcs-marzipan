@@ -77,7 +77,7 @@ function toRouterPath(href: string): string {
 }
 
 function ActivityLinkMarkView(props: MarkViewProps) {
-  const rawAttrs = props.HTMLAttributes as Record<string, unknown>;
+  const rawAttrs = props.HTMLAttributes;
   const hrefRaw = rawAttrs.href;
   const hrefStr =
     typeof hrefRaw === 'string'
@@ -213,7 +213,7 @@ export function getSetContentArgs(
   }
   const doc = tryParseTipTapDoc(v);
   if (doc) {
-    return { content: doc as JSONContent, contentType: 'json' };
+    return { content: doc, contentType: 'json' };
   }
   return { content: v, contentType: 'markdown' };
 }

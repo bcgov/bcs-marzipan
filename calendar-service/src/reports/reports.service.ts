@@ -36,7 +36,7 @@ function pickDefinedActivityFilters(
 ): Partial<FilterActivitiesQueryParams> {
   return Object.fromEntries(
     Object.entries(filters).filter(([, v]) => v !== undefined)
-  ) as Partial<FilterActivitiesQueryParams>;
+  );
 }
 
 /** When the report section already pins the activity start-date window, query dates must not override it. */

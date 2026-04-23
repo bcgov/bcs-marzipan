@@ -267,7 +267,7 @@ export class ActivityHistoryService {
         activityId: entry.activityId,
         userId: actorUserId,
         actionType: 'updated',
-        changes: changes as unknown,
+        changes: changes,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: act?.displayId ?? null,

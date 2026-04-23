@@ -48,7 +48,7 @@ describe('DataScopeInterceptor', () => {
   const createMockCallHandler = (): CallHandler => {
     return {
       handle: vi.fn().mockReturnValue(of({})),
-    } as unknown as CallHandler;
+    };
   };
 
   it('should set dataScope to default when no user is present', async () => {

@@ -38,7 +38,6 @@ import { FormField } from './LookupForm';
 import {
   filterMinisterPickerReps,
   MinistryAdminModalForm,
-  type GovernmentRepMinisterListItem,
   type MinisterFormSelection,
 } from './MinistryAdminModalForm';
 import { VenuePresetForm } from './VenuePresetForm';
@@ -457,7 +456,7 @@ export function CategoriesAdmin() {
       entityType="Category"
       apiEndpoint="/lookups/categories"
       queryKey={lookupQueryKeys.categories()}
-      queryFn={fetchCategories as () => Promise<Category[]>}
+      queryFn={fetchCategories}
       formFields={categoryFields}
     />
   );
@@ -471,7 +470,7 @@ export function CitiesAdmin() {
       entityType="City"
       apiEndpoint="/lookups/cities"
       queryKey={lookupQueryKeys.cities()}
-      queryFn={fetchCities as () => Promise<City[]>}
+      queryFn={fetchCities}
       formFields={cityFields}
       additionalColumns={[
         {
@@ -505,7 +504,7 @@ export function CommsMaterialsAdmin() {
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       queryKey={lookupQueryKeys.commsMaterials()}
-      queryFn={fetchCommsMaterials as () => Promise<CommsMaterial[]>}
+      queryFn={fetchCommsMaterials}
       formFields={commsMaterialFields}
     />
   );
@@ -519,11 +518,7 @@ export function GovernmentRepresentativesAdmin() {
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
-      queryFn={
-        fetchGovernmentRepresentatives as () => Promise<
-          GovernmentRepresentative[]
-        >
-      }
+      queryFn={fetchGovernmentRepresentatives}
       formFields={govRepFields}
       additionalColumns={[
         {
@@ -570,7 +565,7 @@ export function TagsAdmin() {
       entityType="Tag"
       apiEndpoint="/lookups/tags"
       queryKey={lookupQueryKeys.tagsAdmin()}
-      queryFn={fetchAllTags as () => Promise<Tag[]>}
+      queryFn={fetchAllTags}
       softDelete
       additionalInvalidateKeys={[lookupQueryKeys.tags()]}
       formFields={tagFormFields}
@@ -604,7 +599,7 @@ export function TagsAdmin() {
             }
             return <span className="text-slate-500">Global</span>;
           },
-        } as ColumnDef<Tag>,
+        },
       ]}
     />
   );
@@ -635,9 +630,7 @@ export function MinistriesAdmin() {
   });
   const repsQuery = useQuery({
     queryKey: lookupQueryKeys.governmentRepresentatives(),
-    queryFn: fetchGovernmentRepresentatives as () => Promise<
-      GovernmentRepresentative[]
-    >,
+    queryFn: fetchGovernmentRepresentatives,
   });
 
   const sharingGroupSelectOptions = useMemo(() => {
@@ -663,9 +656,7 @@ export function MinistriesAdmin() {
   }, [sharingGroupSelectOptions]);
 
   const ministerRepOptions: FreeformComboboxOption[] = useMemo(() => {
-    const reps = filterMinisterPickerReps(
-      (repsQuery.data ?? []) as GovernmentRepMinisterListItem[]
-    );
+    const reps = filterMinisterPickerReps(repsQuery.data ?? []);
     return reps.map((r) => ({
       value: String(r.id),
       label: r.displayName || r.name,
@@ -740,7 +731,7 @@ export function MinistriesAdmin() {
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       queryKey={lookupQueryKeys.ministries()}
-      queryFn={fetchMinistries as () => Promise<MinistryAdminItem[]>}
+      queryFn={fetchMinistries}
       formFields={ministryFields}
       additionalColumns={ministryExtraColumns}
       additionalInvalidateKeys={[lookupQueryKeys.activityTeamSharing()]}
@@ -765,7 +756,7 @@ export function ActivityStatusesAdmin() {
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
       queryKey={lookupQueryKeys.activityStatuses()}
-      queryFn={fetchActivityStatuses as () => Promise<ActivityStatus[]>}
+      queryFn={fetchActivityStatuses}
       formFields={statusFields}
     />
   );

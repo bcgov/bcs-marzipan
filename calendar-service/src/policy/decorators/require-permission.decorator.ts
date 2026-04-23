@@ -21,7 +21,7 @@ export interface PermissionsMetadata {
 export const RequirePermission = (permissionKey: PermissionKey) =>
   SetMetadata(PERMISSIONS_METADATA_KEY, {
     keys: [permissionKey],
-    mode: 'any' as PermissionsMode,
+    mode: 'any',
   });
 
 /**
@@ -34,7 +34,7 @@ export const RequirePermission = (permissionKey: PermissionKey) =>
 export const RequireAnyPermission = (...permissionKeys: PermissionKey[]) =>
   SetMetadata(PERMISSIONS_METADATA_KEY, {
     keys: permissionKeys,
-    mode: 'any' as PermissionsMode,
+    mode: 'any',
   });
 
 /**
@@ -47,5 +47,5 @@ export const RequireAnyPermission = (...permissionKeys: PermissionKey[]) =>
 export const RequireAllPermissions = (...permissionKeys: PermissionKey[]) =>
   SetMetadata(PERMISSIONS_METADATA_KEY, {
     keys: permissionKeys,
-    mode: 'all' as PermissionsMode,
+    mode: 'all',
   });
