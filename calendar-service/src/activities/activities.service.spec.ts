@@ -367,7 +367,7 @@ describe('ActivitiesService', () => {
         endDate: new Date('2024-03-15T14:45:00Z') as any,
         startTime: '10:30:00',
         endTime: '14:45:00',
-      } as Partial<Activity>);
+      });
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 

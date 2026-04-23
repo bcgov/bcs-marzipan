@@ -158,11 +158,11 @@ export class LocksService {
         const expiresAtDate =
           existing.expiresAt instanceof Date
             ? existing.expiresAt
-            : new Date(existing.expiresAt as string | number);
+            : new Date(existing.expiresAt);
         const idleExpiresAtDate =
           existing.idleExpiresAt instanceof Date
             ? existing.idleExpiresAt
-            : new Date(existing.idleExpiresAt as string | number);
+            : new Date(existing.idleExpiresAt);
         const expiredLease = expiresAtDate < now;
         const expiredIdle = idleExpiresAtDate < now;
         if (expiredLease || expiredIdle) {
@@ -249,7 +249,7 @@ export class LocksService {
         gt(editLocks.idleExpiresAt, now)
       ),
     });
-    return row ? this.rowToLockForEntity(row as EditLockRow) : null;
+    return row ? this.rowToLockForEntity(row) : null;
   }
 
   async getLockById(lockId: number): Promise<LockForEntity | null> {
@@ -261,7 +261,7 @@ export class LocksService {
         gt(editLocks.idleExpiresAt, now)
       ),
     });
-    return row ? this.rowToLockForEntity(row as EditLockRow) : null;
+    return row ? this.rowToLockForEntity(row) : null;
   }
 
   /**
@@ -281,7 +281,7 @@ export class LocksService {
           gt(editLocks.idleExpiresAt, now)
         )
       );
-    return rows.map((row) => this.rowToLockForEntity(row as EditLockRow));
+    return rows.map((row) => this.rowToLockForEntity(row));
   }
 
   private async cancelAllPendingForceHandoffsForRequester(
@@ -435,13 +435,11 @@ export class LocksService {
       throw new HttpException('Lock not found', HttpStatus.NOT_FOUND);
     }
     const expiresAtDate =
-      row.expiresAt instanceof Date
-        ? row.expiresAt
-        : new Date(row.expiresAt as string | number);
+      row.expiresAt instanceof Date ? row.expiresAt : new Date(row.expiresAt);
     const idleExpiresAtDate =
       row.idleExpiresAt instanceof Date
         ? row.idleExpiresAt
-        : new Date(row.idleExpiresAt as string | number);
+        : new Date(row.idleExpiresAt);
     if (expiresAtDate < now || idleExpiresAtDate < now) {
       throw new HttpException('Lock expired', HttpStatus.GONE);
     }
@@ -449,7 +447,7 @@ export class LocksService {
     const lastRenewed =
       row.lastRenewedAt instanceof Date
         ? row.lastRenewedAt
-        : new Date(row.lastRenewedAt as string | number);
+        : new Date(row.lastRenewedAt);
     const elapsed = now.getTime() - lastRenewed.getTime();
     if (elapsed < HEARTBEAT_MIN_INTERVAL_MS) {
       return {

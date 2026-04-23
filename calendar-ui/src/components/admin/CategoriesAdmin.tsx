@@ -243,7 +243,7 @@ export function CategoriesAdmin() {
         <div className="text-destructive text-sm">Error loading categories</div>
       )}
       {filteredData && filteredData.length > 0 && (
-        <GenericDataTable data={filteredData} columns={columns as any} />
+        <GenericDataTable data={filteredData} columns={columns} />
       )}
       {filteredData && filteredData.length === 0 && (
         <div className="py-8 text-center text-slate-600">

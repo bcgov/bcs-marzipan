@@ -337,7 +337,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     }
 
     if (editingItem) {
-      updateMutation.mutate({ ...editingItem, ...processedData } as T);
+      updateMutation.mutate({ ...editingItem, ...processedData });
     } else {
       createMutation.mutate(processedData as Partial<T>);
     }
@@ -381,7 +381,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         </div>
       )}
       {filteredData && filteredData.length > 0 && (
-        <GenericDataTable data={filteredData} columns={baseColumns as any} />
+        <GenericDataTable data={filteredData} columns={baseColumns} />
       )}
       {filteredData && filteredData.length === 0 && (
         <div className="py-8 text-center text-slate-600">
@@ -411,7 +411,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         {renderModalContent ? (
           renderModalContent({
             initialData: editingItem ?? EMPTY_INITIAL,
-            onChange: setFormData as (data: Record<string, unknown>) => void,
+            onChange: setFormData,
             isSubmitting:
               createMutation.isPending ||
               updateMutation.isPending ||

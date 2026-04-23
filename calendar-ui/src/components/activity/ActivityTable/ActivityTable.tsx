@@ -104,7 +104,6 @@ import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
-  type SavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
@@ -180,7 +179,7 @@ function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
     opacity: isPinned ? 0.99 : 1,
     backdropFilter: isPinned ? 'blur(8px)' : undefined,
     WebkitBackdropFilter: isPinned ? 'blur(8px)' : undefined,
-    position: (isPinned ? 'sticky' : 'relative') as CSSProperties['position'],
+    position: isPinned ? 'sticky' : 'relative',
     zIndex: isPinned ? 1 : 0,
     backgroundColor:
       isPinned && column.id !== 'overview'
@@ -943,7 +942,7 @@ export function ActivityTable({
       searchKeyword: kw,
       hadInvalidValues,
     } = sanitizeSavedFilterPayload(
-      defaultFilter as unknown as SavedFilterPayload,
+      defaultFilter,
       validFilterLookupsForDefaultApply
     );
     setPreferences({ filterState: sanitized, searchKeyword: kw });
@@ -1610,9 +1609,7 @@ export function ActivityTable({
                       const pinStyles = getCommonPinningStyles(header.column);
                       const { backgroundColor: _pinBg, ...headerPinStyles } =
                         pinStyles;
-                      const meta = header.column.columnDef.meta as
-                        | { sortKey?: string; sortKeys?: string[] }
-                        | undefined;
+                      const meta = header.column.columnDef.meta;
                       const isSortable =
                         meta?.sortKey != null ||
                         (meta?.sortKeys?.length ?? 0) > 0;
@@ -1641,15 +1638,8 @@ export function ActivityTable({
                             ) {
                               return;
                             }
-                            const onHeaderSort = (
-                              table.options.meta as
-                                | {
-                                    handleHeaderSort?: (
-                                      key: string | string[]
-                                    ) => void;
-                                  }
-                                | undefined
-                            )?.handleHeaderSort;
+                            const onHeaderSort =
+                              table.options.meta?.handleHeaderSort;
                             if (sortPayload != null && onHeaderSort)
                               onHeaderSort(sortPayload);
                           }}

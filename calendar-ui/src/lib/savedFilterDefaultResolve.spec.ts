@@ -4,21 +4,22 @@ import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 
 import { resolveEffectiveDefaultSavedFilterId } from './savedFilterDefaultResolve';
 
-const base = (overrides: Partial<SavedFilterResponse>): SavedFilterResponse =>
-  ({
-    id: 1,
-    ownerUserId: 10,
-    name: 'A',
-    filterState: {},
-    searchKeyword: '',
-    isDefault: false,
-    sortOrder: 0,
-    scopeType: 'user',
-    scopeTeamId: null,
-    createdAt: '',
-    updatedAt: '',
-    ...overrides,
-  }) as SavedFilterResponse;
+const base = (
+  overrides: Partial<SavedFilterResponse>
+): SavedFilterResponse => ({
+  id: 1,
+  ownerUserId: 10,
+  name: 'A',
+  filterState: {},
+  searchKeyword: '',
+  isDefault: false,
+  sortOrder: 0,
+  scopeType: 'user',
+  scopeTeamId: null,
+  createdAt: '',
+  updatedAt: '',
+  ...overrides,
+});
 
 describe('resolveEffectiveDefaultSavedFilterId', () => {
   it('returns API default when that filter is in the list', () => {

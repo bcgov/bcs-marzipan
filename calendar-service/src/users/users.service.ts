@@ -30,7 +30,6 @@ import type {
 } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
-import type { Database } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
@@ -51,7 +50,7 @@ export class UsersService {
       userId,
       changedByUserId,
       actionType,
-      changes: changes ? (changes as unknown) : null,
+      changes: changes ? changes : null,
       notes: notes ?? null,
     });
   }
@@ -730,7 +729,7 @@ export class UsersService {
                 },
               ],
               historyNotes,
-              tx as unknown as Database
+              tx
             );
           }
 

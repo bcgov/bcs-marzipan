@@ -80,7 +80,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       // Handle validation errors from ZodValidationPipe
       if (
-        status === (HttpStatus.BAD_REQUEST as number) &&
+        status === Number(HttpStatus.BAD_REQUEST) &&
         typeof exceptionResponse === 'object' &&
         exceptionResponse !== null &&
         'errors' in exceptionResponse

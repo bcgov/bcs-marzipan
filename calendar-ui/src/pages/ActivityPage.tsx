@@ -528,12 +528,12 @@ export function ActivityPage({
         if (mode.kind === 'reviewOnly') {
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
-          } as UpdateActivityRequest;
+          };
         } else if (mode.kind === 'completeOnly') {
           submitData = {
             markAsCompleted: true,
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
-          } as UpdateActivityRequest;
+          };
         } else {
           const opts: UpdatePayloadOptions =
             mode.kind === 'reviewWithSave'
@@ -548,7 +548,7 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
-          } as UpdateActivityRequest;
+          };
         }
 
         const updated = await updateMutation.mutateAsync({

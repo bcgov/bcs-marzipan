@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import {
   SeedRunner,
-  type SeedableDatabase,
   type SeedOptions,
   type SeedResult,
 } from '@corpcal/database';
@@ -28,7 +27,7 @@ export class SeedService {
     // Type assertion needed because Drizzle's Database type has a more specific
     // execute signature than our SeedableDatabase interface
     // The actual runtime behavior is compatible
-    this.seedRunner = new SeedRunner(this.db as unknown as SeedableDatabase);
+    this.seedRunner = new SeedRunner(this.db);
   }
 
   /**

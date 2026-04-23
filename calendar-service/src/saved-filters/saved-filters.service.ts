@@ -188,7 +188,7 @@ export class SavedFiltersService {
     }
 
     const resolvedScope = this.resolveScope({
-      scopeType: body.scopeType ?? (existing.scopeType as SavedFilterScopeType),
+      scopeType: body.scopeType ?? existing.scopeType,
       scopeTeamId:
         body.scopeTeamId !== undefined
           ? body.scopeTeamId
