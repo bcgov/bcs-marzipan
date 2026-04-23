@@ -4,12 +4,24 @@ import type {
 } from '../schemas/activity.schema';
 
 /**
- * Keys that can have a display label (form fields + nested venue address fields).
- * Typed so new ActivityFormData keys get a compile-time nudge to add a label.
+ * History-only keys used for clone provenance (not part of ActivityFormData).
+ * Recorded in `activityHistory.changes` to link a source and its clone.
+ */
+export type CloneProvenanceFieldKey =
+  | 'clonedFromActivityId'
+  | 'clonedFromDisplayId'
+  | 'clonedToActivityId'
+  | 'clonedToDisplayId';
+
+/**
+ * Keys that can have a display label (form fields + nested venue address fields +
+ * clone provenance fields). Typed so new ActivityFormData keys get a compile-time
+ * nudge to add a label.
  */
 export type ActivityFieldLabelKey =
   | keyof ActivityFormData
-  | keyof VenueAddressBase;
+  | keyof VenueAddressBase
+  | CloneProvenanceFieldKey;
 
 /**
  * Form/API field keys that are required on create (matches createActivityRequestSchema
@@ -76,6 +88,11 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   premierRequestedId: 'Premier requested',
   reportSettings: 'Report settings',
   representatives: 'Representatives',
+  // Clone provenance (recorded in history `changes` only)
+  clonedFromActivityId: 'Cloned from activity',
+  clonedFromDisplayId: 'Cloned from display ID',
+  clonedToActivityId: 'Cloned to activity',
+  clonedToDisplayId: 'Cloned to display ID',
   // Venue row nested fields (DB `venue_name`, etc.)
   venueName: 'Venue',
   addressLine1: 'Address',
