@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   Injectable,
   NotImplementedException,
@@ -6,7 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
-import type { AuthUser } from '@corpcal/shared';
+import { and, eq, gt, inArray, sessions } from '@corpcal/database';
+import { DEFAULT_JWT_EXPIRES_IN, type AuthUser } from '@corpcal/shared';
 
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
@@ -19,6 +21,8 @@ import {
   type AuthDbUser,
 } from './strategies/ad.strategy';
 import { findUserByUsername } from './strategies/mock.strategy';
+
+const MAX_SESSIONS = 5;
 
 export interface JwtPayload {
   sub: number;
@@ -133,8 +137,11 @@ export class AuthService {
       bypassDataScoping: effective.bypass,
     };
 
-    const raw = this.configService.get<string | number>('JWT_EXPIRES_IN', 3600);
-    const expiresIn = Number(raw ?? 3600);
+    const raw = this.configService.get<string | number>(
+      'JWT_EXPIRES_IN',
+      DEFAULT_JWT_EXPIRES_IN
+    );
+    const expiresIn = Number(raw ?? DEFAULT_JWT_EXPIRES_IN);
     const accessToken = this.jwtService.sign(
       {
         sub: user.id,
@@ -149,6 +156,33 @@ export class AuthService {
       } satisfies JwtPayload,
       { expiresIn }
     );
+
+    const tokenHash = createHash('sha256').update(accessToken).digest('hex');
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    await this.databaseService.db.insert(sessions).values({
+      userId: dbUser.id,
+      token: tokenHash,
+      expiresAt,
+      lastAccessedAt: new Date(),
+    });
+
+    // Prune oldest sessions if user exceeds MAX_SESSIONS
+    const allSessions = await this.databaseService.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.userId, dbUser.id))
+      .orderBy(sessions.createdAt);
+
+    if (allSessions.length > MAX_SESSIONS) {
+      const toDelete = allSessions
+        .slice(0, allSessions.length - MAX_SESSIONS)
+        .map((s) => s.id);
+      await this.databaseService.db
+        .delete(sessions)
+        .where(
+          and(eq(sessions.userId, dbUser.id), inArray(sessions.id, toDelete))
+        );
+    }
 
     return {
       user,
@@ -174,8 +208,39 @@ export class AuthService {
     };
   }
 
-  logout(): { message: string } {
-    // Stateless JWT: client discards token. Future: invalidate refresh token/session.
+  hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Verify the session exists in the DB and update lastAccessedAt.
+   * Called by JwtAuthGuard on every authenticated request.
+   */
+  async validateAndTouchSession(tokenHash: string): Promise<void> {
+    const [session] = await this.databaseService.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(eq(sessions.token, tokenHash), gt(sessions.expiresAt, new Date()))
+      )
+      .limit(1);
+
+    if (!session) {
+      throw new UnauthorizedException('Session not found or expired');
+    }
+
+    // Fire-and-forget — non-critical, don't block the request
+    void this.databaseService.db
+      .update(sessions)
+      .set({ lastAccessedAt: new Date() })
+      .where(eq(sessions.id, session.id))
+      .catch(() => undefined);
+  }
+
+  async logout(tokenHash: string): Promise<{ message: string }> {
+    await this.databaseService.db
+      .delete(sessions)
+      .where(eq(sessions.token, tokenHash));
     return { message: 'Logged out' };
   }
 
