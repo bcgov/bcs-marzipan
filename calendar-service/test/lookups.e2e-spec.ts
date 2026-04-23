@@ -41,11 +41,11 @@ describe('LookupsController (e2e)', () => {
         });
     });
 
-    it('should have cache-control headers', () => {
+    it('should set a revalidation-first Cache-Control header', () => {
       return createAuthRequest(app, accessToken)
         .get('/lookups/categories')
         .expect(200)
-        .expect('Cache-Control', /public/);
+        .expect('Cache-Control', /no-store|no-cache/);
     });
   });
 
@@ -153,11 +153,11 @@ describe('LookupsController (e2e)', () => {
         });
     });
 
-    it('should have cache-control headers', () => {
+    it('should set a revalidation-first Cache-Control header', () => {
       return createAuthRequest(app, accessToken)
         .get('/lookups/venue-presets')
         .expect(200)
-        .expect('Cache-Control', /public/);
+        .expect('Cache-Control', /no-store|no-cache/);
     });
   });
 

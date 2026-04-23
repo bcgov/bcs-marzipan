@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 export interface VenuePresetFormData {
   venueName?: string | null;
@@ -105,7 +106,7 @@ export function VenuePresetForm({
   );
 
   const { data: citiesList = [] } = useQuery({
-    queryKey: ['cities'],
+    queryKey: lookupQueryKeys.cities(),
     queryFn: fetchCities,
   });
 

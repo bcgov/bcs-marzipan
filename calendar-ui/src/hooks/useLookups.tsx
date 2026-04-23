@@ -49,12 +49,13 @@ import {
   type UserLookupItem,
 } from '../api/lookupsApi';
 import { fetchTeams } from '../api/usersApi';
+import { lookupQueryKeys } from '../lib/lookupQueryKeys';
 
 type TeamLookupItem = Awaited<ReturnType<typeof fetchTeams>>[number];
 
 export function useCategories() {
   return useQuery<CategoryLookupItem[]>({
-    queryKey: ['lookups', 'categories'],
+    queryKey: lookupQueryKeys.categories(),
     queryFn: () => fetchCategories(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -62,7 +63,7 @@ export function useCategories() {
 
 export function useOrganizations(params?: LookupQueryParams) {
   return useQuery<OrganizationLookupItem[]>({
-    queryKey: ['lookups', 'organizations', params],
+    queryKey: lookupQueryKeys.organizations(params),
     queryFn: () => fetchOrganizations(params),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -70,7 +71,7 @@ export function useOrganizations(params?: LookupQueryParams) {
 
 export function useUsers(params?: LookupQueryParams) {
   return useQuery<UserLookupItem[]>({
-    queryKey: ['lookups', 'users', params],
+    queryKey: lookupQueryKeys.users(params),
     queryFn: () => fetchUsers(params),
     staleTime: DYNAMIC_LOOKUP_CACHE_MS,
   });
@@ -78,7 +79,7 @@ export function useUsers(params?: LookupQueryParams) {
 
 export function useTeams() {
   return useQuery<TeamLookupItem[]>({
-    queryKey: ['teams'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -86,7 +87,7 @@ export function useTeams() {
 
 export function useTags() {
   return useQuery<TagLookupItem[]>({
-    queryKey: ['lookups', 'tags'],
+    queryKey: lookupQueryKeys.tags(),
     queryFn: () => fetchTags(),
     staleTime: DYNAMIC_LOOKUP_CACHE_MS, // user-specific results; don't cache as long as static lookups
   });
@@ -94,7 +95,7 @@ export function useTags() {
 
 export function usePitchStatuses() {
   return useQuery<PitchStatusLookupItem[]>({
-    queryKey: ['lookups', 'pitch-statuses'],
+    queryKey: lookupQueryKeys.pitchStatuses(),
     queryFn: () => fetchPitchStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -102,7 +103,7 @@ export function usePitchStatuses() {
 
 export function useActivityStatuses() {
   return useQuery<ActivityStatusLookupItem[]>({
-    queryKey: ['lookups', 'activity-statuses'],
+    queryKey: lookupQueryKeys.activityStatuses(),
     queryFn: () => fetchActivityStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -110,7 +111,7 @@ export function useActivityStatuses() {
 
 export function useCommsMaterials() {
   return useQuery<CommsMaterialsLookupItem[]>({
-    queryKey: ['lookups', 'comms-materials'],
+    queryKey: lookupQueryKeys.commsMaterials(),
     queryFn: () => fetchCommsMaterials(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -118,7 +119,7 @@ export function useCommsMaterials() {
 
 export function useTranslationLanguages() {
   return useQuery<TranslationLanguageLookupItem[]>({
-    queryKey: ['lookups', 'translation-languages'],
+    queryKey: lookupQueryKeys.translationLanguages(),
     queryFn: () => fetchTranslationLanguages(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -126,7 +127,7 @@ export function useTranslationLanguages() {
 
 export function useGovernmentRepresentatives() {
   return useQuery<GovernmentRepresentativeLookupItem[]>({
-    queryKey: ['lookups', 'government-representatives'],
+    queryKey: lookupQueryKeys.governmentRepresentatives(),
     queryFn: () => fetchGovernmentRepresentatives(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -134,7 +135,7 @@ export function useGovernmentRepresentatives() {
 
 export function useEventPlanners() {
   return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'event-planners'],
+    queryKey: lookupQueryKeys.eventPlanners(),
     queryFn: () => fetchEventPlanners(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -142,7 +143,7 @@ export function useEventPlanners() {
 
 export function useNewsReleaseDistributions() {
   return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'news-release-distributions'],
+    queryKey: lookupQueryKeys.newsReleaseDistributions(),
     queryFn: () => fetchNewsReleaseDistributions(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -150,7 +151,7 @@ export function useNewsReleaseDistributions() {
 
 export function usePremierRequested() {
   return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'premier-requested'],
+    queryKey: lookupQueryKeys.premierRequested(),
     queryFn: () => fetchPremierRequested(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -158,7 +159,7 @@ export function usePremierRequested() {
 
 export function useNewsReleaseOrigins() {
   return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'news-release-origins'],
+    queryKey: lookupQueryKeys.newsReleaseOrigins(),
     queryFn: () => fetchNewsReleaseOrigins(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -168,7 +169,7 @@ export function useActivitiesForLookup(
   params?: Pick<LookupQueryParams, 'userId' | 'role'>
 ) {
   return useQuery<LookupItem[]>({
-    queryKey: ['lookups', 'activities', params],
+    queryKey: lookupQueryKeys.activities(params),
     queryFn: () => fetchActivitiesForLookup(params),
     staleTime: DYNAMIC_LOOKUP_CACHE_MS,
   });
@@ -176,7 +177,7 @@ export function useActivitiesForLookup(
 
 export function useReports() {
   return useQuery<ReportResponse[]>({
-    queryKey: ['reports'],
+    queryKey: lookupQueryKeys.reports(),
     queryFn: () => fetchReports(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -184,7 +185,7 @@ export function useReports() {
 
 export function useDateStatuses() {
   return useQuery<DateStatusLookupItem[]>({
-    queryKey: ['lookups', 'date-statuses'],
+    queryKey: lookupQueryKeys.dateStatuses(),
     queryFn: () => fetchDateStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -192,7 +193,7 @@ export function useDateStatuses() {
 
 export function useTimeStatuses() {
   return useQuery<TimeStatusLookupItem[]>({
-    queryKey: ['lookups', 'time-statuses'],
+    queryKey: lookupQueryKeys.timeStatuses(),
     queryFn: () => fetchTimeStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -200,7 +201,7 @@ export function useTimeStatuses() {
 
 export function useVenueStatuses() {
   return useQuery<VenueStatusLookupItem[]>({
-    queryKey: ['lookups', 'venue-statuses'],
+    queryKey: lookupQueryKeys.venueStatuses(),
     queryFn: () => fetchVenueStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -208,7 +209,7 @@ export function useVenueStatuses() {
 
 export function usePitchRequiredStatuses() {
   return useQuery<PitchRequiredStatusLookupItem[]>({
-    queryKey: ['lookups', 'pitch-required-statuses'],
+    queryKey: lookupQueryKeys.pitchRequiredStatuses(),
     queryFn: () => fetchPitchRequiredStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -216,7 +217,7 @@ export function usePitchRequiredStatuses() {
 
 export function useTranslationRequiredStatuses() {
   return useQuery<TranslationRequiredStatusLookupItem[]>({
-    queryKey: ['lookups', 'translation-required-statuses'],
+    queryKey: lookupQueryKeys.translationRequiredStatuses(),
     queryFn: () => fetchTranslationRequiredStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
@@ -224,7 +225,7 @@ export function useTranslationRequiredStatuses() {
 
 export function useMinistries() {
   return useQuery<MinistryLookupItem[]>({
-    queryKey: ['lookups', 'ministries'],
+    queryKey: lookupQueryKeys.ministries(),
     queryFn: () => fetchMinistries(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });

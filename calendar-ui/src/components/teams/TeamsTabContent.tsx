@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
@@ -107,7 +108,7 @@ export function TeamsTabContent({
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const { data: teams = [], isLoading } = useQuery({
-    queryKey: ['teams', 'list', showInactive],
+    queryKey: lookupQueryKeys.teamsList(showInactive),
     queryFn: () => fetchTeamsList(!showInactive),
   });
 

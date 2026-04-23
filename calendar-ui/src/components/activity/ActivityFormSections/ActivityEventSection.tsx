@@ -53,6 +53,7 @@ import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
@@ -261,11 +262,11 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   const representativesAnchorRef = useComboboxAnchor();
 
   const { data: allPresets = [] } = useQuery({
-    queryKey: ['venuePresets'],
+    queryKey: lookupQueryKeys.venuePresets(),
     queryFn: fetchVenuePresets,
   });
   const { data: citiesList = [] } = useQuery({
-    queryKey: ['cities'],
+    queryKey: lookupQueryKeys.cities(),
     queryFn: fetchCities,
   });
 

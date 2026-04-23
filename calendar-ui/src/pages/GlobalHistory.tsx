@@ -51,6 +51,7 @@ import {
   getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
 import { formatExactDate, formatLongDate } from '@/lib/datetime-utils';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const EMPTY_DATE_RANGE: DateRangeValue = {
   startDate: '',
@@ -60,6 +61,8 @@ const EMPTY_DATE_RANGE: DateRangeValue = {
 };
 
 const MAX_CHANGE_VALUE_LENGTH = 120;
+
+const HISTORY_FILTER_LOOKUP_STALE_MS = 5 * 60 * 1000;
 
 type HistoryTab = 'all' | 'mine';
 
@@ -404,45 +407,51 @@ export function GlobalHistory() {
   const activityStatusesQuery = useActivityStatuses();
 
   const dateStatusesQuery = useQuery({
-    queryKey: ['lookups', 'date-statuses', 'history-filters'],
+    queryKey: [...lookupQueryKeys.dateStatuses(), 'history-filters'],
     queryFn: fetchDateStatuses,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const timeStatusesQuery = useQuery({
-    queryKey: ['lookups', 'time-statuses', 'history-filters'],
+    queryKey: [...lookupQueryKeys.timeStatuses(), 'history-filters'],
     queryFn: fetchTimeStatuses,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const pitchRequiredStatusesQuery = useQuery({
-    queryKey: ['lookups', 'pitch-required-statuses', 'history-filters'],
+    queryKey: [...lookupQueryKeys.pitchRequiredStatuses(), 'history-filters'],
     queryFn: fetchPitchRequiredStatuses,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const translationRequiredStatusesQuery = useQuery({
-    queryKey: ['lookups', 'translation-required-statuses', 'history-filters'],
+    queryKey: [
+      ...lookupQueryKeys.translationRequiredStatuses(),
+      'history-filters',
+    ],
     queryFn: fetchTranslationRequiredStatuses,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const newsReleaseOriginsQuery = useQuery({
-    queryKey: ['lookups', 'news-release-origins', 'history-filters'],
+    queryKey: [...lookupQueryKeys.newsReleaseOrigins(), 'history-filters'],
     queryFn: fetchNewsReleaseOrigins,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const newsReleaseDistributionsQuery = useQuery({
-    queryKey: ['lookups', 'news-release-distributions', 'history-filters'],
+    queryKey: [
+      ...lookupQueryKeys.newsReleaseDistributions(),
+      'history-filters',
+    ],
     queryFn: fetchNewsReleaseDistributions,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const premierRequestedQuery = useQuery({
-    queryKey: ['lookups', 'premier-requested', 'history-filters'],
+    queryKey: [...lookupQueryKeys.premierRequested(), 'history-filters'],
     queryFn: fetchPremierRequested,
-    staleTime: 5 * 60 * 1000,
+    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
   const entries = useMemo(

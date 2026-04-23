@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
 interface TeamEditModalProps {
@@ -59,7 +60,7 @@ export function TeamEditModal({
     });
 
   const { data: ministries = [] } = useQuery({
-    queryKey: ['lookups', 'ministries'],
+    queryKey: lookupQueryKeys.ministries(),
     queryFn: fetchMinistries,
     enabled: open,
   });
@@ -95,7 +96,7 @@ export function TeamEditModal({
   const createMutation = useMutation({
     mutationFn: createTeam,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
       toast.success('Team created', { id: 'team-created' });
       onSaved();
       onClose();
@@ -116,7 +117,7 @@ export function TeamEditModal({
       body: Parameters<typeof updateTeam>[1];
     }) => updateTeam(id, body),
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['teams'] });
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
       toast.success('Team updated', { id: `team-updated-${variables.id}` });
       onSaved();
       onClose();
