@@ -3,6 +3,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type PluginOption } from 'vite';
 
+// Dev (optimizeDeps) and prod (build) must use the same esbuild target. Default
+// legacy targets cause "Transforming destructuring ... is not supported yet" when
+// pre-bundling modern dependencies (@base-ui/react, reselect, etc.).
+const buildTarget = 'es2022';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -29,13 +34,16 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    esbuildOptions: {
+      target: buildTarget,
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // React Compiler can emit patterns that esbuild 0.28+ fails to lower for default
-    // legacy targets ("Transforming destructuring ... is not supported yet"). Align
-    // with modern evergreen browsers (see calendar-ui package.json browserslist).
-    target: 'es2022',
+    // React Compiler and deps assume modern runtimes.
+    target: buildTarget,
     rollupOptions: {
       output: {
         manualChunks(id) {
