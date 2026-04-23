@@ -32,6 +32,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // React Compiler can emit patterns that esbuild 0.28+ fails to lower for default
+    // legacy targets ("Transforming destructuring ... is not supported yet"). Align
+    // with modern evergreen browsers (see calendar-ui package.json browserslist).
+    target: 'es2022',
     rollupOptions: {
       output: {
         manualChunks(id) {
