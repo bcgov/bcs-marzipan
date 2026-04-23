@@ -29,6 +29,7 @@ import type {
 } from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
+  cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
   hardDeleteRequestBodySchema,
@@ -41,6 +42,7 @@ import {
   updateTagsSchema,
   updateThemesSchema,
   type AddActivityHistoryNoteRequest,
+  type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
   type HardDeleteRequest,
@@ -70,6 +72,7 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
@@ -112,6 +115,60 @@ export class ActivitiesController {
     );
 
     const result = await this.activitiesService.create(body, user.id, {
+      roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
+    });
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Clone activity',
+    description:
+      'Creates a new activity using an existing activity as a template. ' +
+      'Title and schedule come from the request body; other source fields may be ' +
+      'copied or reset based on `includeFieldPaths`. The new activity is always ' +
+      'created in the "new" status and records provenance history on both the ' +
+      'source and new activity.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Source activity ID',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Activity cloned successfully',
+    type: ActivityResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'User cannot clone this activity (lacks edit eligibility on the source, ' +
+      'or source is in a blocked status and user lacks activities.delete.any).',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Source activity not found',
+  })
+  @RequirePermission('activities.create')
+  @UseGuards(CanCloneActivityGuard)
+  @Post(':id/clone')
+  async clone(
+    @Param('id', ParseIntPipe) sourceId: number,
+    @Body(new ZodValidationPipe(cloneActivityRequestSchema))
+    body: CloneActivityRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    const result = await this.activitiesService.clone(sourceId, body, user.id, {
       roleName: user.roleName,
       permissions: user.permissions,
       teamIds: user.teamIds,

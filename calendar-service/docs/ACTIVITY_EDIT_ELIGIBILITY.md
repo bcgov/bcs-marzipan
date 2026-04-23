@@ -30,6 +30,29 @@ If `activities.edit` is missing, `canEdit` is **false**. If the field is omitted
 - **`canEdit` handling:** the UI treats **missing** `canEdit` as **false** so the form does not allow edits when the API does not explicitly allow them.
 - **Review vs Update (edit page):** users with **`activities.review`** see a **Review** action in addition to **Update**. **Update** saves field changes and sets status to **Changed** (unless combined with review via the Review flow). **Review** marks the activity **Reviewed**; if there are unsaved edits, the Review confirmation saves them and marks reviewed in one step.
 
+## Backend: cloning an activity (POST `/activities/:id/clone`)
+
+`CanCloneActivityGuard` (used with `@RequirePermission('activities.create')`) enforces the following on the **source** activity:
+
+1. The caller must have `activities.create` (controller-level).
+2. The caller must satisfy the same edit-eligibility rules as update on the source: Admin/System Admin bypass, comms contact, or lead-team member.
+3. When the source status is **`delete_requested`** or **`deleted`**, the caller must additionally hold `activities.delete.any`. This mirrors who is allowed to edit blocked activities in the UI.
+
+The clone endpoint creates a new activity that always starts in the **New** status (the server does not honor client-supplied `activityStatusId` or `markAsReviewed` for clone). Fields governed by scopes the caller cannot edit (for example `notes`) are stripped from the copied payload, matching the existing field-level write policy. Look-ahead, pitch, translations, and pitch-date fields are never copied and are reset to their create-time defaults.
+
+Two history rows are recorded:
+
+- **Source activity:** a `cloned` entry pointing at the new activity's id/displayId.
+- **New activity:** the standard `created` entry, extended with structured `clonedFromActivityId` / `clonedFromDisplayId` provenance in `changes`.
+
+Both entries carry the same optional note provided in the request body.
+
+## Calendar UI: Clone button on the activity page
+
+- **Visibility:** shown only when the user has `activities.create` and passes edit eligibility on the source activity (for blocked statuses this implicitly requires `activities.delete.any`, the same rule that governs editing there). View-only users never see the button.
+- **Disabled:** when another user holds the edit lock, or when the current form has unsaved changes. Users must discard or save first before cloning.
+- The button lives in the sticky footer between **Discard changes** and **Save**, using the `outline` variant.
+
 ## Comms contact candidates: `GET /teams/:teamId/comms-contact-candidates`
 
 Used to populate comms-lead options for the selected **lead team**. Allowed when:
@@ -43,4 +66,5 @@ Otherwise the API returns **403**. The calendar UI must **not** call this endpoi
 
 - [ACTIVITY_STATUS_FLOW.md](./ACTIVITY_STATUS_FLOW.md) — status transitions and who may request delete / restore.
 - `CanEditActivityGuard` — `calendar-service/src/policy/guards/can-edit-activity.guard.ts`
+- `CanCloneActivityGuard` — `calendar-service/src/policy/guards/can-clone-activity.guard.ts`
 - `computeCanEdit` — `calendar-service/src/activities/services/activities.service.ts`

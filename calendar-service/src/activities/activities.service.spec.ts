@@ -3186,4 +3186,210 @@ describe('ActivitiesService', () => {
       expect(paths).toBeUndefined();
     });
   });
+
+  describe('clone', () => {
+    const cloneContext = {
+      roleName: 'Admin',
+      permissions: [
+        PERMISSIONS.ACTIVITIES.CREATE,
+        PERMISSIONS.ACTIVITIES.EDIT,
+        PERMISSIONS.ACTIVITIES.NOTES_EDIT,
+      ],
+      teamIds: [1],
+    };
+
+    beforeEach(() => {
+      vi.spyOn(
+        service as unknown as {
+          getReviewDiffLookups: () => Promise<unknown>;
+        },
+        'getReviewDiffLookups'
+      ).mockResolvedValue({
+        categories: [],
+        commsMaterials: [],
+        translationLanguages: [],
+        teams: [],
+      });
+    });
+
+    it('loads the source activity, copies allowed fields, and calls create with user-supplied schedule', async () => {
+      const source = createMockActivityResponse({
+        id: 100,
+        displayId: 'GCPE-000100',
+        title: 'Original activity',
+        lookAheadStatus: 'changed',
+        pitchRequiredStatusId: 5,
+        translationsRequiredStatusId: 7,
+        startDate: '2025-01-15',
+        endDate: '2025-01-15',
+        startTime: '09:00:00',
+        endTime: '10:00:00',
+        activityStatusId: 2,
+      });
+      const findOneSpy = vi.spyOn(service, 'findOne').mockResolvedValue(source);
+
+      const createdResponse = createMockActivityResponse({
+        id: 200,
+        displayId: 'GCPE-000200',
+        title: 'CLONED Original activity',
+      });
+      const createSpy = vi
+        .spyOn(service, 'create')
+        .mockResolvedValue(createdResponse);
+
+      const result = await service.clone(
+        100,
+        {
+          title: 'CLONED Original activity',
+          startDate: '2025-03-01',
+          endDate: '2025-03-01',
+          startTime: null,
+          endTime: null,
+          isAllDay: true,
+          includeFieldPaths: [],
+          activityHistoryNotes: 'Cloning for Q2 planning',
+        },
+        42,
+        cloneContext
+      );
+
+      expect(result).toBe(createdResponse);
+      expect(findOneSpy).toHaveBeenCalledWith(100);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+
+      const [dto, userId, context, options] = createSpy.mock.calls[0] ?? [];
+      expect(userId).toBe(42);
+      expect(context).toEqual(cloneContext);
+
+      const dtoRecord = dto as Record<string, unknown>;
+      expect(dtoRecord.title).toBe('CLONED Original activity');
+      expect(dtoRecord.startDate).toBe('2025-03-01');
+      expect(dtoRecord.endDate).toBe('2025-03-01');
+      expect(dtoRecord.startTime).toBeNull();
+      expect(dtoRecord.endTime).toBeNull();
+      expect(dtoRecord.isAllDay).toBe(true);
+      expect(dtoRecord.markAsReviewed).toBe(false);
+      expect(dtoRecord.activityHistoryNotes).toBe('Cloning for Q2 planning');
+
+      expect(dtoRecord.lookAheadStatus).toBeUndefined();
+      expect(dtoRecord.lookAheadSection).toBeUndefined();
+      expect(dtoRecord.pitchRequiredStatusId).toBeUndefined();
+      expect(dtoRecord.translationsRequiredStatusId).toBeUndefined();
+      expect(dtoRecord.activityStatusId).toBeUndefined();
+
+      expect(options).toEqual({
+        extraCreateChanges: [
+          { field: 'clonedFromActivityId', oldValue: null, newValue: 100 },
+          {
+            field: 'clonedFromDisplayId',
+            oldValue: null,
+            newValue: 'GCPE-000100',
+          },
+        ],
+      });
+    });
+
+    it('records a "cloned" history entry on the source with the same notes', async () => {
+      const source = createMockActivityResponse({
+        id: 100,
+        displayId: 'GCPE-000100',
+      });
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      vi.spyOn(service, 'create').mockResolvedValue(
+        createMockActivityResponse({ id: 200, displayId: 'GCPE-000200' })
+      );
+
+      await service.clone(
+        100,
+        {
+          title: 'CLONED test',
+          startDate: null,
+          endDate: null,
+          startTime: null,
+          endTime: null,
+          activityHistoryNotes: 'same note',
+        },
+        42,
+        cloneContext
+      );
+
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        100,
+        42,
+        'cloned',
+        [
+          { field: 'clonedToActivityId', oldValue: null, newValue: 200 },
+          {
+            field: 'clonedToDisplayId',
+            oldValue: null,
+            newValue: 'GCPE-000200',
+          },
+        ],
+        'same note'
+      );
+    });
+
+    it('omits advanced field paths not present in includeFieldPaths', async () => {
+      const source = createMockActivityResponse({
+        id: 100,
+        tags: [
+          { id: 1, text: 'Tag A' },
+          { id: 2, text: 'Tag B' },
+        ],
+        significance: 'high',
+        isConfidential: true,
+      });
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      const createSpy = vi
+        .spyOn(service, 'create')
+        .mockResolvedValue(createMockActivityResponse({ id: 200 }));
+
+      await service.clone(
+        100,
+        {
+          title: 'CLONED',
+          includeFieldPaths: ['tagIds'],
+        },
+        42,
+        cloneContext
+      );
+
+      const [dto] = createSpy.mock.calls[0] ?? [];
+      const dtoRecord = dto as Record<string, unknown>;
+      expect(dtoRecord.tagIds).toEqual([1, 2]);
+      expect(dtoRecord.significance).toBeUndefined();
+      expect(dtoRecord.isConfidential).toBeUndefined();
+    });
+
+    it('drops notes field when caller lacks activities.notes.edit', async () => {
+      const source = createMockActivityResponse({
+        id: 100,
+        notes: 'sensitive notes',
+      });
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      const createSpy = vi
+        .spyOn(service, 'create')
+        .mockResolvedValue(createMockActivityResponse({ id: 200 }));
+
+      await service.clone(
+        100,
+        {
+          title: 'CLONED',
+        },
+        42,
+        {
+          roleName: 'Editor',
+          permissions: [
+            PERMISSIONS.ACTIVITIES.CREATE,
+            PERMISSIONS.ACTIVITIES.EDIT,
+          ],
+          teamIds: [],
+        }
+      );
+
+      const [dto] = createSpy.mock.calls[0] ?? [];
+      const dtoRecord = dto as Record<string, unknown>;
+      expect(dtoRecord.notes).toBeUndefined();
+    });
+  });
 });
