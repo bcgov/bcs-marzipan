@@ -176,6 +176,111 @@ export class ActivityHistoryService {
   }
 
   /**
+   * Record Look Ahead status resets for many activities with batched reads and a
+   * single multi-row insert (same denormalized columns as {@link recordChange}).
+   */
+  async recordLookAheadStatusResetBatch(
+    tx: DrizzleDbExecutor,
+    params: {
+      actorUserId: number;
+      entries: Array<{
+        activityId: number;
+        oldLookAheadStatus: string | null;
+      }>;
+      notes: string;
+    }
+  ): Promise<void> {
+    const { actorUserId, entries, notes } = params;
+    if (entries.length === 0) return;
+
+    const activityIds = entries.map((e) => e.activityId);
+    const db = tx;
+
+    const [userRow] = await db
+      .select({
+        displayName: users.adDisplayName,
+        username: users.adUsername,
+      })
+      .from(users)
+      .where(eq(users.id, actorUserId))
+      .limit(1);
+
+    const activityRows = await db
+      .select({
+        id: activities.id,
+        title: activities.title,
+        displayId: activities.displayId,
+      })
+      .from(activities)
+      .where(inArray(activities.id, activityIds));
+
+    const activityMap = new Map(activityRows.map((a) => [a.id, a]));
+
+    const categoryNameRows = await db
+      .select({
+        activityId: activityCategories.activityId,
+        name: categories.displayName,
+      })
+      .from(activityCategories)
+      .leftJoin(categories, eq(activityCategories.categoryId, categories.id))
+      .where(inArray(activityCategories.activityId, activityIds));
+
+    const tagNameRows = await db
+      .select({
+        activityId: activitySubscriptions.activityId,
+        name: tags.displayName,
+      })
+      .from(activitySubscriptions)
+      .leftJoin(tags, eq(activitySubscriptions.tagId, tags.id))
+      .where(inArray(activitySubscriptions.activityId, activityIds));
+
+    const namesByActivity = new Map<number, string[]>();
+    for (const id of activityIds) {
+      namesByActivity.set(id, []);
+    }
+    for (const row of categoryNameRows) {
+      if (row.name) {
+        const list = namesByActivity.get(row.activityId) ?? [];
+        list.push(row.name);
+        namesByActivity.set(row.activityId, list);
+      }
+    }
+    for (const row of tagNameRows) {
+      if (row.name) {
+        const list = namesByActivity.get(row.activityId) ?? [];
+        list.push(row.name);
+        namesByActivity.set(row.activityId, list);
+      }
+    }
+
+    const valueRows = entries.map((entry) => {
+      const act = activityMap.get(entry.activityId);
+      const tagParts = namesByActivity.get(entry.activityId) ?? [];
+      const changes: HistoryChange[] = [
+        {
+          field: 'lookAheadStatus',
+          oldValue: entry.oldLookAheadStatus,
+          newValue: 'none',
+        },
+      ];
+      return {
+        activityId: entry.activityId,
+        userId: actorUserId,
+        actionType: 'updated',
+        changes: changes as unknown,
+        notes: notes || null,
+        activityTitle: act?.title ?? null,
+        activityDisplayId: act?.displayId ?? null,
+        actorDisplayName: userRow?.displayName ?? null,
+        actorUsername: userRow?.username ?? null,
+        categoryTagsText: tagParts.length > 0 ? tagParts.join(' ') : null,
+      };
+    });
+
+    await db.insert(activityHistory).values(valueRows);
+  }
+
+  /**
    * Get all history entries for an activity, ordered by most recent first
    */
   async getActivityHistory(
