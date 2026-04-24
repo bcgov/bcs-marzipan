@@ -39,6 +39,10 @@ describe('ActivityUtilsService', () => {
       expect(service.generateDisplayId('hlth', 456789)).toBe('HLTH-456789');
     });
 
+    it('uses full id past six digits (no truncation collision)', () => {
+      expect(service.generateDisplayId('HLTH', 1_000_123)).toBe('HLTH-1000123');
+    });
+
     it('trims abbreviation', () => {
       expect(service.generateDisplayId('  AG  ', 123)).toBe('AG-000123');
     });
@@ -105,6 +109,28 @@ describe('ActivityUtilsService', () => {
           teamAbbreviation: 'my team',
         })
       ).toBe('MYTEAM-000007');
+    });
+
+    it('falls back to team when ministry abbreviation is only whitespace', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 7,
+          leadMinistryId: 2,
+          ministryAbbreviation: '   ',
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('MR-000007');
+    });
+
+    it('normalizes ministry abbreviation like team (spaces, case)', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 123,
+          leadMinistryId: 5,
+          ministryAbbreviation: '  a g  ',
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('AG-000123');
     });
 
     it('uses team abbreviation fallback when both ministry and team abbreviations are empty', () => {

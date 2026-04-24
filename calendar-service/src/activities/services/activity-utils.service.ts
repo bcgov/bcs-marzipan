@@ -4,6 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { categories } from '@corpcal/database/schema';
 import {
   buildActivityDisplayId,
+  normalizeMinistryAbbreviationForActivityDisplayId,
   normalizeTeamAbbreviationForActivityDisplayId,
 } from '@corpcal/shared';
 
@@ -19,9 +20,9 @@ export class ActivityUtilsService {
 
   /**
    * Generate displayId from a prefix (ministry or team abbreviation) and activity ID
-   * Format: <PREFIX>-<last 6 digits of id>
+   * Format: <PREFIX>-<numeric segment> (min 6 digits; full id when longer)
    * Example: AG-000123 (Attorney General, activity ID 123)
-   * Example: HLTH-456789 (Health, activity ID 123456789)
+   * Example: HLTH-123456789 (Health, activity ID 123456789)
    * Example: MR-000123 (`teams.abbreviation` when the lead has no ministry)
    *
    * @param prefix - Ministry abbreviation or `teams.abbreviation` (normalized)
@@ -50,8 +51,9 @@ export class ActivityUtilsService {
    *
    * Rule (must match runtime lead-team/ministry-change semantics in
    * `ActivitiesService.update`):
-   * - When `leadMinistryId` is set AND the ministry row has a truthy
-   *   abbreviation, prefix = ministry abbreviation.
+   * - When `leadMinistryId` is set AND the ministry abbreviation is non-empty after
+   *   the same normalization as team abbreviations (strip, collapse spaces, uppercase),
+   *   prefix = that normalized ministry abbreviation.
    * - Otherwise, prefix = normalized team abbreviation, or `TEAM_PREFIX_FALLBACK`
    *   when the team abbreviation is empty after normalization.
    */
@@ -62,8 +64,10 @@ export class ActivityUtilsService {
     teamAbbreviation: string | null | undefined;
   }): string {
     const { activityId, leadMinistryId, ministryAbbreviation } = input;
-    if (leadMinistryId != null && ministryAbbreviation) {
-      return this.generateDisplayId(ministryAbbreviation, activityId);
+    const normalizedMinistry =
+      normalizeMinistryAbbreviationForActivityDisplayId(ministryAbbreviation);
+    if (leadMinistryId != null && normalizedMinistry.length > 0) {
+      return this.generateDisplayId(normalizedMinistry, activityId);
     }
     const prefix = this.getDisplayIdPrefixFromTeamAbbreviation(
       input.teamAbbreviation
