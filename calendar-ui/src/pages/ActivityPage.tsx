@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
+import { buildActivityDisplayId, TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   type ActivityFormData,
@@ -795,7 +795,8 @@ export function ActivityPage({
       : [];
 
   const displayId =
-    activity.displayId ?? `${TEAM_PREFIX_FALLBACK}-${activity.id}`;
+    activity.displayId ??
+    buildActivityDisplayId(TEAM_PREFIX_FALLBACK, activity.id);
   const categories = activity.category ?? [];
 
   return (
