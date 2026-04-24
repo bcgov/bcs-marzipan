@@ -212,6 +212,14 @@ export const cloneActivityRequestSchema = z.object({
 
   includeFieldPaths: z.array(z.string().min(1)).optional(),
 
+  /**
+   * When true and the user has `activities.review`, the new activity is
+   * created in **Reviewed** status (same as create). Omitted or false → **New**
+   * for users with review permission. Ignored for initial status when the user
+   * cannot review; `create` applies the same rules as a normal create.
+   */
+  markAsReviewed: z.boolean().optional(),
+
   activityHistoryNotes: z.string().max(1000).optional(),
 });
 

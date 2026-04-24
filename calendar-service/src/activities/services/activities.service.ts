@@ -2548,8 +2548,9 @@ export class ActivitiesService {
    *   field inventory; fields not in the list are dropped so `create` applies
    *   its default values.
    * - Field-level write scopes the user cannot edit are stripped.
-   * The cloned activity is always created in status `new` (server-owned) and
-   * two history entries are recorded with the same optional note:
+   * - Initial activity status matches **create** rules: `new` or `reviewed` from
+   *   `markAsReviewed` when the user has `activities.review` (see `create`).
+   * Two history entries are recorded with the same optional note:
    * - `created` on the new activity (with source provenance in `changes`).
    * - `cloned` on the source activity (with new-activity provenance in
    *   `changes`).
@@ -2614,7 +2615,7 @@ export class ActivitiesService {
       dto.timeStatusId = body.timeStatusId;
     }
 
-    dto.markAsReviewed = false;
+    dto.markAsReviewed = body.markAsReviewed === true;
     dto.activityHistoryNotes = body.activityHistoryNotes;
 
     const sourceProvenance: HistoryChange[] = [

@@ -3289,6 +3289,37 @@ describe('ActivitiesService', () => {
       });
     });
 
+    it('passes markAsReviewed to create when set in the clone body', async () => {
+      const source = createMockActivityResponse({ id: 100 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      const createSpy = vi
+        .spyOn(service, 'create')
+        .mockResolvedValue(createMockActivityResponse({ id: 200 }));
+
+      await service.clone(
+        100,
+        {
+          title: 'CLONED',
+          startDate: null,
+          endDate: null,
+          startTime: null,
+          endTime: null,
+          markAsReviewed: true,
+        },
+        42,
+        {
+          ...cloneContext,
+          permissions: [
+            ...cloneContext.permissions,
+            PERMISSIONS.ACTIVITIES.REVIEW,
+          ],
+        }
+      );
+
+      const [dto] = createSpy.mock.calls[0] ?? [];
+      expect((dto as Record<string, unknown>).markAsReviewed).toBe(true);
+    });
+
     it('records a "cloned" history entry on the source with the same notes', async () => {
       const source = createMockActivityResponse({
         id: 100,

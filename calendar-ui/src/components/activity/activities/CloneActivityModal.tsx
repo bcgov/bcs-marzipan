@@ -107,6 +107,8 @@ export interface CloneActivityModalProps {
   sourceDisplayId: string | null;
   lookups: FormLookupData;
   isSubmitting: boolean;
+  /** When true, show "Mark as reviewed" (default checked), mirroring the create confirm flow. */
+  showMarkAsReviewed?: boolean;
   onConfirm: (payload: CloneActivityRequest) => void;
 }
 
@@ -117,6 +119,7 @@ export function CloneActivityModal({
   sourceDisplayId,
   lookups,
   isSubmitting,
+  showMarkAsReviewed = false,
   onConfirm,
 }: CloneActivityModalProps) {
   const { user } = useAuth();
@@ -144,6 +147,7 @@ export function CloneActivityModal({
   );
   const [notes, setNotes] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [markAsReviewed, setMarkAsReviewed] = useState(true);
   const [activeTimePopover, setActiveTimePopover] = useState<
     'start' | 'end' | null
   >(null);
@@ -191,6 +195,7 @@ export function CloneActivityModal({
     setTimeStatusId(defaultTimeStatusId);
     setNotes('');
     setShowMoreOptions(false);
+    setMarkAsReviewed(true);
     setActiveTimePopover(null);
     setIncludedPaths(new Set(editablePaths));
   }, [
@@ -269,6 +274,7 @@ export function CloneActivityModal({
       timeStatusId,
       includeFieldPaths: Array.from(includedPaths),
       activityHistoryNotes: notes.trim() || undefined,
+      ...(showMarkAsReviewed ? { markAsReviewed } : {}),
     };
     onConfirm(payload);
   };
@@ -537,7 +543,7 @@ export function CloneActivityModal({
           </div>
 
           <div className="space-y-3">
-            <div className="flex">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowMoreOptions((v) => !v)}
@@ -587,6 +593,23 @@ export function CloneActivityModal({
                     );
                   })}
                 </div>
+              </div>
+            ) : null}
+            {showMarkAsReviewed ? (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="clone-confirm-mark-reviewed"
+                  checked={markAsReviewed}
+                  onCheckedChange={(checked) =>
+                    setMarkAsReviewed(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="clone-confirm-mark-reviewed"
+                  className="cursor-pointer text-sm font-normal"
+                >
+                  Mark as reviewed
+                </Label>
               </div>
             ) : null}
           </div>

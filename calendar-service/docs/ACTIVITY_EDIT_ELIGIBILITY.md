@@ -38,7 +38,7 @@ If `activities.edit` is missing, `canEdit` is **false**. If the field is omitted
 2. The caller must satisfy the same edit-eligibility rules as update on the source: Admin/System Admin bypass, comms contact, or lead-team member.
 3. When the source status is **`delete_requested`** or **`deleted`**, the caller must additionally hold `activities.delete.any`. This mirrors who is allowed to edit blocked activities in the UI.
 
-The clone endpoint creates a new activity that always starts in the **New** status (the server does not honor client-supplied `activityStatusId` or `markAsReviewed` for clone). Fields governed by scopes the caller cannot edit (for example `notes`) are stripped from the copied payload, matching the existing field-level write policy. Look-ahead, pitch, translations, and pitch-date fields are never copied and are reset to their create-time defaults.
+The clone endpoint creates a new activity using the same initial-status rules as **create**: `markAsReviewed` in the request body (optional) is honored when the user has `activities.review` (otherwise the new activity starts as **New**), matching `POST /activities`. Client-supplied `activityStatusId` is not accepted. Fields governed by scopes the caller cannot edit (for example `notes`) are stripped from the copied payload, matching the existing field-level write policy. Look-ahead, pitch, translations, and pitch-date fields are never copied and are reset to their create-time defaults.
 
 Two history rows are recorded:
 

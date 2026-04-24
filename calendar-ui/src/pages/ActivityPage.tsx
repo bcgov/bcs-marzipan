@@ -1102,6 +1102,7 @@ export function ActivityPage({
         sourceDisplayId={activity.displayId ?? null}
         lookups={lookups}
         isSubmitting={isCloning}
+        showMarkAsReviewed={canReviewActivities}
         onConfirm={(payload) => void handleCloneConfirm(payload)}
       />
       <DeleteActivityModal
