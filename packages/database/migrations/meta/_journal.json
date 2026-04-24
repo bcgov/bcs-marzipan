@@ -29,6 +29,27 @@
       "when": 1776812701961,
       "tag": "0003_20260421_ministry_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777052562991,
+      "tag": "0004_20260424_team_abbreviation",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777053000000,
+      "tag": "0006_teams_abbreviation_varchar5",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777053500000,
+      "tag": "0007_ministries_abbreviation_varchar5",
+      "breakpoints": true
     }
   ]
 }

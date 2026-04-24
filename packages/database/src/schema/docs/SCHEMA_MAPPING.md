@@ -327,28 +327,29 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 **Legacy Table Name:** _N/A (New table) users were previously grouped by ministries_  
 **New Table Name:** `teams`
 
-**Description:** Groups of system users for team-based access control. This is a placeholder table that represents a group of users that can be used for category access control. Full implementation is pending.
+**Description:** Groups of system users for team-based access control, membership, and data scoping (activities, categories, etc.).
 
 ### Field Mappings
 
-| New Field Name        | New Type                   | New Constraints            | Description                                                           |
-| --------------------- | -------------------------- | -------------------------- | --------------------------------------------------------------------- |
-| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                           |
-| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                                  |
-| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                                  |
-| `description`         | `text`                     | nullable                   | Team description (nullable)                                           |
-| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Sort order for display                                                |
-| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                            |
-| `roleId`              | `integer`                  | nullable, FK               | FK to Role - default role for team members                            |
-| `ministryId`          | `integer`                  | nullable, FK               | FK to Ministry - team's ministry for data scoping (create/visibility) |
-| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)         |
-| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                   |
-| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now)    |
-| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)              |
+| New Field Name        | New Type                   | New Constraints            | Description                                                                                                                               |
+| --------------------- | -------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | `serial`                   | `notNull`, primary key     | Primary key                                                                                                                               |
+| `name`                | `varchar(255)`             | `notNull`                  | Team name (required)                                                                                                                      |
+| `displayName`         | `varchar(255)`             | nullable                   | Display name for the team (nullable)                                                                                                      |
+| `abbreviation`        | `varchar(5)`               | `notNull`                  | Short stable code; used in activity `displayId` when the team has no lead ministry (see `calendar-service` activity displayId generation) |
+| `description`         | `text`                     | nullable                   | Team description (nullable)                                                                                                               |
+| `sortOrder`           | `integer`                  | `notNull`, `default(0)`    | Sort order for display                                                                                                                    |
+| `isActive`            | `boolean`                  | `notNull`, `default(true)` | Whether the team is active (default: true)                                                                                                |
+| `roleId`              | `integer`                  | nullable, FK               | FK to Role - default role for team members                                                                                                |
+| `ministryId`          | `integer`                  | nullable, FK               | FK to Ministry - team's ministry for data scoping (create/visibility)                                                                     |
+| `createdDateTime`     | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was created (required, default: now)                                                                             |
+| `createdBy`           | `integer`                  | `notNull`, FK              | FK to User - user who created the record (required)                                                                                       |
+| `lastUpdatedDateTime` | `timestamp with time zone` | `notNull`, `defaultNow()`  | Date and time the record was last updated (required, default: now)                                                                        |
+| `lastUpdatedBy`       | `integer`                  | `notNull`, FK              | FK to User - user who last updated the record (required)                                                                                  |
 
 ### Notes
 
-- **Purpose**: Used for team-based access control and data scoping. Activity create and visibility use `teams.ministry_id` (the team's single ministry) for scoping; users see activities whose lead ministry matches one of their teams' ministry.
+- **Purpose**: Used for team-based access control and data scoping. Activity create and visibility use `teams.ministry_id` (the team's single ministry) for scoping; users see activities whose lead ministry matches one of their teams' ministry. **`abbreviation`** is required for all teams: it feeds activity **`displayId`** (prefix before the numeric suffix) when the activity has no lead ministry, so it must be set via admin API or seed.
 - **Data scoping**: Only `teams.ministry_id` is used for activity scoping (not a junction table). The former `team_ministries` junction table has been removed.
 
 ### Related Tables
@@ -493,7 +494,7 @@ Pods use an explicit visibility model with three levels: 'global', 'team', and '
 
 ## Ministries and government representatives
 
-**Description:** A ministry’s **designated minister** (or premier for the Office of the Premier) is stored only on the ministry row: `ministries.minister_government_rep_id` → `government_representatives.id` (`ON DELETE SET NULL`). The `government_representatives` table **does not** have a `ministry_id` column; that relationship was removed in favor of this single source of truth. Admin UX assigns the minister from **Settings → Ministries**; when `minister_government_rep_id` is set, the lookups service clears the same representative from any **other** ministry that previously pointed at it.
+**Description:** A ministry’s **designated minister** (or premier for the Office of the Premier) is stored only on the ministry row: `ministries.minister_government_rep_id` → `government_representatives.id` (`ON DELETE SET NULL`). The `government_representatives` table **does not** have a `ministry_id` column; that relationship was removed in favor of this single source of truth. Admin UX assigns the minister from **Settings → Ministries**; when `minister_government_rep_id` is set, the lookups service clears the same representative from any **other** ministry that previously pointed at it. **`ministries.abbreviation`** is `varchar(5) not null` and is used as the **prefix in activity `displayId`** when the lead ministry applies (e.g. `AG-000123`); keep in sync with the lookups admin API and Zod `createMinistryRequestSchema` / `updateMinistryRequestSchema`.
 
 | Table / field                             | Notes                                                                                                                                                                            |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
