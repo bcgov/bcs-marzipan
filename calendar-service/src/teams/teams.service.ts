@@ -1,5 +1,7 @@
 import {
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,20 +26,28 @@ import type {
   UpdateTeamBody,
 } from '@corpcal/shared/api/types';
 
+import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class TeamsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    @Inject(forwardRef(() => ActivityDisplayIdSyncService))
+    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
+  ) {}
 
   private async recordTeamHistory(
     teamId: number,
     changedByUserId: number,
     actionType: 'created' | 'updated',
     changes?: HistoryChange[],
-    notes?: string | null
+    notes?: string | null,
+    tx?: DrizzleDbExecutor
   ): Promise<void> {
-    await this.databaseService.db.insert(teamHistory).values({
+    const db = tx ?? this.databaseService.db;
+    await db.insert(teamHistory).values({
       teamId,
       changedByUserId,
       actionType,
@@ -396,14 +406,17 @@ export class TeamsService {
     if (dto.ministryId !== undefined)
       updates.ministryId = dto.ministryId ?? null;
 
-    if (Object.keys(updates).length > 0) {
-      updates.lastUpdatedBy = lastUpdatedBy;
-      updates.lastUpdatedDateTime = new Date();
-      await this.databaseService.db
-        .update(teams)
-        .set(updates)
-        .where(eq(teams.id, id));
-    }
+    const abbreviationChanged =
+      dto.abbreviation !== undefined &&
+      dto.abbreviation !== existing.abbreviation;
+
+    const applyUpdates = async (tx: DrizzleDbExecutor): Promise<void> => {
+      if (Object.keys(updates).length > 0) {
+        updates.lastUpdatedBy = lastUpdatedBy;
+        updates.lastUpdatedDateTime = new Date();
+        await tx.update(teams).set(updates).where(eq(teams.id, id));
+      }
+    };
 
     const changes: HistoryChange[] = [];
     if (dto.name !== undefined && dto.name !== existing.name) {
@@ -479,14 +492,36 @@ export class TeamsService {
       });
     }
 
-    if (changes.length > 0) {
-      await this.recordTeamHistory(
-        id,
-        lastUpdatedBy,
-        'updated',
-        changes,
-        dto.notes ?? null
-      );
+    if (abbreviationChanged) {
+      await this.databaseService.db.transaction(async (tx) => {
+        await applyUpdates(tx);
+        if (changes.length > 0) {
+          await this.recordTeamHistory(
+            id,
+            lastUpdatedBy,
+            'updated',
+            changes,
+            dto.notes ?? null,
+            tx
+          );
+        }
+        await this.activityDisplayIdSyncService.refreshAfterTeamAbbreviationChange(
+          tx,
+          id,
+          lastUpdatedBy
+        );
+      });
+    } else {
+      await applyUpdates(this.databaseService.db);
+      if (changes.length > 0) {
+        await this.recordTeamHistory(
+          id,
+          lastUpdatedBy,
+          'updated',
+          changes,
+          dto.notes ?? null
+        );
+      }
     }
 
     const updated = await this.findOne(id);

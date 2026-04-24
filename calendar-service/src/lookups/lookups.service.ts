@@ -60,13 +60,18 @@ import type {
   VenuePresetItem,
 } from '@corpcal/shared/api/types';
 
+import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { getVisibleCategoryIds } from '../policy/category-scoping.helper';
 import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 
 @Injectable()
 export class LookupsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
+  ) {}
 
   /**
    * Get all active categories available to the user based on their team memberships
@@ -1749,34 +1754,68 @@ export class LookupsService {
         data.ministryGroupId === null ? null : data.ministryGroupId;
     }
 
-    if (
-      data.ministerGovernmentRepId !== undefined &&
-      data.ministerGovernmentRepId !== null
-    ) {
-      await this.databaseService.db
-        .update(ministries)
-        .set({
-          ministerGovernmentRepId: null,
-          lastUpdatedBy: currentUserId,
-          lastUpdatedDateTime: new Date(),
-        })
-        .where(
-          and(
-            eq(
-              ministries.ministerGovernmentRepId,
-              data.ministerGovernmentRepId
-            ),
-            ne(ministries.id, id)
-          )
-        );
+    // Read the current abbreviation so we can tell whether a cascade is needed.
+    let currentAbbreviation: string | null = null;
+    if (data.abbreviation !== undefined) {
+      const [current] = await this.databaseService.db
+        .select({ abbreviation: ministries.abbreviation })
+        .from(ministries)
+        .where(eq(ministries.id, id))
+        .limit(1);
+      currentAbbreviation = current?.abbreviation ?? null;
     }
 
-    const [result] = await this.databaseService.db
-      .update(ministries)
-      .set(updateData)
-      .where(eq(ministries.id, id))
-      .returning();
-    return result;
+    const abbreviationChanged =
+      data.abbreviation !== undefined &&
+      data.abbreviation !== currentAbbreviation;
+
+    const run = async (
+      tx: DrizzleDbExecutor
+    ): Promise<typeof ministries.$inferSelect | undefined> => {
+      if (
+        data.ministerGovernmentRepId !== undefined &&
+        data.ministerGovernmentRepId !== null
+      ) {
+        await tx
+          .update(ministries)
+          .set({
+            ministerGovernmentRepId: null,
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: new Date(),
+          })
+          .where(
+            and(
+              eq(
+                ministries.ministerGovernmentRepId,
+                data.ministerGovernmentRepId
+              ),
+              ne(ministries.id, id)
+            )
+          );
+      }
+
+      const [updated] = await tx
+        .update(ministries)
+        .set(updateData)
+        .where(eq(ministries.id, id))
+        .returning();
+
+      if (abbreviationChanged) {
+        await this.activityDisplayIdSyncService.refreshAfterMinistryAbbreviationChange(
+          tx,
+          id,
+          currentUserId
+        );
+      }
+
+      return updated;
+    };
+
+    if (abbreviationChanged) {
+      return this.databaseService.db.transaction(run);
+    }
+    // Use root pool when no cascade is needed to avoid unnecessary transaction overhead.
+    return run(this.databaseService.db);
   }
 
   async updateActivityStatus(
