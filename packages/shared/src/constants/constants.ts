@@ -87,6 +87,45 @@ export function normalizeActivityStatusLabel(status: string): string {
 export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
 
 /**
+ * Configurable fallback segment for the team-abbreviation part of activity `displayId`
+ * when normalization yields an empty string (and no ministry abbreviation applies).
+ *
+ * **Single source of truth:** Change the value only here. Do not hardcode this string in
+ * tests for fallback behavior—import `TEAM_PREFIX_FALLBACK`, or assert using
+ * `normalizeTeamAbbreviationForActivityDisplayId` and `buildActivityDisplayId` so specs
+ * stay aligned automatically. Server logic delegates through those helpers from
+ * `ActivityUtilsService`.
+ */
+export const TEAM_PREFIX_FALLBACK = 'TEAM' as const;
+
+/**
+ * Strips whitespace, removes internal spaces, uppercases, then returns
+ * `TEAM_PREFIX_FALLBACK` if the result is empty. Used for the team leg of activity
+ * `displayId` when the lead has no ministry (or ministry abbreviation is absent).
+ */
+export function normalizeTeamAbbreviationForActivityDisplayId(
+  abbreviation: string | null | undefined
+): string {
+  const cleaned = (abbreviation ?? '').trim().replace(/\s+/g, '').toUpperCase();
+  if (cleaned.length === 0) {
+    return TEAM_PREFIX_FALLBACK;
+  }
+  return cleaned;
+}
+
+/**
+ * Builds `displayId`: `<PREFIX>-<last 6 digits of activity id, zero-padded>`.
+ * Prefix is uppercased and trimmed (same rules as ministry/team abbreviations in the API).
+ */
+export function buildActivityDisplayId(
+  prefix: string,
+  activityId: number
+): string {
+  const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
+  return `${prefix.toUpperCase().trim()}-${lastSixDigits}`;
+}
+
+/**
  * Current version of the reviewedFieldSnapshot JSON shape.
  * Bump when adding/removing tracked fields or changing normalisation rules.
  * On read, snapshots with an older version can be ignored (treated as "no snapshot")
