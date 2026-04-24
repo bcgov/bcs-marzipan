@@ -39,17 +39,30 @@ describe('ActivityUtilsService', () => {
     });
   });
 
-  describe('getDisplayIdPrefixFromTeamName', () => {
-    it('returns first 4 letters uppercased, no spaces', () => {
-      expect(service.getDisplayIdPrefixFromTeamName('My Team')).toBe('MYTE');
+  describe('getDisplayIdPrefixFromTeamAbbreviation', () => {
+    it('returns full abbreviation uppercased with spaces removed', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('My Team')).toBe(
+        'MYTEAM'
+      );
     });
-    it('pads with X when name is shorter than 4 chars', () => {
-      expect(service.getDisplayIdPrefixFromTeamName('Hi')).toBe('HIXX');
+    it('preserves short codes without padding', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('Hi')).toBe('HI');
     });
-    it('pads to 4 characters when team name has fewer than 4 letters', () => {
-      const result = service.getDisplayIdPrefixFromTeamName('Hi');
-      expect(result.length).toBe(4);
-      expect(result).toBe('HIXX');
+    it('normalizes values like seed MR', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('  mr  ')).toBe(
+        'MR'
+      );
+    });
+    it('uses TEAM when abbreviation is empty after normalizing', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('   ')).toBe(
+        'TEAM'
+      );
+    });
+    it('uses TEAM for null or undefined', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation(null)).toBe('TEAM');
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation(undefined)).toBe(
+        'TEAM'
+      );
     });
   });
 

@@ -123,6 +123,7 @@ export const createMockTeamListItem = (
   id: 1,
   name: 'Test Team',
   displayName: 'Test Team Display',
+  abbreviation: 'TT',
   description: 'Test description',
   sortOrder: 0,
   isActive: true,
@@ -162,6 +163,7 @@ export const createMockCreateTeamBody = (
   overrides?: Partial<CreateTeamBody>
 ): CreateTeamBody => ({
   name: 'New Team',
+  abbreviation: 'NEW',
   displayName: 'New Team Display',
   description: undefined,
   sortOrder: 0,

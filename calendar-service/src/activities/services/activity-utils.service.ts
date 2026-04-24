@@ -14,13 +14,13 @@ export class ActivityUtilsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
-   * Generate displayId from a prefix (ministry abbreviation or team name) and activity ID
+   * Generate displayId from a prefix (ministry or team abbreviation) and activity ID
    * Format: <PREFIX>-<last 6 digits of id>
    * Example: AG-000123 (Attorney General, activity ID 123)
    * Example: HLTH-456789 (Health, activity ID 123456789)
-   * Example: TEAM-000123 (first 4 chars of team name when no ministry)
+   * Example: MR-000123 (`teams.abbreviation` when the lead has no ministry)
    *
-   * @param prefix - Ministry abbreviation or 4-char team name prefix
+   * @param prefix - Ministry abbreviation or `teams.abbreviation` (normalized)
    * @param activityId - Activity ID (serial)
    * @returns Formatted displayId string
    */
@@ -30,13 +30,22 @@ export class ActivityUtilsService {
   }
 
   /**
-   * Get a 4-character prefix from a team name for displayId when ministry is null.
-   * Uses first 4 letters, uppercased, padded with 'X' if shorter than 4.
+   * Normalizes `teams.abbreviation` for use in displayId when the lead has no ministry
+   * (or when a ministry row has no abbreviation and we fall back to the team). Strips
+   * surrounding whitespace, removes internal spaces, and uppercases. If empty after
+   * normalizing, returns `TEAM`.
    */
-  getDisplayIdPrefixFromTeamName(teamName: string): string {
-    const trimmed = (teamName ?? '').trim().replace(/\s+/g, '');
-    const firstFour = trimmed.slice(0, 4).toUpperCase();
-    return firstFour.padEnd(4, 'X');
+  getDisplayIdPrefixFromTeamAbbreviation(
+    abbreviation: string | null | undefined
+  ): string {
+    const cleaned = (abbreviation ?? '')
+      .trim()
+      .replace(/\s+/g, '')
+      .toUpperCase();
+    if (cleaned.length === 0) {
+      return 'TEAM';
+    }
+    return cleaned;
   }
 
   /**

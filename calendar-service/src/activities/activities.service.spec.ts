@@ -159,13 +159,14 @@ describe('ActivitiesService', () => {
       (abbrev, id) =>
         `${String(abbrev).toUpperCase().trim()}-${id.toString().slice(-6).padStart(6, '0')}`
     ),
-    getDisplayIdPrefixFromTeamName: vi.fn((name: string) =>
-      (name ?? '')
-        .trim()
-        .replace(/\s+/g, '')
-        .slice(0, 4)
-        .toUpperCase()
-        .padEnd(4, 'X')
+    getDisplayIdPrefixFromTeamAbbreviation: vi.fn(
+      (abbreviation: string | null | undefined) => {
+        const cleaned = (abbreviation ?? '')
+          .trim()
+          .replace(/\s+/g, '')
+          .toUpperCase();
+        return cleaned.length === 0 ? '???' : cleaned;
+      }
     ),
     validateCategoryIds: vi.fn().mockResolvedValue(undefined),
   };

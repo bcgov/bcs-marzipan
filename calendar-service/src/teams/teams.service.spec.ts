@@ -74,6 +74,7 @@ describe('TeamsService', () => {
           id: 1,
           name: 'Team A',
           displayName: 'Team A Display',
+          abbreviation: 'TMA',
           description: 'Desc',
           sortOrder: 0,
           isActive: true,
@@ -127,6 +128,7 @@ describe('TeamsService', () => {
           id: 1,
           name: 'Team A',
           displayName: 'Team A',
+          abbreviation: 'TMA',
           description: null,
           sortOrder: 0,
           isActive: true,
@@ -137,6 +139,7 @@ describe('TeamsService', () => {
           id: 2,
           name: 'Team B',
           displayName: 'Team B',
+          abbreviation: 'TMB',
           description: null,
           sortOrder: 1,
           isActive: true,
@@ -197,6 +200,7 @@ describe('TeamsService', () => {
         id: 1,
         name: 'Team One',
         displayName: 'Team One',
+        abbreviation: 'T1',
         description: null,
         sortOrder: 0,
         isActive: true,
@@ -245,6 +249,7 @@ describe('TeamsService', () => {
         id: 5,
         name: 'New Team',
         displayName: null,
+        abbreviation: 'NEW',
         description: null,
         sortOrder: 0,
         isActive: true,
@@ -275,7 +280,7 @@ describe('TeamsService', () => {
       expect(result.ministryName).toBe('Ministry One');
       expect(mockDatabaseService.db.insert).toHaveBeenCalled();
       expect(insertValues).toHaveBeenCalledWith(
-        expect.objectContaining({ ministryId: 1 })
+        expect.objectContaining({ ministryId: 1, abbreviation: 'NEW' })
       );
     });
   });
@@ -296,6 +301,7 @@ describe('TeamsService', () => {
         id: 1,
         name: 'Old Name',
         displayName: 'Old',
+        abbreviation: 'OLD',
         description: null,
         sortOrder: 0,
         isActive: true,
@@ -344,6 +350,7 @@ describe('TeamsService', () => {
         id: 1,
         name: 'T',
         displayName: null,
+        abbreviation: 'T',
         description: null,
         sortOrder: 0,
         isActive: true,

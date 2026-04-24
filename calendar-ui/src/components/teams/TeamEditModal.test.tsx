@@ -63,6 +63,7 @@ const mockTeamListItem: TeamListItem = {
   id: 5,
   name: 'Existing Team',
   displayName: 'Existing',
+  abbreviation: 'EX',
   description: 'Team description',
   sortOrder: 0,
   isActive: true,
@@ -80,7 +81,11 @@ const mockTeamDetail: TeamDetail = {
 describe('TeamEditModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCreateTeam.mockResolvedValue({ id: 1, name: 'New Team' });
+    mockCreateTeam.mockResolvedValue({
+      id: 1,
+      name: 'New Team',
+      abbreviation: 'NT',
+    });
   });
 
   describe('create success toast', () => {
@@ -89,6 +94,7 @@ describe('TeamEditModal', () => {
       renderModal();
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
       await user.click(screen.getByRole('button', { name: /create/i }));
 
       await waitFor(() => {
@@ -106,6 +112,7 @@ describe('TeamEditModal', () => {
       renderModal();
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
       await user.click(screen.getByRole('button', { name: /create/i }));
 
       await waitFor(() => {
@@ -122,6 +129,7 @@ describe('TeamEditModal', () => {
       mockUpdateTeam.mockResolvedValue({
         ...mockTeamListItem,
         name: 'Updated',
+        abbreviation: 'EX',
       });
       const user = userEvent.setup();
       renderEditModal(mockTeamListItem);

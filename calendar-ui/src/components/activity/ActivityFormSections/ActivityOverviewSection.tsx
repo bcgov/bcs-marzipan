@@ -185,6 +185,7 @@ function LeadTeamField({
               id: lid,
               name: label,
               displayName: leadTeamDisplayLabel ?? null,
+              abbreviation: 'TEAM',
               description: null,
               sortOrder: 0,
               isActive: true,

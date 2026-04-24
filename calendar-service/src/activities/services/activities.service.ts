@@ -1057,6 +1057,7 @@ export class ActivitiesService {
       .select({
         id: teams.id,
         name: teams.name,
+        abbreviation: teams.abbreviation,
         ministryId: teams.ministryId,
       })
       .from(teams)
@@ -1172,7 +1173,7 @@ export class ActivitiesService {
 
       const activityId = created.id;
 
-      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else first 4 chars of team name
+      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else teams.abbreviation
       let displayId: string;
       if (resolvedLeadMinistryId != null) {
         const [ministry] = await tx
@@ -1190,8 +1191,8 @@ export class ActivitiesService {
           activityId
         );
       } else {
-        const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
-          leadTeam.name
+        const prefix = this.utilsService.getDisplayIdPrefixFromTeamAbbreviation(
+          leadTeam.abbreviation
         );
         displayId = this.utilsService.generateDisplayId(prefix, activityId);
       }
@@ -2072,7 +2073,10 @@ export class ActivitiesService {
       if (leadTeamOrMinistryChanged) {
         if (dto.leadTeamId !== undefined) {
           const [newTeam] = await tx
-            .select({ name: teams.name, ministryId: teams.ministryId })
+            .select({
+              abbreviation: teams.abbreviation,
+              ministryId: teams.ministryId,
+            })
             .from(teams)
             .where(eq(teams.id, dto.leadTeamId))
             .limit(1);
@@ -2094,18 +2098,20 @@ export class ActivitiesService {
                 id
               );
             } else {
-              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
-                newTeam.name
-              );
+              const prefix =
+                this.utilsService.getDisplayIdPrefixFromTeamAbbreviation(
+                  newTeam.abbreviation
+                );
               updateData.displayId = this.utilsService.generateDisplayId(
                 prefix,
                 id
               );
             }
           } else {
-            const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
-              newTeam.name
-            );
+            const prefix =
+              this.utilsService.getDisplayIdPrefixFromTeamAbbreviation(
+                newTeam.abbreviation
+              );
             updateData.displayId = this.utilsService.generateDisplayId(
               prefix,
               id
@@ -2127,14 +2133,15 @@ export class ActivitiesService {
           const teamId = effectiveLeadTeamId;
           if (teamId != null) {
             const [teamRow] = await tx
-              .select({ name: teams.name })
+              .select({ abbreviation: teams.abbreviation })
               .from(teams)
               .where(eq(teams.id, teamId))
               .limit(1);
             if (teamRow) {
-              const prefix = this.utilsService.getDisplayIdPrefixFromTeamName(
-                teamRow.name
-              );
+              const prefix =
+                this.utilsService.getDisplayIdPrefixFromTeamAbbreviation(
+                  teamRow.abbreviation
+                );
               updateData.displayId = this.utilsService.generateDisplayId(
                 prefix,
                 id

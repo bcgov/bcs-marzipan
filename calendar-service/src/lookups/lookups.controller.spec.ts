@@ -87,6 +87,7 @@ describe('LookupsController', () => {
         id: 1,
         name: 'Team A',
         displayName: 'Team A',
+        abbreviation: 'TA',
         description: null,
         sortOrder: 0,
         isActive: true,

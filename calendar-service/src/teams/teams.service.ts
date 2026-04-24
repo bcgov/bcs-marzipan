@@ -156,6 +156,7 @@ export class TeamsService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
+        abbreviation: teams.abbreviation,
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
@@ -213,6 +214,7 @@ export class TeamsService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
+        abbreviation: teams.abbreviation,
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
@@ -274,6 +276,7 @@ export class TeamsService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
+        abbreviation: teams.abbreviation,
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
@@ -341,6 +344,7 @@ export class TeamsService {
       .insert(teams)
       .values({
         name: dto.name,
+        abbreviation: dto.abbreviation,
         displayName: dto.displayName ?? null,
         description: dto.description ?? null,
         sortOrder: dto.sortOrder ?? 0,
@@ -383,6 +387,7 @@ export class TeamsService {
 
     const updates: Partial<typeof teams.$inferInsert> = {};
     if (dto.name !== undefined) updates.name = dto.name;
+    if (dto.abbreviation !== undefined) updates.abbreviation = dto.abbreviation;
     if (dto.displayName !== undefined) updates.displayName = dto.displayName;
     if (dto.description !== undefined) updates.description = dto.description;
     if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
@@ -406,6 +411,16 @@ export class TeamsService {
         field: 'name',
         oldValue: existing.name,
         newValue: dto.name,
+      });
+    }
+    if (
+      dto.abbreviation !== undefined &&
+      dto.abbreviation !== existing.abbreviation
+    ) {
+      changes.push({
+        field: 'abbreviation',
+        oldValue: existing.abbreviation,
+        newValue: dto.abbreviation,
       });
     }
     if (

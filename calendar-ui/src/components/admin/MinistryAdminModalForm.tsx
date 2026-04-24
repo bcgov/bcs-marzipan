@@ -217,10 +217,15 @@ export function MinistryAdminModalForm({
           value={abbreviation}
           onChange={(e) => setAbbreviation(e.target.value)}
           placeholder="e.g., AG"
+          maxLength={5}
           required
           disabled={isSubmitting}
           className="w-full"
+          aria-describedby="ministry-abbr-hint"
         />
+        <p id="ministry-abbr-hint" className="text-muted-foreground text-xs">
+          Max 5 characters. Used in activity display IDs (e.g. AG-000123).
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="ministry-minister" className="text-sm font-medium">

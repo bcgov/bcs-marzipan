@@ -34,7 +34,7 @@ import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
-const TABLE_COLUMN_COUNT = 6;
+const TABLE_COLUMN_COUNT = 7;
 
 const DEFAULT_SORT_KEY = 'displayName';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
@@ -132,8 +132,12 @@ export function TeamsTabContent({
       const displayName = (team.displayName ?? '').toLowerCase();
       const name = (team.name ?? '').toLowerCase();
       const description = (team.description ?? '').toLowerCase();
+      const abbrev = (team.abbreviation ?? '').toLowerCase();
       return (
-        displayName.includes(q) || name.includes(q) || description.includes(q)
+        displayName.includes(q) ||
+        name.includes(q) ||
+        description.includes(q) ||
+        abbrev.includes(q)
       );
     });
   }, [teams, keyword]);
@@ -218,16 +222,17 @@ export function TeamsTabContent({
       />
       <TableScrollContainer ref={tableScrollRef}>
         <table
-          className={`${tableTable} min-w-[640px]`}
+          className={`${tableTable} min-w-[720px]`}
           role="grid"
           aria-colcount={TABLE_COLUMN_COUNT}
         >
           <colgroup>
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '30%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '11%' }} />
             <col style={{ width: '12%' }} />
           </colgroup>
           <thead className={tableThead}>
@@ -245,6 +250,7 @@ export function TeamsTabContent({
                   />
                 </span>
               </th>
+              <th className={tableTh}>Abbr</th>
               <th className={tableTh}>Description</th>
               <th className={tableTh}>
                 <span className="inline-flex items-center gap-1">
@@ -270,6 +276,9 @@ export function TeamsTabContent({
                 <tr key={i} className={tableBodyRow} aria-hidden>
                   <td className={tableTd}>
                     <Skeleton className="h-5 w-32" />
+                  </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-5 w-10" />
                   </td>
                   <td className={`${tableTd} max-w-[200px]`}>
                     <Skeleton className="h-5 w-full max-w-[180px]" />
@@ -306,6 +315,9 @@ export function TeamsTabContent({
                 <tr key={team.id} className={tableBodyRow}>
                   <td className={`${tableTd} font-medium text-slate-900`}>
                     {team.displayName ?? team.name ?? '-'}
+                  </td>
+                  <td className={`${tableTd} text-slate-600`}>
+                    {team.abbreviation}
                   </td>
                   <td
                     className={`${tableTd} max-w-[200px] truncate text-slate-600`}
