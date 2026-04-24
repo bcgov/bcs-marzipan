@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { useFormContext, useWatch } from 'react-hook-form';
 
+import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import type {
   PitchRequiredStatusLookupItem,
   TeamListItem,
@@ -185,7 +186,7 @@ function LeadTeamField({
               id: lid,
               name: label,
               displayName: leadTeamDisplayLabel ?? null,
-              abbreviation: 'TEAM',
+              abbreviation: TEAM_PREFIX_FALLBACK,
               description: null,
               sortOrder: 0,
               isActive: true,
