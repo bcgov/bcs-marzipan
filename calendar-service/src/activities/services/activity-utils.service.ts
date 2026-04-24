@@ -2,6 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 
 import { categories } from '@corpcal/database/schema';
+import {
+  buildActivityDisplayId,
+  normalizeTeamAbbreviationForActivityDisplayId,
+} from '@corpcal/shared';
 
 import { DatabaseService } from '../../database/database.service';
 
@@ -25,27 +29,46 @@ export class ActivityUtilsService {
    * @returns Formatted displayId string
    */
   generateDisplayId(prefix: string, activityId: number): string {
-    const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
-    return `${prefix.toUpperCase().trim()}-${lastSixDigits}`;
+    return buildActivityDisplayId(prefix, activityId);
   }
 
   /**
    * Normalizes `teams.abbreviation` for use in displayId when the lead has no ministry
    * (or when a ministry row has no abbreviation and we fall back to the team). Strips
    * surrounding whitespace, removes internal spaces, and uppercases. If empty after
-   * normalizing, returns `TEAM`.
+   * normalizing, returns `TEAM_PREFIX_FALLBACK` via
+   * `normalizeTeamAbbreviationForActivityDisplayId`.
    */
   getDisplayIdPrefixFromTeamAbbreviation(
     abbreviation: string | null | undefined
   ): string {
-    const cleaned = (abbreviation ?? '')
-      .trim()
-      .replace(/\s+/g, '')
-      .toUpperCase();
-    if (cleaned.length === 0) {
-      return 'TEAM';
+    return normalizeTeamAbbreviationForActivityDisplayId(abbreviation);
+  }
+
+  /**
+   * Compute an activity's displayId from its current lead context.
+   *
+   * Rule (must match runtime lead-team/ministry-change semantics in
+   * `ActivitiesService.update`):
+   * - When `leadMinistryId` is set AND the ministry row has a truthy
+   *   abbreviation, prefix = ministry abbreviation.
+   * - Otherwise, prefix = normalized team abbreviation, or `TEAM_PREFIX_FALLBACK`
+   *   when the team abbreviation is empty after normalization.
+   */
+  computeDisplayIdFromLeadContext(input: {
+    activityId: number;
+    leadMinistryId: number | null | undefined;
+    ministryAbbreviation: string | null | undefined;
+    teamAbbreviation: string | null | undefined;
+  }): string {
+    const { activityId, leadMinistryId, ministryAbbreviation } = input;
+    if (leadMinistryId != null && ministryAbbreviation) {
+      return this.generateDisplayId(ministryAbbreviation, activityId);
     }
-    return cleaned;
+    const prefix = this.getDisplayIdPrefixFromTeamAbbreviation(
+      input.teamAbbreviation
+    );
+    return this.generateDisplayId(prefix, activityId);
   }
 
   /**

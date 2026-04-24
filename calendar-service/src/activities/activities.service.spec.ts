@@ -9,7 +9,12 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Activity } from '@corpcal/database/types';
-import { PERMISSIONS, REVIEW_SNAPSHOT_VERSION } from '@corpcal/shared';
+import {
+  buildActivityDisplayId,
+  normalizeTeamAbbreviationForActivityDisplayId,
+  PERMISSIONS,
+  REVIEW_SNAPSHOT_VERSION,
+} from '@corpcal/shared';
 import {
   activityResponseSchema,
   type UpdateActivityRequest,
@@ -153,19 +158,29 @@ describe('ActivitiesService', () => {
   // Mock data fetcher service (from shared factory to stay in sync with ActivityDataFetcherService)
   const mockDataFetcherService = createMockActivityDataFetcherService();
 
-  // Mock utils service
+  // Mock utils service (same pure helpers as ActivityUtilsService / shared package)
   const mockUtilsService = {
-    generateDisplayId: vi.fn(
-      (abbrev, id) =>
-        `${String(abbrev).toUpperCase().trim()}-${id.toString().slice(-6).padStart(6, '0')}`
-    ),
+    generateDisplayId: vi.fn(buildActivityDisplayId),
     getDisplayIdPrefixFromTeamAbbreviation: vi.fn(
-      (abbreviation: string | null | undefined) => {
-        const cleaned = (abbreviation ?? '')
-          .trim()
-          .replace(/\s+/g, '')
-          .toUpperCase();
-        return cleaned.length === 0 ? '???' : cleaned;
+      normalizeTeamAbbreviationForActivityDisplayId
+    ),
+    computeDisplayIdFromLeadContext: vi.fn(
+      (input: {
+        activityId: number;
+        leadMinistryId: number | null | undefined;
+        ministryAbbreviation: string | null | undefined;
+        teamAbbreviation: string | null | undefined;
+      }) => {
+        if (input.leadMinistryId != null && input.ministryAbbreviation) {
+          return buildActivityDisplayId(
+            input.ministryAbbreviation,
+            input.activityId
+          );
+        }
+        const prefix = normalizeTeamAbbreviationForActivityDisplayId(
+          input.teamAbbreviation
+        );
+        return buildActivityDisplayId(prefix, input.activityId);
       }
     ),
     validateCategoryIds: vi.fn().mockResolvedValue(undefined),
