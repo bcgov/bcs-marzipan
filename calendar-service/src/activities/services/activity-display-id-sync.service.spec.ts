@@ -20,7 +20,7 @@ type CandidateRow = {
 
 /**
  * Build a minimal `tx` stub that returns the given candidate rows on the second
- * `.select(...)` invocation. The first `.select(...)` builds the terminal-status
+ * `.select(...)` invocation. The first `.select(...)` builds the excluded-status
  * id subquery and only its chain needs to be non-throwing.
  */
 const buildTxStub = (candidates: CandidateRow[]) => {

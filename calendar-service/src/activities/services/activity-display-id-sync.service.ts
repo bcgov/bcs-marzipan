@@ -23,14 +23,14 @@ import { ActivityHistoryService } from './activity-history.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
 /**
- * Status names whose rows are "terminal" for the purposes of the displayId
- * cascade. Activities in these statuses keep their existing `displayId` even
- * when a referenced ministry or team abbreviation is updated.
+ * Status names excluded from the displayId cascade. Activities in these
+ * statuses keep their existing `displayId` when a referenced ministry or team
+ * abbreviation is updated. `delete_requested` is cascaded so that if an
+ * activity is restored, its id already matches the current abbreviations.
  */
-const TERMINAL_STATUS_NAMES = [
+const DISPLAY_ID_CASCADE_EXCLUDED_STATUS_NAMES = [
   'completed',
   'deleted',
-  'delete_requested',
 ] as const;
 
 type CandidateRow = {
@@ -49,8 +49,8 @@ type UpdateEntry = {
 
 /**
  * Service that cascades `activities.displayId` when a referenced team or
- * ministry `abbreviation` changes. Activities in terminal statuses
- * (`completed`, `deleted`, `delete_requested`) are intentionally skipped.
+ * ministry `abbreviation` changes. Only `completed` and `deleted` activities
+ * are skipped; `delete_requested` is updated so restored activities stay aligned.
  */
 @Injectable()
 export class ActivityDisplayIdSyncService {
@@ -70,10 +70,10 @@ export class ActivityDisplayIdSyncService {
   ) {}
 
   /**
-   * Refresh `displayId` for every non-terminal activity whose lead ministry is
-   * the given ministry. Prefix resolution follows the update-time rule: when
-   * the ministry has a truthy abbreviation the ministry drives the prefix;
-   * otherwise the lead team abbreviation is used.
+   * Refresh `displayId` for every eligible activity whose lead ministry is the
+   * given ministry (excluding completed/deleted). Prefix resolution follows
+   * the update-time rule: when the ministry has a truthy abbreviation the
+   * ministry drives the prefix; otherwise the lead team abbreviation is used.
    */
   async refreshAfterMinistryAbbreviationChange(
     tx: DrizzleDbExecutor,
@@ -89,9 +89,10 @@ export class ActivityDisplayIdSyncService {
   }
 
   /**
-   * Refresh `displayId` for every non-terminal activity whose lead team is the
+   * Refresh `displayId` for every eligible activity whose lead team is the
    * given team AND whose displayId is driven by the team abbreviation (no lead
-   * ministry, or lead ministry has no truthy abbreviation).
+   * ministry, or lead ministry has no truthy abbreviation), excluding
+   * completed/deleted.
    */
   async refreshAfterTeamAbbreviationChange(
     tx: DrizzleDbExecutor,
@@ -118,10 +119,14 @@ export class ActivityDisplayIdSyncService {
     tx: DrizzleDbExecutor,
     params: { filter: SQL | undefined }
   ): Promise<CandidateRow[]> {
-    const terminalStatusIdsSubquery = tx
+    const excludedStatusIdsSubquery = tx
       .select({ id: activityStatuses.id })
       .from(activityStatuses)
-      .where(inArray(activityStatuses.name, [...TERMINAL_STATUS_NAMES]));
+      .where(
+        inArray(activityStatuses.name, [
+          ...DISPLAY_ID_CASCADE_EXCLUDED_STATUS_NAMES,
+        ])
+      );
 
     const rows = await tx
       .select({
@@ -137,7 +142,7 @@ export class ActivityDisplayIdSyncService {
       .where(
         and(
           params.filter,
-          notInArray(activities.activityStatusId, terminalStatusIdsSubquery)
+          notInArray(activities.activityStatusId, excludedStatusIdsSubquery)
         )
       );
 
