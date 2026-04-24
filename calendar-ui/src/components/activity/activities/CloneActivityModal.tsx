@@ -543,7 +543,7 @@ export function CloneActivityModal({
           </div>
 
           <div className="space-y-3">
-            <div className="flex justify-end">
+            <div className="flex">
               <button
                 type="button"
                 onClick={() => setShowMoreOptions((v) => !v)}

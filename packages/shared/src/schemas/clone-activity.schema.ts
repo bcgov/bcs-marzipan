@@ -198,9 +198,17 @@ export const CLONE_ALLOWED_INCLUDE_PATHS: ReadonlySet<string> = new Set<string>(
  * `activityCoreFieldsSchema`: dates / times are optional strings, while the
  * status ids are optional so the server can substitute lookup-based defaults
  * when the client omits them.
+ *
+ * `includeFieldPaths`: when omitted, the server does not apply the allow-list
+ * (advanced fields follow the source after permission stripping). When present,
+ * it restricts which optional advanced fields are copied.
  */
 export const cloneActivityRequestSchema = z.object({
-  title: z.string().min(1).max(CLONE_TITLE_MAX_LENGTH),
+  title: z
+    .string()
+    .min(1)
+    .max(CLONE_TITLE_MAX_LENGTH)
+    .describe('Title for the new activity, typically prefixed (e.g. CLONED).'),
 
   startDate: z.string().date().nullable().optional(),
   endDate: z.string().date().nullable().optional(),
@@ -210,17 +218,27 @@ export const cloneActivityRequestSchema = z.object({
   dateStatusId: z.number().int().optional(),
   timeStatusId: z.number().int().optional(),
 
-  includeFieldPaths: z.array(z.string().min(1)).optional(),
+  includeFieldPaths: z
+    .array(z.string().min(1))
+    .optional()
+    .describe(
+      'When omitted, the allow-list is not applied and optional advanced fields are taken from the source (after field-level write rules). When present, only listed server-allowed paths are copied; other optional advanced fields are dropped. Unknown path strings are ignored. The in-app UI always sends an explicit array.'
+    ),
 
-  /**
-   * When true and the user has `activities.review`, the new activity is
-   * created in **Reviewed** status (same as create). Omitted or false → **New**
-   * for users with review permission. Ignored for initial status when the user
-   * cannot review; `create` applies the same rules as a normal create.
-   */
-  markAsReviewed: z.boolean().optional(),
+  markAsReviewed: z
+    .boolean()
+    .optional()
+    .describe(
+      'When true and the user has activities.review, initial status is Reviewed (same as create). Otherwise initial status is New. Ignored for initial status when the user cannot review.'
+    ),
 
-  activityHistoryNotes: z.string().max(1000).optional(),
+  activityHistoryNotes: z
+    .string()
+    .max(1000)
+    .optional()
+    .describe(
+      'Optional note recorded on the new activity created history and the source cloned history.'
+    ),
 });
 
 export type CloneActivityRequest = z.infer<typeof cloneActivityRequestSchema>;

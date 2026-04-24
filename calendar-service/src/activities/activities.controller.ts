@@ -57,6 +57,7 @@ import {
   ActivityArrayResponseWrapperDto,
   ActivityResponseWrapperDto,
   AddActivityHistoryNoteDto,
+  CloneActivityDto,
   CreateActivityDto,
   RequestDeleteDto,
   RestoreDto,
@@ -129,10 +130,14 @@ export class ActivitiesController {
     summary: 'Clone activity',
     description:
       'Creates a new activity using an existing activity as a template. ' +
-      'Title and schedule come from the request body; other source fields may be ' +
-      'copied or reset based on `includeFieldPaths`. The new activity is always ' +
-      'created in the "new" status and records provenance history on both the ' +
-      'source and new activity.',
+      'Title and schedule come from the request body. Optional advanced fields ' +
+      'are copied or reset based on `includeFieldPaths` (see request schema: ' +
+      'when the property is omitted, the allow-list is not applied). ' +
+      'Initial status follows the same rules as create: **New** by default, or ' +
+      '**Reviewed** when the user has `activities.review` and `markAsReviewed` ' +
+      'is true. Users without review permission do not get Reviewed from this flag. ' +
+      'Provenance is recorded in history on the new activity (created) and the ' +
+      'source (cloned), including optional `activityHistoryNotes` on both.',
   })
   @ApiParam({
     name: 'id',
@@ -140,6 +145,7 @@ export class ActivitiesController {
     description: 'Source activity ID',
     example: 1,
   })
+  @ApiBody({ type: CloneActivityDto })
   @ApiResponse({
     status: 201,
     description: 'Activity cloned successfully',

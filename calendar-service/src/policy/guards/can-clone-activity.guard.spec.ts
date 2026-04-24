@@ -166,7 +166,7 @@ describe('CanCloneActivityGuard', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 
-  it('allows admin on a blocked source (admin bypasses eligibility but still needs delete.any)', async () => {
+  it('allows admin on a blocked source when the user has activities.delete.any (comms/lead checks skipped)', async () => {
     policyService.getActivityStatusNameForActivity.mockResolvedValue('deleted');
     const ctx = createMockContext(adminUser());
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
