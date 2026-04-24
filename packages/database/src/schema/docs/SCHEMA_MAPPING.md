@@ -133,17 +133,17 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 
 ### New Fields (Not in Legacy Schema)
 
-| New Field Name                 | Type          | New Constraints             | Description                                                                                      |
-| ------------------------------ | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `displayId`                    | `varchar(50)` | `unique`                    | Computed field: {ministryAbbreviation}-{paddedLast6Digits} format (e.g., AG-000123, HLTH-456789) |
-| `dateStatusId`                 | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                           |
-| `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                        |
-| `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                             |
-| `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                        |
-| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                             |
-| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                  |
-| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                            |
-| `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level property - if true, activity shows as placeholder in reports (default: false)     |
+| New Field Name                 | Type          | New Constraints             | Description                                                                                                              |
+| ------------------------------ | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `displayId`                    | `varchar(50)` | `unique`                    | Computed: ministry or team prefix + numeric segment (`buildActivityDisplayId` in shared); e.g. AG-000123, HLTH-123456789 |
+| `dateStatusId`                 | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                                                   |
+| `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                                                |
+| `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                                                     |
+| `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                                                |
+| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                                                     |
+| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                                          |
+| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                                                    |
+| `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level property - if true, activity shows as placeholder in reports (default: false)                             |
 
 ### Moved to Separate Tables
 

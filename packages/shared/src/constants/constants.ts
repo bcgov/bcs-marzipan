@@ -114,15 +114,36 @@ export function normalizeTeamAbbreviationForActivityDisplayId(
 }
 
 /**
- * Builds `displayId`: `<PREFIX>-<last 6 digits of activity id, zero-padded>`.
- * Prefix is uppercased and trimmed (same rules as ministry/team abbreviations in the API).
+ * Strips whitespace, removes internal spaces, uppercases. Returns empty string when
+ * nothing remains so callers can fall back to the team abbreviation for `displayId`.
+ */
+export function normalizeMinistryAbbreviationForActivityDisplayId(
+  abbreviation: string | null | undefined
+): string {
+  return (abbreviation ?? '').trim().replace(/\s+/g, '').toUpperCase();
+}
+
+/**
+ * Numeric segment of `displayId`: full decimal activity id with at least 6 digits
+ * (leading zeros for ids below 1,000,000). Larger ids are not truncated, avoiding
+ * collisions between ids that share the same last six digits.
+ */
+export function formatActivityDisplayIdNumericSegment(
+  activityId: number
+): string {
+  return String(activityId).padStart(6, '0');
+}
+
+/**
+ * Builds `displayId`: `<PREFIX>-<numeric segment>`.
+ * Prefix is uppercased and trimmed. The numeric segment follows the same rules as
+ * `formatActivityDisplayIdNumericSegment`.
  */
 export function buildActivityDisplayId(
   prefix: string,
   activityId: number
 ): string {
-  const lastSixDigits = activityId.toString().slice(-6).padStart(6, '0');
-  return `${prefix.toUpperCase().trim()}-${lastSixDigits}`;
+  return `${prefix.toUpperCase().trim()}-${formatActivityDisplayIdNumericSegment(activityId)}`;
 }
 
 /**
