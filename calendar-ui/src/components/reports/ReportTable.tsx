@@ -27,7 +27,7 @@ export function ReportTable({ activities, className }: ReportTableProps) {
   return (
     <div
       className={cn(
-        'overflow-x-auto rounded-(--corpcal-table-radius) border border-(--corpcal-table-border) bg-(--corpcal-table-surface)',
+        'mx-auto w-full max-w-(--corpcal-report-sheet-content-max-width) overflow-x-auto rounded-(--corpcal-table-radius) border border-(--corpcal-table-border) bg-(--corpcal-table-surface)',
         className
       )}
     >

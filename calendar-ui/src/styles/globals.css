@@ -133,6 +133,9 @@
 
     /* Required field asterisk — matches Deleted activity status badge background */
     --required-field-indicator: var(--activity-status-deleted);
+
+    /* Matches report PDF export: US Letter (8.5in) minus 10mm left/right margins — see PdfGeneratorService. */
+    --corpcal-report-sheet-content-max-width: calc(8.5in - 20mm);
   }
 
   .dark {

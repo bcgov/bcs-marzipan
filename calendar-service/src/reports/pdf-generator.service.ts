@@ -7,10 +7,10 @@ import puppeteer, {
 /**
  * Rendering defaults for print-aligned report PDFs. Kept together so the
  * viewport used during measurement matches the `@page` / table column widths
- * encoded in the shared print stylesheet.
+ * encoded in the shared print stylesheet. Page size aligns with Letter (8.5×11).
  */
 const DEFAULT_PDF_OPTIONS: PDFOptions = {
-  format: 'A4',
+  format: 'Letter',
   printBackground: true,
   preferCSSPageSize: true,
   margin: {
