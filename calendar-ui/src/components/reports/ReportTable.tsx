@@ -5,7 +5,7 @@ import { ReportRow } from './ReportRow';
 
 /** Sticky within the report section scroll area; opaque bg so rows don’t show through. */
 const headerCell =
-  'bg-muted/95 text-foreground sticky top-0 z-10 border-b px-4 py-3 text-left text-sm font-semibold shadow-[0_1px_0_0_hsl(var(--border))] backdrop-blur-sm';
+  'sticky top-0 z-10 border-b border-(--corpcal-table-border) bg-(--corpcal-table-header-bg) px-4 py-3 text-left text-sm font-semibold text-(--corpcal-table-header-fg) backdrop-blur-sm';
 
 interface ReportTableProps {
   activities: ActivityResponse[];
@@ -27,13 +27,13 @@ export function ReportTable({ activities, className }: ReportTableProps) {
   return (
     <div
       className={cn(
-        'border-border overflow-x-auto rounded-md border',
+        'overflow-x-auto rounded-(--corpcal-table-radius) border border-(--corpcal-table-border) bg-(--corpcal-table-surface)',
         className
       )}
     >
       <table className="w-full border-separate border-spacing-0 text-sm">
         <thead>
-          <tr className="border-border border-b">
+          <tr className="border-b border-(--corpcal-table-border)">
             <th scope="col" className={cn(headerCell, 'w-1/6')}>
               Date & Time
             </th>
@@ -59,7 +59,7 @@ export function ReportTable({ activities, className }: ReportTableProps) {
       </table>
 
       {activities.length === 0 && (
-        <div className="text-muted-foreground px-4 py-8 text-center">
+        <div className="px-4 py-8 text-center text-(--corpcal-table-cell-muted-fg)">
           No activities to display.
         </div>
       )}

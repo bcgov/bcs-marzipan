@@ -1,44 +1,40 @@
+import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
+
 /**
  * Single source of print styles for both in-app preview and Puppeteer-generated
- * PDFs. Exported as a verbatim string so the calendar-service can inject the
- * same bytes the browser sees — no drift, no runtime Tailwind.
- *
- * This replaces the originally planned two-step Tailwind build artifact: the
- * maintainability goal (one stylesheet, consumed identically by both paths) is
- * met with a single hand-authored rule set compiled into the shared package's
- * ESM and CJS outputs. The service reads these bytes via a normal import —
- * no build orchestration, no filesystem lookups.
+ * PDFs. Shared semantic tokens are prepended so the standalone PDF document and
+ * calendar-ui preview use the same table surfaces, borders, text, and radius.
  *
  * Scoped under `.corpcal-print-root` so the rules never leak into the
  * surrounding calendar-ui shell when mounted in the preview pane.
  */
 export const CORPCAL_PRINT_ROOT_CLASS = 'corpcal-print-root';
 
-export const PRINT_STYLES = `
+export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .${CORPCAL_PRINT_ROOT_CLASS} {
-  --print-ink: #111418;
-  --print-ink-muted: #3f4a5a;
-  --print-ink-faint: #5b6472;
-  --print-border: #c7ccd4;
-  --print-border-soft: #e5e8ee;
-  --print-header-bg: #013366;
-  --print-header-fg: #ffffff;
-  --print-banner-bg: #fff8e1;
-  --print-banner-fg: #5c4a00;
-  --print-section-fg: #223b6b;
-  --print-zebra: #f6f7fa;
-  --print-accent-red: #902b28;
-  --print-accent-red-soft: #f4e1e2;
-  --print-accent-blue: #1e5189;
-  --print-accent-blue-soft: #d8eafd;
-  --print-accent-amber: #a5792b;
-  --print-accent-amber-soft: #fef1d8;
+  --print-ink: var(--corpcal-text);
+  --print-ink-muted: var(--corpcal-table-cell-muted-fg);
+  --print-ink-faint: var(--corpcal-table-cell-subtle-fg);
+  --print-border: var(--corpcal-table-border);
+  --print-border-soft: color-mix(in oklch, var(--corpcal-table-border) 70%, transparent);
+  --print-header-bg: var(--corpcal-table-header-bg);
+  --print-header-fg: var(--corpcal-table-header-fg);
+  --print-banner-bg: var(--corpcal-table-row-alt-bg);
+  --print-banner-fg: var(--corpcal-table-cell-muted-fg);
+  --print-section-fg: var(--corpcal-text);
+  --print-zebra: var(--corpcal-table-row-alt-bg);
+  --print-accent-red: var(--corpcal-print-accent-red);
+  --print-accent-red-soft: var(--corpcal-print-accent-red-soft);
+  --print-accent-blue: var(--corpcal-print-accent-blue);
+  --print-accent-blue-soft: var(--corpcal-print-accent-blue-soft);
+  --print-accent-amber: var(--corpcal-print-accent-amber);
+  --print-accent-amber-soft: var(--corpcal-print-accent-amber-soft);
 
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 11px;
   line-height: 1.4;
   color: var(--print-ink);
-  background: #ffffff;
+  background: var(--corpcal-surface);
   box-sizing: border-box;
 }
 .${CORPCAL_PRINT_ROOT_CLASS} *,
@@ -79,13 +75,13 @@ export const PRINT_STYLES = `
   right: 24px;
   font-size: 11px;
   font-weight: 700;
-  color: #ffc7c3;
+  color: var(--print-accent-red);
   letter-spacing: 0.06em;
 }
 
 .corpcal-print-banner {
   background: var(--print-banner-bg);
-  border-bottom: 1px solid #e0c766;
+  border-bottom: 1px solid var(--print-border);
   padding: 8px 24px;
   font-size: 10px;
   font-weight: 700;
@@ -94,7 +90,7 @@ export const PRINT_STYLES = `
 .corpcal-print-banner-sub {
   display: block;
   font-weight: 400;
-  color: #6a5a10;
+  color: var(--print-ink-muted);
   margin-top: 2px;
 }
 
@@ -140,30 +136,37 @@ export const PRINT_STYLES = `
 
 .corpcal-print-table-wrap {
   border: 1px solid var(--print-border);
-  border-radius: 2px;
+  border-radius: var(--corpcal-table-radius);
   overflow: hidden;
+  background: var(--corpcal-table-surface);
 }
 .corpcal-print-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   font-size: 10.5px;
 }
 .corpcal-print-table th {
   text-align: left;
   padding: 6px 8px;
-  background: #1a1a1a;
-  color: #ffffff;
-  font-weight: 700;
+  background: var(--corpcal-table-header-bg);
+  color: var(--corpcal-table-header-fg);
+  font-weight: 600;
   font-size: 10px;
-  border: 1px solid #1a1a1a;
+  border-bottom: 1px solid var(--corpcal-table-border);
 }
 .corpcal-print-table td {
   vertical-align: top;
   padding: 8px;
-  border: 1px solid var(--print-border);
+  background: var(--corpcal-table-row-bg);
+  border-bottom: 1px solid var(--corpcal-table-border);
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+.corpcal-print-table th + th,
+.corpcal-print-table td + td {
+  border-left: 1px solid var(--corpcal-table-border);
 }
 .corpcal-print-table tbody tr:nth-child(even) td {
   background: var(--print-zebra);
@@ -230,7 +233,7 @@ export const PRINT_STYLES = `
   letter-spacing: 0.04em;
   text-transform: uppercase;
   border: 1px solid var(--print-border);
-  background: #ffffff;
+  background: var(--corpcal-surface);
   color: var(--print-ink-muted);
 }
 .corpcal-print-pill-issue {
@@ -268,7 +271,7 @@ export const PRINT_STYLES = `
   font-style: italic;
   color: var(--print-ink-faint);
   border: 1px dashed var(--print-border);
-  background: #fafbfc;
+  background: var(--corpcal-table-row-alt-bg);
 }
 
 .corpcal-print-footer {
