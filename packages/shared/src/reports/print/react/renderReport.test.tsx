@@ -1,0 +1,219 @@
+import { describe, expect, it } from 'vitest';
+
+import type { ReportDataResponse } from '../../../api/report-data';
+import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import {
+  renderPrintReportDocumentHtml,
+  renderPrintReportFragmentHtml,
+} from './renderReport';
+
+const BASE_ACTIVITY: ActivityResponse = {
+  id: 101,
+  displayId: 'ACT-101',
+  isIssue: true,
+  isConfidential: false,
+  title: 'Minister announces housing investment',
+  summary:
+    'The Minister will announce new housing funding and respond to media questions. See https://news.gov.bc.ca/backgrounders/b-101 for background.',
+  significance: null,
+  leadOrgId: null,
+  leadOrgName: null,
+  isAllDay: false,
+  startDate: '2026-04-27T00:00:00.000Z',
+  endDate: null,
+  dateStatusId: undefined,
+  startTime: '10:00',
+  endTime: null,
+  timeStatusId: undefined,
+  venueStatusId: null,
+  schedulingNotes: null,
+  strategy: null,
+  newsReleaseOriginId: null,
+  newsReleaseId: null,
+  newsReleaseDistributionId: null,
+  executiveSummary:
+    'Investment of $500M over three years to accelerate affordable housing near transit.',
+  lookAheadStatus: 'new',
+  lookAheadSection: 'events',
+  notes: null,
+  pitchDate: null,
+  pitchRequiredStatusId: null,
+  translationsRequiredStatusId: null,
+  premierRequestedId: null,
+  visibility: 'global',
+  leadTeamId: 1,
+  leadMinistryId: 1,
+  activityStatusId: 1,
+  createdBy: 1,
+  lastUpdatedBy: 1,
+  createdDateTime: '2026-04-20T00:00:00.000Z',
+  lastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
+  category: ['Announcement'],
+  tags: [],
+  commsMaterials: [],
+  translationsRequired: ['French', 'Punjabi'],
+  representativesAttending: [],
+  sharedWith: [],
+  commsContacts: [],
+  leadOrg: 'Ministry of Housing',
+  eventPlannerDetails: [
+    { name: 'Alex Planner', isLead: true },
+    { name: 'Sam Backup', isLead: false },
+  ],
+  eventPlanners: ['Alex Planner', 'Sam Backup'],
+  eventPlannerLeadIds: [],
+  dateStatus: 'confirmed',
+  timeStatus: 'confirmed',
+  venueStatus: 'confirmed',
+  activityStatus: 'active',
+  newsReleaseOrigin: 'Issued',
+  newsReleaseDistribution: null,
+  premierRequested: null,
+  pitchRequiredStatus: null,
+  translationsRequiredStatus: null,
+  leadMinistry: 'Housing',
+  leadMinistryAbbreviation: 'HOUS',
+  leadTeamDisplayName: null,
+  venueAddress: {
+    venueName: 'Legislative Assembly',
+    addressLine1: '501 Belleville St',
+    addressLine2: null,
+    city: 'Victoria',
+    provinceOrState: 'BC',
+    country: 'Canada',
+  },
+  reportSettings: [],
+};
+
+const FIXTURE: ReportDataResponse = {
+  report: {
+    id: 1,
+    name: 'look-ahead',
+    displayName: 'Look Ahead',
+    sortOrder: 1,
+    isActive: true,
+    visibility: 'global',
+    config: null,
+    description: null,
+  },
+  sections: [
+    {
+      id: 'events',
+      name: 'Events',
+      order: 1,
+      activities: [BASE_ACTIVITY],
+    },
+  ],
+};
+
+const FIXED_GENERATED_AT = new Date('2026-04-27T15:30:00.000Z');
+
+describe('renderPrintReportFragmentHtml', () => {
+  it('renders a stable fragment for a look-ahead report', () => {
+    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toMatchSnapshot();
+  });
+
+  it('renders the exec variant with executive summary instead of title/summary', () => {
+    const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('Investment of $500M');
+    expect(html).not.toContain('Minister announces housing investment');
+    expect(html).toMatchSnapshot();
+  });
+
+  it('builds activity links against the provided base URL', () => {
+    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain(
+      'href="https://corpcal.example.gov.bc.ca/activity/101"'
+    );
+    expect(html).toContain('ACT-101');
+  });
+
+  it('includes translations list when fewer than four languages are required', () => {
+    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('French, Punjabi');
+    expect(html).not.toContain('Translations: 2 languages');
+  });
+
+  it('collapses translations to a count at four or more languages', () => {
+    const many: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              translationsRequired: ['French', 'Punjabi', 'Chinese', 'Spanish'],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', many, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('Translations: 4 languages');
+  });
+
+  it('renders an empty-state message when no activities exist', () => {
+    const empty: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [{ ...FIXTURE.sections[0], activities: [] }],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', empty, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('No activities in the selected range.');
+  });
+});
+
+describe('renderPrintReportDocumentHtml', () => {
+  it('wraps the fragment in a standalone HTML document with injected styles', () => {
+    const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
+    expect(html).toContain('<style>');
+    expect(html).toContain('.corpcal-print-root');
+    expect(html).toContain('ACT-101');
+  });
+
+  it('embeds the provided @font-face block before the shared styles', () => {
+    const fontFaceCss = "@font-face{font-family:'BC Sans';src:url(data:x)}";
+    const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+      fontFaceCss,
+    });
+
+    const fontIdx = html.indexOf(fontFaceCss);
+    const rootIdx = html.indexOf('.corpcal-print-root');
+    expect(fontIdx).toBeGreaterThan(-1);
+    expect(rootIdx).toBeGreaterThan(fontIdx);
+  });
+});

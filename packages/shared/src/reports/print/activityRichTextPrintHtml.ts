@@ -1,6 +1,7 @@
 import { mergeAttributes, type JSONContent } from '@tiptap/core';
 import Link from '@tiptap/extension-link';
-import { generateHTML } from '@tiptap/html';
+import { generateHTML as generateHTMLInBrowser } from '@tiptap/html';
+import { generateHTML as generateHTMLOnServer } from '@tiptap/html/server';
 import { Markdown, MarkdownManager } from '@tiptap/markdown';
 import StarterKit from '@tiptap/starter-kit';
 import sanitizeHtml from 'sanitize-html';
@@ -94,9 +95,19 @@ function emptyParagraphsToLineBreak(html: string): string {
 function docFromStoredValue(value: string): JSONContent {
   const parsed = tryParseTipTapDoc(value);
   if (parsed) {
-    return parsed as JSONContent;
+    return parsed;
   }
   return markdownManagerForPrintRichText().parse(value);
+}
+
+function jsonDocToPrintHtml(
+  doc: JSONContent,
+  extensions: ReturnType<typeof getActivityRichTextPrintExtensions>
+): string {
+  if (typeof window === 'undefined') {
+    return generateHTMLOnServer(doc, extensions);
+  }
+  return generateHTMLInBrowser(doc, extensions);
 }
 
 /**
@@ -109,7 +120,7 @@ export function activityStoredValueToSanitizedHtmlForPrint(
   if (value == null || value === '') return '';
   const doc = docFromStoredValue(value);
   const raw = emptyParagraphsToLineBreak(
-    generateHTML(doc, getActivityRichTextPrintExtensions())
+    jsonDocToPrintHtml(doc, getActivityRichTextPrintExtensions())
   );
   return sanitizeHtml(raw, {
     allowedTags: [
