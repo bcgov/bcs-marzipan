@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 
 import { activityReportSettings, reports } from '@corpcal/database/schema';
@@ -29,6 +30,7 @@ import { DatabaseService } from '../database/database.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { PdfGeneratorService } from './pdf-generator.service';
+import { buildPrintFontFaceCss } from './print-assets';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
 function pickDefinedActivityFilters(
@@ -66,8 +68,21 @@ export class ReportsService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly activitiesService: ActivitiesService,
-    private readonly pdfGeneratorService: PdfGeneratorService
+    private readonly pdfGeneratorService: PdfGeneratorService,
+    private readonly configService: ConfigService
   ) {}
+
+  /**
+   * Public URL used to build absolute activity links inside generated reports.
+   * Resolved once per request from `PUBLIC_APP_BASE_URL` (see `.env.example`)
+   * with a safe local fallback so development does not require extra config.
+   */
+  private getPublicAppBaseUrl(): string {
+    const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
+    const trimmed = raw?.trim();
+    if (trimmed && trimmed.length > 0) return trimmed.replace(/\/+$/, '');
+    return 'http://localhost:3000';
+  }
 
   /**
    * Get all active reports
@@ -513,13 +528,17 @@ export class ReportsService {
     reportType: string,
     data: ReportDataResponse
   ): Promise<Buffer> {
-    const inner = getReportTemplateHtml(reportType, data).trim();
+    const activityBaseUrl = this.getPublicAppBaseUrl();
+    const inner = getReportTemplateHtml(reportType, data, {
+      activityBaseUrl,
+    }).trim();
     if (!inner) {
       throw new NotFoundException(
         `No printable HTML for report '${reportType}'.`
       );
     }
-    const html = wrapReportHtmlDocument(inner);
+    const fontFaceCss = buildPrintFontFaceCss() ?? undefined;
+    const html = wrapReportHtmlDocument(inner, { fontFaceCss });
     return this.pdfGeneratorService.generatePdfFromHtml(html);
   }
 }
