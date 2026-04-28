@@ -218,17 +218,30 @@ export function LoginModalSettingsAdmin() {
             </div>
           </div>
 
-          {/* Active toggle */}
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="modal-is-active"
-              checked={formData.isActive}
-              onCheckedChange={(checked) =>
-                setFormData((f) => ({ ...f, isActive: !!checked }))
-              }
-              disabled={!canManage}
-            />
-            <Label htmlFor="modal-is-active">Active</Label>
+          {/* Active toggle + current status */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="modal-is-active"
+                checked={formData.isActive}
+                onCheckedChange={(checked) =>
+                  setFormData((f) => ({ ...f, isActive: !!checked }))
+                }
+                disabled={!canManage}
+              />
+              <Label htmlFor="modal-is-active">Active</Label>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-slate-900">
+                Current Status
+              </Label>
+              <p className="mt-1 text-sm text-slate-600">
+                Login modal is currently{' '}
+                {formData.isActive
+                  ? 'active — will show after login'
+                  : 'inactive'}
+              </p>
+            </div>
           </div>
 
           {/* Title */}
