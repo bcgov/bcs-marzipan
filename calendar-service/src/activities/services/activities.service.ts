@@ -678,7 +678,7 @@ export class ActivitiesService {
       const ids = invalid.map((c) => c.userId).join(', ');
       throw new BadRequestException(
         `Comms contact(s) [${ids}] are not eligible for lead team ${leadTeamId}. ` +
-        'Contacts must be active members of the lead team with activities.edit permission.'
+          'Contacts must be active members of the lead team with activities.edit permission.'
       );
     }
   }
@@ -813,9 +813,9 @@ export class ActivitiesService {
   private normalizeRepresentatives(
     reps:
       | Array<{
-        representativeId?: number | null;
-        representativeName?: string | null;
-      }>
+          representativeId?: number | null;
+          representativeName?: string | null;
+        }>
       | undefined
   ): Array<{
     representativeId: number | null;
