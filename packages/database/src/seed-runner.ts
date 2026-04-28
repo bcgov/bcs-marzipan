@@ -146,7 +146,7 @@ export function parseSqlStatements(sqlContent: string): string[] {
  * Seed Runner
  *
  * Automatically discovers and executes seed SQL files from the seeds directory.
- * Seed files should follow the naming convention: ####_YYYYMMDD_description_seed_*.sql
+ * Files match `####_*_seed*.sql`. Use zero-padded numeric prefixes in order (`0000`, `0001`, …); reserve `9999_*` for sequence sync (must sort last).
  *
  * Features:
  * - Auto-discovers seed files matching the pattern

@@ -1,6 +1,6 @@
 -- Seed Script for Roles
 -- This script seeds the roles table with system roles
--- MUST run before 0001_20260126_lookups_seed_data.sql as users reference roles
+-- MUST run before 0001_20260313_lookups_seed_data.sql as users reference roles
 -- Idempotent: upserts by id so re-runs update existing rows (role_id FKs stay valid)
 
 -- ============================================================================

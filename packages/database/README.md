@@ -83,7 +83,7 @@ This creates a fresh, consolidated CREATE statement including your changes.
 After **every** full squash generate, run:
 
 ```bash
-npm run db:add-extentions --workspace=packages/database
+npm run db:add-extensions --workspace=packages/database
 ```
 
 This script:
@@ -149,7 +149,7 @@ npm run db:generate --workspace=packages/database -- YYYYMMDD_description
 
 This creates a new migration file that contains only the **diff** between your current schema and the database.
 
-Do **not** run `db:add-extentions` here; that script is only for a **fresh squash** (a single new migration after deleting `migrations/`). Incremental folders already have the extensions migration in history.
+Do **not** run `db:add-extensions` here; that script is only for a **fresh squash** (a single new migration after deleting `migrations/`). Incremental folders already have the extensions migration in history.
 
 #### 2. Review the generated SQL
 
@@ -238,8 +238,8 @@ packages/database/
     0000_*.sql            # Current consolidated migration
     meta/                 # Drizzle migration metadata
   seeds/
-    0001_*.sql            # Lookup data seed
-    0002_*.sql            # Sample activity data seed
+    0000_*.sql … 0009_*.sql  # Main seed chain (lexicographic order; add 0010+ when needed)
+    9999_*.sql            # Sync serial sequences (must run last)
   src/
     schema/               # Drizzle ORM schema definitions
     client.ts             # Database client setup
@@ -257,6 +257,8 @@ The schema is defined in `src/schema/`:
 ## Field-level activity permissions
 
 Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions exist for `notes`, `lookAhead`, and `pitchStatus` (API may omit those fields when the user lacks view access). **Pitch date** and **translations** use **edit-only** field permissions where applicable (no separate view permission for pitch date; anyone who can view the activity sees those values).
+
+Seeds are tracked in `_seed_history` by **filename**. If you renumber or merge seed files on a database that was seeded with older names, run seeds with `force: true` (where the CLI or API exposes it), truncate `_seed_history`, or wipe the database so every file runs again in order.
 
 ## Types
 
