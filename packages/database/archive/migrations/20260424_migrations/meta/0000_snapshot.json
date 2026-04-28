@@ -1,6 +1,6 @@
 {
-  "id": "31e84e8d-ce2d-42d3-aa62-f9dccc45b531",
-  "prevId": "a200f2c0-0143-457f-ac8e-f2205939fb4c",
+  "id": "63628f51-a5e2-4262-944f-0683b93a7b84",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -269,38 +269,7 @@
           "default": 0
         }
       },
-      "indexes": {
-        "idx_activities_title_trgm": {
-          "name": "idx_activities_title_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"title\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        },
-        "idx_activities_display_id_trgm": {
-          "name": "idx_activities_display_id_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"display_id\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "activities_lead_org_id_organizations_id_fk": {
           "name": "activities_lead_org_id_organizations_id_fk",
@@ -492,36 +461,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "activity_title": {
-          "name": "activity_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "activity_display_id": {
-          "name": "activity_display_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_display_name": {
-          "name": "actor_display_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_username": {
-          "name": "actor_username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "category_tags_text": {
-          "name": "category_tags_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
@@ -589,42 +528,6 @@
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
-          "with": {}
-        },
-        "idx_activity_history_ts_id": {
-          "name": "idx_activity_history_ts_id",
-          "columns": [
-            {
-              "expression": "timestamp",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_activity_history_notes_trgm": {
-          "name": "idx_activity_history_notes_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"notes\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
           "with": {}
         }
       },
@@ -835,38 +738,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "idx_users_ad_display_name_trgm": {
-          "name": "idx_users_ad_display_name_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"ad_display_name\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        },
-        "idx_users_ad_username_trgm": {
-          "name": "idx_users_ad_username_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"ad_username\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "users_role_id_roles_id_fk": {
           "name": "users_role_id_roles_id_fk",
@@ -1205,13 +1077,13 @@
         },
         "abbreviation": {
           "name": "abbreviation",
-          "type": "varchar(5)",
+          "type": "varchar(10)",
           "primaryKey": false,
           "notNull": true
         },
-        "minister_government_rep_id": {
-          "name": "minister_government_rep_id",
-          "type": "integer",
+        "minister_name": {
+          "name": "minister_name",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -1223,12 +1095,6 @@
         },
         "second_contact_user_id": {
           "name": "second_contact_user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ministry_group_id": {
-          "name": "ministry_group_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -1278,15 +1144,6 @@
           "columnsFrom": ["second_contact_user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ministries_ministry_group_id_ministry_groups_id_fk": {
-          "name": "ministries_ministry_group_id_ministry_groups_id_fk",
-          "tableFrom": "ministries",
-          "tableTo": "ministry_groups",
-          "columnsFrom": ["ministry_group_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "ministries_created_by_users_id_fk": {
@@ -1531,99 +1388,6 @@
         "pods_last_updated_by_users_id_fk": {
           "name": "pods_last_updated_by_users_id_fk",
           "tableFrom": "pods",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.ministry_groups": {
-      "name": "ministry_groups",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "ministry_groups_name_lower_unique": {
-          "name": "ministry_groups_name_lower_unique",
-          "columns": [
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ministry_groups_created_by_users_id_fk": {
-          "name": "ministry_groups_created_by_users_id_fk",
-          "tableFrom": "ministry_groups",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ministry_groups_last_updated_by_users_id_fk": {
-          "name": "ministry_groups_last_updated_by_users_id_fk",
-          "tableFrom": "ministry_groups",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
@@ -2019,23 +1783,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "idx_categories_display_name_trgm": {
-          "name": "idx_categories_display_name_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"display_name\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "categories_created_by_users_id_fk": {
           "name": "categories_created_by_users_id_fk",
@@ -2602,6 +2350,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ministry_id": {
+          "name": "ministry_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "representative_type": {
           "name": "representative_type",
           "type": "varchar(50)",
@@ -2637,6 +2391,15 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "government_representatives_ministry_id_ministries_id_fk": {
+          "name": "government_representatives_ministry_id_ministries_id_fk",
+          "tableFrom": "government_representatives",
+          "tableTo": "ministries",
+          "columnsFrom": ["ministry_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "government_representatives_created_by_users_id_fk": {
           "name": "government_representatives_created_by_users_id_fk",
           "tableFrom": "government_representatives",
@@ -3430,23 +3193,7 @@
           "notNull": true
         }
       },
-      "indexes": {
-        "idx_tags_display_name_trgm": {
-          "name": "idx_tags_display_name_trgm",
-          "columns": [
-            {
-              "expression": "lower(\"display_name\") gin_trgm_ops",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "gin",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "tags_created_by_users_id_fk": {
           "name": "tags_created_by_users_id_fk",
@@ -4982,69 +4729,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.team_tags": {
-      "name": "team_tags",
-      "schema": "",
-      "columns": {
-        "tag_id": {
-          "name": "tag_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "team_tags_tag_id_tags_id_fk": {
-          "name": "team_tags_tag_id_tags_id_fk",
-          "tableFrom": "team_tags",
-          "tableTo": "tags",
-          "columnsFrom": ["tag_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "team_tags_team_id_teams_id_fk": {
-          "name": "team_tags_team_id_teams_id_fk",
-          "tableFrom": "team_tags",
-          "tableTo": "teams",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "team_tags_tag_id_team_id_pk": {
-          "name": "team_tags_tag_id_team_id_pk",
-          "columns": ["tag_id", "team_id"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user_teams": {
       "name": "user_teams",
       "schema": "",
@@ -5368,12 +5052,6 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
-        },
-        "abbreviation": {
-          "name": "abbreviation",
-          "type": "varchar(5)",
-          "primaryKey": false,
-          "notNull": true
         },
         "description": {
           "name": "description",

@@ -31,6 +31,7 @@
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "clean": "rm -rf dist",
     "db:generate": "node scripts/drizzle-migration-helper.js",
+    "db:add-extensions": "node scripts/ensure-postgresql-extensions-first.js",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
