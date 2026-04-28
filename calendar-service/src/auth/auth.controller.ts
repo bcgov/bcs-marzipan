@@ -301,6 +301,8 @@ export class AuthController {
 
   private getPostLoginRedirectUrl(): string {
     const configuredRedirect = process.env.POST_LOGIN_REDIRECT_URL?.trim();
-    return configuredRedirect || '/';
+    const base = configuredRedirect || '/';
+    const separator = base.includes('?') ? '&' : '?';
+    return `${base}${separator}login=1`;
   }
 }

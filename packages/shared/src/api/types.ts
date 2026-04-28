@@ -15,6 +15,10 @@ export type {
   BannerSettings,
   UpsertBannerSettingsBody,
 } from '../schemas/banner.schema';
+export type {
+  LoginModalSettings,
+  UpsertLoginModalSettingsBody,
+} from '../schemas/login-modal.schema';
 
 // Query params types - re-exported from query-params schema
 export type { LookupQueryParams } from '../schemas/query-params.schema';

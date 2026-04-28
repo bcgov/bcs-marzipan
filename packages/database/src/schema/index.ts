@@ -19,5 +19,6 @@ export * from './editLockPendingHandoffs';
 export * from './applicationSettings';
 export * from './sessions';
 export * from './bannerSettings';
+export * from './loginModalSettings';
 export * from './activitySavedFilters';
 export * from './userActivitySavedFilterDefaults';
