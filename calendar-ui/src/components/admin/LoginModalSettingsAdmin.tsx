@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { useLoginModalSettingsWebSocket } from '@/hooks/useLoginModalSettingsWebSocket';
 import { usePermission } from '@/hooks/usePermissions';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 
@@ -94,6 +95,14 @@ export function LoginModalSettingsAdmin() {
     () => toFormData(settings ?? null),
     [settings]
   );
+
+  useLoginModalSettingsWebSocket({
+    onSettingsUpdated: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['login-modal', 'settings'],
+      });
+    },
+  });
 
   useEffect(() => {
     setFormData(initialFormData);
@@ -228,6 +237,7 @@ export function LoginModalSettingsAdmin() {
                   setFormData((f) => ({ ...f, isActive: !!checked }))
                 }
                 disabled={!canManage}
+                data-testid="checkbox-login-modal-active"
               />
               <Label htmlFor="modal-is-active">Active</Label>
             </div>
@@ -256,6 +266,7 @@ export function LoginModalSettingsAdmin() {
               disabled={!canManage}
               maxLength={200}
               placeholder="Notice"
+              data-testid="input-login-modal-title"
             />
           </div>
 
@@ -271,6 +282,7 @@ export function LoginModalSettingsAdmin() {
               disabled={!canManage}
               rows={6}
               placeholder="Enter modal content…"
+              data-testid="textarea-login-modal-content"
             />
           </div>
 

@@ -31,15 +31,24 @@ export function LoginModal({ modal, open, onDismiss }: LoginModalProps) {
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           aria-describedby="login-modal-content"
+          data-testid="login-modal-dialog"
         >
-          <DialogTitle>{modal.title}</DialogTitle>
+          <DialogTitle data-testid="login-modal-title">
+            {modal.title}
+          </DialogTitle>
           <div
             id="login-modal-content"
             className="text-sm text-slate-700 [&_a]:text-blue-600 [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+            data-testid="login-modal-content"
           />
           <div className="flex justify-end">
-            <Button onClick={onDismiss}>Dismiss</Button>
+            <Button
+              onClick={onDismiss}
+              data-testid="login-modal-dismiss-button"
+            >
+              Dismiss
+            </Button>
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>

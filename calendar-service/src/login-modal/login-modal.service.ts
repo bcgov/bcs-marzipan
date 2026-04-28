@@ -7,13 +7,17 @@ import type {
   UpsertLoginModalSettingsBody,
 } from '@corpcal/shared/schemas';
 
+import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
 
 type LoginModalSettingsRow = typeof loginModalSettings.$inferSelect;
 
 @Injectable()
 export class LoginModalService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activitiesGateway: ActivitiesGateway
+  ) {}
 
   async getCurrentSettings(): Promise<LoginModalSettings | null> {
     const row = await this.getLatestRow();
@@ -57,6 +61,8 @@ export class LoginModalService {
 
     const existing = await this.getLatestRow();
 
+    let result: LoginModalSettings;
+
     if (existing) {
       const [updated] = await this.databaseService.db
         .update(loginModalSettings)
@@ -64,19 +70,25 @@ export class LoginModalService {
         .where(eq(loginModalSettings.id, existing.id))
         .returning();
 
-      return this.mapRow(updated);
+      result = this.mapRow(updated);
+    } else {
+      const [created] = await this.databaseService.db
+        .insert(loginModalSettings)
+        .values({
+          ...payload,
+          createdDateTime: now,
+          createdBy: userId,
+        })
+        .returning();
+
+      result = this.mapRow(created);
     }
 
-    const [created] = await this.databaseService.db
-      .insert(loginModalSettings)
-      .values({
-        ...payload,
-        createdDateTime: now,
-        createdBy: userId,
-      })
-      .returning();
+    setImmediate(() => {
+      this.activitiesGateway.broadcastLoginModalSettingsUpdated();
+    });
 
-    return this.mapRow(created);
+    return result;
   }
 
   private async getLatestRow(): Promise<LoginModalSettingsRow | null> {
