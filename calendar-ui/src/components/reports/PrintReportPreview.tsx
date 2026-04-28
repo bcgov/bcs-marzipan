@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
+  CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PRINT_STYLES,
+  PrintCustomReportDocument,
+  PrintPlanningDocument,
   PrintReportDocument,
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
@@ -62,9 +65,15 @@ function PrintReportPreviewRoot({
   activityBaseUrl: string;
 }) {
   // Inlined once per preview mount — classname-scoped so rules never leak.
-  return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
+  const generatedAt = new Date();
+
+  let document: ReactNode;
+  if (reportTypeName === 'planning') {
+    document = <PrintPlanningDocument />;
+  } else if (reportTypeName === 'custom') {
+    document = <PrintCustomReportDocument data={data} />;
+  } else {
+    document = (
       <PrintReportDocument
         data={data}
         variant={
@@ -73,8 +82,19 @@ function PrintReportPreviewRoot({
             : 'lookAhead'
         }
         activityBaseUrl={activityBaseUrl}
-        generatedAt={new Date()}
+        generatedAt={generatedAt}
       />
+    );
+  }
+
+  return (
+    <>
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}`,
+        }}
+      />
+      {document}
     </>
   );
 }

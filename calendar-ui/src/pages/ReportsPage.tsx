@@ -3,7 +3,6 @@ import { Download } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { isReactRenderableReportType } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
@@ -24,7 +23,6 @@ import {
 } from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
 import {
-  getReportTemplateHtml,
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
@@ -36,9 +34,7 @@ import {
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
 
 /**
- * Report tabs that use shared print HTML as the primary in-page view (API `report.name`).
- * Maps to {@link getReportTemplateHtml}: look-ahead / thirty-sixty-ninety → look-ahead legacy;
- * exec / exec-look-ahead → exec look-ahead; planning → planning stub.
+ * Report tabs that use the shared React print preview as the primary view.
  */
 function isReportHtmlPrimaryView(reportName: string): boolean {
   switch (reportName) {
@@ -206,18 +202,6 @@ export function ReportsPage() {
 
   const exportConfig = getExportConfig(activeReport);
 
-  /**
-   * Legacy string-HTML fallback for report types not yet migrated to the
-   * React print pipeline (e.g. `planning` placeholder). The React-renderable
-   * types render via {@link PrintReportPreview} instead so the preview and
-   * server-generated PDF share the exact same component tree.
-   */
-  const reportTemplateHtml = useMemo(() => {
-    if (!data || !activeReport) return '';
-    if (isReactRenderableReportType(activeReport)) return '';
-    return getReportTemplateHtml(activeReport, data);
-  }, [data, activeReport]);
-
   if (error && activeReport) {
     return (
       <StatusMessage
@@ -293,21 +277,12 @@ export function ReportsPage() {
                           className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
                           aria-label="Report preview"
                         >
-                          {isReactRenderableReportType(report.name) ? (
-                            <div className="report-print-preview-root min-w-0">
-                              <PrintReportPreview
-                                reportTypeName={report.name}
-                                data={data}
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className="report-print-preview-root min-w-0"
-                              dangerouslySetInnerHTML={{
-                                __html: reportTemplateHtml,
-                              }}
+                          <div className="report-print-preview-root min-w-0">
+                            <PrintReportPreview
+                              reportTypeName={report.name}
+                              data={data}
                             />
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -361,21 +336,12 @@ export function ReportsPage() {
                           className="report-html-container border-border max-h-[60vh] min-h-0 w-full shrink-0 overflow-y-auto border-t bg-white px-6 py-6"
                           aria-label="Print layout preview"
                         >
-                          {isReactRenderableReportType(report.name) ? (
-                            <div className="report-print-preview-root min-w-0">
-                              <PrintReportPreview
-                                reportTypeName={report.name}
-                                data={data}
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className="report-print-preview-root min-w-0"
-                              dangerouslySetInnerHTML={{
-                                __html: reportTemplateHtml,
-                              }}
+                          <div className="report-print-preview-root min-w-0">
+                            <PrintReportPreview
+                              reportTypeName={report.name}
+                              data={data}
                             />
-                          )}
+                          </div>
                         </div>
                       ) : null}
                     </div>
