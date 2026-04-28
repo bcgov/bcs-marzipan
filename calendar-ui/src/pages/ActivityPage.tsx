@@ -7,6 +7,7 @@ import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   type ActivityFormData,
   type ActivityResponse,
+  type CloneActivityRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 import {
@@ -16,6 +17,7 @@ import {
   ActivityStatusBanner,
 } from '@/components/activity';
 import ActivityHistory from '@/components/activity/activities/ActivityHistory';
+import { CloneActivityModal } from '@/components/activity/activities/CloneActivityModal';
 import { CompleteActionButtonLabel } from '@/components/activity/activities/CompleteActionButtonLabel';
 import { CompleteActivityModal } from '@/components/activity/activities/CompleteActivityModal';
 import { DeleteActivityModal } from '@/components/activity/activities/DeleteActivityModal';
@@ -37,7 +39,7 @@ import {
   type LockHandoffToastHandle,
 } from '@/lib/lock-handoff-toast';
 
-import { fetchActivityHistory } from '../api/activitiesApi';
+import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
 import {
@@ -219,6 +221,8 @@ export function ActivityPage({
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showRequestDeleteModal, setShowRequestDeleteModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
   const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
     string | undefined
   >(undefined);
@@ -389,6 +393,8 @@ export function ActivityPage({
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
+  /** Show the Clone button when the user can create and has edit eligibility on the source. Blocked-status gating is already handled by `canEditWhenBlocked` (which requires `activities.delete.any`). */
+  const canCloneActivity = canCreateActivity && mayEditFormFields;
   /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
   const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
@@ -673,6 +679,40 @@ export function ActivityPage({
     }
   };
 
+  const handleCloneConfirm = async (payload: CloneActivityRequest) => {
+    setIsCloning(true);
+    try {
+      const created = await cloneActivity(id, payload);
+      setShowCloneModal(false);
+      const toastId = `activity-cloned-${created.id}`;
+      const subtitleTitle =
+        payload.title.trim().length > 0
+          ? payload.title.trim()
+          : (created.title ?? '');
+      showActivityMutationSuccessToast({
+        toastId,
+        kind: 'cloned',
+        displayId: resolveActivityToastDisplayId(created.displayId, created.id),
+        title: subtitleTitle,
+        activityId: created.id,
+        showViewButton: canViewActivity,
+        onViewNavigate: (aid) => {
+          void navigate(`/activity/${aid}`);
+        },
+      });
+      const backTarget = getActivityFormBackTarget(location.state) ?? '/';
+      void navigate(backTarget, { replace: true });
+    } catch (err) {
+      logger.error('Failed to clone activity', err);
+      showErrorToast(
+        err,
+        'Your activity could not be cloned. If the problem persists, please contact calendar admins.'
+      );
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
   const handleRestore = async () => {
     setIsRestoring(true);
     try {
@@ -913,6 +953,16 @@ export function ActivityPage({
                   Discard changes
                 </Button>
               )}
+              {canCloneActivity && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCloneModal(true)}
+                  disabled={isSubmitting || isLockedByOther || isDirty}
+                >
+                  Clone
+                </Button>
+              )}
               {!canSubmitWithoutValidationErrors ? (
                 <Popover open={showMissingFieldsPopover}>
                   <PopoverTrigger asChild>
@@ -1044,6 +1094,16 @@ export function ActivityPage({
         onOpenChange={setShowRequestDeleteModal}
         onConfirm={handleRequestDeleteConfirm}
         isSubmitting={isRequestDeleteSubmitting}
+      />
+      <CloneActivityModal
+        open={showCloneModal}
+        onOpenChange={setShowCloneModal}
+        sourceTitle={activity.title ?? ''}
+        sourceDisplayId={activity.displayId ?? null}
+        lookups={lookups}
+        isSubmitting={isCloning}
+        showMarkAsReviewed={canReviewActivities}
+        onConfirm={(payload) => void handleCloneConfirm(payload)}
       />
       <DeleteActivityModal
         open={showDeleteModal}

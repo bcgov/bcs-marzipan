@@ -5,6 +5,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
+  CloneActivityRequest,
   CreateActivityRequest,
   FilterActivitiesQueryParams,
   RequestDeleteRequest,
@@ -74,6 +75,17 @@ export async function createActivity(
     logger.error('Failed to create activity', error);
     throw error;
   }
+}
+
+export async function cloneActivity(
+  sourceId: number,
+  body: CloneActivityRequest
+): Promise<ActivityResponse> {
+  const res = await api.post<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${sourceId}/clone`,
+    body
+  );
+  return res.data.data;
 }
 
 export async function updateActivity(

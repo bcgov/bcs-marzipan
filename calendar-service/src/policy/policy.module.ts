@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
+import { CanCloneActivityGuard } from './guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from './guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from './guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from './guards/can-request-delete-activity.guard';
@@ -16,6 +17,7 @@ import { PolicyService } from './policy.service';
     PolicyService,
     PermissionsGuard,
     RolesGuard,
+    CanCloneActivityGuard,
     CanDeleteActivityGuard,
     CanEditActivityGuard,
     CanRequestDeleteActivityGuard,
@@ -26,6 +28,7 @@ import { PolicyService } from './policy.service';
     PolicyService,
     PermissionsGuard,
     RolesGuard,
+    CanCloneActivityGuard,
     CanDeleteActivityGuard,
     CanEditActivityGuard,
     CanRequestDeleteActivityGuard,

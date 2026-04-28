@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 
 import {
   addActivityHistoryNoteRequestSchema,
+  cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
   hardDeleteRequestSchema,
@@ -17,6 +18,14 @@ import {
  */
 export class CreateActivityDto extends createZodDto(
   createActivityRequestSchema
+) {}
+
+/**
+ * DTO for cloning an activity (POST /activities/:id/clone)
+ * Generated from cloneActivityRequestSchema using nestjs-zod
+ */
+export class CloneActivityDto extends createZodDto(
+  cloneActivityRequestSchema
 ) {}
 
 /**

@@ -9,6 +9,7 @@ import {
   createMockUpdateRequest,
 } from '../common/test-utils';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { PolicyService } from '../policy/policy.service';
@@ -47,6 +48,7 @@ describe('ActivitiesController', () => {
 
   const mockActivitiesService = {
     create: vi.fn(),
+    clone: vi.fn(),
     findAll: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
@@ -78,6 +80,7 @@ describe('ActivitiesController', () => {
             getLeadTeamIdForActivity: vi.fn().mockResolvedValue(10),
           },
         },
+        CanCloneActivityGuard,
         CanDeleteActivityGuard,
         CanEditActivityGuard,
       ],
@@ -119,6 +122,41 @@ describe('ActivitiesController', () => {
         }
       );
       expect(mockActivitiesService.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('clone', () => {
+    it('delegates to the service with the source id, body, and user context', async () => {
+      const cloneBody = {
+        title: 'CLONED Budget announcement',
+        startDate: '2025-02-01',
+        endDate: '2025-02-01',
+        startTime: null,
+        endTime: null,
+        isAllDay: true,
+        includeFieldPaths: ['tagIds', 'significance'],
+        activityHistoryNotes: 'Cloning for Q2',
+      };
+
+      mockActivitiesService.clone.mockResolvedValue(mockActivityResponse);
+
+      const result = await controller.clone(42, cloneBody, mockUser);
+
+      expect(result).toEqual({
+        success: true,
+        data: mockActivityResponse,
+      });
+      expect(mockActivitiesService.clone).toHaveBeenCalledWith(
+        42,
+        cloneBody,
+        mockUser.id,
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
+      );
+      expect(mockActivitiesService.clone).toHaveBeenCalledTimes(1);
     });
   });
 

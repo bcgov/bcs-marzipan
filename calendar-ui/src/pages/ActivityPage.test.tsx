@@ -532,3 +532,139 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveAttribute('readonly');
   });
 });
+
+describe('ActivityPage clone button', () => {
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    mockLockState = 'idle';
+    mockUseFormLookups.mockReturnValue(mockLookupsReady);
+    mockUseLeadTeamOptions.mockReturnValue({
+      data: [
+        {
+          id: 5,
+          name: 'Test',
+          displayName: 'Test',
+          ministryId: 1,
+          ministryName: 'M',
+          memberCount: 1,
+        },
+      ],
+      isFetched: true,
+    });
+  });
+
+  const cloneEligibleEditorAuth = {
+    hasPermission: (key: string) =>
+      key === PERMISSIONS.ACTIVITIES.CREATE ||
+      key === PERMISSIONS.ACTIVITIES.EDIT,
+    user: {
+      id: 1,
+      roleName: 'Editor',
+      teamIds: [5],
+      permissions: [
+        ...mockEditorFieldPermissions,
+        PERMISSIONS.ACTIVITIES.CREATE,
+        PERMISSIONS.ACTIVITIES.EDIT,
+      ],
+    },
+  };
+
+  it('renders Clone button for an editor with create permission and edit eligibility', async () => {
+    mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
+    renderActivityPage();
+
+    await expect(
+      screen.findByRole('button', { name: /^Clone$/i })
+    ).resolves.toBeInTheDocument();
+  });
+
+  it('hides Clone button for view-only users (lacking edit eligibility)', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.CREATE,
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: [
+          ...mockEditorFieldPermissions,
+          PERMISSIONS.ACTIVITIES.CREATE,
+        ],
+      },
+    });
+
+    renderActivityPage({
+      activity: { ...mockActivityWithLeadTeam, canEdit: false },
+    });
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Clone$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides Clone button when user lacks create permission', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.EDIT,
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: [
+          ...mockEditorFieldPermissions,
+          PERMISSIONS.ACTIVITIES.EDIT,
+        ],
+      },
+    });
+
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Clone$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides Clone button on a blocked activity when user lacks delete.any', async () => {
+    mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
+
+    renderActivityPage({
+      activity: { ...mockActivityWithLeadTeam, activityStatus: 'Deleted' },
+    });
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Clone$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('disables Clone button when the activity is locked by another user', async () => {
+    mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
+    mockLockState = 'locked-by-other';
+    renderActivityPage();
+
+    const cloneBtn = await screen.findByRole('button', { name: /^Clone$/i });
+    expect(cloneBtn).toBeDisabled();
+  });
+
+  it('disables Clone button when the form has unsaved changes', async () => {
+    mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
+    mockLockState = 'owned';
+    mockAcquire.mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Discard changes/i })
+      ).toBeInTheDocument()
+    );
+    const cloneBtn = screen.getByRole('button', { name: /^Clone$/i });
+    expect(cloneBtn).toBeDisabled();
+  });
+});

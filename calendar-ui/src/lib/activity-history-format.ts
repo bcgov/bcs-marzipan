@@ -28,6 +28,7 @@ const ACTION_TEXT_MAP: Record<string, string> = {
   unassigned: 'Unassigned',
   status_changed: 'Status changed',
   comms_lead_transferred: 'Transferred',
+  cloned: 'Cloned',
 };
 
 export function getActionText(actionType: string): string {

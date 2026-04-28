@@ -52,17 +52,25 @@ import {
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
-import type {
-  ActivityFormData,
-  ActivityHistoryEntry,
-  ActivityResponse,
-  CreateActivityRequest,
-  FilterActivitiesQueryParams,
-  GlobalActivityHistoryEntry,
-  UpdateActivityRequest,
-  VenueAddressBase,
+import {
+  CLONE_ADVANCED_FIELD_PATHS,
+  CLONE_ALLOWED_INCLUDE_PATHS,
+  CLONE_MODAL_SCHEDULE_FIELD_KEYS,
+  CLONE_NEVER_COPIED_FIELD_KEYS,
+  CLONE_SYSTEM_FIELD_KEYS,
+  type ActivityFormData,
+  type ActivityHistoryEntry,
+  type ActivityResponse,
+  type CloneActivityRequest,
+  type CreateActivityRequest,
+  type FilterActivitiesQueryParams,
+  type GlobalActivityHistoryEntry,
+  type HistoryChange,
+  type UpdateActivityRequest,
+  type VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  applyFieldLevelWritePolicy,
   applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
@@ -670,7 +678,7 @@ export class ActivitiesService {
       const ids = invalid.map((c) => c.userId).join(', ');
       throw new BadRequestException(
         `Comms contact(s) [${ids}] are not eligible for lead team ${leadTeamId}. ` +
-          'Contacts must be active members of the lead team with activities.edit permission.'
+        'Contacts must be active members of the lead team with activities.edit permission.'
       );
     }
   }
@@ -805,9 +813,9 @@ export class ActivitiesService {
   private normalizeRepresentatives(
     reps:
       | Array<{
-          representativeId?: number | null;
-          representativeName?: string | null;
-        }>
+        representativeId?: number | null;
+        representativeName?: string | null;
+      }>
       | undefined
   ): Array<{
     representativeId: number | null;
@@ -999,6 +1007,14 @@ export class ActivitiesService {
       roleName?: string;
       permissions?: string[];
       teamIds?: number[];
+    },
+    options?: {
+      /**
+       * Additional structured `HistoryChange` entries appended to the
+       * auto-recorded `created` history row. Used by the clone flow to record
+       * provenance (source activity id / displayId) on the new activity.
+       */
+      extraCreateChanges?: HistoryChange[];
     }
   ): Promise<ActivityResponse> {
     // Extract junction table IDs, venue address, and status/options from the DTO
@@ -1305,17 +1321,21 @@ export class ActivitiesService {
     const createdActivity = await this.findOne(result.id);
 
     // Record activity creation in history (include initial status)
+    const createdChanges: HistoryChange[] = [
+      {
+        field: 'activityStatusId',
+        oldValue: null,
+        newValue: initialStatusId,
+      },
+    ];
+    if (options?.extraCreateChanges?.length) {
+      createdChanges.push(...options.extraCreateChanges);
+    }
     await this.activityHistoryService.recordChange(
       result.id,
       userId,
       'created',
-      [
-        {
-          field: 'activityStatusId',
-          oldValue: null,
-          newValue: initialStatusId,
-        },
-      ],
+      createdChanges,
       activityHistoryNotes || 'Activity created'
     );
 
@@ -2514,6 +2534,127 @@ export class ActivitiesService {
     });
 
     return result;
+  }
+
+  /**
+   * Clone an existing activity into a new draft.
+   *
+   * The source activity's field values are mapped into a `CreateActivityRequest`
+   * payload, then transformed per the clone rules:
+   * - Schedule fields and title come from the request body (user re-enters them).
+   * - Never-copied fields (look ahead, pitch, translations, pitchDate, executive
+   *   summary) are reset to create-time defaults.
+   * - Optional `includeFieldPaths` acts as an allow-list across the advanced
+   *   field inventory; fields not in the list are dropped so `create` applies
+   *   its default values.
+   * - Field-level write scopes the user cannot edit are stripped.
+   * - Initial activity status matches **create** rules: `new` or `reviewed` from
+   *   `markAsReviewed` when the user has `activities.review` (see `create`).
+   * Two history entries are recorded with the same optional note:
+   * - `created` on the new activity (with source provenance in `changes`).
+   * - `cloned` on the source activity (with new-activity provenance in
+   *   `changes`).
+   */
+  async clone(
+    sourceId: number,
+    body: CloneActivityRequest,
+    userId: number,
+    context: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
+  ): Promise<ActivityResponse> {
+    const source = await this.findOne(sourceId);
+
+    const lookups = await this.getReviewDiffLookups();
+    const sourceFormData = mapResponseToFormData(source, lookups);
+
+    const dto: CreateActivityRequest = { ...sourceFormData };
+
+    for (const key of CLONE_NEVER_COPIED_FIELD_KEYS) {
+      delete (dto as Record<string, unknown>)[key];
+    }
+    for (const key of CLONE_MODAL_SCHEDULE_FIELD_KEYS) {
+      delete (dto as Record<string, unknown>)[key];
+    }
+    for (const key of CLONE_SYSTEM_FIELD_KEYS) {
+      delete (dto as Record<string, unknown>)[key];
+    }
+
+    if (body.includeFieldPaths !== undefined) {
+      const includedSet = new Set(
+        body.includeFieldPaths.filter((path) =>
+          CLONE_ALLOWED_INCLUDE_PATHS.has(path)
+        )
+      );
+      for (const path of CLONE_ADVANCED_FIELD_PATHS) {
+        if (!includedSet.has(path)) {
+          delete (dto as Record<string, unknown>)[path];
+        }
+      }
+    }
+
+    applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+      permissions: context.permissions ?? [],
+      roleName: context.roleName ?? '',
+    });
+
+    dto.title = body.title;
+    dto.startDate = body.startDate ?? null;
+    dto.endDate = body.endDate ?? null;
+    dto.startTime = body.startTime ?? null;
+    dto.endTime = body.endTime ?? null;
+    if (body.isAllDay !== undefined) {
+      dto.isAllDay = body.isAllDay;
+    }
+    if (body.dateStatusId !== undefined) {
+      dto.dateStatusId = body.dateStatusId;
+    }
+    if (body.timeStatusId !== undefined) {
+      dto.timeStatusId = body.timeStatusId;
+    }
+
+    dto.markAsReviewed = body.markAsReviewed === true;
+    dto.activityHistoryNotes = body.activityHistoryNotes;
+
+    const sourceProvenance: HistoryChange[] = [
+      {
+        field: 'clonedFromActivityId',
+        oldValue: null,
+        newValue: source.id,
+      },
+      {
+        field: 'clonedFromDisplayId',
+        oldValue: null,
+        newValue: source.displayId ?? null,
+      },
+    ];
+
+    const created = await this.create(dto, userId, context, {
+      extraCreateChanges: sourceProvenance,
+    });
+
+    await this.activityHistoryService.recordChange(
+      sourceId,
+      userId,
+      'cloned',
+      [
+        {
+          field: 'clonedToActivityId',
+          oldValue: null,
+          newValue: created.id,
+        },
+        {
+          field: 'clonedToDisplayId',
+          oldValue: null,
+          newValue: created.displayId ?? null,
+        },
+      ],
+      body.activityHistoryNotes
+    );
+
+    return created;
   }
 
   /**
