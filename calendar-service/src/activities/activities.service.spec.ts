@@ -1814,15 +1814,10 @@ describe('ActivitiesService', () => {
           reviewedStatusId
         );
 
-        const result = await service.update(
-          1,
-          { sharedWithTeamIds: [42] } as UpdateActivityRequest,
-          1,
-          {
-            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
-            roleName: 'Editor',
-          }
-        );
+        const result = await service.update(1, { sharedWithTeamIds: [42] }, 1, {
+          permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+          roleName: 'Editor',
+        });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
       });
@@ -1847,15 +1842,10 @@ describe('ActivitiesService', () => {
           reviewedStatusId
         );
 
-        const result = await service.update(
-          1,
-          { visibility: 'team' } as UpdateActivityRequest,
-          1,
-          {
-            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
-            roleName: 'Editor',
-          }
-        );
+        const result = await service.update(1, { visibility: 'team' }, 1, {
+          permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+          roleName: 'Editor',
+        });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
       });
@@ -1885,7 +1875,7 @@ describe('ActivitiesService', () => {
           {
             title: 'After',
             sharedWithTeamIds: [42],
-          } as UpdateActivityRequest,
+          },
           1,
           {
             permissions: [PERMISSIONS.ACTIVITIES.EDIT],
