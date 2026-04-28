@@ -1,10 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ReportDataResponse } from '../../../api/report-data';
+import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
+import { PrintCustomReportDocument } from './PrintCustomReportDocument';
+import { PrintPlanningDocument } from './PrintPlanningDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 import type { PrintReportVariant } from './rowViewModel';
 
+export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 
 /** Report types this React pipeline renders. Other types still fall through to legacy handlers. */
@@ -12,7 +16,9 @@ export type ReactRenderableReportType =
   | 'look-ahead'
   | 'thirty-sixty-ninety'
   | 'exec'
-  | 'exec-look-ahead';
+  | 'exec-look-ahead'
+  | 'planning'
+  | 'custom';
 
 export interface RenderReportOptions {
   /** Absolute URL used to build `<a>` hrefs to the activity page for each row. */
@@ -25,7 +31,7 @@ export interface RenderReportOptions {
 }
 
 const REPORT_TYPE_TO_VARIANT: Record<
-  ReactRenderableReportType,
+  Exclude<ReactRenderableReportType, 'planning' | 'custom'>,
   PrintReportVariant
 > = {
   'look-ahead': 'lookAhead',
@@ -34,10 +40,16 @@ const REPORT_TYPE_TO_VARIANT: Record<
   'exec-look-ahead': 'exec',
 };
 
+const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([
+  ...Object.keys(REPORT_TYPE_TO_VARIANT),
+  'planning',
+  'custom',
+]);
+
 export function isReactRenderableReportType(
   reportTypeName: string
 ): reportTypeName is ReactRenderableReportType {
-  return reportTypeName in REPORT_TYPE_TO_VARIANT;
+  return REACT_RENDERABLE_REPORT_TYPES.has(reportTypeName);
 }
 
 /**
@@ -49,6 +61,14 @@ export function renderPrintReportFragmentHtml(
   data: ReportDataResponse,
   options: RenderReportOptions
 ): string {
+  if (reportTypeName === 'planning') {
+    return renderToStaticMarkup(<PrintPlanningDocument />);
+  }
+
+  if (reportTypeName === 'custom') {
+    return renderToStaticMarkup(<PrintCustomReportDocument data={data} />);
+  }
+
   const variant = REPORT_TYPE_TO_VARIANT[reportTypeName];
   return renderToStaticMarkup(
     <PrintReportDocument
@@ -91,7 +111,7 @@ export function wrapPrintReportHtmlDocument(
   options: { fontFaceCss?: string } = {}
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${fragmentHtml}</body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

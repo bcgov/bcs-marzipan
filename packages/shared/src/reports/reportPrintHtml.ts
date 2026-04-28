@@ -4,10 +4,12 @@ export {
   wrapReportHtmlDocument,
   type ReportTemplateOptions,
 } from './getReportTemplateHtml';
-export { buildCustomReportHtml } from './print/customReportPrintHtml';
 export {
   CORPCAL_PRINT_ROOT_CLASS,
+  CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
+  PrintCustomReportDocument,
+  PrintPlanningDocument,
   PrintReportDocument,
   PrintRichText,
   PrintRow,

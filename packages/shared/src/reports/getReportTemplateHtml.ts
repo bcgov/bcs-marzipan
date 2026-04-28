@@ -1,5 +1,4 @@
 import type { ReportDataResponse } from '../api/report-data';
-import { buildCustomReportHtml } from './print/customReportPrintHtml';
 import {
   isReactRenderableReportType,
   PRINT_STYLES,
@@ -20,25 +19,6 @@ export interface ReportTemplateOptions {
 const DEFAULT_OPTIONS: ReportTemplateOptions = {
   activityBaseUrl: '',
 };
-
-function formatPlanningStub(data: unknown): string {
-  if (data === undefined) return '';
-  try {
-    return JSON.stringify(data);
-  } catch {
-    return '["unserializable"]';
-  }
-}
-
-/** Placeholder until a real Planning print layout is built. */
-function buildPlanningPrintHtml(data: unknown): string {
-  const stub = formatPlanningStub(data);
-  const inner =
-    stub === ''
-      ? 'PLANNING template placeholder'
-      : `PLANNING template placeholder<!--${stub}-->`;
-  return `<section data-report-template="PLANNING">${inner}</section>`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -61,8 +41,7 @@ function isReportDataResponse(data: unknown): data is ReportDataResponse {
  *
  * Shared by calendar-ui and calendar-service so the in-app preview and the
  * Puppeteer-generated PDF share the same React component tree. Legacy string
- * builders are retained only for report types that have not yet been migrated
- * (`custom`, `planning`).
+ * builders are retained only for report types that have not yet been migrated.
  */
 export function getReportTemplateHtml(
   reportTypeName: string,
@@ -78,14 +57,7 @@ export function getReportTemplateHtml(
     });
   }
 
-  switch (reportTypeName) {
-    case 'planning':
-      return buildPlanningPrintHtml(data);
-    case 'custom':
-      return buildCustomReportHtml(data);
-    default:
-      return `<div class="p-4 text-sm text-gray-600">No print layout for this report.</div>`;
-  }
+  return `<div class="p-4 text-sm text-gray-600">No print layout for this report.</div>`;
 }
 
 /**

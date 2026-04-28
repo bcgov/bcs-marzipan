@@ -129,6 +129,48 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toMatchSnapshot();
   });
 
+  it('renders the planning placeholder as a React fragment', () => {
+    const html = renderPrintReportFragmentHtml('planning', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('data-report-template="PLANNING"');
+    expect(html).toContain('PLANNING template placeholder');
+    expect(html).toMatchSnapshot();
+  });
+
+  it('renders the custom report as a React fragment', () => {
+    const customFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'custom',
+        displayName: 'Custom',
+      },
+      sections: [
+        FIXTURE.sections[0],
+        {
+          id: 'empty',
+          name: 'Empty',
+          order: 2,
+          activities: [],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('custom', customFixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('custom-report-root');
+    expect(html).toContain('Custom');
+    expect(html).toContain('Events (1)');
+    expect(html).toContain('Empty (0)');
+    expect(html).toMatchSnapshot();
+  });
+
   it('builds activity links against the provided base URL', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
