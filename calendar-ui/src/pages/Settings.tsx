@@ -5,6 +5,7 @@ import {
   Eraser,
   FileText,
   FolderTree,
+  ListChecks,
   Lock,
   MapPin,
   Megaphone,
@@ -31,12 +32,14 @@ import {
   ThemesAdmin,
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
+import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
 
 type Section =
   | 'banner'
   | 'edit-lock-idle'
   | 'activity-completion'
   | 'look-ahead-reset'
+  | 'review-exempt-fields'
   | 'ministry-groups'
   | 'categories'
   | 'cities'
@@ -64,6 +67,11 @@ const sections = [
     id: 'look-ahead-reset' as Section,
     label: 'Look Ahead reset',
     icon: Eraser,
+  },
+  {
+    id: 'review-exempt-fields' as Section,
+    label: 'Review-exempt fields',
+    icon: ListChecks,
   },
   {
     id: 'ministry-groups' as Section,
@@ -162,6 +170,10 @@ export function Settings() {
 
           <div id="section-look-ahead-reset">
             <LookAheadResetSettingsAdmin />
+          </div>
+
+          <div id="section-review-exempt-fields">
+            <ReviewExemptFieldsSettingsAdmin />
           </div>
 
           <div id="section-ministry-groups">

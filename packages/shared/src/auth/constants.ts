@@ -141,6 +141,11 @@ export const PERMISSIONS = {
     MANAGE_ACTIVITY_COMPLETE: 'settings.manage.activity_complete',
     /** Configure Look Ahead status reset window and run manual clear. */
     MANAGE_LOOK_AHEAD_RESET: 'settings.manage.look_ahead_reset',
+    /**
+     * Configure which top-level activity form fields are review-exempt (in addition
+     * to product-defined code-exempt fields). System Admin only.
+     */
+    MANAGE_REVIEW_EXEMPT_FIELDS: 'settings.manage.review_exempt_fields',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

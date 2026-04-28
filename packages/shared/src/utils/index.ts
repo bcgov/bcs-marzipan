@@ -5,6 +5,7 @@ export * from './schema-helpers';
 export * from './activity-form-mapper';
 export * from './activity-form-canonicalize';
 export * from './activity-review-diff';
+export * from './apply-update-activity-request';
 export * from './activity-field-labels';
 export * from './build-review-diff-lookups';
 export * from './report-settings';
