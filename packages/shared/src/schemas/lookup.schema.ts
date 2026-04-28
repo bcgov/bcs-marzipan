@@ -137,7 +137,7 @@ export const ministryResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string(),
-  abbreviation: z.string(),
+  abbreviation: z.string().min(1).max(5),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   ministerGovernmentRepId: z.number().int().nullable(),
@@ -150,7 +150,7 @@ export const ministryLookupItemSchema = z.object({
   value: z.number().int(),
   name: z.string(),
   displayName: z.string(),
-  abbreviation: z.string().nullable(),
+  abbreviation: z.string().max(5).nullable(),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   /** Joined from government_representatives when minister_government_rep_id is set */
   ministerDisplayName: z.string().nullable().optional(),
@@ -666,7 +666,7 @@ export const updateCityRequestSchema = createCityRequestSchema.partial();
 export const createMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  abbreviation: z.string().min(1).max(10),
+  abbreviation: z.string().min(1).max(5),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
@@ -679,7 +679,7 @@ export const createMinistryRequestSchema = z.object({
 export const updateMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   displayName: z.string().min(1).max(255).optional(),
-  abbreviation: z.string().min(1).max(10).optional(),
+  abbreviation: z.string().min(1).max(5).optional(),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),

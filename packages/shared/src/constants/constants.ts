@@ -87,6 +87,66 @@ export function normalizeActivityStatusLabel(status: string): string {
 export const DEFAULT_ACTIVITY_STATUS: ActivityStatusName = 'new';
 
 /**
+ * Configurable fallback segment for the team-abbreviation part of activity `displayId`
+ * when normalization yields an empty string (and no ministry abbreviation applies).
+ *
+ * **Single source of truth:** Change the value only here. Do not hardcode this string in
+ * tests for fallback behavior—import `TEAM_PREFIX_FALLBACK`, or assert using
+ * `normalizeTeamAbbreviationForActivityDisplayId` and `buildActivityDisplayId` so specs
+ * stay aligned automatically. Server logic delegates through those helpers from
+ * `ActivityUtilsService`.
+ */
+export const TEAM_PREFIX_FALLBACK = 'TEAM' as const;
+
+/**
+ * Strips whitespace, removes internal spaces, uppercases, then returns
+ * `TEAM_PREFIX_FALLBACK` if the result is empty. Used for the team leg of activity
+ * `displayId` when the lead has no ministry (or ministry abbreviation is absent).
+ */
+export function normalizeTeamAbbreviationForActivityDisplayId(
+  abbreviation: string | null | undefined
+): string {
+  const cleaned = (abbreviation ?? '').trim().replace(/\s+/g, '').toUpperCase();
+  if (cleaned.length === 0) {
+    return TEAM_PREFIX_FALLBACK;
+  }
+  return cleaned;
+}
+
+/**
+ * Strips whitespace, removes internal spaces, uppercases. Returns empty string when
+ * nothing remains so callers can fall back to the team abbreviation for `displayId`.
+ */
+export function normalizeMinistryAbbreviationForActivityDisplayId(
+  abbreviation: string | null | undefined
+): string {
+  return (abbreviation ?? '').trim().replace(/\s+/g, '').toUpperCase();
+}
+
+/**
+ * Numeric segment of `displayId`: full decimal activity id with at least 6 digits
+ * (leading zeros for ids below 1,000,000). Larger ids are not truncated, avoiding
+ * collisions between ids that share the same last six digits.
+ */
+export function formatActivityDisplayIdNumericSegment(
+  activityId: number
+): string {
+  return String(activityId).padStart(6, '0');
+}
+
+/**
+ * Builds `displayId`: `<PREFIX>-<numeric segment>`.
+ * Prefix is uppercased and trimmed. The numeric segment follows the same rules as
+ * `formatActivityDisplayIdNumericSegment`.
+ */
+export function buildActivityDisplayId(
+  prefix: string,
+  activityId: number
+): string {
+  return `${prefix.toUpperCase().trim()}-${formatActivityDisplayIdNumericSegment(activityId)}`;
+}
+
+/**
  * Current version of the reviewedFieldSnapshot JSON shape.
  * Bump when adding/removing tracked fields or changing normalisation rules.
  * On read, snapshots with an older version can be ignored (treated as "no snapshot")

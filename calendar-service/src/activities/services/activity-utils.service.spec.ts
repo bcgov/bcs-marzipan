@@ -1,6 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import {
+  buildActivityDisplayId,
+  normalizeTeamAbbreviationForActivityDisplayId,
+} from '@corpcal/shared';
+
 import { DatabaseService } from '../../database/database.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
@@ -34,22 +39,114 @@ describe('ActivityUtilsService', () => {
       expect(service.generateDisplayId('hlth', 456789)).toBe('HLTH-456789');
     });
 
+    it('uses full id past six digits (no truncation collision)', () => {
+      expect(service.generateDisplayId('HLTH', 1_000_123)).toBe('HLTH-1000123');
+    });
+
     it('trims abbreviation', () => {
       expect(service.generateDisplayId('  AG  ', 123)).toBe('AG-000123');
     });
   });
 
-  describe('getDisplayIdPrefixFromTeamName', () => {
-    it('returns first 4 letters uppercased, no spaces', () => {
-      expect(service.getDisplayIdPrefixFromTeamName('My Team')).toBe('MYTE');
+  describe('getDisplayIdPrefixFromTeamAbbreviation', () => {
+    it('returns full abbreviation uppercased with spaces removed', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('My Team')).toBe(
+        'MYTEAM'
+      );
     });
-    it('pads with X when name is shorter than 4 chars', () => {
-      expect(service.getDisplayIdPrefixFromTeamName('Hi')).toBe('HIXX');
+    it('preserves short codes without padding', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('Hi')).toBe('HI');
     });
-    it('pads to 4 characters when team name has fewer than 4 letters', () => {
-      const result = service.getDisplayIdPrefixFromTeamName('Hi');
-      expect(result.length).toBe(4);
-      expect(result).toBe('HIXX');
+    it('normalizes values like seed MR', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('  mr  ')).toBe(
+        'MR'
+      );
+    });
+    it('uses fallback when abbreviation is empty after normalizing', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation('   ')).toBe(
+        normalizeTeamAbbreviationForActivityDisplayId('   ')
+      );
+    });
+    it('uses fallback for null or undefined', () => {
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation(null)).toBe(
+        normalizeTeamAbbreviationForActivityDisplayId(null)
+      );
+      expect(service.getDisplayIdPrefixFromTeamAbbreviation(undefined)).toBe(
+        normalizeTeamAbbreviationForActivityDisplayId(undefined)
+      );
+    });
+  });
+
+  describe('computeDisplayIdFromLeadContext', () => {
+    it('uses ministry abbreviation when leadMinistryId is set and abbreviation is truthy', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 123,
+          leadMinistryId: 5,
+          ministryAbbreviation: 'AG',
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('AG-000123');
+    });
+
+    it('falls back to team abbreviation when leadMinistryId is null', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 456,
+          leadMinistryId: null,
+          ministryAbbreviation: null,
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('MR-000456');
+    });
+
+    it('falls back to team abbreviation when ministry abbreviation is empty', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 7,
+          leadMinistryId: 2,
+          ministryAbbreviation: '',
+          teamAbbreviation: 'my team',
+        })
+      ).toBe('MYTEAM-000007');
+    });
+
+    it('falls back to team when ministry abbreviation is only whitespace', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 7,
+          leadMinistryId: 2,
+          ministryAbbreviation: '   ',
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('MR-000007');
+    });
+
+    it('normalizes ministry abbreviation like team (spaces, case)', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 123,
+          leadMinistryId: 5,
+          ministryAbbreviation: '  a g  ',
+          teamAbbreviation: 'MR',
+        })
+      ).toBe('AG-000123');
+    });
+
+    it('uses team abbreviation fallback when both ministry and team abbreviations are empty', () => {
+      expect(
+        service.computeDisplayIdFromLeadContext({
+          activityId: 1,
+          leadMinistryId: null,
+          ministryAbbreviation: null,
+          teamAbbreviation: '   ',
+        })
+      ).toBe(
+        buildActivityDisplayId(
+          normalizeTeamAbbreviationForActivityDisplayId('   '),
+          1
+        )
+      );
     });
   });
 

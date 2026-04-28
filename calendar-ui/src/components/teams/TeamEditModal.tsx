@@ -47,6 +47,7 @@ export function TeamEditModal({
   const isCreate = team === null;
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
+  const [abbreviation, setAbbreviation] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -78,12 +79,14 @@ export function TeamEditModal({
     if (!open) return;
     if (isCreate) {
       setName('');
+      setAbbreviation('');
       setDisplayName('');
       setDescription('');
       setIsActive(true);
       setMinistryId(null);
     } else if (detail) {
       setName(detail.name);
+      setAbbreviation(detail.abbreviation);
       setDisplayName(detail.displayName ?? '');
       setDescription(detail.description ?? '');
       setIsActive(detail.isActive);
@@ -132,13 +135,21 @@ export function TeamEditModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
+    const trimmedAbbrev = abbreviation.trim().replace(/\s+/g, '');
     if (!trimmedName) {
       toast.error('Name is required', { id: 'team-edit-validation-name' });
+      return;
+    }
+    if (!trimmedAbbrev) {
+      toast.error('Abbreviation is required', {
+        id: 'team-edit-validation-abbrev',
+      });
       return;
     }
     if (isCreate) {
       createMutation.mutate({
         name: trimmedName,
+        abbreviation: trimmedAbbrev,
         displayName: displayName.trim() || undefined,
         description: description.trim() || undefined,
         isActive,
@@ -149,6 +160,7 @@ export function TeamEditModal({
         id: team.id,
         body: {
           name: trimmedName,
+          abbreviation: trimmedAbbrev,
           displayName: displayName.trim() || undefined,
           description: description.trim() || undefined,
           isActive,
@@ -191,6 +203,25 @@ export function TeamEditModal({
                 placeholder="Team name"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-abbreviation">Abbreviation *</Label>
+              <Input
+                id="team-abbreviation"
+                value={abbreviation}
+                onChange={(e) => setAbbreviation(e.target.value)}
+                placeholder="e.g. MR"
+                maxLength={5}
+                required
+                aria-describedby="team-abbreviation-hint"
+              />
+              <p
+                id="team-abbreviation-hint"
+                className="text-muted-foreground text-xs"
+              >
+                Short code (max 5 characters) used in activity IDs for
+                non-ministry teams.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-display-name">Display name</Label>

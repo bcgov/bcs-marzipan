@@ -57,9 +57,10 @@ export const activities = pgTable(
   {
     id: serial('id').primaryKey().notNull(),
 
-    // Display ID (computed: {ministryAbbreviation}-{paddedLast6Digits} format)
-    // Format: <ACRONYM>-<000001> (e.g., AG-000123, HLTH-456789)
-    displayId: varchar('display_id', { length: 50 }).unique(), // Computed field: {ministryAbbreviation}-{paddedLast6Digits}
+    // Display ID (computed): <ministryOrTeamPrefix>-<numeric segment> (see shared buildActivityDisplayId)
+    // Prefix from lead ministry abbreviation when set and non-empty after normalize; else team abbreviation or TEAM fallback.
+    // Numeric segment: full id zero-padded to min width 6 (e.g. AG-000123, HLTH-123456789).
+    displayId: varchar('display_id', { length: 50 }).unique(),
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),

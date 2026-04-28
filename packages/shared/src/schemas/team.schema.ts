@@ -8,6 +8,17 @@ import { z } from 'zod';
  * See history.schema.ts for TeamHistoryEntry.
  */
 
+/** Matches `teams.abbreviation` in DB: trim, strip spaces, 1–5 chars. */
+const teamAbbreviationValueSchema = z
+  .string()
+  .transform((s) => s.trim().replace(/\s+/g, ''))
+  .pipe(
+    z
+      .string()
+      .min(1, 'Abbreviation is required')
+      .max(5, 'Abbreviation must be at most 5 characters')
+  );
+
 // ============================================
 // Response Schemas
 // ============================================
@@ -19,6 +30,8 @@ export const teamListItemSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string().nullable(),
+  /** Short code for activity displayId when the team has no lead ministry */
+  abbreviation: z.string().min(1).max(5),
   description: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
@@ -72,6 +85,8 @@ export type CommsContactCandidate = z.infer<typeof commsContactCandidateSchema>;
  */
 export const createTeamBodySchema = z.object({
   name: z.string().min(1).max(255),
+  /** Stable short code (e.g. MR); used in activity displayId when there is no lead ministry. */
+  abbreviation: teamAbbreviationValueSchema,
   displayName: z.string().max(255).optional(),
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -88,6 +103,7 @@ export type CreateTeamBody = z.infer<typeof createTeamBodySchema>;
  */
 export const updateTeamBodySchema = z.object({
   name: z.string().min(1).max(255).optional(),
+  abbreviation: teamAbbreviationValueSchema.optional(),
   displayName: z.string().max(255).optional(),
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),

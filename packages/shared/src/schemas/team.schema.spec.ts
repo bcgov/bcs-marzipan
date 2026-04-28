@@ -12,6 +12,7 @@ describe('teamListItemSchema', () => {
       id: 1,
       name: 'Team A',
       displayName: 'Team A Display',
+      abbreviation: 'TMA',
       description: 'Description',
       sortOrder: 0,
       isActive: true,
@@ -32,6 +33,7 @@ describe('teamListItemSchema', () => {
       id: 2,
       name: 'Team B',
       displayName: null,
+      abbreviation: 'TMB',
       description: null,
       sortOrder: 1,
       isActive: true,
@@ -47,16 +49,19 @@ describe('teamListItemSchema', () => {
 });
 
 describe('createTeamBodySchema', () => {
-  it('accepts valid create body with required name', () => {
+  it('accepts valid create body with required name and abbreviation', () => {
     const result = createTeamBodySchema.parse({
       name: 'New Team',
+      abbreviation: 'NEW',
     });
     expect(result.name).toBe('New Team');
+    expect(result.abbreviation).toBe('NEW');
   });
 
   it('accepts valid create body with optional fields', () => {
     const result = createTeamBodySchema.parse({
       name: 'New Team',
+      abbreviation: 'NEW',
       displayName: 'Display',
       description: 'Desc',
       sortOrder: 1,
@@ -71,8 +76,14 @@ describe('createTeamBodySchema', () => {
     expect(() =>
       createTeamBodySchema.parse({
         name: '',
+        abbreviation: 'AB',
       })
     ).toThrow();
+  });
+
+  it('rejects create body without abbreviation', () => {
+    const result = createTeamBodySchema.safeParse({ name: 'New Team' });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -90,5 +101,18 @@ describe('updateTeamBodySchema', () => {
         name: '',
       })
     ).toThrow();
+  });
+
+  it('accepts optional abbreviation', () => {
+    const result = updateTeamBodySchema.parse({ abbreviation: 'ABBR' });
+    expect(result.abbreviation).toBe('ABBR');
+  });
+
+  it('rejects abbreviation longer than 5 characters', () => {
+    const result = createTeamBodySchema.safeParse({
+      name: 'T',
+      abbreviation: 'ABCDEF',
+    });
+    expect(result.success).toBe(false);
   });
 });

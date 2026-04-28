@@ -29,7 +29,7 @@ export const ministries = pgTable('ministries', {
   isActive: boolean('is_active').notNull().default(true),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }).notNull(),
-  abbreviation: varchar('abbreviation', { length: 10 }).notNull(),
+  abbreviation: varchar('abbreviation', { length: 5 }).notNull(),
 
   /**
    * Designated minister (government representative) for this ministry.

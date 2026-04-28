@@ -326,6 +326,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Government departments
 -- Legacy: used UUID primary key. Now uses serial (integer) id.
 -- MUST be seeded before government_representatives as they reference ministries
+-- abbreviation: varchar(5), used in activity displayId prefix (with lead ministry)
 -- ============================================================================
 
 INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviation, created_by, last_updated_by) VALUES
