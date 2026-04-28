@@ -37,11 +37,11 @@ function isReportDataResponse(data: unknown): data is ReportDataResponse {
 }
 
 /**
- * Maps API report `name` (e.g. look-ahead) to print HTML (preview, PDF, exports).
+ * Maps API report `name` (e.g. look-ahead) to print HTML (preview, PDF).
  *
  * Shared by calendar-ui and calendar-service so the in-app preview and the
- * Puppeteer-generated PDF share the same React component tree. Legacy string
- * builders are retained only for report types that have not yet been migrated.
+ * Puppeteer-generated PDF use the same React static markup. Unsupported
+ * `reportTypeName` returns an empty string so PDF generation can fail fast.
  */
 export function getReportTemplateHtml(
   reportTypeName: string,
@@ -57,7 +57,7 @@ export function getReportTemplateHtml(
     });
   }
 
-  return `<div class="p-4 text-sm text-gray-600">No print layout for this report.</div>`;
+  return '';
 }
 
 /**

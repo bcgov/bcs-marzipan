@@ -11,12 +11,11 @@ import type { PrintReportVariant } from './rowViewModel';
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 
-/** Report types this React pipeline renders. Other types still fall through to legacy handlers. */
+/** Report types supported by the shared React print/PDF pipeline. */
 export type ReactRenderableReportType =
   | 'look-ahead'
   | 'thirty-sixty-ninety'
   | 'exec'
-  | 'exec-look-ahead'
   | 'planning'
   | 'custom';
 
@@ -37,7 +36,6 @@ const REPORT_TYPE_TO_VARIANT: Record<
   'look-ahead': 'lookAhead',
   'thirty-sixty-ninety': 'lookAhead',
   exec: 'exec',
-  'exec-look-ahead': 'exec',
 };
 
 const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([

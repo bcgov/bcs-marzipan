@@ -40,7 +40,6 @@ function isReportHtmlPrimaryView(reportName: string): boolean {
   switch (reportName) {
     case 'look-ahead':
     case 'exec':
-    case 'exec-look-ahead':
     case 'thirty-sixty-ninety':
     case 'planning':
       return true;

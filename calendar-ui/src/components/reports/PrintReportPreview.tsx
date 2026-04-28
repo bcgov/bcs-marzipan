@@ -30,8 +30,7 @@ function resolveActivityBaseUrl(): string {
  * components the calendar-service renders to a static string for PDF export
  * so WYSIWYG parity is preserved.
  *
- * Returns `null` for report types that are not yet part of the React print
- * pipeline so callers can fall back to their existing rendering path.
+ * Returns `null` when `reportTypeName` is not a supported print report type.
  */
 export function PrintReportPreview({
   reportTypeName,
@@ -76,11 +75,7 @@ function PrintReportPreviewRoot({
     document = (
       <PrintReportDocument
         data={data}
-        variant={
-          reportTypeName === 'exec' || reportTypeName === 'exec-look-ahead'
-            ? 'exec'
-            : 'lookAhead'
-        }
+        variant={reportTypeName === 'exec' ? 'exec' : 'lookAhead'}
         activityBaseUrl={activityBaseUrl}
         generatedAt={generatedAt}
       />
