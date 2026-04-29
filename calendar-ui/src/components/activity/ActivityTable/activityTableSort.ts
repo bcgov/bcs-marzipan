@@ -1,4 +1,5 @@
 import type { SortLevel } from '@/components/table/SortDropdown';
+import { parseDateOnlyString } from '@/lib/datetime-utils';
 
 import type { ActivityTableRow } from './activityTableRow';
 
@@ -55,8 +56,8 @@ const byLookAheadStatus: RowComparator = (a, b) =>
   compareByOrder(LOOK_AHEAD_SORT_ORDER, a.lookAheadStatus, b.lookAheadStatus);
 
 const byStartDate: RowComparator = (a, b) => {
-  const ta = a.startDate ? new Date(a.startDate).getTime() : 0;
-  const tb = b.startDate ? new Date(b.startDate).getTime() : 0;
+  const ta = a.startDate ? parseDateOnlyString(a.startDate).getTime() : 0;
+  const tb = b.startDate ? parseDateOnlyString(b.startDate).getTime() : 0;
   return ta - tb;
 };
 
