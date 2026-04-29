@@ -1,7 +1,8 @@
 /**
- * Layout width (CSS px) used when Chromium lays out HTML for PDF export.
- * {@link PdfGeneratorService} viewport width uses this exact value so wrapping
- * matches the downloadable PDF.
+ * Layout width (CSS px) used when Chromium lays out HTML for PDF export and for
+ * the virtual PDF page width (1024/96 in), so `.corpcal-print-root` resolves to
+ * 1024px in both the in-app “PDF width” preview and the exported file — not
+ * `100%` of a smaller Letter+margin content box.
  */
 export const REPORT_PRINT_LAYOUT_WIDTH_PX = 1024 as const;
 

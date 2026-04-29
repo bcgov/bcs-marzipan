@@ -8,21 +8,26 @@ import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrin
 
 /**
  * Rendering defaults for print-aligned report PDFs. Kept together so the
- * viewport used during measurement matches the `@page` / table column widths
- * encoded in the shared print stylesheet. Page size aligns with Letter (8.5×11).
+ * viewport and PDF content box both match the shared 1024px print layout
+ * (`REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS`), matching the in-app "PDF width"
+ * preview. Without this, US Letter + margins yields a ~740px content width so
+ * `min(100%, 1024px)` resolves to 100% of a narrow box — not 1024px — and
+ * columns wrap more than in the preview.
  *
- * Viewport width matches {@link REPORT_PRINT_LAYOUT_WIDTH_PX} so PDF wrapping
- * aligns with `.corpcal-print-root` max width in shared PRINT_STYLES.
+ * Page width is 1024 CSS px at 96px/in; height matches Letter (11in) for
+ * familiar page breaks. Margins are zero so `.corpcal-print-root` is full bleed
+ * to the page edge, like the preview container.
  */
 const DEFAULT_PDF_OPTIONS: PDFOptions = {
-  format: 'Letter',
   printBackground: true,
-  preferCSSPageSize: true,
+  preferCSSPageSize: false,
+  width: `${REPORT_PRINT_LAYOUT_WIDTH_PX / 96}in`,
+  height: '11in',
   margin: {
-    top: '10mm',
-    bottom: '10mm',
-    left: '10mm',
-    right: '10mm',
+    top: '0',
+    bottom: '0',
+    left: '0',
+    right: '0',
   },
 };
 
