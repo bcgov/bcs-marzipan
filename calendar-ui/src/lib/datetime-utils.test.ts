@@ -195,9 +195,9 @@ describe('formatDateRange', () => {
   });
 
   it('accepts ISO date strings', () => {
-    expect(
-      formatDateRange('2027-01-23T12:00:00Z', '2027-02-01T12:00:00Z')
-    ).toBe('Jan 23 – Feb 1, 2027');
+    expect(formatDateRange('2027-01-23', '2027-02-01')).toBe(
+      'Jan 23 – Feb 1, 2027'
+    );
   });
 });
 
