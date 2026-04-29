@@ -1,15 +1,19 @@
 import { Route, Routes } from 'react-router-dom';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
+import type { LoginModalSettings } from '@corpcal/shared/api/types';
 import {
   GlobalErrorBoundary,
   Layout,
+  LoginModal,
   ProtectedRoute,
 } from '@/components/layout';
 
+import { fetchActiveLoginModal } from './api/loginModalApi';
 import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { lazyWithRetry } from './lib/lazy-with-retry';
 
 import './styles/App.css';
@@ -57,9 +61,41 @@ const Users = lazyWithRetry(() =>
   import('./pages/UserManagement').then((m) => ({ default: m.Users }))
 );
 
+function LoginModalContainer() {
+  const { isAuthenticated, isLoading, pendingLoginModal, dismissLoginModal } =
+    useAuth();
+  const [modal, setModal] = useState<LoginModalSettings | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !pendingLoginModal) return;
+    fetchActiveLoginModal()
+      .then((data) => {
+        if (data) {
+          setModal(data);
+          setOpen(true);
+        } else {
+          dismissLoginModal();
+        }
+      })
+      .catch(() => {
+        dismissLoginModal();
+      });
+  }, [isLoading, isAuthenticated, pendingLoginModal, dismissLoginModal]);
+
+  const handleDismiss = () => {
+    setOpen(false);
+    dismissLoginModal();
+  };
+
+  if (!modal) return null;
+  return <LoginModal modal={modal} open={open} onDismiss={handleDismiss} />;
+}
+
 function App() {
   return (
     <AuthProvider>
+      <LoginModalContainer />
       <GlobalErrorBoundary>
         <Toaster position="top-right" />
         <Suspense

@@ -321,4 +321,9 @@ export class ActivitiesGateway
   ): void {
     this.server.to(`user:${userId}`).emit('lockHandoffResolved', payload);
   }
+
+  broadcastLoginModalSettingsUpdated(): void {
+    this.logger.log('Broadcasting login modal settings updated');
+    this.server.emit('loginModalSettingsUpdated');
+  }
 }

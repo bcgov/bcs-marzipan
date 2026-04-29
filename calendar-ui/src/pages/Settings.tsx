@@ -7,6 +7,7 @@ import {
   FolderTree,
   ListChecks,
   Lock,
+  LogIn,
   MapPin,
   Megaphone,
   Palette,
@@ -19,6 +20,7 @@ import {
 import { BannerSettingsAdmin } from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
+import { LoginModalSettingsAdmin } from '@/components/admin/LoginModalSettingsAdmin';
 import { LookAheadResetSettingsAdmin } from '@/components/admin/LookAheadResetSettingsAdmin';
 import {
   ActivityStatusesAdmin,
@@ -36,6 +38,7 @@ import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExempt
 
 type Section =
   | 'banner'
+  | 'login-modal'
   | 'edit-lock-idle'
   | 'activity-completion'
   | 'look-ahead-reset'
@@ -53,6 +56,7 @@ type Section =
 
 const sections = [
   { id: 'banner' as Section, label: 'System Banner', icon: Megaphone },
+  { id: 'login-modal' as Section, label: 'Login Modal', icon: LogIn },
   {
     id: 'edit-lock-idle' as Section,
     label: 'Edit lock idle',
@@ -158,6 +162,10 @@ export function Settings() {
         <div className="space-y-8">
           <div id="section-banner">
             <BannerSettingsAdmin />
+          </div>
+
+          <div id="section-login-modal">
+            <LoginModalSettingsAdmin />
           </div>
 
           <div id="section-edit-lock-idle">
