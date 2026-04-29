@@ -10,7 +10,9 @@ import { Badge } from '../ui/badge';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '–';
-  const d = new Date(dateStr);
+  const parts = dateStr.split('-').map(Number);
+  const [y, m, day] = parts;
+  const d = new Date(y, (m ?? 1) - 1, day ?? 1);
   return d.toLocaleDateString('en-CA', {
     weekday: 'short',
     month: 'short',
