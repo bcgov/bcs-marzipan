@@ -302,7 +302,14 @@ export class AuthController {
   private getPostLoginRedirectUrl(): string {
     const configuredRedirect = process.env.POST_LOGIN_REDIRECT_URL?.trim();
     const base = configuredRedirect || '/';
-    const separator = base.includes('?') ? '&' : '?';
-    return `${base}${separator}login=1`;
+    // Use a dummy origin so that relative URLs (e.g. '/') are handled by the
+    // URL API. searchParams.set() deduplicates any existing 'login' param.
+    const dummyOrigin = 'https://placeholder.invalid';
+    const url = new URL(base, dummyOrigin);
+    url.searchParams.set('login', '1');
+    // Strip the dummy origin for relative URLs; keep it for absolute URLs.
+    return base.startsWith('http')
+      ? url.toString()
+      : `${url.pathname}${url.search}`;
   }
 }

@@ -17,7 +17,11 @@ export const upsertLoginModalSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
     title: z.string().trim().min(1, 'Title is required').max(200),
-    content: z.string().trim().min(1, 'Content is required'),
+    content: z
+      .string()
+      .trim()
+      .min(1, 'Content is required')
+      .max(5000, 'Content must be 5000 characters or fewer'),
     startDateTime: nullableDateTimeSchema.default(null),
     endDateTime: nullableDateTimeSchema.default(null),
   })

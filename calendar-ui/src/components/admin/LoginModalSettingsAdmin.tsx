@@ -72,6 +72,17 @@ function toRequestBody(formData: ModalFormData): UpsertLoginModalSettingsBody {
 }
 
 export function LoginModalSettingsAdmin() {
+  const { user } = useAuth();
+  const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+
+  if (!isSystemAdmin) {
+    return null;
+  }
+
+  return <LoginModalSettingsAdminInner />;
+}
+
+function LoginModalSettingsAdminInner() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const hasSettingsManage = usePermission(PERMISSIONS.SETTINGS.MANAGE);
@@ -163,10 +174,6 @@ export function LoginModalSettingsAdmin() {
         settings?.lastUpdatedDateTime ?? new Date().toISOString(),
     };
   }, [settings, formData]);
-
-  if (!isSystemAdmin) {
-    return null;
-  }
 
   return (
     <>
@@ -282,6 +289,7 @@ export function LoginModalSettingsAdmin() {
               disabled={!canManage}
               rows={6}
               placeholder="Enter modal content…"
+              maxLength={5000}
               data-testid="textarea-login-modal-content"
             />
           </div>
