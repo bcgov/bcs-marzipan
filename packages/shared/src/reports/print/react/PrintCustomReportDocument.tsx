@@ -165,10 +165,10 @@ function ActivityDetailsCell({ activity }: { activity: ActivityResponse }) {
       </div>
 
       {activity.isConfidential ? (
-        <div className="custom-report-text-xs-medium-muted">Confidential</div>
+        <div className="custom-report-text-xs-medium-alert">Confidential</div>
       ) : null}
       {activity.isIssue ? (
-        <div className="custom-report-text-xs-medium-muted">Issue</div>
+        <div className="custom-report-text-xs-medium-alert">Issue</div>
       ) : null}
       {activity.category.includes('FYI') ? (
         <div className="custom-report-text-xs-medium-muted">FYI</div>
@@ -264,7 +264,6 @@ function ActivityIdCell({ activity }: { activity: ActivityResponse }) {
           </div>
         </div>
       ) : null}
-
     </div>
   );
 }

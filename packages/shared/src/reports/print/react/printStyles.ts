@@ -51,12 +51,19 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   box-sizing: border-box;
 }
 .${CORPCAL_PRINT_ROOT_CLASS} a {
-  color: var(--print-accent-blue);
+  color: var(--corpcal-link);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .${CORPCAL_PRINT_ROOT_CLASS} a:hover {
   text-decoration-thickness: 2px;
+}
+.${CORPCAL_PRINT_ROOT_CLASS} a.corpcal-print-link {
+  color: var(--corpcal-link);
+  text-decoration: none;
+}
+.${CORPCAL_PRINT_ROOT_CLASS} a.corpcal-print-link:hover {
+  text-decoration: none;
 }
 
 .corpcal-print-header {
@@ -83,7 +90,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   right: 24px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--print-accent-red);
+  color: var(--corpcal-text-alert);
   letter-spacing: 0.06em;
 }
 
@@ -166,9 +173,9 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--print-zebra);
 }
 .corpcal-print-col-1 { width: 20%; }
-.corpcal-print-col-2 { width: 16%; }
-.corpcal-print-col-3 { width: 36%; }
-.corpcal-print-col-4 { width: 16%; }
+.corpcal-print-col-2 { width: 8%; }
+.corpcal-print-col-3 { width: 40%; }
+.corpcal-print-col-4 { width: 20%; }
 .corpcal-print-col-5 { width: 12%; }
 
 .corpcal-print-stack > * + * { margin-top: 4px; }
@@ -218,7 +225,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-rich li { margin: 0; }
 .corpcal-print-rich a {
-  color: var(--print-accent-blue);
+  color: var(--corpcal-link);
   text-decoration: underline;
 }
 
@@ -235,7 +242,10 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink-muted);
 }
 .corpcal-print-flag-alert {
-  color: var(--print-status-red);
+  color: var(--corpcal-text-alert);
+}
+.corpcal-print-flag-fyi {
+  color: var(--bc-gold);
 }
 
 /* Shad-style badge: rounded-full, 12px, font-semibold, border/padding */
@@ -262,9 +272,9 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: #0f172a;
 }
 .corpcal-print-pill-fyi {
-  border: 1px solid color-mix(in oklch, var(--bcsds-bc-blue-90) 25%, transparent);
-  background: var(--bcsds-bc-blue-100);
-  color: #fff;
+  border: 1px solid color-mix(in oklch, var(--bc-gold) 45%, transparent);
+  background: color-mix(in oklch, var(--bc-gold) 22%, var(--corpcal-surface));
+  color: var(--print-ink);
 }
 .corpcal-print-pill-la-new {
   border: 1px solid transparent;
@@ -318,7 +328,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-page-footer-confidential {
   font-size: 12px;
   font-weight: 700;
-  color: var(--print-accent-red);
+  color: var(--corpcal-text-alert);
   letter-spacing: 0.04em;
 }
 .corpcal-print-page-footer-timestamp {

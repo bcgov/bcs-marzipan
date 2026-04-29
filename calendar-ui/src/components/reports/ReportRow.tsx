@@ -136,13 +136,13 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           </div>
           {/* Is Confidential */}
           {activity.isConfidential && (
-            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
+            <div className="text-corpcal-text-alert text-xs font-medium">
               Confidential
             </div>
           )}
           {/* Is Issue */}
           {activity.isIssue && (
-            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
+            <div className="text-corpcal-text-alert text-xs font-medium">
               Issue
             </div>
           )}

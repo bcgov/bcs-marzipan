@@ -2,8 +2,11 @@ import { PrintRichText } from './PrintRichText';
 import type { PrintReportVariant, PrintRowViewModel } from './rowViewModel';
 
 /**
- * Five-column body row shared across Look Ahead, 30/60/90, and Exec Look Ahead
- * variants. Column 3 content changes per variant; all other columns match.
+ * Five-column body row shared across Look Ahead, 30/60/90, and Exec Look Ahead.
+ * Column 3 differs by print variant (`ActivityDetailsCell`):
+ * - **Look Ahead** (`lookAhead`): executive summary (inline with city prefix when present).
+ * - **Exec Look Ahead** (`exec`): activity title + summary.
+ * All other columns match across variants.
  */
 export function PrintRow({
   row,
@@ -38,9 +41,7 @@ function DateTimeCell({ row }: { row: PrintRowViewModel }) {
   const dateRange = dateTime.endDate
     ? `${dateTime.startDate} – ${dateTime.endDate}`
     : dateTime.startDate;
-  const showTimeLine = Boolean(
-    dateTime.startTime || dateTime.timeStatus
-  );
+  const showTimeLine = Boolean(dateTime.startTime || dateTime.timeStatus);
   return (
     <div className="corpcal-print-stack">
       {dateRange || dateTime.dateStatus ? (
@@ -126,7 +127,7 @@ function ActivityDetailsCell({
     flags.push({
       key: 'fyi',
       label: 'FYI',
-      className: 'corpcal-print-flag',
+      className: 'corpcal-print-flag corpcal-print-flag-fyi',
     });
   }
 
@@ -148,16 +149,6 @@ function ActivityDetailsCell({
       ) : null}
 
       {variant === 'lookAhead' ? (
-        <>
-          {row.venue.city ? (
-            <div className="corpcal-print-meta-faint">{row.venue.city}</div>
-          ) : null}
-          {row.title ? (
-            <div className="corpcal-print-title">{row.title}</div>
-          ) : null}
-          <PrintRichText value={row.summaryStored} />
-        </>
-      ) : (
         <div className="corpcal-print-exec-summary-inline">
           {row.venue.city ? (
             <span className="corpcal-print-meta-faint">{row.venue.city}: </span>
@@ -167,10 +158,17 @@ function ActivityDetailsCell({
             className="corpcal-print-rich corpcal-print-rich-inline"
           />
         </div>
+      ) : (
+        <>
+          {row.title ? (
+            <div className="corpcal-print-title">{row.title}</div>
+          ) : null}
+          <PrintRichText value={row.summaryStored} />
+        </>
       )}
 
       {venueLines.length > 0 ? (
-        <div className="corpcal-print-meta">{venueLines.join(', ')}</div>
+        <div className="corpcal-print-meta-strong">{venueLines.join(', ')}</div>
       ) : null}
 
       {row.eventPlannerLead ? (

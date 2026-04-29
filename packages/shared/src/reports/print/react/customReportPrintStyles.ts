@@ -86,6 +86,11 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
   font-weight: 500;
   color: #475569;
 }
+.custom-report-text-xs-medium-alert {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--corpcal-text-alert);
+}
 .custom-report-dt-value {
   font-weight: 500;
   color: #0f172a;

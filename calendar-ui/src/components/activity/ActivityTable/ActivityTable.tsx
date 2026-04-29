@@ -252,10 +252,14 @@ function OverviewCell({
           </CopyableText>
         </span>
         {row.isConfidential && (
-          <span className="font-bold text-red-600 uppercase">CONFIDENTIAL</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            CONFIDENTIAL
+          </span>
         )}
         {row.isIssue && (
-          <span className="font-bold text-red-600 uppercase">ISSUE</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            ISSUE
+          </span>
         )}
       </div>
       <div className="mb-1 text-[16px] font-semibold text-slate-900">

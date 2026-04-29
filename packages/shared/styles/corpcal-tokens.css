@@ -38,6 +38,12 @@
   --corpcal-table-cell-muted-fg: var(--corpcal-text-muted);
   --corpcal-table-cell-subtle-fg: var(--corpcal-text-subtle);
 
+  /* Inline / text links — matches calendar-ui `--link` / `--primary` when present; solid fallback for standalone PDF */
+  --corpcal-link: var(--link, var(--primary, #0f6cbd));
+
+  /* Issue / confidential labels (~Tailwind red-600); shared UI + report print */
+  --corpcal-text-alert: var(--bcsds-red-60);
+
   /* Print/report pills & accents (BCDS primitives in bcds-primitives.css; embedded with them for PDF) */
   --corpcal-print-accent-red: var(--bcsds-red-90);
   --corpcal-print-accent-red-soft: var(--bcsds-red-15);

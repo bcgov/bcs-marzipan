@@ -109,23 +109,28 @@ const FIXTURE: ReportDataResponse = {
 const FIXED_GENERATED_AT = new Date('2026-04-27T15:30:00.000Z');
 
 describe('renderPrintReportFragmentHtml', () => {
-  it('renders a stable fragment for a look-ahead report', () => {
+  it('renders look-ahead print with executive summary in the activity details column', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
-      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
-    });
-
-    expect(html).toMatchSnapshot();
-  });
-
-  it('renders the exec variant with executive summary instead of title/summary', () => {
-    const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
       generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('Investment of $500M');
     expect(html).not.toContain('Minister announces housing investment');
+    expect(html).toMatchSnapshot();
+  });
+
+  it('renders exec look-ahead print with title and summary in the activity details column', () => {
+    const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain(
+      'The Minister will announce new housing funding and respond to media questions'
+    );
+    expect(html).not.toContain('Investment of $500M');
     expect(html).toMatchSnapshot();
   });
 
