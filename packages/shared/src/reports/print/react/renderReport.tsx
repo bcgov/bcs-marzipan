@@ -64,7 +64,12 @@ export function renderPrintReportFragmentHtml(
   }
 
   if (reportTypeName === 'custom') {
-    return renderToStaticMarkup(<PrintCustomReportDocument data={data} />);
+    return renderToStaticMarkup(
+      <PrintCustomReportDocument
+        data={data}
+        generatedAt={options.generatedAt ?? new Date()}
+      />
+    );
   }
 
   const variant = REPORT_TYPE_TO_VARIANT[reportTypeName];

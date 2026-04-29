@@ -13,6 +13,7 @@ export {
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PrintCustomReportDocument,
+  PrintPageFooter,
   PrintPlanningDocument,
   PrintReportDocument,
   PrintRichText,

@@ -4,9 +4,9 @@ import {
   dateKeyLocal,
   formatCoverDate,
   formatDayHeading,
-  formatGeneratedAt,
   parseKeyToDate,
 } from './dateFormatters';
+import { PrintPageFooter } from './PrintPageFooter';
 import { PrintSectionTable } from './PrintSectionTable';
 import { CORPCAL_PRINT_ROOT_CLASS } from './printStyles';
 import {
@@ -112,15 +112,6 @@ export function PrintReportDocument({
         </span>
       </div>
 
-      <div className="corpcal-print-contents">
-        <div className="corpcal-print-contents-title">Contents:</div>
-        <ul>
-          {sections.map((section) => (
-            <li key={section.id}>{section.name}</li>
-          ))}
-        </ul>
-      </div>
-
       <div className="corpcal-print-body">
         {!hasAny ? (
           <div className="corpcal-print-empty">
@@ -139,16 +130,7 @@ export function PrintReportDocument({
         )}
       </div>
 
-      <footer className="corpcal-print-footer">
-        <div className="corpcal-print-footer-confidential">
-          DRAFT AND CONFIDENTIAL
-        </div>
-        <div>
-          Report generated {formatGeneratedAt(generatedAt)}.
-          &ldquo;Changed&rdquo; applies to major detail or date changes only
-          (not time switches).
-        </div>
-      </footer>
+      <PrintPageFooter generatedAt={generatedAt} />
     </div>
   );
 }

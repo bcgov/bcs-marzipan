@@ -72,7 +72,7 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
 .custom-report-section-row td {
   padding: 0.5rem 1rem;
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   background: #f1f5f9;
   border-bottom: 1px solid #e2e8f0;
   color: #334155;
@@ -85,6 +85,17 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
   font-size: 0.75rem;
   font-weight: 500;
   color: #475569;
+}
+.custom-report-dt-value {
+  font-weight: 500;
+  color: #0f172a;
+}
+.custom-report-dt-inline-muted {
+  font-weight: 500;
+  color: #64748b;
+}
+.custom-report-dt-time-row {
+  margin-top: 0.125rem;
 }
 .custom-report-text-sm-medium {
   font-size: 0.875rem;

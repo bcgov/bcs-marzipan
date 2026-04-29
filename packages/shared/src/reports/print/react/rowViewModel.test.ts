@@ -4,6 +4,7 @@ import type { ActivityResponse } from '../../../schemas/activity-response.schema
 import {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  resolveLeadOrgForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
@@ -75,18 +76,18 @@ const BASE_ACTIVITY: ActivityResponse = {
 };
 
 describe('buildTranslationsLine', () => {
-  it('returns null for empty / missing lists', () => {
-    expect(buildTranslationsLine(null)).toBeNull();
-    expect(buildTranslationsLine(undefined)).toBeNull();
-    expect(buildTranslationsLine([])).toBeNull();
+  it('returns explicit none for empty / missing lists', () => {
+    expect(buildTranslationsLine(null)).toBe('Translations: none');
+    expect(buildTranslationsLine(undefined)).toBe('Translations: none');
+    expect(buildTranslationsLine([])).toBe('Translations: none');
   });
 
   it('lists languages when fewer than the collapse threshold', () => {
     expect(buildTranslationsLine(['French', 'Punjabi'])).toBe(
-      'French, Punjabi'
+      'Translations: French, Punjabi'
     );
     expect(buildTranslationsLine(['French', 'Punjabi', 'Chinese'])).toBe(
-      'French, Punjabi, Chinese'
+      'Translations: French, Punjabi, Chinese'
     );
   });
 
@@ -181,6 +182,40 @@ describe('toPrintRowViewModel', () => {
     );
     expect(row.activityLink.label).toBe('ACT-42');
     expect(row.activityLink.href).toBe('http://localhost:3000/activity/42');
+  });
+
+  it('omits lead org when it matches ministry, team, or ministry abbreviation', () => {
+    expect(
+      resolveLeadOrgForPrint({
+        ...BASE_ACTIVITY,
+        leadOrg: 'Education and Child Care',
+        leadMinistry: 'Education and Child Care',
+      })
+    ).toBeNull();
+    expect(
+      resolveLeadOrgForPrint({
+        ...BASE_ACTIVITY,
+        leadOrg: 'ECC',
+        leadMinistryAbbreviation: 'ECC',
+        leadMinistry: 'Education and Child Care',
+      })
+    ).toBeNull();
+    expect(
+      resolveLeadOrgForPrint({
+        ...BASE_ACTIVITY,
+        leadOrg: 'Communications team',
+        leadMinistry: null,
+        leadMinistryAbbreviation: null,
+        leadTeamDisplayName: 'Communications team',
+      })
+    ).toBeNull();
+    expect(
+      resolveLeadOrgForPrint({
+        ...BASE_ACTIVITY,
+        leadOrg: 'External partner org',
+        leadMinistry: 'Housing',
+      })
+    ).toBe('External partner org');
   });
 });
 

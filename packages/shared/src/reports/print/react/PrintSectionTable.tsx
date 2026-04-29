@@ -6,6 +6,7 @@ const COLUMN_HEADERS = [
   'Lead',
   'Activity Details',
   'Release',
+  'Activity',
 ] as const;
 
 /**
@@ -40,6 +41,9 @@ export function PrintSectionTable({
               </th>
               <th scope="col" className="corpcal-print-col-4">
                 {COLUMN_HEADERS[3]}
+              </th>
+              <th scope="col" className="corpcal-print-col-5">
+                {COLUMN_HEADERS[4]}
               </th>
             </tr>
           </thead>

@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { formatShortDate, formatTime12h } from './dateFormatters';
+import { PrintPageFooter } from './PrintPageFooter';
 import { PrintRichText } from './PrintRichText';
+import { resolveLeadOrgForPrint } from './rowViewModel';
 
 const COLUMN_HEADERS = [
   'Date & Time',
@@ -59,19 +61,40 @@ function CustomBadge({
 }
 
 function DateTimeCell({ activity }: { activity: ActivityResponse }) {
+  const dateStatus = activity.dateStatus?.trim();
   const timeStatus = activity.timeStatus?.trim();
+  const dateText = formatReportDate(activity);
+  const timeText = formatReportTime(activity);
+  const showTimeRow = timeText !== '–' || Boolean(timeStatus);
 
   return (
     <div className="custom-report-stack custom-report-stack-md">
       <div>
-        <div className="custom-report-text-xs-medium-muted">
-          {formatReportDate(activity)}
-        </div>
-        <div className="custom-report-text-sm-medium">
-          {formatReportTime(activity)}
-        </div>
-        {timeStatus ? (
-          <div className="custom-report-text-sm-medium">{timeStatus}</div>
+        {dateText !== '–' || dateStatus ? (
+          <div className="custom-report-text-sm-medium">
+            {dateText !== '–' ? (
+              <span className="custom-report-dt-value">{dateText}</span>
+            ) : null}
+            {dateStatus ? (
+              <span className="custom-report-dt-inline-muted">
+                {dateText !== '–' ? ' · ' : null}
+                {dateStatus}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {showTimeRow ? (
+          <div className="custom-report-text-sm-medium custom-report-dt-time-row">
+            {timeText !== '–' ? (
+              <span className="custom-report-dt-value">{timeText}</span>
+            ) : null}
+            {timeStatus ? (
+              <span className="custom-report-dt-inline-muted">
+                {timeText !== '–' ? ' · ' : null}
+                {timeStatus}
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -99,6 +122,7 @@ function DateTimeCell({ activity }: { activity: ActivityResponse }) {
 function LeadCell({ activity }: { activity: ActivityResponse }) {
   const ministry =
     activity.leadMinistryAbbreviation ?? activity.leadMinistry ?? '–';
+  const org = resolveLeadOrgForPrint(activity);
 
   return (
     <div className="custom-report-stack custom-report-stack-sm">
@@ -107,10 +131,10 @@ function LeadCell({ activity }: { activity: ActivityResponse }) {
         <div className="custom-report-text-sm-medium">{ministry}</div>
       </div>
 
-      {activity.leadOrg ? (
+      {org ? (
         <div>
           <div className="custom-report-text-xs-medium-muted">Organization</div>
-          <div className="custom-report-text-sm-muted">{activity.leadOrg}</div>
+          <div className="custom-report-text-sm-muted">{org}</div>
         </div>
       ) : null}
     </div>
@@ -214,7 +238,7 @@ function ReleaseCell({ activity }: { activity: ActivityResponse }) {
             <CustomBadge
               variant={activity.lookAheadStatus === 'new' ? 'info' : 'warning'}
             >
-              {activity.lookAheadStatus === 'new' ? 'NEW' : 'CHANGED'}
+              {activity.lookAheadStatus === 'new' ? 'New' : 'Changed'}
             </CustomBadge>
           </div>
         </div>
@@ -241,11 +265,6 @@ function ActivityIdCell({ activity }: { activity: ActivityResponse }) {
         </div>
       ) : null}
 
-      {activity.dateStatus ? (
-        <div className="custom-report-text-xs-muted-plain">
-          Date: {activity.dateStatus}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -335,10 +354,14 @@ function buildBodyRows(data: ReportDataResponse): CustomReportBodyRow[] {
 
 export function PrintCustomReportDocument({
   data,
+  generatedAt,
 }: {
   data: ReportDataResponse;
+  /** Defaults to "now" when omitted (e.g. ad-hoc static markup in tests). */
+  generatedAt?: Date;
 }) {
   const bodyRows = buildBodyRows(data);
+  const at = generatedAt ?? new Date();
 
   return (
     <div className="custom-report-root">
@@ -367,6 +390,7 @@ export function PrintCustomReportDocument({
           </table>
         )}
       </div>
+      <PrintPageFooter generatedAt={at} />
     </div>
   );
 }

@@ -30,9 +30,12 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-accent-blue-soft: var(--corpcal-print-accent-blue-soft);
   --print-accent-amber: var(--corpcal-print-accent-amber);
   --print-accent-amber-soft: var(--corpcal-print-accent-amber-soft);
+  --print-status-new: #b7e8ea;
+  --print-status-changed: #ffddb3;
+  --print-status-red: #ff978d;
 
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   color: var(--print-ink);
   background: var(--corpcal-surface);
@@ -78,7 +81,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   position: absolute;
   top: 18px;
   right: 24px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--print-accent-red);
   letter-spacing: 0.06em;
@@ -88,7 +91,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--print-banner-bg);
   border-bottom: 1px solid var(--print-border);
   padding: 8px 24px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--print-banner-fg);
 }
@@ -99,22 +102,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   margin-top: 2px;
 }
 
-.corpcal-print-contents {
-  padding: 12px 24px 4px;
-  font-size: 10px;
-  color: var(--print-ink-muted);
-}
-.corpcal-print-contents-title {
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.corpcal-print-contents ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
 .corpcal-print-body {
-  padding: 4px 24px 24px;
+  padding: 4px 24px 20px;
 }
 .corpcal-print-day {
   margin-top: 16px;
@@ -134,7 +123,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-section-heading {
   margin: 12px 0 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--print-section-fg);
 }
@@ -150,7 +139,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 .corpcal-print-table th {
   text-align: left;
@@ -158,7 +147,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--corpcal-table-header-bg);
   color: var(--corpcal-table-header-fg);
   font-weight: 600;
-  font-size: 10px;
+  font-size: 12px;
   border-bottom: 1px solid var(--corpcal-table-border);
 }
 .corpcal-print-table td {
@@ -177,9 +166,10 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--print-zebra);
 }
 .corpcal-print-col-1 { width: 20%; }
-.corpcal-print-col-2 { width: 20%; }
-.corpcal-print-col-3 { width: 42%; }
-.corpcal-print-col-4 { width: 18%; }
+.corpcal-print-col-2 { width: 16%; }
+.corpcal-print-col-3 { width: 36%; }
+.corpcal-print-col-4 { width: 16%; }
+.corpcal-print-col-5 { width: 12%; }
 
 .corpcal-print-stack > * + * { margin-top: 4px; }
 .corpcal-print-stack-md > * + * { margin-top: 6px; }
@@ -187,25 +177,35 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 
 .corpcal-print-meta-strong {
   font-weight: 700;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--print-ink);
 }
 .corpcal-print-meta {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--print-ink-muted);
 }
+.corpcal-print-inline-status {
+  font-weight: 500;
+  color: var(--print-ink-muted);
+  white-space: normal;
+}
+.corpcal-print-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
 .corpcal-print-meta-faint {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--print-ink-faint);
 }
 .corpcal-print-title {
-  font-weight: 700;
-  font-size: 11.5px;
+  font-weight: 600;
+  font-size: 12px;
   line-height: 1.35;
   color: var(--print-ink);
 }
 .corpcal-print-rich {
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--print-ink-muted);
 }
@@ -225,46 +225,70 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-flags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 2px;
 }
+.corpcal-print-flag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--print-ink-muted);
+}
+.corpcal-print-flag-alert {
+  color: var(--print-status-red);
+}
+
+/* Shad-style badge: rounded-full, 12px, font-semibold, border/padding */
 .corpcal-print-pill {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
-  border-radius: 2px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
   border: 1px solid var(--print-border);
   background: var(--corpcal-surface);
   color: var(--print-ink-muted);
 }
 .corpcal-print-pill-issue {
+  border: 1px solid color-mix(in oklch, var(--bcsds-red-90) 20%, transparent);
   background: var(--print-accent-red-soft);
   color: var(--print-accent-red);
-  border-color: var(--print-accent-red);
 }
 .corpcal-print-pill-confidential {
+  border: 1px solid color-mix(in oklch, var(--bcsds-gold-80) 30%, transparent);
   background: var(--print-accent-amber-soft);
-  color: var(--print-accent-amber);
-  border-color: var(--print-accent-amber);
+  color: #0f172a;
 }
 .corpcal-print-pill-fyi {
-  background: var(--print-accent-blue-soft);
-  color: var(--print-accent-blue);
-  border-color: var(--print-accent-blue);
+  border: 1px solid color-mix(in oklch, var(--bcsds-bc-blue-90) 25%, transparent);
+  background: var(--bcsds-bc-blue-100);
+  color: #fff;
 }
 .corpcal-print-pill-la-new {
-  background: var(--print-accent-blue-soft);
-  color: var(--print-accent-blue);
-  border-color: var(--print-accent-blue);
+  border: 1px solid transparent;
+  background: var(--print-status-new);
+  color: #0f172a;
 }
 .corpcal-print-pill-la-changed {
-  background: var(--print-accent-amber-soft);
-  color: var(--print-accent-amber);
-  border-color: var(--print-accent-amber);
+  border: 1px solid transparent;
+  background: var(--print-status-changed);
+  color: #0f172a;
+}
+.corpcal-print-exec-summary-inline {
+  display: inline;
+}
+.corpcal-print-rich-inline {
+  display: inline;
+}
+.corpcal-print-rich-inline p,
+.corpcal-print-rich-inline ul,
+.corpcal-print-rich-inline ol,
+.corpcal-print-rich-inline li {
+  display: inline;
+  margin: 0;
+  padding: 0;
 }
 
 .corpcal-print-link {
@@ -272,29 +296,55 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-empty {
   padding: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
   color: var(--print-ink-faint);
   border: 1px dashed var(--print-border);
   background: var(--corpcal-table-row-alt-bg);
 }
 
-.corpcal-print-footer {
-  margin-top: 18px;
-  padding: 8px 24px 16px;
-  font-size: 9px;
-  color: var(--print-ink-faint);
+.corpcal-print-page-footer {
+  margin-top: 16px;
+  padding: 10px 24px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--print-ink-muted);
   border-top: 1px solid var(--print-border-soft);
+  background: var(--corpcal-surface);
 }
-.corpcal-print-footer-confidential {
+.corpcal-print-page-footer-line + .corpcal-print-page-footer-line {
+  margin-top: 4px;
+}
+.corpcal-print-page-footer-confidential {
+  font-size: 12px;
   font-weight: 700;
   color: var(--print-accent-red);
-  margin-bottom: 3px;
+  letter-spacing: 0.04em;
+}
+.corpcal-print-page-footer-timestamp {
+  font-size: 12px;
+  color: var(--print-ink);
+}
+.corpcal-print-page-footer-hint {
+  font-size: 12px;
+  color: var(--print-ink-muted);
 }
 
 @media print {
+  .corpcal-print-root:has(> .corpcal-print-page-footer),
+  .custom-report-root:has(> .corpcal-print-page-footer) {
+    padding-bottom: 5.5rem;
+  }
+  .corpcal-print-page-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    margin-top: 0;
+  }
   .${CORPCAL_PRINT_ROOT_CLASS} {
-    font-size: 10.5px;
+    font-size: 12px;
   }
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }

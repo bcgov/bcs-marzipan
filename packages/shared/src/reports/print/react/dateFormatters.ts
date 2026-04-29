@@ -115,14 +115,25 @@ export function formatTime12h(
   return '';
 }
 
-/** Report generation timestamp used in the footer. */
-export function formatGeneratedAt(now: Date): string {
-  return now.toLocaleString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+/** e.g. `Tuesday Apr 28, 9:38 pm` — for print / PDF page footers (no year, lowercase am/pm). */
+export function formatPrintReportGeneratedAt(now: Date): string {
+  const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const month = now.toLocaleDateString('en-US', { month: 'short' });
+  const day = now.getDate();
+  const time = now
+    .toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  return `${weekday} ${month} ${day}, ${time}`;
 }
+
+export function formatGeneratedAt(now: Date): string {
+  return formatPrintReportGeneratedAt(now);
+}
+
+export const PRINT_FOOTER_CHANGED_EXPLANATION =
+  'CHANGED indicates major detail or date changes only (not time switches).';

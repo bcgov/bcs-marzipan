@@ -70,7 +70,9 @@ function PrintReportPreviewRoot({
   if (reportTypeName === 'planning') {
     document = <PrintPlanningDocument />;
   } else if (reportTypeName === 'custom') {
-    document = <PrintCustomReportDocument data={data} />;
+    document = (
+      <PrintCustomReportDocument data={data} generatedAt={generatedAt} />
+    );
   } else {
     document = (
       <PrintReportDocument

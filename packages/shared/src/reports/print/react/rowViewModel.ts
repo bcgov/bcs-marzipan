@@ -51,8 +51,8 @@ export interface ActivityIdBlock {
 
 export interface ReleaseBlock {
   newsReleaseOrigin: string | null;
-  /** `null` when translations are not required. */
-  translationsLine: string | null;
+  /** Always present. Shows explicit `none` when no translations are required. */
+  translationsLine: string;
 }
 
 export interface PrintRowViewModel {
@@ -96,10 +96,10 @@ function joinActivityUrl(baseUrl: string, activityId: number): string {
  */
 export function buildTranslationsLine(
   translations: readonly string[] | null | undefined
-): string | null {
-  if (!translations || translations.length === 0) return null;
+): string {
+  if (!translations || translations.length === 0) return 'Translations: none';
   if (translations.length < TRANSLATIONS_COLLAPSE_AT) {
-    return translations.join(', ');
+    return `Translations: ${translations.join(', ')}`;
   }
   return `Translations: ${translations.length} languages`;
 }
@@ -132,6 +132,25 @@ function pickEventPlannerLead(activity: ActivityResponse): string | null {
 function toNonEmpty(value: string | null | undefined): string | null {
   const trimmed = (value ?? '').trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+const norm = (s: string | null | undefined) => s?.trim().toLowerCase() ?? '';
+
+/**
+ * Whether `leadOrg` should appear in the Lead column. Hidden when the org
+ * string matches the ministry, team, or ministry abbreviation the activity
+ * already uses as its primary lead label.
+ */
+export function resolveLeadOrgForPrint(
+  activity: ActivityResponse
+): string | null {
+  const org = toNonEmpty(activity.leadOrg);
+  if (!org) return null;
+  const o = norm(org);
+  if (o && o === norm(activity.leadMinistry)) return null;
+  if (o && o === norm(activity.leadTeamDisplayName)) return null;
+  if (o && o === norm(activity.leadMinistryAbbreviation)) return null;
+  return org;
 }
 
 /**
@@ -168,7 +187,7 @@ export function toPrintRowViewModel(
     },
     lead: {
       ministryOrTeam: pickLeadMinistryOrTeam(activity),
-      org: toNonEmpty(activity.leadOrg),
+      org: resolveLeadOrgForPrint(activity),
     },
     activityLink: {
       label: activity.displayId?.trim() || `ACT-${activity.id}`,
