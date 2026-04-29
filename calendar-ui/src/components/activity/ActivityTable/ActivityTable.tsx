@@ -99,6 +99,7 @@ import {
   formatExactDate,
   formatRelativeTime,
   formatTime12h,
+  parseDateOnlyString,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
@@ -434,7 +435,9 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
       : row.startDate
-        ? formatExactDate(new Date(row.startDate), { includeYear: 'auto' })
+        ? formatExactDate(parseDateOnlyString(row.startDate), {
+            includeYear: 'auto',
+          })
         : '';
 
   return (

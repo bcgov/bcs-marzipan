@@ -103,6 +103,17 @@ export type FormatExactDateOptions = {
 };
 
 /**
+ * Parse a YYYY-MM-DD date-only string as local midnight, avoiding the UTC-to-local
+ * timezone shift that `new Date("YYYY-MM-DD")` introduces (ISO date-only strings are
+ * parsed as UTC, which shifts the date back one day in timezones behind UTC).
+ */
+export function parseDateOnlyString(dateStr: string): Date {
+  const parts = dateStr.split('-').map(Number);
+  const [y, m, d] = parts;
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/**
  * Exact date (and optional time) for "Updated Jan 23, 2026" or "Updated Jan 23, 2026 at 2:00 PM".
  * Call site adds context prefix, e.g. "Updated " + formatExactDate(date).
  */
@@ -180,8 +191,9 @@ export function formatDateRange(
   start: Date | string,
   end: Date | string
 ): string {
-  const startDate = typeof start === 'string' ? new Date(start) : start;
-  const endDate = typeof end === 'string' ? new Date(end) : end;
+  const startDate =
+    typeof start === 'string' ? parseDateOnlyString(start) : start;
+  const endDate = typeof end === 'string' ? parseDateOnlyString(end) : end;
   const startYear = startDate.getFullYear();
   const endYear = endDate.getFullYear();
 

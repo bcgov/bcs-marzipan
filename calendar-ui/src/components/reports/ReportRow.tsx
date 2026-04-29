@@ -4,7 +4,11 @@ import { tableBodyRow, tableTd } from '@/components/table/tableConstants';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Badge } from '@/components/ui/badge';
 import { CopyableText } from '@/components/ui/copyable-text';
-import { formatExactDate, formatTime12h } from '@/lib/datetime-utils';
+import {
+  formatExactDate,
+  formatTime12h,
+  parseDateOnlyString,
+} from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
 /** Matches Activity List table cells: light stroke + white fill (Fluent NeutralStroke1.Rest / #FFF via Tailwind). */
@@ -33,7 +37,9 @@ export function ReportRow({ activity, className }: ReportRowProps) {
   const displayIdText = activity.displayId ?? String(activity.id);
 
   // Convert ISO date string to Date object for formatting
-  const startDate = activity.startDate ? new Date(activity.startDate) : null;
+  const startDate = activity.startDate
+    ? parseDateOnlyString(activity.startDate)
+    : null;
   const formattedDate = startDate ? formatExactDate(startDate) : '–';
   const formattedTime = activity.startTime
     ? formatTime12h(activity.startTime)
