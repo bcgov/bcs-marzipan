@@ -1,6 +1,6 @@
 {
-  "id": "5c6b874c-a8c4-47c6-9660-3db604e7b9df",
-  "prevId": "52beaedc-68b3-4b65-ac64-9efbc132886a",
+  "id": "437e7cc7-93b9-4892-9e20-fe9f527be68a",
+  "prevId": "63628f51-a5e2-4262-944f-0683b93a7b84",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1205,13 +1205,13 @@
         },
         "abbreviation": {
           "name": "abbreviation",
-          "type": "varchar(5)",
+          "type": "varchar(10)",
           "primaryKey": false,
           "notNull": true
         },
-        "minister_government_rep_id": {
-          "name": "minister_government_rep_id",
-          "type": "integer",
+        "minister_name": {
+          "name": "minister_name",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -1223,12 +1223,6 @@
         },
         "second_contact_user_id": {
           "name": "second_contact_user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ministry_group_id": {
-          "name": "ministry_group_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
@@ -1278,15 +1272,6 @@
           "columnsFrom": ["second_contact_user_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ministries_ministry_group_id_ministry_groups_id_fk": {
-          "name": "ministries_ministry_group_id_ministry_groups_id_fk",
-          "tableFrom": "ministries",
-          "tableTo": "ministry_groups",
-          "columnsFrom": ["ministry_group_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "ministries_created_by_users_id_fk": {
@@ -1531,99 +1516,6 @@
         "pods_last_updated_by_users_id_fk": {
           "name": "pods_last_updated_by_users_id_fk",
           "tableFrom": "pods",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.ministry_groups": {
-      "name": "ministry_groups",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "ministry_groups_name_lower_unique": {
-          "name": "ministry_groups_name_lower_unique",
-          "columns": [
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ministry_groups_created_by_users_id_fk": {
-          "name": "ministry_groups_created_by_users_id_fk",
-          "tableFrom": "ministry_groups",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "ministry_groups_last_updated_by_users_id_fk": {
-          "name": "ministry_groups_last_updated_by_users_id_fk",
-          "tableFrom": "ministry_groups",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
@@ -2602,6 +2494,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ministry_id": {
+          "name": "ministry_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "representative_type": {
           "name": "representative_type",
           "type": "varchar(50)",
@@ -2637,6 +2535,15 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "government_representatives_ministry_id_ministries_id_fk": {
+          "name": "government_representatives_ministry_id_ministries_id_fk",
+          "tableFrom": "government_representatives",
+          "tableTo": "ministries",
+          "columnsFrom": ["ministry_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "government_representatives_created_by_users_id_fk": {
           "name": "government_representatives_created_by_users_id_fk",
           "tableFrom": "government_representatives",
@@ -4982,69 +4889,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.team_tags": {
-      "name": "team_tags",
-      "schema": "",
-      "columns": {
-        "tag_id": {
-          "name": "tag_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "timestamp": {
-          "name": "timestamp",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "team_tags_tag_id_tags_id_fk": {
-          "name": "team_tags_tag_id_tags_id_fk",
-          "tableFrom": "team_tags",
-          "tableTo": "tags",
-          "columnsFrom": ["tag_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "team_tags_team_id_teams_id_fk": {
-          "name": "team_tags_team_id_teams_id_fk",
-          "tableFrom": "team_tags",
-          "tableTo": "teams",
-          "columnsFrom": ["team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "team_tags_tag_id_team_id_pk": {
-          "name": "team_tags_tag_id_team_id_pk",
-          "columns": ["tag_id", "team_id"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user_teams": {
       "name": "user_teams",
       "schema": "",
@@ -5368,12 +5212,6 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
-        },
-        "abbreviation": {
-          "name": "abbreviation",
-          "type": "varchar(5)",
-          "primaryKey": false,
-          "notNull": true
         },
         "description": {
           "name": "description",
@@ -6536,102 +6374,6 @@
         "banner_settings_last_updated_by_users_id_fk": {
           "name": "banner_settings_last_updated_by_users_id_fk",
           "tableFrom": "banner_settings",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.login_modal_settings": {
-      "name": "login_modal_settings",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "title": {
-          "name": "title",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'Notice'"
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date_time": {
-          "name": "start_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "end_date_time": {
-          "name": "end_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "login_modal_settings_created_by_users_id_fk": {
-          "name": "login_modal_settings_created_by_users_id_fk",
-          "tableFrom": "login_modal_settings",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "login_modal_settings_last_updated_by_users_id_fk": {
-          "name": "login_modal_settings_last_updated_by_users_id_fk",
-          "tableFrom": "login_modal_settings",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],

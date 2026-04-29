@@ -76,7 +76,30 @@ npm run db:generate --workspace=packages/database -- 20260129_add-user-preferenc
 
 This creates a fresh, consolidated CREATE statement including your changes.
 
-### 4. Drop existing tables
+### 4. Insert the PostgreSQL extensions first migration
+
+`drizzle-kit generate` emits a single `0000_*.sql` file. Extensions such as **`pg_trgm`** are required for trigram GIN indexes but are **not** represented in Drizzle schema, so they must be applied **before** the rest of the SQL. A dedicated first migration avoids “prepend and hope the next dev notices” when someone archives migrations later.
+
+After **every** full squash generate, run:
+
+```bash
+npm run db:add-extensions --workspace=packages/database
+```
+
+This script:
+
+- Copies `scripts/templates/postgresql_extensions.sql` to `migrations/0000_<date>_postgresql_extensions.sql`
+- Renames the generated file from `0000_…` to `0001_…`
+- Splits `migrations/meta/`: empty `0000_snapshot.json`, full schema in `0001_snapshot.json`, and updates `_journal.json` + `prevId` chain
+- Runs `drizzle-kit check` (fails the script if metadata is inconsistent)
+
+Edit **`scripts/templates/postgresql_extensions.sql`** when you need more instance-level setup (`CREATE EXTENSION`, etc.). The script is **idempotent**: if the journal already has two entries and the first tag contains `postgresql_extensions`, it exits without changes.
+
+If you change that template **between** full squashes, update the committed **`migrations/0000_*_postgresql_extensions.sql`** on your branch to match—otherwise the template change only applies after the next time you run this script.
+
+**Do not run** this after a normal incremental `db:generate` (multiple migrations already in `meta/`). It only supports the **one-entry** journal produced by a fresh squash.
+
+### 5. Drop existing tables
 
 Drop your local database tables to apply the new schema cleanly. You can:
 
@@ -84,7 +107,7 @@ Drop your local database tables to apply the new schema cleanly. You can:
 - Run `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` in psql
 - Recreate the database entirely
 
-### 5. Apply the new schema
+### 6. Apply the new schema
 
 ```bash
 npm run db:push --workspace=packages/database
@@ -92,7 +115,7 @@ npm run db:push --workspace=packages/database
 
 Or run the generated SQL file manually from `packages/database/migrations/`.
 
-### 6. Re-seed the database
+### 7. Re-seed the database
 
 ```bash
 npm run seed --workspace=calendar-service
@@ -125,6 +148,8 @@ npm run db:generate --workspace=packages/database -- YYYYMMDD_description
 ```
 
 This creates a new migration file that contains only the **diff** between your current schema and the database.
+
+Do **not** run `db:add-extensions` here; that script is only for a **fresh squash** (a single new migration after deleting `migrations/`). Incremental folders already have the extensions migration in history.
 
 #### 2. Review the generated SQL
 
@@ -213,8 +238,8 @@ packages/database/
     0000_*.sql            # Current consolidated migration
     meta/                 # Drizzle migration metadata
   seeds/
-    0001_*.sql            # Lookup data seed
-    0002_*.sql            # Sample activity data seed
+    0000_*.sql … 0009_*.sql  # Main seed chain (lexicographic order; add 0010+ when needed)
+    9999_*.sql            # Sync serial sequences (must run last)
   src/
     schema/               # Drizzle ORM schema definitions
     client.ts             # Database client setup
@@ -232,6 +257,8 @@ The schema is defined in `src/schema/`:
 ## Field-level activity permissions
 
 Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions exist for `notes`, `lookAhead`, and `pitchStatus` (API may omit those fields when the user lacks view access). **Pitch date** and **translations** use **edit-only** field permissions where applicable (no separate view permission for pitch date; anyone who can view the activity sees those values).
+
+Seeds are tracked in `_seed_history` by **filename**. If you renumber or merge seed files on a database that was seeded with older names, run seeds with `force: true` (where the CLI or API exposes it), truncate `_seed_history`, or wipe the database so every file runs again in order.
 
 ## Types
 

@@ -17,7 +17,7 @@ It complements [ACTIVITY_REVIEW_SNAPSHOT.md](./ACTIVITY_REVIEW_SNAPSHOT.md) (sna
 - `GET /settings/review-exempt-fields` — returns `{ fieldKeys: string[] }` (configurable keys only, after server validation).
 - `PATCH /settings/review-exempt-fields` — body `{ fieldKeys: string[] }` (allowlisted values only; duplicates removed).
 
-**Permission:** `settings.manage.review_exempt_fields` (intended for **System Admin**; see `packages/database/seeds/0010_20260422_review_exempt_fields_seed.sql`).
+**Permission:** `settings.manage.review_exempt_fields` (intended for **System Admin**; see `packages/database/seeds/0008_20260427_additional_settings_permissions_seed.sql`).
 
 **Implementation:** `ReviewExemptFieldsController` in `calendar-service`, persistence in `ApplicationSettingsService` (`getReviewExemptFieldKeys` / `setReviewExemptFieldKeys`).
 

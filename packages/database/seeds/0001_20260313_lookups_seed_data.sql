@@ -1,9 +1,7 @@
--- Seed Script for Database Lookups
--- This script seeds all lookup tables with reference data
--- Based on the current schema definitions
--- Run this after applying the base migration (0000_20250121_initial_tables.sql)
+-- Seed script for database lookups and reference data.
+-- Run after schema migrations (see packages/database/migrations/) and after 0000_roles_seed (roles FK on users).
 --
--- Serial sequences for explicit-id inserts are reset once at end of pipeline:
+-- Serial sequences for explicit-id inserts are reset at end of pipeline:
 -- packages/database/seeds/9999_20260423_sync_serial_sequences_seed.sql
 --
 -- IMPORTANT: Users must be seeded first as other tables reference them
@@ -471,24 +469,6 @@ UPDATE ministries SET minister_government_rep_id = 2023 WHERE id = 23;
 UPDATE ministries SET minister_government_rep_id = 2024 WHERE id = 24;
 UPDATE ministries SET minister_government_rep_id = 2025 WHERE id = 25;
 
--- -- ============================================================================
--- -- TAGS
--- -- Classification tags for activities (used for subscriptions/news subscribe)
--- -- Updated with new values
--- -- ============================================================================
-
--- INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
---   (1, 'bc coroners service', 'BC Coroners Service', 1, 'global', true, 'BC Coroners Service subscription tag', 1, 1),
---   (2, 'cleanbc', 'CleanBC', 2, 'global', true, 'CleanBC subscription tag', 1, 1),
---   (3, 'connectivity in b c', 'Connectivity in B.C.', 3, 'global', true, 'Connectivity in B.C. subscription tag', 1, 1),
---   (4, 'covid 19', 'COVID-19', 4, 'global', true, 'COVID-19 subscription tag', 1, 1),
---   (5, 'ending gender based violence', 'Ending Gender-Based Violence', 5, 'global', true, 'Ending Gender-Based Violence subscription tag', 1, 1),
---   (6, 'gender equity', 'Gender Equity', 6, 'global', true, 'Gender Equity subscription tag', 1, 1),
---   (7, 'housing affordability', 'Housing Affordability', 7, 'global', true, 'Housing Affordability subscription tag', 1, 1),
---   (8, 'natural resources', 'Natural Resources', 8, 'global', true, 'Natural Resources subscription tag', 1, 1),
---   (9, 'tariffs', 'Tariffs', 9, 'global', true, 'Tariffs subscription tag', 1, 1)
--- ON CONFLICT (id) DO NOTHING;
-
 -- ============================================================================
 -- TAGS
 -- Tags teams can apply to activities; currently limited to use by admin
@@ -702,6 +682,7 @@ ON CONFLICT (id) DO NOTHING;
 -- VENUE PRESETS
 -- Admin-defined named venues for the activity form.
 -- Pinned presets appear as quick-select badges beneath the Venue Name input.
+-- First run only: WHERE NOT EXISTS skips inserting if any row exists (re-seed will not refresh presets).
 -- ============================================================================
 
 INSERT INTO venue_presets (venue_name, address_line1, city, province_or_state, country, sort_order, is_active, is_pinned, pinned_sort_order, created_by, last_updated_by)
