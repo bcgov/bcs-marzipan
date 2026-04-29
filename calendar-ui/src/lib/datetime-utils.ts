@@ -108,6 +108,9 @@ export type FormatExactDateOptions = {
  * parsed as UTC, which shifts the date back one day in timezones behind UTC).
  */
 export function parseDateOnlyString(dateStr: string): Date {
+  if (dateStr.includes('T')) {
+    return new Date(dateStr);
+  }
   const parts = dateStr.split('-').map(Number);
   const [y, m, d] = parts;
   return new Date(y, (m ?? 1) - 1, d ?? 1);
