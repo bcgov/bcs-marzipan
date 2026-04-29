@@ -134,6 +134,10 @@ export class ReportsController {
       'Content-Disposition',
       `attachment; filename="${type}-report.pdf"`
     );
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, private'
+    );
     res.send(buffer);
   }
 

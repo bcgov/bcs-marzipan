@@ -4,10 +4,15 @@ import puppeteer, {
   type PuppeteerLifeCycleEvent,
 } from 'puppeteer';
 
+import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
+
 /**
  * Rendering defaults for print-aligned report PDFs. Kept together so the
  * viewport used during measurement matches the `@page` / table column widths
  * encoded in the shared print stylesheet. Page size aligns with Letter (8.5×11).
+ *
+ * Viewport width matches {@link REPORT_PRINT_LAYOUT_WIDTH_PX} so PDF wrapping
+ * aligns with `.corpcal-print-root` max width in shared PRINT_STYLES.
  */
 const DEFAULT_PDF_OPTIONS: PDFOptions = {
   format: 'Letter',
@@ -22,7 +27,7 @@ const DEFAULT_PDF_OPTIONS: PDFOptions = {
 };
 
 const DEFAULT_VIEWPORT = {
-  width: 1024,
+  width: REPORT_PRINT_LAYOUT_WIDTH_PX,
   height: 1440,
   deviceScaleFactor: 2,
 } as const;

@@ -10,8 +10,10 @@ import * as path from 'path';
  * that is prepended to the shared print stylesheet. This keeps the PDF path
  * self-contained and identical to the in-browser render.
  *
- * The monorepo ships BC Sans in `calendar-ui/public/fonts/` (served at
- * `/fonts/...` by Vite). We resolve those files once at module load.
+ * **Single source of truth:** BC Sans `.woff2` files live in
+ * `calendar-ui/public/fonts/` (Vite serves them at `/fonts/...` in the app).
+ * PDF export does not load URLs from a separate calendar-service `fonts/`
+ * directory; it embeds the same files as base64 `@font-face` for Puppeteer.
  */
 
 interface FontVariant {

@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
@@ -32,11 +38,26 @@ import {
 } from '@/lib/report-from-activity-filters';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
+/** Persists fullscreen print preview width (full viewport vs Letter content width). */
+const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
+
+type ReportPreviewSheetWidthMode = 'full' | 'print';
+
+function readStoredPreviewSheetWidth(): ReportPreviewSheetWidthMode {
+  if (typeof sessionStorage === 'undefined') return 'print';
+  try {
+    const v = sessionStorage.getItem(REPORTS_PREVIEW_SHEET_WIDTH_KEY);
+    if (v === 'full' || v === 'print') return v;
+  } catch {
+    /* private mode */
+  }
+  return 'print';
+}
 
 /**
- * Report tabs that use the shared React print preview as the primary view.
+ * Built-in report tabs that show the fullscreen print preview as primary content (not Custom).
  */
-function isReportHtmlPrimaryView(reportName: string): boolean {
+function isFullscreenPrintPreview(reportName: string): boolean {
   switch (reportName) {
     case 'look-ahead':
     case 'exec':
@@ -99,6 +120,8 @@ export function ReportsPage() {
     loadCustomReportConfig()
   );
   const [isExporting, setIsExporting] = useState(false);
+  const [previewSheetWidthMode, setPreviewSheetWidthMode] =
+    useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
 
@@ -162,6 +185,17 @@ export function ReportsPage() {
       console.log('[Reports] reportQueryParams', reportQueryParams);
     }
   }, [reportQueryParams]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        REPORTS_PREVIEW_SHEET_WIDTH_KEY,
+        previewSheetWidthMode
+      );
+    } catch {
+      /* private mode */
+    }
+  }, [previewSheetWidthMode]);
 
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
@@ -269,14 +303,62 @@ export function ReportsPage() {
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
-                  isReportHtmlPrimaryView(report.name) ? (
+                  isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                       <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-b px-6 py-2">
+                          <span className="text-muted-foreground text-sm">
+                            Preview width
+                          </span>
+                          <div
+                            className="bg-muted/50 flex rounded-md border p-0.5"
+                            role="group"
+                            aria-label="Preview width"
+                          >
+                            <Button
+                              type="button"
+                              variant={
+                                previewSheetWidthMode === 'full'
+                                  ? 'secondary'
+                                  : 'ghost'
+                              }
+                              size="sm"
+                              className="rounded-sm"
+                              aria-pressed={previewSheetWidthMode === 'full'}
+                              onClick={() => setPreviewSheetWidthMode('full')}
+                            >
+                              Full width
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={
+                                previewSheetWidthMode === 'print'
+                                  ? 'secondary'
+                                  : 'ghost'
+                              }
+                              size="sm"
+                              className="rounded-sm"
+                              aria-pressed={previewSheetWidthMode === 'print'}
+                              onClick={() => setPreviewSheetWidthMode('print')}
+                            >
+                              PDF width
+                            </Button>
+                          </div>
+                        </div>
                         <div
                           className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
                           aria-label="Report preview"
                         >
-                          <div className="report-print-preview-root min-w-0">
+                          <div
+                            className="report-print-preview-root min-w-0"
+                            style={
+                              (previewSheetWidthMode === 'full'
+                                ? {
+                                    '--corpcal-print-root-max-width': 'none',
+                                  }
+                                : undefined) as CSSProperties | undefined
+                            }
+                          >
                             <PrintReportPreview
                               reportTypeName={report.name}
                               data={data}

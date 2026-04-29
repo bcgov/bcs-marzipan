@@ -1,4 +1,8 @@
 export {
+  REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
+} from './reportPrintDimensions';
+export {
   getReportTemplateHtml,
   PRINT_STYLES,
   wrapReportHtmlDocument,

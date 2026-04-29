@@ -1,4 +1,5 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
+import { REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS } from '../../reportPrintDimensions';
 
 /**
  * Single source of print styles for both in-app preview and Puppeteer-generated
@@ -36,6 +37,10 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink);
   background: var(--corpcal-surface);
   box-sizing: border-box;
+  max-width: var(--corpcal-print-root-max-width, ${REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS});
+  margin-left: auto;
+  margin-right: auto;
+  transition: max-width 300ms ease-out;
 }
 .${CORPCAL_PRINT_ROOT_CLASS} *,
 .${CORPCAL_PRINT_ROOT_CLASS} *::before,

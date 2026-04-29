@@ -1,3 +1,5 @@
+import { REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS } from '../../reportPrintDimensions';
+
 export const CUSTOM_REPORT_PRINT_STYLES = `
 .custom-report-root {
   font-family: BCSans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -5,6 +7,10 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
   line-height: 1.4;
   color: #0f172a;
   box-sizing: border-box;
+  max-width: var(--corpcal-print-root-max-width, ${REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS});
+  margin-left: auto;
+  margin-right: auto;
+  transition: max-width 300ms ease-out;
 }
 .custom-report-root *, .custom-report-root *::before, .custom-report-root *::after { box-sizing: border-box; }
 .custom-report-doc-title {
