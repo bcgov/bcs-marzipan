@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
+import { parseDateOnlyString } from '@/lib/datetime-utils';
 import { sortLookAheadActivities } from '@/lib/look-ahead-sort';
 import { cn } from '@/lib/utils';
 
@@ -10,9 +11,7 @@ import { Badge } from '../ui/badge';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '–';
-  const parts = dateStr.split('-').map(Number);
-  const [y, m, day] = parts;
-  const d = new Date(y, (m ?? 1) - 1, day ?? 1);
+  const d = parseDateOnlyString(dateStr);
   return d.toLocaleDateString('en-CA', {
     weekday: 'short',
     month: 'short',
@@ -30,7 +29,7 @@ function formatTime(dateStr: string | null, timeStr: string | null): string {
     return `${h12}:${minute} ${ampm}`;
   }
   if (dateStr) {
-    const d = new Date(dateStr);
+    const d = parseDateOnlyString(dateStr);
     return d.toLocaleTimeString('en-CA', {
       hour: 'numeric',
       minute: '2-digit',
