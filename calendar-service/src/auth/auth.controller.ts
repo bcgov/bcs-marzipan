@@ -19,7 +19,11 @@ import {
 import type { CookieOptions, Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
-import { ACCESS_TOKEN_COOKIE, type AuthUser } from '@corpcal/shared';
+import {
+  ACCESS_TOKEN_COOKIE,
+  DEFAULT_JWT_EXPIRES_IN,
+  type AuthUser,
+} from '@corpcal/shared';
 
 import { AuthService } from './auth.service';
 import { AzureOidcService } from './azure-oidc.service';
@@ -278,7 +282,7 @@ export class AuthController {
   ): void {
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...this.getAuthCookieOptions(req),
-      maxAge: (expiresIn ?? 3600) * 1000,
+      maxAge: (expiresIn ?? DEFAULT_JWT_EXPIRES_IN) * 1000,
     });
   }
 
