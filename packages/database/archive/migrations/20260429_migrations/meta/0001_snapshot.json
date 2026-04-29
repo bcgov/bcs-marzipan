@@ -1,6 +1,6 @@
 {
-  "id": "5c6b874c-a8c4-47c6-9660-3db604e7b9df",
-  "prevId": "52beaedc-68b3-4b65-ac64-9efbc132886a",
+  "id": "31e84e8d-ce2d-42d3-aa62-f9dccc45b531",
+  "prevId": "a200f2c0-0143-457f-ac8e-f2205939fb4c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -6536,102 +6536,6 @@
         "banner_settings_last_updated_by_users_id_fk": {
           "name": "banner_settings_last_updated_by_users_id_fk",
           "tableFrom": "banner_settings",
-          "tableTo": "users",
-          "columnsFrom": ["last_updated_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.login_modal_settings": {
-      "name": "login_modal_settings",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "title": {
-          "name": "title",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'Notice'"
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date_time": {
-          "name": "start_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "end_date_time": {
-          "name": "end_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_date_time": {
-          "name": "created_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_updated_date_time": {
-          "name": "last_updated_date_time",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_updated_by": {
-          "name": "last_updated_by",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "login_modal_settings_created_by_users_id_fk": {
-          "name": "login_modal_settings_created_by_users_id_fk",
-          "tableFrom": "login_modal_settings",
-          "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "login_modal_settings_last_updated_by_users_id_fk": {
-          "name": "login_modal_settings_last_updated_by_users_id_fk",
-          "tableFrom": "login_modal_settings",
           "tableTo": "users",
           "columnsFrom": ["last_updated_by"],
           "columnsTo": ["id"],
