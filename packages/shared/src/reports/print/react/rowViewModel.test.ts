@@ -118,6 +118,20 @@ describe('toPrintRowViewModel', () => {
     expect(row.dateTime.lookAheadStatus).toBeNull();
   });
 
+  it('uses an all-day label instead of a formatted start time', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        isAllDay: true,
+        startDate: '2026-04-27T00:00:00.000Z',
+        startTime: null,
+      },
+      { activityBaseUrl: 'http://localhost:3000' }
+    );
+
+    expect(row.dateTime.startTime).toBe('All day');
+  });
+
   it('falls back from ministry abbreviation to full ministry to team display name', () => {
     const onlyTeam = toPrintRowViewModel(
       {

@@ -181,7 +181,10 @@ export function toPrintRowViewModel(
       endDate:
         endDateLabel && endDateLabel !== startDateLabel ? endDateLabel : '',
       dateStatus: activity.dateStatus?.trim() ?? '',
-      startTime: formatTime12h(activity.startDate, activity.startTime),
+      startTime:
+        activity.isAllDay === true
+          ? 'All day'
+          : formatTime12h(activity.startDate, activity.startTime),
       timeStatus: activity.timeStatus?.trim() ?? '',
       lookAheadStatus: normaliseLookAheadStatus(activity.lookAheadStatus),
     },

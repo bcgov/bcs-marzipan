@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
@@ -346,17 +347,23 @@ export function ReportsPage() {
                           </div>
                         </div>
                         <div
-                          className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
+                          className="min-h-0 min-w-0 flex-1 overflow-auto px-6 py-6"
                           aria-label="Report preview"
                         >
                           <div
-                            className="report-print-preview-root min-w-0"
+                            className={
+                              previewSheetWidthMode === 'full'
+                                ? 'report-print-preview-root min-w-0'
+                                : 'report-print-preview-root'
+                            }
                             style={
                               (previewSheetWidthMode === 'full'
                                 ? {
                                     '--corpcal-print-root-max-width': 'none',
                                   }
-                                : undefined) as CSSProperties | undefined
+                                : {
+                                    minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
+                                  }) as CSSProperties
                             }
                           >
                             <PrintReportPreview
@@ -414,10 +421,15 @@ export function ReportsPage() {
                       </Tabs>
                       {report.name !== 'custom' ? (
                         <div
-                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full shrink-0 overflow-y-auto border-t bg-white px-6 py-6"
+                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 py-6"
                           aria-label="Print layout preview"
                         >
-                          <div className="report-print-preview-root min-w-0">
+                          <div
+                            className="report-print-preview-root"
+                            style={{
+                              minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
+                            }}
+                          >
                             <PrintReportPreview
                               reportTypeName={report.name}
                               data={data}

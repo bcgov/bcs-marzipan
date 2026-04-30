@@ -1,17 +1,21 @@
 /**
- * Layout width (CSS px) used when Chromium lays out HTML for PDF export and for
- * the virtual PDF page width (1024/96 in), so `.corpcal-print-root` resolves to
- * 1024px in both the in-app “PDF width” preview and the exported file — not
- * `100%` of a smaller Letter+margin content box.
+ * Canonical layout width (CSS px) for print HTML: Puppeteer viewport and the
+ * in-app “PDF width” preview. WYSIWYG line breaks are computed at this width.
  */
 export const REPORT_PRINT_LAYOUT_WIDTH_PX = 1024 as const;
 
 /**
- * Max width for `.corpcal-print-root` / `.custom-report-root` — same constraint
- * in Puppeteer PDFs and in-app preview (“Print width” toggle).
- *
- * Derived from {@link REPORT_PRINT_LAYOUT_WIDTH_PX}. `min(100%, …)` keeps narrow
- * viewports usable.
+ * US Letter content width at 96 CSS px/in with zero margins (8.5in × 96).
+ * Used only to scale PDF output to fit the physical page while layout stays at
+ * {@link REPORT_PRINT_LAYOUT_WIDTH_PX}.
+ */
+export const REPORT_LETTER_CONTENT_WIDTH_PX = 816 as const;
+
+/**
+ * Max width for `.corpcal-print-root` / `.custom-report-root` — same value in
+ * Puppeteer and in-app preview (“PDF width”). Fixed width so the sheet does not
+ * shrink below the canonical layout; parents should scroll horizontally when
+ * the viewport is narrower.
  */
 export const REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS =
-  `min(100%, ${REPORT_PRINT_LAYOUT_WIDTH_PX}px)` as const;
+  `${REPORT_PRINT_LAYOUT_WIDTH_PX}px` as const;

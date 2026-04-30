@@ -4,25 +4,29 @@ import puppeteer, {
   type PuppeteerLifeCycleEvent,
 } from 'puppeteer';
 
-import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
+import {
+  REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_PRINT_LAYOUT_WIDTH_PX,
+} from '@corpcal/shared/reports/reportPrintHtml';
+
+/** Maps canonical layout width (1024px) onto Letter content width (816px). */
+const PDF_LAYOUT_TO_LETTER_SCALE =
+  REPORT_LETTER_CONTENT_WIDTH_PX / REPORT_PRINT_LAYOUT_WIDTH_PX;
 
 /**
- * Rendering defaults for print-aligned report PDFs. Kept together so the
- * viewport and PDF content box both match the shared 1024px print layout
- * (`REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS`), matching the in-app "PDF width"
- * preview. Without this, US Letter + margins yields a ~740px content width so
- * `min(100%, 1024px)` resolves to 100% of a narrow box — not 1024px — and
- * columns wrap more than in the preview.
+ * Print-aligned report PDFs: viewport matches shared layout width so HTML
+ * line breaks match the in-app “PDF width” preview. `scale` shrinks that
+ * layout onto US Letter without reflow.
  *
- * Page width is 1024 CSS px at 96px/in; height matches Letter (11in) for
- * familiar page breaks. Margins are zero so `.corpcal-print-root` is full bleed
- * to the page edge, like the preview container.
+ * Page format is Letter (8.5×11in). Margins are zero. `preferCSSPageSize`
+ * respects `@page` when present; if output clips in QA, revisit relative to
+ * `scale`.
  */
 const DEFAULT_PDF_OPTIONS: PDFOptions = {
+  format: 'Letter',
   printBackground: true,
-  preferCSSPageSize: false,
-  width: `${REPORT_PRINT_LAYOUT_WIDTH_PX / 96}in`,
-  height: '11in',
+  preferCSSPageSize: true,
+  scale: PDF_LAYOUT_TO_LETTER_SCALE,
   margin: {
     top: '0',
     bottom: '0',
