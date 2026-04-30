@@ -18,6 +18,7 @@ export * from './editLocks';
 export * from './editLockPendingHandoffs';
 export * from './applicationSettings';
 export * from './sessions';
+export * from './passwordResetTokens';
 export * from './bannerSettings';
 export * from './loginModalSettings';
 export * from './activitySavedFilters';

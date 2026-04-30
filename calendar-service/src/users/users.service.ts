@@ -93,6 +93,7 @@ export class UsersService {
         adEmail: normalizedEmail,
         adDisplayName: dto.displayName?.trim() || null,
         isActive: true,
+        status: 'pending',
         createdBy: createdByUserId,
         createdDateTime: new Date(),
       })

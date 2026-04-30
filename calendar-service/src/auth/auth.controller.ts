@@ -9,6 +9,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,7 +22,11 @@ import * as oidc from 'openid-client';
 
 import {
   ACCESS_TOKEN_COOKIE,
+  changePasswordBodySchema,
+  checkEmailBodySchema,
   DEFAULT_JWT_EXPIRES_IN,
+  setPasswordBodySchema,
+  verifyResetCodeBodySchema,
   type AuthUser,
 } from '@corpcal/shared';
 
@@ -46,9 +51,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Login',
-    description: 'Authenticate and receive JWT (mock: use username only)',
+    description:
+      'Authenticate and receive JWT. For local strategy: supply email as username + password.',
   })
-  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful or status signal',
+  })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() body: unknown,
@@ -61,8 +70,141 @@ export class AuthController {
     }
     const result = await this.authService.login(parsed.data);
 
-    this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
+    // Status-signal responses (pending / password_reset_required) don't carry a token
+    if (
+      'requiresPasswordSetup' in result ||
+      'requiresPasswordReset' in result
+    ) {
+      return result;
+    }
 
+    this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Local auth endpoints
+  // ---------------------------------------------------------------------------
+
+  @Public()
+  @Get('local/config')
+  @ApiOperation({
+    summary: 'Local auth availability',
+    description:
+      'Returns whether local (email/password) or mock login is configured',
+  })
+  @ApiResponse({ status: 200, description: 'Local auth availability status' })
+  localConfig() {
+    return {
+      enabled: this.authService.isLocalAuthEnabled(),
+      mockEnabled: this.authService.isMockEnabled(),
+    };
+  }
+
+  @Public()
+  @Post('check-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Check email status',
+    description: 'Returns account status for a given email (local auth)',
+  })
+  @ApiResponse({ status: 200, description: 'Account status' })
+  async checkEmail(@Body() body: unknown) {
+    const parsed = checkEmailBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.message ?? 'Invalid request');
+    }
+    return this.authService.checkEmail(parsed.data.email);
+  }
+
+  @Public()
+  @Post('set-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set first-time password',
+    description: 'Activates a pending account by setting its initial password',
+  })
+  @ApiResponse({ status: 200, description: 'Password set; user logged in' })
+  async setPassword(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const parsed = setPasswordBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.message ?? 'Invalid request');
+    }
+    if (parsed.data.password !== parsed.data.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+    const result = await this.authService.setPassword(
+      parsed.data.email,
+      parsed.data.password
+    );
+    this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
+    return result;
+  }
+
+  @Public()
+  @Post('verify-reset-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify password reset code',
+    description: 'Validates an admin-issued reset code without consuming it',
+  })
+  @ApiResponse({ status: 200, description: 'Code validity result' })
+  async verifyResetCode(@Body() body: unknown) {
+    const parsed = verifyResetCodeBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.message ?? 'Invalid request');
+    }
+    const valid = await this.authService.verifyResetCode(
+      parsed.data.email,
+      parsed.data.resetCode
+    );
+    if (!valid) {
+      throw new UnauthorizedException('Invalid or expired reset code');
+    }
+    return { valid: true };
+  }
+
+  @Public()
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Change password',
+    description:
+      'Forced-reset flow (tempToken) or voluntary change (Bearer token + currentPassword)',
+  })
+  @ApiResponse({ status: 200, description: 'Password changed' })
+  async changePassword(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const parsed = changePasswordBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.message ?? 'Invalid request');
+    }
+    if (parsed.data.newPassword !== parsed.data.confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : (req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined);
+
+    const result = await this.authService.changePassword({
+      tempToken: parsed.data.tempToken,
+      currentPassword: parsed.data.currentPassword,
+      newPassword: parsed.data.newPassword,
+      bearerToken,
+    });
+
+    // Forced-reset returns a full auth response — set the cookie
+    if ('accessToken' in result) {
+      this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
+    }
     return result;
   }
 

@@ -6,11 +6,19 @@ import { createContext } from 'react';
 
 import type { AuthUser } from '@corpcal/shared';
 
+export interface LoginResult {
+  success: boolean;
+  requiresPasswordSetup?: boolean;
+  requiresPasswordReset?: boolean;
+  email?: string;
+  error?: string;
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password?: string) => Promise<void>;
+  login: (username: string, password?: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasPermission: (permissionKey: string) => boolean;
