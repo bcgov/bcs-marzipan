@@ -13,7 +13,7 @@ spec:
     type: Git
     git:
       uri: https://github.com/bcgov/bcs-marzipan.git
-      ref: develop
+      ref: ${GIT_REF}
     # Use repository root as build context so Dockerfile can access root files
     # (tsconfig.base.json, package*.json, packages/)
     contextDir: .
