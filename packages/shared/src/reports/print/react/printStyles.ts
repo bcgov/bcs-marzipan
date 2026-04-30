@@ -34,8 +34,10 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-status-changed: #ffddb3;
   --print-status-red: #ff978d;
 
+  /* Body size for the whole subtree; descendant font sizes use em so they scale with this root (browser zoom still applies to the page). */
+  --print-body-font-size: 14px;
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12px;
+  font-size: var(--print-body-font-size);
   line-height: 1.4;
   color: var(--print-ink);
   background: var(--corpcal-surface);
@@ -74,13 +76,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-header-title {
   margin: 0;
-  font-size: 20px;
+  font-size: calc(1em * 20 / 12);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 .corpcal-print-header-range {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 400;
   opacity: 0.95;
 }
@@ -88,7 +90,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   position: absolute;
   top: 18px;
   right: 24px;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   color: var(--corpcal-text-alert);
   letter-spacing: 0.06em;
@@ -98,7 +100,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--print-banner-bg);
   border-bottom: 1px solid var(--print-border);
   padding: 8px 24px;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   color: var(--print-banner-fg);
 }
@@ -121,7 +123,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-day-heading {
   margin: 0 0 6px;
   padding: 6px 0;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--print-section-fg);
@@ -130,7 +132,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-section-heading {
   margin: 12px 0 4px;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   color: var(--print-section-fg);
 }
@@ -146,7 +148,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: 12px;
+  font-size: 1em;
 }
 .corpcal-print-table th {
   text-align: left;
@@ -154,7 +156,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--corpcal-table-header-bg);
   color: var(--corpcal-table-header-fg);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 1em;
   border-bottom: 1px solid var(--corpcal-table-border);
 }
 .corpcal-print-table td {
@@ -174,8 +176,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-col-1 { width: 20%; }
 .corpcal-print-col-2 { width: 8%; }
-.corpcal-print-col-3 { width: 40%; }
-.corpcal-print-col-4 { width: 20%; }
+.corpcal-print-col-3 { width: 45%; }
+.corpcal-print-col-4 { width: 15%; }
 .corpcal-print-col-5 { width: 12%; }
 
 .corpcal-print-stack > * + * { margin-top: 4px; }
@@ -184,11 +186,11 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 
 .corpcal-print-meta-strong {
   font-weight: 700;
-  font-size: 12px;
+  font-size: 1em;
   color: var(--print-ink);
 }
 .corpcal-print-meta {
-  font-size: 12px;
+  font-size: 1em;
   color: var(--print-ink-muted);
 }
 .corpcal-print-inline-status {
@@ -202,17 +204,17 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   gap: 0;
 }
 .corpcal-print-meta-faint {
-  font-size: 12px;
+  font-size: 1em;
   color: var(--print-ink-faint);
 }
 .corpcal-print-title {
   font-weight: 600;
-  font-size: 12px;
+  font-size: 1em;
   line-height: 1.35;
   color: var(--print-ink);
 }
 .corpcal-print-rich {
-  font-size: 12px;
+  font-size: 1em;
   line-height: 1.5;
   color: var(--print-ink-muted);
 }
@@ -236,7 +238,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   margin-bottom: 2px;
 }
 .corpcal-print-flag {
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--print-ink-muted);
@@ -248,13 +250,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--bc-gold);
 }
 
-/* Shad-style badge: rounded-full, 12px, font-semibold, border/padding */
+/* Shad-style badge: rounded-full, body em, font-semibold, border/padding */
 .corpcal-print-pill {
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
   padding: 0.125rem 0.625rem;
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 600;
   line-height: 1.25;
   border: 1px solid var(--print-border);
@@ -306,7 +308,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-empty {
   padding: 12px;
-  font-size: 12px;
+  font-size: 1em;
   font-style: italic;
   color: var(--print-ink-faint);
   border: 1px dashed var(--print-border);
@@ -316,7 +318,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-page-footer {
   margin-top: 16px;
   padding: 10px 24px 14px;
-  font-size: 12px;
+  font-size: 1em;
   line-height: 1.45;
   color: var(--print-ink-muted);
   border-top: 1px solid var(--print-border-soft);
@@ -326,17 +328,17 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   margin-top: 4px;
 }
 .corpcal-print-page-footer-confidential {
-  font-size: 12px;
+  font-size: 1em;
   font-weight: 700;
   color: var(--corpcal-text-alert);
   letter-spacing: 0.04em;
 }
 .corpcal-print-page-footer-timestamp {
-  font-size: 12px;
+  font-size: 1em;
   color: var(--print-ink);
 }
 .corpcal-print-page-footer-hint {
-  font-size: 12px;
+  font-size: 1em;
   color: var(--print-ink-muted);
 }
 
@@ -354,7 +356,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
     margin-top: 0;
   }
   .${CORPCAL_PRINT_ROOT_CLASS} {
-    font-size: 12px;
+    font-size: var(--print-body-font-size);
   }
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }
