@@ -79,7 +79,7 @@ describe('Login page — Azure AD', () => {
       await waitFor(() => expect(mockGetAzureConfig).toHaveBeenCalledOnce());
 
       expect(
-        screen.queryByRole('button', { name: /log in with idir/i })
+        screen.queryByRole('button', { name: /log in with microsoft/i })
       ).not.toBeInTheDocument();
     });
 
@@ -88,7 +88,7 @@ describe('Login page — Azure AD', () => {
       renderLogin();
 
       expect(
-        await screen.findByRole('button', { name: /log in with idir/i })
+        await screen.findByRole('button', { name: /log in with microsoft/i })
       ).toBeInTheDocument();
     });
 
@@ -99,7 +99,7 @@ describe('Login page — Azure AD', () => {
       await waitFor(() => expect(mockGetAzureConfig).toHaveBeenCalledOnce());
 
       expect(
-        screen.queryByRole('button', { name: /log in with idir/i })
+        screen.queryByRole('button', { name: /log in with microsoft/i })
       ).not.toBeInTheDocument();
     });
   });
@@ -162,7 +162,7 @@ describe('Login page — Azure AD', () => {
       renderLogin();
 
       const button = await screen.findByRole('button', {
-        name: /log in with idir/i,
+        name: /log in with microsoft/i,
       });
       await userEvent.click(button);
 
@@ -176,7 +176,7 @@ describe('Login page — Azure AD', () => {
       renderLogin();
 
       const button = await screen.findByRole('button', {
-        name: /log in with idir/i,
+        name: /log in with microsoft/i,
       });
       await userEvent.click(button);
 

@@ -20,6 +20,23 @@ import { Label } from '../components/ui/label';
 import { useAuth } from '../hooks/useAuth';
 import { getFriendlyErrorMessage } from '../lib/error-toast';
 
+const MicrosoftLogo = ({
+  className = 'mr-2 h-4 w-4',
+}: {
+  className?: string;
+}) => (
+  <svg
+    className={className}
+    viewBox="0 0 21 21"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="0" y="0" width="10" height="10" fill="#F25022" />
+    <rect x="11" y="0" width="10" height="10" fill="#7FBA00" />
+    <rect x="0" y="11" width="10" height="10" fill="#00A4EF" />
+    <rect x="11" y="11" width="10" height="10" fill="#FFB900" />
+  </svg>
+);
+
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -94,8 +111,8 @@ export function Login() {
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardHeader className="space-y-4 pb-2 text-center">
           <div className="flex flex-col items-center space-y-4">
-            <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-full">
-              <Lock className="text-primary h-8 w-8" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-400 shadow-md">
+              <Lock className="h-8 w-8 text-white" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
@@ -109,79 +126,96 @@ export function Login() {
         </CardHeader>
 
         <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {configLoaded && !azureEnabled && (
-              <>
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="username"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Username
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="Enter your username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="h-11 pl-10"
-                      autoComplete="username"
-                      autoFocus
-                      disabled={isLoading}
-                      required
-                    />
-                  </div>
-                </div>
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="password"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password (optional for dev)"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 pr-10 pl-10"
-                      autoComplete="current-password"
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    In development mode, password is optional
-                  </p>
-                </div>
-              </>
-            )}
+          {configLoaded && azureEnabled && (
+            <Button
+              type="button"
+              className="h-11 w-full font-medium"
+              disabled={isAzureLoading}
+              onClick={handleAzureLogin}
+            >
+              {isAzureLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecting to Microsoft...
+                </>
+              ) : (
+                <>
+                  <MicrosoftLogo />
+                  Log in with Microsoft
+                </>
+              )}
+            </Button>
+          )}
 
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
+          {configLoaded && !azureEnabled && (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="username"
+                  className="text-sm font-medium text-slate-700"
+                >
+                  Username
+                </Label>
+                <div className="relative">
+                  <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="h-11 pl-10"
+                    autoComplete="username"
+                    autoFocus
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
               </div>
-            )}
 
-            {configLoaded && !azureEnabled && (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-slate-700"
+                >
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password (optional for dev)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 pr-10 pl-10"
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  In development mode, password is optional
+                </p>
+              </div>
+
               <Button
                 type="submit"
                 className="h-11 w-full font-medium"
@@ -196,26 +230,8 @@ export function Login() {
                   'Log In'
                 )}
               </Button>
-            )}
-
-            {configLoaded && azureEnabled && (
-              <Button
-                type="button"
-                className="h-11 w-full"
-                disabled={isLoading || isAzureLoading}
-                onClick={handleAzureLogin}
-              >
-                {isAzureLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting to Microsoft...
-                  </>
-                ) : (
-                  'Log in with IDIR'
-                )}
-              </Button>
-            )}
-          </form>
+            </form>
+          )}
 
           <div className="mt-8 border-t pt-6 text-center">
             <p className="text-xs text-slate-400">
