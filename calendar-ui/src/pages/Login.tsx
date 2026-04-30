@@ -102,7 +102,7 @@ export function Login() {
                 Corporate Calendar
               </CardTitle>
               <CardDescription className="mt-2 text-slate-500">
-                Sign in to access the calendar management system
+                Log in to access the calendar management system
               </CardDescription>
             </div>
           </div>
@@ -190,10 +190,10 @@ export function Login() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Logging in...
                   </>
                 ) : (
-                  'Sign In'
+                  'Log In'
                 )}
               </Button>
             )}
@@ -211,7 +211,7 @@ export function Login() {
                     Redirecting to Microsoft...
                   </>
                 ) : (
-                  'Sign in with IDIR'
+                  'Log in with IDIR'
                 )}
               </Button>
             )}

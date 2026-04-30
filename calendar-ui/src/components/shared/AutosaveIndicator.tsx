@@ -24,7 +24,7 @@ export const AutosaveIndicator: FC<AutosaveIndicatorProps> = ({
   if (!isAuthenticated) {
     return (
       <div className="text-sm">
-        <span className="text-slate-400">Sign in to enable draft saving</span>
+        <span className="text-slate-400">Log in to enable draft saving</span>
       </div>
     );
   }
