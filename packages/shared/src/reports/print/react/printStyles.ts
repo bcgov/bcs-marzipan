@@ -1,5 +1,8 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
-import { REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS } from '../../reportPrintDimensions';
+import {
+  REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
+} from '../../reportPrintDimensions';
 
 /**
  * Single source of print styles for both in-app preview and Puppeteer-generated
@@ -313,6 +316,26 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink-faint);
   border: 1px dashed var(--print-border);
   background: var(--corpcal-table-row-alt-bg);
+}
+
+/* Look-ahead PDF cover only: one US Letter–aspect sheet at canonical print layout width. */
+.corpcal-print-cover-sheet {
+  box-sizing: border-box;
+  width: ${REPORT_PRINT_LAYOUT_WIDTH_PX}px;
+  height: calc(${REPORT_PRINT_LAYOUT_WIDTH_PX}px * 11 / 8.5);
+  margin: 0 auto;
+  padding: 0;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
+  background: #fff;
+}
+.corpcal-print-cover-sheet img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  margin: 0;
 }
 
 .corpcal-print-page-footer {

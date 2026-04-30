@@ -30,8 +30,14 @@ import { DatabaseService } from '../database/database.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { PdfGeneratorService } from './pdf-generator.service';
-import { buildPrintFontFaceCss } from './print-assets';
+import {
+  buildLookAheadReportCoverDataUrl,
+  buildPrintFontFaceCss,
+} from './print-assets';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
+
+/** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
+const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set(['look-ahead', 'exec']);
 
 function pickDefinedActivityFilters(
   filters: FilterActivitiesQueryParams
@@ -82,6 +88,23 @@ export class ReportsService {
     const trimmed = raw?.trim();
     if (trimmed && trimmed.length > 0) return trimmed.replace(/\/+$/, '');
     return 'http://localhost:3000';
+  }
+
+  /**
+   * HTML for the first PDF sheet only (not used in calendar-ui print preview).
+   */
+  private buildLookAheadCoverPageHtmlForPdf(reportType: string): string {
+    if (!REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)) {
+      return '';
+    }
+    const dataUrl = buildLookAheadReportCoverDataUrl();
+    if (!dataUrl) {
+      this.logger.warn(
+        'Look-ahead cover image not found under calendar-ui/public/reports; PDF export continues without a cover page.'
+      );
+      return '';
+    }
+    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/></div>`;
   }
 
   /**
@@ -538,7 +561,11 @@ export class ReportsService {
       );
     }
     const fontFaceCss = buildPrintFontFaceCss() ?? undefined;
-    const html = wrapReportHtmlDocument(inner, { fontFaceCss });
+    const coverPageHtml = this.buildLookAheadCoverPageHtmlForPdf(reportType);
+    const html = wrapReportHtmlDocument(inner, {
+      fontFaceCss,
+      coverPageHtml,
+    });
     return this.pdfGeneratorService.generatePdfFromHtml(html);
   }
 }

@@ -4,6 +4,7 @@ import {
   PRINT_STYLES,
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,
+  type WrapPrintReportHtmlDocumentOptions,
 } from './print/react';
 
 /**
@@ -68,9 +69,10 @@ export function getReportTemplateHtml(
  */
 export function wrapReportHtmlDocument(
   fragmentHtml: string,
-  options: { fontFaceCss?: string } = {}
+  options: WrapPrintReportHtmlDocumentOptions = {}
 ): string {
   return wrapPrintReportHtmlDocument(fragmentHtml, options);
 }
 
+export type { WrapPrintReportHtmlDocumentOptions };
 export { PRINT_STYLES };

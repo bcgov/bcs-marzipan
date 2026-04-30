@@ -8,6 +8,7 @@ export {
   PRINT_STYLES,
   wrapReportHtmlDocument,
   type ReportTemplateOptions,
+  type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
 export {
   CORPCAL_PRINT_ROOT_CLASS,

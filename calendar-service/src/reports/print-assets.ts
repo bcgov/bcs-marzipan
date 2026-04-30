@@ -99,3 +99,53 @@ export function buildPrintFontFaceCss(): string | null {
   cachedFontFaceCss = blocks.length > 0 ? blocks.join('') : null;
   return cachedFontFaceCss;
 }
+
+const LOOK_AHEAD_COVER_FILE_NAME = '20260430_look_ahead_report_cover_50.webp';
+
+/**
+ * Resolve `calendar-ui/public/reports/` (same path strategy as
+ * {@link buildPrintFontFaceCss}) so PDF export can embed the look-ahead cover
+ * WebP as a `data:` URL for Puppeteer.
+ */
+function resolveReportsPublicDir(): string | null {
+  const candidates = [
+    path.resolve(__dirname, '../../../calendar-ui/public/reports'),
+    path.resolve(__dirname, '../../calendar-ui/public/reports'),
+    path.resolve(process.cwd(), 'calendar-ui/public/reports'),
+  ];
+  for (const candidate of candidates) {
+    try {
+      readFileSync(path.join(candidate, LOOK_AHEAD_COVER_FILE_NAME));
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+let cachedLookAheadCoverDataUrl: string | null | undefined;
+
+/**
+ * Returns a `data:image/webp;base64,...` URL for the look-ahead report cover, or
+ * `null` if the file is missing (PDF export continues without a cover).
+ */
+export function buildLookAheadReportCoverDataUrl(): string | null {
+  if (cachedLookAheadCoverDataUrl !== undefined) {
+    return cachedLookAheadCoverDataUrl;
+  }
+  const dir = resolveReportsPublicDir();
+  if (!dir) {
+    cachedLookAheadCoverDataUrl = null;
+    return null;
+  }
+  try {
+    const buffer = readFileSync(path.join(dir, LOOK_AHEAD_COVER_FILE_NAME));
+    const base64 = buffer.toString('base64');
+    cachedLookAheadCoverDataUrl = `data:image/webp;base64,${base64}`;
+    return cachedLookAheadCoverDataUrl;
+  } catch {
+    cachedLookAheadCoverDataUrl = null;
+    return null;
+  }
+}

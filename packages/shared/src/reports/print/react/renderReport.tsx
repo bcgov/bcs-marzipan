@@ -95,11 +95,15 @@ export function renderPrintReportFragmentHtml(
 export function renderPrintReportDocumentHtml(
   reportTypeName: ReactRenderableReportType,
   data: ReportDataResponse,
-  options: RenderReportOptions & { fontFaceCss?: string }
+  options: RenderReportOptions & {
+    fontFaceCss?: string;
+    coverPageHtml?: string;
+  }
 ): string {
   const fragment = renderPrintReportFragmentHtml(reportTypeName, data, options);
   return wrapPrintReportHtmlDocument(fragment, {
     fontFaceCss: options.fontFaceCss,
+    coverPageHtml: options.coverPageHtml,
   });
 }
 
@@ -109,12 +113,19 @@ export function renderPrintReportDocumentHtml(
  * Exposed so callers that render the fragment at build-time (tests, snapshots)
  * can share the same document shell.
  */
+export type WrapPrintReportHtmlDocumentOptions = {
+  fontFaceCss?: string;
+  /** Prepended inside `<body>` before the report fragment (e.g. PDF-only cover). */
+  coverPageHtml?: string;
+};
+
 export function wrapPrintReportHtmlDocument(
   fragmentHtml: string,
-  options: { fontFaceCss?: string } = {}
+  options: WrapPrintReportHtmlDocumentOptions = {}
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${fragmentHtml}</body></html>`;
+  const coverPageHtml = options.coverPageHtml ?? '';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

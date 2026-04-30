@@ -6,6 +6,7 @@ export {
   wrapPrintReportHtmlDocument,
   type ReactRenderableReportType,
   type RenderReportOptions,
+  type WrapPrintReportHtmlDocumentOptions,
 } from './renderReport';
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';

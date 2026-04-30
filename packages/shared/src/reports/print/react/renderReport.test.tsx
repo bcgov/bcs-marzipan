@@ -263,4 +263,19 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(fontIdx).toBeGreaterThan(-1);
     expect(rootIdx).toBeGreaterThan(fontIdx);
   });
+
+  it('prepends optional cover HTML before the report fragment', () => {
+    const coverPageHtml =
+      '<div class="corpcal-print-cover-sheet"><img src="data:image/webp;base64,UklGRiI=" alt=""/></div>';
+    const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+      coverPageHtml,
+    });
+
+    const coverIdx = html.indexOf('corpcal-print-cover-sheet');
+    const bodyReportIdx = html.indexOf('data-report-template=');
+    expect(coverIdx).toBeGreaterThan(-1);
+    expect(bodyReportIdx).toBeGreaterThan(coverIdx);
+  });
 });
