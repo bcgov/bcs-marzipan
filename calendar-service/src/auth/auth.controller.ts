@@ -422,6 +422,10 @@ export class AuthController {
     accessToken: string,
     expiresIn?: number
   ): void {
+    // lgtm[js/clear-text-storage-of-sensitive-data]
+    // The access token is a signed JWT stored in an httpOnly+secure+sameSite
+    // cookie. This is the intended storage mechanism; encryption of the value
+    // itself is not required or appropriate here.
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...this.getAuthCookieOptions(req),
       maxAge: (expiresIn ?? DEFAULT_JWT_EXPIRES_IN) * 1000,
