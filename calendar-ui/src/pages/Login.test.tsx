@@ -428,7 +428,7 @@ describe('Login page — local email/password auth', () => {
       await screen.findByText(/create your password/i);
     }
 
-    it('navigates after successfully setting a password', async () => {
+    it('shows a success message and returns to email entry after setting a password', async () => {
       mockSetPassword.mockResolvedValue({});
       await reachSetPasswordStep();
       await userEvent.type(
@@ -442,7 +442,9 @@ describe('Login page — local email/password auth', () => {
       await userEvent.click(
         screen.getByRole('button', { name: /set password/i })
       );
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      await screen.findByText(/password set successfully/i);
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
 
     it('shows a validation error when passwords do not match', async () => {
@@ -545,7 +547,7 @@ describe('Login page — local email/password auth', () => {
       ).toBeInTheDocument();
     });
 
-    it('navigates after the new password is saved following a reset', async () => {
+    it('shows a success message and returns to email entry after the new password is saved following a reset', async () => {
       mockVerifyResetCode.mockResolvedValue({ valid: true });
       mockChangePassword.mockResolvedValue({});
       await reachResetCodeStep();
@@ -568,7 +570,9 @@ describe('Login page — local email/password auth', () => {
       await userEvent.click(
         screen.getByRole('button', { name: /set password/i })
       );
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      await screen.findByText(/password reset successfully/i);
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 });
