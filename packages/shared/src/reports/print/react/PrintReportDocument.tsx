@@ -2,10 +2,10 @@ import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import {
   dateKeyLocal,
-  formatCoverDate,
   formatDayHeading,
   parseKeyToDate,
 } from './dateFormatters';
+import { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 import { PrintPageFooter } from './PrintPageFooter';
 import { PrintSectionTable } from './PrintSectionTable';
 import { CORPCAL_PRINT_ROOT_CLASS } from './printStyles';
@@ -80,11 +80,7 @@ export function PrintReportDocument({
   const sections = collectSortedSections(data);
   const dateKeys = collectDateKeys(sections);
   const hasAny = dateKeys.length > 0;
-  const coverRange = hasAny
-    ? `${formatCoverDate(parseKeyToDate(dateKeys[0]))} to ${formatCoverDate(
-        parseKeyToDate(dateKeys[dateKeys.length - 1])
-      )}`
-    : '';
+  const coverRange = buildLookAheadCoverDateRangeLine(data);
 
   const reportName = data.report?.displayName ?? 'Report';
 

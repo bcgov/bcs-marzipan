@@ -3,6 +3,7 @@ import {
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from '../../reportPrintDimensions';
+import { LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX } from './lookAheadCoverLayout';
 
 /**
  * Single source of print styles for both in-app preview and Puppeteer-generated
@@ -321,6 +322,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 /* Look-ahead PDF cover only: one US Letter–aspect sheet at canonical print layout width. */
 .corpcal-print-cover-sheet {
   box-sizing: border-box;
+  position: relative;
   width: ${REPORT_PRINT_LAYOUT_WIDTH_PX}px;
   height: calc(${REPORT_PRINT_LAYOUT_WIDTH_PX}px * 11 / 8.5);
   margin: 0 auto;
@@ -332,10 +334,87 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-cover-sheet img {
   display: block;
+  position: relative;
+  z-index: 0;
   width: 100%;
   height: 100%;
   object-fit: fill;
   margin: 0;
+}
+.corpcal-print-cover-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Scale Figma typography (612px frame) to print layout width */
+  --lc-s: calc(${REPORT_PRINT_LAYOUT_WIDTH_PX} / ${LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX});
+}
+.corpcal-print-cover-abs {
+  position: absolute;
+  margin: 0;
+  white-space: pre-line;
+}
+/* Figma 188×73 hug: flex + 1px gap; old banner-bc margin-bottom was ~12 Figma-px too tall. */
+.corpcal-print-cover-banner-stack {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: calc(1px * var(--lc-s));
+  white-space: normal;
+}
+.corpcal-print-cover-confidential-flag {
+  text-align: right;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: calc(12px * var(--lc-s));
+  line-height: 1.2;
+  color: var(--corpcal-text-alert);
+}
+.corpcal-print-cover-gcpe-title {
+  font-weight: 700;
+  font-size: calc(14px * var(--lc-s));
+  line-height: calc(16px * var(--lc-s));
+  color: var(--corpcal-text);
+}
+.corpcal-print-cover-banner-bc {
+  font-weight: 700;
+  font-size: calc(20px * var(--lc-s));
+  line-height: calc(20px * var(--lc-s));
+  color: #fff;
+  margin: 0;
+}
+.corpcal-print-cover-banner-corporate {
+  font-weight: 400;
+  font-size: calc(30px * var(--lc-s));
+  line-height: calc(26px * var(--lc-s));
+  color: #fff;
+  margin: 0;
+  white-space: pre-line;
+}
+.corpcal-print-cover-date-range {
+  font-weight: 700;
+  font-size: calc(16px * var(--lc-s));
+  line-height: 1.35;
+  color: var(--corpcal-text);
+}
+.corpcal-print-cover-contents-heading {
+  font-weight: 400;
+  font-size: calc(14px * var(--lc-s));
+  line-height: 1.35;
+  color: var(--corpcal-text);
+}
+.corpcal-print-cover-contents-list {
+  font-weight: 400;
+  font-size: calc(14px * var(--lc-s));
+  line-height: 1.35;
+  color: var(--corpcal-text);
+}
+.corpcal-print-cover-footer-note {
+  font-weight: 400;
+  font-size: calc(12px * var(--lc-s));
+  line-height: 1.4;
+  color: var(--corpcal-text);
 }
 
 .corpcal-print-page-footer {
@@ -366,9 +445,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 
 @media print {
+  /* Cover is a body sibling before the report; fixed footer would otherwise print on
+     every sheet. Stack the one-page cover above the footer so sheet 1 has no footer. */
+  .corpcal-print-cover-sheet {
+    z-index: 2;
+  }
   .corpcal-print-root:has(> .corpcal-print-page-footer),
   .custom-report-root:has(> .corpcal-print-page-footer) {
     padding-bottom: 5.5rem;
+    position: relative;
+    z-index: 0;
   }
   .corpcal-print-page-footer {
     position: fixed;

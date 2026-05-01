@@ -10,6 +10,10 @@ import type {
   ReportSectionData,
 } from '@corpcal/shared/api/types';
 import {
+  buildLookAheadCoverDateRangeLine,
+  renderLookAheadCoverOverlayHtml,
+} from '@corpcal/shared/reports/print/react';
+import {
   buildReportExportTable,
   serializeReportTableToCsv,
 } from '@corpcal/shared/reports/reportExportFormat';
@@ -37,7 +41,11 @@ import {
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
 /** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
-const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set(['look-ahead', 'exec']);
+const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set([
+  'look-ahead',
+  'thirty-sixty-ninety',
+  'exec',
+]);
 
 function pickDefinedActivityFilters(
   filters: FilterActivitiesQueryParams
@@ -93,7 +101,10 @@ export class ReportsService {
   /**
    * HTML for the first PDF sheet only (not used in calendar-ui print preview).
    */
-  private buildLookAheadCoverPageHtmlForPdf(reportType: string): string {
+  private buildLookAheadCoverPageHtmlForPdf(
+    reportType: string,
+    data: ReportDataResponse
+  ): string {
     if (!REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)) {
       return '';
     }
@@ -104,7 +115,18 @@ export class ReportsService {
       );
       return '';
     }
-    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/></div>`;
+    const overlay = renderLookAheadCoverOverlayHtml({
+      dateRangeLine: buildLookAheadCoverDateRangeLine(data),
+      contactPhone:
+        this.configService.get<string>(
+          'REPORTS_LOOK_AHEAD_COVER_CONTACT_PHONE'
+        ) ?? '',
+      contactEmail:
+        this.configService.get<string>(
+          'REPORTS_LOOK_AHEAD_COVER_CONTACT_EMAIL'
+        ) ?? '',
+    });
+    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
   }
 
   /**
@@ -561,7 +583,10 @@ export class ReportsService {
       );
     }
     const fontFaceCss = buildPrintFontFaceCss() ?? undefined;
-    const coverPageHtml = this.buildLookAheadCoverPageHtmlForPdf(reportType);
+    const coverPageHtml = this.buildLookAheadCoverPageHtmlForPdf(
+      reportType,
+      data
+    );
     const html = wrapReportHtmlDocument(inner, {
       fontFaceCss,
       coverPageHtml,
