@@ -14,10 +14,12 @@ import { Login } from './Login';
 // ---------------------------------------------------------------------------
 
 const mockGetAzureConfig = vi.fn();
+const mockGetLocalConfig = vi.fn();
 const mockStartAzureLogin = vi.fn();
 
 vi.mock('../api/authApi', () => ({
   getAzureConfig: () => mockGetAzureConfig(),
+  getLocalConfig: () => mockGetLocalConfig(),
   startAzureLogin: () => mockStartAzureLogin(),
 }));
 
@@ -63,6 +65,11 @@ function setLocationSearch(search: string) {
 describe('Login page — Azure AD', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: local auth disabled — tests that care will override this
+    mockGetLocalConfig.mockResolvedValue({
+      enabled: false,
+      mockEnabled: false,
+    });
     // Reset to a clean URL before each test
     window.history.pushState({}, '', '/login');
   });

@@ -128,8 +128,9 @@ export function Login() {
         setAzureEnabled(azure.enabled === true);
         setLocalEnabled(local.enabled === true);
         setMockEnabled(local.mockEnabled === true);
-        // If only local/mock auth is configured, show the form immediately
-        if (!azure.enabled) setShowLocalForm(true);
+        // If Azure is not the primary method, show the local form immediately
+        if (!azure.enabled && (local.enabled || local.mockEnabled))
+          setShowLocalForm(true);
       })
       .finally(() => setConfigLoaded(true));
   }, []);
