@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
-import { lt, sessions } from '@corpcal/database';
+import { lt, passwordResetTokens, sessions } from '@corpcal/database';
 
 import { DatabaseService } from '../database/database.service';
 
@@ -30,6 +30,19 @@ export class SessionCleanupService {
       this.logger.error('Session cleanup failed', error);
     } finally {
       this.inFlight = false;
+    }
+  }
+
+  @Cron('0 30 3 * * *') // daily at 03:30
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    try {
+      await this.databaseService.db
+        .delete(passwordResetTokens)
+        .where(lt(passwordResetTokens.expiresAt, new Date()));
+
+      this.logger.debug('Password reset token cleanup: removed expired tokens');
+    } catch (error) {
+      this.logger.error('Password reset token cleanup failed', error);
     }
   }
 }

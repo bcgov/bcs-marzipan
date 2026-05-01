@@ -1,17 +1,28 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Copy, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCallback, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem, UserListItem } from '@corpcal/shared/api/types';
 import { updateTeam } from '@/api/teamsApi';
-import { removeUserFromTeam, updateUser } from '@/api/usersApi';
+import {
+  initiatePasswordReset,
+  removeUserFromTeam,
+  updateUser,
+} from '@/api/usersApi';
 import { PageHeader } from '@/components/layout';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { TeamHistoryDrawer } from '@/components/teams/TeamHistoryDrawer';
 import { TeamsTabContent } from '@/components/teams/TeamsTabContent';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TransferActivitiesDialog } from '@/components/users/TransferActivitiesDialog';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
@@ -29,6 +40,10 @@ export function Users() {
   const [historyUser, setHistoryUser] = useState<UserListItem | null>(null);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [resetCodeResult, setResetCodeResult] = useState<{
+    user: UserListItem;
+    code: string;
+  } | null>(null);
   const [teamToEdit, setTeamToEdit] = useState<TeamListItem | null>(null);
   const [teamHistoryTeam, setTeamHistoryTeam] = useState<TeamListItem | null>(
     null
@@ -114,6 +129,25 @@ export function Users() {
     [updateMutation]
   );
 
+  const resetMutation = useMutation({
+    mutationFn: (userId: number) => initiatePasswordReset(userId),
+    onSuccess: (data, userId) => {
+      const user = resetCodeResult?.user ?? ({ id: userId } as UserListItem);
+      setResetCodeResult({ user, code: data.resetCode });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to generate reset code');
+    },
+  });
+
+  const handleInitiateReset = useCallback(
+    (user: UserListItem) => {
+      setResetCodeResult({ user, code: '' });
+      resetMutation.mutate(user.id);
+    },
+    [resetMutation]
+  );
+
   return (
     <>
       <PageHeader
@@ -149,6 +183,7 @@ export function Users() {
             onViewHistory={setHistoryUser}
             onDeactivate={handleDeactivate}
             onReactivate={handleReactivate}
+            onInitiateReset={handleInitiateReset}
           />
 
           {editUser && (
@@ -188,6 +223,49 @@ export function Users() {
             open={showCreateUser}
             onClose={() => setShowCreateUser(false)}
           />
+
+          <Dialog
+            open={!!resetCodeResult}
+            onOpenChange={(open) => {
+              if (!open) setResetCodeResult(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Password Reset Code</DialogTitle>
+                <DialogDescription>
+                  Share this one-time code with{' '}
+                  <strong>
+                    {resetCodeResult?.user.adDisplayName ?? 'the user'}
+                  </strong>
+                  . It expires in 48 hours. Once closed, it cannot be retrieved
+                  again.
+                </DialogDescription>
+              </DialogHeader>
+              {resetCodeResult?.code ? (
+                <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-3">
+                  <code className="flex-1 font-mono text-sm break-all select-all">
+                    {resetCodeResult.code}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Copy reset code"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(resetCodeResult.code);
+                      toast.success('Copied to clipboard');
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Generating code…
+                </p>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="teams" className="mt-0">

@@ -129,6 +129,20 @@ export async function transferActivities(
   return { transferredCount: response.data.transferredCount };
 }
 
+/**
+ * Initiate a password reset for a local-auth user. Returns the one-time reset
+ * code that the admin must share with the user out-of-band. Expires in 48 hours.
+ */
+export async function initiatePasswordReset(
+  userId: number
+): Promise<{ resetCode: string; expiresInHours: number }> {
+  const response = await api.post<{
+    resetCode: string;
+    expiresInHours: number;
+  }>(`/users/${userId}/initiate-password-reset`);
+  return response.data;
+}
+
 export async function fetchTeams(): Promise<
   Pick<TeamListItem, 'id' | 'name' | 'displayName'>[]
 > {

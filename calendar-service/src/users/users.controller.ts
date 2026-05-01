@@ -34,6 +34,7 @@ import {
   updateUserTeamRoleBodySchema,
 } from '@corpcal/shared/schemas';
 
+import { AuthService } from '../auth/auth.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
@@ -56,7 +57,10 @@ import { UsersService } from './users.service';
 @Controller('users')
 @RequirePermission('users.view')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly authService: AuthService
+  ) {}
 
   @ApiOperation({
     summary: 'List users',
@@ -243,6 +247,24 @@ export class UsersController {
   ): Promise<{ success: boolean; data: UserHistoryEntry[] }> {
     const data = await this.usersService.getUserHistory(id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Initiate a password reset for a local-auth user' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Reset code generated (48-hour expiry). Share this with the user out-of-band.',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @RequirePermission(PERMISSIONS.USERS.EDIT)
+  @Post(':id/initiate-password-reset')
+  @HttpCode(HttpStatus.OK)
+  async initiatePasswordReset(
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<{ resetCode: string; expiresInHours: number }> {
+    const resetCode = await this.authService.createPasswordResetToken(id);
+    return { resetCode, expiresInHours: 48 };
   }
 
   @ApiOperation({ summary: 'Transfer activities from this user to another' })

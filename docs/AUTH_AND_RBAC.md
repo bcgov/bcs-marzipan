@@ -1,6 +1,6 @@
 # Authentication and Role-Based Access Control (RBAC)
 
-This document describes the authentication and authorization system implemented in the Corporate Calendar application. The system supports JWT-based authentication with mock auth for development and extensible AD integration for production.
+This document describes the authentication and authorization system implemented in the Corporate Calendar application. The system supports JWT-based authentication with mock auth for development, local email/password auth, and Azure AD (OIDC) for production.
 
 ## Architecture Overview
 
@@ -60,8 +60,14 @@ This document describes the authentication and authorization system implemented 
 Configure authentication in your `.env` file:
 
 ```bash
-# Authentication strategy: 'mock' for development, 'ad' for AD, 'azure' for OIDC
+# Authentication strategy: 'mock' for development, 'local' for email+password,
+# 'azure' for OIDC (Azure AD / IDIR). Default: 'mock'
 AUTH_STRATEGY=mock
+
+# Enable local (email+password) auth alongside another primary strategy.
+# Set to 'true' when AUTH_STRATEGY is 'azure' and you also want the local
+# login form available (e.g. for admin or break-glass accounts).
+LOCAL_AUTH_ENABLED=false
 
 # Azure AD settings (required when AUTH_STRATEGY=azure)
 AZURE_TENANT_ID=your-tenant-id
@@ -519,6 +525,78 @@ export class ActivitiesService {
       return []; // or throw ForbiddenException depending on product rules
     }
     return this.db
+
+---
+
+## Local Email/Password Authentication
+
+The `local` strategy allows users to log in with an email address and a bcrypt-hashed password stored in the `users` table. It can be used as the sole auth strategy or alongside Azure AD.
+
+### Environment variables
+
+| Variable | Values | Meaning |
+|---|---|---|
+| `AUTH_STRATEGY` | `local` | Use email/password as the **only** login method |
+| `AUTH_STRATEGY` | `azure` + `LOCAL_AUTH_ENABLED=true` | Azure AD is primary; local login form also shown |
+| `LOCAL_AUTH_ENABLED` | `true` | Enable local form alongside any primary strategy |
+
+### Account lifecycle
+
+```
+
+created (admin) → status: pending
+│
+user visits /login,
+enters email, gets
+"set-password" prompt
+│
+▼
+status: active ←── admin "Reset password" → status: password_reset_required
+│
+user enters reset code
+and chooses new password
+│
+▼
+status: active
+
+```
+
+- **`pending`** — account exists but no password has been set. User must complete the set-password flow before logging in.
+- **`active`** — normal authenticated state.
+- **`password_reset_required`** — admin initiated a reset. On the login page the user will be prompted for the reset code and a new password.
+
+### New auth endpoints
+
+These endpoints are added by this feature alongside the existing `/auth/*` routes:
+
+| Method | Path | Auth required | Description |
+|--------|------|---------------|-------------|
+| `POST` | `/auth/check-email` | No | Returns the account status for an email address. Used by the login page to decide which step to show next. |
+| `POST` | `/auth/set-password` | No | Sets a password for a `pending` account. |
+| `POST` | `/auth/verify-reset-code` | No | Validates a reset code. |
+| `POST` | `/auth/change-password` | No* | Changes the password after a successful `verify-reset-code` call. |
+| `POST` | `/users/:id/initiate-password-reset` | `users.edit` | Generates a 48-hour reset code for the given user, sets their status to `password_reset_required`, and returns the plaintext code to the admin. |
+
+\* The change-password endpoint is intentionally unauthenticated; the verified reset code acts as the credential.
+
+### Password reset flow (admin-initiated)
+
+1. An admin opens **User Management**, finds the user, and selects **Reset password** from the row actions menu.
+2. The UI calls `POST /users/:id/initiate-password-reset` and displays the one-time reset code in a dialog. The admin must copy it and share it with the user out-of-band (e.g. by phone or secure message).
+3. The user visits the login page, enters their email, and is presented with the **Enter reset code** step.
+4. After entering a valid code the user is prompted to choose a new password.
+5. On success the account returns to `active` and the used reset token is deleted.
+
+### Scheduled cleanup
+
+`SessionCleanupService` runs two scheduled jobs:
+
+| Schedule | Job |
+|----------|-----|
+| Every hour, on the hour (`0 0 * * * *`) | Delete expired JWT sessions from the `sessions` table |
+| Daily at 03:30 (`0 30 3 * * *`) | Delete expired rows from the `password_reset_tokens` table |
+
+Tokens that are consumed by the user are deleted immediately on use; the daily job removes tokens for resets that were never completed.
       .select()
       .from(activities)
       .where(inArray(activities.teamId, dataScope.teamIds));
