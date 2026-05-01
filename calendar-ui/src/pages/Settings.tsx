@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import { BannerSettingsAdmin } from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
@@ -35,6 +36,7 @@ import {
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
+import { useAuth } from '@/hooks/useAuth';
 
 type Section =
   | 'banner'
@@ -54,59 +56,78 @@ type Section =
   | 'themes'
   | 'venue-presets';
 
-const sections = [
-  { id: 'banner' as Section, label: 'System Banner', icon: Megaphone },
-  { id: 'login-modal' as Section, label: 'Login Modal', icon: LogIn },
-  {
-    id: 'edit-lock-idle' as Section,
-    label: 'Edit lock idle',
-    icon: Lock,
-  },
-  {
-    id: 'activity-completion' as Section,
-    label: 'Activity completion',
-    icon: Timer,
-  },
-  {
-    id: 'look-ahead-reset' as Section,
-    label: 'Look Ahead reset',
-    icon: Eraser,
-  },
-  {
-    id: 'review-exempt-fields' as Section,
-    label: 'Review-exempt fields',
-    icon: ListChecks,
-  },
-  {
-    id: 'ministry-groups' as Section,
-    label: 'Ministry groups',
-    icon: Share2,
-  },
-  { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
-  {
-    id: 'representatives' as Section,
-    label: 'Government Representatives',
-    icon: Users,
-  },
-  { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
-  { id: 'cities' as Section, label: 'Cities', icon: MapPin },
-  { id: 'comms' as Section, label: 'Communications Materials', icon: FileText },
-  { id: 'tags' as Section, label: 'Tags', icon: Tag },
-  { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
-  { id: 'themes' as Section, label: 'Themes', icon: Palette },
-  {
-    id: 'venue-presets' as Section,
-    label: 'Venue Presets',
-    icon: Bookmark,
-  },
-];
-
 /**
  * Modern Settings Page
  * Manages all lookup data with a clean, organized interface.
  * Features quick navigation and modular admin sections.
  */
 export function Settings() {
+  const { user } = useAuth();
+  const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+
+  const sections = [
+    {
+      id: 'banner' as Section,
+      label: 'System Banner',
+      icon: Megaphone,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'login-modal' as Section,
+      label: 'Login Modal',
+      icon: LogIn,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'edit-lock-idle' as Section,
+      label: 'Edit lock idle',
+      icon: Lock,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'activity-completion' as Section,
+      label: 'Activity completion',
+      icon: Timer,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'look-ahead-reset' as Section,
+      label: 'Look Ahead reset',
+      icon: Eraser,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'review-exempt-fields' as Section,
+      label: 'Review-exempt fields',
+      icon: ListChecks,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'ministry-groups' as Section,
+      label: 'Ministry groups',
+      icon: Share2,
+    },
+    { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
+    {
+      id: 'representatives' as Section,
+      label: 'Government Representatives',
+      icon: Users,
+    },
+    { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
+    { id: 'cities' as Section, label: 'Cities', icon: MapPin },
+    {
+      id: 'comms' as Section,
+      label: 'Communications Materials',
+      icon: FileText,
+    },
+    { id: 'tags' as Section, label: 'Tags', icon: Tag },
+    { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
+    { id: 'themes' as Section, label: 'Themes', icon: Palette },
+    { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
+  ];
+
+  const visibleSections = sections.filter((s) => s.show !== false);
+
   const scrollToSection = (sectionId: Section) => {
     const element = document.getElementById(`section-${sectionId}`);
     if (element) {
@@ -137,7 +158,7 @@ export function Settings() {
           </div>
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {sections.map((section) => {
+              {visibleSections.map((section) => {
                 const Icon = section.icon;
                 return (
                   <a
