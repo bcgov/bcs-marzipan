@@ -1,13 +1,23 @@
 import { createHash } from 'node:crypto';
-import { NotImplementedException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotImplementedException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as bcrypt from 'bcryptjs';
 import type { Mock } from 'vitest';
 
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import { AuthService } from './auth.service';
+import {
+  findUserByEmailLocal,
+  findUserByIdLocal,
+  updateUserPassword,
+} from './strategies/local.strategy';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,6 +52,22 @@ function makeChain(resolvedValue: unknown = []) {
   chain['catch'].mockResolvedValue(resolvedValue);
   return chain;
 }
+
+// ---------------------------------------------------------------------------
+// Module-level mocks
+// ---------------------------------------------------------------------------
+
+vi.mock('bcryptjs', () => ({
+  hash: vi.fn(),
+  compare: vi.fn(),
+}));
+
+vi.mock('./strategies/local.strategy', () => ({
+  findUserByEmailLocal: vi.fn(),
+  findUserByIdLocal: vi.fn(),
+  updateUserPassword: vi.fn(),
+  updateUserStatus: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -161,6 +187,250 @@ describe('AuthService — session methods', () => {
   describe('refresh()', () => {
     it('throws NotImplementedException', () => {
       expect(() => service.refresh()).toThrow(NotImplementedException);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AuthService — local auth methods
+// ---------------------------------------------------------------------------
+
+describe('AuthService — local auth methods', () => {
+  let service: AuthService;
+  let localMockDb: ReturnType<typeof makeChain>;
+
+  /** Minimal valid user row returned by findUserByEmailLocal */
+  function makeLocalUser(
+    overrides: Partial<{
+      id: number;
+      roleId: number;
+      adUsername: string | null;
+      adDisplayName: string | null;
+      adEmail: string | null;
+      passwordHash: string | null;
+      status: string;
+      isActive: boolean;
+    }> = {}
+  ) {
+    return {
+      id: 1,
+      roleId: 1,
+      adUsername: 'testuser',
+      adDisplayName: 'Test User',
+      adEmail: 'test@example.com',
+      passwordHash: 'existing-hash',
+      status: 'active',
+      isActive: true,
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    localMockDb = makeChain();
+
+    vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value' as never);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+    vi.mocked(updateUserPassword).mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: DatabaseService, useValue: { db: localMockDb } },
+        {
+          provide: PolicyService,
+          useValue: {
+            getRoleName: vi.fn().mockResolvedValue('Viewer'),
+            getEffectivePermissionsForUser: vi
+              .fn()
+              .mockResolvedValue({ permissions: [], bypass: false }),
+            getTeamIdsForUser: vi.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: { sign: vi.fn().mockReturnValue('tok'), verify: vi.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: vi.fn().mockImplementation((key: string, def?: unknown) => {
+              if (key === 'AUTH_STRATEGY') return 'local';
+              return def;
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+  });
+
+  // -------------------------------------------------------------------------
+  // checkEmail()
+  // -------------------------------------------------------------------------
+
+  describe('checkEmail()', () => {
+    it('returns not_found when no user exists for the email', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(null);
+      await expect(service.checkEmail('unknown@example.com')).resolves.toEqual({
+        status: 'not_found',
+      });
+    });
+
+    it('returns inactive when isActive is false', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ isActive: false })
+      );
+      await expect(service.checkEmail('test@example.com')).resolves.toEqual({
+        status: 'inactive',
+      });
+    });
+
+    it('returns inactive when status is inactive', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'inactive' })
+      );
+      await expect(service.checkEmail('test@example.com')).resolves.toEqual({
+        status: 'inactive',
+      });
+    });
+
+    it('returns pending for a pending account', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'pending' })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('pending');
+    });
+
+    it('returns requires_reset for a password_reset_required account', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'password_reset_required' })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('requires_reset');
+    });
+
+    it('returns active with the normalised email for an active account', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'active' })
+      );
+      const result = await service.checkEmail('TEST@EXAMPLE.COM');
+      expect(result.status).toBe('active');
+      expect((result as { email?: string }).email).toBe('test@example.com');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // setPassword()
+  // -------------------------------------------------------------------------
+
+  describe('setPassword()', () => {
+    it('throws BadRequestException when no account is found for the email', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(null);
+      await expect(
+        service.setPassword('nobody@example.com', 'ValidPass1!')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when the account is not in pending status', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'active' })
+      );
+      await expect(
+        service.setPassword('test@example.com', 'ValidPass1!')
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('hashes the password and marks the account active on success', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'pending' })
+      );
+      await service.setPassword('test@example.com', 'ValidPass1!');
+      expect(bcrypt.hash).toHaveBeenCalledWith('ValidPass1!', 12);
+      expect(updateUserPassword).toHaveBeenCalledWith(
+        localMockDb,
+        1,
+        'hashed-value',
+        'active'
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // verifyResetCode()
+  // -------------------------------------------------------------------------
+
+  describe('verifyResetCode()', () => {
+    it('returns false when the user is not found', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(null);
+      await expect(
+        service.verifyResetCode('test@example.com', 'code')
+      ).resolves.toBe(false);
+    });
+
+    it('returns false when the user is not in password_reset_required status', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'active' })
+      );
+      await expect(
+        service.verifyResetCode('test@example.com', 'code')
+      ).resolves.toBe(false);
+    });
+
+    it('returns false when no valid token exists in the database', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ status: 'password_reset_required' })
+      );
+      // Default makeChain: limit() resolves to [] — no token row found
+      await expect(
+        service.verifyResetCode('test@example.com', 'code')
+      ).resolves.toBe(false);
+    });
+
+    it('returns true when a valid unexpired token matches the user', async () => {
+      const user = makeLocalUser({ id: 1, status: 'password_reset_required' });
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(user);
+      const tokenChain = makeChain([
+        { id: 42, userId: 1, expiresAt: new Date(Date.now() + 3_600_000) },
+      ]);
+      localMockDb.select = vi.fn().mockReturnValue(tokenChain);
+      await expect(
+        service.verifyResetCode('test@example.com', 'validcode')
+      ).resolves.toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // changePassword() — forced-reset path
+  // -------------------------------------------------------------------------
+
+  describe('changePassword() — forced-reset path', () => {
+    it('throws UnauthorizedException when no matching reset token is found', async () => {
+      // Default makeChain: limit() → [] (no token)
+      await expect(
+        service.changePassword({
+          tempToken: 'badtoken',
+          newPassword: 'NewPass1!',
+        })
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws BadRequestException when the user is not in password_reset_required status', async () => {
+      const tokenChain = makeChain([
+        { id: 1, userId: 1, expiresAt: new Date(Date.now() + 3_600_000) },
+      ]);
+      localMockDb.select = vi.fn().mockReturnValue(tokenChain);
+      vi.mocked(findUserByIdLocal).mockResolvedValue(
+        makeLocalUser({ id: 1, status: 'active' })
+      );
+      await expect(
+        service.changePassword({
+          tempToken: 'validtoken',
+          newPassword: 'NewPass1!',
+        })
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
