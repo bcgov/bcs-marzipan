@@ -79,6 +79,7 @@ export function Login() {
 
   // Shared state
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAzureLoading, setIsAzureLoading] = useState(false);
 
@@ -152,6 +153,7 @@ export function Login() {
     setResetCodeInput('');
     setResetToken('');
     setError('');
+    setSuccessMessage('');
     setVerifiedEmail('');
   };
 
@@ -161,6 +163,7 @@ export function Login() {
   const handleCheckEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
@@ -247,7 +250,8 @@ export function Login() {
         password: newPassword,
         confirmPassword,
       });
-      redirectAfterLogin();
+      resetToEmailEntry();
+      setSuccessMessage('Password set successfully. Please sign in.');
     } catch (err: unknown) {
       setError(getFriendlyErrorMessage(err));
     }
@@ -304,7 +308,8 @@ export function Login() {
         newPassword,
         confirmPassword,
       });
-      redirectAfterLogin();
+      resetToEmailEntry();
+      setSuccessMessage('Password reset successfully. Please sign in.');
     } catch (err: unknown) {
       setError(getFriendlyErrorMessage(err));
     }
@@ -831,6 +836,12 @@ export function Login() {
             <p className="text-center text-sm text-slate-500">
               No login method is configured. Contact your administrator.
             </p>
+          )}
+
+          {successMessage && view === 'email-entry' && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+              {successMessage}
+            </div>
           )}
 
           {error && view === 'email-entry' && !showLocalForm && (

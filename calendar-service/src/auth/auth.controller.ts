@@ -124,12 +124,8 @@ export class AuthController {
     summary: 'Set first-time password',
     description: 'Activates a pending account by setting its initial password',
   })
-  @ApiResponse({ status: 200, description: 'Password set; user logged in' })
-  async setPassword(
-    @Body() body: unknown,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  @ApiResponse({ status: 200, description: 'Password set; please log in' })
+  async setPassword(@Body() body: unknown) {
     const parsed = setPasswordBodySchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.message ?? 'Invalid request');
@@ -137,12 +133,10 @@ export class AuthController {
     if (parsed.data.password !== parsed.data.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
-    const result = await this.authService.setPassword(
+    return this.authService.setPassword(
       parsed.data.email,
       parsed.data.password
     );
-    this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
-    return result;
   }
 
   @Public()
@@ -177,11 +171,7 @@ export class AuthController {
       'Forced-reset flow (tempToken) or voluntary change (Bearer token + currentPassword)',
   })
   @ApiResponse({ status: 200, description: 'Password changed' })
-  async changePassword(
-    @Body() body: unknown,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async changePassword(@Body() body: unknown, @Req() req: Request) {
     const parsed = changePasswordBodySchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.message ?? 'Invalid request');
@@ -194,18 +184,12 @@ export class AuthController {
       ? req.headers.authorization.slice(7)
       : (req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined);
 
-    const result = await this.authService.changePassword({
+    return this.authService.changePassword({
       tempToken: parsed.data.tempToken,
       currentPassword: parsed.data.currentPassword,
       newPassword: parsed.data.newPassword,
       bearerToken,
     });
-
-    // Forced-reset returns a full auth response — set the cookie
-    if ('accessToken' in result) {
-      this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
-    }
-    return result;
   }
 
   @Public()
@@ -422,10 +406,6 @@ export class AuthController {
     accessToken: string,
     expiresIn?: number
   ): void {
-    // lgtm[js/clear-text-storage-of-sensitive-data]
-    // The access token is a signed JWT stored in an httpOnly+secure+sameSite
-    // cookie. This is the intended storage mechanism; encryption of the value
-    // itself is not required or appropriate here.
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...this.getAuthCookieOptions(req),
       maxAge: (expiresIn ?? DEFAULT_JWT_EXPIRES_IN) * 1000,

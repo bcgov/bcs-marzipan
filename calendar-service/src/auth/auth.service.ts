@@ -237,7 +237,10 @@ export class AuthService {
    * Set a password for a pending account, activating it.
    * Returns a full auth response so the client can log the user in immediately.
    */
-  async setPassword(email: string, password: string): Promise<AuthResponseDto> {
+  async setPassword(
+    email: string,
+    password: string
+  ): Promise<{ message: string }> {
     const dbUser = await findUserByEmailLocal(
       this.databaseService.db,
       email.trim()
@@ -261,7 +264,7 @@ export class AuthService {
       'active'
     );
 
-    return this.buildAuthResponse(dbUser);
+    return { message: 'Password set successfully. Please log in.' };
   }
 
   /**
@@ -360,7 +363,7 @@ export class AuthService {
         .delete(passwordResetTokens)
         .where(eq(passwordResetTokens.id, token.id));
 
-      return this.buildAuthResponse(userRow);
+      return { message: 'Password reset successfully. Please log in.' };
     }
 
     // Voluntary change path — bearer token validated by caller (controller)
