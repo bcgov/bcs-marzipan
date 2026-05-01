@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
 
+import { AuthService } from '../auth/auth.service';
 import {
   createMockAddUserToTeamBody,
   createMockTransferActivitiesBody,
@@ -41,6 +42,10 @@ describe('UsersController', () => {
     transferActivities: vi.fn(),
   };
 
+  const mockAuthService = {
+    createPasswordResetToken: vi.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -48,6 +53,10 @@ describe('UsersController', () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
         },
       ],
     }).compile();
