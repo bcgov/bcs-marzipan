@@ -130,9 +130,8 @@ export function Users() {
   );
 
   const resetMutation = useMutation({
-    mutationFn: (userId: number) => initiatePasswordReset(userId),
-    onSuccess: (data, userId) => {
-      const user = resetCodeResult?.user ?? ({ id: userId } as UserListItem);
+    mutationFn: (user: UserListItem) => initiatePasswordReset(user.id),
+    onSuccess: (data, user) => {
       setResetCodeResult({ user, code: data.resetCode });
     },
     onError: (err: Error) => {
@@ -143,7 +142,7 @@ export function Users() {
   const handleInitiateReset = useCallback(
     (user: UserListItem) => {
       setResetCodeResult({ user, code: '' });
-      resetMutation.mutate(user.id);
+      resetMutation.mutate(user);
     },
     [resetMutation]
   );

@@ -270,4 +270,26 @@ describe('UsersController', () => {
       expect(mockUsersService.transferActivities).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('initiatePasswordReset', () => {
+    it('should return reset code and expiry when token is created', async () => {
+      mockAuthService.createPasswordResetToken.mockResolvedValue('abc123');
+
+      const result = await controller.initiatePasswordReset(7);
+
+      expect(result).toEqual({ resetCode: 'abc123', expiresInHours: 48 });
+      expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledWith(7);
+      expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('should propagate errors thrown by authService', async () => {
+      mockAuthService.createPasswordResetToken.mockRejectedValue(
+        new Error('User not found')
+      );
+
+      await expect(controller.initiatePasswordReset(99)).rejects.toThrow(
+        'User not found'
+      );
+    });
+  });
 });
