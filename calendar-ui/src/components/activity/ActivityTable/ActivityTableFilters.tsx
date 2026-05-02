@@ -15,6 +15,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  getLookAheadSectionLabelFromRows,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import {
@@ -172,6 +176,13 @@ export function ActivityTableFilters({
     };
   }, [pitchFieldVisibilityProp, user]);
 
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
+  const getLookAheadSectionLabel = useCallback(
+    (value: string) =>
+      getLookAheadSectionLabelFromRows(lookAheadSectionRows, value),
+    [lookAheadSectionRows]
+  );
+
   const summaryContext = useMemo((): ActivityFilterSummaryContext => {
     return {
       statusOptions,
@@ -183,6 +194,7 @@ export function ActivityTableFilters({
       eventPlannerOptions,
       translationStatusOptions,
       translationOptions,
+      getLookAheadSectionLabel,
     };
   }, [
     statusOptions,
@@ -194,6 +206,7 @@ export function ActivityTableFilters({
     eventPlannerOptions,
     translationStatusOptions,
     translationOptions,
+    getLookAheadSectionLabel,
   ]);
 
   const validFilterLookupsForPreview = useMemo((): ValidFilterLookups => {

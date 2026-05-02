@@ -61,13 +61,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  getLookAheadSectionLabel,
-  getLookAheadStatusLabel,
-} from '@/constants/form-options';
+import { getLookAheadStatusLabel } from '@/constants/form-options';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
+import {
+  getLookAheadSectionLabelFromRows,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 import {
   useActivityStatuses,
   useCategories,
@@ -313,12 +314,13 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
     }
   }, [expanded, needsTruncation]);
 
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
   const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
   const lookAheadLabel =
     status && status !== 'none'
       ? section
-        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabel(section)}`
+        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabelFromRows(lookAheadSectionRows, section)}`
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
 

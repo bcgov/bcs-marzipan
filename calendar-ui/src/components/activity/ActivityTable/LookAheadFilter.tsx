@@ -1,10 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
+import { lookAheadStatusOptions } from '@/constants/form-options';
 import {
-  lookAheadSectionOptions,
-  lookAheadStatusOptions,
-} from '@/constants/form-options';
+  rowsToSectionOptions,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 import { FilterSectionLabel } from './FilterSectionLabel';
@@ -28,6 +29,11 @@ export function LookAheadFilterPanel({
   onFilterStateChange,
 }: LookAheadFilterPanelProps) {
   const { lookAheadStatusValues, lookAheadSectionValues } = filterState;
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
+  const lookAheadSectionOptions = useMemo(
+    () => rowsToSectionOptions(lookAheadSectionRows),
+    [lookAheadSectionRows]
+  );
 
   const handleStatusToggle = useCallback(
     (value: string) => {
@@ -105,7 +111,14 @@ export function LookAheadFilterPanel({
           checked={lookAheadSectionValues.includes(opt.value)}
           onCheckedChange={() => handleSectionToggle(opt.value)}
         >
-          {opt.label}
+          {opt.legendColor ? (
+            <span
+              aria-hidden="true"
+              className="border-border mr-1 inline-block h-3.5 w-3.5 shrink-0 rounded-sm border"
+              style={{ backgroundColor: opt.legendColor }}
+            />
+          ) : null}
+          <span className="truncate">{opt.label}</span>
         </FilterCheckboxItem>
       ))}
     </>
