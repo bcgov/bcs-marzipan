@@ -91,6 +91,12 @@
       "import": "./dist/esm/reports/customReportFieldConfig.js",
       "require": "./dist/cjs/reports/customReportFieldConfig.js",
       "default": "./dist/esm/reports/customReportFieldConfig.js"
+    },
+    "./reports/look-ahead": {
+      "types": "./dist/esm/reports/look-ahead/index.d.ts",
+      "import": "./dist/esm/reports/look-ahead/index.js",
+      "require": "./dist/cjs/reports/look-ahead/index.js",
+      "default": "./dist/esm/reports/look-ahead/index.js"
     }
   },
   "scripts": {

@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-import {
-  LOOK_AHEAD_SECTION,
-  LOOK_AHEAD_STATUS,
-  VISIBILITY,
-} from '../constants/constants';
+import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   isActivityRichTextStorageRefine,
@@ -144,7 +140,13 @@ const activityCoreFieldsSchema = z.object({
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
-  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable().optional(),
+  /**
+   * Bucket key matching `reports.config.sections[].filter.lookAheadSection`.
+   * Allowed values are derived at runtime from the look-ahead source reports'
+   * configs (see `LookAheadPolicyService`); the schema keeps it as a bounded
+   * string so admin-defined keys flow through without code changes.
+   */
+  lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
   // Optional foreign key fields (with empty string preprocessing)
   leadOrgId: z.preprocess(

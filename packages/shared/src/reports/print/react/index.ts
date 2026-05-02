@@ -36,6 +36,7 @@ export {
 export {
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayContent,
+  type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
 export {
   dateKeyLocal,

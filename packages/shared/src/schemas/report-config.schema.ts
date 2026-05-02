@@ -11,6 +11,8 @@ import { z } from 'zod';
  * - A global filter that applies to all activities in the report
  * - Section-level filters that augment or update the global filter for specific sections
  *   (e.g., global filter might filter by date range, section filters might further filter by day)
+ *
+ * This file stays generic: no imports from feature modules (look-ahead, print, etc.).
  */
 
 /**
@@ -27,18 +29,61 @@ export const reportFilterConfigSchema = z.object({
       end: z.string(),
     })
     .optional(),
+  /**
+   * Bound the section to a single look-ahead bucket key (e.g. `events`).
+   * Look-ahead-aware features may interpret this; generic report engine
+   * forwards it to the activity finder via `FilterActivitiesQueryParams.lookAheadSection`.
+   */
   lookAheadSection: z.string().optional(),
 });
 
 /**
+ * Hex color regex (3- or 6-digit, with leading `#`).
+ * Used for the optional section legend swatch on report covers and section headings.
+ */
+const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+/**
  * Report section configuration
+ *
+ * `name` is the canonical section identifier shown in admin UI and CSV/Excel export
+ * (kept for backwards-compatibility with existing consumers). When defined,
+ * `uiDisplayName` and `reportDisplayName` override `name` for activity-form/filter
+ * UI and report cover/legend strings respectively, allowing a short label and a
+ * longer printed label to live on the same row.
  */
 export const reportSectionSchema = z.object({
   id: z.string(),
   name: z.string(),
+  /** Short label shown in activity form / filter UI (defaults to `name` when omitted). */
+  uiDisplayName: z.string().optional(),
+  /** Longer label used for the report cover legend, section heading, etc. (defaults to `name` when omitted). */
+  reportDisplayName: z.string().optional(),
+  /** Optional hex color (`#RRGGBB` or `#RGB`) used for the section legend swatch. */
+  legendColor: z
+    .string()
+    .regex(HEX_COLOR_REGEX, {
+      message: 'legendColor must be a hex color (e.g. #1A2B3C or #1AB).',
+    })
+    .optional(),
   order: z.number().int(),
   filter: reportFilterConfigSchema.optional(),
+  /**
+   * Optional per-section override of the parent `fields` whitelist.
+   * When omitted, sections inherit the report-level `fields` array.
+   * Reserved for future per-section column tailoring; consumers may ignore until
+   * a column engine reads it.
+   */
+  fields: z.array(z.string()).optional(),
 });
+
+/**
+ * Print template identifier for the report. Drives which React document and
+ * column layout the print/PDF pipeline picks. Loose string for forward-compat
+ * with admin-defined templates; current renderer recognises a fixed set
+ * (e.g. `lookAheadV1`).
+ */
+export const reportPrintTemplateSchema = z.string();
 
 /**
  * Report configuration structure
@@ -47,6 +92,11 @@ export const reportSectionSchema = z.object({
 export const reportConfigSchema = z.object({
   fields: z.array(z.string()),
   globalFilter: reportFilterConfigSchema.optional(),
+  /**
+   * Optional explicit print template id. When omitted, callers fall back to a
+   * mapping keyed by `reports.name` (legacy behavior).
+   */
+  printTemplate: reportPrintTemplateSchema.optional(),
   sections: z.array(reportSectionSchema),
 });
 

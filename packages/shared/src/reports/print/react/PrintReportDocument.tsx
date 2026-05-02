@@ -1,5 +1,6 @@
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { resolveLookAheadSectionRows } from '../../look-ahead';
 import {
   dateKeyLocal,
   formatDayHeading,
@@ -19,6 +20,7 @@ import {
 interface SortedSection {
   id: string;
   name: string;
+  legendColor: string | null;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
 
@@ -41,11 +43,20 @@ function indexActivitiesByDay(
 }
 
 function collectSortedSections(data: ReportDataResponse): SortedSection[] {
+  // Resolve per-section legend color from the report config so the print
+  // section heading swatch matches the cover and activity-form bullets.
+  const legendColorById = new Map<string, string | null>();
+  if (data.report?.config) {
+    for (const row of resolveLookAheadSectionRows(data.report.config)) {
+      legendColorById.set(row.sectionId, row.legendColor);
+    }
+  }
   return [...data.sections]
     .sort((a, b) => a.order - b.order)
     .map((section) => ({
       id: section.id,
       name: section.name,
+      legendColor: legendColorById.get(section.id) ?? null,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
 }
@@ -151,13 +162,22 @@ function DayGroup({
       const rows: PrintRowViewModel[] = activities.map((a) =>
         toPrintRowViewModel(a, { activityBaseUrl })
       );
-      return { id: section.id, name: section.name, rows };
+      return {
+        id: section.id,
+        name: section.name,
+        legendColor: section.legendColor,
+        rows,
+      };
     })
     .filter(
       (
         section
-      ): section is { id: string; name: string; rows: PrintRowViewModel[] } =>
-        section !== null
+      ): section is {
+        id: string;
+        name: string;
+        legendColor: string | null;
+        rows: PrintRowViewModel[];
+      } => section !== null
     );
 
   return (
@@ -174,6 +194,7 @@ function DayGroup({
             sectionName={section.name}
             rows={section.rows}
             variant={variant}
+            sectionLegendColor={section.legendColor}
           />
         ))
       )}

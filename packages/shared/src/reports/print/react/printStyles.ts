@@ -135,10 +135,21 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   text-align: center;
 }
 .corpcal-print-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 12px 0 4px;
   font-size: 1em;
   font-weight: 700;
   color: var(--print-section-fg);
+}
+.corpcal-print-section-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--print-border);
+  flex: 0 0 auto;
 }
 
 .corpcal-print-table-wrap {
@@ -409,6 +420,25 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: calc(14px * var(--lc-s));
   line-height: 1.35;
   color: var(--corpcal-text);
+  display: flex;
+  flex-direction: column;
+  gap: calc(4px * var(--lc-s));
+}
+.corpcal-print-cover-contents-row {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--lc-s));
+}
+.corpcal-print-cover-contents-swatch {
+  display: inline-block;
+  width: calc(16px * var(--lc-s));
+  height: calc(16px * var(--lc-s));
+  border-radius: calc(3px * var(--lc-s));
+  border: 1px solid var(--print-border);
+  flex: 0 0 auto;
+}
+.corpcal-print-cover-contents-label {
+  flex: 1 1 auto;
 }
 .corpcal-print-cover-footer-note {
   font-weight: 400;

@@ -235,6 +235,35 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('No activities in the selected range.');
   });
+
+  it('renders the section heading swatch when the report config supplies a legendColor', () => {
+    const withColor: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+              legendColor: '#2C7DA0',
+            },
+          ],
+        },
+      },
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', withColor, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('corpcal-print-section-swatch');
+    expect(html).toContain('background-color:#2C7DA0');
+  });
 });
 
 describe('renderPrintReportDocumentHtml', () => {

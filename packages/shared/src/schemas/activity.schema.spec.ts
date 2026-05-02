@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  DEFAULT_LOOK_AHEAD_SECTION,
-  DEFAULT_LOOK_AHEAD_STATUS,
-  VISIBILITY,
-} from '../constants/constants';
+import { DEFAULT_LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   EMPTY_RICH_TEXT_DOC,
@@ -125,7 +121,7 @@ describe('createActivityRequestSchema', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
         lookAheadStatus: DEFAULT_LOOK_AHEAD_STATUS,
-        lookAheadSection: DEFAULT_LOOK_AHEAD_SECTION,
+        lookAheadSection: 'events',
       })
     );
   });
