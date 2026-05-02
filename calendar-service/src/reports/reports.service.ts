@@ -9,9 +9,11 @@ import type {
   ReportResponse,
   ReportSectionData,
 } from '@corpcal/shared/api/types';
+import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
   renderLookAheadCoverOverlayHtml,
+  type LookAheadCoverOverlayRow,
 } from '@corpcal/shared/reports/print/react';
 import {
   buildReportExportTable,
@@ -125,8 +127,24 @@ export class ReportsService {
         this.configService.get<string>(
           'REPORTS_LOOK_AHEAD_COVER_CONTACT_EMAIL'
         ) ?? '',
+      sectionRows: this.buildLookAheadCoverSectionRows(data.report),
     });
     return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
+  }
+
+  /**
+   * Resolve the cover legend rows for the look-ahead PDF cover from the report's
+   * config. Returns an empty list when config is missing so the cover renders
+   * without a contents block (preserving prior PDF layout when seeds are stale).
+   */
+  private buildLookAheadCoverSectionRows(
+    report: ReportResponse
+  ): LookAheadCoverOverlayRow[] {
+    if (!report.config) return [];
+    return resolveLookAheadSectionRows(report.config).map((row) => ({
+      label: row.reportLegendLabel,
+      legendColor: row.legendColor,
+    }));
   }
 
   /**
@@ -531,7 +549,7 @@ export class ReportsService {
 
       // Apply look-ahead section filter
       if (mergedFilter?.lookAheadSection) {
-        filters.lookAheadSection = mergedFilter.lookAheadSection as any;
+        filters.lookAheadSection = mergedFilter.lookAheadSection;
       }
 
       let activities = await this.activitiesService.findAll(filters, ctx);
