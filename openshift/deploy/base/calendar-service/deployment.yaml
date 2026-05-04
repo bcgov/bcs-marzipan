@@ -69,6 +69,11 @@ spec:
                 configMapKeyRef:
                   name: calendar-service-config
                   key: POST_LOGIN_REDIRECT_URL
+            - name: JWT_EXPIRES_IN
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: JWT_EXPIRES_IN
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:
