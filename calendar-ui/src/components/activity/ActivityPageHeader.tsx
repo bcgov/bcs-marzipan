@@ -23,6 +23,7 @@ type ActivityPageHeaderProps = {
   onHistoryClick?: () => void;
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
+  isFavouriteToggling?: boolean;
 };
 
 /**
@@ -39,6 +40,7 @@ export function ActivityPageHeader({
   onHistoryClick,
   isFavourite,
   onFavouriteToggle,
+  isFavouriteToggling,
 }: ActivityPageHeaderProps): ReactElement {
   const statusDisplay = formatDisplayValue(activityStatus);
   let updatedLabel: string | null = null;
@@ -101,6 +103,7 @@ export function ActivityPageHeader({
                   isFavourite ? 'Remove from favourites' : 'Add to favourites'
                 }
                 onClick={onFavouriteToggle}
+                disabled={isFavouriteToggling}
                 className="shrink-0"
               >
                 <Star

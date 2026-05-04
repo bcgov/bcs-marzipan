@@ -101,7 +101,11 @@ export function ActivityPage({
   const location = useLocation();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
-  const { isFavourite, toggle: toggleFavourite } = useFavourites();
+  const {
+    isFavourite,
+    toggle: toggleFavourite,
+    isToggling: isFavouriteToggling,
+  } = useFavourites();
 
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
@@ -839,6 +843,7 @@ export function ActivityPage({
         onHistoryClick={() => setHistoryOpen(true)}
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
+        isFavouriteToggling={isFavouriteToggling}
       />
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>

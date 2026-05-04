@@ -1577,9 +1577,17 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           <ActivityTableEmptyState
-            variant={hasActiveCriteria ? 'no-filter-match' : 'no-data'}
+            variant={
+              favouriteActivityIds !== undefined
+                ? 'no-favourites'
+                : hasActiveCriteria
+                  ? 'no-filter-match'
+                  : 'no-data'
+            }
             onClearFilters={
-              hasActiveCriteria ? handleClearAllCriteria : undefined
+              hasActiveCriteria && favouriteActivityIds === undefined
+                ? handleClearAllCriteria
+                : undefined
             }
           />
         </ActivityTableLayout>
@@ -1606,7 +1614,13 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (
-            <ActivityTableEmptyState variant="no-search-match" />
+            <ActivityTableEmptyState
+              variant={
+                favouriteActivityIds !== undefined
+                  ? 'no-favourites'
+                  : 'no-search-match'
+              }
+            />
           ) : (
             <table
               className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
