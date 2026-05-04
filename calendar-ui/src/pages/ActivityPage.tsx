@@ -67,6 +67,7 @@ import {
 } from '../hooks/useEditLockIntent';
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
+import { useFavourites } from '../hooks/useFavourites';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import {
@@ -100,6 +101,7 @@ export function ActivityPage({
   const location = useLocation();
   const { user, hasPermission } = useAuth();
   const id = activity.id;
+  const { isFavourite, toggle: toggleFavourite } = useFavourites();
 
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
@@ -835,6 +837,8 @@ export function ActivityPage({
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
+        isFavourite={isFavourite(id)}
+        onFavouriteToggle={() => toggleFavourite(id)}
       />
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>
