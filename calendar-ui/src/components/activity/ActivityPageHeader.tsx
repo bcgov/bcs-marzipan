@@ -90,32 +90,38 @@ export function ActivityPageHeader({
             {createdDateTime ? formatLongDate(new Date(createdDateTime)) : ''}
           </div>
         </div>
-        {onHistoryClick && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            title="View history"
-            onClick={onHistoryClick}
-            className="shrink-0"
-          >
-            <History className="h-4 w-4" />
-          </Button>
-        )}
-        {onFavouriteToggle && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            title={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
-            onClick={onFavouriteToggle}
-            className="shrink-0"
-          >
-            <Star
-              className="h-4 w-4"
-              fill={isFavourite ? 'currentColor' : 'none'}
-            />
-          </Button>
+        {(onFavouriteToggle || onHistoryClick) && (
+          <div className="flex items-center gap-2">
+            {onFavouriteToggle && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={
+                  isFavourite ? 'Remove from favourites' : 'Add to favourites'
+                }
+                onClick={onFavouriteToggle}
+                className="shrink-0"
+              >
+                <Star
+                  className="h-4 w-4"
+                  fill={isFavourite ? 'currentColor' : 'none'}
+                />
+              </Button>
+            )}
+            {onHistoryClick && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="View history"
+                onClick={onHistoryClick}
+                className="shrink-0"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>
