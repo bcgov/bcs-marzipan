@@ -271,10 +271,10 @@ describe('AuthService — local auth methods', () => {
   // -------------------------------------------------------------------------
 
   describe('checkEmail()', () => {
-    it('returns not_found when no user exists for the email', async () => {
+    it('returns inactive when no user exists for the email (enumeration hardening)', async () => {
       vi.mocked(findUserByEmailLocal).mockResolvedValue(null);
       await expect(service.checkEmail('unknown@example.com')).resolves.toEqual({
-        status: 'not_found',
+        status: 'inactive',
       });
     });
 
