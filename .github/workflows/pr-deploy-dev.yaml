@@ -18,9 +18,9 @@ jobs:
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
       APP_VERSION: ${{ vars.APP_VERSION }}
-      GIT_REF: develop
-      NODE_ENV: development
-      CORS_ALLOWED_ORIGINS: 'https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca,https://calendar-ui-b3237c-dev.apps.gold.devops.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080'
+      GIT_REF: ${{ github.ref_name }}
+      NODE_ENV: ${{ vars.NODE_ENV }}
+      CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
       AUTH_COOKIE_DOMAIN: ${{ vars.AUTH_COOKIE_DOMAIN }}
       POST_LOGIN_REDIRECT_URL: ${{ vars.POST_LOGIN_REDIRECT_URL }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
