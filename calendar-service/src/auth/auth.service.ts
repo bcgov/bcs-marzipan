@@ -30,6 +30,7 @@ import type { LoginDto } from './dto/login.dto';
 import {
   findUserByEmail,
   findUserByExternalId,
+  findUserByExternalIdAnyStatus,
   syncAzureIdentity,
   type AuthDbUser,
 } from './strategies/ad.strategy';
@@ -116,6 +117,25 @@ export class AuthService {
     }
 
     if (!dbUser) {
+      // Check whether the account exists but has a non-active status so we can
+      // return a meaningful error instead of the generic "no account" message.
+      const anyStatus = await findUserByExternalIdAnyStatus(
+        this.databaseService.db,
+        claims.externalId
+      );
+
+      if (anyStatus?.status === 'pending') {
+        throw new UnauthorizedException(
+          'Your account has not been activated yet. Please sign in with your email and password to complete account setup.'
+        );
+      }
+
+      if (anyStatus?.status === 'password_reset_required') {
+        throw new UnauthorizedException(
+          'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
+        );
+      }
+
       throw new UnauthorizedException(
         'No active local account found for this Azure AD user.'
       );
@@ -157,7 +177,9 @@ export class AuthService {
     );
 
     if (!dbUser) {
-      return { status: 'not_found' };
+      // Return the same shape as 'inactive' so callers cannot distinguish a
+      // missing address from a deactivated account (prevents email enumeration).
+      return { status: 'inactive' };
     }
 
     if (!dbUser.isActive || dbUser.status === 'inactive') {

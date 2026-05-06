@@ -37,6 +37,7 @@
     "@nestjs/schedule": "^5.0.1",
     "@nestjs/serve-static": "^5.0.4",
     "@nestjs/swagger": "^11.2.0",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.9",
     "axios": "^1.13.1",
     "bcryptjs": "^3.0.3",

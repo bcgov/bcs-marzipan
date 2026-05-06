@@ -25,8 +25,7 @@ export type CheckEmailStatus =
   | 'active'
   | 'pending'
   | 'requires_reset'
-  | 'inactive'
-  | 'not_found';
+  | 'inactive';
 
 export interface CheckEmailResponse {
   status: CheckEmailStatus;

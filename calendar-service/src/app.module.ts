@@ -5,6 +5,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { ActivitiesModule } from './activities/activities.module';
 import { ActivityCompletionModule } from './activity-completion/activity-completion.module';
@@ -50,6 +51,9 @@ function resolveRootEnvPath(): string {
       // Load .env from root directory
       envFilePath: resolveRootEnvPath(),
     }),
+    // Global rate limiter — 20 requests per minute per IP across all routes.
+    // Sensitive auth endpoints apply tighter per-route limits via @Throttle().
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     ScheduleModule.forRoot(),
     LoggerModule,
     DatabaseModule,
@@ -73,6 +77,7 @@ function resolveRootEnvPath(): string {
   providers: [
     AppService,
     CorrelationIdMiddleware,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
