@@ -92,12 +92,16 @@ export async function checkEmail(email: string): Promise<CheckEmailResponse> {
 }
 
 /**
- * Set first-time password for a pending account (activates account, logs user in).
+ * Set first-time password for a pending account (activates account).
+ * Returns a message only — the user must log in separately after this step.
  */
 export async function setPassword(
   body: SetPasswordBody
-): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/set-password', body);
+): Promise<{ message: string }> {
+  const response = await api.post<{ message: string }>(
+    '/auth/set-password',
+    body
+  );
   return response.data;
 }
 

@@ -78,7 +78,6 @@ export async function updateUserPassword(
     .set({
       passwordHash,
       status: newStatus,
-      mustChangePassword: false,
       passwordChangedAt: new Date(),
       lastUpdatedDateTime: new Date(),
     })

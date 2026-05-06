@@ -441,8 +441,34 @@ export class AuthService {
   /**
    * Create a temporary reset token for an admin-triggered password reset.
    * Sets the user's status to password_reset_required and returns the plaintext code.
+   *
+   * Only allowed for users who are local-auth eligible: accounts that are
+   * pending, active with a password hash, or already in password_reset_required.
+   * Pure Azure-SSO accounts (no password_hash, status=active) are rejected to
+   * avoid silently forcing them down the local password path.
    */
   async createPasswordResetToken(userId: number): Promise<string> {
+    const dbUser = await findUserByIdLocal(this.databaseService.db, userId);
+
+    if (!dbUser) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Reject SSO-only users: active account with no password hash means they
+    // have never used local auth and are not expected to.
+    if (dbUser.isActive && dbUser.status === 'active' && !dbUser.passwordHash) {
+      throw new BadRequestException(
+        'This user signs in via Microsoft (SSO) and is not eligible for a local password reset.'
+      );
+    }
+
+    // Inactive users cannot be given a reset token.
+    if (!dbUser.isActive || dbUser.status === 'inactive') {
+      throw new BadRequestException(
+        'Cannot initiate a password reset for an inactive user.'
+      );
+    }
+
     const plainCode = randomBytes(16).toString('hex'); // 32-char hex code
     const tokenHash = createHash('sha256').update(plainCode).digest('hex');
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours

@@ -41,9 +41,6 @@ export const users = pgTable(
     // Local auth credentials (AUTH_STRATEGY=local)
     passwordHash: varchar('password_hash', { length: 255 }), // bcrypt hash; null for pending/Azure-only users
     status: varchar('status', { length: 30 }).notNull().default('active'), // pending | active | inactive | password_reset_required
-    mustChangePassword: boolean('must_change_password')
-      .notNull()
-      .default(false),
     passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
 
     // Additional user info

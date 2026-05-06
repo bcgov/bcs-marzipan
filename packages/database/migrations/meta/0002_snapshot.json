@@ -1,5 +1,5 @@
 {
-  "id": "80d89416-e610-4c45-af36-495b2060cce0",
+  "id": "42765a13-4582-4776-ad5b-806342c49714",
   "prevId": "5c6b874c-a8c4-47c6-9660-3db604e7b9df",
   "version": "7",
   "dialect": "postgresql",
@@ -797,13 +797,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
-        },
-        "must_change_password": {
-          "name": "must_change_password",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "password_changed_at": {
           "name": "password_changed_at",
