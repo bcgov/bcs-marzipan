@@ -51,9 +51,12 @@ function resolveRootEnvPath(): string {
       // Load .env from root directory
       envFilePath: resolveRootEnvPath(),
     }),
-    // Global rate limiter — 20 requests per minute per IP across all routes.
-    // Sensitive auth endpoints apply tighter per-route limits via @Throttle().
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
+    // Global rate limiter — 200 requests per minute per IP for all routes.
+    // This is intentionally generous to avoid 429s on busy authenticated pages
+    // (many parallel API calls, shared NAT / office egress, automated clients).
+    // Sensitive auth endpoints override this with a much tighter limit (5 req/min)
+    // via @Throttle() decorators on each handler in AuthController.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 200 }]),
     ScheduleModule.forRoot(),
     LoggerModule,
     DatabaseModule,

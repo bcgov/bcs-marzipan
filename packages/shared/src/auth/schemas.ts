@@ -16,7 +16,7 @@ export type LoginBody = z.infer<typeof loginBodySchema>;
 // ---------------------------------------------------------------------------
 
 export const checkEmailBodySchema = z.object({
-  email: z.string().min(1, 'Email is required'),
+  email: z.string().trim().email('Valid email is required'),
 });
 
 export type CheckEmailBody = z.infer<typeof checkEmailBodySchema>;
