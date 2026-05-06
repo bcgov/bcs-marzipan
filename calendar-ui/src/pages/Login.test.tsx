@@ -78,8 +78,8 @@ describe('Login page — Azure AD', () => {
       enabled: false,
       mockEnabled: false,
     });
-    // Default: checkEmail returns not_found (override per test)
-    mockCheckEmail.mockResolvedValue({ status: 'not_found' });
+    // Default: checkEmail returns inactive (override per test)
+    mockCheckEmail.mockResolvedValue({ status: 'inactive' });
     // Reset to a clean URL before each test
     window.history.pushState({}, '', '/login');
   });
@@ -219,7 +219,7 @@ describe('Login page — local email/password auth', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCheckEmail.mockResolvedValue({ status: 'not_found' });
+    mockCheckEmail.mockResolvedValue({ status: 'inactive' });
     window.history.pushState({}, '', '/login');
   });
 
@@ -336,15 +336,15 @@ describe('Login page — local email/password auth', () => {
       expect(await screen.findByLabelText('Reset Code')).toBeInTheDocument();
     });
 
-    it('shows an error for an unknown email', async () => {
-      mockCheckEmail.mockResolvedValue({ status: 'not_found' });
+    it('shows an error for an unknown email (enumeration hardening: same message as deactivated)', async () => {
+      mockCheckEmail.mockResolvedValue({ status: 'inactive' });
       renderLogin();
       await userEvent.type(
         await screen.findByLabelText('Email'),
         'nobody@example.com'
       );
       await userEvent.click(screen.getByRole('button', { name: /continue/i }));
-      expect(await screen.findByText(/no account found/i)).toBeInTheDocument();
+      expect(await screen.findByText(/deactivated/i)).toBeInTheDocument();
     });
 
     it('shows an error for a deactivated account', async () => {

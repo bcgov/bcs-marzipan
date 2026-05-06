@@ -185,7 +185,7 @@ export function Login() {
           setError(
             azureEnabled
               ? 'This account cannot sign in with a password. If you are BC Government staff, try signing in with IDIR.'
-              : 'This account is not available. Please contact your administrator.'
+              : 'This account has been deactivated. Please contact your administrator.'
           );
           break;
         default:
