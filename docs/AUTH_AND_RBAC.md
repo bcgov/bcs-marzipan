@@ -39,6 +39,7 @@ This document describes the authentication and authorization system implemented 
 │  │  │ Strategies            │  │  │  │ DataScopeInterceptor        │   │  │
 │  │  │ - mock.strategy.ts    │  │  │  │ - Sets request.dataScope    │   │  │
 │  │  │ - ad.strategy.ts      │  │  │  └─────────────────────────────┘   │  │
+│  │  │ - local.strategy.ts   │  │  │                                     │  │
 │  │  └───────────────────────┘  │  │                                     │  │
 │  └─────────────────────────────┘  └─────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -49,9 +50,9 @@ This document describes the authentication and authorization system implemented 
 │  ┌─────────────┐ ┌─────────────┐ ┌──────────────────┐ ┌──────────────────┐ │
 │  │   users     │ │   roles     │ │   permissions    │ │ role_permissions │ │
 │  └─────────────┘ └─────────────┘ └──────────────────┘ └──────────────────┘ │
-│  ┌─────────────┐ ┌─────────────┐                                           │
-│  │  sessions   │ │ user_teams  │                                           │
-│  └─────────────┘ └─────────────┘                                           │
+│  ┌─────────────┐ ┌─────────────┐ ┌────────────────────────┐               │
+│  │  sessions   │ │ user_teams  │ │ password_reset_tokens  │               │
+│  └─────────────┘ └─────────────┘ └────────────────────────┘               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

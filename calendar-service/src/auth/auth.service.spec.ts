@@ -17,6 +17,7 @@ import {
   findUserByEmailLocal,
   findUserByIdLocal,
   updateUserPassword,
+  updateUserStatus,
 } from './strategies/local.strategy';
 
 // ---------------------------------------------------------------------------
@@ -232,6 +233,7 @@ describe('AuthService — local auth methods', () => {
     vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value' as never);
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
     vi.mocked(updateUserPassword).mockResolvedValue(undefined);
+    vi.mocked(updateUserStatus).mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -431,6 +433,43 @@ describe('AuthService — local auth methods', () => {
           newPassword: 'NewPass1!',
         })
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // createPasswordResetToken()
+  // -------------------------------------------------------------------------
+
+  describe('createPasswordResetToken()', () => {
+    it('throws BadRequestException when the user is not found', async () => {
+      vi.mocked(findUserByIdLocal).mockResolvedValue(null);
+      await expect(service.createPasswordResetToken(99)).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('throws BadRequestException for an SSO-only user (active, no passwordHash)', async () => {
+      vi.mocked(findUserByIdLocal).mockResolvedValue(
+        makeLocalUser({ isActive: true, status: 'active', passwordHash: null })
+      );
+      await expect(service.createPasswordResetToken(1)).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('throws BadRequestException for an inactive user', async () => {
+      vi.mocked(findUserByIdLocal).mockResolvedValue(
+        makeLocalUser({ isActive: false, status: 'inactive' })
+      );
+      await expect(service.createPasswordResetToken(1)).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('returns a 32-character hex token for an eligible user', async () => {
+      vi.mocked(findUserByIdLocal).mockResolvedValue(makeLocalUser());
+      const token = await service.createPasswordResetToken(1);
+      expect(token).toMatch(/^[0-9a-f]{32}$/);
     });
   });
 });
