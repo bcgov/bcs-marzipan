@@ -554,15 +554,15 @@ export function Login() {
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardHeader className="space-y-4 pb-2 text-center">
           <div className="flex flex-col items-center space-y-4">
-            <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-full">
-              <Lock className="text-primary h-8 w-8" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-400 shadow-md">
+              <Lock className="h-8 w-8 text-white" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
                 Corporate Calendar
               </CardTitle>
               <CardDescription className="mt-2 text-slate-500">
-                Sign in to access the calendar management system
+                Log in to access the calendar management system
               </CardDescription>
             </div>
           </div>
@@ -817,10 +817,10 @@ export function Login() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Logging in...
                   </>
                 ) : (
-                  'Sign In'
+                  'Log In'
                 )}
               </Button>
             </form>
