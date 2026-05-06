@@ -8,6 +8,7 @@ import {
 import {
   ArrowLeftRight,
   History,
+  KeyRound,
   MoreHorizontal,
   Pencil,
   UsersRound,
@@ -122,6 +123,7 @@ export interface UsersTabContentProps {
   onViewHistory: (user: UserListItem) => void;
   onDeactivate: (user: UserListItem) => void;
   onReactivate: (user: UserListItem) => void;
+  onInitiateReset: (user: UserListItem) => void;
 }
 
 export function UsersTabContent({
@@ -132,6 +134,7 @@ export function UsersTabContent({
   onViewHistory,
   onDeactivate,
   onReactivate,
+  onInitiateReset,
 }: UsersTabContentProps) {
   const [keyword, setKeyword] = useState('');
   const [teamIds, setTeamIds] = useState<number[]>([]);
@@ -468,6 +471,14 @@ export function UsersTabContent({
                           <History className="h-4 w-4" />
                           View history
                         </DropdownMenuItem>
+                        {canEdit && user.isActive && (
+                          <DropdownMenuItem
+                            onClick={() => onInitiateReset(user)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                            Reset password
+                          </DropdownMenuItem>
+                        )}
                         {canEdit && user.isActive && (
                           <DropdownMenuItem
                             onClick={() => onDeactivate(user)}

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
 
+import { AuthService } from '../auth/auth.service';
 import {
   createMockAddUserToTeamBody,
   createMockTransferActivitiesBody,
@@ -41,6 +42,10 @@ describe('UsersController', () => {
     transferActivities: vi.fn(),
   };
 
+  const mockAuthService = {
+    createPasswordResetToken: vi.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -48,6 +53,10 @@ describe('UsersController', () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
         },
       ],
     }).compile();
@@ -259,6 +268,28 @@ describe('UsersController', () => {
         mockUser.id
       );
       expect(mockUsersService.transferActivities).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('initiatePasswordReset', () => {
+    it('should return reset code and expiry when token is created', async () => {
+      mockAuthService.createPasswordResetToken.mockResolvedValue('abc123');
+
+      const result = await controller.initiatePasswordReset(7);
+
+      expect(result).toEqual({ resetCode: 'abc123', expiresInHours: 48 });
+      expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledWith(7);
+      expect(mockAuthService.createPasswordResetToken).toHaveBeenCalledTimes(1);
+    });
+
+    it('should propagate errors thrown by authService', async () => {
+      mockAuthService.createPasswordResetToken.mockRejectedValue(
+        new Error('User not found')
+      );
+
+      await expect(controller.initiatePasswordReset(99)).rejects.toThrow(
+        'User not found'
+      );
     });
   });
 });
