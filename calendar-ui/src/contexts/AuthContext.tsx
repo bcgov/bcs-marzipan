@@ -17,12 +17,20 @@ import * as authApi from '../api/authApi';
 
 export const LOGIN_MODAL_SESSION_KEY = 'corpcal_show_login_modal';
 
+export interface LoginResult {
+  success: boolean;
+  requiresPasswordSetup?: boolean;
+  requiresPasswordReset?: boolean;
+  email?: string;
+  error?: string;
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   pendingLoginModal: boolean;
-  login: (username: string, password?: string) => Promise<void>;
+  login: (username: string, password?: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   dismissLoginModal: () => void;
@@ -90,15 +98,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [refreshUser]);
 
   /**
-   * Login with username and optional password
-   * Backend sets httpOnly cookie on success
+   * Login with username and optional password.
+   * Returns a LoginResult that describes the outcome — the Login page
+   * uses this to branch into set-password / reset-code flows.
    */
-  const login = useCallback(async (username: string, password?: string) => {
-    const response = await authApi.login({ username, password });
-    sessionStorage.setItem(LOGIN_MODAL_SESSION_KEY, '1');
-    setPendingLoginModal(true);
-    setUser(response.user);
-  }, []);
+  const login = useCallback(
+    async (username: string, password?: string): Promise<LoginResult> => {
+      try {
+        const response = await authApi.login({ username, password });
+
+        if ('requiresPasswordSetup' in response) {
+          return {
+            success: false,
+            requiresPasswordSetup: true,
+            email: response.email,
+          };
+        }
+
+        if ('requiresPasswordReset' in response) {
+          return {
+            success: false,
+            requiresPasswordReset: true,
+            email: response.email,
+          };
+        }
+
+        sessionStorage.setItem(LOGIN_MODAL_SESSION_KEY, '1');
+        setPendingLoginModal(true);
+        setUser(response.user);
+        return { success: true };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Login failed';
+        return { success: false, error: message };
+      }
+    },
+    []
+  );
 
   /**
    * Logout - backend clears httpOnly cookie

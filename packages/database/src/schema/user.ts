@@ -38,6 +38,11 @@ export const users = pgTable(
     adDivision: varchar('ad_division', { length: 255 }), // Active Directory division
     adDepartment: varchar('ad_department', { length: 255 }), // Active Directory department
     adJobTitle: varchar('ad_job_title', { length: 255 }), // Active Directory job title
+    // Local auth credentials (AUTH_STRATEGY=local)
+    passwordHash: varchar('password_hash', { length: 255 }), // bcrypt hash; null for pending/Azure-only users
+    status: varchar('status', { length: 30 }).notNull().default('active'), // pending | active | inactive | password_reset_required
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
+
     // Additional user info
     phone: varchar('phone', { length: 50 }),
     notes: text('notes'),

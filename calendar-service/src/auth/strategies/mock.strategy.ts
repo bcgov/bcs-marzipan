@@ -17,6 +17,7 @@ export async function findUserByUsername(
   adUsername: string | null;
   adDisplayName: string | null;
   adEmail: string | null;
+  status: string;
 } | null> {
   const [row] = await db
     .select({
@@ -25,6 +26,7 @@ export async function findUserByUsername(
       adUsername: users.adUsername,
       adDisplayName: users.adDisplayName,
       adEmail: users.adEmail,
+      status: users.status,
     })
     .from(users)
     .where(and(eq(users.adUsername, username), eq(users.isActive, true)))

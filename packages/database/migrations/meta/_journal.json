@@ -15,6 +15,13 @@
       "when": 1777489308566,
       "tag": "0001_20260429_squash_login_modal",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778088976959,
+      "tag": "0002_20260430_local_auth",
+      "breakpoints": true
     }
   ]
 }
