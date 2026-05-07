@@ -44,7 +44,6 @@ export function useLookAheadSectionRows(): UseLookAheadSectionRowsResult {
 export interface LookAheadSectionOption {
   value: string;
   label: string;
-  legendColor: string | null;
 }
 
 /**
@@ -60,7 +59,6 @@ export function rowsToSectionOptions(
     options.push({
       value: row.lookAheadKey,
       label: row.uiLabel,
-      legendColor: row.legendColor,
     });
   }
   return options;

@@ -111,13 +111,6 @@ export function LookAheadFilterPanel({
           checked={lookAheadSectionValues.includes(opt.value)}
           onCheckedChange={() => handleSectionToggle(opt.value)}
         >
-          {opt.legendColor ? (
-            <span
-              aria-hidden="true"
-              className="border-border mr-1 inline-block h-3.5 w-3.5 shrink-0 rounded-sm border"
-              style={{ backgroundColor: opt.legendColor }}
-            />
-          ) : null}
           <span className="truncate">{opt.label}</span>
         </FilterCheckboxItem>
       ))}

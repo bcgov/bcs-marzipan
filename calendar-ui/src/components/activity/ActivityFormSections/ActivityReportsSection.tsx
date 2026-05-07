@@ -218,13 +218,6 @@ export const ActivityReportsSection: React.FC = () => {
                             value={option.value}
                             id={`lookAhead-section-${option.value}`}
                           />
-                          {option.legendColor ? (
-                            <span
-                              aria-hidden="true"
-                              className="border-border inline-block h-4 w-4 rounded-sm border"
-                              style={{ backgroundColor: option.legendColor }}
-                            />
-                          ) : null}
                           <Label
                             htmlFor={`lookAhead-section-${option.value}`}
                             className="cursor-pointer font-normal"
