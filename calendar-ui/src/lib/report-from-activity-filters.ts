@@ -93,9 +93,7 @@ export function buildReportDataRequestParamsFromActivityPreferences(
     params.commsContactLeadUserId = fs.commsContactLeadUserIds[0];
   }
   if (fs.lookAheadSectionValues.length === 1) {
-    params.lookAheadSection = fs.lookAheadSectionValues[0] as NonNullable<
-      ReportDataQueryParams['lookAheadSection']
-    >;
+    params.lookAheadSection = fs.lookAheadSectionValues[0];
   }
 
   return params;
