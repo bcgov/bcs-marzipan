@@ -71,10 +71,15 @@ function PrintSectionColGroup() {
   );
 }
 
+const SECTION_COLUMN_SPAN = PRINT_SECTION_COLUMN_HEADERS.length;
+
 function PrintSectionColumnHeaderRow({
   sectionLegendColor,
+  rowClassName,
 }: {
   sectionLegendColor: string | null;
+  /** Applied to the column-header `<tr>`; per-day vs flat-rollup thead use distinct classes for border/radius. */
+  rowClassName?: string;
 }) {
   const bgHex = safeSwatchColor(sectionLegendColor);
   const foreground = bgHex
@@ -83,7 +88,7 @@ function PrintSectionColumnHeaderRow({
   const lines = foreground ? theadHeaderLinesFromFg(foreground) : null;
 
   return (
-    <tr>
+    <tr className={rowClassName}>
       {PRINT_SECTION_COLUMN_HEADERS.map((label, i) => {
         const colClass = `corpcal-print-col-${i + 1}`;
         if (!bgHex || foreground === null || !lines) {
@@ -114,48 +119,92 @@ function PrintSectionColumnHeaderRow({
 }
 
 /**
- * Renders the section title outside the bordered grid, then one table per
- * calendar day with the day label above the column header row.
+ * One bordered grid per section. The section title lives in the first `thead` row so
+ * it repeats at the top of each printed sheet.
+ *
+ * When `showPerDayPrintChrome` is true, `thead` contains only the section title;
+ * each day's tbody opens with a date heading row and a column header band cloned
+ * via `PrintSectionColumnHeaderRow`. When false, `thead` also includes a shared
+ * column header row so labels repeat on every printed page with the section title.
  */
 export function PrintGroupedSectionTable({
   sectionPrintLabel,
   sectionLegendColor,
   days,
   variant,
+  showPerDayPrintChrome,
 }: {
   sectionPrintLabel: string;
   /** When set on the section config, table header cells inherit the legend swatch. */
   sectionLegendColor: string | null;
   days: PrintGroupedSectionDayBlock[];
   variant: PrintReportVariant;
+  /**
+   * When true, render a per-day date row + a clone of the column header band
+   * before each day's rows. When false, all days flow as continuous activity
+   * rows in a single tbody.
+   */
+  showPerDayPrintChrome: boolean;
 }) {
   return (
-    <>
-      <PrintSectionHeading
-        sectionName={sectionPrintLabel}
-        sectionLegendColor={sectionLegendColor}
-      />
-      {days.map((day) => (
-        <div key={day.dayKey} className="corpcal-print-day">
-          <h3 className="corpcal-print-day-heading">{day.dayHeading}</h3>
-          <div className="corpcal-print-table-wrap">
-            <table className="corpcal-print-table" role="grid">
-              <PrintSectionColGroup />
-              <thead>
-                <PrintSectionColumnHeaderRow
-                  sectionLegendColor={sectionLegendColor}
-                />
-              </thead>
-              <tbody>
-                {day.rows.map((row) => (
-                  <PrintRow key={row.activityId} row={row} variant={variant} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-    </>
+    <div className="corpcal-print-table-wrap corpcal-print-table-wrap--section-rollup">
+      <table
+        className="corpcal-print-table corpcal-print-section-rollup-table"
+        role="grid"
+      >
+        <PrintSectionColGroup />
+        <thead>
+          <tr>
+            <td
+              colSpan={SECTION_COLUMN_SPAN}
+              className="corpcal-print-section-heading-cell"
+            >
+              <PrintSectionHeading
+                sectionName={sectionPrintLabel}
+                sectionLegendColor={sectionLegendColor}
+              />
+            </td>
+          </tr>
+          {!showPerDayPrintChrome ? (
+            <PrintSectionColumnHeaderRow
+              rowClassName="corpcal-print-rollup-thead-column-header-row"
+              sectionLegendColor={sectionLegendColor}
+            />
+          ) : null}
+        </thead>
+        {showPerDayPrintChrome ? (
+          days.map((day) => (
+            <tbody key={day.dayKey} className="corpcal-print-day-tbody">
+              <tr className="corpcal-print-day-heading-row">
+                <td
+                  colSpan={SECTION_COLUMN_SPAN}
+                  className="corpcal-print-day-heading-cell"
+                >
+                  <h3 className="corpcal-print-day-heading">
+                    {day.dayHeading}
+                  </h3>
+                </td>
+              </tr>
+              <PrintSectionColumnHeaderRow
+                rowClassName="corpcal-print-per-day-column-header-row"
+                sectionLegendColor={sectionLegendColor}
+              />
+              {day.rows.map((row) => (
+                <PrintRow key={row.activityId} row={row} variant={variant} />
+              ))}
+            </tbody>
+          ))
+        ) : (
+          <tbody className="corpcal-print-day-tbody">
+            {days.flatMap((day) =>
+              day.rows.map((row) => (
+                <PrintRow key={row.activityId} row={row} variant={variant} />
+              ))
+            )}
+          </tbody>
+        )}
+      </table>
+    </div>
   );
 }
 

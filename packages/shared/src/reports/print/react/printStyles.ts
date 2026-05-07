@@ -121,12 +121,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-body > .corpcal-print-section-block + .corpcal-print-section-block {
   margin-top: 8px;
 }
-.corpcal-print-day {
-  margin-top: 16px;
-}
-.corpcal-print-section-heading + .corpcal-print-day {
-  margin-top: 6px;
-}
 .corpcal-print-day-heading {
   margin: 0 0 6px;
   padding: 6px 0;
@@ -160,6 +154,85 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   overflow: hidden;
   background: var(--corpcal-table-surface);
 }
+/* Look-ahead multi-day section: section title repeats in thead for print/PDF — no outer border/panel around it. */
+.corpcal-print-table-wrap--section-rollup {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.corpcal-print-section-rollup-table thead {
+  display: table-header-group;
+}
+.corpcal-print-section-rollup-table .corpcal-print-section-heading-cell {
+  border: none;
+  padding: 12px 0 6px;
+  vertical-align: middle;
+  background: var(--corpcal-surface);
+}
+.corpcal-print-section-rollup-table .corpcal-print-section-heading-cell .corpcal-print-section-heading {
+  margin: 0;
+}
+/* Bordered "card" wraps tbody rows. Rounded top corners + top edge:
+   - Per-day chrome: first tbody row is the day heading (td).
+   - Flat days: top edge sits on thead column header (th); skip top border/radius
+     on the first tbody row. */
+.corpcal-print-section-rollup-table:not(:has(.corpcal-print-rollup-thead-column-header-row)) tbody:first-of-type tr:first-child > td {
+  border-top: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table:not(:has(.corpcal-print-rollup-thead-column-header-row)) tbody:first-of-type tr:first-child > td:first-child {
+  border-top-left-radius: var(--corpcal-table-radius);
+}
+.corpcal-print-section-rollup-table:not(:has(.corpcal-print-rollup-thead-column-header-row)) tbody:first-of-type tr:first-child > td:last-child {
+  border-top-right-radius: var(--corpcal-table-radius);
+}
+.corpcal-print-section-rollup-table:has(.corpcal-print-rollup-thead-column-header-row) thead tr.corpcal-print-rollup-thead-column-header-row th {
+  border-top: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table:has(.corpcal-print-rollup-thead-column-header-row) thead tr.corpcal-print-rollup-thead-column-header-row th:first-child {
+  border-top-left-radius: var(--corpcal-table-radius);
+  border-left: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table:has(.corpcal-print-rollup-thead-column-header-row) thead tr.corpcal-print-rollup-thead-column-header-row th:last-child {
+  border-top-right-radius: var(--corpcal-table-radius);
+  border-right: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table tbody td:first-child {
+  border-left: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table tbody td:last-child {
+  border-right: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table tbody:last-child tr:last-child td:first-child {
+  border-bottom-left-radius: var(--corpcal-table-radius);
+}
+.corpcal-print-section-rollup-table tbody:last-child tr:last-child td:last-child {
+  border-bottom-right-radius: var(--corpcal-table-radius);
+}
+.corpcal-print-section-rollup-table .corpcal-print-day-heading-cell {
+  padding: 0;
+  vertical-align: middle;
+  background: var(--corpcal-table-surface);
+  border-bottom: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table .corpcal-print-day-heading-row + tr > td {
+  border-top: none;
+}
+.corpcal-print-section-rollup-table .corpcal-print-day-heading {
+  margin: 0;
+  padding: 6px 8px;
+}
+/* Per-day column header band rendered between each day's date row and activity
+   rows. Uses th cells, so left/right borders are spelled out (the generic
+   tbody td rules above don't match). The legend swatch fill is applied via
+   inline styles on the shared PrintSectionColumnHeaderRow component. */
+.corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th:first-child {
+  border-left: 1px solid var(--corpcal-table-border);
+}
+.corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th:last-child {
+  border-right: 1px solid var(--corpcal-table-border);
+}
+
 .corpcal-print-table {
   width: 100%;
   border-collapse: separate;
@@ -503,6 +576,46 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink-muted);
 }
 
+/* Preview-only sticky stacking for the look-ahead rollup table. Wrapped in
+   .corpcal-print-preview-shell so the same PRINT_STYLES string that powers the
+   Puppeteer PDF stays unaffected (the wrapper is only injected by the in-app
+   preview component). The bands stack: section title -> (flat: thead column
+   header | per-day: day heading -> per-day clone column header). Heights are
+   tunable via CSS vars. */
+.corpcal-print-preview-shell {
+  --corpcal-print-sticky-section-band: 56px;
+  --corpcal-print-sticky-day-band: 32px;
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-section-heading-cell {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--corpcal-surface);
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table thead tr.corpcal-print-rollup-thead-column-header-row th {
+  position: sticky;
+  top: var(--corpcal-print-sticky-section-band);
+  z-index: 4;
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table thead tr.corpcal-print-rollup-thead-column-header-row th:not(.corpcal-print-section-thead-cell) {
+  background: var(--corpcal-table-header-bg);
+  color: var(--corpcal-table-header-fg);
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-day-heading-cell {
+  position: sticky;
+  top: var(--corpcal-print-sticky-section-band);
+  z-index: 3;
+  background: var(--corpcal-table-surface);
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th {
+  position: sticky;
+  top: calc(
+    var(--corpcal-print-sticky-section-band) +
+      var(--corpcal-print-sticky-day-band)
+  );
+  z-index: 2;
+}
+
 @media print {
   /* Cover is a body sibling before the report; fixed footer would otherwise print on
      every sheet. Stack the one-page cover above the footer so sheet 1 has no footer. */
@@ -528,6 +641,14 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   }
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }
-  .corpcal-print-day { page-break-inside: avoid; }
+  .corpcal-print-day-tbody { page-break-inside: avoid; }
+  /* Preview sticky must not bleed into PDF/print output. */
+  .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-section-heading-cell,
+  .corpcal-print-preview-shell .corpcal-print-section-rollup-table thead tr.corpcal-print-rollup-thead-column-header-row th,
+  .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-day-heading-cell,
+  .corpcal-print-preview-shell .corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th {
+    position: static !important;
+    top: auto !important;
+  }
 }
 `;

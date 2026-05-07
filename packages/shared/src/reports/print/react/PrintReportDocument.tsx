@@ -27,8 +27,23 @@ interface SortedSection {
   /** Legend/cover long title when report config is present. */
   printHeadingLabel: string;
   legendColor: string | null;
+  /**
+   * When true, the rollup table renders a calendar-date row and a cloned column
+   * header band above each day. When false, days flow in one tbody and a shared
+   * column header row lives in `thead` so it repeats on each printed page with
+   * the section title. Resolved from `printPerDayColumnHeaderRepeat` in
+   * `ReportConfig` (default false when omitted).
+   */
+  showPerDayPrintChrome: boolean;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
+
+/**
+ * Default for sections that don't set `printPerDayColumnHeaderRepeat`. Per-day
+ * chrome is opt-in via the section config; sections without an explicit value
+ * render as continuous activity rows.
+ */
+const DEFAULT_SHOW_PER_DAY_PRINT_CHROME = false;
 
 function indexActivitiesByDay(
   activities: ActivityResponse[]
@@ -51,10 +66,15 @@ function indexActivitiesByDay(
 function collectSortedSections(data: ReportDataResponse): SortedSection[] {
   const legendColorById = new Map<string, string | null>();
   const printHeadingById = new Map<string, string>();
+  const showPerDayChromeById = new Map<string, boolean>();
   if (data.report?.config) {
     for (const row of resolveLookAheadSectionRows(data.report.config)) {
       legendColorById.set(row.sectionId, row.legendColor);
       printHeadingById.set(row.sectionId, row.reportLegendLabel);
+      showPerDayChromeById.set(
+        row.sectionId,
+        row.printPerDayColumnHeaderRepeat ?? DEFAULT_SHOW_PER_DAY_PRINT_CHROME
+      );
     }
   }
   return [...data.sections]
@@ -65,6 +85,9 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       printHeadingLabel:
         printHeadingById.get(section.id) ?? section.name,
       legendColor: legendColorById.get(section.id) ?? null,
+      showPerDayPrintChrome:
+        showPerDayChromeById.get(section.id) ??
+        DEFAULT_SHOW_PER_DAY_PRINT_CHROME,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
 }
@@ -181,6 +204,7 @@ function SectionGroup({
         sectionLegendColor={section.legendColor}
         days={dayBlocks}
         variant={variant}
+        showPerDayPrintChrome={section.showPerDayPrintChrome}
       />
     </section>
   );

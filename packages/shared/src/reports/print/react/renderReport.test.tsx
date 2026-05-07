@@ -251,6 +251,7 @@ describe('renderPrintReportFragmentHtml', () => {
               order: 1,
               filter: { lookAheadSection: 'events' },
               legendColor: '#2C7DA0',
+              printPerDayColumnHeaderRepeat: true,
             },
           ],
         },
@@ -264,6 +265,8 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('corpcal-print-section-swatch');
     expect(html).toContain('background-color:#2C7DA0');
+    // Legend swatch styling lives on the per-day cloned column header band.
+    expect(html).toContain('corpcal-print-per-day-column-header-row');
     expect(html).toContain('corpcal-print-section-thead-cell');
     expect(html).toContain('color:#ffffff');
     expect(html).toContain('Events, speeches and releases (inside government)');
@@ -284,6 +287,7 @@ describe('renderPrintReportFragmentHtml', () => {
               order: 1,
               filter: { lookAheadSection: 'events' },
               legendColor: '#FEF9E8',
+              printPerDayColumnHeaderRepeat: true,
             },
           ],
         },
@@ -298,6 +302,152 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('corpcal-print-section-thead-cell');
     expect(html).toContain('background-color:#FEF9E8');
     expect(html).toContain('color:#000000');
+  });
+
+  it('renders per-day chrome (date row + cloned column header) only for sections that opt in', () => {
+    const eventsAndIssues: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+              printPerDayColumnHeaderRepeat: true,
+            },
+            {
+              id: 'issues',
+              name: 'Issues',
+              order: 2,
+              filter: { lookAheadSection: 'issues' },
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'events',
+          name: 'Events',
+          order: 1,
+          activities: [BASE_ACTIVITY],
+        },
+        {
+          id: 'issues',
+          name: 'Issues',
+          order: 2,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              id: 301,
+              displayId: 'ACT-301',
+              lookAheadSection: 'issues',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      eventsAndIssues,
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        generatedAt: FIXED_GENERATED_AT,
+      }
+    );
+
+    expect((html.match(/corpcal-print-day-heading-row/g) ?? []).length).toBe(1);
+    expect(
+      (html.match(/corpcal-print-per-day-column-header-row/g) ?? []).length
+    ).toBe(1);
+    expect(
+      (html.match(/corpcal-print-rollup-thead-column-header-row/g) ?? []).length
+    ).toBe(1);
+
+    const issuesIdx = html.indexOf('>Issues</span>');
+    const issuesActIdx = html.indexOf('ACT-301');
+    expect(issuesIdx).toBeGreaterThan(-1);
+    expect(issuesActIdx).toBeGreaterThan(-1);
+    const issuesSlice = html.slice(issuesIdx, issuesActIdx);
+    expect(issuesSlice).not.toContain('corpcal-print-day-heading-row');
+    expect(issuesSlice).not.toContain('corpcal-print-per-day-column-header-row');
+    expect(issuesSlice).toContain('corpcal-print-rollup-thead-column-header-row');
+  });
+
+  it('omits per-day chrome by default when printPerDayColumnHeaderRepeat is not set', () => {
+    const noOverride: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+            },
+          ],
+        },
+      },
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', noOverride, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).not.toContain('corpcal-print-day-heading-row');
+    expect(html).not.toContain('corpcal-print-per-day-column-header-row');
+    expect(html).toContain('corpcal-print-rollup-thead-column-header-row');
+  });
+
+  it('honours an explicit printPerDayColumnHeaderRepeat: true on a non-events section', () => {
+    const overridden: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'issues',
+              name: 'Issues',
+              order: 1,
+              filter: { lookAheadSection: 'issues' },
+              printPerDayColumnHeaderRepeat: true,
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'issues',
+          name: 'Issues',
+          order: 1,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              lookAheadSection: 'issues',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', overridden, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('corpcal-print-day-heading-row');
+    expect(html).toContain('corpcal-print-per-day-column-header-row');
+    expect(html).not.toContain('corpcal-print-rollup-thead-column-header-row');
   });
 
   it('lists all days for the first section before the second section (section-first layout)', () => {
