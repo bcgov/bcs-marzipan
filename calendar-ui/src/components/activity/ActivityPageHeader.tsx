@@ -3,6 +3,7 @@ import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -13,7 +14,6 @@ import {
   isSameDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
-import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -119,12 +119,28 @@ export function ActivityPageHeader({
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={cn(
-                'shrink-0',
-                isFlagged && 'text-[color:var(--flag-button-icon)]'
-              )}
+              className="relative shrink-0"
             >
-              <Flag className={cn('h-4 w-4', isFlagged && 'fill-current')} />
+              {isFlagged && currentFlag ? (
+                <>
+                  <Avatar size="sm" className="size-full">
+                    <AvatarFallback className="text-[10px] font-medium">
+                      {currentFlag.assigneeName
+                        .split(' ')
+                        .slice(0, 2)
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Flag
+                    className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                    aria-hidden
+                  />
+                </>
+              ) : (
+                <Flag className="h-4 w-4" />
+              )}
             </Button>
           )}
           {onHistoryClick && (

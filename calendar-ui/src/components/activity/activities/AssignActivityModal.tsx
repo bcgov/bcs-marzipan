@@ -133,7 +133,7 @@ export function AssignActivityModal({
         <DialogHeader>
           <DialogTitle>Assign activity</DialogTitle>
           <DialogDescription>
-            Assign activities that require your or teammates&apos; attention.
+            Assign activities that require your or a teammate&apos;s attention.
             Assignments are visible to teammates in the activities list.
           </DialogDescription>
         </DialogHeader>
@@ -227,7 +227,7 @@ export function AssignActivityModal({
                   Saving…
                 </>
               ) : (
-                'Save assignees'
+                'Save assignee'
               )}
             </Button>
           </div>

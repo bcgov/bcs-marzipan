@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -116,17 +117,28 @@ export function ActivityFlagPopover({
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className={cn(
-            'size-6 shrink-0',
-            isFlagged
-              ? 'text-[color:var(--flag-button-icon)]'
-              : 'text-muted-foreground'
-          )}
+          className="relative size-6 shrink-0"
         >
-          <Flag
-            className={cn('size-4', isFlagged && 'fill-current')}
-            aria-hidden
-          />
+          {isFlagged ? (
+            <>
+              <Avatar size="sm" className="size-full">
+                <AvatarFallback className="text-[8px] font-medium">
+                  {existingFlag.assigneeName
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Flag
+                className="absolute -right-0.5 -bottom-0.5 size-2 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                aria-hidden
+              />
+            </>
+          ) : (
+            <Flag className={cn('text-muted-foreground size-4')} aria-hidden />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
