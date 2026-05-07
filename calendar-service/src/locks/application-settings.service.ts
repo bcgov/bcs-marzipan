@@ -17,6 +17,8 @@ import {
   MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
   MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
   normalizeLookAheadResetWindowDays,
+  REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY,
+  REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY,
   type CompletionBufferMinutes,
   type CompletionSchedule,
 } from '@corpcal/shared';
@@ -187,6 +189,53 @@ export class ApplicationSettingsService {
           updatedAt: now,
         },
       });
+  }
+
+  // --------------------------------------------------------------------------
+  // Look-ahead PDF cover contact (phone / email on exported cover page)
+  // --------------------------------------------------------------------------
+
+  async getLookAheadReportCoverContact(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<{ contactPhone: string; contactEmail: string }> {
+    const rows = await executor
+      .select()
+      .from(applicationSettings)
+      .where(
+        inArray(applicationSettings.key, [
+          REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY,
+          REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY,
+        ])
+      );
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    return {
+      contactPhone: (
+        map.get(REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY) ?? ''
+      ).trim(),
+      contactEmail: (
+        map.get(REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY) ?? ''
+      ).trim(),
+    };
+  }
+
+  async setLookAheadReportCoverContact(
+    contactPhone: string,
+    contactEmail: string
+  ): Promise<void> {
+    const now = new Date();
+    const upsert = (key: string, value: string) =>
+      this.databaseService.db
+        .insert(applicationSettings)
+        .values({ key, value, updatedAt: now })
+        .onConflictDoUpdate({
+          target: applicationSettings.key,
+          set: { value, updatedAt: now },
+        });
+
+    await Promise.all([
+      upsert(REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY, contactPhone),
+      upsert(REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY, contactEmail),
+    ]);
   }
 
   // --------------------------------------------------------------------------

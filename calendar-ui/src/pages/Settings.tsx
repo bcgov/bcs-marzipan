@@ -35,6 +35,7 @@ import {
   ThemesAdmin,
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
+import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -44,6 +45,7 @@ type Section =
   | 'edit-lock-idle'
   | 'activity-completion'
   | 'look-ahead-reset'
+  | 'report-cover-contact'
   | 'review-exempt-fields'
   | 'ministry-groups'
   | 'categories'
@@ -101,6 +103,11 @@ export function Settings() {
       label: 'Review-exempt fields',
       icon: ListChecks,
       show: isSystemAdmin,
+    },
+    {
+      id: 'report-cover-contact' as Section,
+      label: 'Report PDF cover contact',
+      icon: FileText,
     },
     {
       id: 'ministry-groups' as Section,
@@ -203,6 +210,10 @@ export function Settings() {
 
           <div id="section-review-exempt-fields">
             <ReviewExemptFieldsSettingsAdmin />
+          </div>
+
+          <div id="section-report-cover-contact">
+            <ReportCoverContactSettingsAdmin />
           </div>
 
           <div id="section-ministry-groups">

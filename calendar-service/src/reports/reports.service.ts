@@ -33,6 +33,7 @@ import {
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { PdfGeneratorService } from './pdf-generator.service';
@@ -85,7 +86,8 @@ export class ReportsService {
     private readonly databaseService: DatabaseService,
     private readonly activitiesService: ActivitiesService,
     private readonly pdfGeneratorService: PdfGeneratorService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly applicationSettings: ApplicationSettingsService
   ) {}
 
   /**
@@ -103,10 +105,10 @@ export class ReportsService {
   /**
    * HTML for the first PDF sheet only (not used in calendar-ui print preview).
    */
-  private buildLookAheadCoverPageHtmlForPdf(
+  private async buildLookAheadCoverPageHtmlForPdf(
     reportType: string,
     data: ReportDataResponse
-  ): string {
+  ): Promise<string> {
     if (!REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)) {
       return '';
     }
@@ -117,16 +119,12 @@ export class ReportsService {
       );
       return '';
     }
+    const { contactPhone, contactEmail } =
+      await this.applicationSettings.getLookAheadReportCoverContact();
     const overlay = renderLookAheadCoverOverlayHtml({
       dateRangeLine: buildLookAheadCoverDateRangeLine(data),
-      contactPhone:
-        this.configService.get<string>(
-          'REPORTS_LOOK_AHEAD_COVER_CONTACT_PHONE'
-        ) ?? '',
-      contactEmail:
-        this.configService.get<string>(
-          'REPORTS_LOOK_AHEAD_COVER_CONTACT_EMAIL'
-        ) ?? '',
+      contactPhone,
+      contactEmail,
       sectionRows: this.buildLookAheadCoverSectionRows(data.report),
     });
     return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
@@ -136,6 +134,7 @@ export class ReportsService {
    * Resolve the cover legend rows for the look-ahead PDF cover from the report's
    * config. Returns an empty list when config is missing so the cover renders
    * without a contents block (preserving prior PDF layout when seeds are stale).
+   * Cover footer phone and email are loaded separately from application settings.
    */
   private buildLookAheadCoverSectionRows(
     report: ReportResponse
@@ -601,7 +600,7 @@ export class ReportsService {
       );
     }
     const fontFaceCss = buildPrintFontFaceCss() ?? undefined;
-    const coverPageHtml = this.buildLookAheadCoverPageHtmlForPdf(
+    const coverPageHtml = await this.buildLookAheadCoverPageHtmlForPdf(
       reportType,
       data
     );
