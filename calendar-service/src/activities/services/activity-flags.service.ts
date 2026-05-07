@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, coalesce, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   activities,
@@ -124,7 +124,7 @@ export class ActivityFlagsService {
         teamId: activityFlags.teamId,
         teamName: teams.name,
         assigneeId: activityFlags.assigneeId,
-        assigneeName: coalesce(users.adDisplayName, users.email),
+        assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
         note: activityFlags.note,
         createdAt: activityFlags.createdAt,
