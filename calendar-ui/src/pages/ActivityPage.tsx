@@ -56,10 +56,12 @@ import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
+  useRemoveActivityFlag,
   useRequestDeleteActivity,
   useRestoreActivity,
   useSoftDeleteActivity,
   useUpdateActivity,
+  useUpsertActivityFlag,
 } from '../hooks/useCalendar';
 import {
   EDIT_LOCK_CONFLICT_TOAST,
@@ -158,6 +160,7 @@ export function ActivityPage({
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
   const canEditWhenBlocked = canDeleteAny;
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
   const canRestore =
     normalizedStatus === 'deleted'
       ? canDeleteAny
@@ -249,6 +252,8 @@ export function ActivityPage({
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
+  const upsertFlagMutation = useUpsertActivityFlag();
+  const removeFlagMutation = useRemoveActivityFlag();
 
   const handleRequestForceHandoff = useCallback(async () => {
     setForceHandoffPending(true);
@@ -637,8 +642,15 @@ export function ActivityPage({
 
   const handleReviewConfirm = async (
     notes?: string,
-    markAsCompleted?: boolean
+    markAsCompleted?: boolean,
+    unassignMe?: boolean
   ) => {
+    if (unassignMe) {
+      const myFlag = activity.flags?.find((f) => f.assigneeId === user?.id);
+      if (myFlag) {
+        removeFlagMutation.mutate({ activityId: id, teamId: myFlag.teamId });
+      }
+    }
     if (markAsCompleted) {
       if (isDirty) {
         await form.handleSubmit(async (data) => {
@@ -835,6 +847,25 @@ export function ActivityPage({
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
+        flags={canFlag ? (activity.flags ?? []) : undefined}
+        canFlag={canFlag}
+        onFlagAssign={
+          canFlag
+            ? (teamId, assigneeId, note) =>
+                upsertFlagMutation.mutate({
+                  activityId: id,
+                  body: { teamId, assigneeId, note },
+                })
+            : undefined
+        }
+        onFlagUnassign={
+          canFlag
+            ? (teamId) => removeFlagMutation.mutate({ activityId: id, teamId })
+            : undefined
+        }
+        isFlagPending={
+          upsertFlagMutation.isPending || removeFlagMutation.isPending
+        }
       />
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>
@@ -1077,12 +1108,16 @@ export function ActivityPage({
         onOpenChange={setShowReviewModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted) =>
-          void handleReviewConfirm(notes, markAsCompleted)
+        onConfirm={(notes, markAsCompleted, unassignMe) =>
+          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
         }
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
+        showUnassignMeOption={
+          canFlag &&
+          (activity.flags ?? []).some((f) => f.assigneeId === user?.id)
+        }
       />
       <CompleteActivityModal
         open={showCompleteModal}

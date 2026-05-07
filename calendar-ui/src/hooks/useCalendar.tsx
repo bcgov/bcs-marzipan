@@ -8,6 +8,7 @@ import type {
   RestoreRequest,
   SoftDeleteRequest,
   UpdateActivityRequest,
+  UpsertActivityFlagRequest,
 } from '@corpcal/shared/schemas';
 
 import {
@@ -21,6 +22,7 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
+import { removeActivityFlag, upsertActivityFlag } from '../api/flagsApi';
 import {
   buildOptimisticActivity,
   normalizeListParams,
@@ -195,6 +197,42 @@ export function useAddActivityHistoryNote() {
     }) => addActivityHistoryNote(id, body),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+    },
+  });
+}
+
+/** Upsert (set or replace) the flag for an activity on a given team. */
+export function useUpsertActivityFlag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      body,
+    }: {
+      activityId: number;
+      body: UpsertActivityFlagRequest;
+    }) => upsertActivityFlag(activityId, body),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+    },
+  });
+}
+
+/** Remove the flag for an activity on a given team. */
+export function useRemoveActivityFlag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      teamId,
+    }: {
+      activityId: number;
+      teamId: number;
+    }) => removeActivityFlag(activityId, teamId),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
     },
   });
 }

@@ -14,6 +14,7 @@ import {
   type LookAheadStatus,
   type Visibility,
 } from '@corpcal/shared';
+import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { activityResponseSchema } from '@corpcal/shared/schemas';
 
 /**
@@ -74,6 +75,7 @@ export class ActivityMapperService {
       leadTeamDisplayName?: string | null;
       canEdit?: boolean;
       changedFieldsSinceReview?: string[];
+      flags?: ActivityFlagResponse[];
     }
   ): ActivityResponse {
     // Format date to YYYY-MM-DD
@@ -205,6 +207,9 @@ export class ActivityMapperService {
       ...(relatedData?.changedFieldsSinceReview !== undefined && {
         changedFieldsSinceReview: relatedData.changedFieldsSinceReview,
       }),
+
+      // Flags: team-scoped activity assignments
+      flags: relatedData?.flags ?? [],
 
       // Meta
       createdDateTime:

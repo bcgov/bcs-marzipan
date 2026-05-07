@@ -116,6 +116,7 @@ export function createMockActivityResponse(
     leadTeamDisplayName: null,
     venueAddress: null,
     reportSettings: [],
+    flags: [],
 
     // Apply overrides
     ...overrides,

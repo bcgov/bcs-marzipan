@@ -5,6 +5,7 @@ import {
   LOOK_AHEAD_STATUS,
   VISIBILITY,
 } from '../constants/constants';
+import { activityFlagResponseSchema } from './activity-flag.schema';
 import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
 
 /**
@@ -210,6 +211,11 @@ export const activityComputedFieldsSchema = z.object({
   // Whether the activity is eligible for manual completion (activities.complete permission).
   // Only included for users with activities.complete; omitted otherwise.
   markCompleteEligible: z.boolean().optional(),
+
+  // Flags: team-scoped activity assignments visible to all team members.
+  // Only flags for teams the current user belongs to are included.
+  // Empty array when the user has no teams or no flags exist for their teams.
+  flags: z.array(activityFlagResponseSchema).default([]),
 });
 
 /**

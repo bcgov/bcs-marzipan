@@ -28,8 +28,9 @@ import {
   type CSSProperties,
 } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -67,7 +68,11 @@ import {
 } from '@/constants/form-options';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityList } from '@/hooks/useCalendar';
+import {
+  useActivityList,
+  useRemoveActivityFlag,
+  useUpsertActivityFlag,
+} from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
   useCategories,
@@ -224,9 +229,17 @@ function toSentenceCase(s: string): string {
 function OverviewCell({
   row,
   canViewPitchStatus,
+  canFlag,
+  onFlagAssign,
+  onFlagUnassign,
+  flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
+  canFlag?: boolean;
+  onFlagAssign?: (teamId: number, assigneeId: number) => void;
+  onFlagUnassign?: (teamId: number) => void;
+  flagPending?: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -237,6 +250,15 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        {canFlag && onFlagAssign && onFlagUnassign && (
+          <ActivityFlagPopover
+            activityId={row.id}
+            flags={row.flags}
+            onAssign={onFlagAssign}
+            onUnassign={onFlagUnassign}
+            isPending={flagPending}
+          />
+        )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -697,7 +719,7 @@ export function ActivityTable({
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const pitchFieldVisibility = useMemo(() => {
     if (!user) {
       return { canViewPitchStatus: false, canViewPitchDate: false };
@@ -1064,6 +1086,10 @@ export function ActivityTable({
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
+  const upsertFlagMutation = useUpsertActivityFlag();
+  const removeFlagMutation = useRemoveActivityFlag();
+
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
@@ -1222,6 +1248,22 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            canFlag={canFlag}
+            onFlagAssign={(teamId, assigneeId) =>
+              upsertFlagMutation.mutate({
+                activityId: row.original.id,
+                body: { teamId, assigneeId },
+              })
+            }
+            onFlagUnassign={(teamId) =>
+              removeFlagMutation.mutate({
+                activityId: row.original.id,
+                teamId,
+              })
+            }
+            flagPending={
+              upsertFlagMutation.isPending || removeFlagMutation.isPending
+            }
           />
         ),
       }),
@@ -1326,6 +1368,9 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      canFlag,
+      upsertFlagMutation,
+      removeFlagMutation,
     ]
   );
 

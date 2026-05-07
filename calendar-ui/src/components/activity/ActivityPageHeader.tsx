@@ -1,6 +1,8 @@
-import { History } from 'lucide-react';
-import type { ReactElement } from 'react';
+import { Flag, History } from 'lucide-react';
+import { useState, type ReactElement } from 'react';
 
+import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
+import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -11,6 +13,7 @@ import {
   isSameDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
+import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -21,6 +24,12 @@ type ActivityPageHeaderProps = {
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
   onHistoryClick?: () => void;
+  /** When present, show the flag (assign) button. */
+  flags?: ActivityFlagResponse[];
+  canFlag?: boolean;
+  onFlagAssign?: (teamId: number, assigneeId: number, note?: string) => void;
+  onFlagUnassign?: (teamId: number) => void;
+  isFlagPending?: boolean;
 };
 
 /**
@@ -35,7 +44,14 @@ export function ActivityPageHeader({
   lastUpdatedDateTime,
   createdDateTime,
   onHistoryClick,
+  flags,
+  canFlag,
+  onFlagAssign,
+  onFlagUnassign,
+  isFlagPending,
 }: ActivityPageHeaderProps): ReactElement {
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+
   const statusDisplay = formatDisplayValue(activityStatus);
   let updatedLabel: string | null = null;
   if (
@@ -48,6 +64,10 @@ export function ActivityPageHeader({
       ? `today at ${formatTime(d)}`
       : formatRelativeTime(d);
   }
+
+  const isFlagged = flags != null && flags.length > 0;
+  const currentFlag = flags?.[0] ?? null;
+
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0 flex-1">
@@ -86,19 +106,59 @@ export function ActivityPageHeader({
             {createdDateTime ? formatLongDate(new Date(createdDateTime)) : ''}
           </div>
         </div>
-        {onHistoryClick && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            title="View history"
-            onClick={onHistoryClick}
-            className="shrink-0"
-          >
-            <History className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {canFlag && onFlagAssign && onFlagUnassign && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title={
+                isFlagged
+                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  : 'Assign activity'
+              }
+              onClick={() => setAssignModalOpen(true)}
+              disabled={isFlagPending}
+              className={cn(
+                'shrink-0',
+                isFlagged && 'text-[color:var(--flag-button-icon)]'
+              )}
+            >
+              <Flag className={cn('h-4 w-4', isFlagged && 'fill-current')} />
+            </Button>
+          )}
+          {onHistoryClick && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="View history"
+              onClick={onHistoryClick}
+              className="shrink-0"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
+
+      {canFlag && onFlagAssign && onFlagUnassign && (
+        <AssignActivityModal
+          open={assignModalOpen}
+          onOpenChange={setAssignModalOpen}
+          flags={flags ?? []}
+          isSubmitting={isFlagPending ?? false}
+          onAssign={(teamId, assigneeId, note) => {
+            onFlagAssign(teamId, assigneeId, note);
+            setAssignModalOpen(false);
+          }}
+          onUnassign={(teamId) => {
+            onFlagUnassign(teamId);
+            setAssignModalOpen(false);
+          }}
+          displayId={displayId}
+        />
+      )}
     </div>
   );
 }

@@ -95,6 +95,7 @@ import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
+import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
 import { ActivityMapperService } from './activity-mapper.service';
@@ -114,7 +115,8 @@ export class ActivitiesService {
     private readonly locksService: LocksService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
-    private readonly teamsService: TeamsService
+    private readonly teamsService: TeamsService,
+    private readonly flagsService: ActivityFlagsService
   ) {}
 
   private async getEffectiveReviewExemptFieldKeys(
@@ -621,7 +623,10 @@ export class ActivitiesService {
     related: Awaited<
       ReturnType<ActivitiesService['fetchRelatedForActivityIds']>
     >,
-    opts?: { canEdit?: boolean }
+    opts?: {
+      canEdit?: boolean;
+      flags?: import('@corpcal/shared/api/types').ActivityFlagResponse[];
+    }
   ): ActivityResponse {
     const id = activity.id;
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -659,6 +664,7 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       ...(opts?.canEdit !== undefined ? { canEdit: opts.canEdit } : {}),
+      flags: opts?.flags ?? [],
     });
   }
 
@@ -1625,13 +1631,23 @@ export class ActivitiesService {
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
-      this.fetchRelatedForActivityIds(activityIds, activityResults),
-      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-      canReview
-        ? this.getEffectiveReviewExemptFieldKeys()
-        : Promise.resolve(undefined),
-    ]);
+    const userTeamIds = ctx?.user?.teamIds ?? [];
+    const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
+      await Promise.all([
+        this.fetchRelatedForActivityIds(activityIds, activityResults),
+        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+        canReview
+          ? this.getEffectiveReviewExemptFieldKeys()
+          : Promise.resolve(undefined),
+        userTeamIds.length > 0
+          ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
+          : Promise.resolve(
+              new Map<
+                number,
+                import('@corpcal/shared/api/types').ActivityFlagResponse[]
+              >()
+            ),
+      ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
@@ -1684,6 +1700,7 @@ export class ActivitiesService {
         leadTeamDisplayName:
           related.leadTeamDisplayMap.get(activity.id) ?? null,
         canEdit: canEdit ?? undefined,
+        flags: flagsMap.get(activity.id) ?? [],
       });
       if (canReview) {
         response.changedFieldsSinceReview =
@@ -1752,13 +1769,18 @@ export class ActivitiesService {
     // Fetch related data
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
-      this.fetchRelatedForActivityIds([id], [activity]),
-      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-      canReview
-        ? this.getEffectiveReviewExemptFieldKeys()
-        : Promise.resolve(undefined),
-    ]);
+    const userTeamIds = ctx?.user?.teamIds ?? [];
+    const [related, reviewLookups, reviewExemptFieldKeys, flags] =
+      await Promise.all([
+        this.fetchRelatedForActivityIds([id], [activity]),
+        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+        canReview
+          ? this.getEffectiveReviewExemptFieldKeys()
+          : Promise.resolve(undefined),
+        userTeamIds.length > 0
+          ? this.flagsService.fetchFlagsForActivity(id, userTeamIds)
+          : Promise.resolve([]),
+      ]);
     const commsContacts = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
@@ -1775,6 +1797,7 @@ export class ActivitiesService {
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
       canEdit: canEdit ?? undefined,
+      flags,
     });
 
     if (canReview) {
