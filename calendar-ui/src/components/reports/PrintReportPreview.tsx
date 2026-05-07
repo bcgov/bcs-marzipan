@@ -91,7 +91,10 @@ function PrintReportPreviewRoot({
           __html: `${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}`,
         }}
       />
-      {document}
+      {/* Preview-only wrapper: scopes sticky stacking rules in PRINT_STYLES so
+          the same stylesheet, when injected into the Puppeteer-rendered PDF
+          (which has no shell), leaves print output unaffected. */}
+      <div className="corpcal-print-preview-shell">{document}</div>
     </>
   );
 }
