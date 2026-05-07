@@ -78,46 +78,48 @@ function GlobalErrorFallback({
   }
 
   return (
-    <StatusMessage
-      title={title}
-      message={message}
-      variant="error"
-      action={
-        <div className="flex gap-2">
-          <Button onClick={resetErrorBoundary} variant="default">
-            {TRY_AGAIN_LABEL}
-          </Button>
-          <Button onClick={() => window.location.reload()} variant="outline">
-            Reload page
-          </Button>
-        </div>
-      }
-      details={
-        showDetails ? (
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              {ERROR_DETAILS_LABEL}
-            </summary>
-            <div className="mt-2 space-y-2">
-              <pre className="bg-muted overflow-auto rounded p-4 text-sm">
-                {error.message}
-                {import.meta.env.DEV && error.stack && (
-                  <>
-                    {'\n\n'}
-                    {error.stack}
-                  </>
+    <div data-testid="global-error-fallback">
+      <StatusMessage
+        title={title}
+        message={message}
+        variant="error"
+        action={
+          <div className="flex gap-2">
+            <Button onClick={resetErrorBoundary} variant="default">
+              {TRY_AGAIN_LABEL}
+            </Button>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Reload page
+            </Button>
+          </div>
+        }
+        details={
+          showDetails ? (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium">
+                {ERROR_DETAILS_LABEL}
+              </summary>
+              <div className="mt-2 space-y-2">
+                <pre className="bg-muted overflow-auto rounded p-4 text-sm">
+                  {error.message}
+                  {import.meta.env.DEV && error.stack && (
+                    <>
+                      {'\n\n'}
+                      {error.stack}
+                    </>
+                  )}
+                </pre>
+                {correlationId && (
+                  <p className="text-muted-foreground text-xs">
+                    Error ID: {correlationId}
+                  </p>
                 )}
-              </pre>
-              {correlationId && (
-                <p className="text-muted-foreground text-xs">
-                  Error ID: {correlationId}
-                </p>
-              )}
-            </div>
-          </details>
-        ) : undefined
-      }
-    />
+              </div>
+            </details>
+          ) : undefined
+        }
+      />
+    </div>
   );
 }
 

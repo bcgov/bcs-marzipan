@@ -1,0 +1,37 @@
+# Tekton Task: run CorpCal k6 API tests from a workspace that contains the repo root.
+# Example PipelineRun params: BASE_URL=https://calendar-service.namespace.svc:3001
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: corpcal-k6-api-smoke
+  labels:
+    app.kubernetes.io/part-of: corporate-calendar
+spec:
+  description: >-
+    Executes performance_tests/tests/corpcal-api.js using grafana/k6.
+    Mount your application source at workspace "source".
+  workspaces:
+    - name: source
+  params:
+    - name: BASE_URL
+      type: string
+    - name: PERF_PROFILE
+      type: string
+      default: smoke
+    - name: SCRIPT_PATH
+      type: string
+      default: performance_tests/tests/corpcal-api.js
+  steps:
+    - name: k6-run
+      image: grafana/k6:0.55.0
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: BASE_URL
+          value: $(params.BASE_URL)
+        - name: PERF_PROFILE
+          value: $(params.PERF_PROFILE)
+      command:
+        - k6
+      args:
+        - run
+        - $(params.SCRIPT_PATH)
