@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { createRequire } from 'node:module';
 import * as path from 'path';
 
 /**
@@ -10,11 +11,18 @@ import * as path from 'path';
  * that is prepended to the shared print stylesheet. This keeps the PDF path
  * self-contained and identical to the in-browser render.
  *
- * **Single source of truth:** BC Sans `.woff2` files live in
- * `calendar-ui/public/fonts/` (Vite serves them at `/fonts/...` in the app).
- * PDF export does not load URLs from a separate calendar-service `fonts/`
- * directory; it embeds the same files as base64 `@font-face` for Puppeteer.
+ * **Single source of truth:** BC Sans `.woff2` files live under
+ * `packages/shared/assets/fonts/` (same files referenced by
+ * `@corpcal/shared/styles/bcsans-font-face.css` for calendar-ui).
  */
+
+/** Resolves via an `exports` entry so this works under Node `package.json` "exports". */
+function resolveSharedPackageRoot(): string {
+  const bcsansCss = createRequire(__filename).resolve(
+    '@corpcal/shared/styles/bcsans-font-face.css'
+  );
+  return path.join(path.dirname(bcsansCss), '..');
+}
 
 interface FontVariant {
   weight: 400 | 700;
@@ -45,25 +53,14 @@ const BC_SANS_VARIANTS: readonly FontVariant[] = [
   },
 ];
 
-/**
- * Resolve the calendar-ui public fonts directory relative to `__dirname` so
- * both ts-node (src) and compiled (dist) layouts work without extra config.
- */
 function resolveFontsDir(): string | null {
-  const candidates = [
-    path.resolve(__dirname, '../../../calendar-ui/public/fonts'),
-    path.resolve(__dirname, '../../calendar-ui/public/fonts'),
-    path.resolve(process.cwd(), 'calendar-ui/public/fonts'),
-  ];
-  for (const candidate of candidates) {
-    try {
-      readFileSync(path.join(candidate, BC_SANS_VARIANTS[0].fileName));
-      return candidate;
-    } catch {
-      continue;
-    }
+  const dir = path.join(resolveSharedPackageRoot(), 'assets', 'fonts');
+  try {
+    readFileSync(path.join(dir, BC_SANS_VARIANTS[0].fileName));
+    return dir;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 let cachedFontFaceCss: string | null | undefined;
@@ -102,26 +99,14 @@ export function buildPrintFontFaceCss(): string | null {
 
 const LOOK_AHEAD_COVER_FILE_NAME = '20260430_look_ahead_report_cover_50.webp';
 
-/**
- * Resolve `calendar-ui/public/reports/` (same path strategy as
- * {@link buildPrintFontFaceCss}) so PDF export can embed the look-ahead cover
- * WebP as a `data:` URL for Puppeteer.
- */
-function resolveReportsPublicDir(): string | null {
-  const candidates = [
-    path.resolve(__dirname, '../../../calendar-ui/public/reports'),
-    path.resolve(__dirname, '../../calendar-ui/public/reports'),
-    path.resolve(process.cwd(), 'calendar-ui/public/reports'),
-  ];
-  for (const candidate of candidates) {
-    try {
-      readFileSync(path.join(candidate, LOOK_AHEAD_COVER_FILE_NAME));
-      return candidate;
-    } catch {
-      continue;
-    }
+function resolveLookAheadCoverDir(): string | null {
+  const dir = path.join(resolveSharedPackageRoot(), 'assets', 'reports');
+  try {
+    readFileSync(path.join(dir, LOOK_AHEAD_COVER_FILE_NAME));
+    return dir;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 let cachedLookAheadCoverDataUrl: string | null | undefined;
@@ -134,7 +119,7 @@ export function buildLookAheadReportCoverDataUrl(): string | null {
   if (cachedLookAheadCoverDataUrl !== undefined) {
     return cachedLookAheadCoverDataUrl;
   }
-  const dir = resolveReportsPublicDir();
+  const dir = resolveLookAheadCoverDir();
   if (!dir) {
     cachedLookAheadCoverDataUrl = null;
     return null;

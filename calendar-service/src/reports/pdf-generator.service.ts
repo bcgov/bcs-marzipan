@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, {
+  type Browser,
   type PDFOptions,
   type PuppeteerLifeCycleEvent,
 } from 'puppeteer';
@@ -41,20 +42,46 @@ const DEFAULT_VIEWPORT = {
   deviceScaleFactor: 2,
 } as const;
 
-const SET_CONTENT_WAIT_UNTIL: PuppeteerLifeCycleEvent = 'networkidle0';
+/** Font bytes are inlined (`data:` URLs); `load` avoids `networkidle0` hangs. */
+const SET_CONTENT_WAIT_UNTIL: PuppeteerLifeCycleEvent = 'load';
 
 @Injectable()
-export class PdfGeneratorService {
+export class PdfGeneratorService implements OnModuleDestroy {
   private readonly logger = new Logger(PdfGeneratorService.name);
 
-  async generatePdfFromHtml(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+  private browserLaunch: Promise<Browser> | null = null;
 
+  async onModuleDestroy(): Promise<void> {
+    const launch = this.browserLaunch;
+    this.browserLaunch = null;
+    if (!launch) return;
     try {
-      const page = await browser.newPage();
+      const browser = await launch;
+      await browser.close();
+    } catch {
+      /* shutting down */
+    }
+  }
+
+  private async getBrowser(): Promise<Browser> {
+    if (!this.browserLaunch) {
+      this.browserLaunch = puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
+    try {
+      return await this.browserLaunch;
+    } catch (err) {
+      this.browserLaunch = null;
+      throw err;
+    }
+  }
+
+  async generatePdfFromHtml(html: string): Promise<Buffer> {
+    const browser = await this.getBrowser();
+    const page = await browser.newPage();
+    try {
       await page.setViewport(DEFAULT_VIEWPORT);
       await page.setContent(html, {
         waitUntil: SET_CONTENT_WAIT_UNTIL,
@@ -74,7 +101,7 @@ export class PdfGeneratorService {
       const pdf = await page.pdf(DEFAULT_PDF_OPTIONS);
       return Buffer.from(pdf);
     } finally {
-      await browser.close();
+      await page.close().catch(() => undefined);
     }
   }
 }

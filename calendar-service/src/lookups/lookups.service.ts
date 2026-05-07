@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   and,
   asc,
@@ -40,7 +40,7 @@ import {
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName } from '@corpcal/shared';
+import type { ActivityStatusName, Visibility } from '@corpcal/shared';
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
@@ -59,6 +59,7 @@ import type {
   UserLookupItem,
   VenuePresetItem,
 } from '@corpcal/shared/api/types';
+import { reportConfigSchema } from '@corpcal/shared/schemas';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
@@ -68,6 +69,8 @@ import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 
 @Injectable()
 export class LookupsService {
+  private readonly logger = new Logger(LookupsService.name);
+
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
@@ -741,7 +744,31 @@ export class LookupsService {
       .where(eq(reports.isActive, true))
       .orderBy(reports.sortOrder);
 
-    return results as ReportResponse[];
+    return results.map((report) => {
+      let config = null;
+      if (report.config) {
+        const configResult = reportConfigSchema.safeParse(report.config);
+        if (configResult.success) {
+          config = configResult.data;
+        } else {
+          this.logger.warn(
+            `Invalid report config for report ${report.id}: ${configResult.error.message}`
+          );
+        }
+      }
+
+      return {
+        id: report.id,
+        name: report.name,
+        displayName: report.displayName,
+        sortOrder: report.sortOrder,
+        isActive: report.isActive,
+        visibility:
+          (report.visibility as Visibility) ?? ('team' satisfies Visibility),
+        config,
+        description: report.description,
+      };
+    });
   }
 
   /**

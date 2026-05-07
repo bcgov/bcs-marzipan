@@ -115,7 +115,7 @@ export class ReportsService {
     const dataUrl = buildLookAheadReportCoverDataUrl();
     if (!dataUrl) {
       this.logger.warn(
-        'Look-ahead cover image not found under calendar-ui/public/reports; PDF export continues without a cover page.'
+        'Look-ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
       );
       return '';
     }
