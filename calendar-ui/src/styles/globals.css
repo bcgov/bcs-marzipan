@@ -2,57 +2,9 @@
 @import 'tw-animate-css';
 @import '@corpcal/shared/styles/bcds-primitives.css';
 @import '@corpcal/shared/styles/corpcal-tokens.css';
+@import '@corpcal/shared/styles/bcsans-font-face.css';
 
 @custom-variant dark (&:is(.dark *));
-
-/* BCSans Font Face Declarations */
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Regular_2f.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Italic_2f.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_03_14_BCSans-Light_2g.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-LightItalic_2f.woff2') format('woff2');
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Bold_2f.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-BoldItalic_2f.woff2') format('woff2');
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
 
 @layer base {
   :root {
