@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { LEGEND_SWATCH_HEX_REGEX } from './legend-swatch-hex';
+
 /**
  * Report Configuration Schemas
  *
@@ -38,12 +40,6 @@ export const reportFilterConfigSchema = z.object({
 });
 
 /**
- * Hex color regex (3- or 6-digit, with leading `#`).
- * Used for the optional section legend swatch on report covers and section headings.
- */
-const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-/**
  * Report section configuration
  *
  * `name` is the canonical section identifier shown in admin UI and CSV/Excel export
@@ -62,7 +58,7 @@ export const reportSectionSchema = z.object({
   /** Optional hex color (`#RRGGBB` or `#RGB`) used for the section legend swatch. */
   legendColor: z
     .string()
-    .regex(HEX_COLOR_REGEX, {
+    .regex(LEGEND_SWATCH_HEX_REGEX, {
       message: 'legendColor must be a hex color (e.g. #1A2B3C or #1AB).',
     })
     .optional(),

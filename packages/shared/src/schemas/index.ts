@@ -9,6 +9,7 @@ export * from './banner.schema';
 export * from './login-modal.schema';
 export * from './history.schema';
 export * from './lookup.schema';
+export * from './legend-swatch-hex';
 export * from './ministry-groups.schema';
 export * from './report-config.schema';
 export * from './query-params.schema';

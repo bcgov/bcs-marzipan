@@ -13,6 +13,7 @@
       "default": "./dist/esm/index.js"
     },
     "./styles/bcds-primitives.css": "./styles/bcds-primitives.css",
+    "./styles/bcsans-font-face.css": "./styles/bcsans-font-face.css",
     "./styles/corpcal-tokens.css": "./styles/corpcal-tokens.css",
     "./schemas": {
       "types": "./dist/esm/schemas/index.d.ts",

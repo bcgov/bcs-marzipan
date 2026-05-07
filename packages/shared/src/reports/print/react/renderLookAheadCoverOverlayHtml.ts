@@ -1,3 +1,4 @@
+import { sanitizeLegendSwatchHexColor } from '../../../schemas/legend-swatch-hex';
 import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
 
 /**
@@ -25,17 +26,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-/**
- * Whitelist swatch hex colors before injecting them into a `style` attribute.
- * Validated upstream by `reportSectionSchema.legendColor`; this is defense in depth.
- */
-function safeSwatchColor(color: string | null | undefined): string | null {
-  if (!color) return null;
-  return HEX_COLOR_REGEX.test(color) ? color : null;
 }
 
 function px(n: number): string {
@@ -69,7 +59,7 @@ function renderContentsListHtml(
   if (rows.length === 0) return '';
   const items = rows
     .map((row) => {
-      const safeColor = safeSwatchColor(row.legendColor);
+      const safeColor = sanitizeLegendSwatchHexColor(row.legendColor);
       const swatchStyle = safeColor ? ` style="background:${safeColor}"` : '';
       return `<div class="corpcal-print-cover-contents-row"><span class="corpcal-print-cover-contents-swatch"${swatchStyle} aria-hidden="true"></span><span class="corpcal-print-cover-contents-label">${escapeHtml(row.label)}</span></div>`;
     })
