@@ -247,6 +247,7 @@ describe('renderPrintReportFragmentHtml', () => {
             {
               id: 'events',
               name: 'Events',
+              reportDisplayName: 'Events, speeches and releases (inside government)',
               order: 1,
               filter: { lookAheadSection: 'events' },
               legendColor: '#2C7DA0',
@@ -263,6 +264,66 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('corpcal-print-section-swatch');
     expect(html).toContain('background-color:#2C7DA0');
+    expect(html).toContain('Events, speeches and releases (inside government)');
+  });
+
+  it('lists all days for the first section before the second section (section-first layout)', () => {
+    const multiSectionFixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          id: 'events',
+          name: 'Events',
+          order: 1,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              id: 201,
+              displayId: 'ACT-LATE',
+              startDate: '2026-04-28T00:00:00.000Z',
+            },
+            {
+              ...BASE_ACTIVITY,
+              id: 202,
+              displayId: 'ACT-EARLY',
+              startDate: '2026-04-26T00:00:00.000Z',
+            },
+          ],
+        },
+        {
+          id: 'issues',
+          name: 'Issues',
+          order: 2,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              id: 203,
+              displayId: 'ACT-ISSUES',
+              lookAheadSection: 'issues',
+              startDate: '2026-04-27T00:00:00.000Z',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', multiSectionFixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    const idxEvents = html.indexOf('>Events</span>');
+    const idxIssues = html.indexOf('>Issues</span>');
+    const idxEarly = html.indexOf('ACT-EARLY');
+    const idxLate = html.indexOf('ACT-LATE');
+    const idxIssuesAct = html.indexOf('ACT-ISSUES');
+
+    expect(idxEvents).toBeGreaterThan(-1);
+    expect(idxIssues).toBeGreaterThan(-1);
+    expect(idxEvents).toBeLessThan(idxEarly);
+    expect(idxEarly).toBeLessThan(idxLate);
+    expect(idxLate).toBeLessThan(idxIssues);
+    expect(idxIssues).toBeLessThan(idxIssuesAct);
   });
 });
 

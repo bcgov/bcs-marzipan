@@ -124,6 +124,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-day:first-child {
   margin-top: 6px;
 }
+/** Section-first layout: first day follows {@link PrintSectionHeading}, not body. */
+.corpcal-print-section-heading + .corpcal-print-day {
+  margin-top: 6px;
+}
+.corpcal-print-body > .corpcal-print-section-block + .corpcal-print-section-block {
+  margin-top: 8px;
+}
 .corpcal-print-day-heading {
   margin: 0 0 6px;
   padding: 6px 0;

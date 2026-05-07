@@ -17,6 +17,33 @@ function safeSwatchColor(color: string | null | undefined): string | null {
 }
 
 /**
+ * Section title row (swatch + label) for print/PDF, shared by
+ * {@link PrintSectionTable} and section-first layouts that render one heading
+ * above multiple day tables.
+ */
+export function PrintSectionHeading({
+  sectionName,
+  sectionLegendColor,
+}: {
+  sectionName: string;
+  sectionLegendColor?: string | null;
+}) {
+  const swatchColor = safeSwatchColor(sectionLegendColor);
+  return (
+    <div className="corpcal-print-section-heading">
+      {swatchColor ? (
+        <span
+          aria-hidden="true"
+          className="corpcal-print-section-swatch"
+          style={{ backgroundColor: swatchColor }}
+        />
+      ) : null}
+      <span>{sectionName}</span>
+    </div>
+  );
+}
+
+/**
  * Renders a single section's subsection heading + four-column table.
  * Column headers are identical across variants; row content differs via
  * {@link PrintRow}.
@@ -24,31 +51,32 @@ function safeSwatchColor(color: string | null | undefined): string | null {
  * When `sectionLegendColor` is provided, a 16x16 swatch is rendered to the
  * left of the section heading, color-matched to the same bucket on the look-
  * ahead PDF cover and the activity form/filter UI.
+ *
+ * When `showSectionHeading` is false, only the table is rendered (for section-
+ * first layouts that show {@link PrintSectionHeading} once above day blocks).
  */
 export function PrintSectionTable({
   sectionName,
   rows,
   variant,
   sectionLegendColor,
+  showSectionHeading = true,
 }: {
   sectionName: string;
   rows: PrintRowViewModel[];
   variant: PrintReportVariant;
   sectionLegendColor?: string | null;
+  /** When false, omits the section heading; parent supplies it once per section. */
+  showSectionHeading?: boolean;
 }) {
-  const swatchColor = safeSwatchColor(sectionLegendColor);
   return (
     <div>
-      <div className="corpcal-print-section-heading">
-        {swatchColor ? (
-          <span
-            aria-hidden="true"
-            className="corpcal-print-section-swatch"
-            style={{ backgroundColor: swatchColor }}
-          />
-        ) : null}
-        <span>{sectionName}</span>
-      </div>
+      {showSectionHeading ? (
+        <PrintSectionHeading
+          sectionName={sectionName}
+          sectionLegendColor={sectionLegendColor}
+        />
+      ) : null}
       <div className="corpcal-print-table-wrap">
         <table className="corpcal-print-table" role="grid">
           <thead>

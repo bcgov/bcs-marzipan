@@ -8,7 +8,7 @@ import {
 } from './dateFormatters';
 import { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 import { PrintPageFooter } from './PrintPageFooter';
-import { PrintSectionTable } from './PrintSectionTable';
+import { PrintSectionHeading, PrintSectionTable } from './PrintSectionTable';
 import { CORPCAL_PRINT_ROOT_CLASS } from './printStyles';
 import {
   compareActivitiesForPrint,
@@ -19,7 +19,10 @@ import {
 
 interface SortedSection {
   id: string;
+  /** Short name from API; prefer {@link printHeadingLabel} for PDF section title. */
   name: string;
+  /** Legend/cover long title when report config is present. */
+  printHeadingLabel: string;
   legendColor: string | null;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
@@ -43,12 +46,12 @@ function indexActivitiesByDay(
 }
 
 function collectSortedSections(data: ReportDataResponse): SortedSection[] {
-  // Resolve per-section legend color from the report config so the print
-  // section heading swatch matches the cover and activity-form bullets.
   const legendColorById = new Map<string, string | null>();
+  const printHeadingById = new Map<string, string>();
   if (data.report?.config) {
     for (const row of resolveLookAheadSectionRows(data.report.config)) {
       legendColorById.set(row.sectionId, row.legendColor);
+      printHeadingById.set(row.sectionId, row.reportLegendLabel);
     }
   }
   return [...data.sections]
@@ -56,25 +59,28 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
     .map((section) => ({
       id: section.id,
       name: section.name,
+      printHeadingLabel:
+        printHeadingById.get(section.id) ?? section.name,
       legendColor: legendColorById.get(section.id) ?? null,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
 }
 
-function collectDateKeys(sections: SortedSection[]): string[] {
-  const keys = new Set<string>();
+function sortedDateKeysForSection(section: SortedSection): string[] {
+  return [...section.activitiesByKey.keys()].sort();
+}
+
+function reportHasAnyActivities(sections: SortedSection[]): boolean {
   for (const section of sections) {
-    for (const key of section.activitiesByKey.keys()) {
-      keys.add(key);
-    }
+    if (section.activitiesByKey.size > 0) return true;
   }
-  return [...keys].sort();
+  return false;
 }
 
 /**
  * Top-level print document. Drives the shell (header, banner, contents, footer)
- * and walks sections grouped by day, delegating row rendering to
- * {@link PrintSectionTable} / {@link PrintRow}.
+ * and walks sections in report order, then days within each section, delegating
+ * row rendering to {@link PrintSectionTable} / {@link PrintRow}.
  */
 export function PrintReportDocument({
   data,
@@ -89,8 +95,7 @@ export function PrintReportDocument({
   generatedAt: Date;
 }) {
   const sections = collectSortedSections(data);
-  const dateKeys = collectDateKeys(sections);
-  const hasAny = dateKeys.length > 0;
+  const hasAny = reportHasAnyActivities(sections);
   const coverRange = buildLookAheadCoverDateRangeLine(data);
 
   const reportName = data.report?.displayName ?? 'Report';
@@ -125,11 +130,10 @@ export function PrintReportDocument({
             No activities in the selected range.
           </div>
         ) : (
-          dateKeys.map((key) => (
-            <DayGroup
-              key={key}
-              dayKey={key}
-              sections={sections}
+          sections.map((section) => (
+            <SectionGroup
+              key={section.id}
+              section={section}
               variant={variant}
               activityBaseUrl={activityBaseUrl}
             />
@@ -142,62 +146,45 @@ export function PrintReportDocument({
   );
 }
 
-function DayGroup({
-  dayKey,
-  sections,
+function SectionGroup({
+  section,
   variant,
   activityBaseUrl,
 }: {
-  dayKey: string;
-  sections: SortedSection[];
+  section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
 }) {
-  const dayDate = parseKeyToDate(dayKey);
-
-  const populatedSections = sections
-    .map((section) => {
-      const activities = section.activitiesByKey.get(dayKey) ?? [];
-      if (activities.length === 0) return null;
-      const rows: PrintRowViewModel[] = activities.map((a) =>
-        toPrintRowViewModel(a, { activityBaseUrl })
-      );
-      return {
-        id: section.id,
-        name: section.name,
-        legendColor: section.legendColor,
-        rows,
-      };
-    })
-    .filter(
-      (
-        section
-      ): section is {
-        id: string;
-        name: string;
-        legendColor: string | null;
-        rows: PrintRowViewModel[];
-      } => section !== null
-    );
+  const dateKeys = sortedDateKeysForSection(section);
+  if (dateKeys.length === 0) return null;
 
   return (
-    <section className="corpcal-print-day">
-      <h2 className="corpcal-print-day-heading">{formatDayHeading(dayDate)}</h2>
-      {populatedSections.length === 0 ? (
-        <div className="corpcal-print-empty">
-          No Activities for {formatDayHeading(dayDate)}
-        </div>
-      ) : (
-        populatedSections.map((section) => (
-          <PrintSectionTable
-            key={section.id}
-            sectionName={section.name}
-            rows={section.rows}
-            variant={variant}
-            sectionLegendColor={section.legendColor}
-          />
-        ))
-      )}
+    <section className="corpcal-print-section-block">
+      <PrintSectionHeading
+        sectionName={section.printHeadingLabel}
+        sectionLegendColor={section.legendColor}
+      />
+      {dateKeys.map((dayKey) => {
+        const dayDate = parseKeyToDate(dayKey);
+        const activities = section.activitiesByKey.get(dayKey) ?? [];
+        const rows: PrintRowViewModel[] = activities.map((a) =>
+          toPrintRowViewModel(a, { activityBaseUrl })
+        );
+        return (
+          <div key={dayKey} className="corpcal-print-day">
+            <h3 className="corpcal-print-day-heading">
+              {formatDayHeading(dayDate)}
+            </h3>
+            <PrintSectionTable
+              sectionName={section.name}
+              rows={rows}
+              variant={variant}
+              sectionLegendColor={section.legendColor}
+              showSectionHeading={false}
+            />
+          </div>
+        );
+      })}
     </section>
   );
 }
