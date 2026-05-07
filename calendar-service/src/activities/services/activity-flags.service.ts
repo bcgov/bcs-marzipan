@@ -15,6 +15,7 @@ import {
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
+import { ActivityHistoryService } from './activity-history.service';
 
 /**
  * Service for managing activity flags (assignments).
@@ -22,7 +23,10 @@ import { DatabaseService } from '../../database/database.service';
  */
 @Injectable()
 export class ActivityFlagsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activityHistoryService: ActivityHistoryService
+  ) {}
 
   /**
    * Upsert the flag for the calling user's team on a given activity.
@@ -86,13 +90,24 @@ export class ActivityFlagsService {
           updatedAt: new Date(),
         },
       });
+
+    await this.activityHistoryService.recordChange(
+      activityId,
+      assignedById,
+      'flag_assigned',
+      [{ field: 'flag.assigneeId', oldValue: null, newValue: assigneeId }]
+    );
   }
 
   /**
    * Remove the flag for a given (activity, team) pair.
    * No-op if the flag does not exist.
    */
-  async removeFlag(activityId: number, teamId: number): Promise<void> {
+  async removeFlag(
+    activityId: number,
+    teamId: number,
+    removedById: number
+  ): Promise<void> {
     const db = this.databaseService.db;
     await db
       .delete(activityFlags)
@@ -102,6 +117,13 @@ export class ActivityFlagsService {
           eq(activityFlags.teamId, teamId)
         )
       );
+
+    await this.activityHistoryService.recordChange(
+      activityId,
+      removedById,
+      'flag_removed',
+      [{ field: 'flag.assigneeId', oldValue: null, newValue: null }]
+    );
   }
 
   /**

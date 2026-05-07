@@ -110,7 +110,7 @@ export class ActivityFlagsController {
       );
     }
 
-    await this.flagsService.removeFlag(activityId, teamId);
+    await this.flagsService.removeFlag(activityId, teamId, user.id);
     this.gateway.broadcastActivityUpdated(activityId);
     return { success: true };
   }

@@ -8,13 +8,13 @@
  * Same flag semantics as AssignActivityModal but inline, no note field.
  */
 import { Flag } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
+import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -41,7 +41,7 @@ interface ActivityFlagPopoverProps {
 }
 
 export function ActivityFlagPopover({
-  activityId,
+  activityId: _activityId,
   flags,
   onAssign,
   onUnassign,
@@ -49,10 +49,8 @@ export function ActivityFlagPopover({
 }: ActivityFlagPopoverProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const primaryTeamId = user?.teamIds?.[0] ?? null;
   const existingFlag = useMemo(
@@ -61,58 +59,41 @@ export function ActivityFlagPopover({
   );
   const isFlagged = existingFlag !== null;
 
-  // Fetch team members when popover opens
+  // Fetch team members when popover opens (once per mount)
   useEffect(() => {
     if (!open || !primaryTeamId || members.length > 0) return;
     setLoadingMembers(true);
     fetchTeamById(primaryTeamId)
       .then((team) => {
         if (!team) return;
-        const opts: TeamMemberOption[] = team.members.map((m) => ({
-          userId: m.userId,
-          label: m.userName,
-          teamId: team.id,
-        }));
-        setMembers(opts);
+        setMembers(
+          team.members.map((m) => ({
+            userId: m.userId,
+            label: m.userName,
+            teamId: team.id,
+          }))
+        );
       })
-      .catch(() => {
-        setMembers([]);
-      })
-      .finally(() => {
-        setLoadingMembers(false);
-      });
+      .catch(() => setMembers([]))
+      .finally(() => setLoadingMembers(false));
   }, [open, primaryTeamId, members.length]);
 
-  // Focus search on open
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 50);
-    } else {
-      setSearch('');
-    }
-  }, [open]);
-
-  // Sort: current user first, then alphabetically
-  const sortedMembers = useMemo(() => {
-    if (!user) return members;
-    const me = members.find((m) => m.userId === user.id);
-    const rest = members.filter((m) => m.userId !== user.id);
-    return me ? [me, ...rest] : rest;
+  // Build sorted options: current user first, then alphabetically
+  const options = useMemo(() => {
+    const me = members.find((m) => m.userId === user?.id);
+    const rest = members.filter((m) => m.userId !== user?.id);
+    return [...(me ? [me] : []), ...rest].map((m) => ({
+      value: String(m.userId),
+      label: m.userId === user?.id ? `${m.label} (you)` : m.label,
+    }));
   }, [members, user]);
 
-  const filteredMembers = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return sortedMembers;
-    return sortedMembers.filter((m) => m.label.toLowerCase().includes(q));
-  }, [sortedMembers, search]);
-
-  const handleSelect = (member: TeamMemberOption) => {
+  const handleSelect = (memberId: number) => {
     if (!primaryTeamId) return;
-    if (existingFlag?.assigneeId === member.userId) {
-      // Clicking the current assignee → unassign
+    if (existingFlag?.assigneeId === memberId) {
       onUnassign(primaryTeamId);
     } else {
-      onAssign(primaryTeamId, member.userId);
+      onAssign(primaryTeamId, memberId);
     }
     setOpen(false);
   };
@@ -154,34 +135,22 @@ export function ActivityFlagPopover({
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b p-2">
-          <Input
-            ref={searchRef}
-            placeholder="Search teammates"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-7 text-sm"
-          />
-        </div>
-        <div className="max-h-56 overflow-y-auto py-1">
-          {loadingMembers ? (
-            <div className="text-muted-foreground px-3 py-4 text-center text-sm">
-              Loading…
-            </div>
-          ) : filteredMembers.length === 0 ? (
-            <div className="text-muted-foreground px-3 py-4 text-center text-sm">
-              No teammates found.
-            </div>
-          ) : (
-            filteredMembers.map((m) => {
-              const isSelected = existingFlag?.assigneeId === m.userId;
-              const label =
-                m.userId === user?.id ? `${m.label} (you)` : m.label;
+        {loadingMembers ? (
+          <div className="text-muted-foreground px-3 py-4 text-center text-sm">
+            Loading…
+          </div>
+        ) : (
+          <FilterSearchableList
+            options={options}
+            searchPlaceholder="Search teammates..."
+            emptyMessage="No teammates found."
+            renderOption={(opt) => {
+              const memberId = parseInt(opt.value, 10);
+              const isSelected = existingFlag?.assigneeId === memberId;
               return (
                 <button
-                  key={m.userId}
                   type="button"
-                  onClick={() => handleSelect(m)}
+                  onClick={() => handleSelect(memberId)}
                   className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm"
                 >
                   <Checkbox
@@ -190,12 +159,12 @@ export function ActivityFlagPopover({
                     className="pointer-events-none size-4 shrink-0"
                     aria-hidden
                   />
-                  <span className="truncate">{label}</span>
+                  <span className="truncate">{opt.label}</span>
                 </button>
               );
-            })
-          )}
-        </div>
+            }}
+          />
+        )}
       </PopoverContent>
     </Popover>
   );
