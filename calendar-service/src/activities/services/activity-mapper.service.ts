@@ -2,15 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import type { Activity } from '@corpcal/database/types';
 import {
-  DEFAULT_LOOK_AHEAD_SECTION,
   DEFAULT_LOOK_AHEAD_STATUS,
   DEFAULT_STATUS,
   DEFAULT_VISIBILITY,
-  LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
   type ActivityResponse,
   type EventPlannerDetail,
-  type LookAheadSection,
   type LookAheadStatus,
   type Visibility,
 } from '@corpcal/shared';
@@ -159,11 +156,10 @@ export class ActivityMapperService {
       )
         ? (activity.lookAheadStatus as LookAheadStatus)
         : (DEFAULT_LOOK_AHEAD_STATUS satisfies LookAheadStatus),
-      lookAheadSection: LOOK_AHEAD_SECTION.includes(
-        activity.lookAheadSection as LookAheadSection
-      )
-        ? (activity.lookAheadSection as LookAheadSection)
-        : (DEFAULT_LOOK_AHEAD_SECTION satisfies LookAheadSection),
+      // `lookAheadSection` is a free-form string bucket key (validated at write
+      // time against the report config allowlist via LookAheadPolicyService).
+      // Pass through whatever the DB stored, normalizing nullish to null.
+      lookAheadSection: activity.lookAheadSection ?? null,
 
       // Notes and additional fields
       notes: activity.notes ?? null,

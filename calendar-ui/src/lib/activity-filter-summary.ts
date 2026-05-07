@@ -5,10 +5,7 @@ import {
   isDateRangeActive,
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
-import {
-  getLookAheadSectionLabel,
-  getLookAheadStatusLabel,
-} from '@/constants/form-options';
+import { getLookAheadStatusLabel } from '@/constants/form-options';
 import type { OptionItem } from '@/schemas/types';
 
 export type ActivityFilterSummaryLine = { label: string; value: string };
@@ -37,6 +34,13 @@ export type ActivityFilterSummaryContext = {
   eventPlannerOptions: OptionItem[];
   translationStatusOptions: OptionItem[];
   translationOptions: OptionItem[];
+  /**
+   * Resolve a stored `lookAheadSection` bucket key to its short UI label.
+   * Driven by `useLookAheadSectionRows` so chip labels stay in sync with the
+   * radio/filter UIs. Falls back to the raw key when the lookup is missing or
+   * the key is no longer in the active config.
+   */
+  getLookAheadSectionLabel?: (value: string) => string;
 };
 
 const EMPTY_DATE_RANGE: ActivityFilterState['dateRange'] = {
@@ -183,12 +187,14 @@ export function buildActivityFilterChipRows(
   }
 
   if (filterState.lookAheadSectionValues.length > 0) {
+    const resolveSectionLabel =
+      ctx.getLookAheadSectionLabel ?? ((v: string) => v);
     rows.push({
       rowKey: 'lookAheadSection',
       label: 'LA section',
       chips: filterState.lookAheadSectionValues.map((v) => ({
         chipKey: `laSection:${encodeURIComponent(v)}`,
-        displayLabel: getLookAheadSectionLabel(v),
+        displayLabel: resolveSectionLabel(v),
       })),
     });
   }

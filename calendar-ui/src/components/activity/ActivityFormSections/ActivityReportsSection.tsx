@@ -15,10 +15,11 @@ import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RichTextField } from '@/components/ui/rich-text-field';
+import { lookAheadStatusOptions } from '@/constants/form-options';
 import {
-  lookAheadSectionOptions,
-  lookAheadStatusOptions,
-} from '@/constants/form-options';
+  rowsToSectionOptions,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 import { useReports } from '@/hooks/useLookups';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -35,13 +36,12 @@ export const ActivityReportsSection: React.FC = () => {
   const lookAheadScope = useActivityFieldScopeControl('lookAhead');
   const form = useFormContext<ActivityFormData>();
   const { data: reports, isLoading: reportsLoading } = useReports();
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
+  const lookAheadSectionOptions = useMemo(
+    () => rowsToSectionOptions(lookAheadSectionRows),
+    [lookAheadSectionRows]
+  );
 
-  // Find report IDs for Look Ahead and 30/60/90 reports
-  // TODO: Add system reports constants to @corpcal/shared/constants/constants
-  // const lookAheadReport = useMemo(
-  //   () => reports?.find((r) => r.name === 'look-ahead'),
-  //   [reports]
-  // );
   const thirtySixtyNinetyReport = useMemo(
     () => reports?.find((r) => r.name === 'thirty-sixty-ninety'),
     [reports]
@@ -207,12 +207,12 @@ export const ActivityReportsSection: React.FC = () => {
                       disabled={lookAheadScope.fieldScopeDisabled}
                       onValueChange={field.onChange}
                       value={field.value ?? ''}
-                      className="flex flex-row space-x-4"
+                      className="flex flex-row flex-wrap gap-x-4 gap-y-2"
                     >
                       {lookAheadSectionOptions.map((option) => (
                         <div
                           key={option.value}
-                          className="flex items-center space-x-2"
+                          className="flex items-center gap-2"
                         >
                           <RadioGroupItem
                             value={option.value}

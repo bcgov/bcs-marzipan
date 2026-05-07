@@ -666,8 +666,7 @@ export class ActivityDataFetcherService {
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      const code = row.shortcode ?? row.displayName;
-      if (code) existing.push(code);
+      if (row.displayName) existing.push(row.displayName);
       map.set(row.activityId, existing);
     }
     return map;

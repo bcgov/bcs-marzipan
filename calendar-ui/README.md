@@ -28,7 +28,7 @@ Frontend for the Corporate Calendar (bcs-marzipan).
 Main entry: **`src/styles/globals.css`**.
 
 - **Tailwind** (`@import 'tailwindcss'`) and **tw-animate-css**
-- **BCSans** `@font-face` (Regular, Italic, Light, Bold; woff2)
+- **BCSans** `@font-face` (Regular, Italic, Light, Bold; woff2) via `@import '@corpcal/shared/styles/bcsans-font-face.css'` (font files live under `packages/shared/assets/fonts`)
 - **`:root` / `.dark`** theme variables: semantic tokens (`--background`, `--foreground`, `--primary`, `--muted`, `--border`, etc.), radius, chart/sidebar/link colors
 - **BC Gov brand**: `--bc-blue`, `--bc-blue-light`, `--bc-gold`, `--bc-gold-dark`; `--tabs-underline`, `--link`
 - **Tailwind theme** mapping in `@theme` / `@theme inline` so utilities (`bg-background`, `text-foreground`, etc.) use the CSS vars
