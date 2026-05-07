@@ -28,6 +28,12 @@ export interface LookAheadSectionRow {
   reportLegendLabel: string;
   /** Optional `#RRGGBB` swatch color. Already validated by `reportConfigSchema`. */
   legendColor: string | null;
+  /**
+   * Optional explicit override for the print rollup's per-day chrome (date row
+   * + repeated column header band). `null` means "let the renderer pick a
+   * default" (today: only `events`-keyed sections opt in).
+   */
+  printPerDayColumnHeaderRepeat: boolean | null;
 }
 
 export interface ResolveLookAheadSectionRowsOptions {
@@ -66,6 +72,8 @@ export function resolveLookAheadSectionRows(
       uiLabel: section.uiDisplayName ?? section.name,
       reportLegendLabel: section.reportDisplayName ?? section.name,
       legendColor: section.legendColor ?? null,
+      printPerDayColumnHeaderRepeat:
+        section.printPerDayColumnHeaderRepeat ?? null,
     });
   }
 

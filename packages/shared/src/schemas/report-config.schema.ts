@@ -75,6 +75,17 @@ export const reportSectionSchema = z.object({
    * a column engine reads it.
    */
   fields: z.array(z.string()).optional(),
+  /**
+   * When true, the look-ahead print rollup renders a calendar-date heading and a
+   * cloned column header band above each day's activities (the "Events" rhythm).
+   * When false or omitted, days flow as continuous activity rows under the
+   * section title with no per-day chrome.
+   *
+   * Opt-in per section. Today the canonical Events bucket sets this to `true`
+   * in seed config; other sections (issues, news, awareness, longTerm, etc.)
+   * leave it unset.
+   */
+  printPerDayColumnHeaderRepeat: z.boolean().optional(),
 });
 
 /**

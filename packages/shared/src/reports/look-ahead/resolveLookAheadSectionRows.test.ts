@@ -104,6 +104,7 @@ describe('resolveLookAheadSectionRows', () => {
       uiLabel: 'Events',
       reportLegendLabel: 'Events',
       legendColor: null,
+      printPerDayColumnHeaderRepeat: null,
     });
   });
 
