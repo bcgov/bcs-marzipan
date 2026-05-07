@@ -83,8 +83,15 @@ function normaliseLookAheadStatus(
   return status === 'new' ? 'new' : 'changed';
 }
 
+/** Strips trailing `/` without regex (avoids CodeQL ReDoS warnings on library input). */
+function trimTrailingSlashes(s: string): string {
+  let end = s.length;
+  while (end > 0 && s[end - 1] === '/') end -= 1;
+  return s.slice(0, end);
+}
+
 function joinActivityUrl(baseUrl: string, activityId: number): string {
-  const trimmed = baseUrl.replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(baseUrl);
   return `${trimmed}/activity/${activityId}`;
 }
 
