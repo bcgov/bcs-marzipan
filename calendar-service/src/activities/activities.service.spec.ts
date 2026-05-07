@@ -36,6 +36,7 @@ import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
+import { ActivityFlagsService } from './services/activity-flags.service';
 import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
@@ -257,6 +258,13 @@ describe('ActivitiesService', () => {
         {
           provide: TeamsService,
           useValue: mockTeamsService,
+        },
+        {
+          provide: ActivityFlagsService,
+          useValue: {
+            fetchFlagsForActivities: vi.fn().mockResolvedValue(new Map()),
+            fetchFlagsForActivity: vi.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: ApplicationSettingsService,
