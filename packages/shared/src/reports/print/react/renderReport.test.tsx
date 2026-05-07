@@ -264,7 +264,40 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('corpcal-print-section-swatch');
     expect(html).toContain('background-color:#2C7DA0');
+    expect(html).toContain('corpcal-print-section-thead-cell');
+    expect(html).toContain('color:#ffffff');
     expect(html).toContain('Events, speeches and releases (inside government)');
+  });
+
+  it('uses dark thead foreground on light legend swatches', () => {
+    const pastel: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              reportDisplayName: 'Events section',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+              legendColor: '#FEF9E8',
+            },
+          ],
+        },
+      },
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', pastel, {
+      activityBaseUrl: 'http://localhost:3000',
+      generatedAt: FIXED_GENERATED_AT,
+    });
+
+    expect(html).toContain('corpcal-print-section-thead-cell');
+    expect(html).toContain('background-color:#FEF9E8');
+    expect(html).toContain('color:#000000');
   });
 
   it('lists all days for the first section before the second section (section-first layout)', () => {

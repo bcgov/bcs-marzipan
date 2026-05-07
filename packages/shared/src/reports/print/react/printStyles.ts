@@ -118,18 +118,14 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-body {
   padding: 4px 24px 20px;
 }
+.corpcal-print-body > .corpcal-print-section-block + .corpcal-print-section-block {
+  margin-top: 8px;
+}
 .corpcal-print-day {
   margin-top: 16px;
 }
-.corpcal-print-day:first-child {
-  margin-top: 6px;
-}
-/** Section-first layout: first day follows {@link PrintSectionHeading}, not body. */
 .corpcal-print-section-heading + .corpcal-print-day {
   margin-top: 6px;
-}
-.corpcal-print-body > .corpcal-print-section-block + .corpcal-print-section-block {
-  margin-top: 8px;
 }
 .corpcal-print-day-heading {
   margin: 0 0 6px;
@@ -138,15 +134,14 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--print-section-fg);
-  border-bottom: 2px solid var(--print-section-fg);
-  text-align: center;
+  text-align: left;
 }
 .corpcal-print-section-heading {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 12px 0 4px;
-  font-size: 1em;
+  font-size: 1.35em;
   font-weight: 700;
   color: var(--print-section-fg);
 }
@@ -196,11 +191,38 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-table tbody tr:nth-child(even) td {
   background: var(--print-zebra);
 }
-.corpcal-print-col-1 { width: 20%; }
-.corpcal-print-col-2 { width: 8%; }
-.corpcal-print-col-3 { width: 45%; }
-.corpcal-print-col-4 { width: 15%; }
-.corpcal-print-col-5 { width: 12%; }
+/* Fixed layout widths: tie to table + col so preview/PDF respects the grid (colgroup + th/td avoids resets equalizing columns). */
+.corpcal-print-table col.corpcal-print-col-1 { width: 20%; }
+.corpcal-print-table col.corpcal-print-col-2 { width: 8%; }
+.corpcal-print-table col.corpcal-print-col-3 { width: 45%; }
+.corpcal-print-table col.corpcal-print-col-4 { width: 15%; }
+.corpcal-print-table col.corpcal-print-col-5 { width: 12%; }
+.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-1,
+.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-1 {
+  width: 20%;
+}
+.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-2,
+.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-2 {
+  width: 8%;
+}
+.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-3,
+.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-3 {
+  width: 45%;
+}
+.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-4,
+.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-4 {
+  width: 15%;
+}
+.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-5,
+.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-5 {
+  width: 12%;
+}
+
+/* Look-ahead section legend fill on thead cells: preserve in PDF/export (Chrome). */
+.corpcal-print-table thead th.corpcal-print-section-thead-cell {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 
 .corpcal-print-stack > * + * { margin-top: 4px; }
 .corpcal-print-stack-md > * + * { margin-top: 6px; }

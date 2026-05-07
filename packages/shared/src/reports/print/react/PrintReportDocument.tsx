@@ -8,7 +8,10 @@ import {
 } from './dateFormatters';
 import { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 import { PrintPageFooter } from './PrintPageFooter';
-import { PrintSectionHeading, PrintSectionTable } from './PrintSectionTable';
+import {
+  PrintGroupedSectionTable,
+  type PrintGroupedSectionDayBlock,
+} from './PrintSectionTable';
 import { CORPCAL_PRINT_ROOT_CLASS } from './printStyles';
 import {
   compareActivitiesForPrint,
@@ -80,7 +83,7 @@ function reportHasAnyActivities(sections: SortedSection[]): boolean {
 /**
  * Top-level print document. Drives the shell (header, banner, contents, footer)
  * and walks sections in report order, then days within each section, delegating
- * row rendering to {@link PrintSectionTable} / {@link PrintRow}.
+ * row rendering to {@link PrintGroupedSectionTable} / {@link PrintRow}.
  */
 export function PrintReportDocument({
   data,
@@ -158,33 +161,27 @@ function SectionGroup({
   const dateKeys = sortedDateKeysForSection(section);
   if (dateKeys.length === 0) return null;
 
+  const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
+    const dayDate = parseKeyToDate(dayKey);
+    const activities = section.activitiesByKey.get(dayKey) ?? [];
+    const rows: PrintRowViewModel[] = activities.map((a) =>
+      toPrintRowViewModel(a, { activityBaseUrl })
+    );
+    return {
+      dayKey,
+      dayHeading: formatDayHeading(dayDate),
+      rows,
+    };
+  });
+
   return (
     <section className="corpcal-print-section-block">
-      <PrintSectionHeading
-        sectionName={section.printHeadingLabel}
+      <PrintGroupedSectionTable
+        sectionPrintLabel={section.printHeadingLabel}
         sectionLegendColor={section.legendColor}
+        days={dayBlocks}
+        variant={variant}
       />
-      {dateKeys.map((dayKey) => {
-        const dayDate = parseKeyToDate(dayKey);
-        const activities = section.activitiesByKey.get(dayKey) ?? [];
-        const rows: PrintRowViewModel[] = activities.map((a) =>
-          toPrintRowViewModel(a, { activityBaseUrl })
-        );
-        return (
-          <div key={dayKey} className="corpcal-print-day">
-            <h3 className="corpcal-print-day-heading">
-              {formatDayHeading(dayDate)}
-            </h3>
-            <PrintSectionTable
-              sectionName={section.name}
-              rows={rows}
-              variant={variant}
-              sectionLegendColor={section.legendColor}
-              showSectionHeading={false}
-            />
-          </div>
-        );
-      })}
     </section>
   );
 }
