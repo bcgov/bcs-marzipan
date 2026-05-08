@@ -138,7 +138,7 @@ All shared helpers live in `@corpcal/shared` under the `datetime` module:
 import {
   // Calendar arithmetic
   addCalendarDays,
-  CORP_PACIFIC_LABEL, // 'Pacific Time (UTC-7, no daylight saving)'
+  CORP_PACIFIC_LABEL, // 'Pacific Time (UTC-7)'
   CORP_PACIFIC_OFFSET_MS, // 7 * 60 * 60 * 1000
   // Constants
   CORP_PACIFIC_TIME_ZONE, // 'Etc/GMT+7'

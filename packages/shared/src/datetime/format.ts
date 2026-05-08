@@ -12,7 +12,7 @@
  *    CORP_PACIFIC_TIME_ZONE` so output is independent of `process.env.TZ`.
  */
 
-import { CORP_PACIFIC_TIME_ZONE } from './constants';
+import { CORP_PACIFIC_OFFSET_MS, CORP_PACIFIC_TIME_ZONE } from './constants';
 import {
   isCalendarDateString,
   isCivilTimeString,
@@ -27,10 +27,11 @@ import {
  */
 function calendarDateToAnchorInstant(date: CalendarDateString): Date {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  // Build noon UTC and shift by the Pacific fixed offset so that, when the
-  // formatter converts to `Etc/GMT+7`, we land squarely on the requested
-  // calendar day at noon Pacific.
-  return new Date(Date.UTC(y, m - 1, d, 12 + 7, 0, 0, 0));
+  const offsetHours = CORP_PACIFIC_OFFSET_MS / (60 * 60 * 1000);
+  // UTC instant where the wall clock is noon on `date` in the fixed Pacific
+  // zone (west of UTC: `Date.UTC` hour = 12 + offsetHours). Keeps calendar
+  // `Intl` output aligned with the requested YYYY-MM-DD.
+  return new Date(Date.UTC(y, m - 1, d, 12 + offsetHours, 0, 0, 0));
 }
 
 function pacificDateFormatter(

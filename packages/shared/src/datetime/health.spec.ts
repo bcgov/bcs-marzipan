@@ -26,7 +26,7 @@ describe('corp Pacific timezone health check', () => {
     expect(CORP_PACIFIC_TIME_ZONE).toBe('Etc/GMT+7');
   });
 
-  it('CORP_PACIFIC_OFFSET_MS represents a 7-hour negative offset', () => {
+  it('CORP_PACIFIC_OFFSET_MS represents a 7-hour offset magnitude', () => {
     expect(CORP_PACIFIC_OFFSET_MS).toBe(7 * 60 * 60 * 1000);
   });
 
