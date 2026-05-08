@@ -7,20 +7,35 @@ import {
   subMonths,
 } from 'date-fns';
 
-/** Preset anchor is always interpreted at local start-of-day. */
+/**
+ * Preset anchor is always interpreted at host-local start-of-day. This is
+ * intentional for scheduled-date presets, which are user-driven inputs in a
+ * browser that already shows host-local "today". For date strings that need
+ * corp-Pacific semantics (audit instants, scheduled-job math), use the
+ * helpers in `@corpcal/shared/datetime` instead.
+ *
+ * See `docs/DATE_AND_TIMEZONE.md`.
+ */
 export interface ScheduledDatePreset {
   label: string;
   toIsoDate: (anchor: Date) => string;
 }
 
 /**
- * Parse yyyy-MM-dd for calendar math without UTC shift (local noon).
+ * Parse `YYYY-MM-DD` for calendar math without UTC shift, by anchoring at
+ * host-local noon. Pair with `format(d, 'yyyy-MM-dd')` from `date-fns` so
+ * round-trips through this helper preserve the calendar day for any host TZ.
  */
 export function parseIsoDateLocal(iso: string): Date {
   return new Date(iso + 'T12:00:00');
 }
 
-/** Local start of today; use as `getPresetAnchor` for scheduled-date presets. */
+/**
+ * Host-local start of today; used as the preset anchor for scheduled-date
+ * presets ("Today", "7 days out"). Browser users in BC are in Pacific so
+ * this matches the corp Pacific business day; remote viewers see their local
+ * day, which is the right UX for picker presets.
+ */
 export function getPresetAnchorToday(): Date {
   return startOfDay(new Date());
 }

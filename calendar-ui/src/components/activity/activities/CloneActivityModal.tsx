@@ -1,6 +1,7 @@
 import { format, startOfDay } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 
+import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
 import {
   ACTIVITY_FIELD_SCOPE_CONFIG,
   ACTIVITY_FIELD_SCOPES,
@@ -535,6 +536,11 @@ export function CloneActivityModal({
                 </FormSelectSafe>
               </div>
             </div>
+            {!isAllDay ? (
+              <p className="text-muted-foreground mt-1.5 text-xs">
+                {CORP_PACIFIC_LABEL}
+              </p>
+            ) : null}
             {hasTimeOrderWarning ? (
               <p className="text-sm font-medium text-amber-700">
                 End time must be later than start time.

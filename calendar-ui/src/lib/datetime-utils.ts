@@ -1,7 +1,58 @@
+import {
+  CORP_PACIFIC_LABEL,
+  CORP_PACIFIC_TIME_ZONE,
+  formatCalendarDateShort,
+  formatCivilTime12h,
+  formatInstantInPacific as formatInstantInPacificShared,
+  formatInstantPacificDate as formatInstantPacificDateShared,
+  formatInstantPacificTime as formatInstantPacificTimeShared,
+  isCalendarDateString,
+  pacificCalendarDateFromInstant,
+  pacificCivilToInstantMs,
+} from '@corpcal/shared';
+
 export type FormatRelativeTimeOptions = {
   /** Short form: "5m ago", "in 22h" instead of "5 minutes ago", "in 22 hours". */
   short?: boolean;
 };
+
+/**
+ * Optional `timeZone` for `Intl` calls. When omitted, the formatter uses the
+ * host (browser) timezone — appropriate when the caller already has a local
+ * `Date` from a date picker. When formatting an **instant** from the API
+ * (`lastUpdatedDateTime`, `createdDateTime`, etc.), pass
+ * {@link CORP_PACIFIC_TIME_ZONE} so output is identical regardless of the
+ * host TZ.
+ *
+ * See `docs/DATE_AND_TIMEZONE.md`.
+ */
+export type IntlTimeZoneOption = {
+  timeZone?: string;
+};
+
+export { CORP_PACIFIC_LABEL, CORP_PACIFIC_TIME_ZONE };
+
+/** Suffix for Pacific (fixed UTC-7) wall-clock times in UI copy. */
+const PACIFIC_TIME_ABBREV_SUFFIX = ' PT';
+
+/**
+ * True when both instants fall on the same calendar day in corp Pacific
+ * (fixed UTC-7), independent of the host timezone.
+ */
+export function isSamePacificCalendarDay(a: Date, b: Date): boolean {
+  const ka = pacificCalendarDateFromInstant(a);
+  const kb = pacificCalendarDateFromInstant(b);
+  return ka != null && kb != null && ka === kb;
+}
+
+/**
+ * Pacific wall-clock time for labels like "Updated today at …", including
+ * `PT` so the zone is explicit (e.g. `4:21 PM PT`).
+ */
+export function formatPacificTimeWithAbbrev(date: Date): string {
+  const clock = formatTime(date, { timeZone: CORP_PACIFIC_TIME_ZONE });
+  return clock === '' ? '' : `${clock}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+}
 
 const RELATIVE_INTERVALS: [number, string, string][] = [
   [60, 'minute', 'm'],
@@ -55,44 +106,35 @@ export function formatRelativeTime(
   return isPast ? `${value} years ago` : `in ${value} years`;
 }
 
-export function formatLongDate(date: Date): string {
+export function formatLongDate(
+  date: Date,
+  options?: IntlTimeZoneOption
+): string {
   return date.toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    ...(options?.timeZone ? { timeZone: options.timeZone } : {}),
   });
 }
 
-export function formatTime(date: Date): string {
+export function formatTime(date: Date, options?: IntlTimeZoneOption): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    ...(options?.timeZone ? { timeZone: options.timeZone } : {}),
   });
 }
 
 /**
- * Format a 24h time string (e.g. HH:mm or H:mm) as "hh:mm am" / "hh:mm pm".
- * Invalid or out-of-range values (e.g. hour > 23, minute > 59) are clamped for
- * display rather than rejected; the function does not throw.
+ * Format a 24h civil time string (e.g. HH:mm) as lowercase 12h (`9:30 am`).
+ * Delegates to `@corpcal/shared` so parsing matches print exports and jobs.
  */
 export function formatTime12h(timeStr: string | null): string {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  const hourParsed = parseInt(h ?? '0', 10);
-  const minuteParsed = parseInt((m ?? '00').padStart(2, '0'), 10);
-  const hour = Number.isFinite(hourParsed)
-    ? Math.min(23, Math.max(0, hourParsed))
-    : 0;
-  const minute = Number.isFinite(minuteParsed)
-    ? Math.min(59, Math.max(0, minuteParsed))
-    : 0;
-  const minuteStr = String(minute).padStart(2, '0');
-  const ampm = hour >= 12 ? 'pm' : 'am';
-  const h12 = hour % 12 || 12;
-  return `${h12}:${minuteStr} ${ampm}`;
+  return formatCivilTime12h(timeStr);
 }
 
-export type FormatExactDateOptions = {
+export type FormatExactDateOptions = IntlTimeZoneOption & {
   /** Include time, e.g. "Jan 23, 2026 at 2:00 PM". Default false. */
   includeTime?: boolean;
   /**
@@ -100,12 +142,26 @@ export type FormatExactDateOptions = {
    * Default 'auto' (always show year).
    */
   includeYear?: boolean | 'auto';
+  /**
+   * When true with {@link includeTime}, appends ` PT` after the time so Pacific
+   * (fixed UTC-7) wall-clock is explicit in UI copy.
+   */
+  appendPacificTimeAbbrev?: boolean;
 };
 
 /**
- * Parse a YYYY-MM-DD date-only string as local midnight, avoiding the UTC-to-local
- * timezone shift that `new Date("YYYY-MM-DD")` introduces (ISO date-only strings are
- * parsed as UTC, which shifts the date back one day in timezones behind UTC).
+ * Parse a `YYYY-MM-DD` date-only string as **host-local midnight**, avoiding
+ * the UTC-to-local shift that `new Date('YYYY-MM-DD')` introduces (ISO
+ * date-only strings parse as UTC and shift behind UTC).
+ *
+ * The returned Date is intended for downstream `toLocaleDateString` callers
+ * that read host-local components symmetrically — both the construction and
+ * the formatter use host TZ, so the rendered calendar day matches the input
+ * regardless of where the host clock is set.
+ *
+ * For UI code that needs to format an **instant** (an audit timestamp from
+ * the API), do not parse with this helper; use the corp Pacific helpers
+ * (`formatInstantInPacific`, `formatInstantPacificTime`) directly.
  */
 export function parseDateOnlyString(dateStr: string): Date {
   const parts = dateStr.split('-').map(Number);
@@ -116,6 +172,9 @@ export function parseDateOnlyString(dateStr: string): Date {
 /**
  * Exact date (and optional time) for "Updated Jan 23, 2026" or "Updated Jan 23, 2026 at 2:00 PM".
  * Call site adds context prefix, e.g. "Updated " + formatExactDate(date).
+ *
+ * Pass `timeZone: CORP_PACIFIC_TIME_ZONE` when formatting an instant from the
+ * API so output is the same regardless of the host TZ.
  */
 export function formatExactDate(
   date: Date,
@@ -124,62 +183,75 @@ export function formatExactDate(
   const includeTime = options?.includeTime ?? false;
   const includeYear = options?.includeYear ?? 'auto';
   const showYear = includeYear !== false;
+  const timeZone = options?.timeZone;
 
   const datePart = date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     ...(showYear && { year: 'numeric' }),
+    ...(timeZone ? { timeZone } : {}),
   });
 
   if (!includeTime) return datePart;
-  return `${datePart} at ${formatTime(date)}`;
+  const withTime = `${datePart} at ${formatTime(date, { timeZone })}`;
+  if (options?.appendPacificTimeAbbrev) {
+    return `${withTime}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+  }
+  return withTime;
 }
 
 /**
- * Local calendar date/time for an activity's scheduled end (`endDate` + `endTime` in the user's timezone).
- * All-day or missing `endTime`: date only (midnight local on `endDate`).
+ * Convenience for the common "format an instant in Pacific" cases. These
+ * delegate to `@corpcal/shared` so behavior stays in lockstep with the rest
+ * of the app (print exports, scheduled jobs, etc.).
  */
-export function getActivityEndLocalDate(
-  endDate: string | null | undefined,
-  endTime: string | null | undefined,
-  isAllDay: boolean
-): Date | null {
-  if (endDate == null || endDate === '') return null;
-  const parts = endDate.split('-').map((p) => parseInt(p, 10));
-  if (parts.length < 3) return null;
-  const [y, m, d] = parts;
-  if (
-    !Number.isFinite(y) ||
-    !Number.isFinite(m) ||
-    !Number.isFinite(d) ||
-    m < 1 ||
-    m > 12 ||
-    d < 1 ||
-    d > 31
-  ) {
-    return null;
-  }
-  if (isAllDay || !endTime?.trim()) {
-    return new Date(y, m - 1, d, 0, 0, 0, 0);
-  }
-  const [hhStr, mmStr] = endTime.trim().split(':');
-  const hh = parseInt(hhStr ?? '0', 10);
-  const mm = parseInt((mmStr ?? '0').padStart(2, '0'), 10);
-  const hour = Number.isFinite(hh) ? Math.min(23, Math.max(0, hh)) : 0;
-  const minute = Number.isFinite(mm) ? Math.min(59, Math.max(0, mm)) : 0;
-  return new Date(y, m - 1, d, hour, minute, 0, 0);
+export function formatInstantInPacific(
+  instant: string | Date | number | null | undefined
+): string {
+  const s = formatInstantInPacificShared(instant);
+  return s === '' ? '' : `${s}${PACIFIC_TIME_ABBREV_SUFFIX}`;
 }
 
-/** Display string for "This activity ended at …" in review/complete flows. */
+export function formatInstantPacificDate(
+  instant: string | Date | number | null | undefined
+): string {
+  return formatInstantPacificDateShared(instant);
+}
+
+export function formatInstantPacificTime(
+  instant: string | Date | number | null | undefined
+): string {
+  const s = formatInstantPacificTimeShared(instant);
+  return s === '' ? '' : `${s}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+}
+
+/**
+ * Display string for "This activity ended at …" in review/complete flows.
+ * Scheduled `endDate` / `endTime` are interpreted as **Pacific fixed UTC-7**
+ * civil time (see `docs/DATE_AND_TIMEZONE.md`), matching the API contract.
+ */
 export function formatActivityEndDateTimeLabel(
   endDate: string | null | undefined,
   endTime: string | null | undefined,
   isAllDay: boolean
 ): string | null {
-  const d = getActivityEndLocalDate(endDate, endTime, isAllDay);
-  if (!d) return null;
+  if (endDate == null || endDate === '') return null;
+  if (!isCalendarDateString(endDate)) return null;
+
   const includeTime = !isAllDay && Boolean(endTime?.trim());
-  return formatExactDate(d, { includeTime, includeYear: true });
+  if (!includeTime) {
+    return formatCalendarDateShort(endDate);
+  }
+
+  const ms = pacificCivilToInstantMs(endDate, endTime!.trim());
+  if (ms == null) return null;
+
+  return formatExactDate(new Date(ms), {
+    includeTime: true,
+    includeYear: true,
+    timeZone: CORP_PACIFIC_TIME_ZONE,
+    appendPacificTimeAbbrev: true,
+  });
 }
 
 /**

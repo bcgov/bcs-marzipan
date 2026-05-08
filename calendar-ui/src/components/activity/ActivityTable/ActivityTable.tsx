@@ -96,6 +96,7 @@ import {
 } from '@/lib/activity-query-utils';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
+  CORP_PACIFIC_TIME_ZONE,
   formatDateRange,
   formatExactDate,
   formatRelativeTime,
@@ -646,6 +647,7 @@ function StatusCell({
   });
   const createdDate = formatExactDate(new Date(row.createdDateTime), {
     includeYear: true,
+    timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 
   return (

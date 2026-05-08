@@ -1,7 +1,12 @@
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { VenueAddressBase } from '@corpcal/shared/schemas';
 import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
-import { formatExactDate, formatTime12h } from '@/lib/datetime-utils';
+import {
+  CORP_PACIFIC_TIME_ZONE,
+  formatExactDate,
+  formatTime12h,
+  parseDateOnlyString,
+} from '@/lib/datetime-utils';
 
 const RICH_TEXT_KEYS = new Set([
   'summary',
@@ -64,7 +69,8 @@ export function formatCustomReportCell(
   }
 
   if (DATE_KEYS.has(key) && typeof raw === 'string') {
-    const d = new Date(raw);
+    if (raw === '') return '';
+    const d = parseDateOnlyString(raw);
     return Number.isNaN(d.getTime()) ? '' : formatExactDate(d);
   }
 
@@ -75,7 +81,11 @@ export function formatCustomReportCell(
   if (DATETIME_KEYS.has(key) && typeof raw === 'string') {
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return '';
-    return formatExactDate(d, { includeTime: true });
+    return formatExactDate(d, {
+      includeTime: true,
+      timeZone: CORP_PACIFIC_TIME_ZONE,
+      appendPacificTimeAbbrev: true,
+    });
   }
 
   if (key === 'tags' && Array.isArray(raw)) {

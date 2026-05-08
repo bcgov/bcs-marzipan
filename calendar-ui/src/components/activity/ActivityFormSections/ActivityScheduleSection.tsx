@@ -3,6 +3,7 @@ import { Info } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
+import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
 import type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
@@ -471,6 +472,11 @@ export function ActivityScheduleSection({
             )}
           />
         </div>
+        {!isAllDay ? (
+          <p className="text-muted-foreground mt-1.5 text-xs">
+            {CORP_PACIFIC_LABEL}
+          </p>
+        ) : null}
         {form.formState.errors.startTime?.message ? (
           <p className="text-destructive text-sm font-medium">
             {String(form.formState.errors.startTime.message)}

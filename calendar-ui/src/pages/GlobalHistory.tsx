@@ -50,7 +50,11 @@ import {
   getActionText,
   getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
-import { formatExactDate, formatLongDate } from '@/lib/datetime-utils';
+import {
+  CORP_PACIFIC_TIME_ZONE,
+  formatExactDate,
+  formatLongDate,
+} from '@/lib/datetime-utils';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const EMPTY_DATE_RANGE: DateRangeValue = {
@@ -210,8 +214,12 @@ export function matchesSearch(
     entry.activity.title,
     entry.notes,
     formatDateHeading(timestamp),
-    formatLongDate(timestamp),
-    formatExactDate(timestamp, { includeTime: true }),
+    formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE }),
+    formatExactDate(timestamp, {
+      includeTime: true,
+      timeZone: CORP_PACIFIC_TIME_ZONE,
+      appendPacificTimeAbbrev: true,
+    }),
     ...entry.activity.categories,
   ]
     .filter((value): value is string => typeof value === 'string')
@@ -1107,7 +1115,11 @@ export function GlobalHistory() {
                             </div>
                           </div>
                           <div className="shrink-0 text-sm text-slate-500">
-                            {formatExactDate(timestamp, { includeTime: true })}
+                            {formatExactDate(timestamp, {
+                              includeTime: true,
+                              timeZone: CORP_PACIFIC_TIME_ZONE,
+                              appendPacificTimeAbbrev: true,
+                            })}
                           </div>
                         </article>
                       );

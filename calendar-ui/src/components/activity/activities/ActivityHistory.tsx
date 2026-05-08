@@ -23,7 +23,11 @@ import {
   getActionText,
   getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
-import { formatLongDate, formatTime } from '@/lib/datetime-utils';
+import {
+  CORP_PACIFIC_TIME_ZONE,
+  formatLongDate,
+  formatPacificTimeWithAbbrev,
+} from '@/lib/datetime-utils';
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
@@ -300,11 +304,12 @@ export default function ActivityHistory({
                                   </div>
                                   <div className="text-muted-foreground text-sm">
                                     {groupKey === 'Today'
-                                      ? `Today at ${formatTime(
+                                      ? `Today at ${formatPacificTimeWithAbbrev(
                                           new Date(entry.timestamp)
                                         )}`
                                       : formatLongDate(
-                                          new Date(entry.timestamp)
+                                          new Date(entry.timestamp),
+                                          { timeZone: CORP_PACIFIC_TIME_ZONE }
                                         )}
                                   </div>
                                 </div>
