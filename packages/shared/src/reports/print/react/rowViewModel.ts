@@ -169,17 +169,8 @@ export function toPrintRowViewModel(
   activity: ActivityResponse,
   options: { activityBaseUrl: string }
 ): PrintRowViewModel {
-  const startDateObj = activity.startDate ? new Date(activity.startDate) : null;
-  const endDateObj = activity.endDate ? new Date(activity.endDate) : null;
-
-  const startDateLabel =
-    startDateObj && !Number.isNaN(startDateObj.getTime())
-      ? formatShortDate(startDateObj)
-      : '';
-  const endDateLabel =
-    endDateObj && !Number.isNaN(endDateObj.getTime())
-      ? formatShortDate(endDateObj)
-      : '';
+  const startDateLabel = formatShortDate(activity.startDate);
+  const endDateLabel = formatShortDate(activity.endDate);
 
   return {
     activityId: activity.id,

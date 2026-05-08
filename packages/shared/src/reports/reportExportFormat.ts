@@ -1,4 +1,5 @@
 import type { ActivityResponse, ReportResponse } from '../api/types';
+import { isCalendarDateString } from '../datetime';
 import {
   getEffectiveReportDetailText,
   getEffectiveReportFields,
@@ -46,9 +47,13 @@ export function buildReportExportTable(
 
   for (const section of source.sections) {
     for (const activity of section.activities) {
-      const date = activity.startDate
-        ? new Date(activity.startDate).toLocaleDateString('en-CA')
-        : '';
+      // Calendar dates are wire-format `YYYY-MM-DD`; pass them through to
+      // export verbatim so the column matches the API value and never depends
+      // on `process.env.TZ`.
+      const date =
+        activity.startDate && isCalendarDateString(activity.startDate)
+          ? activity.startDate
+          : '';
       const time = activity.startTime || '';
       const status = activity.lookAheadStatus || '';
       const detailText = getEffectiveReportDetailText(

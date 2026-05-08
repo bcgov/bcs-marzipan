@@ -1,11 +1,7 @@
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { resolveLookAheadSectionRows } from '../../look-ahead';
-import {
-  dateKeyLocal,
-  formatDayHeading,
-  parseKeyToDate,
-} from './dateFormatters';
+import { dateKeyLocal, formatDayHeading } from './dateFormatters';
 import { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 import { PrintPageFooter } from './PrintPageFooter';
 import {
@@ -185,14 +181,13 @@ function SectionGroup({
   if (dateKeys.length === 0) return null;
 
   const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
-    const dayDate = parseKeyToDate(dayKey);
     const activities = section.activitiesByKey.get(dayKey) ?? [];
     const rows: PrintRowViewModel[] = activities.map((a) =>
       toPrintRowViewModel(a, { activityBaseUrl })
     );
     return {
       dayKey,
-      dayHeading: formatDayHeading(dayDate),
+      dayHeading: formatDayHeading(dayKey),
       rows,
     };
   });
