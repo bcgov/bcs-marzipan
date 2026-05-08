@@ -9,10 +9,14 @@ import {
   formatInstantPacificDate,
   formatInstantPacificTime,
   formatLongDate,
+  formatPacificHistoryListDayHeading,
   formatRelativeTime,
   formatTime,
   formatTime12h,
   isSameDay,
+  isTimestampInPacificDateFilter,
+  pacificActivityHistoryRecencyBucket,
+  pacificInclusiveCalendarRangeEndingToday,
 } from './datetime-utils';
 
 describe('formatRelativeTime', () => {
@@ -342,5 +346,113 @@ describe('corp Pacific instant formatting', () => {
       timeZone: CORP_PACIFIC_TIME_ZONE,
     });
     expect(result).toMatch(/^Apr 27, 2026 at 8:30\s*AM$/i);
+  });
+});
+
+describe('Pacific history grouping / filters', () => {
+  const nowPacificJan15 = new Date('2026-01-15T12:00:00.000Z');
+
+  describe('pacificActivityHistoryRecencyBucket', () => {
+    it('buckets from start of Pacific "today" and later instants as Today', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-15T07:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-16T08:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+    });
+
+    it('buckets instant just before Pacific day boundary as This week when in window', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-15T06:59:59.999Z'),
+          nowPacificJan15
+        )
+      ).toBe('This week');
+    });
+
+    it('buckets timestamps before rolling 7-day Pacific window start as Earlier', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-07T06:59:59.999Z'),
+          nowPacificJan15
+        )
+      ).toBe('Earlier');
+    });
+  });
+
+  describe('formatPacificHistoryListDayHeading', () => {
+    it('returns Today when entry shares Pacific calendar date with reference now', () => {
+      expect(
+        formatPacificHistoryListDayHeading(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+    });
+
+    it('returns long-format Pacific date otherwise', () => {
+      expect(
+        formatPacificHistoryListDayHeading(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('January 14, 2026');
+    });
+  });
+
+  describe('isTimestampInPacificDateFilter', () => {
+    const range = {
+      startDate: '2026-01-10',
+      endDate: '2026-01-20',
+      noStartDate: false,
+      noEndDate: false,
+    };
+
+    it('matches inclusive Pacific calendar bounds', () => {
+      expect(
+        isTimestampInPacificDateFilter(
+          new Date('2026-01-14T15:00:00.000Z'),
+          range
+        )
+      ).toBe(true);
+
+      expect(
+        isTimestampInPacificDateFilter(
+          new Date('2026-01-09T23:59:59.999Z'),
+          range
+        )
+      ).toBe(false);
+    });
+
+    it('honors noStartDate', () => {
+      expect(
+        isTimestampInPacificDateFilter(new Date('2026-01-01T12:00:00.000Z'), {
+          ...range,
+          noStartDate: true,
+        })
+      ).toBe(true);
+    });
+  });
+
+  describe('pacificInclusiveCalendarRangeEndingToday', () => {
+    it('returns the same calendar day when count is 1', () => {
+      expect(
+        pacificInclusiveCalendarRangeEndingToday(1, nowPacificJan15)
+      ).toEqual({ startDate: '2026-01-15', endDate: '2026-01-15' });
+    });
+
+    it('returns an inclusive rolling window ending today (7 days)', () => {
+      expect(
+        pacificInclusiveCalendarRangeEndingToday(7, nowPacificJan15)
+      ).toEqual({ startDate: '2026-01-09', endDate: '2026-01-15' });
+    });
   });
 });

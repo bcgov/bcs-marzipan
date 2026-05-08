@@ -1,4 +1,5 @@
 import {
+  addCalendarDays,
   CORP_PACIFIC_LABEL,
   CORP_PACIFIC_TIME_ZONE,
   formatCalendarDateShort,
@@ -43,6 +44,97 @@ export function isSamePacificCalendarDay(a: Date, b: Date): boolean {
   const ka = pacificCalendarDateFromInstant(a);
   const kb = pacificCalendarDateFromInstant(b);
   return ka != null && kb != null && ka === kb;
+}
+
+export type ActivityHistoryRecencyBucket = 'Today' | 'This week' | 'Earlier';
+
+function pacificStartOfCalendarDayMs(dateKey: string): number | null {
+  return pacificCivilToInstantMs(dateKey, '00:00:00');
+}
+
+/**
+ * Buckets audit timestamps like Activity History: matches prior "from midnight
+ * today / from midnight today−7 forward" semantics but uses **corp Pacific**
+ * calendar days so buckets align with Pacific-formatted timestamps.
+ */
+export function pacificActivityHistoryRecencyBucket(
+  entryInstant: Date,
+  now: Date = new Date()
+): ActivityHistoryRecencyBucket {
+  const todayKey = pacificCalendarDateFromInstant(now);
+  if (todayKey == null) return 'Earlier';
+
+  const todayStart = pacificStartOfCalendarDayMs(todayKey);
+  if (todayStart == null) return 'Earlier';
+
+  const ms = entryInstant.getTime();
+  if (Number.isNaN(ms)) return 'Earlier';
+
+  if (ms >= todayStart) return 'Today';
+
+  const weekStartKey = addCalendarDays(todayKey, -7);
+  const weekStart = pacificStartOfCalendarDayMs(weekStartKey);
+  if (weekStart != null && ms >= weekStart) return 'This week';
+
+  return 'Earlier';
+}
+
+/**
+ * Section heading for global/history lists: "Today" when the instant falls on
+ * the same Pacific calendar day as `now`; otherwise a long Pacific date.
+ */
+export function formatPacificHistoryListDayHeading(
+  timestamp: Date,
+  now: Date = new Date()
+): string {
+  if (isSamePacificCalendarDay(timestamp, now)) {
+    return 'Today';
+  }
+  return formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE });
+}
+
+/** Subset of {@link DateRangeValue} for Pacific calendar-day range checks. */
+export type PacificDateFilterRange = {
+  startDate: string;
+  endDate: string;
+  noStartDate: boolean;
+  noEndDate: boolean;
+};
+
+/**
+ * True when the entry's **Pacific** calendar date lies within the inclusive
+ * `YYYY-MM-DD` bounds (lexicographic compare). Use with an active date filter
+ * only; does not mirror {@link isDateRangeActive}.
+ */
+export function isTimestampInPacificDateFilter(
+  timestamp: Date,
+  range: PacificDateFilterRange
+): boolean {
+  const key = pacificCalendarDateFromInstant(timestamp);
+  if (key == null) return false;
+
+  if (range.startDate && !range.noStartDate) {
+    if (key < range.startDate) return false;
+  }
+  if (range.endDate && !range.noEndDate) {
+    if (key > range.endDate) return false;
+  }
+  return true;
+}
+
+/**
+ * Inclusive Pacific calendar range ending on the Pacific calendar day of
+ * `now`, spanning `inclusiveDayCount` days (`1` ⇒ today only).
+ */
+export function pacificInclusiveCalendarRangeEndingToday(
+  inclusiveDayCount: number,
+  now: Date = new Date()
+): { startDate: string; endDate: string } | null {
+  if (inclusiveDayCount < 1) return null;
+  const end = pacificCalendarDateFromInstant(now);
+  if (end == null) return null;
+  const start = addCalendarDays(end, -(inclusiveDayCount - 1));
+  return { startDate: start, endDate: end };
 }
 
 /**

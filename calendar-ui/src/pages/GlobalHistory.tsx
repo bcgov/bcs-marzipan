@@ -54,6 +54,9 @@ import {
   CORP_PACIFIC_TIME_ZONE,
   formatExactDate,
   formatLongDate,
+  formatPacificHistoryListDayHeading,
+  isTimestampInPacificDateFilter,
+  pacificInclusiveCalendarRangeEndingToday,
 } from '@/lib/datetime-utils';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
@@ -74,14 +77,6 @@ type FilterOption = {
   value: string;
   label: string;
 };
-
-/** Format a Date using local date parts to avoid UTC off-by-one in timezones ahead of UTC */
-function formatLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 export function truncateChangeLogValue(value: string): string {
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
@@ -147,22 +142,6 @@ export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
     .join('');
 }
 
-function formatDateHeading(date: Date): string {
-  const today = new Date();
-  const isToday =
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
-
-  return isToday
-    ? 'Today'
-    : date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-}
-
 export function isEntryInDateRange(
   entry: GlobalActivityHistoryEntry,
   range: DateRangeValue
@@ -171,28 +150,7 @@ export function isEntryInDateRange(
     return true;
   }
 
-  const timestamp = new Date(entry.timestamp);
-  const entryDate = new Date(
-    timestamp.getFullYear(),
-    timestamp.getMonth(),
-    timestamp.getDate()
-  );
-
-  if (range.startDate && !range.noStartDate) {
-    const start = new Date(range.startDate + 'T00:00:00');
-    if (entryDate < start) {
-      return false;
-    }
-  }
-
-  if (range.endDate && !range.noEndDate) {
-    const end = new Date(range.endDate + 'T00:00:00');
-    if (entryDate > end) {
-      return false;
-    }
-  }
-
-  return true;
+  return isTimestampInPacificDateFilter(new Date(entry.timestamp), range);
 }
 
 export function matchesSearch(
@@ -213,7 +171,7 @@ export function matchesSearch(
     entry.activity.displayId,
     entry.activity.title,
     entry.notes,
-    formatDateHeading(timestamp),
+    formatPacificHistoryListDayHeading(timestamp),
     formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE }),
     formatExactDate(timestamp, {
       includeTime: true,
@@ -777,7 +735,9 @@ export function GlobalHistory() {
     const groups = new Map<string, GlobalActivityHistoryEntry[]>();
 
     filteredEntries.forEach((entry) => {
-      const heading = formatDateHeading(new Date(entry.timestamp));
+      const heading = formatPacificHistoryListDayHeading(
+        new Date(entry.timestamp)
+      );
       const group = groups.get(heading);
       if (group) {
         group.push(entry);
@@ -794,33 +754,30 @@ export function GlobalHistory() {
   const activePreset = useMemo(() => {
     if (!isDateRangeActive(dateRange)) return null;
     const now = new Date();
-    const todayStr = formatLocalDate(
-      new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    );
-    if (dateRange.startDate === todayStr && dateRange.endDate === todayStr)
+    const todayRange = pacificInclusiveCalendarRangeEndingToday(1, now);
+    if (
+      todayRange &&
+      dateRange.startDate === todayRange.startDate &&
+      dateRange.endDate === todayRange.endDate
+    ) {
       return 'today';
-    const last7Start = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    last7Start.setDate(last7Start.getDate() - 6);
+    }
+    const last7 = pacificInclusiveCalendarRangeEndingToday(7, now);
     if (
-      dateRange.startDate === formatLocalDate(last7Start) &&
-      dateRange.endDate === todayStr
-    )
+      last7 &&
+      dateRange.startDate === last7.startDate &&
+      dateRange.endDate === last7.endDate
+    ) {
       return 'last7';
-    const last30Start = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    last30Start.setDate(last30Start.getDate() - 29);
+    }
+    const last30 = pacificInclusiveCalendarRangeEndingToday(30, now);
     if (
-      dateRange.startDate === formatLocalDate(last30Start) &&
-      dateRange.endDate === todayStr
-    )
+      last30 &&
+      dateRange.startDate === last30.startDate &&
+      dateRange.endDate === last30.endDate
+    ) {
       return 'last30';
+    }
     return null;
   }, [dateRange]);
 
@@ -889,16 +846,9 @@ export function GlobalHistory() {
               key: 'today',
               label: 'Today',
               getRange: () => {
-                const now = new Date();
-                const d = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate()
-                );
-                const s = formatLocalDate(d);
+                const r = pacificInclusiveCalendarRangeEndingToday(1);
                 return {
-                  startDate: s,
-                  endDate: s,
+                  ...(r ?? { startDate: '', endDate: '' }),
                   noStartDate: false,
                   noEndDate: false,
                 };
@@ -908,17 +858,9 @@ export function GlobalHistory() {
               key: 'last7',
               label: 'Last 7 days',
               getRange: () => {
-                const now = new Date();
-                const end = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate()
-                );
-                const start = new Date(end);
-                start.setDate(start.getDate() - 6);
+                const r = pacificInclusiveCalendarRangeEndingToday(7);
                 return {
-                  startDate: formatLocalDate(start),
-                  endDate: formatLocalDate(end),
+                  ...(r ?? { startDate: '', endDate: '' }),
                   noStartDate: false,
                   noEndDate: false,
                 };
@@ -928,17 +870,9 @@ export function GlobalHistory() {
               key: 'last30',
               label: 'Last 30 days',
               getRange: () => {
-                const now = new Date();
-                const end = new Date(
-                  now.getFullYear(),
-                  now.getMonth(),
-                  now.getDate()
-                );
-                const start = new Date(end);
-                start.setDate(start.getDate() - 29);
+                const r = pacificInclusiveCalendarRangeEndingToday(30);
                 return {
-                  startDate: formatLocalDate(start),
-                  endDate: formatLocalDate(end),
+                  ...(r ?? { startDate: '', endDate: '' }),
                   noStartDate: false,
                   noEndDate: false,
                 };

@@ -12,8 +12,9 @@ and `@corpcal/database`.
 1. We model **three** datetime concepts and never mix them: `CalendarDate`,
    `CivilTime`, and `Instant`.
 2. The single business display zone is **corp Pacific Time, fixed UTC&minus;7,
-   year-round (no DST)**. We do not use the geographical
-   `America/Vancouver` zone for display today (revisit when IANA is updated).
+   year-round (no DST)**. We format with **`Etc/GMT+7`** (fixed offset). We do not
+   use **`America/Vancouver`** today; tzdb **2026b** already models BC as permanent
+   UTC&minus;07 there (see **Why fixed UTC−7** below).
 3. Use the helpers in `@corpcal/shared` (the `datetime` module) for everything
    that is shown to a user, bucketed by day, or compared across requests.
 4. Never call `new Date('YYYY-MM-DD')` or `toLocaleDateString()` /
@@ -88,7 +89,7 @@ flowchart LR
   TSTZ --> ISO --> Pacific
 ```
 
-## Why fixed UTC&minus;7 (and not `America/Vancouver`)
+## Why fixed UTC&minus;7 (and `Etc/GMT+7` vs `America/Vancouver`)
 
 The product rule today is: the corp calendar always operates as **Pacific Time
 fixed UTC&minus;7, no daylight saving**. This matches the pre-existing logic in
@@ -96,9 +97,18 @@ fixed UTC&minus;7, no daylight saving**. This matches the pre-existing logic in
 `packages/shared/src/look-ahead-reset.ts`, which interpret activity scheduling
 in fixed UTC&minus;7 (no DST shifts).
 
-`America/Vancouver` is **not equivalent** because it observes DST and would
-shift our wall clocks twice a year. We use the IANA `Etc/GMT+7` zone for
-`Intl` formatting because it is fixed and broadly available.
+**Tzdb 2026b** encodes British Columbia staying on **permanent UTC&minus;7**
+after its last spring-forward on **2026-03-08** (legal effective **2026-03-09**
+per release notes). **`America/Vancouver` therefore no longer implies seasonal
+DST changes** in current data for future timestamps. However, **2026b
+temporarily models the switch to permanent UTC&minus;7 at 2026-11-01 02:00**
+rather than on the legal date—a **CLDR v48.2** workaround that maintainers
+**plan to remove after CLDR is fixed**.
+See the [2026b tz-announce message](https://lists.iana.org/hyperkitty/list/tz-announce@iana.org/thread/VX2Z3CBO6KHTYZNBBKFFWM7ZCI6TVCXP/).
+
+We still use **`Etc/GMT+7`** for `Intl` formatting because it is a plain fixed
+offset: no dependence on BC legislation updates or on Vancouver’s temporary CLDR
+alignment hack.
 
 > **Important - IANA inverted sign.** In the IANA tz database, `Etc/GMT+N`
 > uses an **inverted** sign relative to POSIX-style offsets:
@@ -110,11 +120,11 @@ shift our wall clocks twice a year. We use the IANA `Etc/GMT+7` zone for
 > authoritative documentation. Do not rely on third-party "timezone list"
 > sites for correctness.
 
-If the product rule ever changes - if IANA is updated -to "follow official BC civil
-time" instead of fixed offset, we would switch the display zone to `America/Vancouver`
-and require ops discipline (regular `tzdata` updates in our base images and Node
-runtime) so legislative changes propagate. Today this is documented as a
-**future option**, not the current behavior.
+If product switches display from **`Etc/GMT+7`** to **`America/Vancouver`**, keep
+**ops discipline**: ship current **`tzdata`** in base images and Node, and validate
+**`Intl`/CLDR** behavior—especially around **2026b’s temporary 2026-11-01
+transition modeling** vs the legal **2026-03-09** effective date until upstream
+removes the workaround. Today **`Etc/GMT+7`** remains the documented choice.
 
 A single optional config concept (e.g. `APP_TZ_MODE=fixed | iana` plus
 `APP_TZ=Etc/GMT+7 | America/Vancouver`) can be introduced later if needed; it

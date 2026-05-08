@@ -27,6 +27,7 @@ import {
   CORP_PACIFIC_TIME_ZONE,
   formatLongDate,
   formatPacificTimeWithAbbrev,
+  pacificActivityHistoryRecencyBucket,
 } from '@/lib/datetime-utils';
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
@@ -164,9 +165,9 @@ export default function ActivityHistory({
     [entries, searchQuery, dateStatusMap]
   );
 
-  // group by local date string
-  // Categorize into Today / This week / Earlier
-  const groupsOrder = ['Today', 'This week', 'Earlier'];
+  // Categorize into Today / This week / Earlier using corp Pacific calendar
+  // boundaries so buckets match Pacific-formatted timestamps.
+  const groupsOrder = ['Today', 'This week', 'Earlier'] as const;
   const groups: Record<string, ActivityHistoryEntry[]> = {
     Today: [],
     'This week': [],
@@ -174,23 +175,12 @@ export default function ActivityHistory({
   };
 
   const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  );
-  const startOfWeek = new Date(startOfToday);
-  startOfWeek.setDate(startOfToday.getDate() - 7);
-
   for (const e of filteredEntries) {
-    const dt = new Date(e.timestamp);
-    if (dt >= startOfToday) {
-      groups['Today'].push(e);
-    } else if (dt >= startOfWeek) {
-      groups['This week'].push(e);
-    } else {
-      groups['Earlier'].push(e);
-    }
+    const bucket = pacificActivityHistoryRecencyBucket(
+      new Date(e.timestamp),
+      now
+    );
+    groups[bucket].push(e);
   }
 
   const trimmedNote = noteText.trim();
