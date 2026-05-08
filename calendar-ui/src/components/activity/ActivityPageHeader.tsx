@@ -5,10 +5,11 @@ import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
+  CORP_PACIFIC_TIME_ZONE,
   formatLongDate,
+  formatPacificTimeWithAbbrev,
   formatRelativeTime,
-  formatTime,
-  isSameDay,
+  isSamePacificCalendarDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
 
@@ -44,8 +45,8 @@ export function ActivityPageHeader({
     lastUpdatedDateTime !== createdDateTime
   ) {
     const d = new Date(lastUpdatedDateTime);
-    updatedLabel = isSameDay(d, new Date())
-      ? `today at ${formatTime(d)}`
+    updatedLabel = isSamePacificCalendarDay(d, new Date())
+      ? `today at ${formatPacificTimeWithAbbrev(d)}`
       : formatRelativeTime(d);
   }
   return (
@@ -83,7 +84,11 @@ export function ActivityPageHeader({
           {updatedLabel ? <div>Updated {updatedLabel}</div> : null}
           <div>
             Created{' '}
-            {createdDateTime ? formatLongDate(new Date(createdDateTime)) : ''}
+            {createdDateTime
+              ? formatLongDate(new Date(createdDateTime), {
+                  timeZone: CORP_PACIFIC_TIME_ZONE,
+                })
+              : ''}
           </div>
         </div>
         {onHistoryClick && (

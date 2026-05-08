@@ -51,6 +51,12 @@
       "require": "./dist/cjs/constants/constants.js",
       "default": "./dist/esm/constants/constants.js"
     },
+    "./datetime": {
+      "types": "./dist/esm/datetime/index.d.ts",
+      "import": "./dist/esm/datetime/index.js",
+      "require": "./dist/cjs/datetime/index.js",
+      "default": "./dist/esm/datetime/index.js"
+    },
     "./auth": {
       "types": "./dist/esm/auth/index.d.ts",
       "import": "./dist/esm/auth/index.js",

@@ -1,14 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  CORP_PACIFIC_TIME_ZONE,
   formatActivityEndDateTimeLabel,
   formatDateRange,
   formatExactDate,
+  formatInstantInPacific,
+  formatInstantPacificDate,
+  formatInstantPacificTime,
   formatLongDate,
+  formatPacificHistoryListDayHeading,
   formatRelativeTime,
   formatTime,
   formatTime12h,
   isSameDay,
+  isTimestampInPacificDateFilter,
+  pacificActivityHistoryRecencyBucket,
+  pacificInclusiveCalendarRangeEndingToday,
 } from './datetime-utils';
 
 describe('formatRelativeTime', () => {
@@ -154,9 +162,9 @@ describe('formatActivityEndDateTimeLabel', () => {
     );
   });
 
-  it('formats timed end with date and time', () => {
+  it('formats timed end with date, time, and Pacific abbrev', () => {
     const s = formatActivityEndDateTimeLabel('2026-04-10', '14:30', false);
-    expect(s).toMatch(/^Apr 10, 2026 at \d{1,2}:\d{2}\s*[AP]M$/i);
+    expect(s).toMatch(/^Apr 10, 2026 at \d{1,2}:\d{2}\s*[AP]M PT$/i);
   });
 
   it('uses date only when isAllDay is false but endTime is empty', () => {
@@ -288,5 +296,163 @@ describe('formatTime12h', () => {
   it('handles NaN from non-numeric parts by clamping to 0', () => {
     expect(formatTime12h('ab:00')).toBe('12:00 am');
     expect(formatTime12h('12:xx')).toBe('12:00 pm');
+  });
+});
+
+describe('corp Pacific instant formatting', () => {
+  // 2026-04-27 15:30 UTC == 2026-04-27 08:30 Pacific (UTC-7).
+  const INSTANT = '2026-04-27T15:30:00.000Z';
+
+  it('formatInstantInPacific renders Pacific date and time with PT suffix', () => {
+    expect(formatInstantInPacific(INSTANT)).toBe('Apr 27, 2026 8:30 am PT');
+  });
+
+  it('formatInstantPacificDate renders the Pacific calendar day only', () => {
+    expect(formatInstantPacificDate(INSTANT)).toBe('Apr 27, 2026');
+  });
+
+  it('formatInstantPacificTime renders the Pacific civil time only with PT', () => {
+    expect(formatInstantPacificTime(INSTANT)).toBe('8:30 am PT');
+  });
+
+  it('formatLongDate accepts a timeZone option for instants', () => {
+    const d = new Date(INSTANT);
+    expect(formatLongDate(d, { timeZone: CORP_PACIFIC_TIME_ZONE })).toBe(
+      'April 27, 2026'
+    );
+  });
+
+  it('formatTime accepts a timeZone option for instants', () => {
+    const d = new Date(INSTANT);
+    expect(formatTime(d, { timeZone: CORP_PACIFIC_TIME_ZONE })).toMatch(
+      /8:30\s*AM/i
+    );
+  });
+
+  it('formatExactDate accepts appendPacificTimeAbbrev for UI copy', () => {
+    const d = new Date(INSTANT);
+    const result = formatExactDate(d, {
+      includeTime: true,
+      timeZone: CORP_PACIFIC_TIME_ZONE,
+      appendPacificTimeAbbrev: true,
+    });
+    expect(result).toMatch(/^Apr 27, 2026 at 8:30\s*AM PT$/i);
+  });
+
+  it('formatExactDate accepts a timeZone option for instants', () => {
+    const d = new Date(INSTANT);
+    const result = formatExactDate(d, {
+      includeTime: true,
+      timeZone: CORP_PACIFIC_TIME_ZONE,
+    });
+    expect(result).toMatch(/^Apr 27, 2026 at 8:30\s*AM$/i);
+  });
+});
+
+describe('Pacific history grouping / filters', () => {
+  const nowPacificJan15 = new Date('2026-01-15T12:00:00.000Z');
+
+  describe('pacificActivityHistoryRecencyBucket', () => {
+    it('buckets from start of Pacific "today" and later instants as Today', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-15T07:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-16T08:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+    });
+
+    it('buckets instant just before Pacific day boundary as This week when in window', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-15T06:59:59.999Z'),
+          nowPacificJan15
+        )
+      ).toBe('This week');
+    });
+
+    it('buckets timestamps before rolling 7-day Pacific window start as Earlier', () => {
+      expect(
+        pacificActivityHistoryRecencyBucket(
+          new Date('2026-01-07T06:59:59.999Z'),
+          nowPacificJan15
+        )
+      ).toBe('Earlier');
+    });
+  });
+
+  describe('formatPacificHistoryListDayHeading', () => {
+    it('returns Today when entry shares Pacific calendar date with reference now', () => {
+      expect(
+        formatPacificHistoryListDayHeading(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+    });
+
+    it('returns long-format Pacific date otherwise', () => {
+      expect(
+        formatPacificHistoryListDayHeading(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('January 14, 2026');
+    });
+  });
+
+  describe('isTimestampInPacificDateFilter', () => {
+    const range = {
+      startDate: '2026-01-10',
+      endDate: '2026-01-20',
+      noStartDate: false,
+      noEndDate: false,
+    };
+
+    it('matches inclusive Pacific calendar bounds', () => {
+      expect(
+        isTimestampInPacificDateFilter(
+          new Date('2026-01-14T15:00:00.000Z'),
+          range
+        )
+      ).toBe(true);
+
+      expect(
+        isTimestampInPacificDateFilter(
+          new Date('2026-01-09T23:59:59.999Z'),
+          range
+        )
+      ).toBe(false);
+    });
+
+    it('honors noStartDate', () => {
+      expect(
+        isTimestampInPacificDateFilter(new Date('2026-01-01T12:00:00.000Z'), {
+          ...range,
+          noStartDate: true,
+        })
+      ).toBe(true);
+    });
+  });
+
+  describe('pacificInclusiveCalendarRangeEndingToday', () => {
+    it('returns the same calendar day when count is 1', () => {
+      expect(
+        pacificInclusiveCalendarRangeEndingToday(1, nowPacificJan15)
+      ).toEqual({ startDate: '2026-01-15', endDate: '2026-01-15' });
+    });
+
+    it('returns an inclusive rolling window ending today (7 days)', () => {
+      expect(
+        pacificInclusiveCalendarRangeEndingToday(7, nowPacificJan15)
+      ).toEqual({ startDate: '2026-01-09', endDate: '2026-01-15' });
+    });
   });
 });

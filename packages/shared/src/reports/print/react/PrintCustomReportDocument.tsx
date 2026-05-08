@@ -36,10 +36,7 @@ function getEventPlannerLeadName(
 }
 
 function formatReportDate(activity: ActivityResponse): string {
-  const startDate = activity.startDate ? new Date(activity.startDate) : null;
-  return startDate && !Number.isNaN(startDate.getTime())
-    ? formatShortDate(startDate)
-    : '–';
+  return formatShortDate(activity.startDate) || '–';
 }
 
 function formatReportTime(activity: ActivityResponse): string {

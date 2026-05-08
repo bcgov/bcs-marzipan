@@ -109,9 +109,7 @@ const FIXTURE: ReportDataResponse = {
 const FIXED_GENERATED_AT = new Date('2026-04-27T15:30:00.000Z');
 
 describe('renderPrintReportFragmentHtml', () => {
-  // Skipped until print date formatting is timezone-stable (Intl timeZone / Pacific rules).
-  // Snapshots mismatch between local TZ and CI/OpenShift UTC; see upcoming fix PR.
-  it.skip('renders look-ahead print with executive summary in the activity details column', () => {
+  it('renders look-ahead print with executive summary in the activity details column', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
       generatedAt: FIXED_GENERATED_AT,
@@ -122,7 +120,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toMatchSnapshot();
   });
 
-  it.skip('renders exec look-ahead print with title and summary in the activity details column', () => {
+  it('renders exec look-ahead print with title and summary in the activity details column', () => {
     const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
       generatedAt: FIXED_GENERATED_AT,
@@ -147,7 +145,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toMatchSnapshot();
   });
 
-  it.skip('renders the custom report as a React fragment', () => {
+  it('renders the custom report as a React fragment', () => {
     const customFixture: ReportDataResponse = {
       ...FIXTURE,
       report: {

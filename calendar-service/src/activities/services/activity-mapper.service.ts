@@ -6,6 +6,8 @@ import {
   DEFAULT_STATUS,
   DEFAULT_VISIBILITY,
   LOOK_AHEAD_STATUS,
+  toCalendarDateStringFromDb,
+  toCivilTimeStringFromDb,
   type ActivityResponse,
   type EventPlannerDetail,
   type LookAheadStatus,
@@ -73,21 +75,17 @@ export class ActivityMapperService {
       changedFieldsSinceReview?: string[];
     }
   ): ActivityResponse {
-    // Format date to YYYY-MM-DD
-    const formatDate = (date: Date | string | null): string | null => {
-      if (!date) return null;
-      const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toISOString().split('T')[0] ?? null;
-    };
+    // Calendar dates and civil times come from `@corpcal/database` as strings
+    // (Drizzle's `date()` and `time()` default to mode `'string'`). The
+    // helpers below pass them through verbatim, and only fall back to UTC
+    // component extraction when a JS `Date` arrives — never reading
+    // host-local getters. See `docs/DATE_AND_TIMEZONE.md`.
+    const formatDate = (
+      value: Date | string | null | undefined
+    ): string | null => toCalendarDateStringFromDb(value);
 
-    // Format time to HH:mm
-    const formatTime = (time: string | null): string | null => {
-      if (!time) return null;
-      // If it's already in HH:mm format, return as is
-      if (time.match(/^\d{2}:\d{2}$/)) return time;
-      // If it's a full time string, extract HH:mm
-      return time.substring(0, 5);
-    };
+    const formatTime = (value: string | null | undefined): string | null =>
+      toCivilTimeStringFromDb(value);
 
     const dto: ActivityResponse = {
       id: activity.id,

@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  formatCalendarDateCover,
+  formatCalendarDateHeading,
+  formatCalendarDateLong,
+  formatCalendarDateShort,
+  formatCalendarDateShortNullable,
+  formatCivilOrInstantTime,
+  formatCivilTime12h,
+  formatInstantInPacific,
+  formatInstantPacificDate,
+  formatInstantPacificTime,
+  formatPacificFooterTimestamp,
+} from './format';
+import { toCalendarDateString, toCivilTimeString } from './types';
+
+const APR_27 = toCalendarDateString('2026-04-27');
+
+describe('calendar-date formatters', () => {
+  it('formatCalendarDateHeading uses uppercase weekday-month-day-year', () => {
+    expect(formatCalendarDateHeading(APR_27)).toBe('MONDAY, APRIL 27, 2026');
+  });
+
+  it('formatCalendarDateCover renders short weekday, short month, year', () => {
+    expect(formatCalendarDateCover(APR_27)).toBe('Mon, Apr 27, 2026');
+  });
+
+  it('formatCalendarDateShort renders compact cell label', () => {
+    expect(formatCalendarDateShort(APR_27)).toBe('Apr 27, 2026');
+  });
+
+  it('formatCalendarDateLong renders long month without weekday', () => {
+    expect(formatCalendarDateLong(APR_27)).toBe('April 27, 2026');
+  });
+
+  it('formatCalendarDateShortNullable handles empty/invalid input', () => {
+    expect(formatCalendarDateShortNullable(null)).toBe('');
+    expect(formatCalendarDateShortNullable('')).toBe('');
+    expect(formatCalendarDateShortNullable('garbage')).toBe('');
+    expect(formatCalendarDateShortNullable(APR_27)).toBe('Apr 27, 2026');
+  });
+});
+
+describe('formatCivilTime12h', () => {
+  it.each([
+    ['00:00', '12:00 am'],
+    ['09:30', '9:30 am'],
+    ['12:00', '12:00 pm'],
+    ['14:30', '2:30 pm'],
+    ['23:59', '11:59 pm'],
+  ])('%s -> %s', (input, expected) => {
+    expect(formatCivilTime12h(toCivilTimeString(input))).toBe(expected);
+  });
+
+  it('clamps out-of-range lenient input', () => {
+    expect(formatCivilTime12h('25:00')).toBe('11:00 pm');
+    expect(formatCivilTime12h('12:99')).toBe('12:59 pm');
+  });
+
+  it('returns empty for null/undefined/empty', () => {
+    expect(formatCivilTime12h(null)).toBe('');
+    expect(formatCivilTime12h(undefined)).toBe('');
+    expect(formatCivilTime12h('')).toBe('');
+  });
+});
+
+describe('instant formatters', () => {
+  // 2026-04-27 15:30 UTC == 2026-04-27 08:30 Pacific (UTC-7).
+  const INSTANT = '2026-04-27T15:30:00.000Z';
+
+  it('formatInstantInPacific uses the Pacific date and lower-case am/pm', () => {
+    expect(formatInstantInPacific(INSTANT)).toBe('Apr 27, 2026 8:30 am');
+  });
+
+  it('formatInstantPacificDate returns the Pacific date only', () => {
+    expect(formatInstantPacificDate(INSTANT)).toBe('Apr 27, 2026');
+  });
+
+  it('formatInstantPacificTime returns the Pacific time only', () => {
+    expect(formatInstantPacificTime(INSTANT)).toBe('8:30 am');
+  });
+
+  it('formatPacificFooterTimestamp omits the year', () => {
+    expect(formatPacificFooterTimestamp(INSTANT)).toBe(
+      'Monday Apr 27, 8:30 am'
+    );
+  });
+
+  it('handles instants near the Pacific day boundary', () => {
+    // 2026-04-27 06:59 UTC == 2026-04-26 23:59 Pacific.
+    expect(formatInstantPacificDate('2026-04-27T06:59:00.000Z')).toBe(
+      'Apr 26, 2026'
+    );
+  });
+
+  it('returns empty string for unparseable input', () => {
+    expect(formatInstantInPacific(null)).toBe('');
+    expect(formatInstantInPacific(undefined)).toBe('');
+    expect(formatInstantInPacific('garbage')).toBe('');
+  });
+});
+
+describe('formatCivilOrInstantTime', () => {
+  it('prefers the civil time when present', () => {
+    expect(formatCivilOrInstantTime('2026-04-27T15:30:00.000Z', '09:30')).toBe(
+      '9:30 am'
+    );
+  });
+
+  it('falls back to the Pacific time of the instant', () => {
+    expect(formatCivilOrInstantTime('2026-04-27T15:30:00.000Z', null)).toBe(
+      '8:30 am'
+    );
+  });
+
+  it('returns empty when both are missing', () => {
+    expect(formatCivilOrInstantTime(null, null)).toBe('');
+  });
+});

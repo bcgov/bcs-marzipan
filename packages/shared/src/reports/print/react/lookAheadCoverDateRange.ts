@@ -1,10 +1,6 @@
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
-import {
-  dateKeyLocal,
-  formatCoverDate,
-  parseKeyToDate,
-} from './dateFormatters';
+import { dateKeyLocal, formatCoverDate } from './dateFormatters';
 import { compareActivitiesForPrint } from './rowViewModel';
 
 interface SortedSection {
@@ -62,7 +58,7 @@ export function buildLookAheadCoverDateRangeLine(
   if (dateKeys.length === 0) {
     return '';
   }
-  return `${formatCoverDate(parseKeyToDate(dateKeys[0]))} to ${formatCoverDate(
-    parseKeyToDate(dateKeys[dateKeys.length - 1])
+  return `${formatCoverDate(dateKeys[0])} to ${formatCoverDate(
+    dateKeys[dateKeys.length - 1]
   )}`;
 }
