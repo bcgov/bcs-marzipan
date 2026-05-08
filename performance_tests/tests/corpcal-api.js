@@ -1,4 +1,7 @@
 /**
+ * CorpCal API load scenario (includes POST /activities create). For read-only smoke
+ * against shared DEV, use performance_tests/tests/corpcal-api-smoke.js (`npm run perf:k6:api-smoke`).
+ *
  * CorpCal API load test: health, readiness, auth, activities list, POST create, settings sample, history, reports.
  *
  * Run locally (k6 must be on PATH):

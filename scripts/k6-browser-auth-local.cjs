@@ -1,7 +1,5 @@
 /**
- * Local k6 runner: optional performance_tests/.env, then safe defaults for local smoke runs.
- * Works on Windows (cmd/PowerShell), Git Bash, Linux, and macOS.
- * Shell-set env vars override .env (dotenv does not overwrite existing keys).
+ * Authenticated mock-login browser test (local).
  */
 const path = require('path');
 const { spawn } = require('child_process');
@@ -20,12 +18,11 @@ function setDefault(key, value) {
   }
 }
 
-setDefault('BASE_URL', 'http://127.0.0.1:3001');
-setDefault('PERF_PROFILE', 'smoke');
-setDefault('VUS', '1');
-setDefault('DURATION', '10s');
+setDefault('FRONTEND_URL', 'http://127.0.0.1:3000');
+setDefault('K6_BROWSER_HEADLESS', 'true');
+setDefault('MOCK_LOGIN_USERNAME', 'thomas.garcia');
 
-const scriptPath = 'performance_tests/tests/corpcal-api-smoke.js';
+const scriptPath = 'performance_tests/browser/corpcal-mock-auth-flow.js';
 
 const child = spawn('k6', ['run', scriptPath], {
   cwd: repoRoot,
@@ -36,7 +33,7 @@ const child = spawn('k6', ['run', scriptPath], {
 
 child.on('error', (err) => {
   console.error(
-    '[perf:k6:local] Failed to start k6. Is it installed and on PATH?\n',
+    '[perf:k6:browser:auth:local] Failed to start k6. Is it installed with browser support?\n',
     err.message
   );
   process.exit(1);

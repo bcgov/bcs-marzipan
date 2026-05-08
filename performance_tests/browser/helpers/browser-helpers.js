@@ -35,7 +35,10 @@ export function configurePageTimeouts(page) {
  *
  * @returns {{ getSevereEntries: () => Array<{ type: string, text: string }> }}
  */
-export function attachSevereConsoleWatch(page, allowlistPatterns = DEFAULT_CONSOLE_ERROR_ALLOWLIST) {
+export function attachSevereConsoleWatch(
+  page,
+  allowlistPatterns = DEFAULT_CONSOLE_ERROR_ALLOWLIST
+) {
   const entries = [];
 
   page.on('console', (msg) => {
@@ -75,7 +78,9 @@ export async function assertAppShellVisible(page) {
 }
 
 export async function assertNoGlobalErrorFallback(page) {
-  return (await page.isVisible('[data-testid="global-error-fallback"]')) === false;
+  return (
+    (await page.isVisible('[data-testid="global-error-fallback"]')) === false
+  );
 }
 
 export async function assertRootHasChildren(page) {
@@ -86,9 +91,13 @@ export async function assertRootHasChildren(page) {
 }
 
 /**
- * Login surface after auth strategy is known: mock username form OR Azure primary button.
+ * Login surface once config resolves: mock dev form, email-first local row, Azure IDIR primary,
+ * or explicit "no method configured" copy.
  */
-export async function waitForLoginSurfaceReady(page, timeoutMs = SELECTOR_TIMEOUT_MS) {
+export async function waitForLoginSurfaceReady(
+  page,
+  timeoutMs = SELECTOR_TIMEOUT_MS
+) {
   await page.waitForFunction(
     () => {
       function isShown(el) {
@@ -103,13 +112,26 @@ export async function waitForLoginSurfaceReady(page, timeoutMs = SELECTOR_TIMEOU
         return rect.width > 0 && rect.height > 0;
       }
 
-      const username = document.querySelector('#username');
-      if (isShown(username)) {
+      if (document.body.innerText.includes('No login method is configured.')) {
+        return true;
+      }
+
+      if (isShown(document.querySelector('#mock-username'))) {
+        return true;
+      }
+
+      if (isShown(document.querySelector('#email'))) {
+        return true;
+      }
+
+      if (isShown(document.querySelector('#password'))) {
         return true;
       }
 
       const buttons = Array.from(document.querySelectorAll('button'));
-      return buttons.some((b) => (b.textContent || '').includes('Sign in with IDIR'));
+      return buttons.some((b) =>
+        (b.textContent || '').includes('Sign in with IDIR')
+      );
     },
     { timeout: timeoutMs }
   );
@@ -130,9 +152,14 @@ export async function openPath(page, path, options = {}) {
 /**
  * Client-side SPA redirect to login (unauthenticated hit on protected '/').
  */
-export async function waitForPathnameLogin(page, timeoutMs = SELECTOR_TIMEOUT_MS) {
+export async function waitForPathnameLogin(
+  page,
+  timeoutMs = SELECTOR_TIMEOUT_MS
+) {
   await page.waitForFunction(
-    () => window.location.pathname === '/login' || window.location.pathname.endsWith('/login'),
+    () =>
+      window.location.pathname === '/login' ||
+      window.location.pathname.endsWith('/login'),
     { timeout: timeoutMs }
   );
 }

@@ -49,4 +49,4 @@ jobs:
           PERF_USERNAME: ${{ github.event.inputs.username }}
           PERF_PASSWORD: ${{ secrets.PERF_PASSWORD }}
           API_KEY: ${{ secrets.PERF_API_KEY }}
-        run: k6 run performance_tests/tests/corpcal-api.js
+        run: k6 run performance_tests/tests/corpcal-api-smoke.js
