@@ -39,6 +39,8 @@ interface ActivityFlagPopoverProps {
   /** Called to remove the flag for a team. */
   onUnassign: (teamId: number) => void;
   isPending?: boolean;
+  /** When true, shows assignment state without any interactive controls. */
+  readOnly?: boolean;
 }
 
 export function ActivityFlagPopover({
@@ -47,6 +49,7 @@ export function ActivityFlagPopover({
   onAssign,
   onUnassign,
   isPending = false,
+  readOnly = false,
 }: ActivityFlagPopoverProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -98,6 +101,32 @@ export function ActivityFlagPopover({
     }
     setOpen(false);
   };
+
+  if (readOnly) {
+    if (!isFlagged || !existingFlag) return null;
+    return (
+      <span
+        className="relative inline-flex size-6 shrink-0 items-center justify-center"
+        title={`Assigned to ${existingFlag.assigneeName}`}
+        aria-label={`Assigned to ${existingFlag.assigneeName}`}
+      >
+        <Avatar size="sm" className="size-full">
+          <AvatarFallback className="text-[8px] font-medium">
+            {existingFlag.assigneeName
+              .split(' ')
+              .slice(0, 2)
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <Flag
+          className="absolute -right-0.5 -bottom-0.5 size-2 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+          aria-hidden
+        />
+      </span>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

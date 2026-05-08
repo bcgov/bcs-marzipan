@@ -143,6 +143,28 @@ export function ActivityPageHeader({
               )}
             </Button>
           )}
+          {!canFlag && isFlagged && currentFlag && (
+            <span
+              className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-md border"
+              title={`Assigned to ${currentFlag.assigneeName}`}
+              aria-label={`Assigned to ${currentFlag.assigneeName}`}
+            >
+              <Avatar size="sm" className="size-full">
+                <AvatarFallback className="text-[10px] font-medium">
+                  {currentFlag.assigneeName
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <Flag
+                className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                aria-hidden
+              />
+            </span>
+          )}
           {onHistoryClick && (
             <Button
               type="button"

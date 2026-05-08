@@ -250,15 +250,18 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
-        {canFlag && onFlagAssign && onFlagUnassign && (
-          <ActivityFlagPopover
-            activityId={row.id}
-            flags={row.flags}
-            onAssign={onFlagAssign}
-            onUnassign={onFlagUnassign}
-            isPending={flagPending}
-          />
-        )}
+        {(canFlag || row.flags.length > 0) &&
+          onFlagAssign &&
+          onFlagUnassign && (
+            <ActivityFlagPopover
+              activityId={row.id}
+              flags={row.flags}
+              readOnly={!canFlag}
+              onAssign={onFlagAssign}
+              onUnassign={onFlagUnassign}
+              isPending={flagPending}
+            />
+          )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
