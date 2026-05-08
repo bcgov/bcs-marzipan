@@ -81,9 +81,12 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     timeStatusId: 1,
     venueStatusId: null,
     isAllDay: false,
-    startDate: new Date('2024-01-15').toISOString(),
+    // Drizzle's `date()` columns return `YYYY-MM-DD` strings (mode 'string' is
+    // the default with postgres-js). Mirror that here so unit tests exercise
+    // the real wire shape.
+    startDate: '2024-01-15',
     startTime: '10:00',
-    endDate: new Date('2024-01-15').toISOString(),
+    endDate: '2024-01-15',
     endTime: '12:00',
     schedulingNotes: '',
     strategy: null,
