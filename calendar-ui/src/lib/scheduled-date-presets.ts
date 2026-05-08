@@ -101,20 +101,3 @@ export const PRESETS_FUTURE_SHORT: ScheduledDatePreset[] = [
   PRESETS_FUTURE_FROM_ANCHOR[3],
   PRESETS_FUTURE_FROM_ANCHOR[4],
 ];
-
-/**
- * @deprecated Use PRESETS_PAST_FROM_ANCHOR with getPresetAnchor = today.
- * Kept for any external imports expecting getStart().
- */
-export const START_PRESETS = PRESETS_PAST_FROM_ANCHOR.map((p) => ({
-  label: p.label,
-  getStart: () => p.toIsoDate(startOfDay(new Date())),
-}));
-
-/**
- * @deprecated Use PRESETS_FUTURE_FROM_ANCHOR with getPresetAnchor = today.
- */
-export const END_PRESETS = PRESETS_FUTURE_FROM_ANCHOR.map((p) => ({
-  label: p.label,
-  getEnd: () => p.toIsoDate(startOfDay(new Date())),
-}));

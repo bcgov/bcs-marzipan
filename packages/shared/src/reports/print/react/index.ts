@@ -42,11 +42,9 @@ export {
   dateKeyLocal,
   formatCoverDate,
   formatDayHeading,
-  formatGeneratedAt,
   formatLastUpdated,
   formatPrintReportGeneratedAt,
   formatShortDate,
   formatTime12h,
-  parseKeyToDate,
   PRINT_FOOTER_CHANGED_EXPLANATION,
 } from './dateFormatters';

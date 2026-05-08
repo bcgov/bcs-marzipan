@@ -27,20 +27,6 @@ export function dateKeyLocal(
   return pacificDayKey(isoDate);
 }
 
-/**
- * Backwards-compatible passthrough so existing callers keep working. Newly
- * written code should use the `formatCalendar*` family below directly with
- * `CalendarDateString`.
- *
- * @deprecated Pass the `YYYY-MM-DD` string into the formatters directly.
- */
-export function parseKeyToDate(key: string): CalendarDateString {
-  if (!isCalendarDateString(key)) {
-    throw new Error(`parseKeyToDate received non-calendar key: ${key}`);
-  }
-  return key;
-}
-
 /** Human date heading used above each day group, e.g. `MONDAY, APRIL 27, 2026`. */
 export function formatDayHeading(date: CalendarDateString | string): string {
   const key = isCalendarDateString(date) ? date : pacificDayKey(date);
@@ -87,11 +73,6 @@ export function formatTime12h(
 
 /** e.g. `Tuesday Apr 28, 9:38 pm` - print/PDF page footer (no year, lowercase am/pm). */
 export function formatPrintReportGeneratedAt(now: Date): string {
-  return formatPacificFooterTimestamp(now);
-}
-
-/** Alias of {@link formatPrintReportGeneratedAt}. */
-export function formatGeneratedAt(now: Date): string {
   return formatPacificFooterTimestamp(now);
 }
 

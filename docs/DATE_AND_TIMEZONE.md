@@ -228,8 +228,10 @@ host local time).
 - `someInstant.toLocaleDateString()` (no `timeZone`) for user-visible output.
   This depends on `process.env.TZ` and varies between dev laptops and CI /
   OpenShift. Pass `{ timeZone: CORP_PACIFIC_TIME_ZONE }`.
-- `dateKeyLocal(iso)` style helpers that build a `Date` and read
-  `getFullYear/Month/Date`. Use `pacificDayKey(iso)` instead.
+- Ad hoc day-bucket helpers that build a `Date` from an ISO string and read
+  `getFullYear` / `getMonth` / `getDate` (host-local getters). Use
+  `pacificDayKey(...)` (print code re-exports this as `dateKeyLocal` from
+  `@corpcal/shared/reports/print/react`).
 - `format(d, 'yyyy-MM-dd')` (date-fns) on a JS `Date` derived from a
   `CalendarDateString`. Keep the original string and pass it through.
 - Storing wall-clock-only fields in `TIMESTAMPTZ`. Use `TIME` and `DATE`
