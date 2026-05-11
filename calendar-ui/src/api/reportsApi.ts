@@ -19,6 +19,12 @@ export interface ReportDataResponse {
 /** Query params for `/reports/data/:type` and CSV/XLSX/PDF export (strings as sent in the URL). */
 export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
 
+/**
+ * Server PDF path uses Puppeteer; first render or large reports can exceed the
+ * shared axios default (30s). CSV/XLSX stay on that default — quick serialization.
+ */
+const REPORT_PDF_EXPORT_TIMEOUT_MS = 60_000;
+
 export async function fetchReportData(
   type: string,
   params?: ReportDataRequestParams
@@ -37,7 +43,7 @@ async function downloadReportFile(
   const response = await api.get(`/reports/export/${type}/${ext}`, {
     params,
     responseType: 'blob',
-    timeout: ext === 'pdf' ? 120_000 : undefined,
+    timeout: ext === 'pdf' ? REPORT_PDF_EXPORT_TIMEOUT_MS : undefined,
   });
 
   const url = window.URL.createObjectURL(new Blob([response.data]));

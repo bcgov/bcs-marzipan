@@ -122,17 +122,25 @@ describe('ActivityCompletionJobService', () => {
   });
 
   it('returns error when the transaction fails', async () => {
-    databaseService.db.transaction.mockRejectedValue(
-      new Error('transaction failed')
-    );
+    const errorSpy = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
 
-    const result = await service.runBatch();
+    try {
+      databaseService.db.transaction.mockRejectedValue(
+        new Error('transaction failed')
+      );
 
-    expect(result).toEqual({
-      updated: 0,
-      skipped: true,
-      skipReason: 'error',
-    });
+      const result = await service.runBatch();
+
+      expect(result).toEqual({
+        updated: 0,
+        skipped: true,
+        skipReason: 'error',
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('uses two-argument pg_try_advisory_xact_lock (separate namespace from single-arg edit locks)', async () => {

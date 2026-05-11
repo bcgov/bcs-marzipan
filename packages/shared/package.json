@@ -12,6 +12,9 @@
       "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
+    "./styles/bcds-primitives.css": "./styles/bcds-primitives.css",
+    "./styles/bcsans-font-face.css": "./styles/bcsans-font-face.css",
+    "./styles/corpcal-tokens.css": "./styles/corpcal-tokens.css",
     "./schemas": {
       "types": "./dist/esm/schemas/index.d.ts",
       "import": "./dist/esm/schemas/index.js",
@@ -48,6 +51,12 @@
       "require": "./dist/cjs/constants/constants.js",
       "default": "./dist/esm/constants/constants.js"
     },
+    "./datetime": {
+      "types": "./dist/esm/datetime/index.d.ts",
+      "import": "./dist/esm/datetime/index.js",
+      "require": "./dist/cjs/datetime/index.js",
+      "default": "./dist/esm/datetime/index.js"
+    },
     "./auth": {
       "types": "./dist/esm/auth/index.d.ts",
       "import": "./dist/esm/auth/index.js",
@@ -78,15 +87,28 @@
       "require": "./dist/cjs/reports/reportPrintHtml.js",
       "default": "./dist/esm/reports/reportPrintHtml.js"
     },
+    "./reports/print/react": {
+      "types": "./dist/esm/reports/print/react/index.d.ts",
+      "import": "./dist/esm/reports/print/react/index.js",
+      "require": "./dist/cjs/reports/print/react/index.js",
+      "default": "./dist/esm/reports/print/react/index.js"
+    },
     "./reports/customReportFieldConfig": {
       "types": "./dist/esm/reports/customReportFieldConfig.d.ts",
       "import": "./dist/esm/reports/customReportFieldConfig.js",
       "require": "./dist/cjs/reports/customReportFieldConfig.js",
       "default": "./dist/esm/reports/customReportFieldConfig.js"
+    },
+    "./reports/look-ahead": {
+      "types": "./dist/esm/reports/look-ahead/index.d.ts",
+      "import": "./dist/esm/reports/look-ahead/index.js",
+      "require": "./dist/cjs/reports/look-ahead/index.js",
+      "default": "./dist/esm/reports/look-ahead/index.js"
     }
   },
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
+    "build": "npm run build:tokens && npm run build:esm && npm run build:cjs",
+    "build:tokens": "node scripts/build-corpcal-tokens.mjs",
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "clean": "rm -rf dist",
@@ -103,14 +125,23 @@
     "@tiptap/extension-link": "^3.22.3",
     "@tiptap/html": "^3.22.3",
     "@tiptap/markdown": "^3.22.3",
+    "happy-dom": "^20.8.9",
     "@tiptap/starter-kit": "^3.22.3",
     "drizzle-orm": "^0.44.7",
     "sanitize-html": "^2.17.2",
     "zod": "^4.1.12"
   },
+  "peerDependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
     "@types/sanitize-html": "^2.16.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "typescript": "^5.3.3"
   }
 }

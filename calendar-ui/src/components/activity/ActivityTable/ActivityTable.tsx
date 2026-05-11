@@ -61,13 +61,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  getLookAheadSectionLabel,
-  getLookAheadStatusLabel,
-} from '@/constants/form-options';
+import { getLookAheadStatusLabel } from '@/constants/form-options';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityList } from '@/hooks/useCalendar';
+import {
+  getLookAheadSectionLabelFromRows,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 import {
   useActivityStatuses,
   useCategories,
@@ -95,6 +96,7 @@ import {
 } from '@/lib/activity-query-utils';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
+  CORP_PACIFIC_TIME_ZONE,
   formatDateRange,
   formatExactDate,
   formatRelativeTime,
@@ -252,10 +254,14 @@ function OverviewCell({
           </CopyableText>
         </span>
         {row.isConfidential && (
-          <span className="font-bold text-red-600 uppercase">CONFIDENTIAL</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            CONFIDENTIAL
+          </span>
         )}
         {row.isIssue && (
-          <span className="font-bold text-red-600 uppercase">ISSUE</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            ISSUE
+          </span>
         )}
       </div>
       <div className="mb-1 text-[16px] font-semibold text-slate-900">
@@ -309,12 +315,13 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
     }
   }, [expanded, needsTruncation]);
 
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
   const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
   const lookAheadLabel =
     status && status !== 'none'
       ? section
-        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabel(section)}`
+        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabelFromRows(lookAheadSectionRows, section)}`
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
 
@@ -640,6 +647,7 @@ function StatusCell({
   });
   const createdDate = formatExactDate(new Date(row.createdDateTime), {
     includeYear: true,
+    timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 
   return (

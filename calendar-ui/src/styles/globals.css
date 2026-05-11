@@ -1,56 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '@corpcal/shared/styles/bcds-primitives.css';
+@import '@corpcal/shared/styles/corpcal-tokens.css';
+@import '@corpcal/shared/styles/bcsans-font-face.css';
 
 @custom-variant dark (&:is(.dark *));
-
-/* BCSans Font Face Declarations */
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Regular_2f.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Italic_2f.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_03_14_BCSans-Light_2g.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-LightItalic_2f.woff2') format('woff2');
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-Bold_2f.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'BCSans';
-  src: url('/fonts/2023_01_01_BCSans-BoldItalic_2f.woff2') format('woff2');
-  font-weight: 700;
-  font-style: italic;
-  font-display: swap;
-}
 
 @layer base {
   :root {
@@ -93,80 +47,7 @@
     --inverted-background: oklch(0.145 0 0);
     --inverted-foreground: oklch(1 0 0);
 
-    /* Sidebar pinned border (#0F6CBD equivalent) */
-    /* BC Government Brand Colors */
-    --bc-blue: #013366;
-    --bc-blue-light: #1a4b82;
-    --bc-gold: #fcba19;
-    --bc-gold-dark: #e8a317;
-
-    /* BCSDS color primitives */
-    /* Simplified from BC Design System tokens */
-    /* https://www2.gov.bc.ca/gov/content/digital/design-system/foundations/design-tokens/glossary */
-    --bcsds-gold-10: #fff8e9;
-    --bcsds-gold-15: #fef1d8;
-    --bcsds-gold-20: #feebc2;
-    --bcsds-gold-30: #fddf9d;
-    --bcsds-gold-40: #fdd47b;
-    --bcsds-gold-50: #fcc85d;
-    --bcsds-gold-60: #f8ba47;
-    --bcsds-gold-65: #e3a82b;
-    --bcsds-gold-70: #ce9737;
-    --bcsds-gold-80: #a5792b;
-    --bcsds-gold-90: #7e5d21;
-    --bcsds-gold-100: #584215;
-    --bcsds-bc-blue-5: #f7f9fc;
-    --bcsds-bc-blue-10: #f1f8fe;
-    --bcsds-bc-blue-20: #d8eafd;
-    --bcsds-bc-blue-30: #c1ddfc;
-    --bcsds-bc-blue-40: #a8d0fb;
-    --bcsds-bc-blue-50: #91c4fa;
-    --bcsds-bc-blue-60: #7ab8f9;
-    --bcsds-bc-blue-70: #5595d9;
-    --bcsds-bc-blue-80: #3470b1;
-    --bcsds-bc-blue-90: #1e5189;
-    --bcsds-bc-blue-95: #234075;
-    --bcsds-bc-blue-99: #013366;
-    --bcsds-bc-blue-100: #053662;
-    --bcsds-bc-blue-110: #083155;
-    --bcsds-link-blue-60: #2e5dd7;
-    --bcsds-aqua-blue-70: #2378c7;
-    --bcsds-aqua-blue-90: #255a90;
-    --bcsds-warm-grey-10: #faf9f8;
-    --bcsds-warm-grey-20: #f3f2f1;
-    --bcsds-warm-grey-30: #eceae8;
-    --bcsds-warm-grey-40: #e0dedc;
-    --bcsds-warm-grey-50: #d1cfcd;
-    --bcsds-warm-grey-60: #c6c5c3;
-    --bcsds-warm-grey-70: #9f9d9c;
-    --bcsds-warm-grey-75: #898785;
-    --bcsds-warm-grey-80: #605e5c;
-    --bcsds-warm-grey-85: #474543;
-    --bcsds-warm-grey-90: #3d3c3b;
-    --bcsds-warm-grey-100: #353433;
-    --bcsds-warm-grey-110: #252423;
-    --bcsds-neutral-grey-50: #d8d8d8;
-    --bcsds-neutral-grey-105: #2d2d2d;
-    --bcsds-red-15: #f4e1e2;
-    --bcsds-red-60: #ce3e39;
-    --bcsds-red-80: #a2312d;
-    --bcsds-red-90: #902b28;
-    --bcsds-green-5: #f6fff8;
-    --bcsds-green-60: #42814a;
-    --bcsds-green-80: #35673b;
-    --bcsds-green-90: #2e5a34;
-    --bcsds-white-00: #ffffff;
-    --bcsds-white-opacity-00-15: #ffffff15;
-    --bcsds-white-opacity-00-05: #ffffff05;
-    --bcsds-white-opacity-00-45: #ffffff45;
-    --bcsds-white-opacity-00-10: #ffffff10;
-    --bcsds-white-opacity-00-20: #ffffff20;
-    --bcsds-black-100: #000000;
-    --bcsds-black-opacity-100-00: #00000000;
-    --bcsds-black-opacity-100-45: #00000045;
-    --bcsds-black-opacity-100-15: #00000015;
-    --bcsds-black-opacity-100-05: #00000005;
-    --bcsds-black-opacity-100-10: #00000010;
+    /* BC / BCDS color primitives: see @corpcal/shared/styles/bcds-primitives.css */
 
     /* Fluent primative colours */
     --fluent-primary: #0f6cbd;
@@ -204,6 +85,9 @@
 
     /* Required field asterisk — matches Deleted activity status badge background */
     --required-field-indicator: var(--activity-status-deleted);
+
+    /* Sync with REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS in @corpcal/shared/reports/reportPrintDimensions. */
+    --corpcal-report-sheet-content-max-width: 1024px;
   }
 
   .dark {
@@ -281,6 +165,7 @@
   --color-status-dark: var(--status-dark);
   --color-status-purple: var(--status-purple);
   --color-required-field-indicator: var(--required-field-indicator);
+  --color-corpcal-text-alert: var(--corpcal-text-alert);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);

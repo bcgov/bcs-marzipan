@@ -10,6 +10,7 @@ export interface AuthDbUser {
   adUsername: string | null;
   adDisplayName: string | null;
   adEmail: string | null;
+  status: string;
 }
 
 const authUserSelection = {
@@ -18,6 +19,7 @@ const authUserSelection = {
   adUsername: users.adUsername,
   adDisplayName: users.adDisplayName,
   adEmail: users.adEmail,
+  status: users.status,
 };
 
 export async function findUserByExternalId(
@@ -27,7 +29,13 @@ export async function findUserByExternalId(
   const [row] = await db
     .select(authUserSelection)
     .from(users)
-    .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
+    .where(
+      and(
+        eq(users.externalId, externalId),
+        eq(users.isActive, true),
+        eq(users.status, 'active')
+      )
+    )
     .limit(1);
 
   return row ?? null;
@@ -45,9 +53,27 @@ export async function findUserByEmail(
     .where(
       and(
         sql`lower(${users.adEmail}) = ${normalizedEmail}`,
-        eq(users.isActive, true)
+        eq(users.isActive, true),
+        eq(users.status, 'active')
       )
     )
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * Looks up a user by externalId regardless of status — used to produce a
+ * more informative error when the account exists but is pending/reset-required.
+ */
+export async function findUserByExternalIdAnyStatus(
+  db: Database,
+  externalId: string
+): Promise<Pick<AuthDbUser, 'status'> | null> {
+  const [row] = await db
+    .select({ status: users.status })
+    .from(users)
+    .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
     .limit(1);
 
   return row ?? null;

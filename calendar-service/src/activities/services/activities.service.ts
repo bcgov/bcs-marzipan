@@ -88,6 +88,7 @@ import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
+import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
@@ -114,7 +115,8 @@ export class ActivitiesService {
     private readonly locksService: LocksService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
-    private readonly teamsService: TeamsService
+    private readonly teamsService: TeamsService,
+    private readonly lookAheadPolicy: LookAheadPolicyService
   ) {}
 
   private async getEffectiveReviewExemptFieldKeys(
@@ -1102,6 +1104,9 @@ export class ActivitiesService {
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
+    await this.lookAheadPolicy.assertAllowedLookAheadSection(
+      activityData.lookAheadSection
+    );
 
     const pendingStatuses =
       await this.resolvePendingPitchAndTranslationStatusIds();
@@ -2055,6 +2060,11 @@ export class ActivitiesService {
     }
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
+    }
+    if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
+      await this.lookAheadPolicy.assertAllowedLookAheadSection(
+        dto.lookAheadSection ?? null
+      );
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates

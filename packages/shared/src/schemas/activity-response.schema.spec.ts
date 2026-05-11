@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_VISIBILITY,
-  LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
   VISIBILITY,
 } from '../constants/constants';
@@ -24,10 +23,10 @@ describe('activityResponseSchema', () => {
     }
   });
 
-  it('accepts valid lookAheadSection enums', () => {
-    for (const s of LOOK_AHEAD_SECTION) {
+  it('accepts admin-defined lookAheadSection bucket keys', () => {
+    for (const key of ['events', 'issues', 'longTerm', 'awareness']) {
       activityResponseSchema.parse(
-        createMockActivityResponse({ lookAheadSection: s })
+        createMockActivityResponse({ lookAheadSection: key })
       );
     }
   });

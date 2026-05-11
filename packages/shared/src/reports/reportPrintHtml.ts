@@ -1,7 +1,29 @@
 export {
+  REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
+} from './reportPrintDimensions';
+export {
   getReportTemplateHtml,
+  PRINT_STYLES,
   wrapReportHtmlDocument,
+  type ReportTemplateOptions,
+  type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
-export { buildCustomReportHtml } from './print/customReportPrintHtml';
-export { buildExecLookAheadPrintHTML } from './print/execLookAheadPrintHTML';
-export { buildLookAheadLegacyPrintHtml } from './print/lookAheadLegacyPrintHtml';
+export {
+  CORPCAL_PRINT_ROOT_CLASS,
+  CUSTOM_REPORT_PRINT_STYLES,
+  isReactRenderableReportType,
+  PrintCustomReportDocument,
+  PrintPageFooter,
+  PrintPlanningDocument,
+  PrintReportDocument,
+  PrintRichText,
+  PrintRow,
+  PrintSectionTable,
+  renderPrintReportDocumentHtml,
+  renderPrintReportFragmentHtml,
+  wrapPrintReportHtmlDocument,
+  type ReactRenderableReportType,
+  type RenderReportOptions,
+} from './print/react';

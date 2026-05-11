@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 
 import { activityReportSettings, reports } from '@corpcal/database/schema';
@@ -8,6 +9,12 @@ import type {
   ReportResponse,
   ReportSectionData,
 } from '@corpcal/shared/api/types';
+import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
+import {
+  buildLookAheadCoverDateRangeLine,
+  renderLookAheadCoverOverlayHtml,
+  type LookAheadCoverOverlayRow,
+} from '@corpcal/shared/reports/print/react';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -26,10 +33,22 @@ import {
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { PdfGeneratorService } from './pdf-generator.service';
+import {
+  buildLookAheadReportCoverDataUrl,
+  buildPrintFontFaceCss,
+} from './print-assets';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
+
+/** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
+const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set([
+  'look-ahead',
+  'thirty-sixty-ninety',
+  'exec',
+]);
 
 function pickDefinedActivityFilters(
   filters: FilterActivitiesQueryParams
@@ -66,8 +85,66 @@ export class ReportsService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly activitiesService: ActivitiesService,
-    private readonly pdfGeneratorService: PdfGeneratorService
+    private readonly pdfGeneratorService: PdfGeneratorService,
+    private readonly configService: ConfigService,
+    private readonly applicationSettings: ApplicationSettingsService
   ) {}
+
+  /**
+   * Public URL used to build absolute activity links inside generated reports.
+   * Resolved once per request from `PUBLIC_APP_BASE_URL` (see `.env.example`)
+   * with a safe local fallback so development does not require extra config.
+   */
+  private getPublicAppBaseUrl(): string {
+    const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
+    const trimmed = raw?.trim();
+    if (trimmed && trimmed.length > 0) return trimmed.replace(/\/+$/, '');
+    return 'http://localhost:3000';
+  }
+
+  /**
+   * HTML for the first PDF sheet only (not used in calendar-ui print preview).
+   */
+  private async buildLookAheadCoverPageHtmlForPdf(
+    reportType: string,
+    data: ReportDataResponse
+  ): Promise<string> {
+    if (!REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)) {
+      return '';
+    }
+    const dataUrl = buildLookAheadReportCoverDataUrl();
+    if (!dataUrl) {
+      this.logger.warn(
+        'Look-ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
+      );
+      return '';
+    }
+    const { contactPhone, contactEmail } =
+      await this.applicationSettings.getLookAheadReportCoverContact();
+    const overlay = renderLookAheadCoverOverlayHtml({
+      dateRangeLine: buildLookAheadCoverDateRangeLine(data),
+      contactPhone,
+      contactEmail,
+      sectionRows: this.buildLookAheadCoverSectionRows(data.report),
+    });
+    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
+  }
+
+  /**
+   * Resolve the cover legend rows for the look-ahead PDF cover from the report's
+   * config. Returns an empty list when config is missing so the cover renders
+   * without a contents block (preserving prior PDF layout when seeds are stale).
+   * Cover footer phone and email are loaded separately from application settings.
+   */
+  private buildLookAheadCoverSectionRows(
+    report: ReportResponse
+  ): LookAheadCoverOverlayRow[] {
+    if (!report.config) return [];
+    return resolveLookAheadSectionRows(report.config).map((row) => ({
+      label: row.reportLegendLabel,
+      legendColor: row.legendColor,
+    }));
+  }
 
   /**
    * Get all active reports
@@ -471,7 +548,7 @@ export class ReportsService {
 
       // Apply look-ahead section filter
       if (mergedFilter?.lookAheadSection) {
-        filters.lookAheadSection = mergedFilter.lookAheadSection as any;
+        filters.lookAheadSection = mergedFilter.lookAheadSection;
       }
 
       let activities = await this.activitiesService.findAll(filters, ctx);
@@ -513,13 +590,24 @@ export class ReportsService {
     reportType: string,
     data: ReportDataResponse
   ): Promise<Buffer> {
-    const inner = getReportTemplateHtml(reportType, data).trim();
+    const activityBaseUrl = this.getPublicAppBaseUrl();
+    const inner = getReportTemplateHtml(reportType, data, {
+      activityBaseUrl,
+    }).trim();
     if (!inner) {
       throw new NotFoundException(
         `No printable HTML for report '${reportType}'.`
       );
     }
-    const html = wrapReportHtmlDocument(inner);
+    const fontFaceCss = buildPrintFontFaceCss() ?? undefined;
+    const coverPageHtml = await this.buildLookAheadCoverPageHtmlForPdf(
+      reportType,
+      data
+    );
+    const html = wrapReportHtmlDocument(inner, {
+      fontFaceCss,
+      coverPageHtml,
+    });
     return this.pdfGeneratorService.generatePdfFromHtml(html);
   }
 }
