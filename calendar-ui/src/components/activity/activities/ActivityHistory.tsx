@@ -375,7 +375,12 @@ export default function ActivityHistory({
 
                                   {!entry.notes &&
                                   (!entry.changes ||
-                                    entry.changes.length === 0) ? (
+                                    entry.changes.length === 0 ||
+                                    entry.changes.every(
+                                      (c) => c.field === 'flag.assigneeName'
+                                    )) &&
+                                  entry.actionType !== 'flag_assigned' &&
+                                  entry.actionType !== 'flag_removed' ? (
                                     <div className="text-muted-foreground text-sm">
                                       No field-level changes recorded
                                     </div>

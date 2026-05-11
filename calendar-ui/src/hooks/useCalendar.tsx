@@ -29,6 +29,7 @@ import {
   normalizeListParams,
   type ActivityListQueryParams,
 } from '../lib/activity-query-utils';
+import { showErrorToast } from '../lib/error-toast';
 
 export type { ActivityListQueryParams };
 
@@ -224,6 +225,9 @@ export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
       );
       options?.onSuccess?.();
     },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to assign activity');
+    },
   });
 }
 
@@ -248,6 +252,9 @@ export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
           : 'Activity unassigned'
       );
       options?.onSuccess?.();
+    },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to unassign activity');
     },
   });
 }
