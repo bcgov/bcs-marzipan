@@ -128,6 +128,11 @@ export function ActivityPageHeader({
                   ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
                   : 'Assign activity'
               }
+              aria-label={
+                isFlagged
+                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  : 'Assign activity'
+              }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
               className="relative shrink-0"
