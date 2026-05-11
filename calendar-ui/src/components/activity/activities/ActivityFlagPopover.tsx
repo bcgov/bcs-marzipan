@@ -85,7 +85,9 @@ export function ActivityFlagPopover({
   // Build sorted options: current user first, then alphabetically
   const options = useMemo(() => {
     const me = members.find((m) => m.userId === user?.id);
-    const rest = members.filter((m) => m.userId !== user?.id);
+    const rest = members
+      .filter((m) => m.userId !== user?.id)
+      .sort((a, b) => a.label.localeCompare(b.label));
     return [...(me ? [me] : []), ...rest].map((m) => ({
       value: String(m.userId),
       label: m.userId === user?.id ? `${m.label} (you)` : m.label,
