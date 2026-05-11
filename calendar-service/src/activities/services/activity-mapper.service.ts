@@ -2,15 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import type { Activity } from '@corpcal/database/types';
 import {
-  DEFAULT_LOOK_AHEAD_SECTION,
   DEFAULT_LOOK_AHEAD_STATUS,
   DEFAULT_STATUS,
   DEFAULT_VISIBILITY,
-  LOOK_AHEAD_SECTION,
   LOOK_AHEAD_STATUS,
+  toCalendarDateStringFromDb,
+  toCivilTimeStringFromDb,
   type ActivityResponse,
   type EventPlannerDetail,
-  type LookAheadSection,
   type LookAheadStatus,
   type Visibility,
 } from '@corpcal/shared';
@@ -78,21 +77,17 @@ export class ActivityMapperService {
       flags?: ActivityFlagResponse[];
     }
   ): ActivityResponse {
-    // Format date to YYYY-MM-DD
-    const formatDate = (date: Date | string | null): string | null => {
-      if (!date) return null;
-      const d = typeof date === 'string' ? new Date(date) : date;
-      return d.toISOString().split('T')[0] ?? null;
-    };
+    // Calendar dates and civil times come from `@corpcal/database` as strings
+    // (Drizzle's `date()` and `time()` default to mode `'string'`). The
+    // helpers below pass them through verbatim, and only fall back to UTC
+    // component extraction when a JS `Date` arrives — never reading
+    // host-local getters. See `docs/DATE_AND_TIMEZONE.md`.
+    const formatDate = (
+      value: Date | string | null | undefined
+    ): string | null => toCalendarDateStringFromDb(value);
 
-    // Format time to HH:mm
-    const formatTime = (time: string | null): string | null => {
-      if (!time) return null;
-      // If it's already in HH:mm format, return as is
-      if (time.match(/^\d{2}:\d{2}$/)) return time;
-      // If it's a full time string, extract HH:mm
-      return time.substring(0, 5);
-    };
+    const formatTime = (value: string | null | undefined): string | null =>
+      toCivilTimeStringFromDb(value);
 
     const dto: ActivityResponse = {
       id: activity.id,
@@ -161,11 +156,10 @@ export class ActivityMapperService {
       )
         ? (activity.lookAheadStatus as LookAheadStatus)
         : (DEFAULT_LOOK_AHEAD_STATUS satisfies LookAheadStatus),
-      lookAheadSection: LOOK_AHEAD_SECTION.includes(
-        activity.lookAheadSection as LookAheadSection
-      )
-        ? (activity.lookAheadSection as LookAheadSection)
-        : (DEFAULT_LOOK_AHEAD_SECTION satisfies LookAheadSection),
+      // `lookAheadSection` is a free-form string bucket key (validated at write
+      // time against the report config allowlist via LookAheadPolicyService).
+      // Pass through whatever the DB stored, normalizing nullish to null.
+      lookAheadSection: activity.lookAheadSection ?? null,
 
       // Notes and additional fields
       notes: activity.notes ?? null,

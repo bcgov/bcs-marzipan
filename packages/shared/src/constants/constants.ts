@@ -27,17 +27,6 @@ export const LOOK_AHEAD_STATUS = ['none', 'new', 'changed'] as const;
 export type LookAheadStatus = (typeof LOOK_AHEAD_STATUS)[number];
 
 /**
- * Look Ahead Section - Section category for look-ahead reports
- */
-export const LOOK_AHEAD_SECTION = [
-  'events',
-  'issues',
-  'news',
-  'awareness',
-] as const;
-export type LookAheadSection = (typeof LOOK_AHEAD_SECTION)[number];
-
-/**
  * Calendar Visibility - Visibility level of activity on calendar
  */
 export const CALENDAR_VISIBILITY = ['visible', 'partial', 'hidden'] as const;
@@ -197,11 +186,6 @@ export const DEFAULT_STATUS = 'unknown' as const;
  * Default look ahead status
  */
 export const DEFAULT_LOOK_AHEAD_STATUS = 'none' as const;
-
-/**
- * Default look ahead section
- */
-export const DEFAULT_LOOK_AHEAD_SECTION = 'events' as const;
 
 /**
  * Default visibility level

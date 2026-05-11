@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
@@ -123,20 +124,28 @@ describe('LookAheadResetJobService', () => {
   });
 
   it('returns error when the transaction fails', async () => {
-    databaseService.db.transaction.mockRejectedValue(
-      new Error('transaction failed')
-    );
+    const errorSpy = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
 
-    const result = await service.runBatch({
-      actorUserId: 999,
-      trigger: 'schedule',
-    });
+    try {
+      databaseService.db.transaction.mockRejectedValue(
+        new Error('transaction failed')
+      );
 
-    expect(result).toEqual({
-      updated: 0,
-      skipped: true,
-      skipReason: 'error',
-    });
+      const result = await service.runBatch({
+        actorUserId: 999,
+        trigger: 'schedule',
+      });
+
+      expect(result).toEqual({
+        updated: 0,
+        skipped: true,
+        skipReason: 'error',
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('uses a distinct two-argument pg_try_advisory_xact_lock', async () => {

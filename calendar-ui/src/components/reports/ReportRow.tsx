@@ -1,6 +1,6 @@
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
-import { tableBodyRow, tableTd } from '@/components/table/tableConstants';
+import { tableTd } from '@/components/table/tableConstants';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Badge } from '@/components/ui/badge';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -11,11 +11,13 @@ import {
 } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
-/** Matches Activity List table cells: light stroke + white fill (Fluent NeutralStroke1.Rest / #FFF via Tailwind). */
 const reportTableCell = cn(
   tableTd,
-  'border-b border-slate-100 bg-white text-sm'
+  'border-b border-(--corpcal-table-border) bg-inherit text-sm text-(--corpcal-table-cell-fg)'
 );
+
+const reportTableRow =
+  'border-b border-(--corpcal-table-border) bg-(--corpcal-table-row-bg) transition-colors even:bg-(--corpcal-table-row-alt-bg) hover:bg-(--corpcal-table-row-hover-bg)';
 
 interface ReportRowProps {
   activity: ActivityResponse;
@@ -51,19 +53,19 @@ export function ReportRow({ activity, className }: ReportRowProps) {
   const commsLeadName = commsLead?.name ?? '–';
 
   return (
-    <tr className={cn(tableBodyRow, 'bg-white transition-colors', className)}>
+    <tr className={cn(reportTableRow, className)}>
       {/* Column 1: Date/Meta Info */}
       <td className={reportTableCell}>
         <div className="space-y-1.5">
           {/* Date and Time */}
           <div>
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               {formattedDate}
             </div>
-            <div className="text-sm font-medium text-slate-900">
+            <div className="text-sm font-medium text-(--corpcal-table-cell-fg)">
               {formattedTime}
             </div>
-            <div className="text-sm font-medium text-slate-900">
+            <div className="text-sm font-medium text-(--corpcal-table-cell-fg)">
               {activity.timeStatus}
             </div>
           </div>
@@ -84,7 +86,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
                 <Badge
                   key={tag.id}
                   variant="outline"
-                  className="text-xs text-slate-600"
+                  className="text-xs text-(--corpcal-table-cell-muted-fg)"
                 >
                   {tag.text}
                 </Badge>
@@ -99,8 +101,10 @@ export function ReportRow({ activity, className }: ReportRowProps) {
         <div className="space-y-1">
           {/* Lead Ministry (with abbreviation) */}
           <div>
-            <div className="text-xs font-medium text-slate-600">Ministry</div>
-            <div className="text-sm font-medium text-slate-900">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
+              Ministry
+            </div>
+            <div className="text-sm font-medium text-(--corpcal-table-cell-fg)">
               {activity.leadMinistryAbbreviation ??
                 activity.leadMinistry ??
                 '–'}
@@ -110,47 +114,53 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           {/* Lead Org */}
           {activity.leadOrg && (
             <div>
-              <div className="text-xs font-medium text-slate-600">
+              <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
                 Organization
               </div>
-              <div className="text-sm text-slate-700">{activity.leadOrg}</div>
+              <div className="text-sm text-(--corpcal-table-cell-muted-fg)">
+                {activity.leadOrg}
+              </div>
             </div>
           )}
         </div>
       </td>
 
       {/* Column 3: Main Activity Content */}
-      <td className={cn(reportTableCell, 'break-words whitespace-normal')}>
+      <td className={cn(reportTableCell, 'wrap-break-word whitespace-normal')}>
         <div className="space-y-2">
           {/* Title */}
           <div>
-            <div className="text-sm font-semibold break-words whitespace-normal text-slate-900">
+            <div className="text-sm font-semibold wrap-break-word whitespace-normal text-(--corpcal-table-cell-fg)">
               {activity.title}
             </div>
           </div>
           {/* Is Confidential */}
           {activity.isConfidential && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-corpcal-text-alert text-xs font-medium">
               Confidential
             </div>
           )}
           {/* Is Issue */}
           {activity.isIssue && (
-            <div className="text-xs font-medium text-slate-600">Issue</div>
+            <div className="text-corpcal-text-alert text-xs font-medium">
+              Issue
+            </div>
           )}
           {/* FYI */}
           {activity.category.includes('FYI') && (
-            <div className="text-xs font-medium text-slate-600">FYI</div>
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
+              FYI
+            </div>
           )}
           {plainTextFromActivityRichField(activity.summary).length > 0 && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               <ActivityRichTextContent value={activity.summary} />
             </div>
           )}
           {plainTextFromActivityRichField(activity.executiveSummary ?? '')
             .length > 0 && (
-            <div className="text-xs leading-relaxed text-slate-600">
-              <div className="break-words whitespace-normal">
+            <div className="text-xs leading-relaxed text-(--corpcal-table-cell-muted-fg)">
+              <div className="wrap-break-word whitespace-normal">
                 <ActivityRichTextContent value={activity.executiveSummary} />
               </div>
             </div>
@@ -158,13 +168,13 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           {/* Significance */}
           {plainTextFromActivityRichField(activity.significance ?? '').length >
             0 && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               <ActivityRichTextContent value={activity.significance} />
             </div>
           )}
           {/* Event Planner Lead */}
           {activity.eventPlannerDetails && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               Event planner:{' '}
               {
                 activity.eventPlannerDetails.find((planner) =>
@@ -181,25 +191,25 @@ export function ReportRow({ activity, className }: ReportRowProps) {
         <div className="space-y-1.5">
           {/* News Release Origin */}
           {activity.newsReleaseOrigin && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               {activity.newsReleaseOrigin}
             </div>
           )}
           {/* Comms Materials */}
           {activity.commsMaterials && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               {activity.commsMaterials.map((material) => material).join(', ')}
             </div>
           )}
           {/* Translations Required Status */}
           {activity.translationsRequiredStatus && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               {activity.translationsRequiredStatus}
             </div>
           )}
           {/* Translations Required */}
           {activity.translationsRequired && (
-            <div className="text-xs font-medium text-slate-600">
+            <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
               {activity.translationsRequired
                 .map((translation) => translation)
                 .join(', ')}
@@ -208,17 +218,19 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           {/* Comms Contact Lead */}
           {commsLeadName !== '–' && (
             <div>
-              <div className="text-xs font-medium text-slate-600">
+              <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
                 Comms Lead
               </div>
-              <div className="text-sm text-slate-700">{commsLeadName}</div>
+              <div className="text-sm text-(--corpcal-table-cell-muted-fg)">
+                {commsLeadName}
+              </div>
             </div>
           )}
 
           {/* Look Ahead Status & Section (if available) */}
           {activity.lookAheadStatus && activity.lookAheadStatus !== 'none' && (
             <div>
-              <div className="text-xs font-medium text-slate-600">
+              <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
                 LA Status
               </div>
               <Badge
@@ -243,7 +255,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
                 copyLabel="Copy activity ID"
                 variant="minimal"
                 copiedTooltipContent="Activity ID copied"
-                className="text-xs font-semibold text-slate-600"
+                className="text-xs font-semibold text-(--corpcal-table-cell-muted-fg)"
               >
                 {displayIdText}
               </CopyableText>
@@ -252,7 +264,9 @@ export function ReportRow({ activity, className }: ReportRowProps) {
           {/* Activity Status */}
           {activity.activityStatus && (
             <div>
-              <div className="text-xs font-medium text-slate-600">Status</div>
+              <div className="text-xs font-medium text-(--corpcal-table-cell-muted-fg)">
+                Status
+              </div>
               <Badge variant="secondary" className="mt-0.5 text-xs">
                 {activity.activityStatus}
               </Badge>
@@ -261,7 +275,7 @@ export function ReportRow({ activity, className }: ReportRowProps) {
 
           {/* Date Status */}
           {activity.dateStatus && (
-            <div className="text-xs text-slate-600">
+            <div className="text-xs text-(--corpcal-table-cell-muted-fg)">
               Date: {activity.dateStatus}
             </div>
           )}

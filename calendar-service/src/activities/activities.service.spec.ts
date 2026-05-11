@@ -29,6 +29,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
+import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import { PolicyService } from '../policy/policy.service';
 import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 import { TeamsService } from '../teams/teams.service';
@@ -218,6 +219,15 @@ describe('ActivitiesService', () => {
       .mockResolvedValue(['visibility', 'sharedWithTeamIds']),
   };
 
+  // Mock look-ahead policy service (allow any lookAheadSection in unit tests)
+  const mockLookAheadPolicy = {
+    getAllowedLookAheadSectionKeys: vi
+      .fn()
+      .mockResolvedValue(['events', 'issues', 'news', 'awareness', 'longTerm']),
+    assertAllowedLookAheadSection: vi.fn().mockResolvedValue(undefined),
+    getSourceLookAheadReports: vi.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -269,6 +279,10 @@ describe('ActivitiesService', () => {
         {
           provide: ApplicationSettingsService,
           useValue: mockApplicationSettings,
+        },
+        {
+          provide: LookAheadPolicyService,
+          useValue: mockLookAheadPolicy,
         },
       ],
     }).compile();

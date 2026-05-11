@@ -11,12 +11,6 @@ import { downloadCustomReportXlsx } from '@/lib/custom-report-xlsx';
 
 export type ReportExportFormat = 'pdf' | 'csv' | 'xlsx';
 
-/** Re-export shared template HTML (print preview uses the same layout as server PDF). */
-export {
-  buildCustomReportHtml,
-  getReportTemplateHtml,
-} from '@corpcal/shared/reports/reportPrintHtml';
-
 export async function handleReportExport(options: {
   reportType: string;
   format: ReportExportFormat;

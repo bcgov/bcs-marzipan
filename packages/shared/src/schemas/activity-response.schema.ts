@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-import {
-  LOOK_AHEAD_SECTION,
-  LOOK_AHEAD_STATUS,
-  VISIBILITY,
-} from '../constants/constants';
+import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
 import { activityFlagResponseSchema } from './activity-flag.schema';
 import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
 
@@ -79,7 +75,8 @@ export const activityDbFieldsSchema = z.object({
   // Look Ahead
   executiveSummary: z.string().nullable(),
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(), // Omitted when user lacks lookAhead view
-  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).nullable().optional(), // Omitted when user lacks lookAhead view
+  /** Bucket key driven by report admin configuration; see activity.schema.ts. Omitted when user lacks lookAhead view. */
+  lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
   // notes / pitch: omitted from API when user lacks view for that scope. Translation fields are not view-redacted.
   notes: z.string().nullable().optional(),

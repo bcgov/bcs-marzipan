@@ -21,6 +21,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // @corpcal/shared print HTML uses @tiptap/html/server in Node only. The static import
+      // is still evaluated in Vite; the real package pulls happy-dom and breaks the client.
+      '@tiptap/html/server': path.resolve(
+        __dirname,
+        './src/stubs/tiptapHtmlServerForClient.ts'
+      ),
     },
   },
   server: {

@@ -1,21 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { LOOK_AHEAD_SECTION, type LookAheadSection } from '@corpcal/shared';
 import type { ActivityResponse, ReportResponse } from '@corpcal/shared/api';
+import {
+  LOOK_AHEAD_REPORT_NAME,
+  resolveLookAheadSectionRows,
+} from '@corpcal/shared/reports/look-ahead';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { ReportsService } from '../reports/reports.service';
 
-const SECTION_DISPLAY_NAMES: Record<LookAheadSection, string> = {
-  events: 'Events, Speeches & Releases',
-  issues: 'Issues and Reports',
-  news: 'Outside Government',
-  awareness: 'Awareness Dates',
-};
-
 export interface LookAheadSectionData {
-  id: LookAheadSection;
+  /** Stable section id from `reports.config.sections[].id`. */
+  id: string;
+  /** Display name (defaults to `reportDisplayName` from config, falling back to `name`). */
   name: string;
   order: number;
   activities: ActivityResponse[];
@@ -36,24 +34,38 @@ export class LookAheadService {
   /**
    * Get Look Ahead report data: report config and activities grouped by section.
    * Excludes activities omitted from the report and confidential activities.
+   *
+   * Sections (id, label, lookAhead key, order) come from
+   * `reports.config.sections` via the shared resolver — keeping section
+   * identity in lockstep with the activity form, table filter, and PDF cover.
    */
   async getLookAheadData(options?: {
     startDate?: string;
     endDate?: string;
   }): Promise<LookAheadResponse> {
-    const report = await this.reportsService.findReportByName('look-ahead');
+    const report = await this.reportsService.findReportByName(
+      LOOK_AHEAD_REPORT_NAME
+    );
     if (!report) {
       throw new NotFoundException('Look Ahead report not found');
     }
+    if (!report.config) {
+      throw new NotFoundException(
+        `Look Ahead report has no config; cannot resolve sections.`
+      );
+    }
 
     const omittedActivityIds = await this.getOmittedActivityIds(report.id);
+    const sectionRows = resolveLookAheadSectionRows(report.config, {
+      requireLookAheadKey: true,
+    });
     const sections: LookAheadSectionData[] = [];
-    const sectionOrder = LOOK_AHEAD_SECTION;
 
-    for (let i = 0; i < sectionOrder.length; i++) {
-      const sectionId = sectionOrder[i];
+    for (const row of sectionRows) {
+      // `requireLookAheadKey: true` guarantees a non-null key, but narrow for TS.
+      if (row.lookAheadKey === null) continue;
       const filters: FilterActivitiesQueryParams = {
-        lookAheadSection: sectionId,
+        lookAheadSection: row.lookAheadKey,
         page: 1,
         limit: 500,
         sharedWithTeamIds: undefined,
@@ -73,9 +85,9 @@ export class LookAheadService {
       );
 
       sections.push({
-        id: sectionId,
-        name: SECTION_DISPLAY_NAMES[sectionId],
-        order: i + 1,
+        id: row.sectionId,
+        name: row.reportLegendLabel,
+        order: row.order,
         activities: filtered,
       });
     }

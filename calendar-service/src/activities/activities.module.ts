@@ -3,6 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { LocksModule } from '../locks/locks.module';
+import { LookAheadPolicyModule } from '../look-ahead/look-ahead-policy.module';
 import { PolicyModule } from '../policy/policy.module';
 import { TeamsModule } from '../teams/teams.module';
 import { ActivitiesController } from './activities.controller';
@@ -25,6 +26,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     forwardRef(() => LocksModule),
     PolicyModule,
     forwardRef(() => TeamsModule),
+    LookAheadPolicyModule,
   ],
   providers: [
     ActivityResponseRedactionInterceptor,
