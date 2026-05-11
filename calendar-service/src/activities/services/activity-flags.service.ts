@@ -133,7 +133,7 @@ export class ActivityFlagsService {
 
   /**
    * Remove the flag for a given (activity, team) pair.
-   * No-op if the flag does not exist.
+   * No-op (no delete, no history entry) if the flag does not exist.
    */
   async removeFlag(
     activityId: number,
@@ -157,6 +157,10 @@ export class ActivityFlagsService {
       )
       .limit(1);
     const assigneeName = existing?.name ?? null;
+
+    if (!existing) {
+      return;
+    }
 
     await db
       .delete(activityFlags)

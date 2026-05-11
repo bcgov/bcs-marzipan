@@ -175,18 +175,13 @@ describe('ActivityFlagsService', () => {
       );
     });
 
-    it('records flag_removed with null when no flag existed', async () => {
+    it('is a no-op (no delete, no history) when no flag existed', async () => {
       mockDb.select.mockReturnValue(makeChain([]));
-      mockDb.delete.mockReturnValue(makeDeleteChain());
 
       await service.removeFlag(1, 1, 3);
 
-      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
-        1,
-        3,
-        'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: null, newValue: null }]
-      );
+      expect(mockDb.delete).not.toHaveBeenCalled();
+      expect(mockHistoryService.recordChange).not.toHaveBeenCalled();
     });
   });
 
