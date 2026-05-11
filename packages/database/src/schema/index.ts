@@ -23,3 +23,4 @@ export * from './bannerSettings';
 export * from './loginModalSettings';
 export * from './activitySavedFilters';
 export * from './userActivitySavedFilterDefaults';
+export * from './userActivityFavourites';

@@ -1,7 +1,8 @@
 type ActivityTableEmptyStateVariant =
   | 'no-data'
   | 'no-search-match'
-  | 'no-filter-match';
+  | 'no-filter-match'
+  | 'no-favourites';
 
 const EMPTY_MESSAGES: Record<
   ActivityTableEmptyStateVariant,
@@ -19,6 +20,11 @@ const EMPTY_MESSAGES: Record<
     title: 'No activities match the current filters',
     description:
       'A filter is applied. Clearing filters may return more results.',
+  },
+  'no-favourites': {
+    title: 'No favourite activities',
+    description:
+      'Star an activity to add it to your favourites and find it here quickly.',
   },
 };
 

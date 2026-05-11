@@ -18,6 +18,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { DatabaseModule } from './database/database.module';
 import { DraftsModule } from './drafts/drafts.module';
+import { FavouritesModule } from './favourites/favourites.module';
 import { LocksModule } from './locks/locks.module';
 import { LoginModalModule } from './login-modal/login-modal.module';
 import { LookAheadResetModule } from './look-ahead-reset/look-ahead-reset.module';
@@ -75,6 +76,7 @@ function resolveRootEnvPath(): string {
     LookAheadModule,
     UsersModule,
     TeamsModule,
+    FavouritesModule,
   ],
   controllers: [AppController],
   providers: [

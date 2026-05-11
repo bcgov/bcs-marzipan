@@ -1,4 +1,4 @@
-import { History } from 'lucide-react';
+import { History, Star } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -22,6 +22,9 @@ type ActivityPageHeaderProps = {
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
   onHistoryClick?: () => void;
+  isFavourite?: boolean;
+  onFavouriteToggle?: () => void;
+  isFavouriteToggling?: boolean;
 };
 
 /**
@@ -36,6 +39,9 @@ export function ActivityPageHeader({
   lastUpdatedDateTime,
   createdDateTime,
   onHistoryClick,
+  isFavourite,
+  onFavouriteToggle,
+  isFavouriteToggling,
 }: ActivityPageHeaderProps): ReactElement {
   const statusDisplay = formatDisplayValue(activityStatus);
   let updatedLabel: string | null = null;
@@ -91,17 +97,39 @@ export function ActivityPageHeader({
               : ''}
           </div>
         </div>
-        {onHistoryClick && (
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            title="View history"
-            onClick={onHistoryClick}
-            className="shrink-0"
-          >
-            <History className="h-4 w-4" />
-          </Button>
+        {(onFavouriteToggle || onHistoryClick) && (
+          <div className="flex items-center gap-2">
+            {onFavouriteToggle && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={
+                  isFavourite ? 'Remove from favourites' : 'Add to favourites'
+                }
+                onClick={onFavouriteToggle}
+                disabled={isFavouriteToggling}
+                className="shrink-0"
+              >
+                <Star
+                  className="h-4 w-4"
+                  fill={isFavourite ? 'currentColor' : 'none'}
+                />
+              </Button>
+            )}
+            {onHistoryClick && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="View history"
+                onClick={onHistoryClick}
+                className="shrink-0"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>
