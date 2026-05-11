@@ -71,6 +71,22 @@ export class ActivityFlagsService {
       );
     }
 
+    // Look up existing assignee name before upsert
+    const [existingFlag] = await db
+      .select({
+        existingName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+      })
+      .from(activityFlags)
+      .innerJoin(users, eq(users.id, activityFlags.assigneeId))
+      .where(
+        and(
+          eq(activityFlags.activityId, activityId),
+          eq(activityFlags.teamId, teamId)
+        )
+      )
+      .limit(1);
+    const previousAssigneeName = existingFlag?.existingName ?? null;
+
     await db
       .insert(activityFlags)
       .values({
@@ -91,11 +107,27 @@ export class ActivityFlagsService {
         },
       });
 
+    // Look up new assignee display name for history
+    const [assigneeUser] = await db
+      .select({
+        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+      })
+      .from(users)
+      .where(eq(users.id, assigneeId))
+      .limit(1);
+    const assigneeName = assigneeUser?.name ?? String(assigneeId);
+
     await this.activityHistoryService.recordChange(
       activityId,
       assignedById,
       'flag_assigned',
-      [{ field: 'flag.assigneeId', oldValue: null, newValue: assigneeId }]
+      [
+        {
+          field: 'flag.assigneeName',
+          oldValue: previousAssigneeName,
+          newValue: assigneeName,
+        },
+      ]
     );
   }
 
@@ -109,6 +141,23 @@ export class ActivityFlagsService {
     removedById: number
   ): Promise<void> {
     const db = this.databaseService.db;
+
+    // Look up existing assignee name before deleting
+    const [existing] = await db
+      .select({
+        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+      })
+      .from(activityFlags)
+      .innerJoin(users, eq(users.id, activityFlags.assigneeId))
+      .where(
+        and(
+          eq(activityFlags.activityId, activityId),
+          eq(activityFlags.teamId, teamId)
+        )
+      )
+      .limit(1);
+    const assigneeName = existing?.name ?? null;
+
     await db
       .delete(activityFlags)
       .where(
@@ -122,7 +171,7 @@ export class ActivityFlagsService {
       activityId,
       removedById,
       'flag_removed',
-      [{ field: 'flag.assigneeId', oldValue: null, newValue: null }]
+      [{ field: 'flag.assigneeName', oldValue: assigneeName, newValue: null }]
     );
   }
 

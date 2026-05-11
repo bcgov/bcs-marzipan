@@ -91,12 +91,11 @@ export class ActivityFlagsController {
   @ApiOperation({
     summary: 'Remove (unflag) an activity',
     description:
-      'Removes the flag for the given team. Any team member with activities.flag permission can unflag.',
+      'Removes the flag for the given team. Any authenticated team member can unflag.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
   @ApiParam({ name: 'teamId', type: Number, description: 'Team ID' })
   @ApiResponse({ status: 200, description: 'Flag removed' })
-  @RequirePermission('activities.flag')
   @Delete(':id/flag/:teamId')
   @HttpCode(HttpStatus.OK)
   async removeFlag(

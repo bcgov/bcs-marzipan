@@ -3,14 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
+import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
+import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -36,9 +31,14 @@ interface AssignActivityModalProps {
   flags: ActivityFlagResponse[];
   isSubmitting: boolean;
   /** Called when user confirms an assignment. */
-  onAssign: (teamId: number, assigneeId: number, note?: string) => void;
+  onAssign: (
+    teamId: number,
+    assigneeId: number,
+    note?: string,
+    assigneeName?: string
+  ) => void;
   /** Called when user removes the current flag for a team. */
-  onUnassign: (teamId: number) => void;
+  onUnassign: (teamId: number, assigneeName?: string) => void;
   displayId?: string;
 }
 
@@ -53,7 +53,9 @@ export function AssignActivityModal({
 }: AssignActivityModalProps) {
   const { user } = useAuth();
   const [note, setNote] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMemberOption | null>(
+    null
+  );
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -90,30 +92,37 @@ export function AssignActivityModal({
       });
   }, [open, primaryTeamId]);
 
-  // Pre-select existing assignee when dialog opens
+  // Pre-select existing assignee when dialog opens (after members are loaded)
   useEffect(() => {
-    if (open && existingFlag) {
-      setSelectedUserId(existingFlag.assigneeId);
+    if (open && existingFlag && members.length > 0) {
+      setSelectedMember(
+        members.find((m) => m.userId === existingFlag.assigneeId) ?? null
+      );
       setNote(existingFlag.note ?? '');
-    } else if (open) {
-      setSelectedUserId(null);
+    } else if (open && !existingFlag) {
+      setSelectedMember(null);
       setNote('');
     }
-  }, [open, existingFlag]);
+  }, [open, existingFlag, members]);
 
   const handleConfirm = () => {
-    if (!selectedTeamId || !selectedUserId) return;
-    onAssign(selectedTeamId, selectedUserId, note.trim() || undefined);
+    if (!selectedTeamId || !selectedMember) return;
+    onAssign(
+      selectedTeamId,
+      selectedMember.userId,
+      note.trim() || undefined,
+      selectedMember.label
+    );
   };
 
   const handleUnassign = () => {
     if (!selectedTeamId) return;
-    onUnassign(selectedTeamId);
+    onUnassign(selectedTeamId, existingFlag?.assigneeName ?? undefined);
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
-      setSelectedUserId(null);
+      setSelectedMember(null);
       setNote('');
     }
     onOpenChange(value);
@@ -154,29 +163,33 @@ export function AssignActivityModal({
                 Loading teammates…
               </div>
             ) : (
-              <Combobox
-                value={selectedUserId}
-                onValueChange={(val) => setSelectedUserId(val)}
-              >
-                <ComboboxInput
-                  placeholder="Select assignee"
-                  showClear={selectedUserId !== null}
+              <div className="rounded-md border">
+                <FilterSearchableList
+                  options={sortedMembers.map((m) => ({
+                    value: String(m.userId),
+                    label: m.userId === user?.id ? `${m.label} (you)` : m.label,
+                  }))}
+                  searchPlaceholder="Search teammates…"
+                  emptyMessage="No teammates found."
+                  renderOption={(opt) => {
+                    const memberId = parseInt(opt.value, 10);
+                    const isSelected = selectedMember?.userId === memberId;
+                    return (
+                      <FilterCheckboxItem
+                        checked={isSelected}
+                        onCheckedChange={() => {
+                          const m = sortedMembers.find(
+                            (x) => x.userId === memberId
+                          );
+                          setSelectedMember(isSelected ? null : (m ?? null));
+                        }}
+                      >
+                        {opt.label}
+                      </FilterCheckboxItem>
+                    );
+                  }}
                 />
-                <ComboboxContent>
-                  <ComboboxList>
-                    {sortedMembers.map((m) => (
-                      <ComboboxItem key={m.userId} value={m.userId}>
-                        {m.userId === user?.id ? `${m.label} (you)` : m.label}
-                      </ComboboxItem>
-                    ))}
-                    {sortedMembers.length === 0 && (
-                      <div className="text-muted-foreground py-6 text-center text-sm">
-                        No teammates found.
-                      </div>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+              </div>
             )}
           </div>
 
@@ -219,7 +232,7 @@ export function AssignActivityModal({
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={isSubmitting || !selectedUserId || !selectedTeamId}
+              disabled={isSubmitting || !selectedMember || !selectedTeamId}
             >
               {isSubmitting ? (
                 <>

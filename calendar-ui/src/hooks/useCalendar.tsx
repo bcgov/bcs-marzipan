@@ -1,5 +1,6 @@
 // /hooks/useCalendar.tsx (TanStack Query v5)
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
@@ -202,7 +203,7 @@ export function useAddActivityHistoryNote() {
 }
 
 /** Upsert (set or replace) the flag for an activity on a given team. */
-export function useUpsertActivityFlag() {
+export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -211,16 +212,23 @@ export function useUpsertActivityFlag() {
     }: {
       activityId: number;
       body: UpsertActivityFlagRequest;
+      assigneeName?: string;
     }) => upsertActivityFlag(activityId, body),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      toast.success(
+        vars.assigneeName
+          ? `Activity assigned to ${vars.assigneeName}`
+          : 'Activity assigned'
+      );
+      options?.onSuccess?.();
     },
   });
 }
 
 /** Remove the flag for an activity on a given team. */
-export function useRemoveActivityFlag() {
+export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -229,10 +237,17 @@ export function useRemoveActivityFlag() {
     }: {
       activityId: number;
       teamId: number;
+      assigneeName?: string;
     }) => removeActivityFlag(activityId, teamId),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      toast.success(
+        vars.assigneeName
+          ? `Activity unassigned from ${vars.assigneeName}`
+          : 'Activity unassigned'
+      );
+      options?.onSuccess?.();
     },
   });
 }

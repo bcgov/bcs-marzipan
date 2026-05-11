@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   formatHistoryFieldValue,
-  getActionText,
+  getActionLabel,
   getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
 import { formatLongDate, formatTime } from '@/lib/datetime-utils';
@@ -67,7 +67,7 @@ function matchesSearch(
   const haystacks = [
     getActorDisplayName(entry),
     entry.actor?.username,
-    getActionText(entry.actionType),
+    getActionLabel(entry.actionType, entry.changes ?? []),
     entry.notes,
     ...(entry.changes ?? []).flatMap((change) => [
       getHistoryFieldLabel(change.field),
@@ -295,7 +295,10 @@ export default function ActivityHistory({
                                       {getActorDisplayName(entry)}
                                     </div>
                                     <div className="text-muted-foreground mt-1 text-sm">
-                                      {getActionText(entry.actionType)}
+                                      {getActionLabel(
+                                        entry.actionType,
+                                        entry.changes ?? []
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-muted-foreground text-sm">
@@ -315,32 +318,39 @@ export default function ActivityHistory({
                                       {(expandedEntries.has(entry.id)
                                         ? entry.changes
                                         : entry.changes.slice(0, 3)
-                                      ).map((change, index) => (
-                                        <div
-                                          key={index}
-                                          className="mb-1 text-sm"
-                                        >
-                                          <strong className="font-medium">
-                                            {getHistoryFieldLabel(change.field)}
-                                            :
-                                          </strong>{' '}
-                                          <span className="text-muted-foreground">
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.oldValue,
-                                              dateStatusMap
-                                            )}
-                                          </span>{' '}
-                                          →{' '}
-                                          <span>
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.newValue,
-                                              dateStatusMap
-                                            )}
-                                          </span>
-                                        </div>
-                                      ))}
+                                      )
+                                        .filter(
+                                          (change) =>
+                                            change.field !== 'flag.assigneeName'
+                                        )
+                                        .map((change, index) => (
+                                          <div
+                                            key={index}
+                                            className="mb-1 text-sm"
+                                          >
+                                            <strong className="font-medium">
+                                              {getHistoryFieldLabel(
+                                                change.field
+                                              )}
+                                              :
+                                            </strong>{' '}
+                                            <span className="text-muted-foreground">
+                                              {formatHistoryFieldValue(
+                                                change.field,
+                                                change.oldValue,
+                                                dateStatusMap
+                                              )}
+                                            </span>{' '}
+                                            →{' '}
+                                            <span>
+                                              {formatHistoryFieldValue(
+                                                change.field,
+                                                change.newValue,
+                                                dateStatusMap
+                                              )}
+                                            </span>
+                                          </div>
+                                        ))}
                                       {entry.changes.length > 3 ? (
                                         <button
                                           type="button"

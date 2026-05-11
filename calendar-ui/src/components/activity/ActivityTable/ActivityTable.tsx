@@ -237,8 +237,12 @@ function OverviewCell({
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
   canFlag?: boolean;
-  onFlagAssign?: (teamId: number, assigneeId: number) => void;
-  onFlagUnassign?: (teamId: number) => void;
+  onFlagAssign?: (
+    teamId: number,
+    assigneeId: number,
+    assigneeName?: string
+  ) => void;
+  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
   flagPending?: boolean;
 }) {
   const pitchLabel =
@@ -1252,16 +1256,18 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
-            onFlagAssign={(teamId, assigneeId) =>
+            onFlagAssign={(teamId, assigneeId, assigneeName) =>
               upsertFlagMutation.mutate({
                 activityId: row.original.id,
                 body: { teamId, assigneeId },
+                assigneeName,
               })
             }
-            onFlagUnassign={(teamId) =>
+            onFlagUnassign={(teamId, assigneeName) =>
               removeFlagMutation.mutate({
                 activityId: row.original.id,
                 teamId,
+                assigneeName,
               })
             }
             flagPending={

@@ -252,8 +252,12 @@ export function ActivityPage({
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
-  const upsertFlagMutation = useUpsertActivityFlag();
-  const removeFlagMutation = useRemoveActivityFlag();
+  const upsertFlagMutation = useUpsertActivityFlag({
+    onSuccess: () => void refreshActivity(),
+  });
+  const removeFlagMutation = useRemoveActivityFlag({
+    onSuccess: () => void refreshActivity(),
+  });
 
   const handleRequestForceHandoff = useCallback(async () => {
     setForceHandoffPending(true);
@@ -648,7 +652,11 @@ export function ActivityPage({
     if (unassignMe) {
       const myFlag = activity.flags?.find((f) => f.assigneeId === user?.id);
       if (myFlag) {
-        removeFlagMutation.mutate({ activityId: id, teamId: myFlag.teamId });
+        removeFlagMutation.mutate({
+          activityId: id,
+          teamId: myFlag.teamId,
+          assigneeName: myFlag.assigneeName,
+        });
       }
     }
     if (markAsCompleted) {
@@ -847,21 +855,20 @@ export function ActivityPage({
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
-        flags={canFlag ? (activity.flags ?? []) : undefined}
+        flags={activity.flags ?? []}
         canFlag={canFlag}
         onFlagAssign={
           canFlag
-            ? (teamId, assigneeId, note) =>
+            ? (teamId, assigneeId, note, assigneeName) =>
                 upsertFlagMutation.mutate({
                   activityId: id,
                   body: { teamId, assigneeId, note },
+                  assigneeName,
                 })
             : undefined
         }
-        onFlagUnassign={
-          canFlag
-            ? (teamId) => removeFlagMutation.mutate({ activityId: id, teamId })
-            : undefined
+        onFlagUnassign={(teamId, assigneeName) =>
+          removeFlagMutation.mutate({ activityId: id, teamId, assigneeName })
         }
         isFlagPending={
           upsertFlagMutation.isPending || removeFlagMutation.isPending
@@ -1114,10 +1121,9 @@ export function ActivityPage({
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
-        showUnassignMeOption={
-          canFlag &&
-          (activity.flags ?? []).some((f) => f.assigneeId === user?.id)
-        }
+        showUnassignMeOption={(activity.flags ?? []).some(
+          (f) => f.assigneeId === user?.id
+        )}
       />
       <CompleteActivityModal
         open={showCompleteModal}

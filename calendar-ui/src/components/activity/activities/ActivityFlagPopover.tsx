@@ -35,9 +35,9 @@ interface ActivityFlagPopoverProps {
   /** Existing flags for the current user's teams. */
   flags: ActivityFlagResponse[];
   /** Called to set or replace the flag for a team. */
-  onAssign: (teamId: number, assigneeId: number) => void;
+  onAssign: (teamId: number, assigneeId: number, assigneeName?: string) => void;
   /** Called to remove the flag for a team. */
-  onUnassign: (teamId: number) => void;
+  onUnassign: (teamId: number, assigneeName?: string) => void;
   isPending?: boolean;
   /** When true, shows assignment state without any interactive controls. */
   readOnly?: boolean;
@@ -94,10 +94,11 @@ export function ActivityFlagPopover({
 
   const handleSelect = (memberId: number) => {
     if (!primaryTeamId) return;
+    const name = members.find((m) => m.userId === memberId)?.label;
     if (existingFlag?.assigneeId === memberId) {
-      onUnassign(primaryTeamId);
+      onUnassign(primaryTeamId, existingFlag.assigneeName);
     } else {
-      onAssign(primaryTeamId, memberId);
+      onAssign(primaryTeamId, memberId, name);
     }
     setOpen(false);
   };

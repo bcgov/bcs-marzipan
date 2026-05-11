@@ -24,10 +24,11 @@ type ActivityPageHeaderProps = {
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
   onHistoryClick?: () => void;
-  /** When present, show the flag (assign) button. */
+  /** Flags for activities assigned to the current user's teams. */
   flags?: ActivityFlagResponse[];
   canFlag?: boolean;
   onFlagAssign?: (teamId: number, assigneeId: number, note?: string) => void;
+  /** Called when the user removes the assignment. Available to all users, not just admins. */
   onFlagUnassign?: (teamId: number) => void;
   isFlagPending?: boolean;
 };
@@ -143,11 +144,18 @@ export function ActivityPageHeader({
               )}
             </Button>
           )}
-          {!canFlag && isFlagged && currentFlag && (
-            <span
-              className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-md border"
-              title={`Assigned to ${currentFlag.assigneeName}`}
-              aria-label={`Assigned to ${currentFlag.assigneeName}`}
+          {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+              aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+              onClick={() =>
+                onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
+              }
+              disabled={isFlagPending}
+              className="relative shrink-0"
             >
               <Avatar size="sm" className="size-full">
                 <AvatarFallback className="text-[10px] font-medium">
@@ -163,7 +171,7 @@ export function ActivityPageHeader({
                 className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
                 aria-hidden
               />
-            </span>
+            </Button>
           )}
           {onHistoryClick && (
             <Button
@@ -186,12 +194,12 @@ export function ActivityPageHeader({
           onOpenChange={setAssignModalOpen}
           flags={flags ?? []}
           isSubmitting={isFlagPending ?? false}
-          onAssign={(teamId, assigneeId, note) => {
-            onFlagAssign(teamId, assigneeId, note);
+          onAssign={(teamId, assigneeId, note, assigneeName) => {
+            onFlagAssign(teamId, assigneeId, note, assigneeName);
             setAssignModalOpen(false);
           }}
-          onUnassign={(teamId) => {
-            onFlagUnassign(teamId);
+          onUnassign={(teamId, assigneeName) => {
+            onFlagUnassign(teamId, assigneeName);
             setAssignModalOpen(false);
           }}
           displayId={displayId}
