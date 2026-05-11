@@ -72,8 +72,10 @@ export function ActivityPageHeader({
       : formatRelativeTime(d);
   }
 
-  const isFlagged = flags != null && flags.length > 0;
-  const currentFlag = flags?.[0] ?? null;
+  const sortedFlags =
+    flags == null ? [] : [...flags].sort((a, b) => a.teamId - b.teamId);
+  const isFlagged = sortedFlags.length > 0;
+  const currentFlag = sortedFlags[0] ?? null;
 
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
