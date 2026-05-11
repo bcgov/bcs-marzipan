@@ -1,4 +1,4 @@
-import { Flag, History } from 'lucide-react';
+import { Flag, History, Star } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -37,6 +37,9 @@ type ActivityPageHeaderProps = {
   /** Called when the user removes the assignment. Available to all users, not just admins. */
   onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
   isFlagPending?: boolean;
+  isFavourite?: boolean;
+  onFavouriteToggle?: () => void;
+  isFavouriteToggling?: boolean;
 };
 
 /**
@@ -56,6 +59,9 @@ export function ActivityPageHeader({
   onFlagAssign,
   onFlagUnassign,
   isFlagPending,
+  isFavourite,
+  onFavouriteToggle,
+  isFavouriteToggling,
 }: ActivityPageHeaderProps): ReactElement {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
@@ -203,6 +209,40 @@ export function ActivityPageHeader({
             </Button>
           )}
         </div>
+        {(onFavouriteToggle || onHistoryClick) && (
+          <div className="flex items-center gap-2">
+            {onFavouriteToggle && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={
+                  isFavourite ? 'Remove from favourites' : 'Add to favourites'
+                }
+                onClick={onFavouriteToggle}
+                disabled={isFavouriteToggling}
+                className="shrink-0"
+              >
+                <Star
+                  className="h-4 w-4"
+                  fill={isFavourite ? 'currentColor' : 'none'}
+                />
+              </Button>
+            )}
+            {onHistoryClick && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="View history"
+                onClick={onHistoryClick}
+                className="shrink-0"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {canFlag && onFlagAssign && onFlagUnassign && (

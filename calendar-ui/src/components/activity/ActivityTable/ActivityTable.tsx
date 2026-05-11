@@ -714,6 +714,8 @@ export interface ActivityTableProps {
   sharedWithTeamId?: number;
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
+  /** When set, only activities whose IDs are in this list are shown (favourites tab). */
+  favouriteActivityIds?: number[];
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -729,6 +731,7 @@ export function ActivityTable({
   commsContactLeadUserId,
   sharedWithTeamId,
   sharedWithTeamIds,
+  favouriteActivityIds,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
@@ -1167,12 +1170,17 @@ export function ActivityTable({
 
   const filteredData = useMemo(() => {
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
-    return filterActivityRowsByFilters(
+    const afterFilters = filterActivityRowsByFilters(
       afterKeyword,
       filterState,
       filterContext
     );
-  }, [data, searchKeyword, filterState, filterContext]);
+    if (favouriteActivityIds !== undefined) {
+      const favouriteSet = new Set(favouriteActivityIds);
+      return afterFilters.filter((row) => favouriteSet.has(row.id));
+    }
+    return afterFilters;
+  }, [data, searchKeyword, filterState, filterContext, favouriteActivityIds]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
@@ -1631,9 +1639,17 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           <ActivityTableEmptyState
-            variant={hasActiveCriteria ? 'no-filter-match' : 'no-data'}
+            variant={
+              favouriteActivityIds !== undefined
+                ? 'no-favourites'
+                : hasActiveCriteria
+                  ? 'no-filter-match'
+                  : 'no-data'
+            }
             onClearFilters={
-              hasActiveCriteria ? handleClearAllCriteria : undefined
+              hasActiveCriteria && favouriteActivityIds === undefined
+                ? handleClearAllCriteria
+                : undefined
             }
           />
         </ActivityTableLayout>
@@ -1660,7 +1676,13 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (
-            <ActivityTableEmptyState variant="no-search-match" />
+            <ActivityTableEmptyState
+              variant={
+                favouriteActivityIds !== undefined
+                  ? 'no-favourites'
+                  : 'no-search-match'
+              }
+            />
           ) : (
             <table
               className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
