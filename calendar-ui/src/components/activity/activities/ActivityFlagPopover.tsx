@@ -56,31 +56,44 @@ export function ActivityFlagPopover({
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  const primaryTeamId = user?.teamIds?.[0] ?? null;
+  const teamIds = useMemo(
+    () => Array.from(new Set(user?.teamIds?.filter((teamId): teamId is number => teamId != null) ?? [])),
+    [user?.teamIds]
+  );
+  const teamIdSet = useMemo(() => new Set(teamIds), [teamIds]);
   const existingFlag = useMemo(
-    () => flags.find((f) => f.teamId === primaryTeamId) ?? null,
-    [flags, primaryTeamId]
+    () => flags.find((f) => teamIdSet.has(f.teamId)) ?? null,
+    [flags, teamIdSet]
   );
   const isFlagged = existingFlag !== null;
 
   // Fetch team members when popover opens (once per mount)
   useEffect(() => {
-    if (!open || !primaryTeamId || members.length > 0) return;
+    if (!open || teamIds.length === 0 || members.length > 0) return;
     setLoadingMembers(true);
-    fetchTeamById(primaryTeamId)
-      .then((team) => {
-        if (!team) return;
-        setMembers(
-          team.members.map((m) => ({
-            userId: m.userId,
-            label: m.userName,
-            teamId: team.id,
-          }))
+    Promise.all(teamIds.map((teamId) => fetchTeamById(teamId)))
+      .then((teams) => {
+        const nextMembers = teams
+          .filter((team): team is NonNullable<typeof team> => Boolean(team))
+          .flatMap((team) =>
+            team.members.map((m) => ({
+              userId: m.userId,
+              label: m.userName,
+              teamId: team.id,
+            }))
+          );
+
+        const uniqueMembers = Array.from(
+          new Map(
+            nextMembers.map((member) => [`${member.teamId}:${member.userId}`, member] as const)
+          ).values()
         );
+
+        setMembers(uniqueMembers);
       })
       .catch(() => setMembers([]))
       .finally(() => setLoadingMembers(false));
-  }, [open, primaryTeamId, members.length]);
+  }, [open, teamIds, members.length]);
 
   // Build sorted options: current user first, then alphabetically
   const options = useMemo(() => {
