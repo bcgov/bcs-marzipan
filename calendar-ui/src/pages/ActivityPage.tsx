@@ -650,14 +650,15 @@ export function ActivityPage({
     unassignMe?: boolean
   ) => {
     if (unassignMe) {
-      const myFlag = activity.flags?.find((f) => f.assigneeId === user?.id);
-      if (myFlag) {
+      const myFlags =
+        activity.flags?.filter((f) => f.assigneeId === user?.id) ?? [];
+      myFlags.forEach((flag) => {
         removeFlagMutation.mutate({
           activityId: id,
-          teamId: myFlag.teamId,
-          assigneeName: myFlag.assigneeName,
+          teamId: flag.teamId,
+          assigneeName: flag.assigneeName,
         });
-      }
+      });
     }
     if (markAsCompleted) {
       if (isDirty) {
