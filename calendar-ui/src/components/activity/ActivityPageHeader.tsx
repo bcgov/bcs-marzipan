@@ -27,9 +27,14 @@ type ActivityPageHeaderProps = {
   /** Flags for activities assigned to the current user's teams. */
   flags?: ActivityFlagResponse[];
   canFlag?: boolean;
-  onFlagAssign?: (teamId: number, assigneeId: number, note?: string) => void;
+  onFlagAssign?: (
+    teamId: number,
+    assigneeId: number,
+    note?: string,
+    assigneeName?: string
+  ) => void;
   /** Called when the user removes the assignment. Available to all users, not just admins. */
-  onFlagUnassign?: (teamId: number) => void;
+  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
   isFlagPending?: boolean;
 };
 
