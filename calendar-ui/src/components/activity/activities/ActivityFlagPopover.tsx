@@ -57,7 +57,13 @@ export function ActivityFlagPopover({
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   const teamIds = useMemo(
-    () => Array.from(new Set(user?.teamIds?.filter((teamId): teamId is number => teamId != null) ?? [])),
+    () =>
+      Array.from(
+        new Set(
+          user?.teamIds?.filter((teamId): teamId is number => teamId != null) ??
+            []
+        )
+      ),
     [user?.teamIds]
   );
   const teamIdSet = useMemo(() => new Set(teamIds), [teamIds]);
@@ -66,6 +72,7 @@ export function ActivityFlagPopover({
     [flags, teamIdSet]
   );
   const isFlagged = existingFlag !== null;
+  const primaryTeamId = existingFlag?.teamId ?? teamIds[0] ?? null;
 
   // Fetch team members when popover opens (once per mount)
   useEffect(() => {
@@ -85,7 +92,9 @@ export function ActivityFlagPopover({
 
         const uniqueMembers = Array.from(
           new Map(
-            nextMembers.map((member) => [`${member.teamId}:${member.userId}`, member] as const)
+            nextMembers.map(
+              (member) => [`${member.teamId}:${member.userId}`, member] as const
+            )
           ).values()
         );
 
