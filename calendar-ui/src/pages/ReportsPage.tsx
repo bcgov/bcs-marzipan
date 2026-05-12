@@ -347,7 +347,7 @@ export function ReportsPage() {
                           </div>
                         </div>
                         <div
-                          className="min-h-0 min-w-0 flex-1 overflow-auto px-6 py-6"
+                          className="min-h-0 min-w-0 flex-1 overflow-auto px-6 pt-0 pb-6"
                           aria-label="Report preview"
                         >
                           <div
@@ -421,7 +421,7 @@ export function ReportsPage() {
                       </Tabs>
                       {report.name !== 'custom' ? (
                         <div
-                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 py-6"
+                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 pt-0 pb-6"
                           aria-label="Print layout preview"
                         >
                           <div
