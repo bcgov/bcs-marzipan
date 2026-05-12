@@ -2433,10 +2433,20 @@ export class ActivitiesService {
       commsContactsArray !== undefined &&
       !isDeepEqual(existingComms, commsContactsArray)
     ) {
+      const [resolvedOld, resolvedNew] = await Promise.all([
+        this.activityHistoryService.resolveCommsContacts(
+          this.databaseService.db,
+          existingComms
+        ),
+        this.activityHistoryService.resolveCommsContacts(
+          this.databaseService.db,
+          commsContactsArray
+        ),
+      ]);
       allChanges.push({
         field: 'commsContacts',
-        oldValue: existingComms,
-        newValue: commsContactsArray,
+        oldValue: resolvedOld,
+        newValue: resolvedNew,
       });
     }
 

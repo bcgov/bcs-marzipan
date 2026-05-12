@@ -211,8 +211,17 @@ export function formatHistoryFieldValue(
 
   if (field === 'commsContacts') {
     if (Array.isArray(value)) {
+      if (value.length === 0) return '(no contacts)';
+      // New shape (server-resolved): { userName: string; isLead: boolean }[]
+      const first = value[0] as Record<string, unknown>;
+      if (typeof first?.userName === 'string') {
+        const resolved = value as Array<{ userName: string; isLead: boolean }>;
+        return resolved
+          .map((c) => (c.isLead ? `${c.userName} (lead)` : c.userName))
+          .join(', ');
+      }
+      // Legacy shape (unresolved): { userId?: number; isLead?: boolean }[]
       const contacts = value as Array<{ userId?: number; isLead?: boolean }>;
-      if (contacts.length === 0) return '(no contacts)';
       const leadCount = contacts.filter((c) => c.isLead).length;
       return `${contacts.length} contact(s)${leadCount > 0 ? ` (${leadCount} lead)` : ''}`;
     }

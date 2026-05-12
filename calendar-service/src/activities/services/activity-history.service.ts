@@ -821,6 +821,38 @@ export class ActivityHistoryService {
    * Useful for tracking what fields changed during an update
    *
   /**
+   * Resolves the userId values inside a comms-contacts array to display names,
+   * returning `{ userName: string; isLead: boolean }[]` for human-readable
+   * history storage.  Any userId not found in the DB falls back to `"User {id}"`.
+   */
+  async resolveCommsContacts(
+    db: DrizzleDbExecutor,
+    contacts: Array<{ userId: number; isLead: boolean }>
+  ): Promise<Array<{ userName: string; isLead: boolean }>> {
+    if (contacts.length === 0) return [];
+
+    const userIds = [...new Set(contacts.map((c) => c.userId))];
+    const rows = await db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(users)
+      .where(inArray(users.id, userIds));
+
+    const nameMap = new Map<number, string>();
+    for (const r of rows) {
+      nameMap.set(r.id, r.adDisplayName || r.adUsername || `User ${r.id}`);
+    }
+
+    return contacts.map((c) => ({
+      userName: nameMap.get(c.userId) ?? `User ${c.userId}`,
+      isLead: c.isLead,
+    }));
+  }
+
+  /**
    * Fetches display-name maps for user, team, ministry, and org IDs that appear
    * in the given old/new activity objects for the five FK fields that store raw
    * IDs (lastUpdatedBy, createdBy, leadTeamId, leadMinistryId, leadOrgId).
