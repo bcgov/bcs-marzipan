@@ -196,18 +196,6 @@ export function ActivityPageHeader({
               />
             </Button>
           )}
-          {onHistoryClick && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title="View history"
-              onClick={onHistoryClick}
-              className="shrink-0"
-            >
-              <History className="h-4 w-4" />
-            </Button>
-          )}
         </div>
         {(onFavouriteToggle || onHistoryClick) && (
           <div className="flex items-center gap-2">
