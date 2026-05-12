@@ -60,37 +60,72 @@ export function AssignActivityModal({
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // Use the first of the user's teams for flagging (simplified: single-team scenario)
-  const primaryTeamId = user?.teamIds?.[0] ?? null;
+  const userTeamIds = user?.teamIds ?? [];
 
-  // Find existing flag for the primary team
-  const existingFlag = useMemo(
-    () => flags.find((f) => f.teamId === primaryTeamId) ?? null,
-    [flags, primaryTeamId]
-  );
+  // Find the existing flag for the currently selected team; if none is selected yet,
+  // fall back to the first flag that belongs to any of the user's teams.
+  const existingFlag = useMemo(() => {
+    if (selectedTeamId !== null) {
+      return flags.find((f) => f.teamId === selectedTeamId) ?? null;
+    }
 
-  // Fetch team members when dialog opens
+    return flags.find((f) => userTeamIds.includes(f.teamId)) ?? null;
+  }, [flags, selectedTeamId, userTeamIds]);
+
+  // Fetch members for all of the user's teams when the dialog opens.
   useEffect(() => {
-    if (!open || !primaryTeamId) return;
+    if (!open || userTeamIds.length === 0) return;
+
+    let isCancelled = false;
     setLoadingMembers(true);
-    fetchTeamById(primaryTeamId)
-      .then((team) => {
-        if (!team) return;
-        setSelectedTeamId(team.id);
-        const opts: TeamMemberOption[] = team.members.map((m) => ({
-          userId: m.userId,
-          label: m.userName,
-          teamId: team.id,
-        }));
+
+    Promise.all(userTeamIds.map((teamId) => fetchTeamById(teamId)))
+      .then((teams) => {
+        if (isCancelled) return;
+
+        const availableTeams = teams.filter((team): team is NonNullable<typeof team> => Boolean(team));
+        const opts: TeamMemberOption[] = availableTeams.flatMap((team) =>
+          team.members.map((m) => ({
+            userId: m.userId,
+            label: m.userName,
+            teamId: team.id,
+          }))
+        );
+
         setMembers(opts);
+        setSelectedTeamId((currentTeamId) => {
+          if (
+            currentTeamId !== null &&
+            availableTeams.some((team) => team.id === currentTeamId)
+          ) {
+            return currentTeamId;
+          }
+
+          if (
+            existingFlag &&
+            availableTeams.some((team) => team.id === existingFlag.teamId)
+          ) {
+            return existingFlag.teamId;
+          }
+
+          return availableTeams[0]?.id ?? null;
+        });
       })
       .catch(() => {
+        if (isCancelled) return;
         setMembers([]);
+        setSelectedTeamId(null);
       })
       .finally(() => {
-        setLoadingMembers(false);
+        if (!isCancelled) {
+          setLoadingMembers(false);
+        }
       });
-  }, [open, primaryTeamId]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [open, userTeamIds, existingFlag]);
 
   // Pre-select existing assignee when dialog opens (after members are loaded)
   useEffect(() => {
