@@ -2395,9 +2395,16 @@ export class ActivitiesService {
     // Generate change list for history tracking (main activity fields)
     // Convert Activity objects to generic records for comparison
     // Activity is a plain object that can be treated as Record<string, unknown>
+    const entityResolutions =
+      await this.activityHistoryService.buildEntityResolutionMaps(
+        this.databaseService.db,
+        oldActivity,
+        updated
+      );
     const mainChanges = this.activityHistoryService.generateChangeList(
       oldActivity,
-      updated
+      updated,
+      entityResolutions
     );
 
     // Collect all changes from this update into a single array
