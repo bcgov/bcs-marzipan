@@ -68,21 +68,17 @@ export function ActivityFormChangesList({
                 {getHistoryFieldLabel(change.field)}:
               </strong>{' '}
               <span className="text-muted-foreground">
-                {formatHistoryFieldValue(
-                  change.field,
-                  change.oldValue,
+                {formatHistoryFieldValue(change.field, change.oldValue, {
                   dateStatusMap,
-                  venueStatusMap
-                )}
+                  venueStatusMap,
+                })}
               </span>{' '}
               &rarr;{' '}
               <span>
-                {formatHistoryFieldValue(
-                  change.field,
-                  change.newValue,
+                {formatHistoryFieldValue(change.field, change.newValue, {
                   dateStatusMap,
-                  venueStatusMap
-                )}
+                  venueStatusMap,
+                })}
               </span>
             </div>
           ))}

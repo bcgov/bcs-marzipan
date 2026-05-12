@@ -19,9 +19,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
+  useActivityStatuses,
+  useNewsReleaseDistributions,
+  useNewsReleaseOrigins,
+  usePitchRequiredStatuses,
+  usePremierRequested,
+  useTimeStatuses,
+  useTranslationRequiredStatuses,
+  useVenueStatuses,
+} from '@/hooks/useLookups';
+import {
   formatHistoryFieldValue,
   getActionText,
   getHistoryFieldLabel,
+  type LookupMaps,
+  type StatusLookupMap,
 } from '@/lib/activity-history-format';
 import {
   CORP_PACIFIC_TIME_ZONE,
@@ -62,7 +74,7 @@ function getActorInitials(entry: ActivityHistoryEntry): string {
 function matchesSearch(
   entry: ActivityHistoryEntry,
   query: string,
-  dateStatusMap: Map<number | string, string>
+  lookupMaps: LookupMaps
 ): boolean {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) {
@@ -76,8 +88,8 @@ function matchesSearch(
     entry.notes,
     ...(entry.changes ?? []).flatMap((change) => [
       getHistoryFieldLabel(change.field),
-      formatHistoryFieldValue(change.field, change.oldValue, dateStatusMap),
-      formatHistoryFieldValue(change.field, change.newValue, dateStatusMap),
+      formatHistoryFieldValue(change.field, change.oldValue, lookupMaps),
+      formatHistoryFieldValue(change.field, change.newValue, lookupMaps),
     ]),
   ]
     .filter((value): value is string => typeof value === 'string')
@@ -91,16 +103,13 @@ export default function ActivityHistory({
   open,
   onOpenChange,
   dateStatuses,
+  venueStatuses: venueStatusesProp,
 }: {
   activityId: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
-  venueStatuses?: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
+  venueStatuses?: Array<{ id: number; name: string; displayName?: string }>;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,6 +121,15 @@ export default function ActivityHistory({
     new Set()
   );
   const addNoteMutation = useAddActivityHistoryNote();
+
+  const activityStatusesQuery = useActivityStatuses();
+  const timeStatusesQuery = useTimeStatuses();
+  const venueStatusesQuery = useVenueStatuses();
+  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
+  const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
+  const newsReleaseOriginsQuery = useNewsReleaseOrigins();
+  const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
+  const premierRequestedQuery = usePremierRequested();
 
   // Toggle expanded state for a history entry
   const toggleExpandedEntry = useCallback((entryId: number) => {
@@ -126,16 +144,55 @@ export default function ActivityHistory({
     });
   }, []);
 
-  // Create a map of date status ID to label for quick lookup
-  const dateStatusMap = useMemo(() => {
-    const map = new Map<number | string, string>();
-    if (dateStatuses) {
-      dateStatuses.forEach((status) => {
-        map.set(status.id, status.label);
-      });
+  const lookupMaps = useMemo((): LookupMaps => {
+    const toMap = (
+      items: Array<{ id: number; label: string }> | undefined
+    ): StatusLookupMap => {
+      const map = new Map<number | string, string>();
+      items?.forEach((item) => map.set(item.id, item.label));
+      return map;
+    };
+
+    const dateStatusMap = new Map<number | string, string>();
+    dateStatuses?.forEach((s) => dateStatusMap.set(s.id, s.label));
+
+    // Prefer prop-supplied venue statuses; fall back to query data
+    const venueStatusMap = new Map<number | string, string>();
+    if (venueStatusesProp) {
+      venueStatusesProp.forEach((s) =>
+        venueStatusMap.set(s.id, s.displayName ?? s.name)
+      );
+    } else {
+      venueStatusesQuery.data?.forEach((s) =>
+        venueStatusMap.set(s.id, s.displayName)
+      );
     }
-    return map;
-  }, [dateStatuses]);
+
+    return {
+      dateStatusMap,
+      venueStatusMap,
+      activityStatusMap: toMap(activityStatusesQuery.data),
+      timeStatusMap: toMap(timeStatusesQuery.data),
+      pitchRequiredStatusMap: toMap(pitchRequiredStatusesQuery.data),
+      translationsRequiredStatusMap: toMap(
+        translationRequiredStatusesQuery.data
+      ),
+      newsReleaseOriginMap: toMap(newsReleaseOriginsQuery.data),
+      newsReleaseDistributionMap: toMap(newsReleaseDistributionsQuery.data),
+      premierRequestedMap: toMap(premierRequestedQuery.data),
+    };
+  }, [
+    dateStatuses,
+    venueStatusesProp,
+    venueStatusesQuery.data,
+    activityStatusesQuery.data,
+    timeStatusesQuery.data,
+    pitchRequiredStatusesQuery.data,
+    translationRequiredStatusesQuery.data,
+    newsReleaseOriginsQuery.data,
+    newsReleaseDistributionsQuery.data,
+    premierRequestedQuery.data,
+  ]);
 
   const loadHistory = useCallback(async () => {
     if (!open) return;
@@ -159,10 +216,8 @@ export default function ActivityHistory({
 
   const filteredEntries = useMemo(
     () =>
-      entries.filter((entry) =>
-        matchesSearch(entry, searchQuery, dateStatusMap)
-      ),
-    [entries, searchQuery, dateStatusMap]
+      entries.filter((entry) => matchesSearch(entry, searchQuery, lookupMaps)),
+    [entries, searchQuery, lookupMaps]
   );
 
   // Categorize into Today / This week / Earlier using corp Pacific calendar
@@ -323,7 +378,7 @@ export default function ActivityHistory({
                                             {formatHistoryFieldValue(
                                               change.field,
                                               change.oldValue,
-                                              dateStatusMap
+                                              lookupMaps
                                             )}
                                           </span>{' '}
                                           →{' '}
@@ -331,7 +386,7 @@ export default function ActivityHistory({
                                             {formatHistoryFieldValue(
                                               change.field,
                                               change.newValue,
-                                              dateStatusMap
+                                              lookupMaps
                                             )}
                                           </span>
                                         </div>

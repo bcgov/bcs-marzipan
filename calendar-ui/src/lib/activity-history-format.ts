@@ -54,11 +54,22 @@ export function getHistoryFieldLabel(field: string): string {
 
 export type StatusLookupMap = Map<number | string, string>;
 
+export interface LookupMaps {
+  dateStatusMap?: StatusLookupMap;
+  venueStatusMap?: StatusLookupMap;
+  activityStatusMap?: StatusLookupMap;
+  timeStatusMap?: StatusLookupMap;
+  pitchRequiredStatusMap?: StatusLookupMap;
+  translationsRequiredStatusMap?: StatusLookupMap;
+  newsReleaseOriginMap?: StatusLookupMap;
+  newsReleaseDistributionMap?: StatusLookupMap;
+  premierRequestedMap?: StatusLookupMap;
+}
+
 export function formatHistoryFieldValue(
   field: string,
   value: unknown,
-  dateStatusMap?: StatusLookupMap,
-  venueStatusMap?: StatusLookupMap
+  lookupMaps?: LookupMaps
 ): string {
   if (value === null || value === undefined || value === '') {
     return '(empty)';
@@ -74,16 +85,76 @@ export function formatHistoryFieldValue(
     return t === '' ? '(empty)' : t;
   }
 
-  if (field === 'dateStatusId' && typeof value === 'number' && dateStatusMap) {
-    return dateStatusMap.get(value) || String(value);
+  if (
+    field === 'dateStatusId' &&
+    typeof value === 'number' &&
+    lookupMaps?.dateStatusMap
+  ) {
+    return lookupMaps.dateStatusMap.get(value) || String(value);
   }
 
   if (
     field === 'venueStatusId' &&
     typeof value === 'number' &&
-    venueStatusMap
+    lookupMaps?.venueStatusMap
   ) {
-    return venueStatusMap.get(value) || String(value);
+    return lookupMaps.venueStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'activityStatusId' &&
+    typeof value === 'number' &&
+    lookupMaps?.activityStatusMap
+  ) {
+    return lookupMaps.activityStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'timeStatusId' &&
+    typeof value === 'number' &&
+    lookupMaps?.timeStatusMap
+  ) {
+    return lookupMaps.timeStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'pitchRequiredStatusId' &&
+    typeof value === 'number' &&
+    lookupMaps?.pitchRequiredStatusMap
+  ) {
+    return lookupMaps.pitchRequiredStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'translationsRequiredStatusId' &&
+    typeof value === 'number' &&
+    lookupMaps?.translationsRequiredStatusMap
+  ) {
+    return lookupMaps.translationsRequiredStatusMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'newsReleaseOriginId' &&
+    typeof value === 'number' &&
+    lookupMaps?.newsReleaseOriginMap
+  ) {
+    return lookupMaps.newsReleaseOriginMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'newsReleaseDistributionId' &&
+    typeof value === 'number' &&
+    lookupMaps?.newsReleaseDistributionMap
+  ) {
+    return lookupMaps.newsReleaseDistributionMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'premierRequestedId' &&
+    typeof value === 'number' &&
+    lookupMaps?.premierRequestedMap
+  ) {
+    return lookupMaps.premierRequestedMap.get(value) || String(value);
   }
 
   if (
