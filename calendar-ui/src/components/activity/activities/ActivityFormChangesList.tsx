@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
+import { ExpandableText } from '@/components/shared';
 import {
   useActivityStatuses,
   useCategories,
@@ -8,8 +9,10 @@ import {
   useDateStatuses,
   useEventPlanners,
   useGovernmentRepresentatives,
+  useMinistries,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
+  useOrganizations,
   usePitchRequiredStatuses,
   usePremierRequested,
   useTags,
@@ -59,6 +62,8 @@ export function ActivityFormChangesList({
   const translationLanguagesQuery = useTranslationLanguages();
   const teamsQuery = useTeams();
   const governmentRepsQuery = useGovernmentRepresentatives();
+  const ministriesQuery = useMinistries();
+  const organizationsQuery = useOrganizations();
 
   const lookupMaps = useMemo((): LookupMaps => {
     const toMap = (
@@ -102,6 +107,16 @@ export function ActivityFormChangesList({
       governmentRepresentativesMap.set(r.id, r.displayName || r.name)
     );
 
+    const ministriesMap = new Map<number | string, string>();
+    ministriesQuery.data?.forEach((m) =>
+      ministriesMap.set(m.id, m.displayName ?? m.name)
+    );
+
+    const organizationsMap = new Map<number | string, string>();
+    organizationsQuery.data?.forEach((o) =>
+      organizationsMap.set(o.id, o.displayName ?? o.name)
+    );
+
     return {
       dateStatusMap: toMap(dateStatusesQuery.data),
       venueStatusMap,
@@ -121,6 +136,9 @@ export function ActivityFormChangesList({
       translationLanguagesMap,
       sharedWithTeamsMap: teamsMap,
       governmentRepresentativesMap,
+      teamsMap,
+      ministriesMap,
+      organizationsMap,
     };
   }, [
     dateStatusesQuery.data,
@@ -139,6 +157,8 @@ export function ActivityFormChangesList({
     translationLanguagesQuery.data,
     teamsQuery.data,
     governmentRepsQuery.data,
+    ministriesQuery.data,
+    organizationsQuery.data,
   ]);
 
   const visibleChanges = showAllChanges
@@ -158,19 +178,23 @@ export function ActivityFormChangesList({
                 {getHistoryFieldLabel(change.field)}:
               </strong>{' '}
               <span className="text-muted-foreground">
-                {formatHistoryFieldValue(
-                  change.field,
-                  change.oldValue,
-                  lookupMaps
-                )}
+                <ExpandableText
+                  text={formatHistoryFieldValue(
+                    change.field,
+                    change.oldValue,
+                    lookupMaps
+                  )}
+                />
               </span>{' '}
               &rarr;{' '}
               <span>
-                {formatHistoryFieldValue(
-                  change.field,
-                  change.newValue,
-                  lookupMaps
-                )}
+                <ExpandableText
+                  text={formatHistoryFieldValue(
+                    change.field,
+                    change.newValue,
+                    lookupMaps
+                  )}
+                />
               </span>
             </div>
           ))}

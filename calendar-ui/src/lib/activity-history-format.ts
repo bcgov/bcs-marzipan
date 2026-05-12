@@ -80,6 +80,12 @@ export interface LookupMaps {
   sharedWithTeamsMap?: StatusLookupMap;
   /** Resolves government representative IDs → display names */
   governmentRepresentativesMap?: StatusLookupMap;
+  /** Resolves leadTeamId → team display name */
+  teamsMap?: StatusLookupMap;
+  /** Resolves leadMinistryId → ministry display name */
+  ministriesMap?: StatusLookupMap;
+  /** Resolves leadOrgId → organization display name */
+  organizationsMap?: StatusLookupMap;
 }
 
 /** Resolve an array of numeric IDs to a comma-separated list of display names. */
@@ -109,7 +115,7 @@ export function formatHistoryFieldValue(
   ) {
     const t = plainTextFromActivityRichField(value);
     if (t === '') return '(empty)';
-    return t.length > 200 ? `${t.slice(0, 200)}…` : t;
+    return t;
   }
 
   // Resolve user FK fields (lastUpdatedBy, createdBy) to display names
@@ -193,11 +199,35 @@ export function formatHistoryFieldValue(
     return lookupMaps.premierRequestedMap.get(value) || String(value);
   }
 
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
   if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
+    field === 'leadTeamId' &&
+    typeof value === 'number' &&
+    lookupMaps?.teamsMap
   ) {
+    return lookupMaps.teamsMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'leadMinistryId' &&
+    typeof value === 'number' &&
+    lookupMaps?.ministriesMap
+  ) {
+    return lookupMaps.ministriesMap.get(value) || String(value);
+  }
+
+  if (
+    field === 'leadOrgId' &&
+    typeof value === 'number' &&
+    lookupMaps?.organizationsMap
+  ) {
+    return lookupMaps.organizationsMap.get(value) || String(value);
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
     return String(value);
   }
 

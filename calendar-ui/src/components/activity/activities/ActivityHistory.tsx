@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
-import { ErrorState } from '@/components/shared';
+import { ErrorState, ExpandableText } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,8 +24,10 @@ import {
   useCommsMaterials,
   useEventPlanners,
   useGovernmentRepresentatives,
+  useMinistries,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
+  useOrganizations,
   usePitchRequiredStatuses,
   usePremierRequested,
   useTags,
@@ -146,6 +148,8 @@ export default function ActivityHistory({
   const translationLanguagesQuery = useTranslationLanguages();
   const teamsQuery = useTeams();
   const governmentRepsQuery = useGovernmentRepresentatives();
+  const ministriesQuery = useMinistries();
+  const organizationsQuery = useOrganizations();
 
   // Toggle expanded state for a history entry
   const toggleExpandedEntry = useCallback((entryId: number) => {
@@ -215,6 +219,16 @@ export default function ActivityHistory({
       governmentRepresentativesMap.set(r.id, r.displayName || r.name)
     );
 
+    const ministriesMap = new Map<number | string, string>();
+    ministriesQuery.data?.forEach((m) =>
+      ministriesMap.set(m.id, m.displayName ?? m.name)
+    );
+
+    const organizationsMap = new Map<number | string, string>();
+    organizationsQuery.data?.forEach((o) =>
+      organizationsMap.set(o.id, o.displayName ?? o.name)
+    );
+
     return {
       dateStatusMap,
       venueStatusMap,
@@ -235,6 +249,9 @@ export default function ActivityHistory({
       translationLanguagesMap,
       sharedWithTeamsMap: teamsMap,
       governmentRepresentativesMap,
+      teamsMap,
+      ministriesMap,
+      organizationsMap,
     };
   }, [
     dateStatuses,
@@ -255,6 +272,8 @@ export default function ActivityHistory({
     translationLanguagesQuery.data,
     teamsQuery.data,
     governmentRepsQuery.data,
+    ministriesQuery.data,
+    organizationsQuery.data,
   ]);
 
   const loadHistory = useCallback(async () => {
@@ -438,19 +457,23 @@ export default function ActivityHistory({
                                             :
                                           </strong>{' '}
                                           <span className="text-muted-foreground">
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.oldValue,
-                                              lookupMaps
-                                            )}
+                                            <ExpandableText
+                                              text={formatHistoryFieldValue(
+                                                change.field,
+                                                change.oldValue,
+                                                lookupMaps
+                                              )}
+                                            />
                                           </span>{' '}
                                           →{' '}
                                           <span>
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.newValue,
-                                              lookupMaps
-                                            )}
+                                            <ExpandableText
+                                              text={formatHistoryFieldValue(
+                                                change.field,
+                                                change.newValue,
+                                                lookupMaps
+                                              )}
+                                            />
                                           </span>
                                         </div>
                                       ))}
