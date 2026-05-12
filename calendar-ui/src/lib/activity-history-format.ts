@@ -64,6 +64,30 @@ export interface LookupMaps {
   newsReleaseOriginMap?: StatusLookupMap;
   newsReleaseDistributionMap?: StatusLookupMap;
   premierRequestedMap?: StatusLookupMap;
+  /** Resolves lastUpdatedBy / createdBy user IDs → display names */
+  usersMap?: StatusLookupMap;
+  /** Resolves event planner lookup IDs → display names */
+  eventPlannersMap?: StatusLookupMap;
+  /** Resolves category IDs → names */
+  categoriesMap?: StatusLookupMap;
+  /** Resolves tag IDs → names */
+  tagsMap?: StatusLookupMap;
+  /** Resolves comms-material IDs → names */
+  commsMaterialsMap?: StatusLookupMap;
+  /** Resolves translation-language IDs → names */
+  translationLanguagesMap?: StatusLookupMap;
+  /** Resolves shared-with team IDs → names */
+  sharedWithTeamsMap?: StatusLookupMap;
+}
+
+/** Resolve an array of numeric IDs to a comma-separated list of display names. */
+function resolveIdArray(
+  ids: (number | string)[],
+  map?: StatusLookupMap
+): string {
+  if (ids.length === 0) return '(none)';
+  if (!map) return `${ids.length} item(s)`;
+  return ids.map((id) => map.get(id) ?? `#${id}`).join(', ');
 }
 
 export function formatHistoryFieldValue(
@@ -82,7 +106,17 @@ export function formatHistoryFieldValue(
     typeof value === 'string'
   ) {
     const t = plainTextFromActivityRichField(value);
-    return t === '' ? '(empty)' : t;
+    if (t === '') return '(empty)';
+    return t.length > 200 ? `${t.slice(0, 200)}…` : t;
+  }
+
+  // Resolve user FK fields (lastUpdatedBy, createdBy) to display names
+  if (
+    (field === 'lastUpdatedBy' || field === 'createdBy') &&
+    typeof value === 'number' &&
+    lookupMaps?.usersMap
+  ) {
+    return lookupMaps.usersMap.get(value) || String(value);
   }
 
   if (
@@ -169,6 +203,39 @@ export function formatHistoryFieldValue(
     return JSON.stringify(value);
   }
 
+  // Resolve ID arrays to display names when lookup maps are available
+  if (field === 'categoryIds' && Array.isArray(value)) {
+    return resolveIdArray(
+      value as (number | string)[],
+      lookupMaps?.categoriesMap
+    );
+  }
+
+  if (field === 'tagIds' && Array.isArray(value)) {
+    return resolveIdArray(value as (number | string)[], lookupMaps?.tagsMap);
+  }
+
+  if (field === 'commsMaterialIds' && Array.isArray(value)) {
+    return resolveIdArray(
+      value as (number | string)[],
+      lookupMaps?.commsMaterialsMap
+    );
+  }
+
+  if (field === 'translationLanguageIds' && Array.isArray(value)) {
+    return resolveIdArray(
+      value as (number | string)[],
+      lookupMaps?.translationLanguagesMap
+    );
+  }
+
+  if (field === 'sharedWithTeamIds' && Array.isArray(value)) {
+    return resolveIdArray(
+      value as (number | string)[],
+      lookupMaps?.sharedWithTeamsMap
+    );
+  }
+
   if (field === 'venueAddress') {
     const addr = value as Record<string, unknown>;
     const parts = [];
@@ -179,7 +246,7 @@ export function formatHistoryFieldValue(
     if (typeof addr.provinceOrState === 'string')
       parts.push(addr.provinceOrState);
     if (typeof addr.country === 'string') parts.push(addr.country);
-    return parts.length > 0 ? parts.join(', ') : '(address)';
+    return parts.length > 0 ? parts.join(', ') : '(address set)';
   }
 
   if (field === 'eventPlanners') {
@@ -190,7 +257,19 @@ export function formatHistoryFieldValue(
         isLead?: boolean;
       }>;
       const names = planners
-        .map((p) => p.eventPlannerName ?? `ID ${p.eventPlannerId}`)
+        .map((p) => {
+          if (p.eventPlannerName) return p.eventPlannerName;
+          if (
+            typeof p.eventPlannerId === 'number' &&
+            lookupMaps?.eventPlannersMap
+          ) {
+            return (
+              lookupMaps.eventPlannersMap.get(p.eventPlannerId) ??
+              `ID ${p.eventPlannerId}`
+            );
+          }
+          return `ID ${p.eventPlannerId}`;
+        })
         .join(', ');
       return names || '(no event planners)';
     }

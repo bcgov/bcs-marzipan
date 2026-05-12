@@ -1064,8 +1064,6 @@ export function ActivityPage({
         open={showLeaveConfirm}
         onOpenChange={setShowLeaveConfirm}
         changes={discardModalChanges}
-        dateStatuses={lookups.dateStatuses}
-        venueStatuses={lookups.venueStatuses}
         onReturnToEdit={() => setShowLeaveConfirm(false)}
         onDiscard={() => void handleConfirmLeave()}
       />
@@ -1076,8 +1074,6 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        dateStatuses={lookups.dateStatuses}
-        venueStatuses={lookups.venueStatuses}
         onConfirm={(notes) => void handleConfirmedSubmit(notes)}
         isSubmitting={isSubmitting}
       />

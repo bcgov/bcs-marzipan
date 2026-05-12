@@ -20,12 +20,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
+  useCategories,
+  useCommsMaterials,
+  useEventPlanners,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   usePitchRequiredStatuses,
   usePremierRequested,
+  useTags,
+  useTeams,
   useTimeStatuses,
+  useTranslationLanguages,
   useTranslationRequiredStatuses,
+  useUsers,
   useVenueStatuses,
 } from '@/hooks/useLookups';
 import {
@@ -130,6 +137,13 @@ export default function ActivityHistory({
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
   const premierRequestedQuery = usePremierRequested();
+  const usersQuery = useUsers();
+  const eventPlannersQuery = useEventPlanners();
+  const categoriesQuery = useCategories();
+  const tagsQuery = useTags();
+  const commsMaterialsQuery = useCommsMaterials();
+  const translationLanguagesQuery = useTranslationLanguages();
+  const teamsQuery = useTeams();
 
   // Toggle expanded state for a history entry
   const toggleExpandedEntry = useCallback((entryId: number) => {
@@ -168,6 +182,32 @@ export default function ActivityHistory({
       );
     }
 
+    const usersMap = new Map<number | string, string>();
+    usersQuery.data?.forEach((u) => usersMap.set(u.id, u.label));
+
+    const teamsMap = new Map<number | string, string>();
+    teamsQuery.data?.forEach((t) =>
+      teamsMap.set(t.id, t.displayName ?? t.name)
+    );
+
+    const categoriesMap = new Map<number | string, string>();
+    categoriesQuery.data?.forEach((c) =>
+      categoriesMap.set(c.id, c.displayName ?? c.name)
+    );
+
+    const tagsMap = new Map<number | string, string>();
+    tagsQuery.data?.forEach((t) => tagsMap.set(t.id, t.label));
+
+    const commsMaterialsMap = new Map<number | string, string>();
+    commsMaterialsQuery.data?.forEach((m) =>
+      commsMaterialsMap.set(m.id, m.displayName ?? m.name)
+    );
+
+    const translationLanguagesMap = new Map<number | string, string>();
+    translationLanguagesQuery.data?.forEach((l) =>
+      translationLanguagesMap.set(l.id, l.displayName ?? l.name)
+    );
+
     return {
       dateStatusMap,
       venueStatusMap,
@@ -180,6 +220,13 @@ export default function ActivityHistory({
       newsReleaseOriginMap: toMap(newsReleaseOriginsQuery.data),
       newsReleaseDistributionMap: toMap(newsReleaseDistributionsQuery.data),
       premierRequestedMap: toMap(premierRequestedQuery.data),
+      usersMap,
+      eventPlannersMap: toMap(eventPlannersQuery.data),
+      categoriesMap,
+      tagsMap,
+      commsMaterialsMap,
+      translationLanguagesMap,
+      sharedWithTeamsMap: teamsMap,
     };
   }, [
     dateStatuses,
@@ -192,6 +239,13 @@ export default function ActivityHistory({
     newsReleaseOriginsQuery.data,
     newsReleaseDistributionsQuery.data,
     premierRequestedQuery.data,
+    usersQuery.data,
+    eventPlannersQuery.data,
+    categoriesQuery.data,
+    tagsQuery.data,
+    commsMaterialsQuery.data,
+    translationLanguagesQuery.data,
+    teamsQuery.data,
   ]);
 
   const loadHistory = useCallback(async () => {

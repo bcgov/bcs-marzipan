@@ -17,12 +17,6 @@ type DiscardActivityChangesDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   changes: HistoryChange[];
-  dateStatuses?: Array<{ id: string | number; label: string }>;
-  venueStatuses?: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
   onReturnToEdit: () => void;
   onDiscard: () => void;
   isDiscarding?: boolean;
@@ -32,8 +26,6 @@ export function DiscardActivityChangesDialog({
   open,
   onOpenChange,
   changes,
-  dateStatuses,
-  venueStatuses,
   onReturnToEdit,
   onDiscard,
   isDiscarding = false,
@@ -52,8 +44,6 @@ export function DiscardActivityChangesDialog({
           <ActivityFormChangesList
             key={open ? 'discard-open' : 'discard-closed'}
             changes={changes}
-            dateStatuses={dateStatuses}
-            venueStatuses={venueStatuses}
           />
         </div>
 
