@@ -23,6 +23,7 @@ import {
   useCategories,
   useCommsMaterials,
   useEventPlanners,
+  useGovernmentRepresentatives,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   usePitchRequiredStatuses,
@@ -144,6 +145,7 @@ export default function ActivityHistory({
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
   const teamsQuery = useTeams();
+  const governmentRepsQuery = useGovernmentRepresentatives();
 
   // Toggle expanded state for a history entry
   const toggleExpandedEntry = useCallback((entryId: number) => {
@@ -208,6 +210,11 @@ export default function ActivityHistory({
       translationLanguagesMap.set(l.id, l.displayName ?? l.name)
     );
 
+    const governmentRepresentativesMap = new Map<number | string, string>();
+    governmentRepsQuery.data?.forEach((r) =>
+      governmentRepresentativesMap.set(r.id, r.displayName || r.name)
+    );
+
     return {
       dateStatusMap,
       venueStatusMap,
@@ -227,6 +234,7 @@ export default function ActivityHistory({
       commsMaterialsMap,
       translationLanguagesMap,
       sharedWithTeamsMap: teamsMap,
+      governmentRepresentativesMap,
     };
   }, [
     dateStatuses,
@@ -246,6 +254,7 @@ export default function ActivityHistory({
     commsMaterialsQuery.data,
     translationLanguagesQuery.data,
     teamsQuery.data,
+    governmentRepsQuery.data,
   ]);
 
   const loadHistory = useCallback(async () => {

@@ -7,6 +7,7 @@ import {
   useCommsMaterials,
   useDateStatuses,
   useEventPlanners,
+  useGovernmentRepresentatives,
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   usePitchRequiredStatuses,
@@ -57,6 +58,7 @@ export function ActivityFormChangesList({
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
   const teamsQuery = useTeams();
+  const governmentRepsQuery = useGovernmentRepresentatives();
 
   const lookupMaps = useMemo((): LookupMaps => {
     const toMap = (
@@ -95,6 +97,11 @@ export function ActivityFormChangesList({
       translationLanguagesMap.set(l.id, l.displayName ?? l.name)
     );
 
+    const governmentRepresentativesMap = new Map<number | string, string>();
+    governmentRepsQuery.data?.forEach((r) =>
+      governmentRepresentativesMap.set(r.id, r.displayName || r.name)
+    );
+
     return {
       dateStatusMap: toMap(dateStatusesQuery.data),
       venueStatusMap,
@@ -113,6 +120,7 @@ export function ActivityFormChangesList({
       commsMaterialsMap,
       translationLanguagesMap,
       sharedWithTeamsMap: teamsMap,
+      governmentRepresentativesMap,
     };
   }, [
     dateStatusesQuery.data,
@@ -130,6 +138,7 @@ export function ActivityFormChangesList({
     commsMaterialsQuery.data,
     translationLanguagesQuery.data,
     teamsQuery.data,
+    governmentRepsQuery.data,
   ]);
 
   const visibleChanges = showAllChanges

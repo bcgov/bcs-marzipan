@@ -78,6 +78,8 @@ export interface LookupMaps {
   translationLanguagesMap?: StatusLookupMap;
   /** Resolves shared-with team IDs → names */
   sharedWithTeamsMap?: StatusLookupMap;
+  /** Resolves government representative IDs → display names */
+  governmentRepresentativesMap?: StatusLookupMap;
 }
 
 /** Resolve an array of numeric IDs to a comma-separated list of display names. */
@@ -282,7 +284,18 @@ export function formatHistoryFieldValue(
         representativeName?: string;
       }>;
       const names = reps
-        .map((r) => r.representativeName || `Rep ${r.representativeId}`)
+        .map((r) => {
+          if (r.representativeId) {
+            return (
+              lookupMaps?.governmentRepresentativesMap?.get(
+                r.representativeId
+              ) ??
+              r.representativeName ??
+              `Rep ${r.representativeId}`
+            );
+          }
+          return r.representativeName || `Rep ${r.representativeId}`;
+        })
         .join(', ');
       return names || '(no representatives)';
     }
