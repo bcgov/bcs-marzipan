@@ -227,6 +227,23 @@ export function formatHistoryFieldValue(
     return lookupMaps.organizationsMap.get(value) || String(value);
   }
 
+  if (field === 'visibility' && typeof value === 'string') {
+    const VISIBILITY_LABELS: Record<string, string> = {
+      global: 'Global',
+      team: 'Team only',
+    };
+    return VISIBILITY_LABELS[value] ?? value;
+  }
+
+  if (field === 'lookAheadStatus' && typeof value === 'string') {
+    const LOOK_AHEAD_STATUS_LABELS: Record<string, string> = {
+      none: 'None',
+      new: 'New',
+      changed: 'Changed',
+    };
+    return LOOK_AHEAD_STATUS_LABELS[value] ?? value;
+  }
+
   if (typeof value === 'string' || typeof value === 'number') {
     return String(value);
   }

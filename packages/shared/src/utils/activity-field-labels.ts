@@ -57,6 +57,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   leadTeamId: 'Lead team',
   leadMinistryId: 'Lead ministry',
   leadOrgId: 'Lead organization',
+  leadOrgName: 'Lead organization name',
   commsContactLeadId: 'Comms lead',
   commsContacts: 'Comms contacts',
   eventPlanners: 'Event planners',
