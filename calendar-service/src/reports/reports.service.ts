@@ -38,6 +38,7 @@ import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
+import { mergePdfBuffersInOrder } from './merge-report-pdfs';
 import { PdfGeneratorService } from './pdf-generator.service';
 import {
   buildLookAheadReportCoverDataUrl,
@@ -607,14 +608,40 @@ export class ReportsService {
       reportType,
       data
     );
-    const html = wrapReportHtmlDocument(inner, {
-      fontFaceCss,
-      coverPageHtml,
-    });
     const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
     const headerTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)
       ? buildLookAheadReportPdfHeaderTemplateHtml()
       : undefined;
+
+    const useSplitCoverPdf =
+      REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType) &&
+      coverPageHtml.length > 0;
+
+    if (useSplitCoverPdf) {
+      const coverHtml = wrapReportHtmlDocument('', {
+        fontFaceCss,
+        coverPageHtml,
+        includePdfFooterHintLine: false,
+        coverStandalonePdf: true,
+      });
+      const bodyHtml = wrapReportHtmlDocument(inner, { fontFaceCss });
+      const [coverBuffer, bodyBuffer] = await Promise.all([
+        this.pdfGeneratorService.generatePdfFromHtmlCover(
+          coverHtml,
+          headerTemplate ?? buildLookAheadReportPdfHeaderTemplateHtml()
+        ),
+        this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
+          footerTemplate,
+          headerTemplate,
+        }),
+      ]);
+      return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
+    }
+
+    const html = wrapReportHtmlDocument(inner, {
+      fontFaceCss,
+      coverPageHtml,
+    });
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
       headerTemplate,

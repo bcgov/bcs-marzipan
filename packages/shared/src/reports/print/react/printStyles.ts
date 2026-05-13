@@ -557,6 +557,14 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 
 @media print {
+  /*
+   * Standalone cover PDF (merged with body in a second pass): do not force a page break after
+   * the only cover block — avoids a trailing blank Letter page before the merger appends pages.
+   */
+  .corpcal-print-pdf-cover-sheet-only-doc .corpcal-print-cover-sheet {
+    page-break-after: auto;
+    break-after: auto;
+  }
   /* One-page cover sits ahead of report body in PDF HTML; keep it above body content. */
   .corpcal-print-cover-sheet {
     z-index: 2;

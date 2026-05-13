@@ -8,6 +8,7 @@ import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
 import {
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
+  wrapPrintReportHtmlDocument,
 } from './renderReport';
 
 const BASE_ACTIVITY: ActivityResponse = {
@@ -570,5 +571,36 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(coverIdx).toBeGreaterThan(-1);
     expect(hintIdx).toBeGreaterThan(coverIdx);
     expect(bodyReportIdx).toBeGreaterThan(hintIdx);
+  });
+});
+
+describe('wrapPrintReportHtmlDocument', () => {
+  it('omits Changed hint markup when includePdfFooterHintLine is false', () => {
+    const coverPageHtml =
+      '<div class="corpcal-print-cover-sheet"><div class="corpcal-print-cover-inner"></div></div>';
+    const html = wrapPrintReportHtmlDocument('', {
+      coverPageHtml,
+      includePdfFooterHintLine: false,
+      coverStandalonePdf: true,
+    });
+
+    expect(html).toContain(coverPageHtml);
+    expect(html).not.toContain('<div class="corpcal-print-pdf-footer-hint-line"');
+    expect(html).not.toContain('* <strong>Changed</strong>');
+  });
+
+  it('adds cover-only body class when coverStandalonePdf is true', () => {
+    const html = wrapPrintReportHtmlDocument('', {
+      coverStandalonePdf: true,
+    });
+
+    expect(html).toContain('class="corpcal-print-pdf-cover-sheet-only-doc"');
+  });
+
+  it('omits body class when coverStandalonePdf is false', () => {
+    const html = wrapPrintReportHtmlDocument('<div></div>', {});
+
+    expect(html).not.toContain('class="corpcal-print-pdf-cover-sheet-only-doc"');
+    expect(html).toMatch(/<body style="margin:0;background:#fff;">/);
   });
 });

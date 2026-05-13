@@ -127,6 +127,16 @@ export type WrapPrintReportHtmlDocumentOptions = {
   fontFaceCss?: string;
   /** Prepended inside `<body>` before the report fragment (e.g. PDF-only cover). */
   coverPageHtml?: string;
+  /**
+   * When false, omits {@link PrintPdfFooterHintLine} markup (standalone cover Puppeteer docs).
+   * Default true.
+   */
+  includePdfFooterHintLine?: boolean;
+  /**
+   * Sets a body class so print CSS relaxes `.corpcal-print-cover-sheet` break-after — avoids a
+   * trailing blank page when the HTML is cover-only inside one PDF.
+   */
+  coverStandalonePdf?: boolean;
 };
 
 export function wrapPrintReportHtmlDocument(
@@ -135,8 +145,13 @@ export function wrapPrintReportHtmlDocument(
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
   const coverPageHtml = options.coverPageHtml ?? '';
-  const pdfFooterHintLineHtml = printPdfFooterHintLineHtml();
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${coverPageHtml}${pdfFooterHintLineHtml}${fragmentHtml}</body></html>`;
+  const includeHint = options.includePdfFooterHintLine !== false;
+  const hintHtml = includeHint ? printPdfFooterHintLineHtml() : '';
+  const bodyClass = options.coverStandalonePdf
+    ? 'corpcal-print-pdf-cover-sheet-only-doc'
+    : '';
+  const bodyClassAttr = bodyClass ? ` class="${bodyClass}"` : '';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${hintHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

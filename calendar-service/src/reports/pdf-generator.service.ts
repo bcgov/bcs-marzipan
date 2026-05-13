@@ -91,9 +91,59 @@ export class PdfGeneratorService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Letter PDF for a standalone cover sheet: same top header band as body
+   * ({@link REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS}), no footer margin or
+   * visible footer band. Used before merging with {@link generatePdfFromHtml}.
+   */
+  async generatePdfFromHtmlCover(
+    html: string,
+    headerTemplate: string
+  ): Promise<Buffer> {
+    const invisibleFooter =
+      '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>';
+    const pdfOptions: PDFOptions = {
+      ...BASE_PDF_OPTIONS,
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate: invisibleFooter,
+      margin: {
+        top: REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS,
+        bottom: '0',
+        left: '0',
+        right: '0',
+      },
+    };
+    return this.generatePdfWithOptions(html, pdfOptions);
+  }
+
   async generatePdfFromHtml(
     html: string,
     options: GenerateReportPdfOptions
+  ): Promise<Buffer> {
+    const headerTemplate =
+      options.headerTemplate ??
+      '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>';
+    const pdfOptions: PDFOptions = {
+      ...BASE_PDF_OPTIONS,
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate: options.footerTemplate,
+      margin: {
+        top: options.headerTemplate
+          ? REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS
+          : '0',
+        bottom: REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
+        left: '0',
+        right: '0',
+      },
+    };
+    return this.generatePdfWithOptions(html, pdfOptions);
+  }
+
+  private async generatePdfWithOptions(
+    html: string,
+    pdfOptions: PDFOptions
   ): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
@@ -114,23 +164,6 @@ export class PdfGeneratorService implements OnModuleDestroy {
           `document.fonts.ready did not resolve: ${String(err)}. Continuing.`
         );
       }
-      const headerTemplate =
-        options.headerTemplate ??
-        '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>';
-      const pdfOptions: PDFOptions = {
-        ...BASE_PDF_OPTIONS,
-        displayHeaderFooter: true,
-        headerTemplate,
-        footerTemplate: options.footerTemplate,
-        margin: {
-          top: options.headerTemplate
-            ? REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS
-            : '0',
-          bottom: REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
-          left: '0',
-          right: '0',
-        },
-      };
       const pdf = await page.pdf(pdfOptions);
       return Buffer.from(pdf);
     } finally {
