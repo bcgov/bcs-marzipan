@@ -4,8 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BannerSettings } from '@corpcal/shared/api/types';
-import logo from '@corpcal/shared/assets/logo/bc-logo.svg';
 import { fetchActiveBanner } from '@/api/bannerApi';
+import logo from '@/assets/Logo.svg';
 import { MOCK_USERS } from '@/components/shared/UserSwitcher';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
