@@ -63,23 +63,17 @@ function PrintReportPreviewRoot({
   data: ReportDataResponse;
   activityBaseUrl: string;
 }) {
-  // Inlined once per preview mount — classname-scoped so rules never leak.
-  const generatedAt = new Date();
-
   let document: ReactNode;
   if (reportTypeName === 'planning') {
     document = <PrintPlanningDocument />;
   } else if (reportTypeName === 'custom') {
-    document = (
-      <PrintCustomReportDocument data={data} generatedAt={generatedAt} />
-    );
+    document = <PrintCustomReportDocument data={data} />;
   } else {
     document = (
       <PrintReportDocument
         data={data}
         variant={reportTypeName === 'exec' ? 'exec' : 'lookAhead'}
         activityBaseUrl={activityBaseUrl}
-        generatedAt={generatedAt}
       />
     );
   }

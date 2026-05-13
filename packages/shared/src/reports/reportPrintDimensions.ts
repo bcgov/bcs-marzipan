@@ -19,3 +19,10 @@ export const REPORT_LETTER_CONTENT_WIDTH_PX = 816 as const;
  */
 export const REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS =
   `${REPORT_PRINT_LAYOUT_WIDTH_PX}px` as const;
+
+/**
+ * Bottom margin for Puppeteer `page.pdf({ margin: { bottom } })` when using
+ * `displayHeaderFooter` + {@link buildReportPdfFooterTemplateHtml}. Must be
+ * large enough for the template block; tune if footer copy or font size changes.
+ */
+export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS = '108px' as const;

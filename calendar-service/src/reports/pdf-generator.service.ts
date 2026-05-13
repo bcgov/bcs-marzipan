@@ -7,6 +7,7 @@ import puppeteer, {
 
 import {
   REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
 } from '@corpcal/shared/reports/reportPrintHtml';
 
@@ -14,16 +15,23 @@ import {
 const PDF_LAYOUT_TO_LETTER_SCALE =
   REPORT_LETTER_CONTENT_WIDTH_PX / REPORT_PRINT_LAYOUT_WIDTH_PX;
 
+export type GenerateReportPdfOptions = {
+  /** Puppeteer `footerTemplate` HTML; enables `displayHeaderFooter` and bottom margin. */
+  footerTemplate: string;
+};
+
 /**
  * Print-aligned report PDFs: viewport matches shared layout width so HTML
  * line breaks match the in-app “PDF width” preview. `scale` shrinks that
  * layout onto US Letter without reflow.
  *
- * Page format is Letter (8.5×11in). Margins are zero. `preferCSSPageSize`
- * respects `@page` when present; if output clips in QA, revisit relative to
- * `scale`.
+ * Page format is Letter (8.5×11in). Body margins are zero. With
+ * {@link GenerateReportPdfOptions.footerTemplate}, Chromium reserves
+ * {@link REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS} at the bottom for that band.
+ * `preferCSSPageSize` respects `@page` when present; if output clips in QA,
+ * revisit relative to `scale`.
  */
-const DEFAULT_PDF_OPTIONS: PDFOptions = {
+const BASE_PDF_OPTIONS: PDFOptions = {
   format: 'Letter',
   printBackground: true,
   preferCSSPageSize: true,
@@ -78,7 +86,10 @@ export class PdfGeneratorService implements OnModuleDestroy {
     }
   }
 
-  async generatePdfFromHtml(html: string): Promise<Buffer> {
+  async generatePdfFromHtml(
+    html: string,
+    options: GenerateReportPdfOptions
+  ): Promise<Buffer> {
     const browser = await this.getBrowser();
     const page = await browser.newPage();
     try {
@@ -98,7 +109,18 @@ export class PdfGeneratorService implements OnModuleDestroy {
           `document.fonts.ready did not resolve: ${String(err)}. Continuing.`
         );
       }
-      const pdf = await page.pdf(DEFAULT_PDF_OPTIONS);
+      const pdfOptions: PDFOptions = {
+        ...BASE_PDF_OPTIONS,
+        displayHeaderFooter: true,
+        headerTemplate:
+          '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>',
+        footerTemplate: options.footerTemplate,
+        margin: {
+          ...BASE_PDF_OPTIONS.margin,
+          bottom: REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
+        },
+      };
+      const pdf = await page.pdf(pdfOptions);
       return Buffer.from(pdf);
     } finally {
       await page.close().catch(() => undefined);

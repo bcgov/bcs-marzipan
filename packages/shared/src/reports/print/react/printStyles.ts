@@ -22,10 +22,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-ink-faint: var(--corpcal-table-cell-subtle-fg);
   --print-border: var(--corpcal-table-border);
   --print-border-soft: color-mix(in oklch, var(--corpcal-table-border) 70%, transparent);
-  --print-header-bg: var(--corpcal-table-header-bg);
-  --print-header-fg: var(--corpcal-table-header-fg);
-  --print-banner-bg: var(--corpcal-table-row-alt-bg);
-  --print-banner-fg: var(--corpcal-table-cell-muted-fg);
   --print-section-fg: var(--corpcal-text);
   --print-zebra: var(--corpcal-table-row-alt-bg);
   --print-accent-red: var(--corpcal-print-accent-red);
@@ -70,49 +66,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .${CORPCAL_PRINT_ROOT_CLASS} a.corpcal-print-link:hover {
   text-decoration: none;
-}
-
-.corpcal-print-header {
-  background: var(--print-header-bg);
-  color: var(--print-header-fg);
-  padding: 18px 24px 14px;
-  position: relative;
-}
-.corpcal-print-header-title {
-  margin: 0;
-  font-size: calc(1em * 20 / 12);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.corpcal-print-header-range {
-  margin: 6px 0 0;
-  font-size: 1em;
-  font-weight: 400;
-  opacity: 0.95;
-}
-.corpcal-print-header-confidential {
-  position: absolute;
-  top: 18px;
-  right: 24px;
-  font-size: 1em;
-  font-weight: 700;
-  color: var(--corpcal-text-alert);
-  letter-spacing: 0.06em;
-}
-
-.corpcal-print-banner {
-  background: var(--print-banner-bg);
-  border-bottom: 1px solid var(--print-border);
-  padding: 8px 24px;
-  font-size: 1em;
-  font-weight: 700;
-  color: var(--print-banner-fg);
-}
-.corpcal-print-banner-sub {
-  display: block;
-  font-weight: 400;
-  color: var(--print-ink-muted);
-  margin-top: 2px;
 }
 
 .corpcal-print-body {
@@ -551,33 +504,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--corpcal-text);
 }
 
-.corpcal-print-page-footer {
-  margin-top: 16px;
-  padding: 10px 24px 14px;
-  font-size: 1em;
-  line-height: 1.45;
-  color: var(--print-ink-muted);
-  border-top: 1px solid var(--print-border-soft);
-  background: var(--corpcal-surface);
-}
-.corpcal-print-page-footer-line + .corpcal-print-page-footer-line {
-  margin-top: 4px;
-}
-.corpcal-print-page-footer-confidential {
-  font-size: 1em;
-  font-weight: 700;
-  color: var(--corpcal-text-alert);
-  letter-spacing: 0.04em;
-}
-.corpcal-print-page-footer-timestamp {
-  font-size: 1em;
-  color: var(--print-ink);
-}
-.corpcal-print-page-footer-hint {
-  font-size: 1em;
-  color: var(--print-ink-muted);
-}
-
 /* Preview-only sticky stacking for the look-ahead rollup table. Wrapped in
    .corpcal-print-preview-shell so the same PRINT_STYLES string that powers the
    Puppeteer PDF stays unaffected (the wrapper is only injected by the in-app
@@ -617,24 +543,9 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 
 @media print {
-  /* Cover is a body sibling before the report; fixed footer would otherwise print on
-     every sheet. Stack the one-page cover above the footer so sheet 1 has no footer. */
+  /* One-page cover sits ahead of report body in PDF HTML; keep it above body content. */
   .corpcal-print-cover-sheet {
     z-index: 2;
-  }
-  .corpcal-print-root:has(> .corpcal-print-page-footer),
-  .custom-report-root:has(> .corpcal-print-page-footer) {
-    padding-bottom: 5.5rem;
-    position: relative;
-    z-index: 0;
-  }
-  .corpcal-print-page-footer {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-    margin-top: 0;
   }
   .${CORPCAL_PRINT_ROOT_CLASS} {
     font-size: var(--print-body-font-size);

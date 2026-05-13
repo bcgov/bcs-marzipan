@@ -20,6 +20,7 @@ import {
   serializeReportTableToCsv,
 } from '@corpcal/shared/reports/reportExportFormat';
 import {
+  buildReportPdfFooterTemplateHtml,
   getReportTemplateHtml,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
@@ -591,6 +592,7 @@ export class ReportsService {
     data: ReportDataResponse
   ): Promise<Buffer> {
     const activityBaseUrl = this.getPublicAppBaseUrl();
+    const generatedAt = new Date();
     const inner = getReportTemplateHtml(reportType, data, {
       activityBaseUrl,
     }).trim();
@@ -608,7 +610,10 @@ export class ReportsService {
       fontFaceCss,
       coverPageHtml,
     });
-    return this.pdfGeneratorService.generatePdfFromHtml(html);
+    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
+    return this.pdfGeneratorService.generatePdfFromHtml(html, {
+      footerTemplate,
+    });
   }
 }
 

@@ -2,8 +2,6 @@ import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { resolveLookAheadSectionRows } from '../../look-ahead';
 import { dateKeyLocal, formatDayHeading } from './dateFormatters';
-import { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
-import { PrintPageFooter } from './PrintPageFooter';
 import {
   PrintGroupedSectionTable,
   type PrintGroupedSectionDayBlock,
@@ -78,8 +76,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
     .map((section) => ({
       id: section.id,
       name: section.name,
-      printHeadingLabel:
-        printHeadingById.get(section.id) ?? section.name,
+      printHeadingLabel: printHeadingById.get(section.id) ?? section.name,
       legendColor: legendColorById.get(section.id) ?? null,
       showPerDayPrintChrome:
         showPerDayChromeById.get(section.id) ??
@@ -100,7 +97,7 @@ function reportHasAnyActivities(sections: SortedSection[]): boolean {
 }
 
 /**
- * Top-level print document. Drives the shell (header, banner, contents, footer)
+ * Top-level print document. Drives the shell (header, banner, contents)
  * and walks sections in report order, then days within each section, delegating
  * row rendering to {@link PrintGroupedSectionTable} / {@link PrintRow}.
  */
@@ -108,19 +105,13 @@ export function PrintReportDocument({
   data,
   variant,
   activityBaseUrl,
-  generatedAt,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
   activityBaseUrl: string;
-  /** Injected for deterministic output in tests and SSR cache parity. */
-  generatedAt: Date;
 }) {
   const sections = collectSortedSections(data);
   const hasAny = reportHasAnyActivities(sections);
-  const coverRange = buildLookAheadCoverDateRangeLine(data);
-
-  const reportName = data.report?.displayName ?? 'Report';
 
   return (
     <div
@@ -129,23 +120,6 @@ export function PrintReportDocument({
         variant === 'exec' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
       }
     >
-      <header className="corpcal-print-header">
-        <span className="corpcal-print-header-confidential">
-          DRAFT AND CONFIDENTIAL
-        </span>
-        <h1 className="corpcal-print-header-title">{reportName}</h1>
-        {coverRange ? (
-          <p className="corpcal-print-header-range">{coverRange}</p>
-        ) : null}
-      </header>
-
-      <div className="corpcal-print-banner">
-        DRAFT ONLY — NOT FOR CIRCULATION
-        <span className="corpcal-print-banner-sub">
-          Information is confidential and subject to change.
-        </span>
-      </div>
-
       <div className="corpcal-print-body">
         {!hasAny ? (
           <div className="corpcal-print-empty">
@@ -162,8 +136,6 @@ export function PrintReportDocument({
           ))
         )}
       </div>
-
-      <PrintPageFooter generatedAt={generatedAt} />
     </div>
   );
 }

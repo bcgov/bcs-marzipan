@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
 import {
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
@@ -112,7 +113,6 @@ describe('renderPrintReportFragmentHtml', () => {
   it('renders look-ahead print with executive summary in the activity details column', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('Investment of $500M');
@@ -123,7 +123,6 @@ describe('renderPrintReportFragmentHtml', () => {
   it('renders exec look-ahead print with title and summary in the activity details column', () => {
     const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('Minister announces housing investment');
@@ -137,7 +136,6 @@ describe('renderPrintReportFragmentHtml', () => {
   it('renders the planning placeholder as a React fragment', () => {
     const html = renderPrintReportFragmentHtml('planning', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('data-report-template="PLANNING"');
@@ -166,7 +164,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('custom', customFixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('custom-report-root');
@@ -179,7 +176,6 @@ describe('renderPrintReportFragmentHtml', () => {
   it('builds activity links against the provided base URL', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain(
@@ -191,7 +187,6 @@ describe('renderPrintReportFragmentHtml', () => {
   it('includes translations list when fewer than four languages are required', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('French, Punjabi');
@@ -216,7 +211,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', many, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('Translations: 4 languages');
@@ -230,7 +224,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', empty, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('No activities in the selected range.');
@@ -247,7 +240,8 @@ describe('renderPrintReportFragmentHtml', () => {
             {
               id: 'events',
               name: 'Events',
-              reportDisplayName: 'Events, speeches and releases (inside government)',
+              reportDisplayName:
+                'Events, speeches and releases (inside government)',
               order: 1,
               filter: { lookAheadSection: 'events' },
               legendColor: '#2C7DA0',
@@ -260,7 +254,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', withColor, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('corpcal-print-section-swatch');
@@ -296,7 +289,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', pastel, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('corpcal-print-section-thead-cell');
@@ -351,14 +343,9 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml(
-      'look-ahead',
-      eventsAndIssues,
-      {
-        activityBaseUrl: 'http://localhost:3000',
-        generatedAt: FIXED_GENERATED_AT,
-      }
-    );
+    const html = renderPrintReportFragmentHtml('look-ahead', eventsAndIssues, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
 
     expect((html.match(/corpcal-print-day-heading-row/g) ?? []).length).toBe(1);
     expect(
@@ -374,8 +361,12 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(issuesActIdx).toBeGreaterThan(-1);
     const issuesSlice = html.slice(issuesIdx, issuesActIdx);
     expect(issuesSlice).not.toContain('corpcal-print-day-heading-row');
-    expect(issuesSlice).not.toContain('corpcal-print-per-day-column-header-row');
-    expect(issuesSlice).toContain('corpcal-print-rollup-thead-column-header-row');
+    expect(issuesSlice).not.toContain(
+      'corpcal-print-per-day-column-header-row'
+    );
+    expect(issuesSlice).toContain(
+      'corpcal-print-rollup-thead-column-header-row'
+    );
   });
 
   it('omits per-day chrome by default when printPerDayColumnHeaderRepeat is not set', () => {
@@ -399,7 +390,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', noOverride, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).not.toContain('corpcal-print-day-heading-row');
@@ -442,7 +432,6 @@ describe('renderPrintReportFragmentHtml', () => {
 
     const html = renderPrintReportFragmentHtml('look-ahead', overridden, {
       activityBaseUrl: 'http://localhost:3000',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html).toContain('corpcal-print-day-heading-row');
@@ -490,10 +479,13 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', multiSectionFixture, {
-      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
-    });
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      multiSectionFixture,
+      {
+        activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      }
+    );
 
     const idxEvents = html.indexOf('>Events</span>');
     const idxIssues = html.indexOf('>Issues</span>');
@@ -510,11 +502,19 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 });
 
+describe('buildReportPdfFooterTemplateHtml', () => {
+  it('includes confidential line, timestamp, and change hint', () => {
+    const html = buildReportPdfFooterTemplateHtml(FIXED_GENERATED_AT);
+    expect(html).toContain('DRAFT AND CONFIDENTIAL');
+    expect(html).toContain('CHANGED indicates major detail');
+    expect(html).toContain('border-top:1px solid');
+  });
+});
+
 describe('renderPrintReportDocumentHtml', () => {
   it('wraps the fragment in a standalone HTML document with injected styles', () => {
     const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
     });
 
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
@@ -527,7 +527,6 @@ describe('renderPrintReportDocumentHtml', () => {
     const fontFaceCss = "@font-face{font-family:'BC Sans';src:url(data:x)}";
     const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
       fontFaceCss,
     });
 
@@ -542,7 +541,6 @@ describe('renderPrintReportDocumentHtml', () => {
       '<div class="corpcal-print-cover-sheet"><img src="data:image/webp;base64,UklGRiI=" alt=""/></div>';
     const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
-      generatedAt: FIXED_GENERATED_AT,
       coverPageHtml,
     });
 

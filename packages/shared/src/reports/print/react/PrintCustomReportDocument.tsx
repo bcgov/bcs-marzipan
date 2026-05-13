@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { formatShortDate, formatTime12h } from './dateFormatters';
-import { PrintPageFooter } from './PrintPageFooter';
 import { PrintRichText } from './PrintRichText';
 import { resolveLeadOrgForPrint } from './rowViewModel';
 
@@ -350,14 +349,10 @@ function buildBodyRows(data: ReportDataResponse): CustomReportBodyRow[] {
 
 export function PrintCustomReportDocument({
   data,
-  generatedAt,
 }: {
   data: ReportDataResponse;
-  /** Defaults to "now" when omitted (e.g. ad-hoc static markup in tests). */
-  generatedAt?: Date;
 }) {
   const bodyRows = buildBodyRows(data);
-  const at = generatedAt ?? new Date();
 
   return (
     <div className="custom-report-root">
@@ -386,7 +381,6 @@ export function PrintCustomReportDocument({
           </table>
         )}
       </div>
-      <PrintPageFooter generatedAt={at} />
     </div>
   );
 }

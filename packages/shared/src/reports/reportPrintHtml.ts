@@ -1,5 +1,6 @@
 export {
   REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from './reportPrintDimensions';
@@ -11,11 +12,11 @@ export {
   type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
 export {
+  buildReportPdfFooterTemplateHtml,
   CORPCAL_PRINT_ROOT_CLASS,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PrintCustomReportDocument,
-  PrintPageFooter,
   PrintPlanningDocument,
   PrintReportDocument,
   PrintRichText,

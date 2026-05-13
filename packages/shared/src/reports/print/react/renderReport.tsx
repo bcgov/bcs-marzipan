@@ -20,13 +20,7 @@ export type ReactRenderableReportType =
   | 'custom';
 
 export interface RenderReportOptions {
-  /** Absolute URL used to build `<a>` hrefs to the activity page for each row. */
   activityBaseUrl: string;
-  /**
-   * Optional override for the generation timestamp embedded in the footer.
-   * Used in tests and snapshot rendering; defaults to `new Date()`.
-   */
-  generatedAt?: Date;
 }
 
 const REPORT_TYPE_TO_VARIANT: Record<
@@ -65,10 +59,7 @@ export function renderPrintReportFragmentHtml(
 
   if (reportTypeName === 'custom') {
     return renderToStaticMarkup(
-      <PrintCustomReportDocument
-        data={data}
-        generatedAt={options.generatedAt ?? new Date()}
-      />
+      <PrintCustomReportDocument data={data} />
     );
   }
 
@@ -78,7 +69,6 @@ export function renderPrintReportFragmentHtml(
       data={data}
       variant={variant}
       activityBaseUrl={options.activityBaseUrl}
-      generatedAt={options.generatedAt ?? new Date()}
     />
   );
 }
