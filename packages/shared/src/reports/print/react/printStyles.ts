@@ -436,7 +436,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   margin: 0;
   white-space: pre-line;
 }
-/* Figma 188×73 hug: flex + 1px gap; old banner-bc margin-bottom was ~12 Figma-px too tall. */
+/* Banner stack width set in overlay HTML (Figma-scaled); flex + 1px gap. */
 .corpcal-print-cover-banner-stack {
   display: flex;
   flex-direction: column;
@@ -459,28 +459,32 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-cover-banner-corporate {
   font-weight: 400;
-  font-size: calc(30px * var(--lc-s));
-  line-height: calc(26px * var(--lc-s));
+  font-size: calc(34px * var(--lc-s));
+  line-height: calc(30px * var(--lc-s));
   color: #fff;
   margin: 0;
-  white-space: pre-line;
+  display: flex;
+  flex-direction: column;
+}
+.corpcal-print-cover-banner-corporate-line {
+  white-space: nowrap;
 }
 .corpcal-print-cover-date-range {
   font-weight: 700;
-  font-size: calc(16px * var(--lc-s));
-  line-height: 1.35;
+  font-size: calc(14px * var(--lc-s));
+  line-height: 1.3;
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-heading {
   font-weight: 400;
-  font-size: calc(14px * var(--lc-s));
-  line-height: 1.35;
+  font-size: calc(12px * var(--lc-s));
+  line-height: 1.3;
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-list {
   font-weight: 400;
-  font-size: calc(14px * var(--lc-s));
-  line-height: 1.35;
+  font-size: calc(12px * var(--lc-s));
+  line-height: 1.3;
   color: var(--corpcal-text);
   display: flex;
   flex-direction: column;
@@ -504,8 +508,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-cover-footer-note {
   font-weight: 400;
-  font-size: calc(12px * var(--lc-s));
-  line-height: 1.4;
+  font-size: calc(11px * var(--lc-s));
+  line-height: 1.3;
   color: var(--corpcal-text);
 }
 
