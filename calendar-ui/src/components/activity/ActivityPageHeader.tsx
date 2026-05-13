@@ -1,4 +1,4 @@
-import { History, Star } from 'lucide-react';
+import { Eye, History } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -105,13 +105,13 @@ export function ActivityPageHeader({
                 variant="outline"
                 size="icon"
                 title={
-                  isFavourite ? 'Remove from favourites' : 'Add to favourites'
+                  isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
                 }
                 onClick={onFavouriteToggle}
                 disabled={isFavouriteToggling}
                 className="shrink-0"
               >
-                <Star
+                <Eye
                   className="h-4 w-4"
                   fill={isFavourite ? 'currentColor' : 'none'}
                 />
