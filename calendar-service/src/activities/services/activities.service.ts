@@ -1647,7 +1647,7 @@ export class ActivitiesService {
           : Promise.resolve(undefined),
         userTeamIds.length > 0
           ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
-          : Promise.resolve(new Map<number, ActivityFlagResponse>()),
+          : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
       ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
