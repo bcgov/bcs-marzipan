@@ -241,16 +241,18 @@ describe('ActivityFlagsService', () => {
       // fetchFlagsForActivities does: select().from().innerJoin().innerJoin().where()
       const chain = makeChain(rows);
       // where() on the innerJoin chain resolves directly (no further limit call)
-      const innerJoinChain = {
+      const innerJoinChain: Record<string, unknown> = {
         ...chain,
         where: vi.fn().mockResolvedValue(rows),
       };
       (chain['innerJoin'] as ReturnType<typeof vi.fn>).mockReturnValue(
         innerJoinChain
       );
-      innerJoinChain['innerJoin'] = vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(rows),
-      });
+      (innerJoinChain['innerJoin'] as ReturnType<typeof vi.fn>) = vi
+        .fn()
+        .mockReturnValue({
+          where: vi.fn().mockResolvedValue(rows),
+        });
       mockDb.select.mockReturnValue(chain);
 
       const result = await service.fetchFlagsForActivities([1, 2], [10, 20]);

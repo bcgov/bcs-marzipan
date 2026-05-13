@@ -6,7 +6,8 @@ import { z } from 'zod';
  * An activity flag assigns one team member to an activity per team.
  * Rules:
  *   - At most one flag per (activity_id, team_id).
- *   - Any team member with activities.flag permission can set or remove the flag.
+ *   - Any team member with activities.flag permission can set or replace the flag.
+ *   - Any active team member can remove the flag (no flag permission required).
  */
 
 /** Flag as returned in the activity response. */

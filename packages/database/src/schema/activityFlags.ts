@@ -16,7 +16,8 @@ import { users } from './user';
  * ActivityFlags table - Tracks which user is assigned ("flagged") per activity per team.
  * Rules:
  *   - At most one flag per (activity, team) pair.
- *   - Any team member with activities.flag permission can set or remove the flag.
+ *   - Any team member with activities.flag permission can set or replace the flag.
+ *   - Any active team member can remove the flag (no flag permission required).
  *   - Removing is done by deleting the row.
  */
 export const activityFlags = pgTable(

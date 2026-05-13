@@ -67,7 +67,11 @@ export function AssignActivityModal({
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  const userTeamIds = user?.teamIds ?? [];
+  const userTeamIds = useMemo(
+    () => user?.teamIds ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.teamIds?.join(',')]
+  );
 
   // Find the existing flag for the currently selected team; if none is selected yet,
   // fall back to the first flag that belongs to any of the user's teams.

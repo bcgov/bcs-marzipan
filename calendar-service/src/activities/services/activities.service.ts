@@ -52,6 +52,7 @@ import {
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
+import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
   CLONE_ADVANCED_FIELD_PATHS,
   CLONE_ALLOWED_INCLUDE_PATHS,
@@ -627,7 +628,7 @@ export class ActivitiesService {
     >,
     opts?: {
       canEdit?: boolean;
-      flags?: import('@corpcal/shared/api/types').ActivityFlagResponse[];
+      flags?: ActivityFlagResponse[];
     }
   ): ActivityResponse {
     const id = activity.id;
@@ -1646,12 +1647,7 @@ export class ActivitiesService {
           : Promise.resolve(undefined),
         userTeamIds.length > 0
           ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
-          : Promise.resolve(
-              new Map<
-                number,
-                import('@corpcal/shared/api/types').ActivityFlagResponse[]
-              >()
-            ),
+          : Promise.resolve(new Map<number, ActivityFlagResponse>()),
       ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
