@@ -5,6 +5,7 @@ import type { ActivityResponse } from '../../../schemas/activity-response.schema
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
 import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
+import { REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX } from '../../reportPrintDimensions';
 import {
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
@@ -595,6 +596,9 @@ describe('wrapPrintReportHtmlDocument', () => {
     });
 
     expect(html).toContain('class="corpcal-print-pdf-cover-sheet-only-doc"');
+    expect(html).toContain(
+      `height: ${REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX}px`
+    );
   });
 
   it('omits body class when coverStandalonePdf is false', () => {

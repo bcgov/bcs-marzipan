@@ -3,6 +3,7 @@ import {
   REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
+  REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from '../../reportPrintDimensions';
 import { LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX } from './lookAheadCoverLayout';
@@ -560,14 +561,26 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   /*
    * Standalone cover PDF (merged with body in a second pass): do not force a page break after
    * the only cover block — avoids a trailing blank Letter page before the merger appends pages.
+   * (Non-standalone HTML keeps page-break-after: always so body content starts on page 2.)
    */
   .corpcal-print-pdf-cover-sheet-only-doc .corpcal-print-cover-sheet {
     page-break-after: auto;
     break-after: auto;
   }
-  /* One-page cover sits ahead of report body in PDF HTML; keep it above body content. */
+  /*
+   * Letter-aspect cover at layout width (~1325px) exceeds one PDF page when paired with header/footer;
+   * height uses REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX (tuned for overlay/footer visibility).
+   * Image uses cover + top anchoring so width fills and bottom art may crop (see img rules below).
+   */
   .corpcal-print-cover-sheet {
     z-index: 2;
+    height: ${REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX}px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .corpcal-print-cover-sheet img {
+    object-fit: cover;
+    object-position: top center;
   }
   .${CORPCAL_PRINT_ROOT_CLASS} {
     font-size: var(--print-body-font-size);

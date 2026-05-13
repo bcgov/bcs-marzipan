@@ -11,6 +11,9 @@ export const REPORT_PRINT_LAYOUT_WIDTH_PX = 1024 as const;
  */
 export const REPORT_LETTER_CONTENT_WIDTH_PX = 816 as const;
 
+/** US Letter page height at 96 CSS px/in (11in × 96). Used with Puppeteer PDF margins. */
+export const REPORT_LETTER_PAGE_HEIGHT_PX = 1056 as const;
+
 /**
  * Max width for `.corpcal-print-root` / `.custom-report-root` — same value in
  * Puppeteer and in-app preview (“PDF width”). Fixed width so the sheet does not
@@ -38,7 +41,9 @@ export const REPORT_PRINT_COVER_CONTENT_WIDTH_PX =
  * `displayHeaderFooter` + {@link buildLookAheadReportPdfHeaderTemplateHtml}.
  * Must be large enough for the template band; tune if header layout changes.
  */
-export const REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS = '56px' as const;
+export const REPORT_PDF_PAGE_HEADER_MARGIN_TOP_PX = 56 as const;
+export const REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS =
+  `${REPORT_PDF_PAGE_HEADER_MARGIN_TOP_PX}px` as const;
 
 /**
  * Bottom margin for Puppeteer `page.pdf({ margin: { bottom } })` when using
@@ -46,4 +51,14 @@ export const REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS = '56px' as const;
  * footer band and leave room above it for the print-only Changed hint / table
  * tails; tune if copy or fonts change.
  */
-export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS = '76px' as const;
+export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_PX = 76 as const;
+export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS =
+  `${REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_PX}px` as const;
+
+/**
+ * CSS height for `.corpcal-print-cover-sheet` in `@media print` / Puppeteer PDF.
+ * Nominal Letter drawable stripe with header+footer is 924px
+ * ({@link REPORT_LETTER_PAGE_HEIGHT_PX} − header − footer); this value is set higher so cover
+ * overlay/footer content is not clipped. May paginate if Chromium enforces the physical page box.
+ */
+export const REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX = 1200 as const;

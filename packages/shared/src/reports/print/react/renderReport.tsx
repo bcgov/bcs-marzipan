@@ -133,8 +133,8 @@ export type WrapPrintReportHtmlDocumentOptions = {
    */
   includePdfFooterHintLine?: boolean;
   /**
-   * Sets a body class so print CSS relaxes `.corpcal-print-cover-sheet` break-after — avoids a
-   * trailing blank page when the HTML is cover-only inside one PDF.
+   * Sets a body class so standalone cover PDF CSS can relax `.corpcal-print-cover-sheet`
+   * break-after (no forced blank page when this HTML is cover-only).
    */
   coverStandalonePdf?: boolean;
 };

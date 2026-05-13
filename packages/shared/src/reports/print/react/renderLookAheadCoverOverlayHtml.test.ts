@@ -20,7 +20,7 @@ describe('renderLookAheadCoverOverlayHtml', () => {
     const expectedLeft = lookAheadCoverLayoutPx(52);
     expect(html).toContain(`left:${expectedLeft}px`);
     // Footer `top`: contents bottom for 2 rows + same 35px Figma gap as date → "Contents:"
-    const expectedFooterTop = lookAheadCoverLayoutPx(548 + 36 + 35);
+    const expectedFooterTop = lookAheadCoverLayoutPx(548 + 36 + 35) + 48;
     expect(html).toContain(`top:${expectedFooterTop}px`);
     expect(html).toContain('Thursday April 30, 2026');
     expect(html).toContain('555-555-3498');
@@ -83,7 +83,7 @@ describe('renderLookAheadCoverOverlayHtml', () => {
       contactEmail: '',
       sectionRows: [],
     });
-    const expectedFooterTop = lookAheadCoverLayoutPx(526 + 12 * 1.3 + 35);
+    const expectedFooterTop = lookAheadCoverLayoutPx(526 + 12 * 1.3 + 35) + 48;
     expect(html).toContain(`top:${expectedFooterTop}px`);
   });
 });
