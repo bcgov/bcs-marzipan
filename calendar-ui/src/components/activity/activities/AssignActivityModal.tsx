@@ -3,9 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
-import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
-import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxSeparator,
+} from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -83,7 +90,9 @@ export function AssignActivityModal({
       .then((teams) => {
         if (isCancelled) return;
 
-        const availableTeams = teams.filter((team): team is NonNullable<typeof team> => Boolean(team));
+        const availableTeams = teams.filter(
+          (team): team is NonNullable<typeof team> => Boolean(team)
+        );
         const opts: TeamMemberOption[] = availableTeams.flatMap((team) =>
           team.members.map((m) => ({
             userId: m.userId,
@@ -163,13 +172,18 @@ export function AssignActivityModal({
     onOpenChange(value);
   };
 
-  // Put current user first in the list
-  const sortedMembers = useMemo(() => {
-    if (!user) return members;
-    const me = members.find((m) => m.userId === user.id);
-    const rest = members.filter((m) => m.userId !== user.id);
-    return me ? [me, ...rest] : rest;
-  }, [members, user]);
+  // Put current user first, rest alphabetical
+  const me = useMemo(
+    () => (user ? members.find((m) => m.userId === user.id) : undefined),
+    [members, user]
+  );
+  const restMembers = useMemo(
+    () =>
+      members
+        .filter((m) => m.userId !== user?.id)
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [members, user]
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -198,33 +212,29 @@ export function AssignActivityModal({
                 Loading teammates…
               </div>
             ) : (
-              <div className="rounded-md border">
-                <FilterSearchableList
-                  options={sortedMembers.map((m) => ({
-                    value: String(m.userId),
-                    label: m.userId === user?.id ? `${m.label} (you)` : m.label,
-                  }))}
-                  searchPlaceholder="Search teammates…"
-                  emptyMessage="No teammates found."
-                  renderOption={(opt) => {
-                    const memberId = parseInt(opt.value, 10);
-                    const isSelected = selectedMember?.userId === memberId;
-                    return (
-                      <FilterCheckboxItem
-                        checked={isSelected}
-                        onCheckedChange={() => {
-                          const m = sortedMembers.find(
-                            (x) => x.userId === memberId
-                          );
-                          setSelectedMember(isSelected ? null : (m ?? null));
-                        }}
-                      >
-                        {opt.label}
-                      </FilterCheckboxItem>
-                    );
-                  }}
-                />
-              </div>
+              <Combobox
+                value={selectedMember}
+                onValueChange={(m: TeamMemberOption | null) =>
+                  setSelectedMember(m)
+                }
+                itemToStringValue={(m: TeamMemberOption) => m.label}
+              >
+                <ComboboxInput placeholder="Search teammates…" />
+                <ComboboxContent>
+                  <ComboboxEmpty>No teammates found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {me && (
+                      <ComboboxItem value={me}>{me.label} (you)</ComboboxItem>
+                    )}
+                    {me && restMembers.length > 0 && <ComboboxSeparator />}
+                    {restMembers.map((m) => (
+                      <ComboboxItem key={m.userId} value={m}>
+                        {m.label}
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             )}
           </div>
 

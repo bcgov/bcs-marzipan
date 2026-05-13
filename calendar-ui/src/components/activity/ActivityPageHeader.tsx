@@ -126,80 +126,78 @@ export function ActivityPageHeader({
               : ''}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {canFlag && onFlagAssign && onFlagUnassign && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title={
-                isFlagged
-                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
-                  : 'Assign activity'
-              }
-              aria-label={
-                isFlagged
-                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
-                  : 'Assign activity'
-              }
-              onClick={() => setAssignModalOpen(true)}
-              disabled={isFlagPending}
-              className="relative shrink-0"
-            >
-              {isFlagged && currentFlag ? (
-                <>
-                  <Avatar size="sm" className="size-full">
-                    <AvatarFallback className="text-[10px] font-medium">
-                      {currentFlag.assigneeName
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Flag
-                    className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
-                    aria-hidden
-                  />
-                </>
-              ) : (
-                <Flag className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-          {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
-              aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
-              onClick={() =>
-                onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
-              }
-              disabled={isFlagPending}
-              className="relative shrink-0"
-            >
-              <Avatar size="sm" className="size-full">
-                <AvatarFallback className="text-[10px] font-medium">
-                  {currentFlag.assigneeName
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <Flag
-                className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
-                aria-hidden
-              />
-            </Button>
-          )}
-        </div>
-        {(onFavouriteToggle || onHistoryClick) && (
+        {(canFlag || isFlagged || onFavouriteToggle || onHistoryClick) && (
           <div className="flex items-center gap-2">
+            {canFlag && onFlagAssign && onFlagUnassign && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={
+                  isFlagged
+                    ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                    : 'Assign activity'
+                }
+                aria-label={
+                  isFlagged
+                    ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                    : 'Assign activity'
+                }
+                onClick={() => setAssignModalOpen(true)}
+                disabled={isFlagPending}
+                className="relative shrink-0"
+              >
+                {isFlagged && currentFlag ? (
+                  <>
+                    <Avatar size="sm" className="size-full">
+                      <AvatarFallback className="text-[10px] font-medium">
+                        {currentFlag.assigneeName
+                          .split(' ')
+                          .slice(0, 2)
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Flag
+                      className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                      aria-hidden
+                    />
+                  </>
+                ) : (
+                  <Flag className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+                aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+                onClick={() =>
+                  onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
+                }
+                disabled={isFlagPending}
+                className="relative shrink-0"
+              >
+                <Avatar size="sm" className="size-full">
+                  <AvatarFallback className="text-[10px] font-medium">
+                    {currentFlag.assigneeName
+                      .split(' ')
+                      .slice(0, 2)
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <Flag
+                  className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                  aria-hidden
+                />
+              </Button>
+            )}
             {onFavouriteToggle && (
               <Button
                 type="button"

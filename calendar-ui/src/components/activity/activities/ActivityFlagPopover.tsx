@@ -21,6 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -146,7 +147,7 @@ export function ActivityFlagPopover({
           </AvatarFallback>
         </Avatar>
         <Flag
-          className="absolute -right-0.5 -bottom-0.5 size-2 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+          className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
           aria-hidden
         />
       </span>
@@ -186,7 +187,7 @@ export function ActivityFlagPopover({
                 </AvatarFallback>
               </Avatar>
               <Flag
-                className="absolute -right-0.5 -bottom-0.5 size-2 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
                 aria-hidden
               />
             </>
@@ -201,6 +202,9 @@ export function ActivityFlagPopover({
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
       >
+        <p className="text-muted-foreground px-3 pt-3 pb-1 text-[12px] font-medium tracking-wide uppercase">
+          Assign activity
+        </p>
         {loadingMembers ? (
           <div className="text-muted-foreground px-3 py-4 text-center text-sm">
             Loading…
@@ -212,21 +216,26 @@ export function ActivityFlagPopover({
             emptyMessage="No teammates found."
             renderOption={(opt) => {
               const memberId = parseInt(opt.value, 10);
+              const isMe = memberId === user?.id;
               const isSelected = existingFlag?.assigneeId === memberId;
+              const hasTeammates = options.length > 1;
               return (
-                <button
-                  type="button"
-                  onClick={() => handleSelect(memberId)}
-                  className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm"
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    tabIndex={-1}
-                    className="pointer-events-none size-4 shrink-0"
-                    aria-hidden
-                  />
-                  <span className="truncate">{opt.label}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(memberId)}
+                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm"
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      tabIndex={-1}
+                      className="pointer-events-none size-4 shrink-0"
+                      aria-hidden
+                    />
+                    <span className="truncate">{opt.label}</span>
+                  </button>
+                  {isMe && hasTeammates && <Separator />}
+                </>
               );
             }}
           />
