@@ -1,6 +1,8 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
 import {
+  REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from '../../reportPrintDimensions';
 import { LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX } from './lookAheadCoverLayout';
@@ -400,13 +402,23 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   overflow: hidden;
   background: #fff;
 }
+/* Inset matches .corpcal-print-body horizontal padding — artwork proportion-preserved inside. */
+.corpcal-print-cover-inner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: ${REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}px;
+  right: ${REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}px;
+  overflow: hidden;
+}
 .corpcal-print-cover-sheet img {
   display: block;
   position: relative;
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
+  object-position: center;
   margin: 0;
 }
 .corpcal-print-cover-overlay {
@@ -415,8 +427,9 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   z-index: 1;
   pointer-events: none;
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* Scale Figma typography (612px frame) to print layout width */
-  --lc-s: calc(${REPORT_PRINT_LAYOUT_WIDTH_PX} / ${LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX});
+  /* Unitless ratio: Figma 612px-wide frame scaled to inset column. Do not use px on width here or
+     multiplications like (Npx × var(--lc-s)) become invalid length × length in calc(). */
+  --lc-s: calc(${REPORT_PRINT_COVER_CONTENT_WIDTH_PX} / ${LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX});
 }
 .corpcal-print-cover-abs {
   position: absolute;
@@ -430,14 +443,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   text-align: left;
   gap: calc(1px * var(--lc-s));
   white-space: normal;
-}
-.corpcal-print-cover-confidential-flag {
-  text-align: right;
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: calc(12px * var(--lc-s));
-  line-height: 1.2;
-  color: var(--corpcal-text-alert);
 }
 .corpcal-print-cover-gcpe-title {
   font-weight: 700;
@@ -504,6 +509,11 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--corpcal-text);
 }
 
+/* PDF body: print-only line above footerTemplate border (hidden on screen). */
+.corpcal-print-pdf-footer-hint-line {
+  display: none;
+}
+
 /* Preview-only sticky stacking for the look-ahead rollup table. Wrapped in
    .corpcal-print-preview-shell so the same PRINT_STYLES string that powers the
    Puppeteer PDF stays unaffected (the wrapper is only injected by the in-app
@@ -553,6 +563,27 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }
   .corpcal-print-day-tbody { page-break-inside: avoid; }
+  .corpcal-print-pdf-footer-hint-line {
+    display: block;
+    box-sizing: border-box;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    margin: 0;
+    padding: 2px calc(${REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}px + 2px) 3px ${REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}px;
+    font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--corpcal-table-cell-muted-fg);
+    background: #fff;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .corpcal-print-pdf-footer-hint-line strong {
+    color: inherit;
+    font-weight: 700;
+  }
   /* Preview sticky must not bleed into PDF/print output. */
   .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-section-heading-cell,
   .corpcal-print-preview-shell .corpcal-print-section-rollup-table thead tr.corpcal-print-rollup-thead-column-header-row th,

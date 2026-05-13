@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ReportDataResponse } from '../../../api/report-data';
+import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 import { PrintCustomReportDocument } from './PrintCustomReportDocument';
 import { PrintPlanningDocument } from './PrintPlanningDocument';
@@ -21,6 +22,25 @@ export type ReactRenderableReportType =
 
 export interface RenderReportOptions {
   activityBaseUrl: string;
+}
+
+/**
+ * Repeats on every printed page inside the PDF content box, sitting flush above
+ * the Puppeteer footer margin (`border-top` band). `.corpcal-print-cover-sheet`
+ * uses a higher z-index so this line stays hidden on the cover page.
+ *
+ * Hidden on screen; visible only in print/PDF (see `.corpcal-print-pdf-footer-hint-line`).
+ */
+export function PrintPdfFooterHintLine() {
+  return (
+    <div className="corpcal-print-pdf-footer-hint-line" aria-hidden="true">
+      * <strong>Changed</strong> {PRINT_FOOTER_CHANGED_EXPLANATION_BODY}
+    </div>
+  );
+}
+
+export function printPdfFooterHintLineHtml(): string {
+  return renderToStaticMarkup(<PrintPdfFooterHintLine />);
 }
 
 const REPORT_TYPE_TO_VARIANT: Record<
@@ -115,7 +135,8 @@ export function wrapPrintReportHtmlDocument(
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
   const coverPageHtml = options.coverPageHtml ?? '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
+  const pdfFooterHintLineHtml = printPdfFooterHintLineHtml();
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${coverPageHtml}${pdfFooterHintLineHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

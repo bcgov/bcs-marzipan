@@ -6,6 +6,7 @@ import {
   isReactRenderableReportType,
   PRINT_STYLES,
   PrintCustomReportDocument,
+  PrintPdfFooterHintLine,
   PrintPlanningDocument,
   PrintReportDocument,
   type ReactRenderableReportType,
@@ -88,7 +89,10 @@ function PrintReportPreviewRoot({
       {/* Preview-only wrapper: scopes sticky stacking rules in PRINT_STYLES so
           the same stylesheet, when injected into the Puppeteer-rendered PDF
           (which has no shell), leaves print output unaffected. */}
-      <div className="corpcal-print-preview-shell">{document}</div>
+      <div className="corpcal-print-preview-shell">
+        <PrintPdfFooterHintLine />
+        {document}
+      </div>
     </>
   );
 }

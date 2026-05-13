@@ -8,6 +8,7 @@ import puppeteer, {
 import {
   REPORT_LETTER_CONTENT_WIDTH_PX,
   REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
+  REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
 } from '@corpcal/shared/reports/reportPrintHtml';
 
@@ -18,6 +19,8 @@ const PDF_LAYOUT_TO_LETTER_SCALE =
 export type GenerateReportPdfOptions = {
   /** Puppeteer `footerTemplate` HTML; enables `displayHeaderFooter` and bottom margin. */
   footerTemplate: string;
+  /** Optional `headerTemplate`; when set, reserves {@link REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS} at the top. */
+  headerTemplate?: string;
 };
 
 /**
@@ -28,6 +31,8 @@ export type GenerateReportPdfOptions = {
  * Page format is Letter (8.5×11in). Body margins are zero. With
  * {@link GenerateReportPdfOptions.footerTemplate}, Chromium reserves
  * {@link REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS} at the bottom for that band.
+ * With {@link GenerateReportPdfOptions.headerTemplate}, the top margin is
+ * {@link REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS}.
  * `preferCSSPageSize` respects `@page` when present; if output clips in QA,
  * revisit relative to `scale`.
  */
@@ -109,15 +114,21 @@ export class PdfGeneratorService implements OnModuleDestroy {
           `document.fonts.ready did not resolve: ${String(err)}. Continuing.`
         );
       }
+      const headerTemplate =
+        options.headerTemplate ??
+        '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>';
       const pdfOptions: PDFOptions = {
         ...BASE_PDF_OPTIONS,
         displayHeaderFooter: true,
-        headerTemplate:
-          '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>',
+        headerTemplate,
         footerTemplate: options.footerTemplate,
         margin: {
-          ...BASE_PDF_OPTIONS.margin,
+          top: options.headerTemplate
+            ? REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS
+            : '0',
           bottom: REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
+          left: '0',
+          right: '0',
         },
       };
       const pdf = await page.pdf(pdfOptions);

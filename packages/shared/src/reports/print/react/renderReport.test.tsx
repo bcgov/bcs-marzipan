@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
+import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
 import {
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
@@ -502,11 +504,26 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 });
 
+describe('buildLookAheadReportPdfHeaderTemplateHtml', () => {
+  it('includes BC logo data URL at 28px height and scaled confidential styling', () => {
+    const html = buildLookAheadReportPdfHeaderTemplateHtml();
+    expect(html).toContain('data:image/svg+xml');
+    expect(html).toContain('height:28px');
+    expect(html).toContain('CONFIDENTIAL - NOT FOR CIRCULATION');
+    expect(html).toContain('#ce3e39');
+    expect(html).toContain(`font-size:${lookAheadCoverLayoutPx(8)}px`);
+  });
+});
+
 describe('buildReportPdfFooterTemplateHtml', () => {
-  it('includes confidential line, timestamp, and change hint', () => {
+  it('includes last updated row, Chromium page placeholders, no draft/confidential', () => {
     const html = buildReportPdfFooterTemplateHtml(FIXED_GENERATED_AT);
-    expect(html).toContain('DRAFT AND CONFIDENTIAL');
-    expect(html).toContain('CHANGED indicates major detail');
+    expect(html).toContain('Last updated ');
+    expect(html).toContain('class="pageNumber"');
+    expect(html).toContain('class="totalPages"');
+    expect(html).toContain('Page ');
+    expect(html).not.toContain('DRAFT AND CONFIDENTIAL');
+    expect(html).not.toContain('CHANGED indicates major detail');
     expect(html).toContain('border-top:1px solid');
   });
 });
@@ -520,6 +537,9 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('<style>');
     expect(html).toContain('.corpcal-print-root');
+    expect(html).toContain('corpcal-print-pdf-footer-hint-line');
+    expect(html).toContain('* <strong>Changed</strong>');
+    expect(html).toContain('indicates major detail or date changes only');
     expect(html).toContain('ACT-101');
   });
 
@@ -538,15 +558,17 @@ describe('renderPrintReportDocumentHtml', () => {
 
   it('prepends optional cover HTML before the report fragment', () => {
     const coverPageHtml =
-      '<div class="corpcal-print-cover-sheet"><img src="data:image/webp;base64,UklGRiI=" alt=""/></div>';
+      '<div class="corpcal-print-cover-sheet"><div class="corpcal-print-cover-inner"><img src="data:image/webp;base64,UklGRiI=" alt=""/></div></div>';
     const html = renderPrintReportDocumentHtml('look-ahead', FIXTURE, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
       coverPageHtml,
     });
 
     const coverIdx = html.indexOf('corpcal-print-cover-sheet');
+    const hintIdx = html.indexOf('corpcal-print-pdf-footer-hint-line');
     const bodyReportIdx = html.indexOf('data-report-template=');
     expect(coverIdx).toBeGreaterThan(-1);
-    expect(bodyReportIdx).toBeGreaterThan(coverIdx);
+    expect(hintIdx).toBeGreaterThan(coverIdx);
+    expect(bodyReportIdx).toBeGreaterThan(hintIdx);
   });
 });

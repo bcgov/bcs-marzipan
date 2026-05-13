@@ -1,7 +1,10 @@
 export {
   REPORT_LETTER_CONTENT_WIDTH_PX,
   REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
+  REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS,
+  REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from './reportPrintDimensions';
 export {
@@ -12,11 +15,14 @@ export {
   type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
 export {
+  buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   CORPCAL_PRINT_ROOT_CLASS,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
+  printPdfFooterHintLineHtml,
   PrintCustomReportDocument,
+  PrintPdfFooterHintLine,
   PrintPlanningDocument,
   PrintReportDocument,
   PrintRichText,

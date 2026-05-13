@@ -1,6 +1,8 @@
 export {
   isReactRenderableReportType,
+  printPdfFooterHintLineHtml,
   printRootClassName,
+  PrintPdfFooterHintLine,
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,
@@ -37,6 +39,7 @@ export {
   type LookAheadCoverOverlayContent,
   type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
+export { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 export { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
 export {
   dateKeyLocal,
@@ -47,4 +50,5 @@ export {
   formatShortDate,
   formatTime12h,
   PRINT_FOOTER_CHANGED_EXPLANATION,
+  PRINT_FOOTER_CHANGED_EXPLANATION_BODY,
 } from './dateFormatters';

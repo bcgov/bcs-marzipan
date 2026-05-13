@@ -20,6 +20,7 @@ import {
   serializeReportTableToCsv,
 } from '@corpcal/shared/reports/reportExportFormat';
 import {
+  buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   getReportTemplateHtml,
   wrapReportHtmlDocument,
@@ -128,7 +129,7 @@ export class ReportsService {
       contactEmail,
       sectionRows: this.buildLookAheadCoverSectionRows(data.report),
     });
-    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
+    return `<div class="corpcal-print-cover-sheet" role="presentation"><div class="corpcal-print-cover-inner"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div></div>`;
   }
 
   /**
@@ -611,8 +612,12 @@ export class ReportsService {
       coverPageHtml,
     });
     const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
+    const headerTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)
+      ? buildLookAheadReportPdfHeaderTemplateHtml()
+      : undefined;
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
+      headerTemplate,
     });
   }
 }

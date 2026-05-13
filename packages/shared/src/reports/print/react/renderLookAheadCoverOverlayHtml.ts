@@ -32,9 +32,6 @@ function px(n: number): string {
   return `${lookAheadCoverLayoutPx(n)}px`;
 }
 
-const LOOK_AHEAD_COVER_CONFIDENTIAL_FLAG =
-  'CONFIDENTIAL - NOT FOR CIRCULATION' as const;
-
 const LOOK_AHEAD_COVER_GCPE_TITLE =
   'Government Communications\nand Public Engagement' as const;
 
@@ -69,8 +66,9 @@ function renderContentsListHtml(
 
 /**
  * HTML overlay for the look-ahead PDF cover. Positions are scaled from a 612px-wide
- * Figma frame to the canonical print layout width (1024px). BC Sans applies via
- * `.corpcal-print-cover-overlay` in print styles.
+ * Figma frame to the inset cover column (layout width minus 24px horizontal margins,
+ * aligned with `.corpcal-print-body`). BC Sans applies via `.corpcal-print-cover-overlay`
+ * in print styles.
  */
 export function renderLookAheadCoverOverlayHtml(
   content: LookAheadCoverOverlayContent
@@ -87,7 +85,6 @@ export function renderLookAheadCoverOverlayHtml(
   const contentsListHtml = renderContentsListHtml(content.sectionRows);
 
   return `<div class="corpcal-print-cover-overlay" aria-hidden="true">
-<div class="corpcal-print-cover-abs corpcal-print-cover-confidential-flag" style="left:${s(349)};top:${s(8)};width:${s(239)}">${LOOK_AHEAD_COVER_CONFIDENTIAL_FLAG}</div>
 <div class="corpcal-print-cover-abs corpcal-print-cover-gcpe-title" style="left:${s(349)};top:${s(72)};width:${s(211)}">${LOOK_AHEAD_COVER_GCPE_TITLE}</div>
 <div class="corpcal-print-cover-abs corpcal-print-cover-banner-stack" style="left:${s(349)};top:${s(118)};width:${s(188)}">
 <div class="corpcal-print-cover-banner-bc">${LOOK_AHEAD_COVER_BC_GOVERNMENT}</div>
