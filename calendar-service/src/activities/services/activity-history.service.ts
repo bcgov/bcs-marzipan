@@ -817,10 +817,6 @@ export class ActivityHistoryService {
   }
 
   /**
-   * Compare two activity objects and generate a list of changes
-   * Useful for tracking what fields changed during an update
-   *
-  /**
    * Resolves the userId values inside a comms-contacts array to display names,
    * returning `{ userName: string; isLead: boolean }[]` for human-readable
    * history storage.  Any userId not found in the DB falls back to `"User {id}"`.

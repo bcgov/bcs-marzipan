@@ -15,9 +15,12 @@ export function ExpandableText({ text }: { text: string }) {
 
   return (
     <>
-      {expanded ? text : `${text.slice(0, PREVIEW_LENGTH)}…`}{' '}
+      <span aria-live="polite">
+        {expanded ? text : `${text.slice(0, PREVIEW_LENGTH)}…`}
+      </span>{' '}
       <button
         type="button"
+        aria-expanded={expanded}
         onClick={(e) => {
           e.stopPropagation();
           setExpanded((prev) => !prev);
