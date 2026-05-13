@@ -22,8 +22,9 @@ const EMPTY_MESSAGES: Record<
       'A filter is applied. Clearing filters may return more results.',
   },
   'no-favourites': {
-    title: 'No watchlist activities',
-    description: 'Add an activity to your watchlist to find it here quickly.',
+    title: 'No favourite activities',
+    description:
+      'Star an activity to add it to your favourites and find it here quickly.',
   },
 };
 

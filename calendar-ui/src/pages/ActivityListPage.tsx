@@ -264,7 +264,7 @@ export const ActivityListPage = () => {
             )}
             <TabsTrigger value="my-activities">My activities</TabsTrigger>
             <TabsTrigger value="shared-with-me">Shared with me</TabsTrigger>
-            <TabsTrigger value="favourites">My watchlist</TabsTrigger>
+            <TabsTrigger value="favourites">Favourite activities</TabsTrigger>
           </TabsList>
         </div>
 
