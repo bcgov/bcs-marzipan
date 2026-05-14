@@ -48,10 +48,10 @@ export const REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS =
 /**
  * Bottom margin for Puppeteer `page.pdf({ margin: { bottom } })` when using
  * `displayHeaderFooter` + {@link buildReportPdfFooterTemplateHtml}. Must fit the
- * footer band and leave room above it for the print-only Changed hint / table
- * tails; tune if copy or fonts change.
+ * “Last updated” row, divider, and `Changed` hint (all in the footer template);
+ * tune if copy or fonts change.
  */
-export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_PX = 76 as const;
+export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_PX = 94 as const;
 export const REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS =
   `${REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_PX}px` as const;
 

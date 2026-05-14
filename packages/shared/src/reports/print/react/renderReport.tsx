@@ -25,11 +25,11 @@ export interface RenderReportOptions {
 }
 
 /**
- * Repeats on every printed page inside the PDF content box, sitting flush above
- * the Puppeteer footer margin (`border-top` band). `.corpcal-print-cover-sheet`
- * uses a higher z-index so this line stays hidden on the cover page.
+ * Browser print / in-app preview only: Puppeteer PDFs embed the same copy in
+ * {@link buildReportPdfFooterTemplateHtml} so the hint stays in the footer
+ * band and cannot overlap body content (see `.corpcal-print-pdf-footer-hint-line`).
  *
- * Hidden on screen; visible only in print/PDF (see `.corpcal-print-pdf-footer-hint-line`).
+ * Wrapped HTML for headless PDF no longer inserts this component.
  */
 export function PrintPdfFooterHintLine() {
   return (
@@ -128,11 +128,6 @@ export type WrapPrintReportHtmlDocumentOptions = {
   /** Prepended inside `<body>` before the report fragment (e.g. PDF-only cover). */
   coverPageHtml?: string;
   /**
-   * When false, omits {@link PrintPdfFooterHintLine} markup (standalone cover Puppeteer docs).
-   * Default true.
-   */
-  includePdfFooterHintLine?: boolean;
-  /**
    * Sets a body class so standalone cover PDF CSS can relax `.corpcal-print-cover-sheet`
    * break-after (no forced blank page when this HTML is cover-only).
    */
@@ -145,13 +140,11 @@ export function wrapPrintReportHtmlDocument(
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
   const coverPageHtml = options.coverPageHtml ?? '';
-  const includeHint = options.includePdfFooterHintLine !== false;
-  const hintHtml = includeHint ? printPdfFooterHintLineHtml() : '';
   const bodyClass = options.coverStandalonePdf
     ? 'corpcal-print-pdf-cover-sheet-only-doc'
     : '';
   const bodyClassAttr = bodyClass ? ` class="${bodyClass}"` : '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${hintHtml}${fragmentHtml}</body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

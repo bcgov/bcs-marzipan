@@ -621,7 +621,6 @@ export class ReportsService {
       const coverHtml = wrapReportHtmlDocument('', {
         fontFaceCss,
         coverPageHtml,
-        includePdfFooterHintLine: false,
         coverStandalonePdf: true,
       });
       const bodyHtml = wrapReportHtmlDocument(inner, { fontFaceCss });

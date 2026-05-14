@@ -35,7 +35,10 @@ export {
   type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
 export { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
-export { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
+export {
+  buildReportPdfFooterTemplateHtml,
+  type BuildReportPdfFooterTemplateOptions,
+} from './buildReportPdfFooterTemplate';
 export {
   dateKeyLocal,
   formatCoverDate,

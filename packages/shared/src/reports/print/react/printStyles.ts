@@ -528,7 +528,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--corpcal-text);
 }
 
-/* PDF body: print-only line above footerTemplate border (hidden on screen). */
+/* Browser print only: Puppeteer puts the hint in footerTemplate ({@link buildReportPdfFooterTemplateHtml}). */
 .corpcal-print-pdf-footer-hint-line {
   display: none;
 }
