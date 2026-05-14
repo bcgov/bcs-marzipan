@@ -79,25 +79,7 @@ export class AuthService {
     }
 
     // Local (email/password) login is always available for any non-mock strategy.
-    if (strategy === 'local' || this.isLocalAuthEnabled()) {
-      return this.loginLocal(body.username, body.password);
-    }
-
-    if (strategy === 'ad') {
-      throw new UnauthorizedException(
-        'AD strategy not yet implemented. Use AUTH_STRATEGY=mock for development.'
-      );
-    }
-
-    if (strategy === 'azure') {
-      throw new UnauthorizedException(
-        'Azure strategy uses OIDC redirect flow. Start at GET /auth/azure.'
-      );
-    }
-
-    throw new UnauthorizedException(
-      `Unknown AUTH_STRATEGY: ${strategy}. Use 'mock', 'local', 'ad', or 'azure'.`
-    );
+    return this.loginLocal(body.username, body.password);
   }
 
   async loginWithAzureClaims(claims: {
