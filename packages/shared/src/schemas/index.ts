@@ -1,6 +1,7 @@
 // Shared Zod schemas for validation
 export * from './activity.schema';
 export * from './activity-completion-settings.schema';
+export * from './activity-flag.schema';
 export * from './clone-activity.schema';
 export * from './look-ahead-reset.schema';
 export * from './activity-response.schema';

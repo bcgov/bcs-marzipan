@@ -83,6 +83,7 @@ const BASE_ACTIVITY: ActivityResponse = {
     country: 'Canada',
   },
   reportSettings: [],
+  flags: [],
 };
 
 const FIXTURE: ReportDataResponse = {

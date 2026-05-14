@@ -73,6 +73,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   leadTeamDisplayName: null,
   venueAddress: null,
   reportSettings: [],
+  flags: [],
 };
 
 describe('buildTranslationsLine', () => {

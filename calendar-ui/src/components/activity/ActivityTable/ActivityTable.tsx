@@ -28,8 +28,9 @@ import {
   type CSSProperties,
 } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -64,7 +65,11 @@ import {
 import { getLookAheadStatusLabel } from '@/constants/form-options';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityList } from '@/hooks/useCalendar';
+import {
+  useActivityList,
+  useRemoveActivityFlag,
+  useUpsertActivityFlag,
+} from '@/hooks/useCalendar';
 import {
   getLookAheadSectionLabelFromRows,
   useLookAheadSectionRows,
@@ -226,9 +231,21 @@ function toSentenceCase(s: string): string {
 function OverviewCell({
   row,
   canViewPitchStatus,
+  canFlag,
+  onFlagAssign,
+  onFlagUnassign,
+  flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
+  canFlag?: boolean;
+  onFlagAssign?: (
+    teamId: number,
+    assigneeId: number,
+    assigneeName?: string
+  ) => void;
+  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
+  flagPending?: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -239,6 +256,18 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        {(canFlag || row.flags.length > 0) &&
+          onFlagAssign &&
+          onFlagUnassign && (
+            <ActivityFlagPopover
+              activityId={row.id}
+              flags={row.flags}
+              readOnly={!canFlag}
+              onAssign={onFlagAssign}
+              onUnassign={onFlagUnassign}
+              isPending={flagPending}
+            />
+          )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -687,6 +716,8 @@ export interface ActivityTableProps {
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
+  /** When set, only activities flag-assigned to this user are shown. */
+  flagAssigneeUserId?: number;
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -703,12 +734,13 @@ export function ActivityTable({
   sharedWithTeamId,
   sharedWithTeamIds,
   favouriteActivityIds,
+  flagAssigneeUserId,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const pitchFieldVisibility = useMemo(() => {
     if (!user) {
       return { canViewPitchStatus: false, canViewPitchDate: false };
@@ -1015,6 +1047,7 @@ export function ActivityTable({
       ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
+      ...(flagAssigneeUserId !== undefined && { flagAssigneeUserId }),
     };
   }, [
     effectiveShowCompleted,
@@ -1023,6 +1056,7 @@ export function ActivityTable({
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
+    flagAssigneeUserId,
   ]);
 
   // Reset to first page when user changes filters so results match expectations
@@ -1045,6 +1079,7 @@ export function ActivityTable({
       prev.leadTeamId === activityFilters.leadTeamId &&
       prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
       prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      prev.flagAssigneeUserId === activityFilters.flagAssigneeUserId &&
       sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;
@@ -1074,6 +1109,10 @@ export function ActivityTable({
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
+
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
+  const upsertFlagMutation = useUpsertActivityFlag();
+  const removeFlagMutation = useRemoveActivityFlag();
 
   const onPaginationChangeStable = useCallback(
     (
@@ -1238,6 +1277,24 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            canFlag={canFlag}
+            onFlagAssign={(teamId, assigneeId, assigneeName) =>
+              upsertFlagMutation.mutate({
+                activityId: row.original.id,
+                body: { teamId, assigneeId },
+                assigneeName,
+              })
+            }
+            onFlagUnassign={(teamId, assigneeName) =>
+              removeFlagMutation.mutate({
+                activityId: row.original.id,
+                teamId,
+                assigneeName,
+              })
+            }
+            flagPending={
+              upsertFlagMutation.isPending || removeFlagMutation.isPending
+            }
           />
         ),
       }),
@@ -1342,6 +1399,9 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      canFlag,
+      upsertFlagMutation,
+      removeFlagMutation,
     ]
   );
 
