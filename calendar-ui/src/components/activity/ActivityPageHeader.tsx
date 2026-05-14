@@ -204,7 +204,7 @@ export function ActivityPageHeader({
                 variant="outline"
                 size="icon"
                 title={
-                  isFavourite ? 'Remove from favourites' : 'Add to favourites'
+                  isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
                 }
                 onClick={onFavouriteToggle}
                 disabled={isFavouriteToggling}

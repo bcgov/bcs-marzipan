@@ -162,7 +162,7 @@ describe('useFavourites', () => {
       await waitFor(() =>
         expect(showErrorToast).toHaveBeenCalledWith(
           expect.any(Error),
-          'Failed to add activity to favourites'
+          'Failed to add activity to watchlist'
         )
       );
 
@@ -187,7 +187,7 @@ describe('useFavourites', () => {
       await waitFor(() =>
         expect(showErrorToast).toHaveBeenCalledWith(
           expect.any(Error),
-          'Failed to remove activity from favourites'
+          'Failed to remove activity from watchlist'
         )
       );
 
