@@ -188,112 +188,127 @@ export function AssignActivityModal({
         .sort((a, b) => a.label.localeCompare(b.label)),
     [members, user]
   );
+  const comboboxItems = useMemo(
+    () => [...(me ? [me] : []), ...restMembers],
+    [me, restMembers]
+  );
+
+  // Render the combobox popup inside the dialog so Radix's focus trap
+  // doesn't block pointer events on the Base UI portal.
+  const [dialogContainer, setDialogContainer] = useState<HTMLDivElement | null>(
+    null
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Assign activity</DialogTitle>
-          <DialogDescription>
-            Assign activities that require your or a teammate&apos;s attention.
-            Assignments are visible to teammates in the activities list.
-          </DialogDescription>
-        </DialogHeader>
+        <div ref={setDialogContainer}>
+          <DialogHeader>
+            <DialogTitle>Assign activity</DialogTitle>
+            <DialogDescription>
+              Assign activities that require your or a teammate&apos;s
+              attention. Assignments are visible to teammates in the activities
+              list.
+            </DialogDescription>
+          </DialogHeader>
 
-        {displayId && (
-          <p className="text-muted-foreground text-sm">
-            Activity:{' '}
-            <span className="text-foreground font-medium">{displayId}</span>
-          </p>
-        )}
+          {displayId && (
+            <p className="text-muted-foreground text-sm">
+              Activity:{' '}
+              <span className="text-foreground font-medium">{displayId}</span>
+            </p>
+          )}
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="flag-assignee">Assignee</Label>
-            {loadingMembers ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="size-4 animate-spin" />
-                Loading teammates…
-              </div>
-            ) : (
-              <Combobox
-                value={selectedMember}
-                onValueChange={(m: TeamMemberOption | null) =>
-                  setSelectedMember(m)
-                }
-                itemToStringValue={(m: TeamMemberOption) => m.label}
-              >
-                <ComboboxInput placeholder="Search teammates…" />
-                <ComboboxContent>
-                  <ComboboxEmpty>No teammates found.</ComboboxEmpty>
-                  <ComboboxList>
-                    {me && (
-                      <ComboboxItem value={me}>{me.label} (you)</ComboboxItem>
-                    )}
-                    {me && restMembers.length > 0 && <ComboboxSeparator />}
-                    {restMembers.map((m) => (
-                      <ComboboxItem key={m.userId} value={m}>
-                        {m.label}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            )}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="flag-assignee">Assignee</Label>
+              {loadingMembers ? (
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading teammates…
+                </div>
+              ) : (
+                <Combobox
+                  items={comboboxItems}
+                  value={selectedMember}
+                  onValueChange={(m: TeamMemberOption | null) =>
+                    setSelectedMember(m)
+                  }
+                  itemToStringValue={(m: TeamMemberOption) => m.label}
+                >
+                  <ComboboxInput placeholder="Search teammates…" />
+                  <ComboboxContent container={dialogContainer ?? undefined}>
+                    <ComboboxEmpty>No teammates found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(m: TeamMemberOption) => (
+                        <>
+                          {me && m === restMembers[0] && <ComboboxSeparator />}
+                          <ComboboxItem key={m.userId} value={m}>
+                            {m.userId === user?.id
+                              ? `${m.label} (you)`
+                              : m.label}
+                          </ComboboxItem>
+                        </>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="flag-note">Add a note (optional)</Label>
+              <Textarea
+                id="flag-note"
+                placeholder="Give additional context"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                maxLength={1000}
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="flag-note">Add a note (optional)</Label>
-            <Textarea
-              id="flag-note"
-              placeholder="Give additional context"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              maxLength={1000}
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-          <div>
-            {existingFlag && (
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+            <div>
+              {existingFlag && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleUnassign}
+                  disabled={isSubmitting}
+                  className="text-muted-foreground"
+                >
+                  Remove assignment
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
               <Button
                 type="button"
-                variant="ghost"
-                onClick={handleUnassign}
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
                 disabled={isSubmitting}
-                className="text-muted-foreground"
               >
-                Remove assignment
+                Cancel
               </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirm}
-              disabled={isSubmitting || !selectedMember || !selectedTeamId}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                'Save assignee'
-              )}
-            </Button>
-          </div>
-        </DialogFooter>
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                disabled={isSubmitting || !selectedMember || !selectedTeamId}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    Saving…
+                  </>
+                ) : (
+                  'Save assignee'
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
