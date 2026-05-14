@@ -30,11 +30,6 @@ export {
 } from './rowViewModel';
 export { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 export {
-  LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX,
-  lookAheadCoverLayoutPx,
-  lookAheadCoverLayoutScale,
-} from './lookAheadCoverLayout';
-export {
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayContent,
   type LookAheadCoverOverlayRow,

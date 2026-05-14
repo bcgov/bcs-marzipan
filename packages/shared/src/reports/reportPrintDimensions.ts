@@ -30,8 +30,8 @@ export const REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS =
 export const REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX = 24 as const;
 
 /**
- * Width inside those insets ({@link REPORT_PRINT_LAYOUT_WIDTH_PX} − 2× {@link REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}),
- * used to scale the look-ahead cover Figma frame (612px wide) onto the inset column.
+ * Width inside horizontal insets ({@link REPORT_PRINT_LAYOUT_WIDTH_PX} − 2× {@link REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}).
+ * Look-ahead cover overlay geometry is tuned for this column (see print/react/lookAheadCoverMetrics.ts).
  */
 export const REPORT_PRINT_COVER_CONTENT_WIDTH_PX =
   REPORT_PRINT_LAYOUT_WIDTH_PX - 2 * REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX;

@@ -1,12 +1,27 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
 import {
-  REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
 } from '../../reportPrintDimensions';
-import { LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX } from './lookAheadCoverLayout';
+import {
+  formatLookAheadCoverLayoutLength,
+  LOOK_AHEAD_COVER_TYPO_BANNER_BC_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_BANNER_BC_LINE_HEIGHT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_BANNER_CORP_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_BANNER_CORP_LINE_HEIGHT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_CONTENTS_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_CONTENTS_LIST_GAP_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_CONTENTS_ROW_GAP_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_DATE_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_GCPE_FONT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_GCPE_LINE_HEIGHT_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_SWATCH_RADIUS_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_SWATCH_SIZE_BASELINE_PX,
+} from './lookAheadCoverMetrics';
 
 /**
  * Single source of print styles for both in-app preview and Puppeteer-generated
@@ -428,40 +443,38 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   z-index: 1;
   pointer-events: none;
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* Unitless ratio: Figma 612px-wide frame scaled to inset column. Do not use px on width here or
-     multiplications like (Npx × var(--lc-s)) become invalid length × length in calc(). */
-  --lc-s: calc(${REPORT_PRINT_COVER_CONTENT_WIDTH_PX} / ${LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX});
 }
 .corpcal-print-cover-abs {
   position: absolute;
   margin: 0;
   white-space: pre-line;
 }
-/* Banner stack width set in overlay HTML (Figma-scaled); flex + 1px gap. */
+/* Banner stack gap matches lookAheadCoverMetrics. */
 .corpcal-print-cover-banner-stack {
   display: flex;
   flex-direction: column;
   text-align: left;
-  gap: calc(1px * var(--lc-s));
+  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
   white-space: normal;
 }
 .corpcal-print-cover-gcpe-title {
   font-weight: 700;
-  font-size: calc(14px * var(--lc-s));
-  line-height: calc(16px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_GCPE_FONT_BASELINE_PX)};
+  line-height: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_GCPE_LINE_HEIGHT_BASELINE_PX)};
   color: var(--corpcal-text);
+  text-align: left;
 }
 .corpcal-print-cover-banner-bc {
   font-weight: 700;
-  font-size: calc(20px * var(--lc-s));
-  line-height: calc(20px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_BC_FONT_BASELINE_PX)};
+  line-height: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_BC_LINE_HEIGHT_BASELINE_PX)};
   color: #fff;
   margin: 0;
 }
 .corpcal-print-cover-banner-corporate {
   font-weight: 400;
-  font-size: calc(34px * var(--lc-s));
-  line-height: calc(30px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_CORP_FONT_BASELINE_PX)};
+  line-height: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_CORP_LINE_HEIGHT_BASELINE_PX)};
   color: #fff;
   margin: 0;
   display: flex;
@@ -472,35 +485,36 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-cover-date-range {
   font-weight: 700;
-  font-size: calc(14px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_DATE_FONT_BASELINE_PX)};
   line-height: 1.3;
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-heading {
   font-weight: 400;
-  font-size: calc(12px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_FONT_BASELINE_PX)};
   line-height: 1.3;
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-list {
+  /* List gap & row layout must stay aligned with lookAheadCoverFooterTopBaselinePx in lookAheadCoverMetrics. */
   font-weight: 400;
-  font-size: calc(12px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_FONT_BASELINE_PX)};
   line-height: 1.3;
   color: var(--corpcal-text);
   display: flex;
   flex-direction: column;
-  gap: calc(4px * var(--lc-s));
+  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_LIST_GAP_BASELINE_PX)};
 }
 .corpcal-print-cover-contents-row {
   display: flex;
   align-items: center;
-  gap: calc(8px * var(--lc-s));
+  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_ROW_GAP_BASELINE_PX)};
 }
 .corpcal-print-cover-contents-swatch {
   display: inline-block;
-  width: calc(16px * var(--lc-s));
-  height: calc(16px * var(--lc-s));
-  border-radius: calc(3px * var(--lc-s));
+  width: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_SWATCH_SIZE_BASELINE_PX)};
+  height: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_SWATCH_SIZE_BASELINE_PX)};
+  border-radius: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_SWATCH_RADIUS_BASELINE_PX)};
   border: 1px solid var(--print-border);
   flex: 0 0 auto;
 }
@@ -509,7 +523,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-cover-footer-note {
   font-weight: 400;
-  font-size: calc(11px * var(--lc-s));
+  font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX)};
   line-height: 1.3;
   color: var(--corpcal-text);
 }

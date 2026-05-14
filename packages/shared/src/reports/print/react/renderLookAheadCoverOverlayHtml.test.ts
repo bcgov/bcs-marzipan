@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
+import {
+  LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_RIGHT_BASELINE_PX,
+  LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX,
+  lookAheadCoverFooterTopBaselinePx,
+  scaleLookAheadCoverLayoutPx,
+} from './lookAheadCoverMetrics';
 import { renderLookAheadCoverOverlayHtml } from './renderLookAheadCoverOverlayHtml';
 
 describe('renderLookAheadCoverOverlayHtml', () => {
-  it('scales left offset for 52px Figma coordinate onto cover inset column', () => {
+  it('positions left column and footer from cover metrics', () => {
     const html = renderLookAheadCoverOverlayHtml({
       dateRangeLine: 'Thursday April 30, 2026 to Saturday May 30, 2026',
       contactPhone: '555-555-3498',
@@ -17,10 +22,17 @@ describe('renderLookAheadCoverOverlayHtml', () => {
         { label: 'Issues and reports', legendColor: '#C1121F' },
       ],
     });
-    const expectedLeft = lookAheadCoverLayoutPx(52);
+    const expectedLeft = scaleLookAheadCoverLayoutPx(
+      LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX
+    );
+    const expectedRight = scaleLookAheadCoverLayoutPx(
+      LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_RIGHT_BASELINE_PX
+    );
+    const expectedFooterTop = scaleLookAheadCoverLayoutPx(
+      lookAheadCoverFooterTopBaselinePx(2)
+    );
     expect(html).toContain(`left:${expectedLeft}px`);
-    // Footer `top`: contents bottom for 2 rows + same 35px Figma gap as date → "Contents:"
-    const expectedFooterTop = lookAheadCoverLayoutPx(548 + 36 + 35) + 48;
+    expect(html).toContain(`right:${expectedRight}px`);
     expect(html).toContain(`top:${expectedFooterTop}px`);
     expect(html).toContain('Thursday April 30, 2026');
     expect(html).toContain('555-555-3498');
@@ -76,14 +88,16 @@ describe('renderLookAheadCoverOverlayHtml', () => {
     expect(html).toContain('No activities in the selected range');
   });
 
-  it('positions footer below contents with the same Figma gap as date to Contents heading when list is empty', () => {
+  it('positions footer below contents heading when list is empty', () => {
     const html = renderLookAheadCoverOverlayHtml({
       dateRangeLine: 'Monday Jan 1 to Tuesday Jan 2',
       contactPhone: '',
       contactEmail: '',
       sectionRows: [],
     });
-    const expectedFooterTop = lookAheadCoverLayoutPx(526 + 12 * 1.3 + 35) + 48;
+    const expectedFooterTop = scaleLookAheadCoverLayoutPx(
+      lookAheadCoverFooterTopBaselinePx(0)
+    );
     expect(html).toContain(`top:${expectedFooterTop}px`);
   });
 });

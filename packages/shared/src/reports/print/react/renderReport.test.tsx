@@ -4,7 +4,10 @@ import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
-import { lookAheadCoverLayoutPx } from './lookAheadCoverLayout';
+import {
+  LOOK_AHEAD_COVER_PDF_HEADER_CONFIDENTIAL_FONT_BASELINE_PX,
+  scaleLookAheadCoverLayoutPx,
+} from './lookAheadCoverMetrics';
 import { REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX } from '../../reportPrintDimensions';
 import {
   renderPrintReportDocumentHtml,
@@ -513,7 +516,9 @@ describe('buildLookAheadReportPdfHeaderTemplateHtml', () => {
     expect(html).toContain('height:28px');
     expect(html).toContain('CONFIDENTIAL - NOT FOR CIRCULATION');
     expect(html).toContain('#ce3e39');
-    expect(html).toContain(`font-size:${lookAheadCoverLayoutPx(8)}px`);
+    expect(html).toContain(
+      `font-size:${scaleLookAheadCoverLayoutPx(LOOK_AHEAD_COVER_PDF_HEADER_CONFIDENTIAL_FONT_BASELINE_PX)}px`
+    );
   });
 });
 
