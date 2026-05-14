@@ -78,8 +78,7 @@ export class AuthService {
       return this.loginMock(body.username);
     }
 
-    // LOCAL_AUTH_ENABLED=true allows local email/password login alongside any
-    // primary strategy (e.g. AUTH_STRATEGY=azure + LOCAL_AUTH_ENABLED=true).
+    // Local (email/password) login is always available for any non-mock strategy.
     if (strategy === 'local' || this.isLocalAuthEnabled()) {
       return this.loginLocal(body.username, body.password);
     }
@@ -494,15 +493,12 @@ export class AuthService {
   }
 
   /** Whether local (email/password) auth is active.
-   * True when AUTH_STRATEGY=local OR LOCAL_AUTH_ENABLED=true (allows local
-   * login alongside a primary strategy such as azure).
+   * Always true for any strategy other than 'mock' (dev-only).
+   * No configuration required.
    */
   isLocalAuthEnabled(): boolean {
     const strategy = this.configService.get<string>('AUTH_STRATEGY', 'mock');
-    if (strategy === 'local') return true;
-    return (
-      this.configService.get<string>('LOCAL_AUTH_ENABLED', 'false') === 'true'
-    );
+    return strategy !== 'mock';
   }
 
   /** Whether the mock auth strategy is active (development only) */
