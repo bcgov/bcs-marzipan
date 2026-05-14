@@ -716,6 +716,8 @@ export interface ActivityTableProps {
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
+  /** When set, only activities flag-assigned to this user are shown. */
+  flagAssigneeUserId?: number;
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -732,6 +734,7 @@ export function ActivityTable({
   sharedWithTeamId,
   sharedWithTeamIds,
   favouriteActivityIds,
+  flagAssigneeUserId,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
@@ -1044,6 +1047,7 @@ export function ActivityTable({
       ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
+      ...(flagAssigneeUserId !== undefined && { flagAssigneeUserId }),
     };
   }, [
     effectiveShowCompleted,
@@ -1052,6 +1056,7 @@ export function ActivityTable({
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
+    flagAssigneeUserId,
   ]);
 
   // Reset to first page when user changes filters so results match expectations
@@ -1074,6 +1079,7 @@ export function ActivityTable({
       prev.leadTeamId === activityFilters.leadTeamId &&
       prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
       prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      prev.flagAssigneeUserId === activityFilters.flagAssigneeUserId &&
       sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;

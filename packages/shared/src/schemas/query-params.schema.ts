@@ -74,6 +74,14 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int())
     .optional(),
   /**
+   * Restrict to activities that have been flag-assigned to this user.
+   */
+  flagAssigneeUserId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
+  /**
    * Restrict to activities shared with this team (in activity_shared_with_teams).
    */
   sharedWithTeamId: z

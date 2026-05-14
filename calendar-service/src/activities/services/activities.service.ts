@@ -16,6 +16,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityFlags,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -1586,6 +1587,16 @@ export class ActivitiesService {
         );
       const commsLeadIds = new Set(commsLeadRows.map((r) => r.activityId));
       activityResults = activityResults.filter((a) => commsLeadIds.has(a.id));
+    }
+
+    // Restrict to activities flag-assigned to this user
+    if (filters?.flagAssigneeUserId !== undefined) {
+      const flagRows = await this.databaseService.db
+        .select({ activityId: activityFlags.activityId })
+        .from(activityFlags)
+        .where(eq(activityFlags.assigneeId, filters.flagAssigneeUserId));
+      const flaggedIds = new Set(flagRows.map((r) => r.activityId));
+      activityResults = activityResults.filter((a) => flaggedIds.has(a.id));
     }
 
     // Restrict to activities shared with this team
