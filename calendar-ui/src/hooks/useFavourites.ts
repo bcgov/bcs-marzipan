@@ -37,7 +37,7 @@ export function useFavourites() {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(FAVOURITES_QUERY_KEY, context.previous);
       }
-      showErrorToast(_err, 'Failed to add activity to favourites');
+      showErrorToast(_err, 'Failed to add activity to watchlist');
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: FAVOURITES_QUERY_KEY });
@@ -58,7 +58,7 @@ export function useFavourites() {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(FAVOURITES_QUERY_KEY, context.previous);
       }
-      showErrorToast(_err, 'Failed to remove activity from favourites');
+      showErrorToast(_err, 'Failed to remove activity from watchlist');
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: FAVOURITES_QUERY_KEY });
