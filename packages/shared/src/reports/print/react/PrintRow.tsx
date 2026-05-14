@@ -1,12 +1,16 @@
+import type { ReactNode } from 'react';
+
 import { PrintRichText } from './PrintRichText';
 import type { PrintReportVariant, PrintRowViewModel } from './rowViewModel';
 
+/** Column‑3 narrative: executive summary vs title + summary. */
+function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
+  return variant === 'lookAhead';
+}
+
 /**
- * Five-column body row shared across Look Ahead, 30/60/90, and Exec Look Ahead.
- * Column 3 differs by print variant (`ActivityDetailsCell`):
- * - **Look Ahead** (`lookAhead`): executive summary (inline with city prefix when present).
- * - **Exec Look Ahead** (`exec`): activity title + summary.
- * All other columns match across variants.
+ * Five-column body row shared across Corporate Look Ahead, 30/60/90,
+ * and Executive Look Ahead. Column‑3 differs by {@link PrintReportVariant}.
  */
 export function PrintRow({
   row,
@@ -18,7 +22,7 @@ export function PrintRow({
   return (
     <tr>
       <td className="corpcal-print-col-1">
-        <DateTimeCell row={row} />
+        <DateTimeCell row={row} variant={variant} />
       </td>
       <td className="corpcal-print-col-2">
         <LeadCell row={row} />
@@ -30,44 +34,81 @@ export function PrintRow({
         <ReleaseCell row={row} />
       </td>
       <td className="corpcal-print-col-5">
-        <ActivityCell row={row} />
+        <ActivityCell row={row} variant={variant} />
       </td>
     </tr>
   );
 }
 
-function DateTimeCell({ row }: { row: PrintRowViewModel }) {
+function lookAheadDateTimeStatusContent(
+  variant: PrintReportVariant,
+  status: string
+): ReactNode {
+  const isLookAheadVariant =
+    variant === 'lookAhead' || variant === 'execLookAhead';
+  if (isLookAheadVariant && status === 'Date TBD') {
+    return (
+      <strong className="corpcal-print-tbd-strong">Date TBD</strong>
+    );
+  }
+  if (isLookAheadVariant && status === 'Time TBD') {
+    return (
+      <strong className="corpcal-print-tbd-strong">Time TBD</strong>
+    );
+  }
+  return status;
+}
+
+function DateTimeCell({
+  row,
+  variant,
+}: {
+  row: PrintRowViewModel;
+  variant: PrintReportVariant;
+}) {
   const { dateTime } = row;
   const dateRange = dateTime.endDate
     ? `${dateTime.startDate} – ${dateTime.endDate}`
     : dateTime.startDate;
   const showTimeLine = Boolean(dateTime.startTime || dateTime.timeStatus);
+  const useLookAheadDtValueStyle =
+    variant === 'lookAhead' || variant === 'execLookAhead';
+  const valueClass = useLookAheadDtValueStyle
+    ? 'corpcal-print-dt-value'
+    : 'corpcal-print-meta-strong';
+
   return (
     <div className="corpcal-print-stack">
       {dateRange || dateTime.dateStatus ? (
-        <div className="corpcal-print-inline-row">
+        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
           {dateRange ? (
-            <span className="corpcal-print-meta-strong">{dateRange}</span>
+            <span className={valueClass}>{dateRange}</span>
+          ) : null}
+          {dateRange && dateTime.dateStatus ? (
+            <span className="corpcal-print-inline-sep" aria-hidden="true">
+              ·
+            </span>
           ) : null}
           {dateTime.dateStatus ? (
             <span className="corpcal-print-inline-status">
-              {dateRange ? ' · ' : null}
-              {dateTime.dateStatus}
+              {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
             </span>
           ) : null}
         </div>
       ) : null}
       {showTimeLine ? (
-        <div className="corpcal-print-inline-row">
+        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
           {dateTime.startTime ? (
-            <span className="corpcal-print-meta-strong">
-              {dateTime.startTime}
+            <span className={valueClass}>{dateTime.startTime}</span>
+          ) : null}
+          {dateTime.startTime && dateTime.timeStatus ? (
+            <span className="corpcal-print-inline-sep" aria-hidden="true">
+              ·
             </span>
           ) : null}
           {dateTime.timeStatus ? (
             <span className="corpcal-print-inline-status">
-              {dateTime.startTime ? ' · ' : null}
-              {dateTime.timeStatus}
+              {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
             </span>
           ) : null}
         </div>
@@ -136,6 +177,8 @@ function ActivityDetailsCell({
   if (row.venue.name) venueLines.push(row.venue.name);
   if (row.venue.address) venueLines.push(row.venue.address);
 
+  const showVenuePlanner = variant !== 'lookAhead';
+
   return (
     <div className="corpcal-print-stack-md">
       {flags.length > 0 ? (
@@ -148,11 +191,8 @@ function ActivityDetailsCell({
         </div>
       ) : null}
 
-      {variant === 'lookAhead' ? (
+      {narrativeIsExecutiveSummaryInline(variant) ? (
         <div className="corpcal-print-exec-summary-inline">
-          {row.venue.city ? (
-            <span className="corpcal-print-meta-faint">{row.venue.city}: </span>
-          ) : null}
           <PrintRichText
             value={row.executiveSummaryStored}
             className="corpcal-print-rich corpcal-print-rich-inline"
@@ -167,11 +207,11 @@ function ActivityDetailsCell({
         </>
       )}
 
-      {venueLines.length > 0 ? (
+      {showVenuePlanner && venueLines.length > 0 ? (
         <div className="corpcal-print-meta-strong">{venueLines.join(', ')}</div>
       ) : null}
 
-      {row.eventPlannerLead ? (
+      {showVenuePlanner && row.eventPlannerLead ? (
         <div className="corpcal-print-meta-faint">
           Event planner: {row.eventPlannerLead}
         </div>
@@ -199,8 +239,16 @@ function ReleaseCell({ row }: { row: PrintRowViewModel }) {
   );
 }
 
-function ActivityCell({ row }: { row: PrintRowViewModel }) {
+function ActivityCell({
+  row,
+  variant,
+}: {
+  row: PrintRowViewModel;
+  variant: PrintReportVariant;
+}) {
   const { activityLink, lastUpdated } = row;
+  const showUpdated = variant !== 'lookAhead';
+
   return (
     <div className="corpcal-print-stack">
       <div className="corpcal-print-meta">
@@ -213,7 +261,7 @@ function ActivityCell({ row }: { row: PrintRowViewModel }) {
           {activityLink.label}
         </a>
       </div>
-      {lastUpdated ? (
+      {showUpdated && lastUpdated ? (
         <div className="corpcal-print-meta-faint">Updated {lastUpdated}</div>
       ) : null}
     </div>

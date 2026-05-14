@@ -117,7 +117,7 @@ export function PrintReportDocument({
     <div
       className={CORPCAL_PRINT_ROOT_CLASS}
       data-report-template={
-        variant === 'exec' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
+        variant === 'execLookAhead' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
       }
     >
       <div className="corpcal-print-body">
@@ -155,7 +155,11 @@ function SectionGroup({
   const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
     const activities = section.activitiesByKey.get(dayKey) ?? [];
     const rows: PrintRowViewModel[] = activities.map((a) =>
-      toPrintRowViewModel(a, { activityBaseUrl })
+      toPrintRowViewModel(a, {
+        activityBaseUrl,
+        dateCellStyle: 'shortNoYear',
+        variant,
+      })
     );
     return {
       dayKey,

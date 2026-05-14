@@ -102,6 +102,27 @@ describe('buildTranslationsLine', () => {
 });
 
 describe('toPrintRowViewModel', () => {
+  it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
+    const dated = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-04-27',
+      endDate: null,
+    };
+
+    const withYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+    expect(withYear.dateTime.startDate).toContain('Apr 27');
+    expect(withYear.dateTime.startDate).toContain('2026');
+
+    const noYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(noYear.dateTime.startDate).toBe('Apr 27');
+    expect(noYear.dateTime.startDate).not.toContain('2026');
+  });
+
   it('maps core fields, resolving lead preference order and absolute href', () => {
     const row = toPrintRowViewModel(BASE_ACTIVITY, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
@@ -168,6 +189,49 @@ describe('toPrintRowViewModel', () => {
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
+  });
+
+  it('maps date/time status for look-ahead print variants (Confirmed hidden, else Date/Time TBD)', () => {
+    const unsettled = {
+      ...BASE_ACTIVITY,
+      dateStatus: 'Tentative',
+      timeStatus: 'Proposed',
+    };
+
+    const lookAhead = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'lookAhead',
+    });
+    expect(lookAhead.dateTime.dateStatus).toBe('Date TBD');
+    expect(lookAhead.dateTime.timeStatus).toBe('Time TBD');
+
+    const execLa = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'execLookAhead',
+    });
+    expect(execLa.dateTime.dateStatus).toBe('Date TBD');
+    expect(execLa.dateTime.timeStatus).toBe('Time TBD');
+
+    const confirmed = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        dateStatus: 'Confirmed',
+        timeStatus: 'confirmed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(confirmed.dateTime.dateStatus).toBe('');
+    expect(confirmed.dateTime.timeStatus).toBe('');
+
+    const thirty = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'thirtySixtyNinety',
+    });
+    expect(thirty.dateTime.dateStatus).toBe('Tentative');
+    expect(thirty.dateTime.timeStatus).toBe('Proposed');
   });
 
   it('derives FYI flag from the category list', () => {

@@ -293,6 +293,21 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   align-items: center;
   gap: 0;
 }
+.corpcal-print-dt-inline-row {
+  gap: 0.35em;
+}
+.corpcal-print-dt-value {
+  font-weight: 400;
+  font-size: 1em;
+  color: var(--print-ink);
+}
+.corpcal-print-inline-sep {
+  color: var(--print-ink-muted);
+  font-weight: 400;
+}
+.corpcal-print-tbd-strong {
+  font-weight: 700;
+}
 .corpcal-print-meta-faint {
   font-size: 1em;
   color: var(--print-ink-faint);
@@ -306,7 +321,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-rich {
   font-size: 1em;
   line-height: 1.5;
-  color: var(--print-ink-muted);
+  color: var(--print-ink);
 }
 .corpcal-print-rich p { margin: 0 0 4px; }
 .corpcal-print-rich p:last-child { margin-bottom: 0; }

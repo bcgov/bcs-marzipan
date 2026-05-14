@@ -2,11 +2,21 @@ import type { ActivityResponse } from '../../../schemas/activity-response.schema
 import {
   formatLastUpdated,
   formatShortDate,
+  formatShortDateNoYear,
   formatTime12h,
 } from './dateFormatters';
 
 /** Kind of print report row to render; different columns include different narrative blocks. */
-export type PrintReportVariant = 'lookAhead' | 'exec';
+export type PrintReportVariant =
+  /** Corporate Look Ahead: executive summary, compact chrome. */
+  | 'lookAhead'
+  /** 30/60/90: title + summary, classic chrome. */
+  | 'thirtySixtyNinety'
+  /** Exec Look Ahead: title + summary, classic chrome; distinct PDF template slug. */
+  | 'execLookAhead';
+
+/** How activity start/end dates render in rollup table column 1. */
+export type PrintDateCellStyle = 'shortWithYear' | 'shortNoYear';
 
 /** Look-ahead status badge variants. `'none'` is normalised to `null`. */
 export type LookAheadBadge = 'new' | 'changed' | null;
@@ -32,7 +42,7 @@ export interface LeadBlock {
 }
 
 export interface DateTimeBlock {
-  /** Pre-formatted start date, e.g. `Apr 27, 2026`. Empty when no start date. */
+  /** Pre-formatted start date, e.g. `Apr 27, 2026` or rollup `Apr 27`. Empty when no start date. */
   startDate: string;
   /** Pre-formatted end date, omitted when the activity is single-day. */
   endDate: string;
@@ -63,11 +73,11 @@ export interface PrintRowViewModel {
   lastUpdated: string;
   flags: ColumnFlags;
   venue: VenueBlock;
-  /** Plain-text title used on look-ahead / 30-60-90 variants. */
+  /** Plain-text title used on Exec Look Ahead / 30/60/90 print rows. */
   title: string;
   /** Rich summary stored value (TipTap JSON or legacy markdown). */
   summaryStored: string | null;
-  /** Rich executive summary stored value (exec variant). */
+  /** Rich executive summary (Corporate Look Ahead column 3). */
   executiveSummaryStored: string | null;
   release: ReleaseBlock;
   eventPlannerLead: string | null;
@@ -160,17 +170,67 @@ export function resolveLeadOrgForPrint(
   return org;
 }
 
+function isConfirmedStatusDisplay(value: string): boolean {
+  return value.trim().toLowerCase() === 'confirmed';
+}
+
+/**
+ * Look Ahead / Exec Look Ahead print: hide date/time status when Confirmed;
+ * otherwise show fixed labels (not raw lookup text).
+ */
+function lookAheadDateStatusForPrint(raw: string): string {
+  const t = raw.trim();
+  if (!t || isConfirmedStatusDisplay(t)) return '';
+  return 'Date TBD';
+}
+
+function lookAheadTimeStatusForPrint(raw: string): string {
+  const t = raw.trim();
+  if (!t || isConfirmedStatusDisplay(t)) return '';
+  return 'Time TBD';
+}
+
+function shouldUseLookAheadDateTimeStatusRules(
+  variant: PrintReportVariant | undefined
+): boolean {
+  return variant === 'lookAhead' || variant === 'execLookAhead';
+}
+
 /**
  * Shape an `ActivityResponse` into the pure row view-model consumed by the
  * print React row. All data massaging (date formatting, url assembly,
  * translations collapsing) lives here so the React layer stays declarative.
+ *
+ * `@default dateCellStyle` — `'shortWithYear'` keeps legacy callers/tests stable;
+ * rollup `{@link PrintReportDocument}` passes `'shortNoYear'`.
+ *
+ * When `variant` is `lookAhead` or `execLookAhead`, Confirmed date/time status
+ * is omitted; any other non-empty status becomes `Date TBD` / `Time TBD`.
  */
 export function toPrintRowViewModel(
   activity: ActivityResponse,
-  options: { activityBaseUrl: string }
+  options: {
+    activityBaseUrl: string;
+    /** @default `'shortWithYear'` */
+    dateCellStyle?: PrintDateCellStyle;
+    /**
+     * Rollup print variant. When `lookAhead` or `execLookAhead`, date/time
+     * status labels follow look-ahead print rules; otherwise raw API strings.
+     */
+    variant?: PrintReportVariant;
+  }
 ): PrintRowViewModel {
-  const startDateLabel = formatShortDate(activity.startDate);
-  const endDateLabel = formatShortDate(activity.endDate);
+  const fmtDate =
+    options.dateCellStyle === 'shortNoYear'
+      ? formatShortDateNoYear
+      : formatShortDate;
+
+  const startDateLabel = fmtDate(activity.startDate);
+  const endDateLabel = fmtDate(activity.endDate);
+
+  const rawDateStatus = activity.dateStatus?.trim() ?? '';
+  const rawTimeStatus = activity.timeStatus?.trim() ?? '';
+  const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
 
   return {
     activityId: activity.id,
@@ -178,12 +238,16 @@ export function toPrintRowViewModel(
       startDate: startDateLabel,
       endDate:
         endDateLabel && endDateLabel !== startDateLabel ? endDateLabel : '',
-      dateStatus: activity.dateStatus?.trim() ?? '',
+      dateStatus: useLaRules
+        ? lookAheadDateStatusForPrint(rawDateStatus)
+        : rawDateStatus,
       startTime:
         activity.isAllDay === true
           ? 'All day'
           : formatTime12h(activity.startDate, activity.startTime),
-      timeStatus: activity.timeStatus?.trim() ?? '',
+      timeStatus: useLaRules
+        ? lookAheadTimeStatusForPrint(rawTimeStatus)
+        : rawTimeStatus,
       lookAheadStatus: normaliseLookAheadStatus(activity.lookAheadStatus),
     },
     lead: {

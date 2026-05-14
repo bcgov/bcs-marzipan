@@ -12,6 +12,7 @@ import {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateShort,
+  formatCalendarDateShortNoYear,
   formatCivilOrInstantTime,
   formatInstantInPacific,
   formatPacificFooterTimestamp,
@@ -49,6 +50,16 @@ export function formatShortDate(
   const key = isCalendarDateString(date) ? date : pacificDayKey(date);
   if (key == null) return '';
   return formatCalendarDateShort(key);
+}
+
+/** Compact date cell without year, e.g. `Apr 27` — rollup report body rows. */
+export function formatShortDateNoYear(
+  date: CalendarDateString | string | null | undefined
+): string {
+  if (date == null) return '';
+  const key = isCalendarDateString(date) ? date : pacificDayKey(date);
+  if (key == null) return '';
+  return formatCalendarDateShortNoYear(key);
 }
 
 /** Last-updated timestamp, e.g. `Apr 27, 2026 9:15 am`, formatted in Pacific. */

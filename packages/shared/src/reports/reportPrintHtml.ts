@@ -22,6 +22,7 @@ export {
   CORPCAL_PRINT_ROOT_CLASS,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
+  rollupPrintVariantForReportType,
   printPdfFooterHintLineHtml,
   PrintCustomReportDocument,
   PrintPdfFooterHintLine,

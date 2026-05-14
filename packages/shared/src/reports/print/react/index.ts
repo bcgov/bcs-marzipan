@@ -1,5 +1,6 @@
 export {
   isReactRenderableReportType,
+  rollupPrintVariantForReportType,
   printPdfFooterHintLineHtml,
   printRootClassName,
   PrintPdfFooterHintLine,
@@ -25,6 +26,7 @@ export {
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
   type LookAheadBadge,
+  type PrintDateCellStyle,
   type PrintReportVariant,
   type PrintRowViewModel,
 } from './rowViewModel';
@@ -46,6 +48,7 @@ export {
   formatLastUpdated,
   formatPrintReportGeneratedAt,
   formatShortDate,
+  formatShortDateNoYear,
   formatTime12h,
   PRINT_FOOTER_CHANGED_EXPLANATION,
   PRINT_FOOTER_CHANGED_EXPLANATION_BODY,

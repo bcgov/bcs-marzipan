@@ -48,8 +48,8 @@ const REPORT_TYPE_TO_VARIANT: Record<
   PrintReportVariant
 > = {
   'look-ahead': 'lookAhead',
-  'thirty-sixty-ninety': 'lookAhead',
-  exec: 'exec',
+  'thirty-sixty-ninety': 'thirtySixtyNinety',
+  exec: 'execLookAhead',
 };
 
 const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([
@@ -57,6 +57,13 @@ const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([
   'planning',
   'custom',
 ]);
+
+/** Maps rollup print `ReactRenderableReportType` to row layout variant (excludes planning/custom). */
+export function rollupPrintVariantForReportType(
+  reportTypeName: Exclude<ReactRenderableReportType, 'planning' | 'custom'>
+): PrintReportVariant {
+  return REPORT_TYPE_TO_VARIANT[reportTypeName];
+}
 
 export function isReactRenderableReportType(
   reportTypeName: string

@@ -9,6 +9,7 @@ import {
   PrintPdfFooterHintLine,
   PrintPlanningDocument,
   PrintReportDocument,
+  rollupPrintVariantForReportType,
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 
@@ -73,7 +74,7 @@ function PrintReportPreviewRoot({
     document = (
       <PrintReportDocument
         data={data}
-        variant={reportTypeName === 'exec' ? 'exec' : 'lookAhead'}
+        variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
       />
     );

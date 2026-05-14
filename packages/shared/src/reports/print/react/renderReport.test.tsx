@@ -117,8 +117,13 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
+    expect(html).toContain('data-report-template="LOOK_AHEAD"');
     expect(html).toContain('Investment of $500M');
     expect(html).not.toContain('Minister announces housing investment');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Legislative Assembly');
+    expect(html).not.toContain('Updated Apr');
+    expect(html).not.toContain('Apr 27, 2026');
   });
 
   it('renders exec look-ahead print with title and summary in the activity details column', () => {
@@ -126,11 +131,44 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
+    expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
     expect(html).toContain('Minister announces housing investment');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
     expect(html).not.toContain('Investment of $500M');
+    expect(html).not.toContain('Apr 27, 2026');
+    expect(html).toContain('Event planner:');
+    expect(html).toContain('Updated Apr');
+  });
+
+  it('renders thirty-sixty-ninety like exec body chrome with title + summary', () => {
+    const thirtyFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'thirty-sixty-ninety',
+        displayName: '30/60/90',
+      },
+    };
+    const html = renderPrintReportFragmentHtml(
+      'thirty-sixty-ninety',
+      thirtyFixture,
+      {
+        activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      }
+    );
+
+    expect(html).toContain('data-report-template="LOOK_AHEAD"');
+    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain(
+      'The Minister will announce new housing funding and respond to media questions'
+    );
+    expect(html).not.toContain('Investment of $500M');
+    expect(html).not.toContain('Apr 27, 2026');
+    expect(html).toContain('Event planner:');
+    expect(html).toContain('Legislative Assembly');
+    expect(html).toContain('Updated Apr');
   });
 
   it('renders the planning placeholder as a React fragment', () => {

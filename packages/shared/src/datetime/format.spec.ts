@@ -5,6 +5,7 @@ import {
   formatCalendarDateHeading,
   formatCalendarDateLong,
   formatCalendarDateShort,
+  formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
   formatCivilOrInstantTime,
   formatCivilTime12h,
@@ -28,6 +29,10 @@ describe('calendar-date formatters', () => {
 
   it('formatCalendarDateShort renders compact cell label', () => {
     expect(formatCalendarDateShort(APR_27)).toBe('Apr 27, 2026');
+  });
+
+  it('formatCalendarDateShortNoYear omits comma and year', () => {
+    expect(formatCalendarDateShortNoYear(APR_27)).toBe('Apr 27');
   });
 
   it('formatCalendarDateLong renders long month without weekday', () => {
