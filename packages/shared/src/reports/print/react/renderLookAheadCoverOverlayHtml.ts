@@ -1,3 +1,7 @@
+import { Mail, Phone } from 'lucide-react';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+
 import { sanitizeLegendSwatchHexColor } from '../../../schemas/legend-swatch-hex';
 import {
   LOOK_AHEAD_COVER_OVERLAY_BANNER_TOP_BASELINE_PX,
@@ -11,6 +15,7 @@ import {
   LOOK_AHEAD_COVER_OVERLAY_GCPE_TOP_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_RIGHT_COLUMN_BASELINE_PX,
+  LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX,
   lookAheadCoverFooterTopBaselinePx,
   scaleLookAheadCoverLayoutPx,
 } from './lookAheadCoverMetrics';
@@ -44,6 +49,56 @@ function escapeHtml(s: string): string {
 
 function px(n: number): string {
   return `${scaleLookAheadCoverLayoutPx(n)}px`;
+}
+
+/** Footer contact icons match footer type size (scaled with cover column width). */
+function lookAheadCoverFooterContactIconSizePx(): number {
+  return Math.max(
+    12,
+    Math.round(
+      scaleLookAheadCoverLayoutPx(LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX)
+    )
+  );
+}
+
+function renderLookAheadCoverFooterContactIconPhoneHtml(): string {
+  return renderToStaticMarkup(
+    createElement(Phone, {
+      className: 'corpcal-print-cover-footer-contact-icon',
+      'aria-hidden': true,
+      size: lookAheadCoverFooterContactIconSizePx(),
+      strokeWidth: 2,
+    })
+  );
+}
+
+function renderLookAheadCoverFooterContactIconMailHtml(): string {
+  return renderToStaticMarkup(
+    createElement(Mail, {
+      className: 'corpcal-print-cover-footer-contact-icon',
+      'aria-hidden': true,
+      size: lookAheadCoverFooterContactIconSizePx(),
+      strokeWidth: 2,
+    })
+  );
+}
+
+function renderLookAheadCoverFooterContactHtml(
+  phone: string,
+  email: string
+): string {
+  const chunks: string[] = [];
+  if (phone.length > 0) {
+    chunks.push(
+      `<span class="corpcal-print-cover-footer-contact-item">${renderLookAheadCoverFooterContactIconPhoneHtml()}<span class="corpcal-print-cover-footer-contact-text">${phone}</span></span>`
+    );
+  }
+  if (email.length > 0) {
+    chunks.push(
+      `<span class="corpcal-print-cover-footer-contact-item">${renderLookAheadCoverFooterContactIconMailHtml()}<span class="corpcal-print-cover-footer-contact-text">${email}</span></span>`
+    );
+  }
+  return chunks.join('');
 }
 
 const LOOK_AHEAD_COVER_GCPE_TITLE =
@@ -94,12 +149,16 @@ export function renderLookAheadCoverOverlayHtml(
       : escapeHtml(LOOK_AHEAD_COVER_DATE_EMPTY);
   const phone = escapeHtml(content.contactPhone.trim());
   const email = escapeHtml(content.contactEmail.trim());
-  const contactMid = [phone, email].filter((x) => x.length > 0).join(' ');
+  const contactMid = renderLookAheadCoverFooterContactHtml(phone, email);
+  const contactWrapped =
+    contactMid.length > 0
+      ? `<span class="corpcal-print-cover-footer-contact-cluster">${contactMid}</span>`
+      : '';
   const footerBody =
     escapeHtml(LOOK_AHEAD_COVER_FOOTER_INFO_CONFIDENTIAL) +
     '\n' +
     escapeHtml(LOOK_AHEAD_COVER_FOOTER_QUESTIONS_PREFIX) +
-    contactMid;
+    contactWrapped;
   const contentsListHtml = renderContentsListHtml(content.sectionRows);
   const footerTop = scaleLookAheadCoverLayoutPx(
     lookAheadCoverFooterTopBaselinePx(content.sectionRows.length)

@@ -18,6 +18,9 @@ describe('renderLookAheadCoverOverlayHtml', () => {
     });
     expect(html).toContain('Thursday April 30, 2026');
     expect(html).toContain('555-555-3498');
+    expect(html).toContain('lucide-phone');
+    expect(html).toContain('lucide-mail');
+    expect(html).toContain('corpcal-print-cover-footer-contact-cluster');
     expect(html).toContain('Contents:');
     expect(html).toContain('CORPORATE');
   });

@@ -37,6 +37,7 @@ import {
   buildReportDataRequestParamsFromActivityPreferences,
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
+import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
 /** Persists fullscreen print preview width (full viewport vs Letter content width). */
@@ -45,14 +46,14 @@ const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
 type ReportPreviewSheetWidthMode = 'full' | 'print';
 
 function readStoredPreviewSheetWidth(): ReportPreviewSheetWidthMode {
-  if (typeof sessionStorage === 'undefined') return 'print';
+  if (typeof sessionStorage === 'undefined') return 'full';
   try {
     const v = sessionStorage.getItem(REPORTS_PREVIEW_SHEET_WIDTH_KEY);
     if (v === 'full' || v === 'print') return v;
   } catch {
     /* private mode */
   }
-  return 'print';
+  return 'full';
 }
 
 /**
@@ -285,11 +286,25 @@ export function ReportsPage() {
             </TabsList>
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+              isFullscreenPrintPreview(activeReport) ? 'gap-0' : 'gap-4'
+            )}
+          >
             <div className="shrink-0">
               <ReportFiltersBar
                 preferences={preferences}
                 setPreferences={setPreferences}
+                printPreviewConstraint={
+                  isFullscreenPrintPreview(activeReport)
+                    ? {
+                        checked: previewSheetWidthMode === 'print',
+                        onCheckedChange: (checked) =>
+                          setPreviewSheetWidthMode(checked ? 'print' : 'full'),
+                      }
+                    : undefined
+                }
               />
             </div>
 
@@ -307,45 +322,6 @@ export function ReportsPage() {
                   isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                       <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
-                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-b px-6 py-2">
-                          <span className="text-muted-foreground text-sm">
-                            Preview width
-                          </span>
-                          <div
-                            className="bg-muted/50 flex rounded-md border p-0.5"
-                            role="group"
-                            aria-label="Preview width"
-                          >
-                            <Button
-                              type="button"
-                              variant={
-                                previewSheetWidthMode === 'full'
-                                  ? 'secondary'
-                                  : 'ghost'
-                              }
-                              size="sm"
-                              className="rounded-sm"
-                              aria-pressed={previewSheetWidthMode === 'full'}
-                              onClick={() => setPreviewSheetWidthMode('full')}
-                            >
-                              Full width
-                            </Button>
-                            <Button
-                              type="button"
-                              variant={
-                                previewSheetWidthMode === 'print'
-                                  ? 'secondary'
-                                  : 'ghost'
-                              }
-                              size="sm"
-                              className="rounded-sm"
-                              aria-pressed={previewSheetWidthMode === 'print'}
-                              onClick={() => setPreviewSheetWidthMode('print')}
-                            >
-                              PDF width
-                            </Button>
-                          </div>
-                        </div>
                         <div
                           className="min-h-0 min-w-0 flex-1 overflow-auto px-6 pt-0 pb-6"
                           aria-label="Report preview"

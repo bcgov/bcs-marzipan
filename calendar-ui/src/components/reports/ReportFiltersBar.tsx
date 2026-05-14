@@ -15,6 +15,7 @@ import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
 } from '@/components/shared/ResponsiveFilterRow';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +35,13 @@ import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreference
 export interface ReportFiltersBarProps {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
+  /**
+   * When set, shows a “Print preview” checkbox on a row below the search field (activity list pattern).
+   */
+  printPreviewConstraint?: {
+    checked: boolean;
+    onCheckedChange: (checked: boolean) => void;
+  };
 }
 
 /**
@@ -43,6 +51,7 @@ export interface ReportFiltersBarProps {
 export function ReportFiltersBar({
   preferences,
   setPreferences,
+  printPreviewConstraint,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -397,19 +406,19 @@ export function ReportFiltersBar({
 
   return (
     <div
-      className="mb-4 flex flex-nowrap items-center justify-between gap-8"
+      className="flex flex-col"
       role="search"
       aria-label="Filter report activities by datetime, category, status, leads, translations, tags, and keyword"
     >
-      <div className="flex min-w-0 flex-1 items-center">
-        <ResponsiveFilterRow
-          slots={filterSlots}
-          overflowTriggerClassName="h-10"
-          onClearAll={handleClearAllFilters}
-        />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="relative max-w-md min-w-[240px] flex-1">
+      <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
+        <div className="flex min-w-0 flex-1 items-center">
+          <ResponsiveFilterRow
+            slots={filterSlots}
+            overflowTriggerClassName="h-10"
+            onClearAll={handleClearAllFilters}
+          />
+        </div>
+        <div className="relative max-w-md min-w-[240px] shrink-0">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             type="text"
@@ -431,6 +440,25 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
+      {printPreviewConstraint ? (
+        <div className="flex justify-end">
+          <div className="flex h-9 w-full max-w-md min-w-[240px] items-center justify-end">
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={printPreviewConstraint.checked}
+                  onCheckedChange={(v) =>
+                    printPreviewConstraint.onCheckedChange(v === true)
+                  }
+                  aria-label="Print preview"
+                  className="border-input"
+                />
+                Print preview
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

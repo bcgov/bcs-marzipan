@@ -1,6 +1,10 @@
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { resolveLookAheadSectionRows } from '../../look-ahead';
+import {
+  effectiveReportFieldsIncludeEventLead,
+  getEffectiveReportFields,
+} from '../../reportTypeConfig';
 import { dateKeyLocal, formatDayHeading } from './dateFormatters';
 import {
   PrintGroupedSectionTable,
@@ -112,6 +116,8 @@ export function PrintReportDocument({
 }) {
   const sections = collectSortedSections(data);
   const hasAny = reportHasAnyActivities(sections);
+  const effectiveFields = getEffectiveReportFields(data.report);
+  const showEventLead = effectiveReportFieldsIncludeEventLead(effectiveFields);
 
   return (
     <div
@@ -132,6 +138,7 @@ export function PrintReportDocument({
               section={section}
               variant={variant}
               activityBaseUrl={activityBaseUrl}
+              showEventLead={showEventLead}
             />
           ))
         )}
@@ -144,10 +151,12 @@ function SectionGroup({
   section,
   variant,
   activityBaseUrl,
+  showEventLead,
 }: {
   section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
+  showEventLead: boolean;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
   if (dateKeys.length === 0) return null;
@@ -176,6 +185,7 @@ function SectionGroup({
         days={dayBlocks}
         variant={variant}
         showPerDayPrintChrome={section.showPerDayPrintChrome}
+        showEventLead={showEventLead}
       />
     </section>
   );

@@ -19,15 +19,33 @@ export default defineConfig({
     tailwindcss(),
   ] as PluginOption[],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      // @corpcal/shared print HTML uses @tiptap/html/server in Node only. The static import
-      // is still evaluated in Vite; the real package pulls happy-dom and breaks the client.
-      '@tiptap/html/server': path.resolve(
-        __dirname,
-        './src/stubs/tiptapHtmlServerForClient.ts'
-      ),
-    },
+    alias: [
+      /*
+       * `package.json#exports` on @corpcal/shared points subpaths at dist. Without mapping
+       * report modules here, calendar-ui resolves stale bundled code until `packages/shared`
+       * is rebuilt. Point at workspace source so print markup + inlined PRINT_STYLES update
+       * during dev without an extra package build step.
+       */
+      {
+        find: /^@corpcal\/shared\/reports\/(.+)$/,
+        replacement: `${path.resolve(__dirname, '../packages/shared/src/reports')}/$1`,
+      },
+      {
+        find: '@',
+        replacement: path.resolve(__dirname, './src'),
+      },
+      /*
+       * @corpcal/shared print HTML pulls @tiptap/html/server in Node only; the static import
+       * is still evaluated in Vite. The real package pulls happy-dom and breaks the client.
+       */
+      {
+        find: '@tiptap/html/server',
+        replacement: path.resolve(
+          __dirname,
+          './src/stubs/tiptapHtmlServerForClient.ts'
+        ),
+      },
+    ],
   },
   server: {
     port: 3000,

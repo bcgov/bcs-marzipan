@@ -54,7 +54,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   category: ['Announcement'],
   tags: [],
   commsMaterials: [],
-  translationsRequired: ['French', 'Punjabi'],
+  translationsRequired: ['FR', 'PUN'],
   representativesAttending: [],
   sharedWith: [],
   commsContacts: [],
@@ -124,6 +124,50 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Legislative Assembly');
     expect(html).not.toContain('Updated Apr');
     expect(html).not.toContain('Apr 27, 2026');
+  });
+
+  it('renders event lead below executive summary when a comms lead exists', () => {
+    const activityWithLead = {
+      ...BASE_ACTIVITY,
+      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [{ ...FIXTURE.sections[0], activities: [activityWithLead] }],
+    };
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+    });
+    expect(html).toContain('Event lead: Jordan Smith');
+  });
+
+  it('does not render event lead when report config omits event_lead', () => {
+    const activityWithLead = {
+      ...BASE_ACTIVITY,
+      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: ['executiveSummary', 'startDate'],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+            },
+          ],
+        },
+      },
+      sections: [{ ...FIXTURE.sections[0], activities: [activityWithLead] }],
+    };
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+    });
+    expect(html).not.toContain('Event lead:');
   });
 
   it('renders exec look-ahead print with title and summary in the activity details column', () => {
@@ -214,10 +258,10 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
     });
 
-    expect(html).toContain(
-      'href="https://corpcal.example.gov.bc.ca/activity/101"'
-    );
-    expect(html).toContain('ACT-101');
+    expect(html).toContain('href="https://corpcal.example.gov.bc.ca/activity/101"');
+    expect(html).toContain('ACT');
+    expect(html).toContain('>101</a>');
+    expect(html).not.toContain('>ACT-101</a>');
   });
 
   it('includes translations list when fewer than four languages are required', () => {
@@ -225,8 +269,58 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('French, Punjabi');
+    expect(html).toContain('FR, PUN');
     expect(html).not.toContain('Translations: 2 languages');
+  });
+
+  it('hides look-ahead translations when not Release and no news release origin', () => {
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              category: ['Announcement'],
+              newsReleaseOrigin: null,
+              translationsRequired: ['FR', 'PUN'],
+            },
+          ],
+        },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+    expect(html).not.toContain('FR');
+    expect(html).not.toContain('PUN');
+    expect(html).not.toContain('Translations:');
+  });
+
+  it('renders TBD on look-ahead when status is pending review without languages', () => {
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              category: ['Release'],
+              newsReleaseOrigin: null,
+              translationsRequiredStatus: 'Pending review',
+              translationsRequired: [],
+            },
+          ],
+        },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+    expect(html).toContain('TBD');
+    expect(html).not.toContain('Translations:');
   });
 
   it('collapses translations to a count at four or more languages', () => {
@@ -238,7 +332,7 @@ describe('renderPrintReportFragmentHtml', () => {
           activities: [
             {
               ...BASE_ACTIVITY,
-              translationsRequired: ['French', 'Punjabi', 'Chinese', 'Spanish'],
+              translationsRequired: ['FR', 'PUN', 'ZH', 'ES'],
             },
           ],
         },
@@ -249,7 +343,8 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('Translations: 4 languages');
+    expect(html).toContain('4 languages');
+    expect(html).not.toContain('Translations:');
   });
 
   it('renders an empty-state message when no activities exist', () => {
@@ -474,7 +569,7 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html).not.toContain(
       'indicates major detail or date changes only (not time switches)'
     );
-    expect(html).toContain('ACT-101');
+    expect(html).toContain('>101</a>');
   });
 
   it('embeds the provided @font-face block before the shared styles', () => {

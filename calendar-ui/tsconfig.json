@@ -12,6 +12,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@corpcal/shared/assets/*": ["../packages/shared/assets/*"],
+      "@corpcal/shared/reports/*": ["../packages/shared/src/reports/*"],
       "@corpcal/shared": ["../packages/shared/dist/esm"],
       "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
       "@corpcal/database": ["../packages/database/dist/esm"],

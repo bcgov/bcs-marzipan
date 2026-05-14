@@ -48,6 +48,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-accent-blue-soft: var(--corpcal-print-accent-blue-soft);
   --print-accent-amber: var(--corpcal-print-accent-amber);
   --print-accent-amber-soft: var(--corpcal-print-accent-amber-soft);
+  /** Look Ahead / Exec: planner + translations foreground (WCAG on table + zebra striping). */
+  --print-look-ahead-accent-green: var(--bcsds-green-90);
   --print-status-new: #b7e8ea;
   --print-status-changed: #ffddb3;
   --print-status-red: #ff978d;
@@ -239,28 +241,23 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 /* Fixed layout widths: tie to table + col so preview/PDF respects the grid (colgroup + th/td avoids resets equalizing columns). */
 .corpcal-print-table col.corpcal-print-col-1 { width: 20%; }
-.corpcal-print-table col.corpcal-print-col-2 { width: 8%; }
-.corpcal-print-table col.corpcal-print-col-3 { width: 45%; }
-.corpcal-print-table col.corpcal-print-col-4 { width: 15%; }
-.corpcal-print-table col.corpcal-print-col-5 { width: 12%; }
+.corpcal-print-table col.corpcal-print-col-2 { width: 53%; }
+.corpcal-print-table col.corpcal-print-col-3 { width: 15%; }
+.corpcal-print-table col.corpcal-print-col-4 { width: 12%; }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-1,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-1 {
   width: 20%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-2,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-2 {
-  width: 8%;
+  width: 53%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-3,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-3 {
-  width: 45%;
+  width: 15%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-4,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-4 {
-  width: 15%;
-}
-.corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-5,
-.corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-5 {
   width: 12%;
 }
 
@@ -283,6 +280,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: 1em;
   color: var(--print-ink-muted);
 }
+.corpcal-print-root .corpcal-print-meta-look-ahead-green {
+  font-size: 1em;
+  font-weight: 500;
+  /* Literal first: guaranteed contrast on table + zebra if a custom property chain fails. */
+  color: #2e5a34;
+  color: var(--print-look-ahead-accent-green);
+}
 .corpcal-print-inline-status {
   font-weight: 500;
   color: var(--print-ink-muted);
@@ -292,6 +296,36 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   display: flex;
   align-items: center;
   gap: 0;
+}
+.corpcal-print-translations-row {
+  align-items: center;
+  gap: 0.35em;
+}
+.corpcal-print-translations-icon {
+  flex: 0 0 auto;
+  color: #2e5a34;
+  color: var(--print-look-ahead-accent-green);
+}
+.corpcal-print-narrative-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.35em 0.5em;
+}
+.corpcal-print-flag-narrative-inline {
+  flex: 0 0 auto;
+  margin-top: 0.1em;
+}
+.corpcal-print-activity-id-stacked {
+  text-align: left;
+}
+.corpcal-print-activity-id-acronym {
+  line-height: 1.2;
+  margin-bottom: 2px;
+  font-weight: 400;
+}
+.corpcal-print-activity-id-acronym strong {
+  font-weight: 700;
 }
 .corpcal-print-dt-inline-row {
   gap: 0.35em;
@@ -541,6 +575,34 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX)};
   line-height: 1.3;
   color: var(--corpcal-text);
+}
+.corpcal-print-cover-footer-contact-cluster {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
+  margin-left: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.corpcal-print-cover-footer-contact-item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  vertical-align: middle;
+  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
+  white-space: nowrap;
+}
+.corpcal-print-cover-footer-contact-icon {
+  flex: 0 0 auto;
+  color: var(--corpcal-text);
+}
+.corpcal-print-cover-footer-contact-icon svg {
+  display: block;
+}
+.corpcal-print-cover-footer-contact-text {
+  flex: 0 0 auto;
 }
 
 /* Browser print only: Puppeteer puts the hint in footerTemplate ({@link buildReportPdfFooterTemplateHtml}). */

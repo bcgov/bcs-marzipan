@@ -5,6 +5,7 @@ import {
   buildTranslationsLine,
   compareActivitiesForPrint,
   resolveLeadOrgForPrint,
+  splitActivityDisplayIdForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
@@ -253,6 +254,86 @@ describe('toPrintRowViewModel', () => {
     expect(many.release.translationsLine).toBe('Translations: 4 languages');
   });
 
+  it('omits look-ahead translations when not Release category and no news release origin', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Announcement'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('');
+  });
+
+  it('includes look-ahead translations when category is Release', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
+  });
+
+  it('uses TBD on look-ahead when translation status is pending review and no languages', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('uses TBD when translation status uses internal pending name', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'pending',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('still lists languages on look-ahead when pending review but languages exist', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
+  });
+
   it('fills the activity URL with numeric id when displayId is absent', () => {
     const row = toPrintRowViewModel(
       { ...BASE_ACTIVITY, displayId: null },
@@ -294,6 +375,26 @@ describe('toPrintRowViewModel', () => {
         leadMinistry: 'Housing',
       })
     ).toBe('External partner org');
+  });
+});
+
+describe('splitActivityDisplayIdForPrint', () => {
+  it('splits PREFIX-NUMERIC display ids', () => {
+    expect(splitActivityDisplayIdForPrint('MOTT-123456')).toEqual({
+      acronym: 'MOTT',
+      idForLink: '123456',
+    });
+    expect(splitActivityDisplayIdForPrint('ACT-000042')).toEqual({
+      acronym: 'ACT',
+      idForLink: '000042',
+    });
+  });
+
+  it('puts the whole label in the link when no hyphen', () => {
+    expect(splitActivityDisplayIdForPrint('ACT42')).toEqual({
+      acronym: '',
+      idForLink: 'ACT42',
+    });
   });
 });
 
