@@ -89,6 +89,11 @@ spec:
                 secretKeyRef:
                   name: calendar-service-secrets
                   key: AZURE_REDIRECT_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: JWT_SECRET
           readinessProbe:
             httpGet:
               path: /ready
