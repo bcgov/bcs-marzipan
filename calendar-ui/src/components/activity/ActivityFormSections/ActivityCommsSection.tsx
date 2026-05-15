@@ -25,12 +25,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
@@ -229,25 +223,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         name="strategy"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About strategy" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p>
-                      Describe any promotion, digital content, or visuals
-                      planned as part of the announcement vision.
-                    </p>
-                  </PopoverContent>
-                </Popover>
-              </>
-            </FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter strategy"

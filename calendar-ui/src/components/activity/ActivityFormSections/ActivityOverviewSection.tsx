@@ -45,12 +45,6 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -552,28 +546,7 @@ export const ActivityOverviewSection: React.FC<
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About confidential" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if the activity is highly confidential or
-                        sensitive. By default viewing the activity will be
-                        restricted to your team, and the Look Ahead report will
-                        publish limited details.
-                      </p>
-                      <p className="mt-2">Contact admin@email.com</p>
-                    </PopoverContent>
-                  </Popover>
-                </>
-              </FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
@@ -592,26 +565,7 @@ export const ActivityOverviewSection: React.FC<
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About issue" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if this activity is a current or potential media
-                        issue, or an issue for government in any way based on
-                        topic.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
-                </>
-              </FormLabel>
+              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             </div>
           </FormItem>
         )}
@@ -622,25 +576,7 @@ export const ActivityOverviewSection: React.FC<
         name="significance"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About significance" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p>
-                      Describe how will this impact people and why is it
-                      important.
-                    </p>
-                  </PopoverContent>
-                </Popover>
-              </>
-            </FormLabel>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl>
               <RichTextField
                 name={field.name}
