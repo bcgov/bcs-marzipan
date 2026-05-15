@@ -1,4 +1,5 @@
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
 import {
   formatLastUpdated,
@@ -121,13 +122,6 @@ function normaliseLookAheadStatus(
 ): LookAheadBadge {
   if (!status || status === 'none') return null;
   return status === 'new' ? 'new' : 'changed';
-}
-
-/** Strips trailing `/` without regex (avoids CodeQL ReDoS warnings on library input). */
-function trimTrailingSlashes(s: string): string {
-  let end = s.length;
-  while (end > 0 && s[end - 1] === '/') end -= 1;
-  return s.slice(0, end);
 }
 
 function joinActivityUrl(baseUrl: string, activityId: number): string {

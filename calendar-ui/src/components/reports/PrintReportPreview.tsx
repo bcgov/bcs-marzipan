@@ -12,6 +12,7 @@ import {
   rollupPrintVariantForReportType,
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
+import { trimTrailingSlashes } from '@corpcal/shared/utils';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -20,7 +21,7 @@ import {
  */
 function resolveActivityBaseUrl(): string {
   const envBase = import.meta.env.VITE_PUBLIC_APP_BASE_URL?.trim();
-  if (envBase && envBase.length > 0) return envBase.replace(/\/+$/, '');
+  if (envBase && envBase.length > 0) return trimTrailingSlashes(envBase);
   if (typeof window !== 'undefined' && window.location) {
     return window.location.origin;
   }

@@ -32,6 +32,7 @@ import {
   type FilterActivitiesQueryParams,
   type ReportDataQueryParams,
 } from '@corpcal/shared/schemas';
+import { trimTrailingSlashes } from '@corpcal/shared/utils';
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
@@ -101,7 +102,7 @@ export class ReportsService {
   private getPublicAppBaseUrl(): string {
     const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
     const trimmed = raw?.trim();
-    if (trimmed && trimmed.length > 0) return trimmed.replace(/\/+$/, '');
+    if (trimmed && trimmed.length > 0) return trimTrailingSlashes(trimmed);
     return 'http://localhost:3000';
   }
 

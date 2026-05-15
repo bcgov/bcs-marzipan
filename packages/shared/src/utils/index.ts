@@ -1,4 +1,5 @@
 export * from './formatDate';
+export * from './trimTrailingSlashes';
 export * from './saved-filter-payload-empty';
 export * from './isDeepEqual';
 export * from './schema-helpers';
