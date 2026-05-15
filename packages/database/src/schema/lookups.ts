@@ -650,10 +650,39 @@ export const reports = pgTable('reports', {
   // Visibility: 'global' or 'team' (multi-team support deferred to future work)
   visibility: varchar('visibility', { length: 50 }).notNull().default('team'),
 
-  // Report configuration (JSONB)
-  // Type: ReportConfig from @corpcal/shared/schemas/report-config.schema
-  // Structure: { fields: string[], globalFilter?: FilterConfig, sections: Array<{id, name, order, filter?}> }
-  // globalFilter applies to all activities; section filters augment/update the global filter
+  // Report configuration (JSONB).
+  // Authoritative shape: ReportConfig in
+  //   packages/shared/src/schemas/report-config.schema.ts
+  // (Zod schema is the source of truth for validation and TS types; this
+  // comment is a quick on-call reference. Update both together.)
+  //
+  // Top level:
+  //   {
+  //     fields: string[],                         // report-level field whitelist
+  //     globalFilter?: FilterConfig,              // applied to all activities
+  //     printTemplate?: string,                   // e.g. 'lookAheadV1'; falls back to reports.name
+  //     sections: ReportSection[],
+  //   }
+  //
+  // FilterConfig:
+  //   { status?: string[], category?: string[], tags?: string[],
+  //     dateRange?: { start: string, end: string },
+  //     lookAheadSection?: string }               // bucket key (e.g. 'events', 'issues')
+  // Section filters augment/override globalFilter (section wins on per-key overlap).
+  //
+  // ReportSection:
+  //   {
+  //     id: string,                               // stable, referenced by activities
+  //     name: string,                             // canonical id-style label
+  //     uiDisplayName?: string,                   // short label for activity form/filter UI
+  //     reportDisplayName?: string,               // longer label for cover/section heading
+  //     legendColor?: string,                     // '#RRGGBB' or '#RGB' swatch
+  //     order: number,                            // ascending sort within report
+  //     filter?: FilterConfig,                    // section-specific filter overrides
+  //     fields?: string[],                        // optional per-section fields override
+  //     printPerDayColumnHeaderRepeat?: boolean,  // per-day date row + cloned column header band
+  //                                               // (look-ahead print rollup; opt-in, defaults to false)
+  //   }
   config: jsonb('config'),
 
   description: text('description'), // Optional description of the report

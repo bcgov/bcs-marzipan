@@ -21,6 +21,10 @@ export default defineConfig({
         __dirname,
         '../packages/database/dist/esm'
       ),
+      '@tiptap/html/server': path.resolve(
+        __dirname,
+        './src/stubs/tiptapHtmlServerForClient.ts'
+      ),
     },
   },
 });

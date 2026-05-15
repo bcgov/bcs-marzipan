@@ -20,12 +20,18 @@ interface ReviewActivityModalProps {
   /** When true, copy mentions saving pending edits before updating status. */
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (notes?: string, markAsCompleted?: boolean) => void;
+  onConfirm: (
+    notes?: string,
+    markAsCompleted?: boolean,
+    unassignMe?: boolean
+  ) => void;
   displayId?: string;
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
   /** Formatted end from saved activity; woven into description when completion is offered. */
   activityEndedAtLabel?: string | null;
+  /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
+  showUnassignMeOption?: boolean;
 }
 
 export function ReviewActivityModal({
@@ -37,18 +43,21 @@ export function ReviewActivityModal({
   displayId,
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
+  showUnassignMeOption = false,
 }: ReviewActivityModalProps) {
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
+  const [unassignMe, setUnassignMe] = useState(false);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted);
+    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setNotes('');
       setMarkAsCompleted(false);
+      setUnassignMe(false);
     }
     onOpenChange(value);
   };
@@ -115,6 +124,22 @@ export function ReviewActivityModal({
                 Mark as completed
               </Label>
             </div>
+          </div>
+        )}
+
+        {showUnassignMeOption && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="review-confirm-unassign-me"
+              checked={unassignMe}
+              onCheckedChange={(checked) => setUnassignMe(checked === true)}
+            />
+            <Label
+              htmlFor="review-confirm-unassign-me"
+              className="cursor-pointer text-sm font-normal"
+            >
+              Unassign me
+            </Label>
           </div>
         )}
 

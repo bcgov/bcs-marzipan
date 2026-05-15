@@ -1,8 +1,8 @@
 import { format, startOfDay } from 'date-fns';
-import { Info } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
+import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
 import type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
@@ -22,7 +22,13 @@ import {
   FormMessage,
   useFormDisplayOptions,
 } from '@/components/ui/form';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -471,6 +477,11 @@ export function ActivityScheduleSection({
             )}
           />
         </div>
+        {!isAllDay ? (
+          <p className="text-muted-foreground mt-1.5 text-xs">
+            {CORP_PACIFIC_LABEL}
+          </p>
+        ) : null}
         {form.formState.errors.startTime?.message ? (
           <p className="text-destructive text-sm font-medium">
             {String(form.formState.errors.startTime.message)}
@@ -493,12 +504,30 @@ export function ActivityScheduleSection({
         name="schedulingNotes"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center gap-1">
-              {getActivityFieldLabel(field.name)}
-              <Info
-                className="text-muted-foreground ml-1 size-4 shrink-0"
-                aria-hidden
-              />
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <InfoIconButton aria-label="About scheduling notes" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                    align="start"
+                  >
+                    <p className="mb-2">
+                      Communicate any details and statuses related to
+                      scheduling:
+                    </p>
+                    <ul className="list-disc space-y-1 pl-4">
+                      <li>date or timeframe being requested</li>
+                      <li>approvals received or still outstanding</li>
+                      <li>criteria holding up the activity</li>
+                      <li>date or time confirmed by a joint third-party</li>
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea

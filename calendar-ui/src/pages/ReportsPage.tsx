@@ -1,13 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
+import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
@@ -22,7 +30,6 @@ import {
 } from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
 import {
-  getReportTemplateHtml,
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
@@ -32,17 +39,29 @@ import {
 } from '@/lib/report-from-activity-filters';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
+/** Persists fullscreen print preview width (full viewport vs Letter content width). */
+const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
+
+type ReportPreviewSheetWidthMode = 'full' | 'print';
+
+function readStoredPreviewSheetWidth(): ReportPreviewSheetWidthMode {
+  if (typeof sessionStorage === 'undefined') return 'print';
+  try {
+    const v = sessionStorage.getItem(REPORTS_PREVIEW_SHEET_WIDTH_KEY);
+    if (v === 'full' || v === 'print') return v;
+  } catch {
+    /* private mode */
+  }
+  return 'print';
+}
 
 /**
- * Report tabs that use shared print HTML as the primary in-page view (API `report.name`).
- * Maps to {@link getReportTemplateHtml}: look-ahead / thirty-sixty-ninety → look-ahead legacy;
- * exec / exec-look-ahead → exec look-ahead; planning → planning stub.
+ * Built-in report tabs that show the fullscreen print preview as primary content (not Custom).
  */
-function isReportHtmlPrimaryView(reportName: string): boolean {
+function isFullscreenPrintPreview(reportName: string): boolean {
   switch (reportName) {
     case 'look-ahead':
     case 'exec':
-    case 'exec-look-ahead':
     case 'thirty-sixty-ninety':
     case 'planning':
       return true;
@@ -102,6 +121,8 @@ export function ReportsPage() {
     loadCustomReportConfig()
   );
   const [isExporting, setIsExporting] = useState(false);
+  const [previewSheetWidthMode, setPreviewSheetWidthMode] =
+    useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
 
@@ -166,6 +187,17 @@ export function ReportsPage() {
     }
   }, [reportQueryParams]);
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        REPORTS_PREVIEW_SHEET_WIDTH_KEY,
+        previewSheetWidthMode
+      );
+    } catch {
+      /* private mode */
+    }
+  }, [previewSheetWidthMode]);
+
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
     defaultsAppliedForReportRef.current = null;
@@ -203,11 +235,6 @@ export function ReportsPage() {
   };
 
   const exportConfig = getExportConfig(activeReport);
-
-  const reportTemplateHtml = useMemo(() => {
-    if (!data || !activeReport) return '';
-    return getReportTemplateHtml(activeReport, data);
-  }, [data, activeReport]);
 
   if (error && activeReport) {
     return (
@@ -277,19 +304,73 @@ export function ReportsPage() {
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
-                  isReportHtmlPrimaryView(report.name) ? (
+                  isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                       <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-b px-6 py-2">
+                          <span className="text-muted-foreground text-sm">
+                            Preview width
+                          </span>
+                          <div
+                            className="bg-muted/50 flex rounded-md border p-0.5"
+                            role="group"
+                            aria-label="Preview width"
+                          >
+                            <Button
+                              type="button"
+                              variant={
+                                previewSheetWidthMode === 'full'
+                                  ? 'secondary'
+                                  : 'ghost'
+                              }
+                              size="sm"
+                              className="rounded-sm"
+                              aria-pressed={previewSheetWidthMode === 'full'}
+                              onClick={() => setPreviewSheetWidthMode('full')}
+                            >
+                              Full width
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={
+                                previewSheetWidthMode === 'print'
+                                  ? 'secondary'
+                                  : 'ghost'
+                              }
+                              size="sm"
+                              className="rounded-sm"
+                              aria-pressed={previewSheetWidthMode === 'print'}
+                              onClick={() => setPreviewSheetWidthMode('print')}
+                            >
+                              PDF width
+                            </Button>
+                          </div>
+                        </div>
                         <div
-                          className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
+                          className="min-h-0 min-w-0 flex-1 overflow-auto px-6 py-6"
                           aria-label="Report preview"
                         >
                           <div
-                            className="report-print-preview-root min-w-0"
-                            dangerouslySetInnerHTML={{
-                              __html: reportTemplateHtml,
-                            }}
-                          />
+                            className={
+                              previewSheetWidthMode === 'full'
+                                ? 'report-print-preview-root min-w-0'
+                                : 'report-print-preview-root'
+                            }
+                            style={
+                              (previewSheetWidthMode === 'full'
+                                ? {
+                                    '--corpcal-print-root-max-width': 'none',
+                                  }
+                                : {
+                                    minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
+                                  }) as CSSProperties
+                            }
+                          >
+                            <PrintReportPreview
+                              reportTypeName={report.name}
+                              data={data}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -340,15 +421,20 @@ export function ReportsPage() {
                       </Tabs>
                       {report.name !== 'custom' ? (
                         <div
-                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full shrink-0 overflow-y-auto border-t bg-white px-6 py-6"
+                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 py-6"
                           aria-label="Print layout preview"
                         >
                           <div
-                            className="report-print-preview-root min-w-0"
-                            dangerouslySetInnerHTML={{
-                              __html: reportTemplateHtml,
+                            className="report-print-preview-root"
+                            style={{
+                              minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
                             }}
-                          />
+                          >
+                            <PrintReportPreview
+                              reportTypeName={report.name}
+                              data={data}
+                            />
+                          </div>
                         </div>
                       ) : null}
                     </div>

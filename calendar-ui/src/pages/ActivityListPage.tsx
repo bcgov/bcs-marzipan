@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { useFavourites } from '@/hooks/useFavourites';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
@@ -29,7 +30,9 @@ type ActivityListTabValue =
   | 'ministry'
   | 'my-activities'
   | 'recent'
-  | 'shared-with-me';
+  | 'shared-with-me'
+  | 'favourites'
+  | 'assigned-to-me';
 
 const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'all',
@@ -37,6 +40,8 @@ const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'my-activities',
   'recent',
   'shared-with-me',
+  'favourites',
+  'assigned-to-me',
 ];
 
 function getStoredActivityListTab(): ActivityListTabValue | null {
@@ -82,6 +87,7 @@ export const ActivityListPage = () => {
 
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
   const { data: ministries = [] } = useMinistries();
+  const { favouriteActivityIds } = useFavourites();
 
   const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
   const userTeams = useMemo(
@@ -161,10 +167,22 @@ export const ActivityListPage = () => {
         return userTeamIds.length > 0
           ? { ...base, sharedWithTeamIds: userTeamIds }
           : base;
+      case 'favourites':
+        return { ...base, favouriteActivityIds };
+      case 'assigned-to-me':
+        return user?.id != null
+          ? { ...base, flagAssigneeUserId: user.id }
+          : base;
       default:
         return base;
     }
-  }, [activeTab, effectiveLeadTeamId, user?.id, userTeamIds]);
+  }, [
+    activeTab,
+    effectiveLeadTeamId,
+    user?.id,
+    userTeamIds,
+    favouriteActivityIds,
+  ]);
 
   return (
     <>
@@ -252,6 +270,8 @@ export const ActivityListPage = () => {
             )}
             <TabsTrigger value="my-activities">My activities</TabsTrigger>
             <TabsTrigger value="shared-with-me">Shared with me</TabsTrigger>
+            <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
+            <TabsTrigger value="favourites">My watchlist</TabsTrigger>
           </TabsList>
         </div>
 

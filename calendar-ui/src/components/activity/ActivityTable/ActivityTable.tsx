@@ -28,8 +28,9 @@ import {
   type CSSProperties,
 } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -61,13 +62,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  getLookAheadSectionLabel,
-  getLookAheadStatusLabel,
-} from '@/constants/form-options';
+import { getLookAheadStatusLabel } from '@/constants/form-options';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityList } from '@/hooks/useCalendar';
+import {
+  useActivityList,
+  useRemoveActivityFlag,
+  useUpsertActivityFlag,
+} from '@/hooks/useCalendar';
+import {
+  getLookAheadSectionLabelFromRows,
+  useLookAheadSectionRows,
+} from '@/hooks/useLookAheadSectionRows';
 import {
   useActivityStatuses,
   useCategories,
@@ -95,6 +101,7 @@ import {
 } from '@/lib/activity-query-utils';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
+  CORP_PACIFIC_TIME_ZONE,
   formatDateRange,
   formatExactDate,
   formatRelativeTime,
@@ -224,9 +231,21 @@ function toSentenceCase(s: string): string {
 function OverviewCell({
   row,
   canViewPitchStatus,
+  canFlag,
+  onFlagAssign,
+  onFlagUnassign,
+  flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
+  canFlag?: boolean;
+  onFlagAssign?: (
+    teamId: number,
+    assigneeId: number,
+    assigneeName?: string
+  ) => void;
+  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
+  flagPending?: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -237,6 +256,18 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        {(canFlag || row.flags.length > 0) &&
+          onFlagAssign &&
+          onFlagUnassign && (
+            <ActivityFlagPopover
+              activityId={row.id}
+              flags={row.flags}
+              readOnly={!canFlag}
+              onAssign={onFlagAssign}
+              onUnassign={onFlagUnassign}
+              isPending={flagPending}
+            />
+          )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -252,10 +283,14 @@ function OverviewCell({
           </CopyableText>
         </span>
         {row.isConfidential && (
-          <span className="font-bold text-red-600 uppercase">CONFIDENTIAL</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            CONFIDENTIAL
+          </span>
         )}
         {row.isIssue && (
-          <span className="font-bold text-red-600 uppercase">ISSUE</span>
+          <span className="text-corpcal-text-alert font-bold uppercase">
+            ISSUE
+          </span>
         )}
       </div>
       <div className="mb-1 text-[16px] font-semibold text-slate-900">
@@ -309,12 +344,13 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
     }
   }, [expanded, needsTruncation]);
 
+  const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
   const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
   const lookAheadLabel =
     status && status !== 'none'
       ? section
-        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabel(section)}`
+        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabelFromRows(lookAheadSectionRows, section)}`
         : `LA ${getLookAheadStatusLabel(status)}`
       : null;
 
@@ -640,6 +676,7 @@ function StatusCell({
   });
   const createdDate = formatExactDate(new Date(row.createdDateTime), {
     includeYear: true,
+    timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 
   return (
@@ -677,6 +714,10 @@ export interface ActivityTableProps {
   sharedWithTeamId?: number;
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
+  /** When set, only activities whose IDs are in this list are shown (favourites tab). */
+  favouriteActivityIds?: number[];
+  /** When set, only activities flag-assigned to this user are shown. */
+  flagAssigneeUserId?: number;
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -692,12 +733,14 @@ export function ActivityTable({
   commsContactLeadUserId,
   sharedWithTeamId,
   sharedWithTeamIds,
+  favouriteActivityIds,
+  flagAssigneeUserId,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const pitchFieldVisibility = useMemo(() => {
     if (!user) {
       return { canViewPitchStatus: false, canViewPitchDate: false };
@@ -1004,6 +1047,7 @@ export function ActivityTable({
       ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
+      ...(flagAssigneeUserId !== undefined && { flagAssigneeUserId }),
     };
   }, [
     effectiveShowCompleted,
@@ -1012,6 +1056,7 @@ export function ActivityTable({
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
+    flagAssigneeUserId,
   ]);
 
   // Reset to first page when user changes filters so results match expectations
@@ -1034,6 +1079,7 @@ export function ActivityTable({
       prev.leadTeamId === activityFilters.leadTeamId &&
       prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
       prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      prev.flagAssigneeUserId === activityFilters.flagAssigneeUserId &&
       sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;
@@ -1063,6 +1109,10 @@ export function ActivityTable({
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
+
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
+  const upsertFlagMutation = useUpsertActivityFlag();
+  const removeFlagMutation = useRemoveActivityFlag();
 
   const onPaginationChangeStable = useCallback(
     (
@@ -1126,12 +1176,17 @@ export function ActivityTable({
 
   const filteredData = useMemo(() => {
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
-    return filterActivityRowsByFilters(
+    const afterFilters = filterActivityRowsByFilters(
       afterKeyword,
       filterState,
       filterContext
     );
-  }, [data, searchKeyword, filterState, filterContext]);
+    if (favouriteActivityIds !== undefined) {
+      const favouriteSet = new Set(favouriteActivityIds);
+      return afterFilters.filter((row) => favouriteSet.has(row.id));
+    }
+    return afterFilters;
+  }, [data, searchKeyword, filterState, filterContext, favouriteActivityIds]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
@@ -1222,6 +1277,24 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            canFlag={canFlag}
+            onFlagAssign={(teamId, assigneeId, assigneeName) =>
+              upsertFlagMutation.mutate({
+                activityId: row.original.id,
+                body: { teamId, assigneeId },
+                assigneeName,
+              })
+            }
+            onFlagUnassign={(teamId, assigneeName) =>
+              removeFlagMutation.mutate({
+                activityId: row.original.id,
+                teamId,
+                assigneeName,
+              })
+            }
+            flagPending={
+              upsertFlagMutation.isPending || removeFlagMutation.isPending
+            }
           />
         ),
       }),
@@ -1326,6 +1399,9 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      canFlag,
+      upsertFlagMutation,
+      removeFlagMutation,
     ]
   );
 
@@ -1569,9 +1645,17 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           <ActivityTableEmptyState
-            variant={hasActiveCriteria ? 'no-filter-match' : 'no-data'}
+            variant={
+              favouriteActivityIds !== undefined
+                ? 'no-favourites'
+                : hasActiveCriteria
+                  ? 'no-filter-match'
+                  : 'no-data'
+            }
             onClearFilters={
-              hasActiveCriteria ? handleClearAllCriteria : undefined
+              hasActiveCriteria && favouriteActivityIds === undefined
+                ? handleClearAllCriteria
+                : undefined
             }
           />
         </ActivityTableLayout>
@@ -1598,7 +1682,13 @@ export function ActivityTable({
           onClearFilters={tableSummaryOnClearFilters}
         >
           {filteredData.length === 0 ? (
-            <ActivityTableEmptyState variant="no-search-match" />
+            <ActivityTableEmptyState
+              variant={
+                favouriteActivityIds !== undefined
+                  ? 'no-favourites'
+                  : 'no-search-match'
+              }
+            />
           ) : (
             <table
               className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}

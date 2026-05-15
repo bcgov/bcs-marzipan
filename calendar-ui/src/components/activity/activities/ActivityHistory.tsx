@@ -20,10 +20,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   formatHistoryFieldValue,
-  getActionText,
+  getActionLabel,
   getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
-import { formatLongDate, formatTime } from '@/lib/datetime-utils';
+import {
+  CORP_PACIFIC_TIME_ZONE,
+  formatLongDate,
+  formatPacificTimeWithAbbrev,
+  pacificActivityHistoryRecencyBucket,
+} from '@/lib/datetime-utils';
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
@@ -67,7 +72,7 @@ function matchesSearch(
   const haystacks = [
     getActorDisplayName(entry),
     entry.actor?.username,
-    getActionText(entry.actionType),
+    getActionLabel(entry.actionType, entry.changes ?? []),
     entry.notes,
     ...(entry.changes ?? []).flatMap((change) => [
       getHistoryFieldLabel(change.field),
@@ -160,9 +165,9 @@ export default function ActivityHistory({
     [entries, searchQuery, dateStatusMap]
   );
 
-  // group by local date string
-  // Categorize into Today / This week / Earlier
-  const groupsOrder = ['Today', 'This week', 'Earlier'];
+  // Categorize into Today / This week / Earlier using corp Pacific calendar
+  // boundaries so buckets match Pacific-formatted timestamps.
+  const groupsOrder = ['Today', 'This week', 'Earlier'] as const;
   const groups: Record<string, ActivityHistoryEntry[]> = {
     Today: [],
     'This week': [],
@@ -170,23 +175,12 @@ export default function ActivityHistory({
   };
 
   const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  );
-  const startOfWeek = new Date(startOfToday);
-  startOfWeek.setDate(startOfToday.getDate() - 7);
-
   for (const e of filteredEntries) {
-    const dt = new Date(e.timestamp);
-    if (dt >= startOfToday) {
-      groups['Today'].push(e);
-    } else if (dt >= startOfWeek) {
-      groups['This week'].push(e);
-    } else {
-      groups['Earlier'].push(e);
-    }
+    const bucket = pacificActivityHistoryRecencyBucket(
+      new Date(e.timestamp),
+      now
+    );
+    groups[bucket].push(e);
   }
 
   const trimmedNote = noteText.trim();
@@ -295,16 +289,20 @@ export default function ActivityHistory({
                                       {getActorDisplayName(entry)}
                                     </div>
                                     <div className="text-muted-foreground mt-1 text-sm">
-                                      {getActionText(entry.actionType)}
+                                      {getActionLabel(
+                                        entry.actionType,
+                                        entry.changes ?? []
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-muted-foreground text-sm">
                                     {groupKey === 'Today'
-                                      ? `Today at ${formatTime(
+                                      ? `Today at ${formatPacificTimeWithAbbrev(
                                           new Date(entry.timestamp)
                                         )}`
                                       : formatLongDate(
-                                          new Date(entry.timestamp)
+                                          new Date(entry.timestamp),
+                                          { timeZone: CORP_PACIFIC_TIME_ZONE }
                                         )}
                                   </div>
                                 </div>
@@ -315,32 +313,39 @@ export default function ActivityHistory({
                                       {(expandedEntries.has(entry.id)
                                         ? entry.changes
                                         : entry.changes.slice(0, 3)
-                                      ).map((change, index) => (
-                                        <div
-                                          key={index}
-                                          className="mb-1 text-sm"
-                                        >
-                                          <strong className="font-medium">
-                                            {getHistoryFieldLabel(change.field)}
-                                            :
-                                          </strong>{' '}
-                                          <span className="text-muted-foreground">
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.oldValue,
-                                              dateStatusMap
-                                            )}
-                                          </span>{' '}
-                                          →{' '}
-                                          <span>
-                                            {formatHistoryFieldValue(
-                                              change.field,
-                                              change.newValue,
-                                              dateStatusMap
-                                            )}
-                                          </span>
-                                        </div>
-                                      ))}
+                                      )
+                                        .filter(
+                                          (change) =>
+                                            change.field !== 'flag.assigneeName'
+                                        )
+                                        .map((change, index) => (
+                                          <div
+                                            key={index}
+                                            className="mb-1 text-sm"
+                                          >
+                                            <strong className="font-medium">
+                                              {getHistoryFieldLabel(
+                                                change.field
+                                              )}
+                                              :
+                                            </strong>{' '}
+                                            <span className="text-muted-foreground">
+                                              {formatHistoryFieldValue(
+                                                change.field,
+                                                change.oldValue,
+                                                dateStatusMap
+                                              )}
+                                            </span>{' '}
+                                            →{' '}
+                                            <span>
+                                              {formatHistoryFieldValue(
+                                                change.field,
+                                                change.newValue,
+                                                dateStatusMap
+                                              )}
+                                            </span>
+                                          </div>
+                                        ))}
                                       {entry.changes.length > 3 ? (
                                         <button
                                           type="button"
@@ -365,7 +370,12 @@ export default function ActivityHistory({
 
                                   {!entry.notes &&
                                   (!entry.changes ||
-                                    entry.changes.length === 0) ? (
+                                    entry.changes.length === 0 ||
+                                    entry.changes.every(
+                                      (c) => c.field === 'flag.assigneeName'
+                                    )) &&
+                                  entry.actionType !== 'flag_assigned' &&
+                                  entry.actionType !== 'flag_removed' ? (
                                     <div className="text-muted-foreground text-sm">
                                       No field-level changes recorded
                                     </div>

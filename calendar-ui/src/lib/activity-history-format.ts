@@ -29,7 +29,43 @@ const ACTION_TEXT_MAP: Record<string, string> = {
   status_changed: 'Status changed',
   comms_lead_transferred: 'Transferred',
   cloned: 'Cloned',
+  flag_assigned: 'Activity assigned',
+  flag_removed: 'Activity unassigned',
 };
+
+/**
+ * Returns a richer action label for flag entries that embeds the assignee name.
+ * Falls back to getActionText for all other entries.
+ */
+export function getActionLabel(
+  actionType: string,
+  changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
+): string {
+  if (actionType === 'flag_assigned') {
+    const change = changes?.find((c) => c.field === 'flag.assigneeName');
+    const oldName =
+      typeof change?.oldValue === 'string' && change.oldValue
+        ? change.oldValue
+        : null;
+    const newName =
+      typeof change?.newValue === 'string' && change.newValue
+        ? change.newValue
+        : null;
+    if (oldName && newName)
+      return `Activity reassigned from ${oldName} to ${newName}`;
+    if (newName) return `Activity assigned to ${newName}`;
+    return 'Activity assigned';
+  }
+  if (actionType === 'flag_removed') {
+    const name = changes?.find(
+      (c) => c.field === 'flag.assigneeName'
+    )?.oldValue;
+    return typeof name === 'string' && name
+      ? `Activity unassigned from ${name}`
+      : 'Activity unassigned';
+  }
+  return getActionText(actionType);
+}
 
 export function getActionText(actionType: string): string {
   if (!actionType) return '';

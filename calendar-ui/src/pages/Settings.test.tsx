@@ -43,6 +43,11 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   ThemesAdmin: () => <div>Themes</div>,
   VenuePresetsAdmin: () => <div>VenuePresets</div>,
 }));
+vi.mock('@/components/admin/ReportCoverContactSettingsAdmin', () => ({
+  ReportCoverContactSettingsAdmin: () => (
+    <div data-testid="report-cover-contact-section">ReportCoverContact</div>
+  ),
+}));
 
 const mockUseAuth = vi.fn();
 vi.mock('@/hooks/useAuth', () => ({
@@ -62,6 +67,7 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
 ];
 
 const LOOKUP_LINKS = [
+  'Report PDF cover contact',
   'Ministry groups',
   'Ministries',
   'Government Representatives',

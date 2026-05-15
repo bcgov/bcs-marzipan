@@ -29,6 +29,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
+import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import { PolicyService } from '../policy/policy.service';
 import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 import { TeamsService } from '../teams/teams.service';
@@ -36,6 +37,7 @@ import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
+import { ActivityFlagsService } from './services/activity-flags.service';
 import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
@@ -217,6 +219,15 @@ describe('ActivitiesService', () => {
       .mockResolvedValue(['visibility', 'sharedWithTeamIds']),
   };
 
+  // Mock look-ahead policy service (allow any lookAheadSection in unit tests)
+  const mockLookAheadPolicy = {
+    getAllowedLookAheadSectionKeys: vi
+      .fn()
+      .mockResolvedValue(['events', 'issues', 'news', 'awareness', 'longTerm']),
+    assertAllowedLookAheadSection: vi.fn().mockResolvedValue(undefined),
+    getSourceLookAheadReports: vi.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -259,8 +270,19 @@ describe('ActivitiesService', () => {
           useValue: mockTeamsService,
         },
         {
+          provide: ActivityFlagsService,
+          useValue: {
+            fetchFlagsForActivities: vi.fn().mockResolvedValue(new Map()),
+            fetchFlagsForActivity: vi.fn().mockResolvedValue([]),
+          },
+        },
+        {
           provide: ApplicationSettingsService,
           useValue: mockApplicationSettings,
+        },
+        {
+          provide: LookAheadPolicyService,
+          useValue: mockLookAheadPolicy,
         },
       ],
     }).compile();

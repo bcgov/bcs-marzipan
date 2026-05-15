@@ -1,0 +1,54 @@
+:root {
+  --corpcal-surface: var(--background, oklch(1 0 0));
+  --corpcal-surface-muted: var(--muted, oklch(0.97 0 0));
+  --corpcal-surface-subtle: color-mix(
+    in oklch,
+    var(--corpcal-surface-muted) 60%,
+    var(--corpcal-surface)
+  );
+  --corpcal-text: var(--foreground, oklch(0.145 0 0));
+  --corpcal-text-muted: var(--muted-foreground, oklch(0.556 0 0));
+  --corpcal-text-subtle: color-mix(
+    in oklch,
+    var(--corpcal-text-muted) 78%,
+    var(--corpcal-surface)
+  );
+  --corpcal-border: var(--border, oklch(0.922 0 0));
+  --corpcal-radius: var(--radius, 0.625rem);
+  --corpcal-radius-md: calc(var(--corpcal-radius) - 2px);
+  --corpcal-radius-sm: calc(var(--corpcal-radius) - 4px);
+
+  --corpcal-table-surface: var(--corpcal-surface);
+  --corpcal-table-border: var(--corpcal-border);
+  --corpcal-table-radius: var(--corpcal-radius-md);
+  --corpcal-table-header-bg: color-mix(
+    in oklch,
+    var(--corpcal-surface-muted) 95%,
+    var(--corpcal-surface)
+  );
+  --corpcal-table-header-fg: var(--corpcal-text);
+  --corpcal-table-row-bg: var(--corpcal-surface);
+  --corpcal-table-row-alt-bg: var(--corpcal-surface-subtle);
+  --corpcal-table-row-hover-bg: color-mix(
+    in oklch,
+    var(--accent, oklch(0.97 0 0)) 30%,
+    transparent
+  );
+  --corpcal-table-cell-fg: var(--corpcal-text);
+  --corpcal-table-cell-muted-fg: var(--corpcal-text-muted);
+  --corpcal-table-cell-subtle-fg: var(--corpcal-text-subtle);
+
+  /* Inline / text links — matches calendar-ui `--link` / `--primary` when present; solid fallback for standalone PDF */
+  --corpcal-link: var(--link, var(--primary, #0f6cbd));
+
+  /* Issue / confidential labels (~Tailwind red-600); shared UI + report print */
+  --corpcal-text-alert: var(--bcsds-red-60);
+
+  /* Print/report pills & accents (BCDS primitives in bcds-primitives.css; embedded with them for PDF) */
+  --corpcal-print-accent-red: var(--bcsds-red-90);
+  --corpcal-print-accent-red-soft: var(--bcsds-red-15);
+  --corpcal-print-accent-blue: var(--bcsds-bc-blue-90);
+  --corpcal-print-accent-blue-soft: var(--bcsds-bc-blue-20);
+  --corpcal-print-accent-amber: var(--bcsds-gold-80);
+  --corpcal-print-accent-amber-soft: var(--bcsds-gold-15);
+}

@@ -15,6 +15,11 @@ This document lists **NestJS `@nestjs/schedule` cron jobs** run by `calendar-ser
 
 Other `@Cron` / `@Interval` handlers may exist under `calendar-service/src`; prefer this table as a checklist when changing schedules or deployment timezone.
 
+For how dates and instants are interpreted, displayed, and tested across the
+app (calendar-service, calendar-ui, `@corpcal/shared`), see
+[Dates and timezones](./DATE_AND_TIMEZONE.md). Cron handlers in this table use
+the same Pacific-fixed UTC&minus;7 semantics as the user-facing display layer.
+
 ## Safety measures
 
 ### 1. No second pool checkout inside an open transaction

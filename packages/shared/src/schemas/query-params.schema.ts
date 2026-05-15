@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { LOOK_AHEAD_SECTION } from '../constants/constants';
-
 /**
  * Query Parameter Schemas
  *
@@ -76,6 +74,14 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int())
     .optional(),
   /**
+   * Restrict to activities that have been flag-assigned to this user.
+   */
+  flagAssigneeUserId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
+  /**
    * Restrict to activities shared with this team (in activity_shared_with_teams).
    */
   sharedWithTeamId: z
@@ -101,7 +107,14 @@ export const filterActivitiesQuerySchema = z.object({
     .transform((val) =>
       val == null || (Array.isArray(val) && val.length === 0) ? undefined : val
     ),
-  lookAheadSection: z.enum(LOOK_AHEAD_SECTION).optional(),
+  /**
+   * Bound the activity list to a single look-ahead section bucket. Allowed
+   * values are configured by report admin via `reports.config.sections[].filter.lookAheadSection`
+   * and validated at write time via `LookAheadPolicyService`; the query layer
+   * keeps the field permissive (bounded length) so admin-defined keys flow
+   * through without code changes.
+   */
+  lookAheadSection: z.string().min(1).max(50).optional(),
   city: z.string().optional(),
   isIssue: z
     .string()
