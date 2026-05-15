@@ -321,6 +321,7 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
     visibility?: string;
+    description?: string | null;
   }>;
   organizations: LeadOrganizationOption[];
   tags: Array<{ id: number; text: string; visibility?: string }>;
@@ -392,7 +393,29 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel showRequired>
-                {getActivityFieldLabel(field.name)}
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  {categories.some((c) => c.description) ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <InfoIconButton aria-label="About categories" />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80 max-w-[calc(100vw-2rem)] space-y-1 text-sm"
+                        align="start"
+                      >
+                        {categories
+                          .filter((c) => c.description)
+                          .map((c) => (
+                            <p key={c.id}>
+                              <strong>{c.displayName ?? c.name}</strong>:{' '}
+                              {c.description}
+                            </p>
+                          ))}
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
+                </>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
