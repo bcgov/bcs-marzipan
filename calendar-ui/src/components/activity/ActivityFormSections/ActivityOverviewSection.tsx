@@ -657,7 +657,7 @@ export const ActivityOverviewSection: React.FC<
                     align="start"
                   >
                     <p>
-                      Describe how will this impact people and why is it
+                      Describe how this will impact people and why it is
                       important.
                     </p>
                   </PopoverContent>
