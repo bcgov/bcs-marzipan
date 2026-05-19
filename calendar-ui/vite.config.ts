@@ -117,10 +117,12 @@ export default defineConfig({
           // Rollup keeps them in the importing async chunk instead of vendor.
           //  - chart.js / react-chartjs-2: lazy-loaded DashboardBarChart
           //  - sanitize-html: banner-html and similar
+          //  - exceljs: lazy-loaded custom report XLSX export
           if (
             normalizedId.includes('node_modules/chart.js/') ||
             normalizedId.includes('node_modules/react-chartjs-2/') ||
-            normalizedId.includes('node_modules/sanitize-html/')
+            normalizedId.includes('node_modules/sanitize-html/') ||
+            normalizedId.includes('node_modules/exceljs/')
           ) {
             return undefined;
           }
