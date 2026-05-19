@@ -1,14 +1,17 @@
+import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDir, '..');
+const repoRoot = resolve(packageRoot, '../..');
 const svgPath = resolve(packageRoot, 'assets/logo/bc-logo.svg');
 const outputPath = resolve(
   packageRoot,
-  'src/reports/print/react/bcLogoPrintDataUrl.generated.ts'
+  'src/reports/print/react/bcLogoPrintDataUrl.generated.ts',
 );
+const outputPathFromRepo = 'packages/shared/src/reports/print/react/bcLogoPrintDataUrl.generated.ts';
 
 const svg = readFileSync(svgPath, 'utf8');
 const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -19,3 +22,8 @@ export const BC_LOGO_PRINT_DATA_URL = ${JSON.stringify(dataUrl)} as const;
 `;
 
 writeFileSync(outputPath, source);
+
+execSync(`npx prettier --write ${outputPathFromRepo}`, {
+  cwd: repoRoot,
+  stdio: 'inherit',
+});

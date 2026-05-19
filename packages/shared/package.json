@@ -108,7 +108,7 @@
     }
   },
   "scripts": {
-    "build": "npm run build:tokens && npm run build:embed-logo && npm run build:esm && npm run build:cjs",
+    "build": "npm run build:tokens && npm run build:esm && npm run build:cjs",
     "build:embed-logo": "node scripts/embed-bc-logo-print-data-url.mjs",
     "build:tokens": "node scripts/build-corpcal-tokens.mjs",
     "build:esm": "tsc -p tsconfig.esm.json",
