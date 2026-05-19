@@ -31,16 +31,18 @@ export function buildCustomReportXlsxFilename(date: Date = new Date()): string {
   return `Custom_Report_${stamp}.xlsx`;
 }
 
-function triggerBrowserDownload(buffer: ArrayBuffer, filename: string): void {
+function triggerBrowserDownload(buffer: BlobPart, filename: string): void {
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 /**
