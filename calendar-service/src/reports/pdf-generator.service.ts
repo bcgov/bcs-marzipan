@@ -1,9 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import puppeteer, {
-  type Browser,
-  type PDFOptions,
-  type PuppeteerLifeCycleEvent,
-} from 'puppeteer';
+import puppeteer, { type Browser, type PDFOptions } from 'puppeteer';
 
 import {
   REPORT_LETTER_CONTENT_WIDTH_PX,
@@ -56,7 +52,7 @@ const DEFAULT_VIEWPORT = {
 } as const;
 
 /** Font bytes are inlined (`data:` URLs); `load` avoids `networkidle0` hangs. */
-const SET_CONTENT_WAIT_UNTIL: PuppeteerLifeCycleEvent = 'load';
+const SET_CONTENT_WAIT_UNTIL = 'load' as const;
 
 @Injectable()
 export class PdfGeneratorService implements OnModuleDestroy {

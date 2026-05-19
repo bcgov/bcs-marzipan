@@ -1,2 +1,2 @@
-/** Re-export: source SVG is inlined at build time via `scripts/embed-bc-logo-print-data-url.mjs`. */
+/** Re-export: run `npm run build:embed-logo` in packages/shared when `assets/logo/bc-logo.svg` changes. */
 export { BC_LOGO_PRINT_DATA_URL } from './bcLogoPrintDataUrl.generated';
