@@ -30,6 +30,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'title',
       'isConfidential',
       'executiveSummary',
+      'event_lead',
       'summary',
       'category',
       'isIssue',
@@ -147,4 +148,22 @@ export function getEffectiveReportDetailText(
     return activity.summary ?? null;
   }
   return activity.executiveSummary ?? null;
+}
+
+/** Display name of the comms contact flagged as lead (report field `event_lead`). */
+export function getCommsContactLeadDisplayName(
+  activity: ActivityResponse
+): string | null {
+  const raw = activity.commsContacts?.find((c) => c.isLead)?.name?.trim();
+  return raw && raw.length > 0 ? raw : null;
+}
+
+/** Whether the effective report field list includes event comms lead (`event_lead` or `eventLead`). */
+export function effectiveReportFieldsIncludeEventLead(
+  effectiveFields: readonly string[]
+): boolean {
+  return (
+    effectiveFields.includes('event_lead') ||
+    effectiveFields.includes('eventLead')
+  );
 }

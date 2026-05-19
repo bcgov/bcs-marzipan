@@ -88,7 +88,7 @@ export const reportSectionSchema = z.object({
  * Print template identifier for the report. Drives which React document and
  * column layout the print/PDF pipeline picks. Loose string for forward-compat
  * with admin-defined templates; current renderer recognises a fixed set
- * (e.g. `lookAheadV1`).
+ * (e.g. `lookAheadV2`).
  */
 export const reportPrintTemplateSchema = z.string();
 

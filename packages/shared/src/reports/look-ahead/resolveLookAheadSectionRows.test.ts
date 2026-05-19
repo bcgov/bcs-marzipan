@@ -39,7 +39,7 @@ describe('reportConfigSchema (extensions)', () => {
   it('accepts optional uiDisplayName, reportDisplayName, legendColor, and section.fields', () => {
     const parsed = reportConfigSchema.parse({
       fields: ['startDate'],
-      printTemplate: 'lookAheadV1',
+      printTemplate: 'lookAheadV2',
       sections: [
         {
           id: 'events',
@@ -56,7 +56,7 @@ describe('reportConfigSchema (extensions)', () => {
     });
     expect(parsed.sections[0].legendColor).toBe('#1A2B3C');
     expect(parsed.sections[0].fields).toEqual(['startDate', 'title']);
-    expect(parsed.printTemplate).toBe('lookAheadV1');
+    expect(parsed.printTemplate).toBe('lookAheadV2');
   });
 
   it('rejects invalid hex colors on legendColor', () => {

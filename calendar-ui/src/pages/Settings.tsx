@@ -81,6 +81,11 @@ export function Settings() {
       show: isSystemAdmin,
     },
     {
+      id: 'report-cover-contact' as Section,
+      label: 'Report PDF cover contact',
+      icon: FileText,
+    },
+    {
       id: 'edit-lock-idle' as Section,
       label: 'Edit lock idle',
       icon: Lock,
@@ -103,11 +108,6 @@ export function Settings() {
       label: 'Review-exempt fields',
       icon: ListChecks,
       show: isSystemAdmin,
-    },
-    {
-      id: 'report-cover-contact' as Section,
-      label: 'Report PDF cover contact',
-      icon: FileText,
     },
     {
       id: 'ministry-groups' as Section,
@@ -196,6 +196,10 @@ export function Settings() {
             <LoginModalSettingsAdmin />
           </div>
 
+          <div id="section-report-cover-contact">
+            <ReportCoverContactSettingsAdmin />
+          </div>
+
           <div id="section-edit-lock-idle">
             <EditLockIdleSettingsAdmin />
           </div>
@@ -210,10 +214,6 @@ export function Settings() {
 
           <div id="section-review-exempt-fields">
             <ReviewExemptFieldsSettingsAdmin />
-          </div>
-
-          <div id="section-report-cover-contact">
-            <ReportCoverContactSettingsAdmin />
           </div>
 
           <div id="section-ministry-groups">

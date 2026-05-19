@@ -10,6 +10,7 @@ export type ReportCoverContactSettings = {
   contactEmail: string;
 };
 
+/** Display-only; allow any reasonable characters — no phone format validation. */
 const trimmedPhone = z
   .string()
   .max(REPORT_COVER_CONTACT_PHONE_MAX_LEN)

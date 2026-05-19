@@ -3,9 +3,8 @@ import { PrintRow } from './PrintRow';
 import type { PrintReportVariant, PrintRowViewModel } from './rowViewModel';
 
 export const PRINT_SECTION_COLUMN_HEADERS = [
-  'Date & Time',
-  'Lead',
-  'Activity Details',
+  'Date & time',
+  'Activity details',
   'Release',
   'Activity',
 ] as const;
@@ -22,7 +21,10 @@ function theadHeaderLinesFromFg(fg: '#ffffff' | '#000000'): {
   innerDivider: string;
 } {
   return fg === '#ffffff'
-    ? { bottom: 'rgba(255,255,255,0.33)', innerDivider: 'rgba(255,255,255,0.38)' }
+    ? {
+        bottom: 'rgba(255,255,255,0.33)',
+        innerDivider: 'rgba(255,255,255,0.38)',
+      }
     : { bottom: 'rgba(0,0,0,0.16)', innerDivider: 'rgba(0,0,0,0.14)' };
 }
 
@@ -66,7 +68,6 @@ function PrintSectionColGroup() {
       <col className="corpcal-print-col-2" />
       <col className="corpcal-print-col-3" />
       <col className="corpcal-print-col-4" />
-      <col className="corpcal-print-col-5" />
     </colgroup>
   );
 }
@@ -82,9 +83,7 @@ function PrintSectionColumnHeaderRow({
   rowClassName?: string;
 }) {
   const bgHex = safeSwatchColor(sectionLegendColor);
-  const foreground = bgHex
-    ? contrastingBlackOrWhiteForegroundHex(bgHex)
-    : null;
+  const foreground = bgHex ? contrastingBlackOrWhiteForegroundHex(bgHex) : null;
   const lines = foreground ? theadHeaderLinesFromFg(foreground) : null;
 
   return (
@@ -133,6 +132,7 @@ export function PrintGroupedSectionTable({
   days,
   variant,
   showPerDayPrintChrome,
+  showEventLead = false,
 }: {
   sectionPrintLabel: string;
   /** When set on the section config, table header cells inherit the legend swatch. */
@@ -145,6 +145,8 @@ export function PrintGroupedSectionTable({
    * rows in a single tbody.
    */
   showPerDayPrintChrome: boolean;
+  /** Corporate Look Ahead: show comms event lead under executive summary when enabled by report fields. */
+  showEventLead?: boolean;
 }) {
   return (
     <div className="corpcal-print-table-wrap corpcal-print-table-wrap--section-rollup">
@@ -190,7 +192,12 @@ export function PrintGroupedSectionTable({
                 sectionLegendColor={sectionLegendColor}
               />
               {day.rows.map((row) => (
-                <PrintRow key={row.activityId} row={row} variant={variant} />
+                <PrintRow
+                  key={row.activityId}
+                  row={row}
+                  variant={variant}
+                  showEventLead={showEventLead}
+                />
               ))}
             </tbody>
           ))
@@ -198,7 +205,12 @@ export function PrintGroupedSectionTable({
           <tbody className="corpcal-print-day-tbody">
             {days.flatMap((day) =>
               day.rows.map((row) => (
-                <PrintRow key={row.activityId} row={row} variant={variant} />
+                <PrintRow
+                  key={row.activityId}
+                  row={row}
+                  variant={variant}
+                  showEventLead={showEventLead}
+                />
               ))
             )}
           </tbody>
@@ -209,7 +221,7 @@ export function PrintGroupedSectionTable({
 }
 
 /**
- * Renders a single section's subsection heading + four-column table.
+ * Renders a single section's subsection heading + four-column table (no Lead column).
  * Column headers are identical across variants; row content differs via
  * {@link PrintRow}.
  *
@@ -227,6 +239,7 @@ export function PrintSectionTable({
   variant,
   sectionLegendColor,
   showSectionHeading = true,
+  showEventLead = false,
 }: {
   sectionName: string;
   rows: PrintRowViewModel[];
@@ -234,6 +247,7 @@ export function PrintSectionTable({
   sectionLegendColor?: string | null;
   /** When false, omits the section heading; parent supplies it once per section. */
   showSectionHeading?: boolean;
+  showEventLead?: boolean;
 }) {
   const resolvedLegend =
     sectionLegendColor === undefined ? null : sectionLegendColor;
@@ -249,13 +263,16 @@ export function PrintSectionTable({
         <table className="corpcal-print-table" role="grid">
           <PrintSectionColGroup />
           <thead>
-            <PrintSectionColumnHeaderRow
-              sectionLegendColor={resolvedLegend}
-            />
+            <PrintSectionColumnHeaderRow sectionLegendColor={resolvedLegend} />
           </thead>
           <tbody>
             {rows.map((row) => (
-              <PrintRow key={row.activityId} row={row} variant={variant} />
+              <PrintRow
+                key={row.activityId}
+                row={row}
+                variant={variant}
+                showEventLead={showEventLead}
+              />
             ))}
           </tbody>
         </table>

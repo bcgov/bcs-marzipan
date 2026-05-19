@@ -63,6 +63,12 @@ const CALENDAR_SHORT_FORMATTER = pacificDateFormatter({
   year: 'numeric',
 });
 
+/** Same typography as compact cell (`Apr 27, 2026`) but omit the year. */
+const CALENDAR_SHORT_NO_YEAR_FORMATTER = pacificDateFormatter({
+  month: 'short',
+  day: 'numeric',
+});
+
 const CALENDAR_LONG_NO_WEEKDAY_FORMATTER = pacificDateFormatter({
   month: 'long',
   day: 'numeric',
@@ -94,6 +100,15 @@ export function formatCalendarDateCover(date: CalendarDateString): string {
 /** `Apr 27, 2026` - compact cell. */
 export function formatCalendarDateShort(date: CalendarDateString): string {
   return CALENDAR_SHORT_FORMATTER.format(calendarDateToAnchorInstant(date));
+}
+
+/** `Apr 27` - compact cell without year (rollup print body). */
+export function formatCalendarDateShortNoYear(
+  date: CalendarDateString
+): string {
+  return CALENDAR_SHORT_NO_YEAR_FORMATTER.format(
+    calendarDateToAnchorInstant(date)
+  );
 }
 
 /** `April 27, 2026` - long phrase without weekday. */
