@@ -42,7 +42,7 @@
     "axios": "^1.13.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
-    "drizzle-orm": "^0.44.7",
+    "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "nestjs-zod": "^5.0.0",
     "pdf-lib": "^1.17.1",

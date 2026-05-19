@@ -58,7 +58,7 @@
     "react-hook-form": "^7.67.0",
     "react-responsive": "^10.0.1",
     "react-router-dom": "^7.6.2",
-    "sanitize-html": "^2.17.0",
+    "sanitize-html": "^2.17.4",
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
