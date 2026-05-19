@@ -10,6 +10,7 @@ import {
   activityFlags,
   teams,
   users,
+  userSettings,
   userTeams,
 } from '@corpcal/database/schema';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -202,12 +203,14 @@ export class ActivityFlagsService {
         assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
         note: activityFlags.note,
+        assigneeFlagColour: userSettings.flagColour,
         createdAt: activityFlags.createdAt,
         updatedAt: activityFlags.updatedAt,
       })
       .from(activityFlags)
       .innerJoin(teams, eq(activityFlags.teamId, teams.id))
       .innerJoin(users, eq(activityFlags.assigneeId, users.id))
+      .leftJoin(userSettings, eq(userSettings.userId, activityFlags.assigneeId))
       .where(
         and(
           inArray(activityFlags.activityId, activityIds),
@@ -224,6 +227,7 @@ export class ActivityFlagsService {
         assigneeName: row.assigneeName,
         assignedById: row.assignedById,
         note: row.note,
+        assigneeFlagColour: row.assigneeFlagColour ?? null,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       };

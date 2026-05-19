@@ -25,3 +25,4 @@ export * from './activitySavedFilters';
 export * from './userActivitySavedFilterDefaults';
 export * from './activityFlags';
 export * from './userActivityFavourites';
+export * from './userSettings';

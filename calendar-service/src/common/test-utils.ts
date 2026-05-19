@@ -203,6 +203,7 @@ export const createMockUserDetail = (
 ): UserDetail => ({
   ...createMockUserListItem(),
   notes: null,
+  flagColour: null,
   ...overrides,
 });
 

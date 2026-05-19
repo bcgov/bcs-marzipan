@@ -211,6 +211,7 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'Jane Smith',
           assignedById: 3,
           note: null,
+          assigneeFlagColour: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -222,6 +223,7 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'John Doe',
           assignedById: 3,
           note: null,
+          assigneeFlagColour: '#FF5733',
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -233,26 +235,33 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'Jane Smith',
           assignedById: 3,
           note: null,
+          assigneeFlagColour: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
       ];
 
-      // fetchFlagsForActivities does: select().from().innerJoin().innerJoin().where()
-      const chain = makeChain(rows);
-      // where() on the innerJoin chain resolves directly (no further limit call)
-      const innerJoinChain: Record<string, unknown> = {
-        ...chain,
+      // fetchFlagsForActivities does:
+      //   select().from().innerJoin(teams).innerJoin(users).leftJoin(userSettings).where()
+      const terminalChain = { where: vi.fn().mockResolvedValue(rows) };
+      const afterLeftJoin = {
         where: vi.fn().mockResolvedValue(rows),
+        leftJoin: vi.fn().mockReturnValue(terminalChain),
       };
-      (chain['innerJoin'] as ReturnType<typeof vi.fn>).mockReturnValue(
-        innerJoinChain
+      const afterSecondInnerJoin = {
+        where: vi.fn().mockResolvedValue(rows),
+        leftJoin: vi.fn().mockReturnValue(terminalChain),
+        innerJoin: vi.fn().mockReturnValue(afterLeftJoin),
+      };
+      const afterFirstInnerJoin = {
+        where: vi.fn().mockResolvedValue(rows),
+        innerJoin: vi.fn().mockReturnValue(afterSecondInnerJoin),
+        leftJoin: vi.fn().mockReturnValue(terminalChain),
+      };
+      const chain = makeChain(rows);
+      (chain['from'] as ReturnType<typeof vi.fn>).mockReturnValue(
+        afterFirstInnerJoin
       );
-      (innerJoinChain['innerJoin'] as ReturnType<typeof vi.fn>) = vi
-        .fn()
-        .mockReturnValue({
-          where: vi.fn().mockResolvedValue(rows),
-        });
       mockDb.select.mockReturnValue(chain);
 
       const result = await service.fetchFlagsForActivities([1, 2], [10, 20]);
@@ -260,6 +269,14 @@ describe('ActivityFlagsService', () => {
       expect(result.get(1)).toHaveLength(2);
       expect(result.get(2)).toHaveLength(1);
       expect(result.get(3)).toBeUndefined();
+      // Verify flag colour is mapped correctly
+      const flags1 = result.get(1)!;
+      expect(flags1.find((f) => f.assigneeId === 4)?.assigneeFlagColour).toBe(
+        '#FF5733'
+      );
+      expect(
+        flags1.find((f) => f.assigneeId === 2)?.assigneeFlagColour
+      ).toBeNull();
     });
   });
 });
