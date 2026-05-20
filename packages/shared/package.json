@@ -15,6 +15,7 @@
     "./styles/bcds-primitives.css": "./styles/bcds-primitives.css",
     "./styles/bcsans-font-face.css": "./styles/bcsans-font-face.css",
     "./styles/corpcal-tokens.css": "./styles/corpcal-tokens.css",
+    "./assets/logo/bc-logo.svg": "./assets/logo/bc-logo.svg",
     "./schemas": {
       "types": "./dist/esm/schemas/index.d.ts",
       "import": "./dist/esm/schemas/index.js",
@@ -108,6 +109,7 @@
   },
   "scripts": {
     "build": "npm run build:tokens && npm run build:esm && npm run build:cjs",
+    "build:embed-logo": "node scripts/embed-bc-logo-print-data-url.mjs",
     "build:tokens": "node scripts/build-corpcal-tokens.mjs",
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
@@ -127,8 +129,9 @@
     "@tiptap/markdown": "^3.22.3",
     "happy-dom": "^20.8.9",
     "@tiptap/starter-kit": "^3.22.3",
-    "drizzle-orm": "^0.44.7",
-    "sanitize-html": "^2.17.2",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^0.555.0",
+    "sanitize-html": "^2.17.4",
     "zod": "^4.1.12"
   },
   "peerDependencies": {

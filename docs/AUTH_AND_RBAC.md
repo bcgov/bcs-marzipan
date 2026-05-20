@@ -65,10 +65,10 @@ Configure authentication in your `.env` file:
 # 'azure' for OIDC (Azure AD / IDIR). Default: 'mock'
 AUTH_STRATEGY=mock
 
-# Enable local (email+password) auth alongside another primary strategy.
-# Set to 'true' when AUTH_STRATEGY is 'azure' and you also want the local
-# login form available (e.g. for admin or break-glass accounts).
-LOCAL_AUTH_ENABLED=false
+# Local (email+password) login is always available for any strategy other than
+# 'mock'. No extra flag is required — users will see the email/password form
+# alongside any primary strategy (e.g. AUTH_STRATEGY=azure).
+# LOCAL_AUTH_ENABLED is no longer used and can be omitted.
 
 # Azure AD settings (required when AUTH_STRATEGY=azure)
 AZURE_TENANT_ID=your-tenant-id
@@ -538,8 +538,7 @@ The `local` strategy allows users to log in with an email address and a bcrypt-h
 | Variable | Values | Meaning |
 |---|---|---|
 | `AUTH_STRATEGY` | `local` | Use email/password as the **only** login method |
-| `AUTH_STRATEGY` | `azure` + `LOCAL_AUTH_ENABLED=true` | Azure AD is primary; local login form also shown |
-| `LOCAL_AUTH_ENABLED` | `true` | Enable local form alongside any primary strategy |
+| `AUTH_STRATEGY` | `azure` | Azure AD is primary; local login form is **also always shown** (no extra flag needed) |
 
 ### Account lifecycle
 

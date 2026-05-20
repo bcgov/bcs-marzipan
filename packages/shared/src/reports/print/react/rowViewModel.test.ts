@@ -5,6 +5,7 @@ import {
   buildTranslationsLine,
   compareActivitiesForPrint,
   resolveLeadOrgForPrint,
+  splitActivityDisplayIdForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
@@ -103,6 +104,27 @@ describe('buildTranslationsLine', () => {
 });
 
 describe('toPrintRowViewModel', () => {
+  it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
+    const dated = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-04-27',
+      endDate: null,
+    };
+
+    const withYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+    expect(withYear.dateTime.startDate).toContain('Apr 27');
+    expect(withYear.dateTime.startDate).toContain('2026');
+
+    const noYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(noYear.dateTime.startDate).toBe('Apr 27');
+    expect(noYear.dateTime.startDate).not.toContain('2026');
+  });
+
   it('maps core fields, resolving lead preference order and absolute href', () => {
     const row = toPrintRowViewModel(BASE_ACTIVITY, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
@@ -171,6 +193,49 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
+  it('maps date/time status for look-ahead print variants (Confirmed hidden, else Date/Time TBD)', () => {
+    const unsettled = {
+      ...BASE_ACTIVITY,
+      dateStatus: 'Tentative',
+      timeStatus: 'Proposed',
+    };
+
+    const lookAhead = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'lookAhead',
+    });
+    expect(lookAhead.dateTime.dateStatus).toBe('Date TBD');
+    expect(lookAhead.dateTime.timeStatus).toBe('Time TBD');
+
+    const execLa = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'execLookAhead',
+    });
+    expect(execLa.dateTime.dateStatus).toBe('Date TBD');
+    expect(execLa.dateTime.timeStatus).toBe('Time TBD');
+
+    const confirmed = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        dateStatus: 'Confirmed',
+        timeStatus: 'confirmed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(confirmed.dateTime.dateStatus).toBe('');
+    expect(confirmed.dateTime.timeStatus).toBe('');
+
+    const thirty = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'thirtySixtyNinety',
+    });
+    expect(thirty.dateTime.dateStatus).toBe('Tentative');
+    expect(thirty.dateTime.timeStatus).toBe('Proposed');
+  });
+
   it('derives FYI flag from the category list', () => {
     const fyi = toPrintRowViewModel(
       { ...BASE_ACTIVITY, category: ['Announcement', 'FYI'] },
@@ -188,6 +253,86 @@ describe('toPrintRowViewModel', () => {
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(many.release.translationsLine).toBe('Translations: 4 languages');
+  });
+
+  it('omits look-ahead translations when not Release category and no news release origin', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Announcement'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('');
+  });
+
+  it('includes look-ahead translations when category is Release', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
+  });
+
+  it('uses TBD on look-ahead when translation status is pending review and no languages', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('uses TBD when translation status uses internal pending name', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'pending',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('still lists languages on look-ahead when pending review but languages exist', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
   });
 
   it('fills the activity URL with numeric id when displayId is absent', () => {
@@ -231,6 +376,26 @@ describe('toPrintRowViewModel', () => {
         leadMinistry: 'Housing',
       })
     ).toBe('External partner org');
+  });
+});
+
+describe('splitActivityDisplayIdForPrint', () => {
+  it('splits PREFIX-NUMERIC display ids', () => {
+    expect(splitActivityDisplayIdForPrint('MOTT-123456')).toEqual({
+      acronym: 'MOTT',
+      idForLink: '123456',
+    });
+    expect(splitActivityDisplayIdForPrint('ACT-000042')).toEqual({
+      acronym: 'ACT',
+      idForLink: '000042',
+    });
+  });
+
+  it('puts the whole label in the link when no hyphen', () => {
+    expect(splitActivityDisplayIdForPrint('ACT42')).toEqual({
+      acronym: '',
+      idForLink: 'ACT42',
+    });
   });
 });
 

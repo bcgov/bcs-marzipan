@@ -130,7 +130,9 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch news release origins for multiple activities
+   * Fetch news release origins for multiple activities.
+   * Resolves API `newsReleaseOrigin` from `news_release_origins.display_name` via a single
+   * join (active rows only); avoids any drift between bulk activity fetch and lookup fetch.
    */
   async fetchNewsReleaseOriginsForActivities(
     activityIds: number[]
@@ -139,52 +141,28 @@ export class ActivityDataFetcherService {
       return new Map();
     }
 
-    const activityResults = await this.databaseService.db
+    const rows = await this.databaseService.db
       .select({
-        id: activities.id,
-        newsReleaseOriginId: activities.newsReleaseOriginId,
+        activityId: activities.id,
+        /** Prefer human label column; trimmed empty becomes null */
+        resolvedLabel: sql<
+          string | null
+        >`NULLIF(TRIM(${newsReleaseOrigins.displayName}), '')`,
       })
       .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const originIds = activityResults
-      .map((a) => a.newsReleaseOriginId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (originIds.length === 0) {
-      // Return map with null values for all activities
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const originResults = await this.databaseService.db
-      .select({
-        id: newsReleaseOrigins.id,
-        name: newsReleaseOrigins.name,
-      })
-      .from(newsReleaseOrigins)
-      .where(
+      .leftJoin(
+        newsReleaseOrigins,
         and(
-          inArray(newsReleaseOrigins.id, originIds),
+          eq(activities.newsReleaseOriginId, newsReleaseOrigins.id),
           eq(newsReleaseOrigins.isActive, true)
         )
-      );
-
-    const originMap = new Map<number, string>(
-      originResults.map((o) => [o.id, o.name])
-    );
+      )
+      .where(inArray(activities.id, activityIds));
 
     const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.newsReleaseOriginId) {
-        const originName = originMap.get(activity.newsReleaseOriginId);
-        resultMap.set(activity.id, originName ?? null);
-      } else {
-        resultMap.set(activity.id, null);
-      }
+    for (const row of rows) {
+      const label = row.resolvedLabel?.trim();
+      resultMap.set(row.activityId, label && label.length > 0 ? label : null);
     }
     return resultMap;
   }
@@ -666,7 +644,8 @@ export class ActivityDataFetcherService {
     const map = new Map<number, string[]>();
     for (const row of results) {
       const existing = map.get(row.activityId) ?? [];
-      if (row.displayName) existing.push(row.displayName);
+      const label = row.shortcode?.trim() || row.displayName?.trim();
+      if (label) existing.push(label);
       map.set(row.activityId, existing);
     }
     return map;

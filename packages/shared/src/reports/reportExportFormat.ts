@@ -1,6 +1,8 @@
 import type { ActivityResponse, ReportResponse } from '../api/types';
 import { isCalendarDateString } from '../datetime';
 import {
+  effectiveReportFieldsIncludeEventLead,
+  getCommsContactLeadDisplayName,
   getEffectiveReportDetailText,
   getEffectiveReportFields,
 } from './reportTypeConfig';
@@ -67,7 +69,12 @@ export function buildReportExportTable(
         activity,
         effectiveFields
       );
-      const details = [activity.title, detailText].filter(Boolean).join(' – ');
+      const detailParts = [activity.title, detailText].filter(Boolean);
+      if (effectiveReportFieldsIncludeEventLead(effectiveFields)) {
+        const leadName = getCommsContactLeadDisplayName(activity);
+        if (leadName) detailParts.push(`Event lead: ${leadName}`);
+      }
+      const details = detailParts.join(' – ');
       const ref = activity.displayId || '';
       const min = activity.displayId
         ? activity.displayId.split('-')[0] || ''

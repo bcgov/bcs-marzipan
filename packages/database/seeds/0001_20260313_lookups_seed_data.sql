@@ -551,9 +551,9 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO news_release_origins (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by) VALUES
   (1, 'tbd', 'TBD', 1, true, 'News release origin to be determined', 1, 1),
-  (2, 'ministry gcpehq release', 'Ministry (GCPEHQ) release', 2, true, 'News release originates from a ministry (GCPEHQ)', 1, 1),
-  (3, 'joint ministry gcpehq 3rd party release', 'Joint ministry (GCPEHQ) / 3rd party release', 3, true, 'Joint news release from ministry (GCPEHQ) and third party', 1, 1),
-  (4, 'joint ministry gcpehq federal release', 'Joint ministry (GCPEHQ) / Federal release', 4, true, 'Joint news release from ministry (GCPEHQ) and federal government', 1, 1),
+  (2, 'ministry release', 'Ministry release', 2, true, 'News release originates from a ministry', 1, 1),
+  (3, 'joint ministry 3rd party release', 'Joint ministry / 3rd party release', 3, true, 'Joint news release from ministry and third party', 1, 1),
+  (4, 'joint ministry federal release', 'Joint ministry / Federal release', 4, true, 'Joint news release from ministry and federal government', 1, 1),
   (5, 'local government release', 'Local government release', 5, true, 'News release from local government', 1, 1),
   (6, '3rd party release', '3rd party release', 6, true, 'News release from third party organization', 1, 1),
   (7, 'federal release', 'Federal release', 7, true, 'News release from federal government', 1, 1)
@@ -623,7 +623,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     1,
     true,
     'team',
-    '{"fields": ["startDate", "endDate", "startTime", "displayId", "isConfidential", "executiveSummary", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection"], "printTemplate": "lookAheadV1", "sections": [{"id": "events", "name": "Events", "uiDisplayName": "Events", "reportDisplayName": "Events, speeches and releases (inside government)", "legendColor": "#2C7DA0", "order": 1, "filter": {"lookAheadSection": "events"}, "printPerDayColumnHeaderRepeat": true}, {"id": "issues", "name": "Issues", "uiDisplayName": "Issues", "reportDisplayName": "Issues and reports", "legendColor": "#C1121F", "order": 2, "filter": {"lookAheadSection": "issues"}}, {"id": "news", "name": "News", "uiDisplayName": "In the news", "reportDisplayName": "In the news (outside government)", "legendColor": "#7B2CBF", "order": 3, "filter": {"lookAheadSection": "news"}}, {"id": "awareness", "name": "Awareness", "uiDisplayName": "Awareness", "reportDisplayName": "Awareness dates", "legendColor": "#F4A261", "order": 4, "filter": {"lookAheadSection": "awareness"}}, {"id": "longTerm", "name": "Long-term", "uiDisplayName": "Long-term", "reportDisplayName": "Long-term outlook", "legendColor": "#52796F", "order": 5, "filter": {"lookAheadSection": "longTerm"}}]}'::jsonb,
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "isConfidential", "executiveSummary", "event_lead", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection"], "printTemplate": "lookAheadV2", "sections": [{"id": "events", "name": "Events", "uiDisplayName": "Events", "reportDisplayName": "Events, speeches and releases (inside government)", "legendColor": "#4074A5", "order": 1, "filter": {"lookAheadSection": "events"}, "printPerDayColumnHeaderRepeat": true}, {"id": "issues", "name": "Issues", "uiDisplayName": "Issues", "reportDisplayName": "Issues and reports", "legendColor": "#ccc0d9", "order": 2, "filter": {"lookAheadSection": "issues"}}, {"id": "news", "name": "News", "uiDisplayName": "In the news", "reportDisplayName": "In the news (outside government)", "legendColor": "#e8f3a9", "order": 3, "filter": {"lookAheadSection": "news"}}, {"id": "awareness", "name": "Awareness", "uiDisplayName": "Awareness", "reportDisplayName": "Awareness dates", "legendColor": "#eaf1dd", "order": 4, "filter": {"lookAheadSection": "awareness"}}, {"id": "longTerm", "name": "Long-term", "uiDisplayName": "Long-term", "reportDisplayName": "Long-term outlook", "legendColor": "#edf2f8", "order": 5, "filter": {"lookAheadSection": "longTerm"}}]}'::jsonb,
     'Look Ahead report showing upcoming events and issues',
     1,
     1

@@ -24,7 +24,7 @@ export async function handleReportExport(options: {
   if (reportType === 'custom' && format === 'xlsx' && data) {
     const activities = data.sections.flatMap((s) => s.activities);
     const config = customReportFields ?? loadCustomReportConfig();
-    downloadCustomReportXlsx(activities, config);
+    await downloadCustomReportXlsx(activities, config);
     return;
   }
 

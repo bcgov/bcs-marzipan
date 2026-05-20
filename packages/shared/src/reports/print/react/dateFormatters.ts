@@ -12,6 +12,7 @@ import {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateShort,
+  formatCalendarDateShortNoYear,
   formatCivilOrInstantTime,
   formatInstantInPacific,
   formatPacificFooterTimestamp,
@@ -51,6 +52,16 @@ export function formatShortDate(
   return formatCalendarDateShort(key);
 }
 
+/** Compact date cell without year, e.g. `Apr 27` — rollup report body rows. */
+export function formatShortDateNoYear(
+  date: CalendarDateString | string | null | undefined
+): string {
+  if (date == null) return '';
+  const key = isCalendarDateString(date) ? date : pacificDayKey(date);
+  if (key == null) return '';
+  return formatCalendarDateShortNoYear(key);
+}
+
 /** Last-updated timestamp, e.g. `Apr 27, 2026 9:15 am`, formatted in Pacific. */
 export function formatLastUpdated(
   isoDateTime: string | null | undefined
@@ -76,5 +87,9 @@ export function formatPrintReportGeneratedAt(now: Date): string {
   return formatPacificFooterTimestamp(now);
 }
 
-export const PRINT_FOOTER_CHANGED_EXPLANATION =
-  'CHANGED indicates major detail or date changes only (not time switches).';
+/** Sentence body for the print PDF hint after the bold lead word `Changed`. */
+export const PRINT_FOOTER_CHANGED_EXPLANATION_BODY =
+  'indicates major detail or date changes only (not time switches).';
+
+/** Full hint sentence (`Changed` is bold in the React markup). */
+export const PRINT_FOOTER_CHANGED_EXPLANATION = `Changed ${PRINT_FOOTER_CHANGED_EXPLANATION_BODY}`;

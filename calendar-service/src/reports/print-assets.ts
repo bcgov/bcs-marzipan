@@ -97,7 +97,7 @@ export function buildPrintFontFaceCss(): string | null {
   return cachedFontFaceCss;
 }
 
-const LOOK_AHEAD_COVER_FILE_NAME = '20260430_look_ahead_report_cover_50.webp';
+const LOOK_AHEAD_COVER_FILE_NAME = '20260430_look_ahead_report_cover_full.webp';
 
 function resolveLookAheadCoverDir(): string | null {
   const dir = path.join(resolveSharedPackageRoot(), 'assets', 'reports');

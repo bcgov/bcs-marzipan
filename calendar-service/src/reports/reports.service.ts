@@ -20,6 +20,8 @@ import {
   serializeReportTableToCsv,
 } from '@corpcal/shared/reports/reportExportFormat';
 import {
+  buildLookAheadReportPdfHeaderTemplateHtml,
+  buildReportPdfFooterTemplateHtml,
   getReportTemplateHtml,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
@@ -30,12 +32,14 @@ import {
   type FilterActivitiesQueryParams,
   type ReportDataQueryParams,
 } from '@corpcal/shared/schemas';
+import { trimTrailingSlashes } from '@corpcal/shared/utils';
 
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
+import { mergePdfBuffersInOrder } from './merge-report-pdfs';
 import { PdfGeneratorService } from './pdf-generator.service';
 import {
   buildLookAheadReportCoverDataUrl,
@@ -98,7 +102,7 @@ export class ReportsService {
   private getPublicAppBaseUrl(): string {
     const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
     const trimmed = raw?.trim();
-    if (trimmed && trimmed.length > 0) return trimmed.replace(/\/+$/, '');
+    if (trimmed && trimmed.length > 0) return trimTrailingSlashes(trimmed);
     return 'http://localhost:3000';
   }
 
@@ -127,7 +131,7 @@ export class ReportsService {
       contactEmail,
       sectionRows: this.buildLookAheadCoverSectionRows(data.report),
     });
-    return `<div class="corpcal-print-cover-sheet" role="presentation"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div>`;
+    return `<div class="corpcal-print-cover-sheet" role="presentation"><div class="corpcal-print-cover-inner"><img src="${dataUrl}" alt="" decoding="async"/>${overlay}</div></div>`;
   }
 
   /**
@@ -591,6 +595,7 @@ export class ReportsService {
     data: ReportDataResponse
   ): Promise<Buffer> {
     const activityBaseUrl = this.getPublicAppBaseUrl();
+    const generatedAt = new Date();
     const inner = getReportTemplateHtml(reportType, data, {
       activityBaseUrl,
     }).trim();
@@ -604,11 +609,43 @@ export class ReportsService {
       reportType,
       data
     );
+    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
+    const headerTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)
+      ? buildLookAheadReportPdfHeaderTemplateHtml()
+      : undefined;
+
+    const useSplitCoverPdf =
+      REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType) &&
+      coverPageHtml.length > 0;
+
+    if (useSplitCoverPdf) {
+      const coverHtml = wrapReportHtmlDocument('', {
+        fontFaceCss,
+        coverPageHtml,
+        coverStandalonePdf: true,
+      });
+      const bodyHtml = wrapReportHtmlDocument(inner, { fontFaceCss });
+      const [coverBuffer, bodyBuffer] = await Promise.all([
+        this.pdfGeneratorService.generatePdfFromHtmlCover(
+          coverHtml,
+          headerTemplate ?? buildLookAheadReportPdfHeaderTemplateHtml()
+        ),
+        this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
+          footerTemplate,
+          headerTemplate,
+        }),
+      ]);
+      return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
+    }
+
     const html = wrapReportHtmlDocument(inner, {
       fontFaceCss,
       coverPageHtml,
     });
-    return this.pdfGeneratorService.generatePdfFromHtml(html);
+    return this.pdfGeneratorService.generatePdfFromHtml(html, {
+      footerTemplate,
+      headerTemplate,
+    });
   }
 }
 

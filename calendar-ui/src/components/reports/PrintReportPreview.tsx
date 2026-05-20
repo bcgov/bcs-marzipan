@@ -6,10 +6,13 @@ import {
   isReactRenderableReportType,
   PRINT_STYLES,
   PrintCustomReportDocument,
+  PrintPdfFooterHintLine,
   PrintPlanningDocument,
   PrintReportDocument,
+  rollupPrintVariantForReportType,
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
+import { trimTrailingSlashes } from '@corpcal/shared/utils';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -18,7 +21,7 @@ import {
  */
 function resolveActivityBaseUrl(): string {
   const envBase = import.meta.env.VITE_PUBLIC_APP_BASE_URL?.trim();
-  if (envBase && envBase.length > 0) return envBase.replace(/\/+$/, '');
+  if (envBase && envBase.length > 0) return trimTrailingSlashes(envBase);
   if (typeof window !== 'undefined' && window.location) {
     return window.location.origin;
   }
@@ -63,23 +66,17 @@ function PrintReportPreviewRoot({
   data: ReportDataResponse;
   activityBaseUrl: string;
 }) {
-  // Inlined once per preview mount — classname-scoped so rules never leak.
-  const generatedAt = new Date();
-
   let document: ReactNode;
   if (reportTypeName === 'planning') {
     document = <PrintPlanningDocument />;
   } else if (reportTypeName === 'custom') {
-    document = (
-      <PrintCustomReportDocument data={data} generatedAt={generatedAt} />
-    );
+    document = <PrintCustomReportDocument data={data} />;
   } else {
     document = (
       <PrintReportDocument
         data={data}
-        variant={reportTypeName === 'exec' ? 'exec' : 'lookAhead'}
+        variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
-        generatedAt={generatedAt}
       />
     );
   }
@@ -94,7 +91,10 @@ function PrintReportPreviewRoot({
       {/* Preview-only wrapper: scopes sticky stacking rules in PRINT_STYLES so
           the same stylesheet, when injected into the Puppeteer-rendered PDF
           (which has no shell), leaves print output unaffected. */}
-      <div className="corpcal-print-preview-shell">{document}</div>
+      <div className="corpcal-print-preview-shell">
+        <PrintPdfFooterHintLine />
+        {document}
+      </div>
     </>
   );
 }

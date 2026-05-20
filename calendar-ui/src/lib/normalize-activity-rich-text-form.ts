@@ -48,10 +48,16 @@ export function normalizeActivityRichTextFormFields(
   data: ActivityFormData
 ): ActivityFormData {
   const summaryNorm = normalizeActivityRichTextFormValue(data.summary);
+  const significanceNorm = normalizeActivityRichTextFormValue(
+    data.significance
+  );
+  const executiveSummaryNorm = normalizeActivityRichTextFormValue(
+    data.executiveSummary
+  );
   return {
     ...data,
     summary: summaryNorm ?? EMPTY_RICH_TEXT_DOC,
-    significance: normalizeActivityRichTextFormValue(data.significance),
-    executiveSummary: normalizeActivityRichTextFormValue(data.executiveSummary),
+    significance: significanceNorm ?? EMPTY_RICH_TEXT_DOC,
+    executiveSummary: executiveSummaryNorm ?? EMPTY_RICH_TEXT_DOC,
   };
 }

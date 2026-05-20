@@ -31,6 +31,7 @@ export {
   formatCalendarDateHeading,
   formatCalendarDateLong,
   formatCalendarDateShort,
+  formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
   formatCivilOrInstantTime,
   formatCivilTime12h,

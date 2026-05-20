@@ -545,15 +545,15 @@ describe('filterActivityRowsByFilters', () => {
 
   it('filters by translationLanguageIds when context provides options', () => {
     const rows = [
-      makeRow({ id: 1, translationsRequired: ['French', 'Spanish'] }),
-      makeRow({ id: 2, translationsRequired: ['Spanish'] }),
+      makeRow({ id: 1, translationsRequired: ['FR', 'ES'] }),
+      makeRow({ id: 2, translationsRequired: ['ES'] }),
       makeRow({ id: 3, translationsRequired: [] }),
       makeRow({ id: 4, translationsRequired: ['fr'] }),
     ];
     const context = {
       translationLanguageOptions: [
-        { value: '10', label: 'French' },
-        { value: '20', label: 'Spanish' },
+        { value: '10', label: 'FR' },
+        { value: '20', label: 'ES' },
         { value: '30', label: 'fr' },
       ],
     };
