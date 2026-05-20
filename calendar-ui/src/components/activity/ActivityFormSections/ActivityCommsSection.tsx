@@ -33,8 +33,13 @@ import {
 } from '@/components/ui/popover';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -131,7 +136,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           });
 
           const handleValueChange = (selected: OptionItem[]) => {
-            field.onChange(
+            setActivityFormFieldValue(
+              form,
+              field.name,
               buildCommsContactsFromSelection(selected, field.value)
             );
           };
@@ -141,7 +148,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               ...c,
               isLead: c.userId === userId,
             }));
-            field.onChange(next);
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           return (
@@ -253,14 +260,8 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 placeholder="Enter strategy"
                 readOnly={readOnly}
                 rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
+                {...field}
                 value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
               />
             </FormControl>
             <FormMessage />
@@ -284,7 +285,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) =>
-                    field.onChange(selected.map((o) => Number(o.value)))
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
                   }
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
@@ -335,10 +340,14 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseOriginOptions.map((o) => o.value)}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  optionalSelectIdValue(value)
+                )
               }
-              value={field.value?.toString() || ''}
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
@@ -367,10 +376,14 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  optionalSelectIdValue(value)
+                )
               }
-              value={field.value?.toString() || ''}
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
@@ -402,13 +415,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               optionValues={translationRequiredStatuses.map((s) =>
                 String(s.id)
               )}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  optionalSelectIdValue(value)
+                )
               }
             >
               <ActivityFieldScopePermissionTooltip scope="translations">
@@ -453,7 +466,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     multiple
                     value={selectedOptions}
                     onValueChange={(selected) =>
-                      field.onChange(selected.map((o) => Number(o.value)))
+                      setActivityFormFieldValue(
+                        form,
+                        field.name,
+                        selected.map((o) => Number(o.value))
+                      )
                     }
                     itemToStringValue={(o) => o.label}
                     readOnly={

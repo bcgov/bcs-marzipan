@@ -2,7 +2,6 @@ import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { isActivityRichTextEffectivelyEmpty } from '@corpcal/shared/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
@@ -21,8 +20,14 @@ import {
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
 import { useReports } from '@/hooks/useLookups';
+import {
+  lookAheadSectionFormValue,
+  lookAheadStatusFormValue,
+  optionalRadioDisplayValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
@@ -72,7 +77,7 @@ export const ActivityReportsSection: React.FC = () => {
               (s) => s.reportId !== reportId
             );
             updatedSettings.push({ reportId, omitted });
-            field.onChange(updatedSettings);
+            setActivityFormFieldValue(form, field.name, updatedSettings);
           };
 
           if (reportsLoading) {
@@ -136,11 +141,9 @@ export const ActivityReportsSection: React.FC = () => {
                     <RichTextField
                       name={field.name}
                       value={field.value ?? ''}
-                      onChange={(v) => {
-                        field.onChange(
-                          isActivityRichTextEffectivelyEmpty(v) ? undefined : v
-                        );
-                      }}
+                      onChange={(json) =>
+                        setActivityFormFieldValue(form, field.name, json)
+                      }
                       onBlur={field.onBlur}
                       placeholder="Enter executive summary"
                       readOnly={lookAheadScope.readOnly}
@@ -165,8 +168,14 @@ export const ActivityReportsSection: React.FC = () => {
                     <RadioGroup
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
-                      onValueChange={field.onChange}
-                      value={field.value || ''}
+                      onValueChange={(value) =>
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          lookAheadStatusFormValue(value)
+                        )
+                      }
+                      value={optionalRadioDisplayValue(field.value)}
                       className="flex flex-row space-x-4"
                     >
                       {lookAheadStatusOptions.map((option) => (
@@ -205,8 +214,14 @@ export const ActivityReportsSection: React.FC = () => {
                     <RadioGroup
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
-                      onValueChange={field.onChange}
-                      value={field.value ?? ''}
+                      onValueChange={(value) =>
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          lookAheadSectionFormValue(value)
+                        )
+                      }
+                      value={optionalRadioDisplayValue(field.value)}
                       className="flex flex-row flex-wrap gap-x-4 gap-y-2"
                     >
                       {lookAheadSectionOptions.map((option) => (

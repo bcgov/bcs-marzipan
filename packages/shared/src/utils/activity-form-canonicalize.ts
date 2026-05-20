@@ -47,6 +47,11 @@ function canonObjectArray<T extends Record<string, unknown>>(v: unknown): T[] {
  * - venueAddress: full null-key object (see {@link normalizeVenueAddressForForm})
  *
  * Use after mapping API → form and when diffing `initialFormDataRef` vs `getValues()`.
+ *
+ * **Dual role:** calendar-ui `hydrateActivityFormData` also runs this before
+ * `applyUiBaselineSentinels`. A semantic change here affects dirty/diff,
+ * submit payloads (`prepareActivityFormDataForSubmit`), and edit-form hydration —
+ * update `activity-form-hydrate.test.ts` and `ACTIVITY_FORM_FIELD_UPDATES.md` together.
  */
 export function canonicalizeActivityFormData(
   data: ActivityFormData
@@ -63,27 +68,21 @@ export function canonicalizeActivityFormData(
       isActivityRichTextEffectivelyEmpty(data.significance)
         ? undefined
         : data.significance,
-    schedulingNotes: canonOptString(
-      data.schedulingNotes
-    ) as ActivityFormData['schedulingNotes'],
-    strategy: canonOptString(data.strategy) as ActivityFormData['strategy'],
-    notes: canonOptString(data.notes) as ActivityFormData['notes'],
+    schedulingNotes: canonOptString(data.schedulingNotes),
+    strategy: canonOptString(data.strategy),
+    notes: canonOptString(data.notes),
     executiveSummary:
       isNullishOrEmptyString(data.executiveSummary) ||
       isActivityRichTextEffectivelyEmpty(data.executiveSummary)
         ? undefined
         : data.executiveSummary,
-    startDate: canonOptString(data.startDate) as ActivityFormData['startDate'],
-    endDate: canonOptString(data.endDate) as ActivityFormData['endDate'],
-    startTime: canonOptString(data.startTime) as ActivityFormData['startTime'],
-    endTime: canonOptString(data.endTime) as ActivityFormData['endTime'],
-    pitchDate: canonOptString(data.pitchDate) as ActivityFormData['pitchDate'],
-    leadOrgName: canonOptString(
-      data.leadOrgName
-    ) as ActivityFormData['leadOrgName'],
-    newsReleaseId: canonOptString(
-      data.newsReleaseId
-    ) as ActivityFormData['newsReleaseId'],
+    startDate: canonOptString(data.startDate),
+    endDate: canonOptString(data.endDate),
+    startTime: canonOptString(data.startTime),
+    endTime: canonOptString(data.endTime),
+    pitchDate: canonOptString(data.pitchDate),
+    leadOrgName: canonOptString(data.leadOrgName),
+    newsReleaseId: canonOptString(data.newsReleaseId),
     lookAheadStatus:
       data.lookAheadStatus === null || data.lookAheadStatus === undefined
         ? undefined
@@ -109,5 +108,27 @@ export function canonicalizeActivityFormData(
     representatives: canonObjectArray(data.representatives),
     commsContacts: canonObjectArray(data.commsContacts),
     reportSettings: canonObjectArray(data.reportSettings),
+  };
+}
+
+/**
+ * Normalizes hydrated form values for create/update API payloads.
+ *
+ * Applies {@link canonicalizeActivityFormData} so UI-only sentinels (`''`,
+ * `EMPTY_RICH_TEXT_DOC` on optional rich fields) do not get persisted when
+ * saving unrelated changes, then maps effectively-empty optional nullable
+ * fields to `null` for the request body.
+ */
+export function prepareActivityFormDataForSubmit(
+  data: ActivityFormData
+): ActivityFormData {
+  const c = canonicalizeActivityFormData(data);
+  return {
+    ...c,
+    notes: c.notes ?? null,
+    schedulingNotes: c.schedulingNotes ?? null,
+    strategy: c.strategy ?? null,
+    significance: c.significance ?? null,
+    executiveSummary: c.executiveSummary ?? null,
   };
 }
