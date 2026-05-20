@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
@@ -36,15 +36,7 @@ const mockLookups: FormLookupData = {
 };
 
 describe('useActivityEditFormHydration', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('sets isFormHydrated true after deferred stabilization', () => {
+  it('hydrates synchronously when lookups are ready', () => {
     const activity = createMockActivityResponse({
       id: 1,
       lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
@@ -57,15 +49,60 @@ describe('useActivityEditFormHydration', () => {
       return useActivityEditFormHydration(activity, mockLookups, form);
     });
 
-    expect(result.current.isFormHydrated).toBe(false);
-
-    act(() => {
-      vi.runAllTimers();
-    });
-
     expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBe(1);
     expect(result.current.initialFormDataRef.current).not.toBeNull();
+  });
+
+  it('produces no spurious dirty state after hydration', () => {
+    const activity = createMockActivityResponse({
+      id: 1,
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+      notes: null,
+      schedulingNotes: null,
+      strategy: null,
+      significance: null,
+      executiveSummary: null,
+      summary: null,
+    });
+
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    renderHook(() => {
+      const form = useForm<ActivityFormData>({
+        defaultValues: getDefaultFormValues() as ActivityFormData,
+      });
+      formRef = form;
+      return useActivityEditFormHydration(activity, mockLookups, form);
+    });
+
+    expect(formRef!.formState.isDirty).toBe(false);
+    expect(Object.keys(formRef!.formState.dirtyFields)).toHaveLength(0);
+  });
+
+  it('marks dirty when a user edit follows hydration', () => {
+    const activity = createMockActivityResponse({
+      id: 1,
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+      notes: null,
+    });
+
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    renderHook(() => {
+      const form = useForm<ActivityFormData>({
+        defaultValues: getDefaultFormValues() as ActivityFormData,
+      });
+      formRef = form;
+      return useActivityEditFormHydration(activity, mockLookups, form);
+    });
+
+    act(() => {
+      formRef!.setValue('notes', 'user typed', { shouldDirty: true });
+    });
+
+    expect(formRef!.getValues('notes')).toBe('user typed');
+    expect(formRef!.formState.dirtyFields.notes).toBe(true);
   });
 
   it('does not hydrate while lookups are still loading', () => {
@@ -85,17 +122,10 @@ describe('useActivityEditFormHydration', () => {
       { initialProps: { lookups: loadingLookups } }
     );
 
-    act(() => {
-      vi.runAllTimers();
-    });
-
     expect(result.current.isFormHydrated).toBe(false);
     expect(result.current.hydrationGeneration).toBe(0);
 
     rerender({ lookups: mockLookups });
-    act(() => {
-      vi.runAllTimers();
-    });
 
     expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBe(1);
@@ -121,15 +151,9 @@ describe('useActivityEditFormHydration', () => {
       { initialProps: { activity: activityV1 } }
     );
 
-    act(() => {
-      vi.runAllTimers();
-    });
     const genAfterFirst = result.current.hydrationGeneration;
 
     rerender({ activity: activityV2 });
-    act(() => {
-      vi.runAllTimers();
-    });
 
     expect(result.current.hydrationGeneration).toBeGreaterThan(genAfterFirst);
   });

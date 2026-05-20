@@ -43,5 +43,7 @@ describe('normalizeActivityRichTextFormFields', () => {
       executiveSummary: undefined,
     } as never);
     expect(data.summary).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(data.significance).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(data.executiveSummary).toBe(EMPTY_RICH_TEXT_DOC);
   });
 });
