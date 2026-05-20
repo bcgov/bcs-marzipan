@@ -95,7 +95,7 @@ describe('hydrateActivityFormData', () => {
       pitchDate: null,
       venueStatusId: null,
       lookAheadStatus: null,
-      categoryIds: [],
+      category: [],
     });
 
     const data = hydrateActivityFormData(activity, mockLookups);

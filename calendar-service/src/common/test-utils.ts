@@ -15,16 +15,17 @@ import type {
   CreateActivityRequest,
   UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
-
 /**
  * Helper functions to generate test data for activities, teams, and users
  */
 
 // Re-export shared test fixtures for ActivityResponse and teams
-export {
+import {
   createMockActivityResponse,
   createMockTeamListItem,
 } from '@corpcal/shared/test-utils';
+
+export { createMockActivityResponse, createMockTeamListItem };
 
 export const createMockActivityRequest = (
   overrides?: Partial<CreateActivityRequest>

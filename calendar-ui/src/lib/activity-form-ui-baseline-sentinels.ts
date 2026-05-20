@@ -49,7 +49,7 @@ export const UI_BASELINE_SENTINEL_FIELDS = [
  */
 export const UI_BASELINE_FIELD_SENTINELS: {
   readonly [K in UiBaselineSentinelField]: (
-    value: ActivityFormData[K] | null
+    value: ActivityFormData[K] | null | undefined
   ) => ActivityFormData[K];
 } = {
   notes: emptyStringBaseline,
@@ -116,12 +116,20 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
   },
 ] as const;
 
+function applySentinelForField<K extends UiBaselineSentinelField>(
+  out: ActivityFormData,
+  canon: ActivityFormData,
+  field: K
+): void {
+  out[field] = UI_BASELINE_FIELD_SENTINELS[field](canon[field]);
+}
+
 export function applyUiBaselineSentinels(
   canon: ActivityFormData
 ): ActivityFormData {
   const out = { ...canon };
   for (const field of UI_BASELINE_SENTINEL_FIELDS) {
-    out[field] = UI_BASELINE_FIELD_SENTINELS[field](canon[field]);
+    applySentinelForField(out, canon, field);
   }
   return out;
 }
