@@ -298,11 +298,12 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   gap: 0;
 }
 .corpcal-print-translations-row {
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35em;
 }
 .corpcal-print-translations-icon {
   flex: 0 0 auto;
+  margin-top: 0.15em;
   color: #2e5a34;
   color: var(--print-look-ahead-accent-green);
 }
@@ -315,6 +316,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-flag-narrative-inline {
   flex: 0 0 auto;
   margin-top: 0.1em;
+  color: var(--print-ink);
+}
+.corpcal-print-activity-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+}
+.corpcal-print-activity-link-icon {
+  flex: 0 0 auto;
+  color: var(--corpcal-link);
 }
 .corpcal-print-activity-id-stacked {
   text-align: left;
@@ -384,9 +395,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-flag-alert {
   color: var(--corpcal-text-alert);
-}
-.corpcal-print-flag-fyi {
-  color: var(--bc-gold);
 }
 
 /* Shad-style badge: rounded-full, body em, font-semibold, border/padding */

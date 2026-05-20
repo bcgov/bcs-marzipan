@@ -1,4 +1,4 @@
-import { Languages } from 'lucide-react';
+import { ExternalLink, Languages } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { PrintRichText } from './PrintRichText';
@@ -16,6 +16,39 @@ function isLookAheadRollupVariant(variant: PrintReportVariant): boolean {
 /** Column‑3 narrative: executive summary vs title + summary. */
 function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead';
+}
+
+function NarrativeInlineFlag({ label }: { label: string }) {
+  return (
+    <span className="corpcal-print-flag corpcal-print-flag-narrative-inline">
+      {label}
+    </span>
+  );
+}
+
+function ActivityIdLink({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <a
+      className="corpcal-print-link corpcal-print-activity-link"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span>{label}</span>
+      <ExternalLink
+        className="corpcal-print-activity-link-icon"
+        size={14}
+        strokeWidth={2}
+        aria-hidden
+      />
+    </a>
+  );
 }
 
 /**
@@ -155,11 +188,11 @@ function ActivityDetailsCell({
   showEventLead: boolean;
 }) {
   const flags: { key: string; label: string; className: string }[] = [];
-  if (row.flags.isIssue) {
+  if (row.flags.isIssue && variant !== 'lookAhead') {
     flags.push({
       key: 'issue',
       label: 'ISSUE',
-      className: 'corpcal-print-flag corpcal-print-flag-alert',
+      className: 'corpcal-print-flag',
     });
   }
   if (row.flags.isConfidential) {
@@ -195,12 +228,10 @@ function ActivityDetailsCell({
       {narrativeIsExecutiveSummaryInline(variant) ? (
         <>
           <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
-            {row.flags.isFyi ? (
-              <span className="corpcal-print-flag corpcal-print-flag-fyi corpcal-print-flag-narrative-inline">
-                FYI
-              </span>
-            ) : null}
-            {row.flags.isFyi ? ' ' : null}
+            {row.flags.isIssue ? <NarrativeInlineFlag label="ISSUE" /> : null}
+            {row.flags.isIssue && row.flags.isFyi ? ' ' : null}
+            {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
+            {row.flags.isIssue || row.flags.isFyi ? ' ' : null}
             <PrintRichText
               value={row.executiveSummaryStored}
               className="corpcal-print-rich corpcal-print-rich-inline"
@@ -216,11 +247,7 @@ function ActivityDetailsCell({
         <>
           {row.title ? (
             <div className="corpcal-print-title corpcal-print-narrative-head">
-              {row.flags.isFyi ? (
-                <span className="corpcal-print-flag corpcal-print-flag-fyi corpcal-print-flag-narrative-inline">
-                  FYI
-                </span>
-              ) : null}
+              {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
               {row.flags.isFyi ? ' ' : null}
               {row.title}
             </div>
@@ -311,14 +338,10 @@ function ActivityCell({
               </div>
             ) : null}
             <div>
-              <a
-                className="corpcal-print-link"
+              <ActivityIdLink
                 href={activityLink.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {splitId.idForLink}
-              </a>
+                label={splitId.idForLink}
+              />
             </div>
           </div>
         ) : (

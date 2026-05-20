@@ -261,7 +261,8 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('href="https://corpcal.example.gov.bc.ca/activity/101"');
     expect(html).toContain('ACT');
-    expect(html).toContain('>101</a>');
+    expect(html).toContain('corpcal-print-activity-link');
+    expect(html).toContain('>101</span>');
     expect(html).not.toContain('>ACT-101</a>');
   });
 
@@ -270,7 +271,7 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('FR, PUN');
+    expect(html).toContain('French, Punjabi');
     expect(html).not.toContain('Translations: 2 languages');
   });
 
@@ -294,8 +295,8 @@ describe('renderPrintReportFragmentHtml', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
       activityBaseUrl: 'http://localhost:3000',
     });
-    expect(html).not.toContain('FR');
-    expect(html).not.toContain('PUN');
+    expect(html).not.toContain('French');
+    expect(html).not.toContain('Punjabi');
     expect(html).not.toContain('Translations:');
   });
 
@@ -344,7 +345,7 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('4 languages');
+    expect(html).toContain('4 translations');
     expect(html).not.toContain('Translations:');
   });
 
@@ -570,7 +571,7 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html).not.toContain(
       'indicates major detail or date changes only (not time switches)'
     );
-    expect(html).toContain('>101</a>');
+    expect(html).toContain('>101</span>');
   });
 
   it('embeds the provided @font-face block before the shared styles', () => {

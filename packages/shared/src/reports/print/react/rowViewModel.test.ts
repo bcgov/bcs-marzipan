@@ -287,6 +287,38 @@ describe('toPrintRowViewModel', () => {
     expect(row.release.translationsLine).toBe('French');
   });
 
+  it('maps translation shortcodes to display names on look-ahead', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French, Punjabi');
+  });
+
+  it('collapses look-ahead translations to a count at four or more', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN', 'SC', 'SPA'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('4 translations');
+  });
+
   it('uses TBD on look-ahead when translation status is pending review and no languages', () => {
     const row = toPrintRowViewModel(
       {

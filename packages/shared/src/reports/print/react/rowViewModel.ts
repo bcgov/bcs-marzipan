@@ -7,6 +7,7 @@ import {
   formatShortDateNoYear,
   formatTime12h,
 } from './dateFormatters';
+import { resolveTranslationLanguageDisplayLabels } from './translationLanguageDisplayLabels';
 
 /** Kind of print report row to render; different columns include different narrative blocks. */
 export type PrintReportVariant =
@@ -84,7 +85,7 @@ export interface ReleaseBlock {
   newsReleaseOrigin: string | null;
   /**
    * Release column text after the optional {@link newsReleaseOrigin} line.
-   * Look Ahead / Exec: language shortcodes or `TBD` / `none` / `N languages` — no
+   * Look Ahead / Exec: language display names or `TBD` / `none` / `N translations` — no
    * `Translations:` prefix (icon in {@link PrintRow}).
    * 30/60/90: full {@link buildTranslationsLine} string including `Translations:`.
    */
@@ -196,10 +197,11 @@ export function buildLookAheadReleaseTranslationsLine(
   if (!langs || langs.length === 0) {
     return 'none';
   }
-  if (langs.length < TRANSLATIONS_COLLAPSE_AT) {
-    return langs.join(', ');
+  const displayLabels = resolveTranslationLanguageDisplayLabels(langs);
+  if (displayLabels.length < TRANSLATIONS_COLLAPSE_AT) {
+    return displayLabels.join(', ');
   }
-  return `${langs.length} languages`;
+  return `${displayLabels.length} translations`;
 }
 
 function pickLeadMinistryOrTeam(activity: ActivityResponse): string | null {
