@@ -53,6 +53,7 @@ import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
@@ -425,11 +426,14 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={premierRequestedOptions.map((o) => o.value)}
-              onValueChange={(value) => {
-                const parsed = value ? parseInt(value, 10) : null;
-                field.onChange(isNaN(parsed as number) ? null : parsed);
-              }}
-              value={field.value ? field.value.toString() : ''}
+              value={field.value != null ? String(field.value) : ''}
+              onValueChange={(value) =>
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  value === '' ? undefined : Number(value)
+                )
+              }
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
@@ -605,10 +609,14 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={field.value ?? ''}
                   onAddressSelect={handleVenueAddressAutofill}
                   onInputValueChange={(value) =>
-                    field.onChange(value === '' ? null : value)
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      value === '' ? null : value
+                    )
                   }
                   onBlurCommit={(v) => {
-                    field.onChange(v);
+                    setActivityFormFieldValue(form, field.name, v);
                     void field.onBlur();
                   }}
                   readOnly={readOnly}
@@ -626,11 +634,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
               <FormControl data-field={field.name}>
                 <Input
+                  {...field}
                   value={field.value ?? ''}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    field.onChange(raw.trim() === '' ? null : raw);
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      raw.trim() === '' ? null : raw
+                    );
                   }}
                   placeholder="Floor, room, etc."
                 />
@@ -674,11 +687,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <FormLabel>{getActivityFieldLabel('provinceOrState')}</FormLabel>
               <FormControl data-field={field.name}>
                 <Input
+                  {...field}
                   value={field.value ?? ''}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    field.onChange(raw.trim() === '' ? null : raw);
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      raw.trim() === '' ? null : raw
+                    );
                   }}
                 />
               </FormControl>
@@ -696,11 +714,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
             <FormControl data-field={field.name}>
               <Input
+                {...field}
                 value={field.value ?? ''}
                 readOnly={readOnly}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  field.onChange(raw.trim() === '' ? null : raw);
+                  setActivityFormFieldValue(
+                    form,
+                    field.name,
+                    raw.trim() === '' ? null : raw
+                  );
                 }}
               />
             </FormControl>

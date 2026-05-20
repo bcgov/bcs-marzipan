@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
   getPresetAnchorToday,
   parseIsoDateLocal,
@@ -176,14 +177,18 @@ export function ActivityScheduleSection({
                     <ScheduledDatePopoverField
                       value={field.value ?? ''}
                       onChange={(iso) => {
-                        field.onChange(iso || undefined);
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          iso || undefined
+                        );
                         const end = form.getValues('endDate');
                         if (
                           end &&
                           iso &&
                           String(end).slice(0, 10) < iso.slice(0, 10)
                         ) {
-                          form.setValue('endDate', iso, setDateOpts);
+                          setActivityFormFieldValue(form, 'endDate', iso);
                         }
                       }}
                       label={startButtonLabel}
@@ -201,7 +206,13 @@ export function ActivityScheduleSection({
                             variant="ghost"
                             size="sm"
                             className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
+                            onClick={() =>
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
+                                undefined
+                              )
+                            }
                           >
                             Clear
                           </Button>
@@ -230,7 +241,13 @@ export function ActivityScheduleSection({
                      */}
                     <ScheduledDatePopoverField
                       value={field.value ?? ''}
-                      onChange={(iso) => field.onChange(iso || undefined)}
+                      onChange={(iso) =>
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          iso || undefined
+                        )
+                      }
                       label={endButtonLabel}
                       triggerMuted={!endStr}
                       readOnly={readOnly}
@@ -247,7 +264,13 @@ export function ActivityScheduleSection({
                             variant="ghost"
                             size="sm"
                             className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
+                            onClick={() =>
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
+                                undefined
+                              )
+                            }
                           >
                             Clear
                           </Button>
@@ -271,13 +294,12 @@ export function ActivityScheduleSection({
                   readOnly={readOnly}
                   optionValues={dateStatuses.map((s) => String(s.id))}
                   value={
-                    statusField.value !== undefined &&
-                    statusField.value !== null
-                      ? String(statusField.value)
-                      : ''
+                    statusField.value != null ? String(statusField.value) : ''
                   }
                   onValueChange={(value) =>
-                    statusField.onChange(
+                    setActivityFormFieldValue(
+                      form,
+                      statusField.name,
                       value === '' ? undefined : Number(value)
                     )
                   }
@@ -361,7 +383,9 @@ export function ActivityScheduleSection({
                         }
                         value={String(field.value ?? '')}
                         onChange={(next) =>
-                          field.onChange(
+                          setActivityFormFieldValue(
+                            form,
+                            field.name,
                             next === undefined || next === '' ? undefined : next
                           )
                         }
@@ -445,13 +469,12 @@ export function ActivityScheduleSection({
                   readOnly={readOnly}
                   optionValues={timeStatuses.map((s) => String(s.id))}
                   value={
-                    statusField.value !== undefined &&
-                    statusField.value !== null
-                      ? String(statusField.value)
-                      : ''
+                    statusField.value != null ? String(statusField.value) : ''
                   }
                   onValueChange={(value) =>
-                    statusField.onChange(
+                    setActivityFormFieldValue(
+                      form,
+                      statusField.name,
                       value === '' ? undefined : Number(value)
                     )
                   }
@@ -534,14 +557,8 @@ export function ActivityScheduleSection({
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}
                 rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
+                {...field}
                 value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
               />
             </FormControl>
             <FormMessage />

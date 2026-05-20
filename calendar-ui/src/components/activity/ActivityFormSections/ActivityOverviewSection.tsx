@@ -57,6 +57,7 @@ import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
   getPresetAnchorToday,
   parseIsoDateLocal,
@@ -543,10 +544,10 @@ export const ActivityOverviewSection: React.FC<
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
             <FormControl data-field={field.name}>
               <Checkbox
-                checked={field.value}
+                checked={!!field.value}
                 readOnly={readOnly}
                 onCheckedChange={(checked) => {
-                  field.onChange(checked);
+                  setActivityFormFieldValue(form, field.name, checked === true);
                   if (checked) {
                     form.setValue('visibility', 'team', DIRTY_CASCADE);
                     const executiveSummary = form.getValues('executiveSummary');
@@ -609,9 +610,11 @@ export const ActivityOverviewSection: React.FC<
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
             <FormControl data-field={field.name}>
               <Checkbox
-                checked={field.value}
+                checked={!!field.value}
                 readOnly={readOnly}
-                onCheckedChange={field.onChange}
+                onCheckedChange={(checked) =>
+                  setActivityFormFieldValue(form, field.name, checked === true)
+                }
               />
             </FormControl>
             <div className="space-y-1 leading-none">
@@ -691,13 +694,13 @@ export const ActivityOverviewSection: React.FC<
                 readOnly={pitchStatusScope.readOnly}
                 disabled={pitchStatusScope.fieldScopeDisabled}
                 optionValues={pitchRequiredStatuses.map((s) => String(s.id))}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
+                value={field.value != null ? String(field.value) : ''}
                 onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
+                  setActivityFormFieldValue(
+                    form,
+                    field.name,
+                    value === '' ? undefined : Number(value)
+                  )
                 }
               >
                 <ActivityFieldScopePermissionTooltip scope="pitchStatus">
@@ -793,14 +796,8 @@ export const ActivityOverviewSection: React.FC<
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
+                      {...field}
                       value={field.value ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        field.onChange(v === '' ? undefined : v);
-                      }}
                     />
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>
