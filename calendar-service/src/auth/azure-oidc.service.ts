@@ -1,19 +1,20 @@
 import crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
-interface OidcStateEntry {
+const OIDC_STATE_COOKIE = 'corpcal_az_state';
+const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
+
+interface OidcStateCookiePayload {
   nonce: string;
-  expiresAt: number;
+  exp: number; // unix seconds
 }
 
 @Injectable()
 export class AzureOidcService {
   private cachedConfig: oidc.Configuration | null = null;
-  private readonly stateStore = new Map<string, OidcStateEntry>();
-  private readonly stateTtlMs = 10 * 60 * 1000;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -85,41 +86,76 @@ export class AzureOidcService {
     return crypto.randomBytes(16).toString('hex');
   }
 
-  createState(nonce: string): string {
-    this.cleanupStateStore();
-
-    const state = this.generateState();
-    this.stateStore.set(state, {
+  /**
+   * Write the nonce into a short-lived, HMAC-signed cookie keyed by `state`.
+   * The cookie is pod-stateless: any replica can verify it using the shared
+   * JWT_SECRET, so Azure AD callbacks are not broken by round-robin routing.
+   */
+  setStateCookie(res: Response, state: string, nonce: string): void {
+    const payload: OidcStateCookiePayload = {
       nonce,
-      expiresAt: Date.now() + this.stateTtlMs,
+      exp: Math.floor((Date.now() + OIDC_STATE_TTL_MS) / 1000),
+    };
+    const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = crypto
+      .createHmac('sha256', this.getSigningSecret())
+      .update(`${state}.${body}`)
+      .digest('base64url');
+    res.cookie(OIDC_STATE_COOKIE, `${body}.${sig}`, {
+      httpOnly: true,
+      secure: this.configService.get<string>('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      maxAge: OIDC_STATE_TTL_MS,
+      path: '/',
     });
-
-    return state;
   }
 
-  consumeState(state: string): string | null {
-    this.cleanupStateStore();
+  /**
+   * Verify the HMAC-signed state cookie, clear it, and return the nonce.
+   * Returns null if missing, tampered, or expired.
+   */
+  consumeStateCookie(
+    req: Request,
+    res: Response,
+    state: string
+  ): string | null {
+    const cookieValue: string | undefined = req.cookies?.[OIDC_STATE_COOKIE];
+    res.clearCookie(OIDC_STATE_COOKIE, { httpOnly: true, path: '/' });
 
-    const entry = this.stateStore.get(state);
-    if (!entry) {
+    if (!cookieValue) return null;
+    const dotIndex = cookieValue.lastIndexOf('.');
+    if (dotIndex === -1) return null;
+
+    const body = cookieValue.slice(0, dotIndex);
+    const sig = cookieValue.slice(dotIndex + 1);
+
+    const expected = crypto
+      .createHmac('sha256', this.getSigningSecret())
+      .update(`${state}.${body}`)
+      .digest('base64url');
+
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+    let payload: OidcStateCookiePayload;
+    try {
+      payload = JSON.parse(
+        Buffer.from(body, 'base64url').toString('utf8')
+      ) as OidcStateCookiePayload;
+    } catch {
       return null;
     }
 
-    this.stateStore.delete(state);
-
-    if (entry.expiresAt < Date.now()) {
+    if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now())
       return null;
-    }
-
-    return entry.nonce;
+    return payload.nonce;
   }
 
-  private cleanupStateStore(): void {
-    const now = Date.now();
-    for (const [key, value] of this.stateStore.entries()) {
-      if (value.expiresAt < now) {
-        this.stateStore.delete(key);
-      }
-    }
+  private getSigningSecret(): string {
+    return (
+      this.configService.get<string>('JWT_SECRET') ||
+      'dev-secret-change-in-production'
+    );
   }
 }
