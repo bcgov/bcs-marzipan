@@ -26,18 +26,17 @@ import { activityToFormData } from './activity-form-mapper';
  * paint, Radix and React treat the first interaction as a controlled/uncontrolled
  * transition, which manifests as fields that "don't accept input from empty",
  * radios that visually change but never mark dirty, and the dirty Changed badge
- * not appearing. This helper aligns the baseline with the UI bindings:
+ * not appearing.
  *
- * | Field shape                          | Baseline sentinel   |
- * | ------------------------------------ | ------------------- |
- * | Optional plain text (notes etc.)     | `''`                |
- * | Optional rich text (significance etc.)| `EMPTY_RICH_TEXT_DOC` |
- * | Required rich text (summary)         | `EMPTY_RICH_TEXT_DOC` |
- * | Optional ID (number)                 | `undefined`         |
- * | Optional enum string                 | `undefined`         |
- * | Boolean                              | `false`/server value|
- * | Nested venue string                  | `null`              |
- * | Array (junctions, planners…)         | `[]`                |
+ * This helper re-applies UI sentinels for plain/rich text fields after
+ * {@link canonicalizeActivityFormData}. Other shapes (optional IDs, enums,
+ * booleans, nested venue `null`, empty arrays) already match UI bindings via
+ * canonicalize and {@link activityToFormData}.
+ *
+ * | Field (explicit override)     | Baseline sentinel     |
+ * | ----------------------------- | --------------------- |
+ * | notes, schedulingNotes, strategy | `''`               |
+ * | significance, executiveSummary, summary | `EMPTY_RICH_TEXT_DOC` |
  *
  * Submit/compare semantics remain owned by {@link canonicalizeActivityFormData}.
  */

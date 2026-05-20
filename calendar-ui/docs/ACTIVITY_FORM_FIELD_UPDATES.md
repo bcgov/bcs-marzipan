@@ -1,0 +1,51 @@
+# Activity edit form — updating field values (react-hook-form)
+
+## Why use `setActivityFormFieldValue`?
+
+Custom controls in the activity form (Radix Select/Checkbox primitives, Headless/UI Combobox wrappers, TipTap-backed `RichTextField`, date/time popovers) are wired through `react-hook-form` `Controller` via `FormField`. Under **React 19** and **Vite 8**, values written through Controller `field.onChange` alone have been observed **not always persisting or marking fields dirty** (see CORPCAL-239).
+
+The calendar UI writes those user edits with `form.setValue` and shared options instead, via **`setActivityFormFieldValue`** in [`src/lib/activity-form-set-field.ts`](../src/lib/activity-form-set-field.ts).
+
+## Rule
+
+Inside `FormField` render props under `calendar-ui/src/components/activity/ActivityFormSections/`:
+
+- For **custom controls** (`onValueChange`, `onChange` from Radix/Shadcn, Combobox, `RichTextField`, `ScheduledDatePopoverField`, etc.): call
+
+  ```ts
+  setActivityFormFieldValue(form, field.name, nextValue);
+  ```
+
+- Prefer passing **`field.name`** so renames stay type-checked against `ActivityFormData`.
+
+## Exceptions
+
+- **Native DOM inputs**: `Textarea` / `Input` that spread `{...field}` may keep default RHF handlers; they are stable for standard change events.
+
+- **`field.onBlur`**: Keep forwarding `onBlur={field.onBlur}` where blur is required for touched/dirty UX (for example [`AddressAutocomplete`](../src/components/activity/ActivityFormSections/ActivityEventSection.tsx) `onBlurCommit`).
+
+## Multi-field updates
+
+When one user action updates several registered fields (for example lead team changing `leadOrgId`), call **`setActivityFormFieldValue` once per field**. Do **not** use ad-hoc `form.setValue` options — use the helper so behaviour matches `ACTIVITY_FIELD_SET_OPTS`.
+
+For Radix Select / RadioGroup string callbacks, coerce through helpers in [`activity-form-coerce-value.ts`](../src/lib/activity-form-coerce-value.ts) (`optionalSelectIdValue`, `lookAheadStatusFormValue`, etc.) instead of inline `Number(value)` or enum casts.
+
+## Verification locally
+
+Ensure activity form sections have no regressions:
+
+```bash
+rg 'field\.onChange' calendar-ui/src/components/activity/ActivityFormSections
+rg 'DIRTY_CASCADE|setDateOpts' calendar-ui/src/components/activity/ActivityFormSections
+```
+
+Both should report no matches after a migration.
+
+Regression coverage: [`useActivityEditFormHydration.field-update.test.tsx`](../src/hooks/useActivityEditFormHydration.field-update.test.tsx) asserts post-hydration updates persist and mark dirty for representative custom fields.
+
+## Checklist — adding a new field in activity sections
+
+1. If the UI is Radix/Shadcn, Combobox, rich text, or a date/time popover, wire updates with `setActivityFormFieldValue(form, '<fieldName>', value)`.
+2. If multiple fields cascade, one helper call per affected name.
+3. Run the grep checks above from the repo root.
+4. Add or extend hydration + field-update tests when the behaviour is fragile or regression-prone.
