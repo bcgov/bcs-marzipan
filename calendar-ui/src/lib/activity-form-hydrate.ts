@@ -2,13 +2,15 @@ import type {
   ActivityFormData,
   ActivityResponse,
 } from '@corpcal/shared/schemas';
-import {
-  canonicalizeActivityFormData,
-  EMPTY_RICH_TEXT_DOC,
-} from '@corpcal/shared/utils';
+import { canonicalizeActivityFormData } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { activityToFormData } from './activity-form-mapper';
+import {
+  applyUiBaselineSentinels,
+  UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES,
+  UI_BASELINE_FIELD_SENTINELS,
+} from './activity-form-ui-baseline-sentinels';
 
 /**
  * Produces the single canonical shape used as the form's RHF `reset()` baseline.
@@ -28,17 +30,31 @@ import { activityToFormData } from './activity-form-mapper';
  * radios that visually change but never mark dirty, and the dirty Changed badge
  * not appearing.
  *
- * This helper re-applies UI sentinels for plain/rich text fields after
- * {@link canonicalizeActivityFormData}. Other shapes (optional IDs, enums,
- * booleans, nested venue `null`, empty arrays) already match UI bindings via
- * canonicalize and {@link activityToFormData}.
+ * {@link applyUiBaselineSentinels} re-applies UI sentinels for fields listed in
+ * {@link UI_BASELINE_FIELD_SENTINELS} after canonicalize. Other shapes already
+ * match UI bindings via canonicalize and {@link activityToFormData}; see
+ * {@link UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES}.
  *
- * | Field (explicit override)     | Baseline sentinel     |
- * | ----------------------------- | --------------------- |
- * | notes, schedulingNotes, strategy | `''`               |
+ * Explicit hydrate overrides (keep in sync with `UI_BASELINE_FIELD_SENTINELS`):
+ *
+ * | Field                              | Baseline sentinel       |
+ * | ---------------------------------- | ----------------------- |
+ * | notes, schedulingNotes, strategy   | `''`                    |
  * | significance, executiveSummary, summary | `EMPTY_RICH_TEXT_DOC` |
  *
+ * Canonical-only (no hydrate override):
+ *
+ * | Category                           | Empty baseline          |
+ * | ---------------------------------- | ----------------------- |
+ * | Optional IDs / enums               | `undefined`             |
+ * | Optional dates / times             | `undefined`             |
+ * | ID / object arrays                 | `[]`                    |
+ * | Booleans                           | `false`                 |
+ * | Nested venue address               | `null` per key          |
+ *
  * Submit/compare semantics remain owned by {@link canonicalizeActivityFormData}.
+ * When adding fields, update {@link UI_BASELINE_FIELD_SENTINELS} if needed and
+ * extend `activity-form-hydrate.test.ts` — see `ACTIVITY_FORM_FIELD_UPDATES.md`.
  */
 export function hydrateActivityFormData(
   activity: ActivityResponse,
@@ -46,13 +62,5 @@ export function hydrateActivityFormData(
 ): ActivityFormData {
   const mapped = activityToFormData(activity, lookups);
   const canon = canonicalizeActivityFormData(mapped);
-  return {
-    ...canon,
-    notes: canon.notes ?? '',
-    schedulingNotes: canon.schedulingNotes ?? '',
-    strategy: canon.strategy ?? '',
-    significance: canon.significance ?? EMPTY_RICH_TEXT_DOC,
-    executiveSummary: canon.executiveSummary ?? EMPTY_RICH_TEXT_DOC,
-    summary: canon.summary ?? EMPTY_RICH_TEXT_DOC,
-  };
+  return applyUiBaselineSentinels(canon);
 }

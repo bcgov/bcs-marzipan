@@ -49,3 +49,8 @@ Regression coverage: [`useActivityEditFormHydration.field-update.test.tsx`](../s
 2. If multiple fields cascade, one helper call per affected name.
 3. Run the grep checks above from the repo root.
 4. Add or extend hydration + field-update tests when the behaviour is fragile or regression-prone.
+5. **Hydration baseline sentinels** — the form compares RHF `defaultValues` to live values for dirty state and Changed badges. `canonicalizeActivityFormData` (compare/submit oracle) and UI controls often represent “empty” differently:
+   - **Optional plain-text Textarea** (`notes`, `schedulingNotes`, `strategy`): canonicalize → `undefined`; Textarea `onChange` → `''`. Add the field to `UI_BASELINE_FIELD_SENTINELS` in [`activity-form-ui-baseline-sentinels.ts`](../src/lib/activity-form-ui-baseline-sentinels.ts) and extend the parameterized cases in [`activity-form-hydrate.test.ts`](../src/lib/activity-form-hydrate.test.ts).
+   - **Rich text** (`RichTextField`): canonicalize optional empty → `undefined`; TipTap `onChange` → `EMPTY_RICH_TEXT_DOC`. Same sentinel map + hydrate test update.
+   - **Select / date popover / ID array / boolean / venue**: empty storage already matches canonicalize (`undefined`, `[]`, `false`, nested `null`). No hydrate override — see `UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES` in the same module.
+6. When adding a sentinel field, also add `canonOptString` (plain text) or rich-text empty handling in `packages/shared/src/utils/activity-form-canonicalize.ts` if the field is optional and compared on save.
