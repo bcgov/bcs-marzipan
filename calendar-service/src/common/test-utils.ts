@@ -4,7 +4,6 @@ import type {
   CreateTeamBody,
   TeamDetail,
   TeamHistoryEntry,
-  TeamListItem,
   TransferActivitiesBody,
   UpdateTeamBody,
   UpdateUserTeamRoleBody,
@@ -21,8 +20,11 @@ import type {
  * Helper functions to generate test data for activities, teams, and users
  */
 
-// Re-export shared test fixtures for ActivityResponse
-export { createMockActivityResponse } from '@corpcal/shared/test-utils';
+// Re-export shared test fixtures for ActivityResponse and teams
+export {
+  createMockActivityResponse,
+  createMockTeamListItem,
+} from '@corpcal/shared/test-utils';
 
 export const createMockActivityRequest = (
   overrides?: Partial<CreateActivityRequest>
@@ -119,23 +121,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
 // ============================================
 // Teams and Users test fixtures
 // ============================================
-
-export const createMockTeamListItem = (
-  overrides?: Partial<TeamListItem>
-): TeamListItem => ({
-  id: 1,
-  name: 'Test Team',
-  displayName: 'Test Team Display',
-  abbreviation: 'TT',
-  description: 'Test description',
-  sortOrder: 0,
-  isActive: true,
-  roleId: null,
-  memberCount: 2,
-  ministryId: 1,
-  ministryName: 'Office of the Premier',
-  ...overrides,
-});
 
 export const createMockTeamDetail = (
   overrides?: Partial<TeamDetail>

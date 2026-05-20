@@ -4,14 +4,17 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
-import { createMockActivityResponse } from '@corpcal/shared/test-utils';
+import {
+  createMockActivityResponse,
+  createMockTeamListItem,
+} from '@corpcal/shared/test-utils';
 import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
@@ -29,12 +32,11 @@ const mockEditorFieldPermissions: string[] = [
   PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
 ];
 
-/** TipTap fires onUpdate on mount in jsdom and clears summary; keep hydrated values stable. */
-vi.mock('@/components/ui/rich-text-field', () => ({
-  RichTextField: ({ value, name }: { value: string; name: string }) => (
-    <input type="hidden" name={name} value={value} readOnly />
-  ),
-}));
+vi.mock('@/components/ui/rich-text-field', () =>
+  import('@/test-utils/rich-text-field-mock').then((m) => ({
+    RichTextField: m.RichTextFieldMock,
+  }))
+);
 
 vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
@@ -74,7 +76,15 @@ const mockLookupsReady: FormLookupData = {
   eventPlanners: [],
   tags: [],
   pitchStatuses: [],
-  pitchRequiredStatuses: [],
+  pitchRequiredStatuses: [
+    {
+      id: 1,
+      label: 'Pending',
+      value: 1,
+      name: 'pending',
+      displayName: 'Pending',
+    },
+  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -219,14 +229,14 @@ describe('ActivityPage form readiness', () => {
   it('renders form body with Lead team when lead team options have been fetched', async () => {
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
-        {
+        createMockTeamListItem({
           id: 5,
           name: 'Test Team',
           displayName: 'Test Team',
           ministryId: 1,
           ministryName: 'Ministry One',
           memberCount: 2,
-        },
+        }),
       ],
       isFetched: true,
     });
@@ -259,14 +269,14 @@ describe('ActivityPage restore button visibility', () => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
-        {
+        createMockTeamListItem({
           id: 5,
           name: 'T',
           displayName: 'Test',
           ministryId: 1,
           ministryName: 'M',
           memberCount: 1,
-        },
+        }),
       ],
       isFetched: true,
     });
@@ -353,14 +363,14 @@ describe('ActivityPage optimistic inline edit', () => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
-        {
+        createMockTeamListItem({
           id: 5,
           name: 'Test',
           displayName: 'Test',
           ministryId: 1,
           ministryName: 'M',
           memberCount: 1,
-        },
+        }),
       ],
       isFetched: true,
     });
@@ -411,6 +421,48 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /^Save$/i })).not.toBeDisabled()
     );
+  });
+
+  it('discards custom-control edits via DiscardActivityChangesDialog when lock is owned', async () => {
+    mockLockState = 'owned';
+    mockRelease.mockClear();
+    const user = userEvent.setup();
+    renderActivityPage({
+      activity: createMockActivityResponse({
+        ...mockActivityWithLeadTeam,
+        isIssue: false,
+        pitchRequiredStatusId: 1,
+      }),
+    });
+
+    const issueCheckbox = await screen.findByRole('checkbox', {
+      name: /Issue/i,
+    });
+    expect(issueCheckbox).not.toBeChecked();
+
+    await user.click(issueCheckbox);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Discard changes/i })
+      ).toBeInTheDocument()
+    );
+    expect(issueCheckbox).toBeChecked();
+
+    await user.click(screen.getByRole('button', { name: /Discard changes/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/Issue:/i)).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: /^Discard$/i })
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(mockRelease).toHaveBeenCalled();
+      expect(issueCheckbox).not.toBeChecked();
+    });
   });
 
   it('shows Review when user has activities.review', async () => {
@@ -558,14 +610,14 @@ describe('ActivityPage clone button', () => {
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
-        {
+        createMockTeamListItem({
           id: 5,
           name: 'Test',
           displayName: 'Test',
           ministryId: 1,
           ministryName: 'M',
           memberCount: 1,
-        },
+        }),
       ],
       isFetched: true,
     });

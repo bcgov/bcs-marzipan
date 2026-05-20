@@ -41,7 +41,13 @@ rg 'DIRTY_CASCADE|setDateOpts' calendar-ui/src/components/activity/ActivityFormS
 
 Both should report no matches after a migration.
 
-Regression coverage: [`useActivityEditFormHydration.field-update.test.tsx`](../src/hooks/useActivityEditFormHydration.field-update.test.tsx) asserts post-hydration updates persist and mark dirty for representative custom fields.
+Regression coverage:
+
+- [`useActivityEditFormHydration.field-update.test.tsx`](../src/hooks/useActivityEditFormHydration.field-update.test.tsx) — post-hydration `setActivityFormFieldValue` persists and marks dirty.
+- [`ActivityOverviewSection.field-update.test.tsx`](../src/components/activity/ActivityFormSections/ActivityOverviewSection.field-update.test.tsx) — checkbox + `FormSelectSafe` wiring after hydration.
+- [`ActivityPage.test.tsx`](../src/pages/ActivityPage.test.tsx) — discard flow after a custom control edit (CORPCAL-239).
+
+TipTap/jsdom: mock `@/components/ui/rich-text-field` via [`src/test-utils/rich-text-field-mock.tsx`](../src/test-utils/rich-text-field-mock.tsx) (dynamic `import()` in `vi.mock` — see that file).
 
 ## Checklist — adding a new field in activity sections
 

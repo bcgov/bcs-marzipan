@@ -8,7 +8,10 @@ import {
   createActivityRequestSchema,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
-import { createMockActivityResponse } from '@corpcal/shared/test-utils';
+import {
+  createMockActivityResponse,
+  createMockTeamListItem,
+} from '@corpcal/shared/test-utils';
 import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
@@ -25,11 +28,11 @@ beforeAll(() => {
   }
 });
 
-vi.mock('@/components/ui/rich-text-field', () => ({
-  RichTextField: ({ value, name }: { value: string; name: string }) => (
-    <input type="hidden" name={name} value={value} readOnly />
-  ),
-}));
+vi.mock('@/components/ui/rich-text-field', () =>
+  import('@/test-utils/rich-text-field-mock').then((m) => ({
+    RichTextField: m.RichTextFieldMock,
+  }))
+);
 
 const mockLookups: FormLookupData = {
   isLoading: false,
@@ -121,19 +124,15 @@ function ActivityOverviewSectionHarness({
           pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
           leadTeamField={{
             options: [
-              {
+              createMockTeamListItem({
                 id: 5,
                 name: 'Team',
                 displayName: 'Team',
                 abbreviation: 'TM',
-                description: null,
-                sortOrder: 0,
-                isActive: true,
-                roleId: null,
                 ministryId: 1,
                 ministryName: 'Ministry',
                 memberCount: 1,
-              },
+              }),
             ],
             displayLabel: 'Team',
             optionsFetching: false,

@@ -125,7 +125,11 @@ function LeadOrganizationField({
             setActivityFormFieldValue(form, field.name, null);
             setActivityFormFieldValue(form, 'leadOrgName', null);
           } else if (single.type === 'option') {
-            setActivityFormFieldValue(form, field.name, Number(single.value));
+            setActivityFormFieldValue(
+              form,
+              field.name,
+              optionalSelectIdValue(single.value) ?? null
+            );
             setActivityFormFieldValue(form, 'leadOrgName', null);
           } else {
             setActivityFormFieldValue(form, field.name, null);
@@ -241,7 +245,9 @@ function LeadTeamField({
               currentLeadOrgId == null &&
               (currentLeadOrgName == null || currentLeadOrgName === ''));
 
-          const teamId = option ? Number(option.value) : undefined;
+          const teamId = option
+            ? optionalSelectIdValue(option.value)
+            : undefined;
           setActivityFormFieldValue(
             form,
             field.name,

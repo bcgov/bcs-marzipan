@@ -6,3 +6,4 @@
  */
 
 export { createMockActivityResponse } from './activity-response.fixture';
+export { createMockTeamListItem } from './team-list-item.fixture';
