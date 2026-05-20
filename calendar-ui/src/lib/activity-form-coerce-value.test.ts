@@ -14,8 +14,12 @@ describe('optionalSelectIdValue', () => {
     expect(optionalSelectIdValue('')).toBeUndefined();
   });
 
-  it('parses numeric strings', () => {
+  it('parses positive numeric strings', () => {
     expect(optionalSelectIdValue('42')).toBe(42);
+  });
+
+  it('maps zero to undefined (lookup IDs are positive)', () => {
+    expect(optionalSelectIdValue('0')).toBeUndefined();
   });
 
   it('returns undefined for non-numeric strings', () => {

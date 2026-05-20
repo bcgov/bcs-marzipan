@@ -13,18 +13,12 @@ export type CreatePayloadOptions = {
   markAsReviewed?: boolean;
 };
 
-/**
- * Builds the request payload for creating an activity from form values.
- * Backend sets activityStatusId from markAsReviewed + role; do not send activityStatusId.
- */
-export function buildPayloadForCreate(
-  data: ActivityFormData,
-  formValues: ActivityFormData,
+function buildPayloadFromPrepared(
+  prepared: ActivityFormData,
+  preparedFormValues: ActivityFormData,
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
   const { markAsReviewed } = options ?? {};
-  const prepared = prepareActivityFormDataForSubmit(data);
-  const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
   const { activityStatusId: _omit, ...rest } = prepared;
   const payload: Record<string, unknown> = {
     ...rest,
@@ -48,6 +42,22 @@ export function buildPayloadForCreate(
   return payload;
 }
 
+/**
+ * Builds the request payload for creating an activity from form values.
+ * Backend sets activityStatusId from markAsReviewed + role; do not send activityStatusId.
+ */
+export function buildPayloadForCreate(
+  data: ActivityFormData,
+  formValues: ActivityFormData,
+  options?: CreatePayloadOptions
+): Record<string, unknown> {
+  return buildPayloadFromPrepared(
+    prepareActivityFormDataForSubmit(data),
+    prepareActivityFormDataForSubmit(formValues),
+    options
+  );
+}
+
 export type UpdatePayloadOptions = {
   markAsReviewed?: boolean;
   markAsCompleted?: boolean;
@@ -63,13 +73,14 @@ export function buildPayloadForUpdate(
   formValues: ActivityFormData,
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
+  const prepared = prepareActivityFormDataForSubmit(data);
   const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
   const normalizedReportSettings = normalizeReportSettings(
     preparedFormValues.reportSettings
   );
   const { markAsReviewed, markAsCompleted } = options ?? {};
   const payload: Record<string, unknown> = {
-    ...buildPayloadForCreate(data, formValues),
+    ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,
   };
   if (markAsReviewed !== undefined) {

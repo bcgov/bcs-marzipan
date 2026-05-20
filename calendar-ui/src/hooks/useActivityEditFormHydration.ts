@@ -70,6 +70,9 @@ export function useActivityEditFormHydration(
     initialFormDataRef.current = mapped;
 
     if (isRehydration) {
+      // Macrotask (not queueMicrotask): form.reset() and child controlled inputs
+      // need one paint/task turn to settle before useEditLockIntent compares baseline
+      // vs getValues(). Without this deferral, lock intent can treat reset churn as edits.
       const timeoutId = window.setTimeout(() => {
         setIsFormHydrated(true);
         setHydrationGeneration((g) => g + 1);

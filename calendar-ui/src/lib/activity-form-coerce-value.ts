@@ -3,11 +3,12 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 /**
  * Radix Select emits `''` when cleared. Map to `undefined` for optional lookup ID fields.
+ * Positive integers only — `'0'` and non-numeric strings become `undefined` (DB IDs are ≥ 1).
  */
 export function optionalSelectIdValue(value: string): number | undefined {
   if (value === '') return undefined;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 /**

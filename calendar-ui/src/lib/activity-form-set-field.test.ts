@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -30,8 +30,8 @@ describe('setActivityFormFieldValue', () => {
     const triggerSpy = vi.spyOn(result.current, 'trigger');
 
     act(() => {
-      void setActivityFormFieldValue(result.current, 'tagIds', [1, 2]);
-      void setActivityFormFieldValue(
+      setActivityFormFieldValue(result.current, 'tagIds', [1, 2]);
+      setActivityFormFieldValue(
         result.current,
         'venueAddress.provinceOrState',
         'BC'
@@ -80,11 +80,13 @@ describe('setActivityFormFieldValue', () => {
     });
     expect(result.current.getFieldState('categoryIds').error).toBeDefined();
 
-    await act(async () => {
-      await setActivityFormFieldValue(result.current, 'categoryIds', [1]);
+    act(() => {
+      setActivityFormFieldValue(result.current, 'categoryIds', [1]);
     });
 
-    expect(result.current.getFieldState('categoryIds').error).toBeUndefined();
+    await waitFor(() => {
+      expect(result.current.getFieldState('categoryIds').error).toBeUndefined();
+    });
 
     await act(async () => {
       const valid = await result.current.trigger('summary');
@@ -92,10 +94,12 @@ describe('setActivityFormFieldValue', () => {
     });
     expect(result.current.getFieldState('summary').error).toBeDefined();
 
-    await act(async () => {
-      await setActivityFormFieldValue(result.current, 'summary', validSummary);
+    act(() => {
+      setActivityFormFieldValue(result.current, 'summary', validSummary);
     });
 
-    expect(result.current.getFieldState('summary').error).toBeUndefined();
+    await waitFor(() => {
+      expect(result.current.getFieldState('summary').error).toBeUndefined();
+    });
   });
 });

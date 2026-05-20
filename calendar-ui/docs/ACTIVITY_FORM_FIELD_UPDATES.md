@@ -61,3 +61,13 @@ TipTap/jsdom: mock `@/components/ui/rich-text-field` via [`src/test-utils/rich-t
    - **Select / date popover / ID array / boolean / venue**: empty storage already matches canonicalize (`undefined`, `[]`, `false`, nested `null`). No hydrate override — see `UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES` in the same module.
 6. When adding a sentinel field, also add `canonOptString` (plain text) or rich-text empty handling in `packages/shared/src/utils/activity-form-canonicalize.ts` if the field is optional and compared on save.
 7. **Submit payloads** — hydration sentinels must not reach the API when saving unrelated fields. Create/update payload builders call `prepareActivityFormDataForSubmit` (canonicalize + map empty optional fields to `null`) before `buildPayloadForCreate` / `buildPayloadForUpdate`.
+
+## `canonicalizeActivityFormData` — compare oracle and hydration input
+
+`canonicalizeActivityFormData` (`packages/shared/src/utils/activity-form-canonicalize.ts`) is the single normalization for:
+
+- **Dirty / discard / review diff** — `initialFormDataRef` baseline vs `getValues()`
+- **Submit** — via `prepareActivityFormDataForSubmit`
+- **Edit-form hydration** — `hydrateActivityFormData` canonicalizes API-mapped values, then `applyUiBaselineSentinels` re-applies UI-only sentinels (`''`, `EMPTY_RICH_TEXT_DOC`, etc.)
+
+Changing canonicalize semantics (e.g. a new empty edge case for diff) can change hydration baselines and controlled-input behaviour even when submit logic looks correct. Treat canonicalize + `UI_BASELINE_FIELD_SENTINELS` + hydrate tests as one change set.

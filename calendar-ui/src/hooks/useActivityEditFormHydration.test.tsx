@@ -6,6 +6,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
+import { hydrateActivityFormData } from '../lib/activity-form-hydrate';
 import { useActivityEditFormHydration } from './useActivityEditFormHydration';
 import type { FormLookupData } from './useFormLookups';
 
@@ -42,6 +43,29 @@ describe('useActivityEditFormHydration', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('sets initialFormDataRef to the hydrated baseline (discard/compare oracle)', () => {
+    const activity = createMockActivityResponse({
+      id: 1,
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+      notes: null,
+      schedulingNotes: null,
+      strategy: null,
+    });
+    const expectedBaseline = hydrateActivityFormData(activity, mockLookups);
+
+    const { result } = renderHook(() => {
+      const form = useForm<ActivityFormData>({
+        defaultValues: getDefaultFormValues() as ActivityFormData,
+      });
+      return useActivityEditFormHydration(activity, mockLookups, form);
+    });
+
+    expect(result.current.initialFormDataRef.current).toEqual(expectedBaseline);
+    expect(result.current.initialFormDataRef.current?.notes).toBe('');
+    expect(result.current.initialFormDataRef.current?.schedulingNotes).toBe('');
+    expect(result.current.initialFormDataRef.current?.strategy).toBe('');
   });
 
   it('hydrates synchronously when lookups are ready', () => {

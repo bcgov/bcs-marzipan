@@ -38,7 +38,7 @@ export function setActivityFormFieldValue<
   form: UseFormReturn<ActivityFormData>,
   name: TName,
   value: FieldPathValue<ActivityFormData, TName>
-): Promise<boolean> {
+): void {
   form.setValue(name, value, ACTIVITY_FIELD_SET_OPTS);
-  return form.trigger(name);
+  void form.trigger(name);
 }
