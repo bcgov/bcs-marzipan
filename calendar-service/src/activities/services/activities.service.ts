@@ -2567,10 +2567,9 @@ export class ActivitiesService {
    * - Field-level write scopes the user cannot edit are stripped.
    * - Initial activity status matches **create** rules: `new` or `reviewed` from
    *   `markAsReviewed` when the user has `activities.review` (see `create`).
-   * Two history entries are recorded with the same optional note:
-   * - `created` on the new activity (with source provenance in `changes`).
-   * - `cloned` on the source activity (with new-activity provenance in
-   *   `changes`).
+   * A single history entry is recorded on the new activity (`created`) with
+   * source provenance (`clonedFromActivityId` / `clonedFromDisplayId`) in
+   * `changes`. No history record is written to the source activity.
    */
   async clone(
     sourceId: number,
@@ -2651,25 +2650,6 @@ export class ActivitiesService {
     const created = await this.create(dto, userId, context, {
       extraCreateChanges: sourceProvenance,
     });
-
-    await this.activityHistoryService.recordChange(
-      sourceId,
-      userId,
-      'cloned',
-      [
-        {
-          field: 'clonedToActivityId',
-          oldValue: null,
-          newValue: created.id,
-        },
-        {
-          field: 'clonedToDisplayId',
-          oldValue: null,
-          newValue: created.displayId ?? null,
-        },
-      ],
-      body.activityHistoryNotes
-    );
 
     return created;
   }

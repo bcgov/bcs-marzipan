@@ -3358,7 +3358,7 @@ describe('ActivitiesService', () => {
       expect((dto as Record<string, unknown>).markAsReviewed).toBe(true);
     });
 
-    it('records a "cloned" history entry on the source with the same notes', async () => {
+    it('does not record a history entry on the source activity', async () => {
       const source = createMockActivityResponse({
         id: 100,
         displayId: 'GCPE-000100',
@@ -3382,20 +3382,7 @@ describe('ActivitiesService', () => {
         cloneContext
       );
 
-      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
-        100,
-        42,
-        'cloned',
-        [
-          { field: 'clonedToActivityId', oldValue: null, newValue: 200 },
-          {
-            field: 'clonedToDisplayId',
-            oldValue: null,
-            newValue: 'GCPE-000200',
-          },
-        ],
-        'same note'
-      );
+      expect(mockActivityHistoryService.recordChange).not.toHaveBeenCalled();
     });
 
     it('omits advanced field paths not present in includeFieldPaths', async () => {
