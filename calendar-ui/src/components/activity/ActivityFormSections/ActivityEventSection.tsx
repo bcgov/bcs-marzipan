@@ -51,6 +51,10 @@ import {
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -138,22 +142,13 @@ function applyVenueAddress(
   for (const key of VENUE_ADDRESS_KEYS) {
     const nk = normVenueScalar(next[key]);
     if (prev[key] === nk) continue;
-    form.setValue(`venueAddress.${key}`, nk, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
+    setActivityFormFieldValue(form, `venueAddress.${key}`, nk);
   }
 }
 
-const venueStatusClearOpts = {
-  shouldDirty: true,
-  shouldTouch: true,
-} as const;
-
 function clearVenueStatusIdIfSet(form: UseFormReturn<ActivityFormData>) {
   if (form.getValues('venueStatusId') !== undefined) {
-    form.setValue('venueStatusId', undefined, venueStatusClearOpts);
+    setActivityFormFieldValue(form, 'venueStatusId', undefined);
   }
 }
 
@@ -360,11 +355,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
       if (v.value.startsWith(VENUE_OPTION_STATUS_PREFIX)) {
         const id = Number(v.value.slice(VENUE_OPTION_STATUS_PREFIX.length));
         if (!Number.isNaN(id)) {
-          form.setValue('venueStatusId', id, {
-            shouldDirty: true,
-            shouldTouch: true,
-            shouldValidate: true,
-          });
+          setActivityFormFieldValue(form, 'venueStatusId', id);
           applyVenueAddress(form, EMPTY_VENUE);
         }
         return;
@@ -426,12 +417,12 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={premierRequestedOptions.map((o) => o.value)}
-              value={field.value != null ? String(field.value) : ''}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
                 setActivityFormFieldValue(
                   form,
                   field.name,
-                  value === '' ? undefined : Number(value)
+                  optionalSelectIdValue(value)
                 )
               }
             >
@@ -474,7 +465,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
-                    field.onChange(
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
                       selected.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
@@ -763,7 +756,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                     )
                   : [value];
             if (arr.length === 0) {
-              field.onChange([]);
+              setActivityFormFieldValue(form, field.name, []);
               return;
             }
             const current = field.value ?? [];
@@ -791,7 +784,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             if (next.length > 0 && !next.some((p) => p.isLead)) {
               next[0] = { ...next[0], isLead: true };
             }
-            field.onChange(next);
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           const setLead = (index: number) => {
@@ -799,7 +792,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               ...p,
               isLead: i === index,
             }));
-            field.onChange(next);
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           return (

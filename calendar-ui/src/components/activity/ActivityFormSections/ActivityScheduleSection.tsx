@@ -33,6 +33,10 @@ import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popove
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -54,12 +58,6 @@ const INLINE_STATUS_FORM_ITEM_CLASS = 'shrink-0 space-y-0';
 
 const PRIMARY_AND_STATUS_ROW_CLASS =
   'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
-
-const setDateOpts = {
-  shouldDirty: true,
-  shouldTouch: true,
-  shouldValidate: true,
-} as const;
 
 const DATE_GROUP_FIELDS = ['startDate', 'endDate', 'dateStatusId'] as const;
 const TIME_GROUP_FIELDS = [
@@ -293,14 +291,12 @@ export function ActivityScheduleSection({
                 <FormSelectSafe
                   readOnly={readOnly}
                   optionValues={dateStatuses.map((s) => String(s.id))}
-                  value={
-                    statusField.value != null ? String(statusField.value) : ''
-                  }
+                  value={optionalIdSelectDisplayValue(statusField.value)}
                   onValueChange={(value) =>
                     setActivityFormFieldValue(
                       form,
                       statusField.name,
-                      value === '' ? undefined : Number(value)
+                      optionalSelectIdValue(value)
                     )
                   }
                 >
@@ -372,7 +368,11 @@ export function ActivityScheduleSection({
                         allDay={{
                           isAllDay: !!isAllDay,
                           onAllDayChange: (checked) => {
-                            form.setValue('isAllDay', checked, setDateOpts);
+                            setActivityFormFieldValue(
+                              form,
+                              'isAllDay',
+                              checked
+                            );
                           },
                           label: getActivityFieldLabel('isAllDay'),
                         }}
@@ -425,7 +425,11 @@ export function ActivityScheduleSection({
                             allDay={{
                               isAllDay: !!isAllDay,
                               onAllDayChange: (checked) => {
-                                form.setValue('isAllDay', checked, setDateOpts);
+                                setActivityFormFieldValue(
+                                  form,
+                                  'isAllDay',
+                                  checked
+                                );
                               },
                               label: getActivityFieldLabel('isAllDay'),
                             }}
@@ -434,7 +438,9 @@ export function ActivityScheduleSection({
                             placeholderMuted={!String(field.value ?? '').trim()}
                             value={String(field.value ?? '')}
                             onChange={(next) =>
-                              field.onChange(
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
                                 next === undefined || next === ''
                                   ? undefined
                                   : next
@@ -468,14 +474,12 @@ export function ActivityScheduleSection({
                 <FormSelectSafe
                   readOnly={readOnly}
                   optionValues={timeStatuses.map((s) => String(s.id))}
-                  value={
-                    statusField.value != null ? String(statusField.value) : ''
-                  }
+                  value={optionalIdSelectDisplayValue(statusField.value)}
                   onValueChange={(value) =>
                     setActivityFormFieldValue(
                       form,
                       statusField.name,
-                      value === '' ? undefined : Number(value)
+                      optionalSelectIdValue(value)
                     )
                   }
                 >

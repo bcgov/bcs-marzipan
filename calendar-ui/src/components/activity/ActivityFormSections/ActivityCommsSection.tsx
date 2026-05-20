@@ -33,6 +33,10 @@ import {
 } from '@/components/ui/popover';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -132,7 +136,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           });
 
           const handleValueChange = (selected: OptionItem[]) => {
-            field.onChange(
+            setActivityFormFieldValue(
+              form,
+              field.name,
               buildCommsContactsFromSelection(selected, field.value)
             );
           };
@@ -142,7 +148,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               ...c,
               isLead: c.userId === userId,
             }));
-            field.onChange(next);
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           return (
@@ -279,7 +285,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) =>
-                    field.onChange(selected.map((o) => Number(o.value)))
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
                   }
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
@@ -330,12 +340,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseOriginOptions.map((o) => o.value)}
-              value={field.value != null ? String(field.value) : ''}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
                 setActivityFormFieldValue(
                   form,
                   field.name,
-                  value === '' ? undefined : Number(value)
+                  optionalSelectIdValue(value)
                 )
               }
             >
@@ -366,12 +376,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
-              value={field.value != null ? String(field.value) : ''}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
                 setActivityFormFieldValue(
                   form,
                   field.name,
-                  value === '' ? undefined : Number(value)
+                  optionalSelectIdValue(value)
                 )
               }
             >
@@ -405,12 +415,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               optionValues={translationRequiredStatuses.map((s) =>
                 String(s.id)
               )}
-              value={field.value != null ? String(field.value) : ''}
+              value={optionalIdSelectDisplayValue(field.value)}
               onValueChange={(value) =>
                 setActivityFormFieldValue(
                   form,
                   field.name,
-                  value === '' ? undefined : Number(value)
+                  optionalSelectIdValue(value)
                 )
               }
             >
@@ -456,7 +466,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     multiple
                     value={selectedOptions}
                     onValueChange={(selected) =>
-                      field.onChange(selected.map((o) => Number(o.value)))
+                      setActivityFormFieldValue(
+                        form,
+                        field.name,
+                        selected.map((o) => Number(o.value))
+                      )
                     }
                     itemToStringValue={(o) => o.label}
                     readOnly={

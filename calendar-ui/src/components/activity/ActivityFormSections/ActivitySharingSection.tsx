@@ -39,6 +39,7 @@ import {
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
@@ -204,7 +205,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                 ).includes(value)
                   ? (value as Visibility)
                   : DEFAULT_VISIBILITY;
-                field.onChange(visibility);
+                setActivityFormFieldValue(form, field.name, visibility);
               }}
               value={field.value || DEFAULT_VISIBILITY}
             >
@@ -244,9 +245,15 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
           const toggleIds = (targetIds: number[], remove: boolean) => {
             const target = new Set(targetIds);
             if (remove) {
-              field.onChange(selectedIds.filter((id) => !target.has(id)));
+              setActivityFormFieldValue(
+                form,
+                field.name,
+                selectedIds.filter((id) => !target.has(id))
+              );
             } else {
-              field.onChange([...new Set([...selectedIds, ...targetIds])]);
+              setActivityFormFieldValue(form, field.name, [
+                ...new Set([...selectedIds, ...targetIds]),
+              ]);
             }
           };
 
@@ -262,7 +269,11 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
-                    field.onChange(selected.map((o) => parseInt(o.value, 10)));
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => parseInt(o.value, 10))
+                    );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
                   readOnly={readOnly}
