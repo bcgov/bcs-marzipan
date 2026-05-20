@@ -8,8 +8,10 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
+import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
+import { setActivityFormFieldValue } from '../lib/activity-form-set-field';
 import { useActivityEditFormHydration } from './useActivityEditFormHydration';
 import type { FormLookupData } from './useFormLookups';
 
@@ -23,15 +25,23 @@ const mockLookups: FormLookupData = {
   eventPlanners: [],
   tags: [],
   pitchStatuses: [],
-  pitchRequiredStatuses: [{ id: 1, name: 'pending', displayName: 'Pending' }],
+  pitchRequiredStatuses: [
+    {
+      id: 1,
+      label: 'Pending',
+      value: 1,
+      name: 'pending',
+      displayName: 'Pending',
+    },
+  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
   translationRequiredStatuses: [],
   governmentRepresentatives: [],
-  newsReleaseDistributions: [{ id: 2, name: 'a', displayName: 'A' }],
-  premierRequested: [{ id: 3, name: 'b', displayName: 'B' }],
-  newsReleaseOrigins: [{ id: 4, name: 'c', displayName: 'C' }],
+  newsReleaseDistributions: [{ value: '2', label: 'A' }],
+  premierRequested: [{ value: '3', label: 'B' }],
+  newsReleaseOrigins: [{ value: '4', label: 'C' }],
   sharedWithTeams: [],
   quickShareGroups: [],
   dateStatuses: [],
@@ -40,12 +50,10 @@ const mockLookups: FormLookupData = {
 };
 
 describe('useActivityEditFormHydration field updates', () => {
-  it('persists isIssue and FormSelect-style ID updates after hydration', () => {
+  it('persists custom-control-shaped updates via setActivityFormFieldValue after hydration', () => {
     const activity = createMockActivityResponse({
-      id: 101,
-      lastUpdatedDateTime: '2026-05-20T15:43:05.335Z',
-      isIssue: false,
-      pitchRequiredStatusId: 1,
+      id: 202,
+      lastUpdatedDateTime: '2026-05-21T18:00:00.000Z',
       premierRequestedId: null,
       newsReleaseOriginId: null,
       venueAddress: null,
@@ -66,21 +74,44 @@ describe('useActivityEditFormHydration field updates', () => {
     });
 
     act(() => {
-      formRef!.setValue('isIssue', true, { shouldDirty: true });
+      setActivityFormFieldValue(formRef!, 'categoryIds', [101, 102]);
+      setActivityFormFieldValue(formRef!, 'tagIds', [201]);
+      setActivityFormFieldValue(formRef!, 'pitchDate', '2030-06-01');
+      setActivityFormFieldValue(formRef!, 'visibility', 'team');
+      setActivityFormFieldValue(formRef!, 'sharedWithTeamIds', [501, 502]);
+      setActivityFormFieldValue(formRef!, 'commsMaterialIds', [701, 703]);
+      setActivityFormFieldValue(
+        formRef!,
+        'summary',
+        tipTapDocJsonFromPlainText('Post-hydration summary update.')
+      );
+      setActivityFormFieldValue(formRef!, 'endTime', '14:05');
     });
-    expect(formRef!.getValues('isIssue')).toBe(true);
-    expect(formRef!.formState.dirtyFields.isIssue).toBe(true);
 
-    act(() => {
-      formRef!.setValue('pitchRequiredStatusId', 2, { shouldDirty: true });
-    });
-    expect(formRef!.getValues('pitchRequiredStatusId')).toBe(2);
+    expect(formRef!.getValues('categoryIds')).toEqual([101, 102]);
+    expect(formRef!.formState.dirtyFields.categoryIds).toBe(true);
 
-    act(() => {
-      formRef!.setValue('venueAddress.provinceOrState', 'BC', {
-        shouldDirty: true,
-      });
-    });
-    expect(formRef!.getValues('venueAddress.provinceOrState')).toBe('BC');
+    expect(formRef!.getValues('tagIds')).toEqual([201]);
+    expect(formRef!.formState.dirtyFields.tagIds).toBe(true);
+
+    expect(formRef!.getValues('pitchDate')).toBe('2030-06-01');
+    expect(formRef!.formState.dirtyFields.pitchDate).toBe(true);
+
+    expect(formRef!.getValues('visibility')).toBe('team');
+    expect(formRef!.formState.dirtyFields.visibility).toBe(true);
+
+    expect(formRef!.getValues('sharedWithTeamIds')).toEqual([501, 502]);
+    expect(formRef!.formState.dirtyFields.sharedWithTeamIds).toBe(true);
+
+    expect(formRef!.getValues('commsMaterialIds')).toEqual([701, 703]);
+    expect(formRef!.formState.dirtyFields.commsMaterialIds).toBe(true);
+
+    expect(
+      formRef!.getValues('summary').includes('Post-hydration summary update.')
+    ).toBe(true);
+    expect(formRef!.formState.dirtyFields.summary).toBe(true);
+
+    expect(formRef!.getValues('endTime')).toBe('14:05');
+    expect(formRef!.formState.dirtyFields.endTime).toBe(true);
   });
 });

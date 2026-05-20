@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
+import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
@@ -27,6 +28,13 @@ const mockEditorFieldPermissions: string[] = [
   PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
   PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
 ];
+
+/** TipTap fires onUpdate on mount in jsdom and clears summary; keep hydrated values stable. */
+vi.mock('@/components/ui/rich-text-field', () => ({
+  RichTextField: ({ value, name }: { value: string; name: string }) => (
+    <input type="hidden" name={name} value={value} readOnly />
+  ),
+}));
 
 vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
@@ -44,12 +52,22 @@ const mockActivityWithLeadTeam: ActivityPageProps['activity'] =
     leadTeamId: 5,
     activityStatus: 'Draft',
     canEdit: true,
+    category: ['Test Category'],
+    commsContacts: [{ userId: 1, name: 'Lead Contact', isLead: true }],
+    summary: tipTapDocJsonFromPlainText('Test summary'),
   });
 
 const mockLookupsReady: FormLookupData = {
   isLoading: false,
   hasError: false,
-  categories: [],
+  categories: [
+    {
+      id: 1,
+      name: 'test_category',
+      displayName: 'Test Category',
+      visibility: 'global',
+    },
+  ],
   organizations: [],
   ministries: [],
   users: [],
@@ -374,14 +392,7 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(save).toBeDisabled();
   });
 
-  // TODO(CORPCAL-239): Save-enabled check started failing after the form
-  // hydration refactor that removed the deferred second `reset()`. The Discard
-  // button still appears (form goes dirty) but Save remains disabled because
-  // Zod validation now surfaces baseline errors (missing categoryIds /
-  // commsContacts on the mock activity) that the previous double-reset was
-  // masking. Re-enable after the test fixture is updated to include a valid
-  // category and lead comms contact.
-  it.skip('shows Discard changes and enables Save after edits when lock is owned', async () => {
+  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
