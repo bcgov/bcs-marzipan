@@ -1,13 +1,13 @@
 import crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import * as oidc from 'openid-client';
 
-const OIDC_STATE_COOKIE = 'corpcal_az_state';
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
 
-interface OidcStateCookiePayload {
+interface OidcStatePayload {
+  jti: string; // random nonce bound to this state
   nonce: string;
   exp: number; // unix seconds
 }
@@ -78,71 +78,59 @@ export class AzureOidcService {
     return `${protocol}://${req.get('host')}/api/auth/azure/callback`;
   }
 
-  generateState(): string {
-    return crypto.randomBytes(16).toString('hex');
-  }
-
   generateNonce(): string {
     return crypto.randomBytes(16).toString('hex');
   }
 
   /**
-   * Write the nonce into a short-lived, HMAC-signed cookie keyed by `state`.
-   * The cookie is pod-stateless: any replica can verify it using the shared
-   * JWT_SECRET, so Azure AD callbacks are not broken by round-robin routing.
+   * Create a self-verifying state token that embeds the nonce and expiry.
+   *
+   * The token is sent to Azure as the `state` parameter and echoed back
+   * verbatim in the callback, so no server-side storage or cookies are
+   * needed. Each login attempt (tab, retry) gets an independent token,
+   * so concurrent flows never interfere with each other.
+   *
+   * Format: base64url(JSON({jti, nonce, exp})).HMAC-SHA256
    */
-  setStateCookie(res: Response, state: string, nonce: string): void {
-    const payload: OidcStateCookiePayload = {
+  createSignedState(nonce: string): string {
+    const payload: OidcStatePayload = {
+      jti: crypto.randomBytes(16).toString('hex'),
       nonce,
       exp: Math.floor((Date.now() + OIDC_STATE_TTL_MS) / 1000),
     };
     const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const sig = crypto
       .createHmac('sha256', this.getSigningSecret())
-      .update(`${state}.${body}`)
+      .update(body)
       .digest('base64url');
-    res.cookie(OIDC_STATE_COOKIE, `${body}.${sig}`, {
-      httpOnly: true,
-      secure: this.configService.get<string>('NODE_ENV') === 'production',
-      sameSite: 'lax',
-      maxAge: OIDC_STATE_TTL_MS,
-      path: '/',
-    });
+    return `${body}.${sig}`;
   }
 
   /**
-   * Verify the HMAC-signed state cookie, clear it, and return the nonce.
-   * Returns null if missing, tampered, or expired.
+   * Verify a state token returned by Azure and extract the nonce.
+   * Returns null if tampered, expired, or malformed.
    */
-  consumeStateCookie(
-    req: Request,
-    res: Response,
-    state: string
-  ): string | null {
-    const cookieValue: string | undefined = req.cookies?.[OIDC_STATE_COOKIE];
-    res.clearCookie(OIDC_STATE_COOKIE, { httpOnly: true, path: '/' });
-
-    if (!cookieValue) return null;
-    const dotIndex = cookieValue.lastIndexOf('.');
+  verifySignedState(state: string): string | null {
+    const dotIndex = state.lastIndexOf('.');
     if (dotIndex === -1) return null;
 
-    const body = cookieValue.slice(0, dotIndex);
-    const sig = cookieValue.slice(dotIndex + 1);
+    const body = state.slice(0, dotIndex);
+    const sig = state.slice(dotIndex + 1);
 
     const expected = crypto
       .createHmac('sha256', this.getSigningSecret())
-      .update(`${state}.${body}`)
+      .update(body)
       .digest('base64url');
 
     const a = Buffer.from(sig);
     const b = Buffer.from(expected);
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
-    let payload: OidcStateCookiePayload;
+    let payload: OidcStatePayload;
     try {
       payload = JSON.parse(
         Buffer.from(body, 'base64url').toString('utf8')
-      ) as OidcStateCookiePayload;
+      ) as OidcStatePayload;
     } catch {
       return null;
     }
