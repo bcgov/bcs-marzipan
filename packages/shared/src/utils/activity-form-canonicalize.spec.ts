@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ActivityFormData } from '../schemas/activity.schema';
-import { canonicalizeActivityFormData } from './activity-form-canonicalize';
+import {
+  canonicalizeActivityFormData,
+  prepareActivityFormDataForSubmit,
+} from './activity-form-canonicalize';
 import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 import { isDeepEqual } from './isDeepEqual';
 
@@ -18,7 +21,7 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     leadTeamId: 1,
     categoryIds: [1],
     ...overrides,
-  } as ActivityFormData;
+  };
 }
 
 describe('canonicalizeActivityFormData', () => {
@@ -44,7 +47,7 @@ describe('canonicalizeActivityFormData', () => {
     );
     const b = canonicalizeActivityFormData(
       minimalForm({
-        venueStatusId: null as unknown as ActivityFormData['venueStatusId'],
+        venueStatusId: null,
       })
     );
     expect(a.venueStatusId).toBeUndefined();
@@ -98,5 +101,38 @@ describe('canonicalizeActivityFormData', () => {
     expect(withNull.summary).toBe(EMPTY_RICH_TEXT_DOC);
     expect(withEmpty.summary).toBe(EMPTY_RICH_TEXT_DOC);
     expect(isDeepEqual(withUndefined.summary, withEmpty.summary)).toBe(true);
+  });
+});
+
+describe('prepareActivityFormDataForSubmit', () => {
+  it('maps UI sentinels on optional fields to null for API payloads', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({
+        notes: '',
+        schedulingNotes: '',
+        strategy: '',
+        significance: EMPTY_RICH_TEXT_DOC,
+        executiveSummary: EMPTY_RICH_TEXT_DOC,
+      })
+    );
+
+    expect(prepared.notes).toBeNull();
+    expect(prepared.schedulingNotes).toBeNull();
+    expect(prepared.strategy).toBeNull();
+    expect(prepared.significance).toBeNull();
+    expect(prepared.executiveSummary).toBeNull();
+  });
+
+  it('preserves non-empty optional field values', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({
+        notes: 'Internal note',
+        significance:
+          '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Why it matters"}]}]}',
+      })
+    );
+
+    expect(prepared.notes).toBe('Internal note');
+    expect(prepared.significance).toContain('Why it matters');
   });
 });

@@ -4,7 +4,7 @@
 
 Custom controls in the activity form (Radix Select/Checkbox primitives, Headless/UI Combobox wrappers, TipTap-backed `RichTextField`, date/time popovers) are wired through `react-hook-form` `Controller` via `FormField`. Under **React 19** and **Vite 8**, values written through Controller `field.onChange` alone have been observed **not always persisting or marking fields dirty** (see CORPCAL-239).
 
-The calendar UI writes those user edits with `form.setValue` and shared options instead, via **`setActivityFormFieldValue`** in [`src/lib/activity-form-set-field.ts`](../src/lib/activity-form-set-field.ts).
+The calendar UI writes those user edits with `form.setValue` and shared options instead, via **`setActivityFormFieldValue`** in [`src/lib/activity-form-set-field.ts`](../src/lib/activity-form-set-field.ts). That helper keeps `shouldValidate: false` on `setValue` (avoids full-schema validation on every Radix callback) and then runs field-scoped `form.trigger(name)` so Submit/Save gating stays in sync for the edited control.
 
 ## Rule
 
@@ -60,3 +60,4 @@ TipTap/jsdom: mock `@/components/ui/rich-text-field` via [`src/test-utils/rich-t
    - **Rich text** (`RichTextField`): canonicalize optional empty → `undefined`; TipTap `onChange` → `EMPTY_RICH_TEXT_DOC`. Same sentinel map + hydrate test update.
    - **Select / date popover / ID array / boolean / venue**: empty storage already matches canonicalize (`undefined`, `[]`, `false`, nested `null`). No hydrate override — see `UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES` in the same module.
 6. When adding a sentinel field, also add `canonOptString` (plain text) or rich-text empty handling in `packages/shared/src/utils/activity-form-canonicalize.ts` if the field is optional and compared on save.
+7. **Submit payloads** — hydration sentinels must not reach the API when saving unrelated fields. Create/update payload builders call `prepareActivityFormDataForSubmit` (canonicalize + map empty optional fields to `null`) before `buildPayloadForCreate` / `buildPayloadForUpdate`.

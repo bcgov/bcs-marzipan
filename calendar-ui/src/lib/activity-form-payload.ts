@@ -1,5 +1,8 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { normalizeReportSettings } from '@corpcal/shared/utils';
+import {
+  normalizeReportSettings,
+  prepareActivityFormDataForSubmit,
+} from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   if (!arr || arr.length === 0) return undefined;
@@ -20,22 +23,24 @@ export function buildPayloadForCreate(
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
   const { markAsReviewed } = options ?? {};
-  const { activityStatusId: _omit, ...rest } = data;
+  const prepared = prepareActivityFormDataForSubmit(data);
+  const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
+  const { activityStatusId: _omit, ...rest } = prepared;
   const payload: Record<string, unknown> = {
     ...rest,
-    startDate: data.startDate ?? null,
-    endDate: data.endDate ?? null,
-    startTime: data.startTime ?? null,
-    endTime: data.endTime ?? null,
-    categoryIds: toUndefinedIfEmpty(formValues.categoryIds),
-    tagIds: toUndefinedIfEmpty(formValues.tagIds),
-    commsMaterialIds: toUndefinedIfEmpty(formValues.commsMaterialIds),
+    startDate: prepared.startDate ?? null,
+    endDate: prepared.endDate ?? null,
+    startTime: prepared.startTime ?? null,
+    endTime: prepared.endTime ?? null,
+    categoryIds: toUndefinedIfEmpty(preparedFormValues.categoryIds),
+    tagIds: toUndefinedIfEmpty(preparedFormValues.tagIds),
+    commsMaterialIds: toUndefinedIfEmpty(preparedFormValues.commsMaterialIds),
     translationLanguageIds: toUndefinedIfEmpty(
-      formValues.translationLanguageIds
+      preparedFormValues.translationLanguageIds
     ),
-    representatives: toUndefinedIfEmpty(formValues.representatives),
-    sharedWithTeamIds: toUndefinedIfEmpty(formValues.sharedWithTeamIds),
-    commsContacts: toUndefinedIfEmpty(formValues.commsContacts),
+    representatives: toUndefinedIfEmpty(preparedFormValues.representatives),
+    sharedWithTeamIds: toUndefinedIfEmpty(preparedFormValues.sharedWithTeamIds),
+    commsContacts: toUndefinedIfEmpty(preparedFormValues.commsContacts),
   };
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;
@@ -58,8 +63,9 @@ export function buildPayloadForUpdate(
   formValues: ActivityFormData,
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
+  const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
   const normalizedReportSettings = normalizeReportSettings(
-    formValues.reportSettings
+    preparedFormValues.reportSettings
   );
   const { markAsReviewed, markAsCompleted } = options ?? {};
   const payload: Record<string, unknown> = {

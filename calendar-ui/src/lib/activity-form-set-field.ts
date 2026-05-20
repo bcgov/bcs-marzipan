@@ -6,9 +6,11 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
  * Shared RHF options for user-driven activity form edits.
  * Use only via {@link setActivityFormFieldValue} in activity sections so cascades stay consistent.
  *
- * `shouldValidate` is false so a single control edit does not re-run the full
- * create schema on every Radix callback (which can block Save for unrelated
- * baseline errors). Submit and explicit validation paths still run the resolver.
+ * `shouldValidate` is false on `setValue` so a single control edit does not
+ * re-run the full create schema on every Radix callback (which can block Save
+ * for unrelated baseline errors). {@link setActivityFormFieldValue} then runs
+ * field-scoped `trigger(name)` so Submit/Save gating stays in sync for the
+ * edited control without validating unrelated fields.
  */
 export const ACTIVITY_FIELD_SET_OPTS = {
   shouldDirty: true,
@@ -38,4 +40,5 @@ export function setActivityFormFieldValue<
   value: FieldPathValue<ActivityFormData, TName>
 ): void {
   form.setValue(name, value, ACTIVITY_FIELD_SET_OPTS);
+  void form.trigger(name);
 }
