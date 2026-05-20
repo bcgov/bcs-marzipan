@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
@@ -36,6 +36,14 @@ const mockLookups: FormLookupData = {
 };
 
 describe('useActivityEditFormHydration', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('hydrates synchronously when lookups are ready', () => {
     const activity = createMockActivityResponse({
       id: 1,
@@ -61,9 +69,8 @@ describe('useActivityEditFormHydration', () => {
       notes: null,
       schedulingNotes: null,
       strategy: null,
-      significance: null,
+      significance: '',
       executiveSummary: null,
-      summary: null,
     });
 
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
@@ -155,6 +162,13 @@ describe('useActivityEditFormHydration', () => {
 
     rerender({ activity: activityV2 });
 
+    expect(result.current.isFormHydrated).toBe(false);
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBeGreaterThan(genAfterFirst);
   });
 });

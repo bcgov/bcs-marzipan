@@ -26,6 +26,11 @@ import type { FormLookupData } from './useFormLookups';
  *
  * Exposes {@link isFormHydrated} and a monotonic {@link hydrationGeneration}
  * for lock-intent logic.
+ *
+ * On **re-hydration** (activity sync key changes after the first successful
+ * hydrate), {@link isFormHydrated} is set to `false` before `form.reset()` and
+ * restored on the next macrotask so {@link useEditLockIntent} does not treat
+ * in-flight reset churn as a user edit.
  */
 export function useActivityEditFormHydration(
   activity: ActivityResponse,
@@ -44,6 +49,7 @@ export function useActivityEditFormHydration(
 
   const [isFormHydrated, setIsFormHydrated] = useState(false);
   const [hydrationGeneration, setHydrationGeneration] = useState(0);
+  const hasHydratedRef = useRef(false);
 
   const activitySyncKey = `${activity.id}\0${activity.lastUpdatedDateTime}`;
   const lookupsReady = !lookups.isLoading && !lookups.hasError;
@@ -51,12 +57,30 @@ export function useActivityEditFormHydration(
   useEffect(() => {
     if (!lookupsReady) return;
 
+    const isRehydration = hasHydratedRef.current;
+    if (isRehydration) {
+      setIsFormHydrated(false);
+    }
+
     const mapped = hydrateActivityFormData(
       activityRef.current,
       lookupsRef.current
     );
     form.reset(mapped);
     initialFormDataRef.current = mapped;
+
+    if (isRehydration) {
+      const timeoutId = window.setTimeout(() => {
+        setIsFormHydrated(true);
+        setHydrationGeneration((g) => g + 1);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
+    }
+
+    hasHydratedRef.current = true;
     setIsFormHydrated(true);
     setHydrationGeneration((g) => g + 1);
   }, [activitySyncKey, lookupsReady, form]);
