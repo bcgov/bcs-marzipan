@@ -47,6 +47,11 @@ function canonObjectArray<T extends Record<string, unknown>>(v: unknown): T[] {
  * - venueAddress: full null-key object (see {@link normalizeVenueAddressForForm})
  *
  * Use after mapping API → form and when diffing `initialFormDataRef` vs `getValues()`.
+ *
+ * **Dual role:** calendar-ui `hydrateActivityFormData` also runs this before
+ * `applyUiBaselineSentinels`. A semantic change here affects dirty/diff,
+ * submit payloads (`prepareActivityFormDataForSubmit`), and edit-form hydration —
+ * update `activity-form-hydrate.test.ts` and `ACTIVITY_FORM_FIELD_UPDATES.md` together.
  */
 export function canonicalizeActivityFormData(
   data: ActivityFormData
