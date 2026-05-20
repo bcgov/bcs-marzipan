@@ -30,8 +30,8 @@ describe('setActivityFormFieldValue', () => {
     const triggerSpy = vi.spyOn(result.current, 'trigger');
 
     act(() => {
-      setActivityFormFieldValue(result.current, 'tagIds', [1, 2]);
-      setActivityFormFieldValue(
+      void setActivityFormFieldValue(result.current, 'tagIds', [1, 2]);
+      void setActivityFormFieldValue(
         result.current,
         'venueAddress.provinceOrState',
         'BC'
@@ -80,8 +80,8 @@ describe('setActivityFormFieldValue', () => {
     });
     expect(result.current.getFieldState('categoryIds').error).toBeDefined();
 
-    act(() => {
-      setActivityFormFieldValue(result.current, 'categoryIds', [1]);
+    await act(async () => {
+      await setActivityFormFieldValue(result.current, 'categoryIds', [1]);
     });
 
     expect(result.current.getFieldState('categoryIds').error).toBeUndefined();
@@ -92,8 +92,8 @@ describe('setActivityFormFieldValue', () => {
     });
     expect(result.current.getFieldState('summary').error).toBeDefined();
 
-    act(() => {
-      setActivityFormFieldValue(result.current, 'summary', validSummary);
+    await act(async () => {
+      await setActivityFormFieldValue(result.current, 'summary', validSummary);
     });
 
     expect(result.current.getFieldState('summary').error).toBeUndefined();
