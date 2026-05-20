@@ -40,12 +40,7 @@ export function authMeLooksValid(u) {
 
 /** { success: true, data: ActivityResponse[] } */
 export function activityListEnvelope(parsed) {
-  return (
-    parsed &&
-    parsed.success === true &&
-    Array.isArray(parsed.data) &&
-    parsed.data.length >= 0
-  );
+  return parsed && parsed.success === true && Array.isArray(parsed.data);
 }
 
 export function firstActivityId(parsed) {

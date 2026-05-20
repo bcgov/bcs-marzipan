@@ -32,8 +32,10 @@ import http from 'k6/http';
 import { buildLoadOptions, loadTestConfig } from '../api/config.js';
 import {
   authBearerHeaders,
-  defaultHeaders,
   extractAccessToken,
+  getAuthAzureConfig,
+  getHealth,
+  getReady,
   postLogin,
   urlFor,
 } from '../api/client.js';
@@ -76,18 +78,9 @@ function obtainToken() {
 
 export default function corpcalApiSmoke() {
   group('01_public_probes', () => {
-    http.get(urlFor(config, paths.health), {
-      tags: tagReq('health'),
-      headers: defaultHeaders(config),
-    });
-    http.get(urlFor(config, paths.ready), {
-      tags: tagReq('ready'),
-      headers: defaultHeaders(config),
-    });
-    http.get(urlFor(config, paths.authAzureConfig), {
-      tags: tagReq('auth_azure_config'),
-      headers: defaultHeaders(config),
-    });
+    getHealth(config);
+    getReady(config);
+    getAuthAzureConfig(config);
   });
 
   sleep(0.35);

@@ -230,8 +230,8 @@ describe('AuthService — local auth methods', () => {
     vi.clearAllMocks();
     localMockDb = makeChain();
 
-    vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value');
-    vi.mocked(bcrypt.compare).mockResolvedValue(true);
+    vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value' as never);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
     vi.mocked(updateUserPassword).mockResolvedValue(undefined);
     vi.mocked(updateUserStatus).mockResolvedValue(undefined);
 

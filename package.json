@@ -44,7 +44,7 @@
     "perf:k6": "k6 run performance_tests/tests/corpcal-api.js",
     "perf:k6:smoke": "k6 run performance_tests/tests/corpcal-api-smoke.js -e PERF_PROFILE=smoke",
     "perf:k6:api-smoke": "k6 run performance_tests/tests/corpcal-api-smoke.js",
-    "perf:k6:inspect": "k6 inspect performance_tests/tests/corpcal-api-smoke.js -e BASE_URL=http://127.0.0.1:1 -e PERF_PROFILE=smoke",
+    "perf:k6:inspect": "node scripts/k6-inspect-all.cjs",
     "perf:k6:local": "node scripts/k6-local.cjs",
     "perf:k6:browser:local": "node scripts/k6-browser-local.cjs",
     "perf:k6:browser:flow:local": "node scripts/k6-browser-flow-local.cjs",

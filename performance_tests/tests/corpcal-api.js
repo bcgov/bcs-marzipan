@@ -4,6 +4,10 @@
  *
  * CorpCal API load test: health, readiness, auth, activities list, POST create, settings sample, history, reports.
  *
+ * Auth (one login per run via setup(); avoids POST /auth/login throttle of 5 req/min per IP):
+ *   PERF_BEARER_TOKEN — JWT sent as Authorization: Bearer (skips login), or
+ *   PERF_USERNAME / PERF_PASSWORD — login once in setup(), token reused by all VUs.
+ *
  * Run locally (k6 must be on PATH):
  *   npm run perf:k6:local
  *   BASE_URL=http://localhost:3001 k6 run performance_tests/tests/corpcal-api.js
@@ -12,8 +16,8 @@
  * Through Vite dev proxy:
  *   BASE_URL=http://localhost:3000/api k6 run performance_tests/tests/corpcal-api.js
  *
- * The service applies a per-IP rate limit (default 100 req/min, health/ready excluded).
- * This scenario sleeps between iterations to stay under that budget for a single runner IP.
+ * Shared environments: prefer PERF_BEARER_TOKEN. POST /activities creates real rows — avoid shared DEV unless intended.
+ * General API limits: ThrottlerModule 200 req/min; RateLimitInterceptor default 100 req/min (health/ready excluded).
  */
 
 import { sleep } from 'k6';
@@ -38,17 +42,29 @@ const config = loadTestConfig();
 
 export const options = buildLoadOptions(config);
 
-export default function runScenario() {
-  getHealth(config);
-  getReady(config);
-  getAuthAzureConfig(config);
-
+/**
+ * Obtain JWT once per run. PERF_BEARER_TOKEN skips POST /auth/login (5 req/min per IP).
+ */
+export function setup() {
+  if (config.bearerTokenOverride) {
+    return { token: config.bearerTokenOverride };
+  }
   const loginRes = postLogin(config);
   const token = extractAccessToken(loginRes);
   if (!token) {
-    sleep(2);
-    return;
+    throw new Error(
+      'setup: login failed — set PERF_BEARER_TOKEN or check PERF_USERNAME / PERF_PASSWORD'
+    );
   }
+  return { token };
+}
+
+export default function runScenario(data) {
+  const token = data.token;
+
+  getHealth(config);
+  getReady(config);
+  getAuthAzureConfig(config);
 
   getAuthMe(config, token);
   getActivities(config, token);

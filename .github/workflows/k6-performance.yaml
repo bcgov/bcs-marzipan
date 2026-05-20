@@ -9,7 +9,7 @@ on:
         required: true
         type: string
       profile:
-        description: 'PERF_PROFILE'
+        description: 'smoke = read-only corpcal-api-smoke.js; standard = load corpcal-api.js (POST /activities)'
         required: false
         default: smoke
         type: choice
@@ -42,11 +42,24 @@ jobs:
       - name: Validate k6 scripts (syntax / options)
         run: npm run perf:k6:inspect
 
-      - name: Run k6 against configured target
+      - name: Run k6 API smoke (read-only)
+        if: github.event.inputs.profile == 'smoke'
         env:
           BASE_URL: ${{ github.event.inputs.base_url }}
-          PERF_PROFILE: ${{ github.event.inputs.profile }}
+          PERF_PROFILE: smoke
           PERF_USERNAME: ${{ github.event.inputs.username }}
           PERF_PASSWORD: ${{ secrets.PERF_PASSWORD }}
+          PERF_BEARER_TOKEN: ${{ secrets.PERF_BEARER_TOKEN }}
           API_KEY: ${{ secrets.PERF_API_KEY }}
         run: k6 run performance_tests/tests/corpcal-api-smoke.js
+
+      - name: Run k6 API load (includes POST /activities)
+        if: github.event.inputs.profile == 'standard'
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url }}
+          PERF_PROFILE: standard
+          PERF_USERNAME: ${{ github.event.inputs.username }}
+          PERF_PASSWORD: ${{ secrets.PERF_PASSWORD }}
+          PERF_BEARER_TOKEN: ${{ secrets.PERF_BEARER_TOKEN }}
+          API_KEY: ${{ secrets.PERF_API_KEY }}
+        run: k6 run performance_tests/tests/corpcal-api.js
