@@ -73,6 +73,7 @@ jobs:
 
       - name: Deploy to Dev environment
         run: |
+          : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
