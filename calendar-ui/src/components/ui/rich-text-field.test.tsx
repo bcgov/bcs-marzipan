@@ -9,6 +9,7 @@ import {
 } from '@corpcal/shared/utils';
 
 import {
+  coalesceEditorRichTextUpdate,
   RichTextField,
   shouldIgnoreStaleEmptyRichTextUpdate,
 } from './rich-text-field';
@@ -44,6 +45,22 @@ async function waitForRichTextEditor() {
     await Promise.resolve();
   });
 }
+
+describe('coalesceEditorRichTextUpdate', () => {
+  it('maps effectively empty TipTap JSON to EMPTY_RICH_TEXT_DOC', () => {
+    expect(coalesceEditorRichTextUpdate('{"type":"doc"}')).toBe(
+      EMPTY_RICH_TEXT_DOC
+    );
+    expect(coalesceEditorRichTextUpdate(EMPTY_RICH_TEXT_DOC)).toBe(
+      EMPTY_RICH_TEXT_DOC
+    );
+  });
+
+  it('returns non-empty TipTap JSON unchanged', () => {
+    const json = tipTapDocJsonFromPlainText('Hello');
+    expect(coalesceEditorRichTextUpdate(json)).toBe(json);
+  });
+});
 
 describe('shouldIgnoreStaleEmptyRichTextUpdate', () => {
   const savedValue = tipTapDocJsonFromPlainText('Saved summary');

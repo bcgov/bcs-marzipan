@@ -10,7 +10,10 @@ import {
 import sanitizeHtml from 'sanitize-html';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { isActivityRichTextEffectivelyEmpty } from '@corpcal/shared/utils';
+import {
+  EMPTY_RICH_TEXT_DOC,
+  isActivityRichTextEffectivelyEmpty,
+} from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { RichTextLinkDialog } from '@/components/ui/rich-text-field-link-dialog';
 import { Separator } from '@/components/ui/separator';
@@ -64,6 +67,11 @@ export function shouldIgnoreStaleEmptyRichTextUpdate({
   );
 }
 
+/** TipTap `getJSON()` output is already valid JSON; only empty variants need coalescing. */
+export function coalesceEditorRichTextUpdate(json: string): string {
+  return isActivityRichTextEffectivelyEmpty(json) ? EMPTY_RICH_TEXT_DOC : json;
+}
+
 export function RichTextField({
   id,
   name,
@@ -87,6 +95,12 @@ export function RichTextField({
     () => getActivityRichTextEditorExtensions({ placeholder }),
     [placeholder]
   );
+  const coalescedValue = useMemo(
+    () => coalesceRichTextFormStorageValue(value),
+    [value]
+  );
+  const coalescedValueRef = useRef(coalescedValue);
+  coalescedValueRef.current = coalescedValue;
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -122,10 +136,13 @@ export function RichTextField({
 
       const json = JSON.stringify(ed.getJSON());
       const propValue = valueRef.current;
-      const nextValue = coalesceRichTextFormStorageValue(json);
-      const currentValue = coalesceRichTextFormStorageValue(propValue);
+      if (json === propValue) return;
+
+      const nextValue = coalesceEditorRichTextUpdate(json);
+      const currentValue = coalescedValueRef.current;
       if (
         nextValue === currentValue ||
+        coalesceRichTextFormStorageValue(json) === currentValue ||
         shouldIgnoreStaleEmptyRichTextUpdate({
           editorIsFocused: ed.isFocused,
           nextValue: json,
