@@ -230,6 +230,7 @@ export class AuthController {
       const redirectUri = this.azureOidcService.getRedirectUri(req);
       const nonce = this.azureOidcService.generateNonce();
       const state = this.azureOidcService.createSignedState(nonce);
+      this.azureOidcService.bindStateToBrowser(res, state);
 
       const redirectUrl = oidc.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
@@ -282,6 +283,13 @@ export class AuthController {
       if (!nonce) {
         this.logger.warn(
           'Azure callback rejected due to invalid or expired state token'
+        );
+        return res.redirect('/login?error=azure_auth_failed');
+      }
+
+      if (!this.azureOidcService.verifyAndConsumeBinding(req, res, state)) {
+        this.logger.warn(
+          'Azure callback rejected: browser binding cookie missing (possible login CSRF)'
         );
         return res.redirect('/login?error=azure_auth_failed');
       }

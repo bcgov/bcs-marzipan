@@ -1,10 +1,11 @@
 import crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
+const OIDC_BINDING_COOKIE_PREFIX = 'corpcal_az_';
 
 interface OidcStatePayload {
   jti: string; // random nonce bound to this state
@@ -107,6 +108,43 @@ export class AzureOidcService {
   }
 
   /**
+   * Set a short-lived httpOnly cookie keyed by the state token's jti.
+   * Must be called on every login initiation alongside createSignedState.
+   *
+   * On the callback, the browser sends this cookie back, proving the
+   * callback originated from the same browser that started the flow and
+   * preventing login CSRF (an attacker cannot plant the victim's jti cookie).
+   * Each concurrent tab gets its own cookie, so flows never interfere.
+   */
+  bindStateToBrowser(res: Response, state: string): void {
+    const payload = this.parseStateBody(state);
+    if (!payload) return;
+    const isSecure =
+      this.configService.get<string>('NODE_ENV') === 'production';
+    res.cookie(`${OIDC_BINDING_COOKIE_PREFIX}${payload.jti}`, '1', {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: 'lax',
+      maxAge: OIDC_STATE_TTL_MS,
+      path: '/api/auth/azure/callback',
+    });
+  }
+
+  /**
+   * Verify that the browser that initiated this login flow is the same one
+   * completing it. Clears the binding cookie on success or failure.
+   * Returns false if the binding cookie is absent (login CSRF attempt).
+   */
+  verifyAndConsumeBinding(req: Request, res: Response, state: string): boolean {
+    const payload = this.parseStateBody(state);
+    if (!payload) return false;
+    const cookieName = `${OIDC_BINDING_COOKIE_PREFIX}${payload.jti}`;
+    const cookiePresent = !!req.cookies?.[cookieName];
+    res.clearCookie(cookieName, { path: '/api/auth/azure/callback' });
+    return cookiePresent;
+  }
+
+  /**
    * Verify a state token returned by Azure and extract the nonce.
    * Returns null if tampered, expired, or malformed.
    */
@@ -145,5 +183,17 @@ export class AzureOidcService {
       this.configService.get<string>('JWT_SECRET') ||
       'dev-secret-change-in-production'
     );
+  }
+
+  private parseStateBody(state: string): OidcStatePayload | null {
+    const dotIndex = state.lastIndexOf('.');
+    if (dotIndex === -1) return null;
+    try {
+      return JSON.parse(
+        Buffer.from(state.slice(0, dotIndex), 'base64url').toString('utf8')
+      ) as OidcStatePayload;
+    } catch {
+      return null;
+    }
   }
 }

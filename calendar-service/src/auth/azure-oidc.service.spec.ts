@@ -98,4 +98,80 @@ describe('AzureOidcService — signed state token', () => {
       expect(service.verifySignedState(`${body}.${sig}`)).toBeNull();
     });
   });
+
+  describe('bindStateToBrowser / verifyAndConsumeBinding', () => {
+    function makeMockRes() {
+      const cookies: Record<string, unknown> = {};
+      return {
+        cookie: vi.fn((name: string, _val: string) => {
+          cookies[name] = '1';
+        }),
+        clearCookie: vi.fn((name: string) => {
+          delete cookies[name];
+        }),
+        _cookies: cookies,
+      };
+    }
+
+    function makeMockReq(cookies: Record<string, string> = {}) {
+      return { cookies } as unknown as import('express').Request;
+    }
+
+    it('sets an httpOnly binding cookie named after the jti', () => {
+      const state = service.createSignedState(service.generateNonce());
+      const res = makeMockRes();
+      service.bindStateToBrowser(res as never, state);
+      expect(res.cookie).toHaveBeenCalledOnce();
+      const [name, value, opts] = (res.cookie as ReturnType<typeof vi.fn>).mock
+        .calls[0] as [string, string, Record<string, unknown>];
+      expect(name).toMatch(/^corpcal_az_[0-9a-f]{32}$/);
+      expect(value).toBe('1');
+      expect(opts.httpOnly).toBe(true);
+      expect(opts.path).toBe('/api/auth/azure/callback');
+    });
+
+    it('verifyAndConsumeBinding returns true and clears cookie when present', () => {
+      const state = service.createSignedState(service.generateNonce());
+      const res = makeMockRes();
+      service.bindStateToBrowser(res as never, state);
+
+      // Extract the cookie name that was set
+      const cookieName = (res.cookie as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as string;
+      const req = makeMockReq({ [cookieName]: '1' });
+      const res2 = makeMockRes();
+
+      expect(service.verifyAndConsumeBinding(req, res2 as never, state)).toBe(
+        true
+      );
+      expect(res2.clearCookie).toHaveBeenCalledWith(cookieName, {
+        path: '/api/auth/azure/callback',
+      });
+    });
+
+    it('verifyAndConsumeBinding returns false when binding cookie is absent (login CSRF)', () => {
+      const state = service.createSignedState(service.generateNonce());
+      const req = makeMockReq({}); // no cookies
+      const res = makeMockRes();
+      expect(service.verifyAndConsumeBinding(req, res as never, state)).toBe(
+        false
+      );
+    });
+
+    it('verifyAndConsumeBinding returns false for a different state than what was bound', () => {
+      const state1 = service.createSignedState(service.generateNonce());
+      const state2 = service.createSignedState(service.generateNonce());
+      const res = makeMockRes();
+      service.bindStateToBrowser(res as never, state1);
+      const cookieName1 = (res.cookie as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as string;
+
+      // Callback arrives with state2 but browser only has cookie for state1
+      const req = makeMockReq({ [cookieName1]: '1' });
+      const res2 = makeMockRes();
+      expect(service.verifyAndConsumeBinding(req, res2 as never, state2)).toBe(
+        false
+      );
+    });
+  });
 });
