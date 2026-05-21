@@ -10,6 +10,7 @@ import {
 import sanitizeHtml from 'sanitize-html';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { isActivityRichTextEffectivelyEmpty } from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { RichTextLinkDialog } from '@/components/ui/rich-text-field-link-dialog';
 import { Separator } from '@/components/ui/separator';
@@ -46,6 +47,22 @@ const PASTE_ALLOWED_TAGS = [
 ];
 const PASTE_ALLOWED_ATTR = { a: ['href'] };
 
+export function shouldIgnoreStaleEmptyRichTextUpdate({
+  editorIsFocused,
+  nextValue,
+  currentValue,
+}: {
+  editorIsFocused: boolean;
+  nextValue: string;
+  currentValue: string;
+}): boolean {
+  return (
+    !editorIsFocused &&
+    isActivityRichTextEffectivelyEmpty(nextValue) &&
+    !isActivityRichTextEffectivelyEmpty(currentValue)
+  );
+}
+
 export function RichTextField({
   id,
   name,
@@ -60,6 +77,11 @@ export function RichTextField({
 }: RichTextFieldProps) {
   const editable = !readOnly && !disabled;
   const initialArgs = useRef(getSetContentArgs(value));
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const isSyncingFromPropRef = useRef(false);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const extensions = useMemo(
     () => getActivityRichTextEditorExtensions({ placeholder }),
     [placeholder]
@@ -95,7 +117,21 @@ export function RichTextField({
       },
     },
     onUpdate: ({ editor: ed }) => {
-      onChange(JSON.stringify(ed.getJSON()));
+      if (isSyncingFromPropRef.current) return;
+
+      const json = JSON.stringify(ed.getJSON());
+      const propValue = valueRef.current;
+      if (
+        shouldIgnoreStaleEmptyRichTextUpdate({
+          editorIsFocused: ed.isFocused,
+          nextValue: json,
+          currentValue: propValue,
+        })
+      ) {
+        return;
+      }
+
+      onChangeRef.current(json);
     },
   });
 
@@ -195,13 +231,27 @@ export function RichTextField({
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     const args = getSetContentArgs(value);
+    const applyFromProp = () => {
+      isSyncingFromPropRef.current = true;
+      if (args.contentType === 'json') {
+        editor.commands.setContent(args.content, { emitUpdate: false });
+      } else {
+        editor.commands.setContent(args.content, {
+          contentType: 'markdown',
+          emitUpdate: false,
+        });
+      }
+      queueMicrotask(() => {
+        isSyncingFromPropRef.current = false;
+      });
+    };
     if (args.contentType === 'json') {
       if (JSON.stringify(args.content) === JSON.stringify(editor.getJSON())) {
         return;
       }
       queueMicrotask(() => {
         if (!editor || editor.isDestroyed) return;
-        editor.commands.setContent(args.content, { emitUpdate: false });
+        applyFromProp();
       });
       return;
     }
@@ -211,10 +261,7 @@ export function RichTextField({
     }
     queueMicrotask(() => {
       if (!editor || editor.isDestroyed) return;
-      editor.commands.setContent(args.content, {
-        contentType: 'markdown',
-        emitUpdate: false,
-      });
+      applyFromProp();
     });
   }, [editor, value]);
 
