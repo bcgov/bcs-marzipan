@@ -5,7 +5,9 @@ import {
   createUserBodySchema,
   TEAM_ROLES,
   transferActivitiesBodySchema,
+  updateUserSettingsBodySchema,
   updateUserTeamRoleBodySchema,
+  userDetailSchema,
   userListItemSchema,
 } from './user.schema';
 
@@ -150,5 +152,69 @@ describe('transferActivitiesBodySchema', () => {
       activityIds: [1, 2, 3],
     });
     expect(result.activityIds).toEqual([1, 2, 3]);
+  });
+});
+
+describe('userDetailSchema', () => {
+  const base = {
+    id: 1,
+    adUsername: 'user1',
+    adDisplayName: 'User One',
+    adEmail: 'user@example.com',
+    roleId: 2,
+    roleName: 'Editor',
+    isActive: true,
+    teams: [],
+    notes: null,
+    flagColour: null,
+  };
+
+  it('accepts null flagColour', () => {
+    const result = userDetailSchema.parse(base);
+    expect(result.flagColour).toBeNull();
+  });
+
+  it('accepts a hex flagColour string', () => {
+    const result = userDetailSchema.parse({ ...base, flagColour: '#FF5733' });
+    expect(result.flagColour).toBe('#FF5733');
+  });
+});
+
+describe('updateUserSettingsBodySchema', () => {
+  it('accepts a valid 6-digit hex colour', () => {
+    const result = updateUserSettingsBodySchema.parse({
+      flagColour: '#1A2B3C',
+    });
+    expect(result.flagColour).toBe('#1A2B3C');
+  });
+
+  it('accepts uppercase hex', () => {
+    const result = updateUserSettingsBodySchema.parse({
+      flagColour: '#AABBCC',
+    });
+    expect(result.flagColour).toBe('#AABBCC');
+  });
+
+  it('accepts null to reset to default', () => {
+    const result = updateUserSettingsBodySchema.parse({ flagColour: null });
+    expect(result.flagColour).toBeNull();
+  });
+
+  it('rejects a colour missing the # prefix', () => {
+    expect(() =>
+      updateUserSettingsBodySchema.parse({ flagColour: 'FF5733' })
+    ).toThrow();
+  });
+
+  it('rejects a 3-digit short hex', () => {
+    expect(() =>
+      updateUserSettingsBodySchema.parse({ flagColour: '#FFF' })
+    ).toThrow();
+  });
+
+  it('rejects non-hex characters', () => {
+    expect(() =>
+      updateUserSettingsBodySchema.parse({ flagColour: '#GGGGGG' })
+    ).toThrow();
   });
 });

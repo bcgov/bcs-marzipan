@@ -14,6 +14,7 @@ import {
   teams,
   userHistory,
   users,
+  userSettings,
   userTeams,
 } from '@corpcal/database/schema';
 import type { ActivityStatusName } from '@corpcal/shared';
@@ -23,6 +24,7 @@ import type {
   HistoryChange,
   TransferActivitiesBody,
   UpdateUserBody,
+  UpdateUserSettingsBody,
   UpdateUserTeamRoleBody,
   UserDetail,
   UserHistoryEntry,
@@ -245,8 +247,10 @@ export class UsersService {
         roleId: users.roleId,
         isActive: users.isActive,
         notes: users.notes,
+        flagColour: userSettings.flagColour,
       })
       .from(users)
+      .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(eq(users.id, id))
       .limit(1);
 
@@ -278,6 +282,7 @@ export class UsersService {
 
     return {
       ...u,
+      flagColour: u.flagColour ?? null,
       roleName: roleRow?.name ?? 'Unknown',
       teams: teamRows.map((t) => ({
         teamId: t.teamId,
@@ -285,6 +290,46 @@ export class UsersService {
         role: t.role,
       })),
     };
+  }
+
+  /**
+   * Upsert per-user settings (flag colour, etc.).
+   * Uses INSERT … ON CONFLICT to avoid a separate select.
+   */
+  async updateUserSettings(
+    id: number,
+    dto: UpdateUserSettingsBody,
+    changedByUserId: number
+  ): Promise<UserDetail> {
+    const existing = await this.findOne(id);
+    if (!existing) throw new NotFoundException('User not found');
+
+    await this.databaseService.db
+      .insert(userSettings)
+      .values({
+        userId: id,
+        flagColour: dto.flagColour ?? null,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: {
+          flagColour: dto.flagColour ?? null,
+          updatedAt: new Date(),
+        },
+      });
+
+    await this.recordUserHistory(id, changedByUserId, 'settings_updated', [
+      {
+        field: 'flagColour',
+        oldValue: existing.flagColour,
+        newValue: dto.flagColour,
+      },
+    ]);
+
+    const updated = await this.findOne(id);
+    if (!updated) throw new NotFoundException('User not found');
+    return updated;
   }
 
   async update(

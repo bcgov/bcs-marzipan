@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
+import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type { UserDetail, UserListItem } from '@corpcal/shared/api/types';
 import {
   addUserToTeam,
@@ -10,6 +11,7 @@ import {
   fetchTeams,
   fetchUser,
   updateUser,
+  updateUserSettings,
 } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,6 +50,7 @@ export function UserEditModal({
   const [addTeamId, setAddTeamId] = useState<string>('');
   const [addTeamRole, setAddTeamRole] = useState<'owner' | 'member'>('member');
   const [addTeamNotes, setAddTeamNotes] = useState('');
+  const [flagColour, setFlagColour] = useState<string>('');
 
   const queryClient = useQueryClient();
 
@@ -74,6 +77,7 @@ export function UserEditModal({
     if (detail) {
       setRoleId(String(detail.roleId));
       setNotes(detail.notes ?? '');
+      setFlagColour(detail.flagColour ?? '');
     }
   }, [detail]);
 
@@ -92,6 +96,20 @@ export function UserEditModal({
     onError: (err: Error) => {
       toast.error(err.message || 'Update failed', {
         id: `user-updated-${user.id}`,
+      });
+    },
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: (body: { flagColour: string | null }) =>
+      updateUserSettings(user.id, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to save flag colour', {
+        id: `user-settings-${user.id}`,
       });
     },
   });
@@ -125,6 +143,11 @@ export function UserEditModal({
   const currentTeamIds = detail?.teams?.map((t) => t.teamId) ?? [];
   const availableTeams = teams.filter((t) => !currentTeamIds.includes(t.id));
 
+  const selectedRoleId = parseInt(roleId, 10);
+  const isAdminOrSysAdmin =
+    selectedRoleId === SYSTEM_ROLE_IDS.ADMIN ||
+    selectedRoleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+
   const handleSave = () => {
     const newRoleId = parseInt(roleId, 10);
     if (Number.isNaN(newRoleId)) return;
@@ -132,6 +155,13 @@ export function UserEditModal({
       roleId: newRoleId,
       notes: notes || null,
     });
+
+    // Save settings separately if the user is admin/sys-admin and the colour changed
+    const savedFlagColour = detail?.flagColour ?? null;
+    const newFlagColour = flagColour.trim() || null;
+    if (isAdminOrSysAdmin && newFlagColour !== savedFlagColour) {
+      settingsMutation.mutate({ flagColour: newFlagColour });
+    }
   };
 
   const handleAddToTeam = () => {
@@ -257,6 +287,37 @@ export function UserEditModal({
                 placeholder="Admin notes..."
               />
             </div>
+            {isAdminOrSysAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="user-flag-colour">Flag colour</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="user-flag-colour"
+                    type="color"
+                    value={flagColour || '#22c55e'}
+                    onChange={(e) => setFlagColour(e.target.value)}
+                    className="h-9 w-14 cursor-pointer rounded border border-slate-200 bg-transparent p-0.5"
+                    title="Pick a flag colour for this user"
+                  />
+                  <span className="font-mono text-sm text-slate-600">
+                    {flagColour || '(using default)'}
+                  </span>
+                  {flagColour && (
+                    <button
+                      type="button"
+                      onClick={() => setFlagColour('')}
+                      className="text-xs text-slate-400 underline hover:text-slate-600"
+                    >
+                      Reset to default
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Colour of the flag icon shown when an activity is assigned to
+                  this user.
+                </p>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter>
@@ -265,7 +326,11 @@ export function UserEditModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={updateMutation.isPending || isLoading}
+            disabled={
+              updateMutation.isPending ||
+              settingsMutation.isPending ||
+              isLoading
+            }
           >
             Save changes
           </Button>

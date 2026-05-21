@@ -44,6 +44,7 @@ export type {
   RoleOption,
   CreateUserBody,
   UpdateUserBody,
+  UpdateUserSettingsBody,
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
