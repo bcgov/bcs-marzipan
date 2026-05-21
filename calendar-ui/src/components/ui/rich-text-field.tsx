@@ -18,6 +18,7 @@ import {
   getActivityRichTextEditorExtensions,
   getSetContentArgs,
 } from '@/lib/activity-rich-text-extensions';
+import { coalesceRichTextFormStorageValue } from '@/lib/normalize-activity-rich-text-form';
 import { cn } from '@/lib/utils';
 
 export type RichTextFieldProps = {
@@ -121,7 +122,10 @@ export function RichTextField({
 
       const json = JSON.stringify(ed.getJSON());
       const propValue = valueRef.current;
+      const nextValue = coalesceRichTextFormStorageValue(json);
+      const currentValue = coalesceRichTextFormStorageValue(propValue);
       if (
+        nextValue === currentValue ||
         shouldIgnoreStaleEmptyRichTextUpdate({
           editorIsFocused: ed.isFocused,
           nextValue: json,
@@ -131,7 +135,7 @@ export function RichTextField({
         return;
       }
 
-      onChangeRef.current(json);
+      onChangeRef.current(nextValue);
     },
   });
 

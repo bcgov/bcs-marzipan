@@ -9,6 +9,7 @@ import type {
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
   FormSelectSafe,
@@ -784,14 +785,20 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             if (next.length > 0 && !next.some((p) => p.isLead)) {
               next[0] = { ...next[0], isLead: true };
             }
-            setActivityFormFieldValue(form, field.name, next);
+            setActivityFormFieldValue(
+              form,
+              field.name,
+              normalizeEventPlannerFormEntries(next)
+            );
           };
 
           const setLead = (index: number) => {
-            const next = (field.value ?? []).map((p, i) => ({
-              ...p,
-              isLead: i === index,
-            }));
+            const next = normalizeEventPlannerFormEntries(
+              (field.value ?? []).map((p, i) => ({
+                ...p,
+                isLead: i === index,
+              }))
+            );
             setActivityFormFieldValue(form, field.name, next);
           };
 
