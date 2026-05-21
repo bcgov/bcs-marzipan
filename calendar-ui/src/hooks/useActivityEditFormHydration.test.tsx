@@ -68,7 +68,7 @@ describe('useActivityEditFormHydration', () => {
     expect(result.current.initialFormDataRef.current?.strategy).toBe('');
   });
 
-  it('hydrates synchronously when lookups are ready', () => {
+  it('marks hydrated after reset-driven controls have a task turn to settle', () => {
     const activity = createMockActivityResponse({
       id: 1,
       lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
@@ -79,6 +79,12 @@ describe('useActivityEditFormHydration', () => {
         defaultValues: getDefaultFormValues() as ActivityFormData,
       });
       return useActivityEditFormHydration(activity, mockLookups, form);
+    });
+
+    expect(result.current.isFormHydrated).toBe(false);
+
+    act(() => {
+      vi.runAllTimers();
     });
 
     expect(result.current.isFormHydrated).toBe(true);
@@ -107,6 +113,10 @@ describe('useActivityEditFormHydration', () => {
       return useActivityEditFormHydration(activity, mockLookups, form);
     });
 
+    act(() => {
+      vi.runAllTimers();
+    });
+
     expect(formRef!.formState.isDirty).toBe(false);
     expect(Object.keys(formRef!.formState.dirtyFields)).toHaveLength(0);
   });
@@ -126,6 +136,10 @@ describe('useActivityEditFormHydration', () => {
       });
       formRef = form;
       return useActivityEditFormHydration(activity, mockLookups, form);
+    });
+
+    act(() => {
+      vi.runAllTimers();
     });
 
     act(() => {
@@ -157,6 +171,10 @@ describe('useActivityEditFormHydration', () => {
     expect(result.current.hydrationGeneration).toBe(0);
 
     rerender({ lookups: mockLookups });
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBe(1);
