@@ -482,6 +482,65 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('corpcal-print-rollup-thead-column-header-row');
   });
 
+  it('omits the Release column for sections with printOmitReleaseColumn', () => {
+    const awarenessAndEvents: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+            },
+            {
+              id: 'awareness',
+              name: 'Awareness',
+              order: 2,
+              filter: { lookAheadSection: 'awareness' },
+              printOmitReleaseColumn: true,
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'events',
+          name: 'Events',
+          order: 1,
+          activities: [BASE_ACTIVITY],
+        },
+        {
+          id: 'awareness',
+          name: 'Awareness',
+          order: 2,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              id: 401,
+              displayId: 'ACT-401',
+              lookAheadSection: 'awareness',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', awarenessAndEvents, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect((html.match(/corpcal-print-table--omit-release/g) ?? []).length).toBe(
+      1
+    );
+    expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
+    expect(html).toContain('>Activity details</th>');
+    expect(html).toContain('>Activity</th>');
+  });
+
   it('honours an explicit printPerDayColumnHeaderRepeat: true on a non-events section', () => {
     const overridden: ReportDataResponse = {
       ...FIXTURE,

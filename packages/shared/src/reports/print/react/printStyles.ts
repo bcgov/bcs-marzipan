@@ -260,6 +260,12 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-4 {
   width: 12%;
 }
+/* Awareness / Long-term: Release omitted; Activity details absorbs col-3 width (53% + 15% = 68%). */
+.corpcal-print-table--omit-release col.corpcal-print-col-2 { width: 68%; }
+.corpcal-print-root .corpcal-print-table--omit-release thead th.corpcal-print-col-2,
+.corpcal-print-root .corpcal-print-table--omit-release tbody td.corpcal-print-col-2 {
+  width: 68%;
+}
 
 /* Look-ahead section legend fill on thead cells: preserve in PDF/export (Chrome). */
 .corpcal-print-table thead th.corpcal-print-section-thead-cell {

@@ -60,11 +60,14 @@ export function PrintRow({
   row,
   variant,
   showEventLead = false,
+  omitReleaseColumn = false,
 }: {
   row: PrintRowViewModel;
   variant: PrintReportVariant;
   /** When true and variant is Look Ahead, render comms lead under executive summary. */
   showEventLead?: boolean;
+  /** When true, skip the Release column; Activity details uses the wider layout. */
+  omitReleaseColumn?: boolean;
 }) {
   return (
     <tr>
@@ -78,9 +81,11 @@ export function PrintRow({
           showEventLead={showEventLead}
         />
       </td>
-      <td className="corpcal-print-col-3">
-        <ReleaseCell row={row} variant={variant} />
-      </td>
+      {!omitReleaseColumn ? (
+        <td className="corpcal-print-col-3">
+          <ReleaseCell row={row} variant={variant} />
+        </td>
+      ) : null}
       <td className="corpcal-print-col-4">
         <ActivityCell row={row} variant={variant} />
       </td>

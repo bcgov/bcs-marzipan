@@ -33,6 +33,8 @@ interface SortedSection {
    * `ReportConfig` (default false when omitted).
    */
   showPerDayPrintChrome: boolean;
+  /** When true, print omits the Release column for this section. */
+  omitReleaseColumn: boolean;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
 
@@ -65,6 +67,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
   const legendColorById = new Map<string, string | null>();
   const printHeadingById = new Map<string, string>();
   const showPerDayChromeById = new Map<string, boolean>();
+  const omitReleaseColumnById = new Map<string, boolean>();
   if (data.report?.config) {
     for (const row of resolveLookAheadSectionRows(data.report.config)) {
       legendColorById.set(row.sectionId, row.legendColor);
@@ -72,6 +75,10 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayChromeById.set(
         row.sectionId,
         row.printPerDayColumnHeaderRepeat ?? DEFAULT_SHOW_PER_DAY_PRINT_CHROME
+      );
+      omitReleaseColumnById.set(
+        row.sectionId,
+        row.printOmitReleaseColumn === true
       );
     }
   }
@@ -85,6 +92,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayPrintChrome:
         showPerDayChromeById.get(section.id) ??
         DEFAULT_SHOW_PER_DAY_PRINT_CHROME,
+      omitReleaseColumn: omitReleaseColumnById.get(section.id) ?? false,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
 }
@@ -186,6 +194,7 @@ function SectionGroup({
         variant={variant}
         showPerDayPrintChrome={section.showPerDayPrintChrome}
         showEventLead={showEventLead}
+        omitReleaseColumn={section.omitReleaseColumn}
       />
     </section>
   );
