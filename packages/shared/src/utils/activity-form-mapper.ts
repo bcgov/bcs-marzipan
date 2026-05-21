@@ -1,5 +1,6 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
 
 function trimVenueNullable(v: string | null | undefined): string | null {
   if (v == null) return null;
@@ -153,7 +154,9 @@ export function mapResponseToFormData(
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
-    eventPlanners: eventPlanners?.length ? eventPlanners : undefined,
+    eventPlanners: normalizeEventPlannerFormEntries(
+      eventPlanners?.length ? eventPlanners : undefined
+    ),
     newsReleaseDistributionId: response.newsReleaseDistributionId ?? undefined,
     premierRequestedId: response.premierRequestedId ?? undefined,
     categoryIds: categoryIds?.length ? categoryIds : [],
