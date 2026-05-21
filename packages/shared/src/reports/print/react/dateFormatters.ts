@@ -15,6 +15,7 @@ import {
   formatCalendarDateShortNoYear,
   formatCivilOrInstantTime,
   formatInstantInPacific,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
   isCalendarDateString,
   pacificDayKey,
@@ -61,6 +62,9 @@ export function formatShortDateNoYear(
   if (key == null) return '';
   return formatCalendarDateShortNoYear(key);
 }
+
+/** Look Ahead activity date cell (single date or range). */
+export { formatLookAheadActivityDate };
 
 /** Last-updated timestamp, e.g. `Apr 27, 2026 9:15 am`, formatted in Pacific. */
 export function formatLastUpdated(

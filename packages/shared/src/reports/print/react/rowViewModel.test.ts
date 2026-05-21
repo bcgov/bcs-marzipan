@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import {
@@ -104,6 +104,8 @@ describe('buildTranslationsLine', () => {
 });
 
 describe('toPrintRowViewModel', () => {
+  const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
+
   it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
     const dated = {
       ...BASE_ACTIVITY,
@@ -123,6 +125,27 @@ describe('toPrintRowViewModel', () => {
     });
     expect(noYear.dateTime.startDate).toBe('Apr 27');
     expect(noYear.dateTime.startDate).not.toContain('2026');
+    expect(noYear.dateTime.endDate).toBe('');
+  });
+
+  it('formats look-ahead date ranges with compact rules when dateCellStyle is shortNoYear', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(REFERENCE);
+
+    const ranged = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+    };
+
+    const row = toPrintRowViewModel(ranged, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(row.dateTime.startDate).toBe('Jan 1\u201331');
+    expect(row.dateTime.endDate).toBe('');
+
+    vi.useRealTimers();
   });
 
   it('maps core fields, resolving lead preference order and absolute href', () => {

@@ -3,8 +3,8 @@ import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
 import {
   formatLastUpdated,
+  formatLookAheadActivityDate,
   formatShortDate,
-  formatShortDateNoYear,
   formatTime12h,
 } from './dateFormatters';
 import { resolveTranslationLanguageDisplayLabels } from './translationLanguageDisplayLabels';
@@ -45,9 +45,9 @@ export interface LeadBlock {
 }
 
 export interface DateTimeBlock {
-  /** Pre-formatted start date, e.g. `Apr 27, 2026` or rollup `Apr 27`. Empty when no start date. */
+  /** Pre-formatted date or range, e.g. `Apr 27, 2026` or Look Ahead `Jan 1–31`. Empty when no start date. */
   startDate: string;
-  /** Pre-formatted end date, omitted when the activity is single-day. */
+  /** Pre-formatted end date for legacy two-part ranges; empty when using a combined Look Ahead label. */
   endDate: string;
   dateStatus: string;
   startTime: string;
@@ -278,7 +278,7 @@ function shouldUseLookAheadDateTimeStatusRules(
  * translations collapsing) lives here so the React layer stays declarative.
  *
  * `@default dateCellStyle` — `'shortWithYear'` keeps legacy callers/tests stable;
- * rollup `{@link PrintReportDocument}` passes `'shortNoYear'`.
+ * rollup `{@link PrintReportDocument}` passes `'shortNoYear'` (Look Ahead date rules).
  *
  * When `variant` is `lookAhead` or `execLookAhead`, Confirmed date/time status
  * is omitted; any other non-empty status becomes `Date TBD` / `Time TBD`.
@@ -296,13 +296,13 @@ export function toPrintRowViewModel(
     variant?: PrintReportVariant;
   }
 ): PrintRowViewModel {
-  const fmtDate =
-    options.dateCellStyle === 'shortNoYear'
-      ? formatShortDateNoYear
-      : formatShortDate;
-
-  const startDateLabel = fmtDate(activity.startDate);
-  const endDateLabel = fmtDate(activity.endDate);
+  const useLookAheadDateFormat = options.dateCellStyle === 'shortNoYear';
+  const startDateLabel = useLookAheadDateFormat
+    ? formatLookAheadActivityDate(activity.startDate, activity.endDate)
+    : formatShortDate(activity.startDate);
+  const endDateLabel = useLookAheadDateFormat
+    ? ''
+    : formatShortDate(activity.endDate);
 
   const rawDateStatus = activity.dateStatus?.trim() ?? '';
   const rawTimeStatus = activity.timeStatus?.trim() ?? '';

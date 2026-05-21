@@ -17,7 +17,6 @@ import { CustomReportPreviewSection } from '@/components/reports/CustomReportPre
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
-import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -364,18 +363,16 @@ export function ReportsPage() {
                               </TabsTrigger>
                             ))}
                           </TabsList>
-                          {report.name === 'custom' ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="shrink-0"
-                              aria-expanded={isEditModalOpen}
-                              aria-haspopup="dialog"
-                              onClick={handleEditReportClick}
-                            >
-                              Edit Report
-                            </Button>
-                          ) : null}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="shrink-0"
+                            aria-expanded={isEditModalOpen}
+                            aria-haspopup="dialog"
+                            onClick={handleEditReportClick}
+                          >
+                            Edit Report
+                          </Button>
                         </div>
                         {data.sections.map((section: ReportSectionData) => (
                           <TabsContent
@@ -383,36 +380,14 @@ export function ReportsPage() {
                             value={section.id}
                             className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
                           >
-                            {report.name === 'custom' ? (
-                              <CustomReportPreviewSection
-                                section={section}
-                                config={customReportFields}
-                                onFieldsChange={setCustomReportFields}
-                              />
-                            ) : (
-                              <ReportSection section={section} />
-                            )}
+                            <CustomReportPreviewSection
+                              section={section}
+                              config={customReportFields}
+                              onFieldsChange={setCustomReportFields}
+                            />
                           </TabsContent>
                         ))}
                       </Tabs>
-                      {report.name !== 'custom' ? (
-                        <div
-                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 pt-0 pb-6"
-                          aria-label="Print layout preview"
-                        >
-                          <div
-                            className="report-print-preview-root"
-                            style={{
-                              minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
-                            }}
-                          >
-                            <PrintReportPreview
-                              reportTypeName={report.name}
-                              data={data}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
                   )
                 ) : (

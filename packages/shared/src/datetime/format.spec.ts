@@ -12,6 +12,7 @@ import {
   formatInstantInPacific,
   formatInstantPacificDate,
   formatInstantPacificTime,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
 } from './format';
 import { toCalendarDateString, toCivilTimeString } from './types';
@@ -121,5 +122,69 @@ describe('formatCivilOrInstantTime', () => {
 
   it('returns empty when both are missing', () => {
     expect(formatCivilOrInstantTime(null, null)).toBe('');
+  });
+});
+
+describe('formatLookAheadActivityDate', () => {
+  const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
+
+  it('formats a single date in the reference year without year', () => {
+    expect(
+      formatLookAheadActivityDate('2026-12-12', null, {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 12');
+  });
+
+  it('formats a single date in another year with year', () => {
+    expect(
+      formatLookAheadActivityDate('2027-12-12', null, {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 12, 2027');
+  });
+
+  it('formats a same-month range in the reference year compactly', () => {
+    expect(
+      formatLookAheadActivityDate('2026-01-01', '2026-01-31', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 1\u201331');
+  });
+
+  it('formats a same-month range in another year with year suffix', () => {
+    expect(
+      formatLookAheadActivityDate('2027-01-01', '2027-01-31', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 1\u201331, 2027');
+  });
+
+  it('formats a cross-month range in the reference year without year', () => {
+    expect(
+      formatLookAheadActivityDate('2026-01-31', '2026-02-02', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 31\u2013Feb 2');
+  });
+
+  it('formats a cross-month range in another year with year suffix', () => {
+    expect(
+      formatLookAheadActivityDate('2027-01-31', '2027-02-02', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 31\u2013Feb 2, 2027');
+  });
+
+  it('formats a cross-year range with both years', () => {
+    expect(
+      formatLookAheadActivityDate('2026-12-16', '2027-01-01', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 16, 2026\u2013Jan 1, 2027');
+  });
+
+  it('returns empty when start date is missing', () => {
+    expect(formatLookAheadActivityDate(null, '2026-01-02')).toBe('');
   });
 });
