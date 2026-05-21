@@ -141,9 +141,17 @@ export class AzureOidcService {
   }
 
   private getSigningSecret(): string {
-    return (
-      this.configService.get<string>('JWT_SECRET') ||
-      'dev-secret-change-in-production'
-    );
+    const configuredSecret = this.configService.get<string>('JWT_SECRET');
+
+    if (configuredSecret === undefined || configuredSecret === null) {
+      return 'dev-secret-change-in-production';
+    }
+
+    const signingSecret = configuredSecret.trim();
+    if (!signingSecret) {
+      throw new Error('JWT_SECRET must not be empty');
+    }
+
+    return signingSecret;
   }
 }
