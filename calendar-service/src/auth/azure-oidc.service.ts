@@ -1,19 +1,21 @@
 import crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
-interface OidcStateEntry {
+const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
+const OIDC_BINDING_COOKIE_PREFIX = 'corpcal_az_';
+
+interface OidcStatePayload {
+  jti: string; // random nonce bound to this state
   nonce: string;
-  expiresAt: number;
+  exp: number; // unix seconds
 }
 
 @Injectable()
 export class AzureOidcService {
   private cachedConfig: oidc.Configuration | null = null;
-  private readonly stateStore = new Map<string, OidcStateEntry>();
-  private readonly stateTtlMs = 10 * 60 * 1000;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -77,49 +79,129 @@ export class AzureOidcService {
     return `${protocol}://${req.get('host')}/api/auth/azure/callback`;
   }
 
-  generateState(): string {
-    return crypto.randomBytes(16).toString('hex');
-  }
-
   generateNonce(): string {
     return crypto.randomBytes(16).toString('hex');
   }
 
-  createState(nonce: string): string {
-    this.cleanupStateStore();
-
-    const state = this.generateState();
-    this.stateStore.set(state, {
+  /**
+   * Create a self-verifying state token that embeds the nonce and expiry.
+   *
+   * The token is sent to Azure as the `state` parameter and echoed back
+   * verbatim in the callback, so no server-side storage or cookies are
+   * needed. Each login attempt (tab, retry) gets an independent token,
+   * so concurrent flows never interfere with each other.
+   *
+   * Format: base64url(JSON({jti, nonce, exp})).HMAC-SHA256
+   */
+  createSignedState(nonce: string): string {
+    const payload: OidcStatePayload = {
+      jti: crypto.randomBytes(16).toString('hex'),
       nonce,
-      expiresAt: Date.now() + this.stateTtlMs,
+      exp: Math.floor((Date.now() + OIDC_STATE_TTL_MS) / 1000),
+    };
+    const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const sig = crypto
+      .createHmac('sha256', this.getSigningSecret())
+      .update(body)
+      .digest('base64url');
+    return `${body}.${sig}`;
+  }
+
+  /**
+   * Set a short-lived httpOnly cookie keyed by the state token's jti.
+   * Must be called on every login initiation alongside createSignedState.
+   *
+   * On the callback, the browser sends this cookie back, proving the
+   * callback originated from the same browser that started the flow and
+   * preventing login CSRF (an attacker cannot plant the victim's jti cookie).
+   * Each concurrent tab gets its own cookie, so flows never interfere.
+   */
+  bindStateToBrowser(res: Response, state: string): void {
+    const payload = this.parseStateBody(state);
+    if (!payload) return;
+    const isSecure =
+      this.configService.get<string>('NODE_ENV') === 'production';
+    res.cookie(`${OIDC_BINDING_COOKIE_PREFIX}${payload.jti}`, '1', {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: 'lax',
+      maxAge: OIDC_STATE_TTL_MS,
+      path: '/api/auth/azure/callback',
     });
-
-    return state;
   }
 
-  consumeState(state: string): string | null {
-    this.cleanupStateStore();
+  /**
+   * Verify that the browser that initiated this login flow is the same one
+   * completing it. Clears the binding cookie on success or failure.
+   * Returns false if the binding cookie is absent (login CSRF attempt).
+   */
+  verifyAndConsumeBinding(req: Request, res: Response, state: string): boolean {
+    const payload = this.parseStateBody(state);
+    if (!payload) return false;
+    const cookieName = `${OIDC_BINDING_COOKIE_PREFIX}${payload.jti}`;
+    const cookiePresent = !!req.cookies?.[cookieName];
+    res.clearCookie(cookieName, { path: '/api/auth/azure/callback' });
+    return cookiePresent;
+  }
 
-    const entry = this.stateStore.get(state);
-    if (!entry) {
+  /**
+   * Verify a state token returned by Azure and extract the nonce.
+   * Returns null if tampered, expired, or malformed.
+   */
+  verifySignedState(state: string): string | null {
+    const dotIndex = state.lastIndexOf('.');
+    if (dotIndex === -1) return null;
+
+    const body = state.slice(0, dotIndex);
+    const sig = state.slice(dotIndex + 1);
+
+    const expected = crypto
+      .createHmac('sha256', this.getSigningSecret())
+      .update(body)
+      .digest('base64url');
+
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+    let payload: OidcStatePayload;
+    try {
+      payload = JSON.parse(
+        Buffer.from(body, 'base64url').toString('utf8')
+      ) as OidcStatePayload;
+    } catch {
       return null;
     }
 
-    this.stateStore.delete(state);
-
-    if (entry.expiresAt < Date.now()) {
+    if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now())
       return null;
-    }
-
-    return entry.nonce;
+    return payload.nonce;
   }
 
-  private cleanupStateStore(): void {
-    const now = Date.now();
-    for (const [key, value] of this.stateStore.entries()) {
-      if (value.expiresAt < now) {
-        this.stateStore.delete(key);
-      }
+  private getSigningSecret(): string {
+    const configuredSecret = this.configService.get<string>('JWT_SECRET');
+
+    if (configuredSecret === undefined || configuredSecret === null) {
+      return 'dev-secret-change-in-production';
+    }
+
+    const signingSecret = configuredSecret.trim();
+    if (!signingSecret) {
+      throw new Error('JWT_SECRET must not be empty');
+    }
+
+    return signingSecret;
+  }
+
+  private parseStateBody(state: string): OidcStatePayload | null {
+    const dotIndex = state.lastIndexOf('.');
+    if (dotIndex === -1) return null;
+    try {
+      return JSON.parse(
+        Buffer.from(state.slice(0, dotIndex), 'base64url').toString('utf8')
+      ) as OidcStatePayload;
+    } catch {
+      return null;
     }
   }
 }

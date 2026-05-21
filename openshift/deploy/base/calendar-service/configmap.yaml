@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
 data:
-  NODE_ENV: development
+  NODE_ENV: production
   AUTH_STRATEGY: azure
   AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
   POST_LOGIN_REDIRECT_URL: ${POST_LOGIN_REDIRECT_URL}
