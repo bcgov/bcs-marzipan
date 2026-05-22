@@ -251,6 +251,8 @@ export function formatCalendarDateShortNullable(
 }
 
 const LOOK_AHEAD_DATE_RANGE_SEP = '\u2013';
+/** Cross-month and cross-year ranges only; same-month stays compact (`Jan 1–31`). */
+const LOOK_AHEAD_DATE_RANGE_SEP_SPACED = ` ${LOOK_AHEAD_DATE_RANGE_SEP} `;
 
 function calendarDateYear(date: CalendarDateString): number {
   return Number.parseInt(date.slice(0, 4), 10);
@@ -285,8 +287,8 @@ function formatLookAheadSingleDate(
  *
  * - Single date in the reference year: `Dec 12`; other years: `Dec 12, 2027`.
  * - Same-month range: `Jan 1–31` or `Jan 1–31, 2027`.
- * - Cross-month range, same year: `Jan 31–Feb 2` or `Jan 31–Feb 2, 2027`.
- * - Cross-year range: `Dec 16, 2026–Jan 1, 2027`.
+ * - Cross-month range, same year: `Jan 31 – Feb 2` or `Jan 31 – Feb 2, 2027`.
+ * - Cross-year range: `Dec 16, 2026 – Jan 1, 2027`.
  *
  * `referenceInstant` defaults to now (Pacific calendar year).
  */
@@ -314,7 +316,7 @@ export function formatLookAheadActivityDate(
   const endYear = calendarDateYear(endKey);
 
   if (startYear !== endYear) {
-    return `${formatCalendarDateShort(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP}${formatCalendarDateShort(endKey)}`;
+    return `${formatCalendarDateShort(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP_SPACED}${formatCalendarDateShort(endKey)}`;
   }
 
   if (calendarDateMonth(startKey) === calendarDateMonth(endKey)) {
@@ -325,6 +327,6 @@ export function formatLookAheadActivityDate(
     return startYear === referenceYear ? range : `${range}, ${startYear}`;
   }
 
-  const range = `${formatCalendarDateShortNoYear(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP}${formatCalendarDateShortNoYear(endKey)}`;
+  const range = `${formatCalendarDateShortNoYear(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP_SPACED}${formatCalendarDateShortNoYear(endKey)}`;
   return startYear === referenceYear ? range : `${range}, ${startYear}`;
 }

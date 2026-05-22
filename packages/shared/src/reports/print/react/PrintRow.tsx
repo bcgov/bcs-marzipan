@@ -136,14 +136,10 @@ function lookAheadDateTimeStatusContent(
   const isLookAheadVariant =
     variant === 'lookAhead' || variant === 'execLookAhead';
   if (isLookAheadVariant && status === 'Date TBD') {
-    return (
-      <strong className="corpcal-print-tbd-strong">Date TBD</strong>
-    );
+    return 'Date TBD';
   }
   if (isLookAheadVariant && status === 'Time TBD') {
-    return (
-      <strong className="corpcal-print-tbd-strong">Time TBD</strong>
-    );
+    return 'Time TBD';
   }
   return status;
 }
@@ -179,42 +175,36 @@ function DateTimeCell({
   return (
     <div className="corpcal-print-stack">
       {dateRange || dateTime.dateStatus ? (
-        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
+        <div className="corpcal-print-dt-line">
           {dateRange ? (
             <span className={valueClass} aria-label={dateRangeAriaLabel}>
               {dateRange}
             </span>
           ) : null}
           {dateTime.dateStatus ? (
-            <>
-              {dateRange ? (
-                <span className="corpcal-print-inline-sep" aria-hidden>
-                  ·
-                </span>
-              ) : null}
-              <span className="corpcal-print-inline-status">
-                {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
-              </span>
-            </>
+            <span
+              className={`corpcal-print-inline-status${
+                dateRange ? ' corpcal-print-dt-status-gap' : ''
+              }`}
+            >
+              {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
+            </span>
           ) : null}
         </div>
       ) : null}
       {showTimeLine ? (
-        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
+        <div className="corpcal-print-dt-line corpcal-print-dt-time-line">
           {dateTime.startTime ? (
             <span className={valueClass}>{dateTime.startTime}</span>
           ) : null}
           {dateTime.timeStatus ? (
-            <>
-              {dateTime.startTime ? (
-                <span className="corpcal-print-inline-sep" aria-hidden>
-                  ·
-                </span>
-              ) : null}
-              <span className="corpcal-print-inline-status">
-                {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
-              </span>
-            </>
+            <span
+              className={`corpcal-print-inline-status${
+                dateTime.startTime ? ' corpcal-print-dt-status-gap' : ''
+              }`}
+            >
+              {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
+            </span>
           ) : null}
         </div>
       ) : null}

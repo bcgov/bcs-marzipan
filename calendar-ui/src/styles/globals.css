@@ -66,11 +66,8 @@
     /* Link / interactive blue (#0F6CBD equivalent) */
     --link: oklch(0.5263 0.1493 251.63);
 
-    /* Activity status badge colours */
-    --status-blue: #b7e8ea;
-    --status-yellow: #ffddb3;
+    /* Activity status badge colours (blue/yellow/red: corpcal-tokens.css) */
     --status-green: #d0f1c8;
-    --status-red: #ff978d;
     --status-grey: #ebebeb;
     --status-dark: #292929;
     --status-purple: #d8caff;

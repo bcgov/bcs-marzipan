@@ -92,13 +92,19 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
   font-weight: 500;
   color: var(--corpcal-text-alert);
 }
+.custom-report-dt-line {
+  line-height: 1.35;
+}
 .custom-report-dt-value {
-  font-weight: 500;
+  font-weight: 700;
   color: #0f172a;
 }
-.custom-report-dt-inline-muted {
-  font-weight: 500;
-  color: #64748b;
+.custom-report-dt-status {
+  font-weight: 400;
+  color: #0f172a;
+}
+.custom-report-dt-status-gap {
+  margin-left: 0.6em;
 }
 .custom-report-dt-time-row {
   margin-top: 0.125rem;

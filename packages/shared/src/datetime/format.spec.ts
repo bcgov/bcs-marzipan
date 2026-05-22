@@ -165,7 +165,7 @@ describe('formatLookAheadActivityDate', () => {
       formatLookAheadActivityDate('2026-01-31', '2026-02-02', {
         referenceInstant: REFERENCE,
       })
-    ).toBe('Jan 31\u2013Feb 2');
+    ).toBe('Jan 31 \u2013 Feb 2');
   });
 
   it('formats a cross-month range in another year with year suffix', () => {
@@ -173,7 +173,7 @@ describe('formatLookAheadActivityDate', () => {
       formatLookAheadActivityDate('2027-01-31', '2027-02-02', {
         referenceInstant: REFERENCE,
       })
-    ).toBe('Jan 31\u2013Feb 2, 2027');
+    ).toBe('Jan 31 \u2013 Feb 2, 2027');
   });
 
   it('formats a cross-year range with both years', () => {
@@ -181,7 +181,7 @@ describe('formatLookAheadActivityDate', () => {
       formatLookAheadActivityDate('2026-12-16', '2027-01-01', {
         referenceInstant: REFERENCE,
       })
-    ).toBe('Dec 16, 2026\u2013Jan 1, 2027');
+    ).toBe('Dec 16, 2026 \u2013 Jan 1, 2027');
   });
 
   it('returns empty when start date is missing', () => {

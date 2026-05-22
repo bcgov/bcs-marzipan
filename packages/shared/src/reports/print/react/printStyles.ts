@@ -52,9 +52,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-accent-purple-soft: var(--corpcal-print-accent-purple-soft);
   /** Look Ahead / Exec: planner + translations foreground (WCAG on table + zebra striping). */
   --print-look-ahead-accent-green: var(--bcsds-green-90);
-  --print-status-new: #b7e8ea;
-  --print-status-changed: #ffddb3;
-  --print-status-red: #ff978d;
+  --print-status-new: var(--status-blue);
+  --print-status-changed: var(--status-yellow);
 
   /* Body size for the whole subtree; descendant font sizes use em so they scale with this root (browser zoom still applies to the page). */
   --print-body-font-size: 14px;
@@ -296,8 +295,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-look-ahead-accent-green);
 }
 .corpcal-print-inline-status {
-  font-weight: 500;
-  color: var(--print-ink-muted);
+  font-weight: 400;
+  color: var(--print-ink);
   white-space: normal;
 }
 .corpcal-print-inline-row {
@@ -346,21 +345,20 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-activity-id-acronym strong {
   font-weight: 700;
 }
-.corpcal-print-dt-inline-row {
-  gap: 0.35em;
+.corpcal-print-dt-line {
+  font-size: 1em;
+  line-height: 1.35;
+}
+.corpcal-print-dt-time-line {
+  margin-top: 2px;
 }
 .corpcal-print-dt-value {
-  font-weight: 400;
+  font-weight: 700;
   font-size: 1em;
   color: var(--print-ink);
 }
-.corpcal-print-inline-sep {
-  color: var(--print-ink-muted);
-  font-weight: 400;
-}
-.corpcal-print-tbd-strong {
-  font-weight: 700;
-  white-space: nowrap;
+.corpcal-print-dt-status-gap {
+  margin-left: 0.6em;
 }
 .corpcal-print-meta-faint {
   font-size: 1em;
@@ -420,18 +418,18 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink-muted);
 }
 .corpcal-print-pill-confidential {
-  border: 1px solid color-mix(in oklch, var(--bcsds-red-90) 20%, transparent);
-  background: var(--print-accent-red-soft);
-  color: var(--print-accent-red);
+  border: 1px solid transparent;
+  background: var(--corpcal-print-badge-confidential);
+  color: #0f172a;
 }
 .corpcal-print-pill-issue {
-  border: 1px solid color-mix(in oklch, var(--print-accent-purple) 25%, transparent);
-  background: var(--print-accent-purple-soft);
-  color: var(--print-accent-purple);
+  border: 1px solid transparent;
+  background: var(--corpcal-print-badge-issue);
+  color: #0f172a;
 }
 .corpcal-print-pill-fyi {
-  border: 1px solid color-mix(in oklch, var(--bc-gold) 45%, transparent);
-  background: color-mix(in oklch, var(--bc-gold) 22%, var(--corpcal-surface));
+  border: 1px solid transparent;
+  background: var(--corpcal-print-badge-fyi);
   color: #0f172a;
 }
 .corpcal-print-pill-la-new {
