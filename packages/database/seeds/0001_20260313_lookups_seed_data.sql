@@ -672,7 +672,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     true,
     'team',
     '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "executiveSummary", "summary", "category", "isIssue", "newsReleaseOrigin"], "printTemplate": "customV1", "sections": [{"id": "results", "name": "Results", "order": 1}]}'::jsonb,
-    'Custom report: filter activities as needed; non-confidential items only in the data view',
+    'Custom report: filter activities as needed',
     1,
     1
   )

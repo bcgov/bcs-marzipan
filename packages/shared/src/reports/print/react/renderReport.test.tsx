@@ -119,6 +119,8 @@ describe('renderPrintReportFragmentHtml', () => {
     });
 
     expect(html).toContain('data-report-template="LOOK_AHEAD"');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
     expect(html).toContain('Investment of $500M');
     expect(html).not.toContain('Minister announces housing investment');
     expect(html).not.toContain('Event planner:');
@@ -192,6 +194,8 @@ describe('renderPrintReportFragmentHtml', () => {
     });
 
     expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
     expect(html).toContain('<strong>Minister announces housing investment</strong>');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'

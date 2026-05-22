@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { PrintRichText } from './PrintRichText';
 import {
+  type ColumnFlags,
   type PrintReportVariant,
   type PrintRowViewModel,
   splitActivityDisplayIdForPrint,
@@ -13,14 +14,37 @@ function isLookAheadRollupVariant(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead' || variant === 'execLookAhead';
 }
 
-/** Corporate Look Ahead: executive summary inline with ISSUE/FYI flags. */
+/** Corporate Look Ahead: executive summary (flags render as badges above). */
 function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead';
 }
 
-/** Exec Look Ahead: title + summary inline with ISSUE/FYI flags. */
+/** Exec Look Ahead: title + inline summary (flags render as badges above). */
 function narrativeIsExecTitleSummaryInline(variant: PrintReportVariant): boolean {
   return variant === 'execLookAhead';
+}
+
+/** Confidential, Issue, and FYI badges on one line at the top of Activity details. */
+function LookAheadActivityBadges({ flags }: { flags: ColumnFlags }) {
+  if (!flags.isConfidential && !flags.isIssue && !flags.isFyi) {
+    return null;
+  }
+
+  return (
+    <div className="corpcal-print-flags">
+      {flags.isConfidential ? (
+        <span className="corpcal-print-pill corpcal-print-pill-confidential">
+          Confidential
+        </span>
+      ) : null}
+      {flags.isIssue ? (
+        <span className="corpcal-print-pill corpcal-print-pill-issue">Issue</span>
+      ) : null}
+      {flags.isFyi ? (
+        <span className="corpcal-print-pill corpcal-print-pill-fyi">FYI</span>
+      ) : null}
+    </div>
+  );
 }
 
 function NarrativeInlineFlag({ label }: { label: string }) {
@@ -220,20 +244,17 @@ function ActivityDetailsCell({
   variant: PrintReportVariant;
   showEventLead: boolean;
 }) {
-  const flags: { key: string; label: string; className: string }[] = [];
-  if (
-    row.flags.isIssue &&
-    !narrativeIsExecutiveSummaryInline(variant) &&
-    !narrativeIsExecTitleSummaryInline(variant)
-  ) {
-    flags.push({
+  const useLookAheadBadges = isLookAheadRollupVariant(variant);
+  const legacyFlags: { key: string; label: string; className: string }[] = [];
+  if (!useLookAheadBadges && row.flags.isIssue) {
+    legacyFlags.push({
       key: 'issue',
       label: 'ISSUE',
       className: 'corpcal-print-flag',
     });
   }
-  if (row.flags.isConfidential) {
-    flags.push({
+  if (!useLookAheadBadges && row.flags.isConfidential) {
+    legacyFlags.push({
       key: 'confidential',
       label: 'CONFIDENTIAL',
       className: 'corpcal-print-flag corpcal-print-flag-alert',
@@ -255,9 +276,11 @@ function ActivityDetailsCell({
 
   return (
     <div className="corpcal-print-stack-md">
-      {flags.length > 0 ? (
+      {useLookAheadBadges ? <LookAheadActivityBadges flags={row.flags} /> : null}
+
+      {legacyFlags.length > 0 ? (
         <div className="corpcal-print-flags">
-          {flags.map((flag) => (
+          {legacyFlags.map((flag) => (
             <span key={flag.key} className={flag.className}>
               {flag.label}
             </span>
@@ -268,10 +291,6 @@ function ActivityDetailsCell({
       {narrativeIsExecutiveSummaryInline(variant) ? (
         <>
           <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
-            {row.flags.isIssue ? <NarrativeInlineFlag label="ISSUE" /> : null}
-            {row.flags.isIssue && row.flags.isFyi ? ' ' : null}
-            {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
-            {row.flags.isIssue || row.flags.isFyi ? ' ' : null}
             <PrintRichText
               value={row.executiveSummaryStored}
               className="corpcal-print-rich corpcal-print-rich-inline"
@@ -286,13 +305,6 @@ function ActivityDetailsCell({
       ) : narrativeIsExecTitleSummaryInline(variant) ? (
         <>
           <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
-            {row.flags.isIssue ? <NarrativeInlineFlag label="ISSUE" /> : null}
-            {row.flags.isIssue && row.flags.isFyi ? ' ' : null}
-            {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
-            {(row.flags.isIssue || row.flags.isFyi) &&
-            (row.title || row.summaryStored)
-              ? ' '
-              : null}
             {row.title ? <strong>{row.title}</strong> : null}
             {row.title && row.summaryStored ? ' ' : null}
             <PrintRichText

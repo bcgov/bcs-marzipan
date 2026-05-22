@@ -48,6 +48,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-accent-blue-soft: var(--corpcal-print-accent-blue-soft);
   --print-accent-amber: var(--corpcal-print-accent-amber);
   --print-accent-amber-soft: var(--corpcal-print-accent-amber-soft);
+  --print-accent-purple: var(--corpcal-print-accent-purple);
+  --print-accent-purple-soft: var(--corpcal-print-accent-purple-soft);
   /** Look Ahead / Exec: planner + translations foreground (WCAG on table + zebra striping). */
   --print-look-ahead-accent-green: var(--bcsds-green-90);
   --print-status-new: #b7e8ea;
@@ -417,20 +419,20 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--corpcal-surface);
   color: var(--print-ink-muted);
 }
-.corpcal-print-pill-issue {
+.corpcal-print-pill-confidential {
   border: 1px solid color-mix(in oklch, var(--bcsds-red-90) 20%, transparent);
   background: var(--print-accent-red-soft);
   color: var(--print-accent-red);
 }
-.corpcal-print-pill-confidential {
-  border: 1px solid color-mix(in oklch, var(--bcsds-gold-80) 30%, transparent);
-  background: var(--print-accent-amber-soft);
-  color: #0f172a;
+.corpcal-print-pill-issue {
+  border: 1px solid color-mix(in oklch, var(--print-accent-purple) 25%, transparent);
+  background: var(--print-accent-purple-soft);
+  color: var(--print-accent-purple);
 }
 .corpcal-print-pill-fyi {
   border: 1px solid color-mix(in oklch, var(--bc-gold) 45%, transparent);
   background: color-mix(in oklch, var(--bc-gold) 22%, var(--corpcal-surface));
-  color: var(--print-ink);
+  color: #0f172a;
 }
 .corpcal-print-pill-la-new {
   border: 1px solid transparent;
