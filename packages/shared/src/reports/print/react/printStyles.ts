@@ -358,6 +358,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 .corpcal-print-tbd-strong {
   font-weight: 700;
+  white-space: nowrap;
 }
 .corpcal-print-meta-faint {
   font-size: 1em;

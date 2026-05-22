@@ -149,35 +149,45 @@ function DateTimeCell({
 
   return (
     <div className="corpcal-print-stack">
-      {dateRange ? (
-        <div>
-          <span className={valueClass} aria-label={dateRangeAriaLabel}>
-            {dateRange}
-          </span>
-        </div>
-      ) : null}
-      {dateTime.dateStatus ? (
-        <div>
-          <span className="corpcal-print-inline-status">
-            {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
-          </span>
+      {dateRange || dateTime.dateStatus ? (
+        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
+          {dateRange ? (
+            <span className={valueClass} aria-label={dateRangeAriaLabel}>
+              {dateRange}
+            </span>
+          ) : null}
+          {dateTime.dateStatus ? (
+            <>
+              {dateRange ? (
+                <span className="corpcal-print-inline-sep" aria-hidden>
+                  ·
+                </span>
+              ) : null}
+              <span className="corpcal-print-inline-status">
+                {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
+              </span>
+            </>
+          ) : null}
         </div>
       ) : null}
       {showTimeLine ? (
-        <>
+        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
           {dateTime.startTime ? (
-            <div>
-              <span className={valueClass}>{dateTime.startTime}</span>
-            </div>
+            <span className={valueClass}>{dateTime.startTime}</span>
           ) : null}
           {dateTime.timeStatus ? (
-            <div>
+            <>
+              {dateTime.startTime ? (
+                <span className="corpcal-print-inline-sep" aria-hidden>
+                  ·
+                </span>
+              ) : null}
               <span className="corpcal-print-inline-status">
                 {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
               </span>
-            </div>
+            </>
           ) : null}
-        </>
+        </div>
       ) : null}
       {dateTime.lookAheadStatus ? (
         <div>
