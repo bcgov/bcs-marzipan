@@ -446,7 +446,6 @@ export class ReportsService {
       const filters = reportDataQueryToActivityFindAllFilters(query);
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
-      activities = activities.filter((a) => !a.isConfidential);
       const report: ReportResponse = {
         id: -1,
         name: 'custom',
@@ -557,9 +556,7 @@ export class ReportsService {
 
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
-      const filtered = activities.filter(
-        (a) => !omittedActivityIds.has(a.id) && !a.isConfidential
-      );
+      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({
         id: sectionConfig.id,
