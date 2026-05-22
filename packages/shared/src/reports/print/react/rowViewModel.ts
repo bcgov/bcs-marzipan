@@ -15,7 +15,7 @@ export type PrintReportVariant =
   | 'lookAhead'
   /** 30/60/90: title + summary, classic chrome. */
   | 'thirtySixtyNinety'
-  /** Exec Look Ahead: title + summary, classic chrome; distinct PDF template slug. */
+  /** Exec Look Ahead: title + inline summary, significance, venue; distinct PDF template slug. */
   | 'execLookAhead';
 
 /** How activity start/end dates render in rollup table column 1. */
@@ -109,6 +109,8 @@ export interface PrintRowViewModel {
   summaryStored: string | null;
   /** Rich executive summary (Corporate Look Ahead column 3). */
   executiveSummaryStored: string | null;
+  /** Rich significance (Exec Look Ahead activity details). */
+  significanceStored: string | null;
   /** Comms contact marked lead (`event_lead` report field). */
   eventLeadStored: string | null;
   release: ReleaseBlock;
@@ -352,6 +354,7 @@ export function toPrintRowViewModel(
     title: activity.title?.trim() ?? '',
     summaryStored: toNonEmpty(activity.summary),
     executiveSummaryStored: toNonEmpty(activity.executiveSummary),
+    significanceStored: toNonEmpty(activity.significance),
     eventLeadStored: getCommsContactLeadDisplayName(activity),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),

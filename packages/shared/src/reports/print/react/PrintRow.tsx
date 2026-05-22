@@ -13,9 +13,14 @@ function isLookAheadRollupVariant(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead' || variant === 'execLookAhead';
 }
 
-/** Column‑3 narrative: executive summary vs title + summary. */
+/** Corporate Look Ahead: executive summary inline with ISSUE/FYI flags. */
 function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead';
+}
+
+/** Exec Look Ahead: title + summary inline with ISSUE/FYI flags. */
+function narrativeIsExecTitleSummaryInline(variant: PrintReportVariant): boolean {
+  return variant === 'execLookAhead';
 }
 
 function NarrativeInlineFlag({ label }: { label: string }) {
@@ -216,7 +221,11 @@ function ActivityDetailsCell({
   showEventLead: boolean;
 }) {
   const flags: { key: string; label: string; className: string }[] = [];
-  if (row.flags.isIssue && variant !== 'lookAhead') {
+  if (
+    row.flags.isIssue &&
+    !narrativeIsExecutiveSummaryInline(variant) &&
+    !narrativeIsExecTitleSummaryInline(variant)
+  ) {
     flags.push({
       key: 'issue',
       label: 'ISSUE',
@@ -236,7 +245,10 @@ function ActivityDetailsCell({
   if (row.venue.name) venueLines.push(row.venue.name);
   if (row.venue.address) venueLines.push(row.venue.address);
 
-  const showVenuePlanner = variant !== 'lookAhead';
+  const showVenue =
+    variant === 'execLookAhead' || variant === 'thirtySixtyNinety';
+  const showEventPlanner = variant === 'thirtySixtyNinety';
+  const showLastUpdatedInDetails = variant === 'execLookAhead';
   const eventPlannerLeadClass = isLookAheadRollupVariant(variant)
     ? 'corpcal-print-meta-look-ahead-green'
     : 'corpcal-print-meta-faint';
@@ -271,6 +283,25 @@ function ActivityDetailsCell({
             </div>
           ) : null}
         </>
+      ) : narrativeIsExecTitleSummaryInline(variant) ? (
+        <>
+          <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
+            {row.flags.isIssue ? <NarrativeInlineFlag label="ISSUE" /> : null}
+            {row.flags.isIssue && row.flags.isFyi ? ' ' : null}
+            {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
+            {(row.flags.isIssue || row.flags.isFyi) &&
+            (row.title || row.summaryStored)
+              ? ' '
+              : null}
+            {row.title ? <strong>{row.title}</strong> : null}
+            {row.title && row.summaryStored ? ' ' : null}
+            <PrintRichText
+              value={row.summaryStored}
+              className="corpcal-print-rich corpcal-print-rich-inline"
+            />
+          </div>
+          <PrintRichText value={row.significanceStored} />
+        </>
       ) : (
         <>
           {row.title ? (
@@ -284,13 +315,19 @@ function ActivityDetailsCell({
         </>
       )}
 
-      {showVenuePlanner && venueLines.length > 0 ? (
+      {showVenue && venueLines.length > 0 ? (
         <div className="corpcal-print-meta-strong">{venueLines.join(', ')}</div>
       ) : null}
 
-      {showVenuePlanner && row.eventPlannerLead ? (
+      {showEventPlanner && row.eventPlannerLead ? (
         <div className={eventPlannerLeadClass}>
           Event planner: {row.eventPlannerLead}
+        </div>
+      ) : null}
+
+      {showLastUpdatedInDetails && row.lastUpdated ? (
+        <div className="corpcal-print-meta-faint">
+          Last updated {row.lastUpdated}
         </div>
       ) : null}
     </div>
@@ -350,7 +387,8 @@ function ActivityCell({
   variant: PrintReportVariant;
 }) {
   const { activityLink, lastUpdated } = row;
-  const showUpdated = variant !== 'lookAhead';
+  const showUpdated =
+    variant !== 'lookAhead' && variant !== 'execLookAhead';
   const splitId = isLookAheadRollupVariant(variant)
     ? splitActivityDisplayIdForPrint(activityLink.label)
     : null;
@@ -384,7 +422,9 @@ function ActivityCell({
         )}
       </div>
       {showUpdated && lastUpdated ? (
-        <div className="corpcal-print-meta-faint">Updated {lastUpdated}</div>
+        <div className="corpcal-print-meta-faint">
+          Last updated {lastUpdated}
+        </div>
       ) : null}
     </div>
   );

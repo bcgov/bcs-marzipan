@@ -647,7 +647,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     3,
     true,
     'team',
-    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection"], "printTemplate": "lookAheadV1", "sections": [{"id": "events", "name": "Events", "uiDisplayName": "Events", "reportDisplayName": "Events, speeches and releases (inside government)", "legendColor": "#2C7DA0", "order": 1, "filter": {"lookAheadSection": "events"}, "printPerDayColumnHeaderRepeat": true}, {"id": "issues", "name": "Issues", "uiDisplayName": "Issues", "reportDisplayName": "Issues and reports", "legendColor": "#C1121F", "order": 2, "filter": {"lookAheadSection": "issues"}}]}'::jsonb,
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "significance", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection", "lastUpdatedDateTime"], "printTemplate": "lookAheadV2", "sections": [{"id": "events", "name": "Events", "uiDisplayName": "Events", "reportDisplayName": "Events, speeches and releases (inside government)", "legendColor": "#4074A5", "order": 1, "filter": {"lookAheadSection": "events"}, "printPerDayColumnHeaderRepeat": true}, {"id": "issues", "name": "Issues", "uiDisplayName": "Issues", "reportDisplayName": "Issues and reports", "legendColor": "#ccc0d9", "order": 2, "filter": {"lookAheadSection": "issues"}}]}'::jsonb,
     'Executive look ahead report with the same layout as Look Ahead (events and issues)',
     1,
     1

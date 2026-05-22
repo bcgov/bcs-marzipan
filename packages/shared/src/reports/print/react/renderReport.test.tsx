@@ -123,7 +123,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Minister announces housing investment');
     expect(html).not.toContain('Event planner:');
     expect(html).not.toContain('Legislative Assembly');
-    expect(html).not.toContain('Updated Apr');
+    expect(html).not.toContain('Last updated Apr');
     expect(html).not.toContain('Apr 27, 2026');
   });
 
@@ -171,20 +171,38 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Event lead:');
   });
 
-  it('renders exec look-ahead print with title and summary in the activity details column', () => {
-    const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
+  it('renders exec look-ahead print with title, inline summary, venue, and last updated in activity details', () => {
+    const activityWithSignificance = {
+      ...BASE_ACTIVITY,
+      significance: 'High visibility announcement for cabinet briefing.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'exec',
+        displayName: 'Executive Look Ahead Report',
+      },
+      sections: [
+        { ...FIXTURE.sections[0], activities: [activityWithSignificance] },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('exec', fixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
     expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
-    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain('<strong>Minister announces housing investment</strong>');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
+    expect(html).toContain('High visibility announcement for cabinet briefing.');
+    expect(html).toContain('Victoria, Legislative Assembly');
+    expect(html).toContain('Last updated Apr');
     expect(html).not.toContain('Investment of $500M');
     expect(html).not.toContain('Apr 27, 2026');
-    expect(html).toContain('Event planner:');
-    expect(html).toContain('Updated Apr');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Event lead:');
   });
 
   it('renders thirty-sixty-ninety like exec body chrome with title + summary', () => {
@@ -213,7 +231,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Apr 27, 2026');
     expect(html).toContain('Event planner:');
     expect(html).toContain('Legislative Assembly');
-    expect(html).toContain('Updated Apr');
+    expect(html).toContain('Last updated Apr');
   });
 
   it('renders the planning placeholder as a React fragment', () => {
