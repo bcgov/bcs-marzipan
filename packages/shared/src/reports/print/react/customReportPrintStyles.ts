@@ -3,7 +3,7 @@ import { REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS } from '../../reportPrintDimen
 export const CUSTOM_REPORT_PRINT_STYLES = `
 .custom-report-root {
   font-family: BCSans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --print-body-font-size: 14px;
+  --print-body-font-size: 16px;
   font-size: var(--print-body-font-size);
   line-height: 1.4;
   color: #0f172a;

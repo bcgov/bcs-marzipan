@@ -56,7 +56,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   --print-status-changed: var(--status-yellow);
 
   /* Body size for the whole subtree; descendant font sizes use em so they scale with this root (browser zoom still applies to the page). */
-  --print-body-font-size: 14px;
+  --print-body-font-size: 16px;
   font-family: 'BCSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: var(--print-body-font-size);
   line-height: 1.4;
