@@ -70,6 +70,7 @@ import {
   useRemoveActivityFlag,
   useUpsertActivityFlag,
 } from '@/hooks/useCalendar';
+import { useLiveActivitySyncContext } from '@/hooks/useLiveActivitySyncContext';
 import {
   getLookAheadSectionLabelFromRows,
   useLookAheadSectionRows,
@@ -109,6 +110,10 @@ import {
   parseDateOnlyString,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import {
+  consumeRemoteHighlightIds,
+  LIVE_ROW_HIGHLIGHT_ANIMATION_MS,
+} from '@/lib/liveActivitySync';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
@@ -1105,7 +1110,33 @@ export function ActivityTable({
     }
   }, [filterState]);
 
-  const activitiesQuery = useActivityList(activityFilters);
+  const tableFetchHighlightPrevRef = useRef(false);
+  const { isSocketConnected } = useLiveActivitySyncContext();
+
+  const [tableRemoteHighlightIds, setTableRemoteHighlightIds] = useState<
+    ReadonlySet<number>
+  >(() => new Set());
+
+  const activitiesQuery = useActivityList(activityFilters, {
+    suppressPollingWhileLive: isSocketConnected,
+  });
+
+  useEffect(() => {
+    const wasFetching = tableFetchHighlightPrevRef.current;
+    tableFetchHighlightPrevRef.current = activitiesQuery.isFetching;
+    if (!wasFetching || activitiesQuery.isFetching) return;
+
+    const ids = consumeRemoteHighlightIds();
+    if (ids.length === 0) return;
+
+    setTableRemoteHighlightIds(new Set(ids));
+    const t = window.setTimeout(
+      () => setTableRemoteHighlightIds(new Set()),
+      LIVE_ROW_HIGHLIGHT_ANIMATION_MS
+    );
+    return () => window.clearTimeout(t);
+  }, [activitiesQuery.isFetching]);
+
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
@@ -1752,12 +1783,17 @@ export function ActivityTable({
               <tbody>
                 {pageRows.map((row) => {
                   const isNewRow = newRowIds.has(row.original.id);
+                  const isHighlightRow = tableRemoteHighlightIds.has(
+                    row.original.id
+                  );
                   return (
                     <tr
                       key={row.id}
-                      className={`group/row ${tableBodyRow} cursor-pointer ${
-                        isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                      }`}
+                      className={cn(
+                        `group/row ${tableBodyRow} cursor-pointer`,
+                        isNewRow && 'animate-in fade-in-0 duration-300',
+                        isHighlightRow && 'live-row-highlight'
+                      )}
                       tabIndex={0}
                       onClick={(e) => {
                         if (

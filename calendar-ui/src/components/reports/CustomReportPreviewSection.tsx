@@ -14,6 +14,8 @@ interface CustomReportPreviewSectionProps {
   section: ReportSectionData;
   config: CustomReportFieldConfig[];
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
+  /** In-app preview: flash matching activity rows briefly after remote updates. */
+  highlightedActivityIds?: ReadonlySet<number>;
 }
 
 /**
@@ -24,6 +26,7 @@ export function CustomReportPreviewSection({
   section,
   config,
   onFieldsChange,
+  highlightedActivityIds,
 }: CustomReportPreviewSectionProps) {
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -51,6 +54,7 @@ export function CustomReportPreviewSection({
           activities={[]}
           config={config}
           onFieldsChange={onFieldsChange}
+          highlightedActivityIds={highlightedActivityIds}
         />
       </div>
     );
@@ -63,6 +67,7 @@ export function CustomReportPreviewSection({
           activities={paginatedActivities}
           config={config}
           onFieldsChange={onFieldsChange}
+          highlightedActivityIds={highlightedActivityIds}
         />
       </TableScrollContainer>
       {totalItems > 0 ? (

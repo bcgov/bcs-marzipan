@@ -61,6 +61,7 @@ export function PrintRow({
   variant,
   showEventLead = false,
   omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   row: PrintRowViewModel;
   variant: PrintReportVariant;
@@ -68,9 +69,15 @@ export function PrintRow({
   showEventLead?: boolean;
   /** When true, skip the Release column; Activity details uses the wider layout. */
   omitReleaseColumn?: boolean;
+  /**
+   * In-app preview: flash rows after remote activity updates (`live-row-highlight` CSS in shell).
+   */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
+  const highlighted = highlightActivityIds?.has(row.activityId) ?? false;
+
   return (
-    <tr>
+    <tr className={highlighted ? 'live-row-highlight' : undefined}>
       <td className="corpcal-print-col-1">
         <DateTimeCell row={row} variant={variant} />
       </td>

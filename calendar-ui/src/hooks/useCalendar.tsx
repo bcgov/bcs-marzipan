@@ -30,23 +30,42 @@ import {
   type ActivityListQueryParams,
 } from '../lib/activity-query-utils';
 import { showErrorToast } from '../lib/error-toast';
+import { scheduleLiveActivityRefresh } from '../lib/liveActivitySync';
 
 export type { ActivityListQueryParams };
 
 /** ActivityList stale time in milliseconds. */
 const ACTIVITY_LIST_STALE_TIME = 0;
 
-/** Poll activity list this often so other clients' creates/updates appear without refresh. */
-const ACTIVITY_LIST_REFETCH_INTERVAL = 15_000;
+/**
+ * Poll when Socket.IO is disconnected (fallback). When live sync runs, pass
+ * `suppressPollingWhileLive: true` to rely on invalidate-driven refetches.
+ */
+export const ACTIVITY_LIST_REFETCH_FALLBACK_MS = 10_000;
 
-// List (10s stale; poll so other clients' changes appear without refresh)
-export function useActivityList(filters: ActivityListQueryParams = {}) {
+export type UseActivityListOptions = {
+  /**
+   * When true, skips interval polling ({@link LiveActivitySyncProvider} pushes invalidates).
+   */
+  suppressPollingWhileLive?: boolean;
+};
+
+// List — optional polling fallback when realtime is unavailable
+export function useActivityList(
+  filters: ActivityListQueryParams = {},
+  options?: UseActivityListOptions
+) {
   const normalized = normalizeListParams(filters);
+  const refetchInterval =
+    options?.suppressPollingWhileLive === true
+      ? false
+      : ACTIVITY_LIST_REFETCH_FALLBACK_MS;
+
   return useQuery<ActivityResponse[]>({
     queryKey: ['activities', 'list', normalized],
     queryFn: () => fetchActivities(normalized),
     staleTime: ACTIVITY_LIST_STALE_TIME,
-    refetchInterval: ACTIVITY_LIST_REFETCH_INTERVAL,
+    refetchInterval,
     refetchIntervalInBackground: false,
   });
 }
@@ -71,6 +90,7 @@ export function useCreateActivity() {
         queryKey: ['activities'],
         refetchType: 'none',
       });
+      scheduleLiveActivityRefresh(qc, { source: 'local' });
     },
   });
 }
@@ -109,6 +129,7 @@ export function useUpdateActivity() {
     onSettled: (_, __, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
     },
   });
 }
@@ -141,9 +162,11 @@ export function useDeleteActivity() {
         });
       }
     },
-    onSettled: (_, __, id) => {
+    onSettled: (_, __, vars) => {
+      const activityId = vars.id;
       void qc.invalidateQueries({ queryKey: ['activities'] });
-      void qc.invalidateQueries({ queryKey: ['activity', id] });
+      void qc.invalidateQueries({ queryKey: ['activity', activityId] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId });
     },
   });
 }
@@ -157,6 +180,7 @@ export function useRestoreActivity() {
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
     },
   });
 }
@@ -170,6 +194,7 @@ export function useSoftDeleteActivity() {
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
     },
   });
 }
@@ -183,6 +208,7 @@ export function useRequestDeleteActivity() {
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
     },
   });
 }
@@ -218,6 +244,10 @@ export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        activityId: vars.activityId,
+      });
       toast.success(
         vars.assigneeName
           ? `Activity assigned to ${vars.assigneeName}`
@@ -246,6 +276,10 @@ export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        activityId: vars.activityId,
+      });
       toast.success(
         vars.assigneeName
           ? `Activity unassigned from ${vars.assigneeName}`

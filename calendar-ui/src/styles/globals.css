@@ -270,3 +270,17 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+@keyframes live-row-highlight-fade {
+  0% {
+    background-color: rgb(254 249 195 / 0.55);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Cross-user refresh flash (reports preview + Look Ahead table). Animated from globals.css in app shell only. */
+.live-row-highlight {
+  animation: live-row-highlight-fade 1.5s ease-out forwards;
+}

@@ -29,6 +29,10 @@ import {
 } from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
 import {
+  consumeRemoteHighlightIds,
+  LIVE_ROW_HIGHLIGHT_ANIMATION_MS,
+} from '@/lib/liveActivitySync';
+import {
   handleReportExport,
   type ReportExportFormat,
 } from '@/lib/report-export';
@@ -36,6 +40,7 @@ import {
   buildReportDataRequestParamsFromActivityPreferences,
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
+import { reportQueryKeys } from '@/lib/reportQueryKeys';
 import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
@@ -125,6 +130,7 @@ export function ReportsPage() {
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
+  const fetchHighlightPrevRef = useRef(false);
 
   const { data: reports = [] } = useReports();
 
@@ -172,14 +178,36 @@ export function ReportsPage() {
     defaultsAppliedForReportRef.current = activeReport;
   }, [activeReport, preferences.filterState, setPreferences]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['report-data', activeReport, reportQueryParamsKey],
+  const [highlightedRemoteActivityIds, setHighlightedRemoteActivityIds] =
+    useState(() => new Set<number>());
+
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
     queryFn: () =>
       activeReport
         ? fetchReportData(activeReport, reportQueryParams)
         : Promise.reject(new Error('No report selected')),
     enabled: !!activeReport,
   });
+
+  useEffect(() => {
+    const wasFetching = fetchHighlightPrevRef.current;
+    fetchHighlightPrevRef.current = isFetching;
+    if (!wasFetching || isFetching) return;
+
+    const ids = consumeRemoteHighlightIds();
+    if (ids.length === 0) return;
+
+    setHighlightedRemoteActivityIds(new Set(ids));
+    const t = window.setTimeout(
+      () => setHighlightedRemoteActivityIds(new Set()),
+      LIVE_ROW_HIGHLIGHT_ANIMATION_MS
+    );
+    return () => window.clearTimeout(t);
+  }, [isFetching]);
+
+  const reportHighlightSet =
+    highlightedRemoteActivityIds as ReadonlySet<number>;
 
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -313,14 +341,19 @@ export function ReportsPage() {
                 value={report.name}
                 className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
               >
-                {isLoading ? (
+                {isLoading && !data ? (
                   <div className="flex min-h-0 flex-1 items-center justify-center py-12">
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
                   isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
+                      <div
+                        className={cn(
+                          'report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white transition-opacity duration-150',
+                          isFetching && 'opacity-[0.98]'
+                        )}
+                      >
                         <div
                           className="min-h-0 min-w-0 flex-1 overflow-auto px-6 pt-0 pb-6"
                           aria-label="Report preview"
@@ -344,6 +377,7 @@ export function ReportsPage() {
                             <PrintReportPreview
                               reportTypeName={report.name}
                               data={data}
+                              highlightActivityIds={reportHighlightSet}
                             />
                           </div>
                         </div>
@@ -384,6 +418,7 @@ export function ReportsPage() {
                               section={section}
                               config={customReportFields}
                               onFieldsChange={setCustomReportFields}
+                              highlightedActivityIds={reportHighlightSet}
                             />
                           </TabsContent>
                         ))}

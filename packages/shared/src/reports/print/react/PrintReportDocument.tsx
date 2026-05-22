@@ -117,10 +117,13 @@ export function PrintReportDocument({
   data,
   variant,
   activityBaseUrl,
+  highlightActivityIds,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
   activityBaseUrl: string;
+  /** In-app preview: flash rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const sections = collectSortedSections(data);
   const hasAny = reportHasAnyActivities(sections);
@@ -147,6 +150,7 @@ export function PrintReportDocument({
               variant={variant}
               activityBaseUrl={activityBaseUrl}
               showEventLead={showEventLead}
+              highlightActivityIds={highlightActivityIds}
             />
           ))
         )}
@@ -160,11 +164,13 @@ function SectionGroup({
   variant,
   activityBaseUrl,
   showEventLead,
+  highlightActivityIds,
 }: {
   section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
   showEventLead: boolean;
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
   if (dateKeys.length === 0) return null;
@@ -195,6 +201,7 @@ function SectionGroup({
         showPerDayPrintChrome={section.showPerDayPrintChrome}
         showEventLead={showEventLead}
         omitReleaseColumn={section.omitReleaseColumn}
+        highlightActivityIds={highlightActivityIds}
       />
     </section>
   );

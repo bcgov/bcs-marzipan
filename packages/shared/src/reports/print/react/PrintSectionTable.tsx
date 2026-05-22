@@ -178,6 +178,7 @@ export function PrintGroupedSectionTable({
   showPerDayPrintChrome,
   showEventLead = false,
   omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   sectionPrintLabel: string;
   /** When set on the section config, table header cells inherit the legend swatch. */
@@ -194,6 +195,8 @@ export function PrintGroupedSectionTable({
   showEventLead?: boolean;
   /** When true, omit the Release column; Activity details uses the freed width. */
   omitReleaseColumn?: boolean;
+  /** In-app preview: rows to flash briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const columnSpan = printSectionColumnCount(omitReleaseColumn);
   const tableClassName = `${printSectionTableClassName(omitReleaseColumn)} corpcal-print-section-rollup-table`;
@@ -247,6 +250,7 @@ export function PrintGroupedSectionTable({
                   variant={variant}
                   showEventLead={showEventLead}
                   omitReleaseColumn={omitReleaseColumn}
+                  highlightActivityIds={highlightActivityIds}
                 />
               ))}
             </tbody>
@@ -261,6 +265,7 @@ export function PrintGroupedSectionTable({
                   variant={variant}
                   showEventLead={showEventLead}
                   omitReleaseColumn={omitReleaseColumn}
+                  highlightActivityIds={highlightActivityIds}
                 />
               ))
             )}
@@ -292,6 +297,7 @@ export function PrintSectionTable({
   showSectionHeading = true,
   showEventLead = false,
   omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   sectionName: string;
   rows: PrintRowViewModel[];
@@ -301,6 +307,7 @@ export function PrintSectionTable({
   showSectionHeading?: boolean;
   showEventLead?: boolean;
   omitReleaseColumn?: boolean;
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const resolvedLegend =
     sectionLegendColor === undefined ? null : sectionLegendColor;
@@ -332,6 +339,7 @@ export function PrintSectionTable({
                 variant={variant}
                 showEventLead={showEventLead}
                 omitReleaseColumn={omitReleaseColumn}
+                highlightActivityIds={highlightActivityIds}
               />
             ))}
           </tbody>

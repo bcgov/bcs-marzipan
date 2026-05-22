@@ -2738,6 +2738,8 @@ export class ActivitiesService {
       await tx.delete(activities).where(eq(activities.id, id));
     });
 
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
     return { message: `Activity #${id} deleted successfully` };
   }
 
@@ -3126,7 +3128,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3158,6 +3160,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3252,7 +3258,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3284,6 +3290,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3370,7 +3380,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3402,6 +3412,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**

@@ -76,6 +76,7 @@ export interface CustomReportPreviewTableProps {
   /** When set, column resize and reorder update `config` (order / width). */
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
   className?: string;
+  highlightedActivityIds?: ReadonlySet<number>;
 }
 
 interface SortableReportHeaderProps {
@@ -175,6 +176,7 @@ export function CustomReportPreviewTable({
   config,
   onFieldsChange,
   className,
+  highlightedActivityIds,
 }: CustomReportPreviewTableProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     selectedColumnOrderFromConfig(config)
@@ -382,7 +384,12 @@ export function CustomReportPreviewTable({
             table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={cn(tableBodyRow, 'odd:bg-white even:bg-slate-50/60')}
+                className={cn(
+                  tableBodyRow,
+                  'odd:bg-white even:bg-slate-50/60',
+                  highlightedActivityIds?.has(row.original.id) &&
+                    'live-row-highlight'
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td

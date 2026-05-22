@@ -38,9 +38,12 @@ function resolveActivityBaseUrl(): string {
 export function PrintReportPreview({
   reportTypeName,
   data,
+  highlightActivityIds,
 }: {
   reportTypeName: string;
   data: ReportDataResponse;
+  /** In-app: flash preview rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const activityBaseUrl = useMemo(() => resolveActivityBaseUrl(), []);
 
@@ -53,6 +56,7 @@ export function PrintReportPreview({
       reportTypeName={reportTypeName}
       data={data}
       activityBaseUrl={activityBaseUrl}
+      highlightActivityIds={highlightActivityIds}
     />
   );
 }
@@ -61,22 +65,30 @@ function PrintReportPreviewRoot({
   reportTypeName,
   data,
   activityBaseUrl,
+  highlightActivityIds,
 }: {
   reportTypeName: ReactRenderableReportType;
   data: ReportDataResponse;
   activityBaseUrl: string;
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   let document: ReactNode;
   if (reportTypeName === 'planning') {
     document = <PrintPlanningDocument />;
   } else if (reportTypeName === 'custom') {
-    document = <PrintCustomReportDocument data={data} />;
+    document = (
+      <PrintCustomReportDocument
+        data={data}
+        highlightActivityIds={highlightActivityIds}
+      />
+    );
   } else {
     document = (
       <PrintReportDocument
         data={data}
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
+        highlightActivityIds={highlightActivityIds}
       />
     );
   }

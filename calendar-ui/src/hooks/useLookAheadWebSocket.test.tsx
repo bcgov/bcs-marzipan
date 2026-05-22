@@ -1,5 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ReactNode } from 'react';
+
+import { LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS } from '@/lib/liveActivitySync';
 
 import { useLookAheadWebSocket } from './useLookAheadWebSocket';
 
@@ -42,6 +46,18 @@ vi.mock('socket.io-client', () => ({
   io: vi.fn(() => getFakeSocket()),
 }));
 
+function Providers({
+  queryClient,
+  children,
+}: {
+  queryClient: QueryClient;
+  children: ReactNode;
+}) {
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
+
 function TestWrapper({ onActivityUpdate }: { onActivityUpdate?: () => void }) {
   useLookAheadWebSocket({ onActivityUpdate });
   return null;
@@ -50,22 +66,55 @@ function TestWrapper({ onActivityUpdate }: { onActivityUpdate?: () => void }) {
 describe('useLookAheadWebSocket', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('activityCreated', () => {
-    it('calls onActivityUpdate when activityCreated fires', () => {
+    it('calls legacy onActivityUpdate and debounces invalidateQueries', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
       const onActivityUpdate = vi.fn();
-      render(<TestWrapper onActivityUpdate={onActivityUpdate} />);
+
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper onActivityUpdate={onActivityUpdate} />
+        </Providers>
+      );
+
       getFakeSocket().emitEvent('activityCreated', { activityId: 1 });
 
       expect(onActivityUpdate).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS / 2);
+      expect(invalidateSpy).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(
+        LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS / 2 + 1
+      );
+      expect(invalidateSpy).toHaveBeenCalled();
+
+      invalidateSpy.mockRestore();
     });
   });
 
   describe('activityUpdated', () => {
-    it('calls onActivityUpdate when activityUpdated fires', () => {
+    it('calls legacy onActivityUpdate when activityUpdated fires', () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
       const onActivityUpdate = vi.fn();
-      render(<TestWrapper onActivityUpdate={onActivityUpdate} />);
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper onActivityUpdate={onActivityUpdate} />
+        </Providers>
+      );
       getFakeSocket().emitEvent('activityUpdated', { activityId: 1 });
 
       expect(onActivityUpdate).toHaveBeenCalledTimes(1);
@@ -74,7 +123,15 @@ describe('useLookAheadWebSocket', () => {
 
   describe('cleanup', () => {
     it('calls off and disconnect on unmount', () => {
-      const { unmount } = render(<TestWrapper />);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
+      const { unmount } = render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper />
+        </Providers>
+      );
       const socket = getFakeSocket();
       unmount();
 
@@ -84,15 +141,29 @@ describe('useLookAheadWebSocket', () => {
         'reconnect',
         expect.any(Function)
       );
-      expect(socket.off).toHaveBeenCalledWith('activityCreated');
-      expect(socket.off).toHaveBeenCalledWith('activityUpdated');
+      expect(socket.off).toHaveBeenCalledWith(
+        'activityCreated',
+        expect.any(Function)
+      );
+      expect(socket.off).toHaveBeenCalledWith(
+        'activityUpdated',
+        expect.any(Function)
+      );
       expect(socket.disconnect).toHaveBeenCalled();
     });
   });
 
   describe('subscription', () => {
     it('subscribes on connect and on manager reconnect', () => {
-      render(<TestWrapper />);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper />
+        </Providers>
+      );
       const socket = getFakeSocket();
 
       socket.emitEvent('connect', undefined);
