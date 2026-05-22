@@ -90,7 +90,10 @@ export function useCreateActivity() {
         queryKey: ['activities'],
         refetchType: 'none',
       });
-      scheduleLiveActivityRefresh(qc, { source: 'local' });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        invalidateActivities: true,
+      });
     },
   });
 }

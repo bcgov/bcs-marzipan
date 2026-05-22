@@ -11,11 +11,17 @@ export const LIVE_ROW_HIGHLIGHT_ANIMATION_MS = 1_500;
 const remoteHighlightActivityIds = new Set<number>();
 
 let debounceFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingInvalidateActivities = false;
 
 function flushInvalidate(queryClient: QueryClient): void {
   debounceFlushTimer = null;
+  const invalidateActivities = pendingInvalidateActivities;
+  pendingInvalidateActivities = false;
+
   void queryClient.invalidateQueries({ queryKey: reportQueryKeys.all });
-  void queryClient.invalidateQueries({ queryKey: ['activities'] });
+  if (invalidateActivities) {
+    void queryClient.invalidateQueries({ queryKey: ['activities'] });
+  }
 }
 
 export type LiveActivityRefreshSource = 'remote' | 'local';
@@ -24,6 +30,11 @@ export interface ScheduleLiveActivityRefreshOptions {
   /** Included for `source: remote` WebSocket payloads to drive row flashes after refetch. */
   activityId?: number;
   source: LiveActivityRefreshSource;
+  /**
+   * For `source: local`, whether the debounced flush also invalidates activity lists.
+   * Defaults to false because mutations already invalidate activities immediately.
+   */
+  invalidateActivities?: boolean;
 }
 
 /** Debounced invalidation of report data + activity lists (coalesces bursts). */
@@ -31,12 +42,16 @@ export function scheduleLiveActivityRefresh(
   queryClient: QueryClient,
   options: ScheduleLiveActivityRefreshOptions
 ): void {
-  if (
-    options.source === 'remote' &&
-    typeof options.activityId === 'number' &&
-    Number.isFinite(options.activityId)
-  ) {
-    remoteHighlightActivityIds.add(options.activityId);
+  if (options.source === 'remote') {
+    pendingInvalidateActivities = true;
+    if (
+      typeof options.activityId === 'number' &&
+      Number.isFinite(options.activityId)
+    ) {
+      remoteHighlightActivityIds.add(options.activityId);
+    }
+  } else if (options.invalidateActivities === true) {
+    pendingInvalidateActivities = true;
   }
 
   if (debounceFlushTimer !== null) {
@@ -63,5 +78,6 @@ export function __resetLiveActivitySyncForTests(): void {
     clearTimeout(debounceFlushTimer);
     debounceFlushTimer = null;
   }
+  pendingInvalidateActivities = false;
   remoteHighlightActivityIds.clear();
 }

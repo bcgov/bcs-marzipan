@@ -61,6 +61,49 @@ describe('liveActivitySync', () => {
     expect(consumeRemoteHighlightIds()).toEqual([]);
   });
 
+  it('local refresh invalidates reports only by default', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    scheduleLiveActivityRefresh(queryClient, {
+      source: 'local',
+      activityId: 7,
+    });
+    vi.advanceTimersByTime(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+
+    expect(
+      invalidateSpy.mock.calls.some(
+        (c) => c[0]?.queryKey?.[0] === 'report-data'
+      )
+    ).toBe(true);
+    expect(
+      invalidateSpy.mock.calls.some((c) => c[0]?.queryKey?.[0] === 'activities')
+    ).toBe(false);
+
+    invalidateSpy.mockRestore();
+  });
+
+  it('local refresh can invalidate activities when requested', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    scheduleLiveActivityRefresh(queryClient, {
+      source: 'local',
+      invalidateActivities: true,
+    });
+    vi.advanceTimersByTime(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+
+    expect(
+      invalidateSpy.mock.calls.some((c) => c[0]?.queryKey?.[0] === 'activities')
+    ).toBe(true);
+
+    invalidateSpy.mockRestore();
+  });
+
   it('consumes queued remote ids after invalidate window', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

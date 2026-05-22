@@ -3,9 +3,12 @@ import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactNode } from 'react';
 
-import { LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS } from '@/lib/liveActivitySync';
+import {
+  __resetLiveActivitySyncForTests,
+  LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS,
+} from '@/lib/liveActivitySync';
 
-import { useLookAheadWebSocket } from './useLookAheadWebSocket';
+import { useLiveActivitySync } from './useLiveActivitySync';
 
 const { getFakeSocket } = vi.hoisted(() => {
   const listeners = new Map<string, (data: unknown) => void>();
@@ -58,38 +61,37 @@ function Providers({
   );
 }
 
-function TestWrapper({ onActivityUpdate }: { onActivityUpdate?: () => void }) {
-  useLookAheadWebSocket({ onActivityUpdate });
+function TestWrapper() {
+  useLiveActivitySync();
   return null;
 }
 
-describe('useLookAheadWebSocket', () => {
+describe('useLiveActivitySync', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    __resetLiveActivitySyncForTests();
   });
 
   afterEach(() => {
+    __resetLiveActivitySyncForTests();
     vi.useRealTimers();
   });
 
   describe('activityCreated', () => {
-    it('calls legacy onActivityUpdate and debounces invalidateQueries', async () => {
+    it('debounces invalidateQueries for reports and activities', async () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false, gcTime: 0 } },
       });
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
-      const onActivityUpdate = vi.fn();
 
       render(
         <Providers queryClient={queryClient}>
-          <TestWrapper onActivityUpdate={onActivityUpdate} />
+          <TestWrapper />
         </Providers>
       );
 
       getFakeSocket().emitEvent('activityCreated', { activityId: 1 });
-
-      expect(onActivityUpdate).toHaveBeenCalledTimes(1);
 
       await vi.advanceTimersByTimeAsync(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS / 2);
       expect(invalidateSpy).not.toHaveBeenCalled();
@@ -104,20 +106,23 @@ describe('useLookAheadWebSocket', () => {
   });
 
   describe('activityUpdated', () => {
-    it('calls legacy onActivityUpdate when activityUpdated fires', () => {
+    it('debounces invalidateQueries when activityUpdated fires', async () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false, gcTime: 0 } },
       });
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-      const onActivityUpdate = vi.fn();
       render(
         <Providers queryClient={queryClient}>
-          <TestWrapper onActivityUpdate={onActivityUpdate} />
+          <TestWrapper />
         </Providers>
       );
       getFakeSocket().emitEvent('activityUpdated', { activityId: 1 });
 
-      expect(onActivityUpdate).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+      expect(invalidateSpy).toHaveBeenCalled();
+
+      invalidateSpy.mockRestore();
     });
   });
 

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   CALENDAR_SOCKET_IO_OPTIONS,
@@ -10,14 +10,6 @@ import { scheduleLiveActivityRefresh } from '@/lib/liveActivitySync';
 
 type ActivityTablePayload = { activityId: number };
 
-export interface UseLiveActivitySyncOptions {
-  /**
-   * Optional hook for tests or legacy callers; invoked on `activityCreated` /
-   * `activityUpdated` after a remote broadcast (before debounced invalidate).
-   */
-  legacyOnRemoteActivity?: () => void;
-}
-
 /**
  * Socket.IO subscriber for Look Ahead shared room; debounces TanStack invalidate of
  * report data + activity lists. Returns connection state so activity list polling
@@ -26,13 +18,8 @@ export interface UseLiveActivitySyncOptions {
  * Mount once via {@link LiveActivitySyncProvider}; consumers read
  * {@link useLiveActivitySyncContext} instead of calling this hook directly.
  */
-export function useLiveActivitySync(options: UseLiveActivitySyncOptions = {}): {
-  isSocketConnected: boolean;
-} {
+export function useLiveActivitySync(): { isSocketConnected: boolean } {
   const queryClient = useQueryClient();
-  const legacyRef = useRef(options.legacyOnRemoteActivity);
-  legacyRef.current = options.legacyOnRemoteActivity;
-
   const [isSocketConnected, setIsSocketConnected] = useState(false);
 
   useEffect(() => {
@@ -52,7 +39,6 @@ export function useLiveActivitySync(options: UseLiveActivitySyncOptions = {}): {
     };
 
     function handleRemoteTableEvent(payload: unknown): void {
-      legacyRef.current?.();
       let activityId: number | undefined;
       if (
         payload &&
