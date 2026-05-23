@@ -611,8 +611,9 @@ export const ActivityOverviewSection: React.FC<
                       <p>
                         Select if the activity is highly confidential or
                         sensitive. By default viewing the activity will be
-                        restricted to your team, and the Look Ahead report will
-                        publish limited details.
+                        restricted to your team. For Corporate Look Ahead, enter
+                        placeholder executive-summary copy; other reports may
+                        include summary fields as configured.
                       </p>
                       <p className="mt-2">Contact admin@email.com</p>
                     </PopoverContent>

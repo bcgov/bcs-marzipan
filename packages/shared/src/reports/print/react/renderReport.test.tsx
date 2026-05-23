@@ -604,6 +604,57 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('corpcal-print-per-day-column-header-row');
     expect(html).not.toContain('corpcal-print-rollup-thead-column-header-row');
   });
+
+  it('includes confidential activities in look-ahead with badge and executive summary', () => {
+    const confidentialActivity: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      isConfidential: true,
+      executiveSummary: 'Hold for GCPE.',
+      summary: 'Sensitive cabinet briefing details.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        { ...FIXTURE.sections[0], activities: [confidentialActivity] },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain('Hold for GCPE.');
+    expect(html).not.toContain('Sensitive cabinet briefing details.');
+  });
+
+  it('includes confidential activities in exec look-ahead with badge and summary', () => {
+    const confidentialActivity: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      isConfidential: true,
+      summary: 'Full summary text for executive readers.',
+      executiveSummary: 'Hold for GCPE.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'exec',
+        displayName: 'Executive Look Ahead Report',
+      },
+      sections: [
+        { ...FIXTURE.sections[0], activities: [confidentialActivity] },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('exec', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain('Full summary text for executive readers.');
+    expect(html).not.toContain('Hold for GCPE.');
+  });
 });
 
 describe('buildLookAheadReportPdfHeaderTemplateHtml', () => {

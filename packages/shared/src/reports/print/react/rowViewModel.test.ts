@@ -106,6 +106,14 @@ describe('buildTranslationsLine', () => {
 describe('toPrintRowViewModel', () => {
   const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
 
+  it('sets confidential flag on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      { ...BASE_ACTIVITY, isConfidential: true },
+      { activityBaseUrl: 'http://localhost:3000', variant: 'lookAhead' }
+    );
+    expect(row.flags.isConfidential).toBe(true);
+  });
+
   it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
     const dated = {
       ...BASE_ACTIVITY,
