@@ -627,12 +627,14 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
    Puppeteer PDF stays unaffected (the wrapper is only injected by the in-app
    preview component).
    Bands: section title (top: 0) -> flat rollup: thead column header | per-day:
-   day heading only (clone column header row is not sticky). Tight preview-only
-   paddings keep sticky offsets aligned so content does not show between bands.
-   --corpcal-print-sticky-section-band must match the painted height of the
-   section heading row under these preview overrides (adjust if typography changes). */
+   day heading then cloned column header row. Tight preview-only paddings keep
+   sticky offsets aligned so content does not show between bands.
+   --corpcal-print-sticky-section-band / --corpcal-print-sticky-day-band must
+   match painted row heights under these preview overrides (adjust if typography
+   changes). */
 .corpcal-print-preview-shell {
   --corpcal-print-sticky-section-band: 46px;
+  --corpcal-print-sticky-day-band: 42px;
 }
 .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-section-heading-cell {
   position: sticky;
@@ -656,8 +658,19 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-day-heading-cell {
   position: sticky;
   top: var(--corpcal-print-sticky-section-band);
-  z-index: 3;
+  z-index: 4;
   background: var(--corpcal-surface);
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th {
+  position: sticky;
+  top: calc(
+    var(--corpcal-print-sticky-section-band) + var(--corpcal-print-sticky-day-band)
+  );
+  z-index: 3;
+}
+.corpcal-print-preview-shell .corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th:not(.corpcal-print-section-thead-cell) {
+  background: var(--corpcal-table-header-bg);
+  color: var(--corpcal-table-header-fg);
 }
 
 @media print {
