@@ -37,6 +37,7 @@ export {
   type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
 export { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
+export type { BuildLookAheadReportPdfHeaderTemplateOptions } from './buildLookAheadReportPdfHeaderTemplate';
 export {
   buildReportPdfFooterTemplateHtml,
   type BuildReportPdfFooterTemplateOptions,

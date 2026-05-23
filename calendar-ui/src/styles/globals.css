@@ -87,7 +87,7 @@
     --fluent-success-foreground-inverted: #13a10e;
     --flag-button-icon: var(--fluent-success-foreground-inverted);
     /* Sync with REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS in @corpcal/shared/reports/reportPrintDimensions. */
-    --corpcal-report-sheet-content-max-width: 1024px;
+    --corpcal-report-sheet-content-max-width: 933px;
   }
 
   .dark {

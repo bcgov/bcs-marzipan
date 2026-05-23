@@ -1,22 +1,36 @@
-/**
- * Canonical layout width (CSS px) for print HTML: Puppeteer viewport and the
- * in-app “PDF width” preview. WYSIWYG line breaks are computed at this width.
- */
-export const REPORT_PRINT_LAYOUT_WIDTH_PX = 1024 as const;
+/** Body `font-size` in print CSS (`--print-body-font-size`). */
+export const REPORT_PRINT_BODY_FONT_SIZE_PX = 16 as const;
+
+/** Target body size on exported Letter PDF at {@link REPORT_PRINT_BODY_FONT_SIZE_PX}. */
+export const REPORT_PRINT_BODY_TARGET_PRINT_PT = 10.5 as const;
 
 /**
  * US Letter content width at 96 CSS px/in with zero margins (8.5in × 96).
- * Used only to scale PDF output to fit the physical page while layout stays at
- * {@link REPORT_PRINT_LAYOUT_WIDTH_PX}.
  */
 export const REPORT_LETTER_CONTENT_WIDTH_PX = 816 as const;
+
+/**
+ * Canonical layout width (CSS px) for report body HTML: Puppeteer viewport and the
+ * in-app “PDF width” preview. WYSIWYG line breaks are computed at this width.
+ *
+ * `REPORT_PRINT_BODY_FONT_SIZE_PX × REPORT_LETTER_CONTENT_WIDTH_PX / width` →
+ * {@link REPORT_PRINT_BODY_TARGET_PRINT_PT} on Letter after Puppeteer scaling
+ * (933 = round(16 × 816 / 14)).
+ */
+export const REPORT_PRINT_LAYOUT_WIDTH_PX = 933 as const;
 
 /** US Letter page height at 96 CSS px/in (11in × 96). Used with Puppeteer PDF margins. */
 export const REPORT_LETTER_PAGE_HEIGHT_PX = 1056 as const;
 
 /**
+ * Look-ahead cover sheet width — independent of {@link REPORT_PRINT_LAYOUT_WIDTH_PX} so
+ * cover artwork/overlay typography stay at their tuned size when body layout narrows.
+ */
+export const REPORT_PRINT_COVER_SHEET_WIDTH_PX = 1024 as const;
+
+/**
  * Max width for `.corpcal-print-root` / `.custom-report-root` — same value in
- * Puppeteer and in-app preview (“PDF width”). Fixed width so the sheet does not
+ * Puppeteer body PDF and in-app preview (“PDF width”). Fixed width so the sheet does not
  * shrink below the canonical layout; parents should scroll horizontally when
  * the viewport is narrower.
  */
@@ -30,11 +44,44 @@ export const REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS =
 export const REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX = 24 as const;
 
 /**
- * Width inside horizontal insets ({@link REPORT_PRINT_LAYOUT_WIDTH_PX} − 2× {@link REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}).
+ * Width inside horizontal insets on the cover sheet
+ * ({@link REPORT_PRINT_COVER_SHEET_WIDTH_PX} − 2× {@link REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}).
  * Look-ahead cover overlay geometry is tuned for this column (see print/react/lookAheadCoverMetrics.ts).
  */
 export const REPORT_PRINT_COVER_CONTENT_WIDTH_PX =
-  REPORT_PRINT_LAYOUT_WIDTH_PX - 2 * REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX;
+  REPORT_PRINT_COVER_SHEET_WIDTH_PX - 2 * REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX;
+
+/** Puppeteer `scale` mapping a layout viewport width onto Letter content width. */
+export function reportPdfLayoutToLetterScale(layoutWidthPx: number): number {
+  return REPORT_LETTER_CONTENT_WIDTH_PX / layoutWidthPx;
+}
+
+export const REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE =
+  reportPdfLayoutToLetterScale(REPORT_PRINT_LAYOUT_WIDTH_PX);
+
+export const REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE =
+  reportPdfLayoutToLetterScale(REPORT_PRINT_COVER_SHEET_WIDTH_PX);
+
+/**
+ * CSS px for Puppeteer header/footer inline styles so text renders at `printPt` on the
+ * exported PDF given the layout→Letter scale for that pass.
+ */
+export function reportPdfTemplateCssPxForPrintPt(
+  printPt: number,
+  pdfLayoutToLetterScale: number
+): number {
+  const printCssPx = (printPt * 96) / 72;
+  return Math.round(printCssPx / pdfLayoutToLetterScale);
+}
+
+/**
+ * PDF header/footer print sizes (pt on Letter). Baseline was ~7.17pt at 14px body / 1024 layout;
+ * scaled by 16/14, rounded to whole or .5 pt.
+ */
+export const REPORT_PDF_HEADER_CONFIDENTIAL_PRINT_PT = 8.5 as const;
+export const REPORT_PDF_HEADER_LOGO_PRINT_PT = 19 as const;
+export const REPORT_PDF_FOOTER_MAIN_PRINT_PT = 8.5 as const;
+export const REPORT_PDF_FOOTER_HINT_PRINT_PT = 8 as const;
 
 /**
  * Top margin for Puppeteer `page.pdf({ margin: { top } })` when using

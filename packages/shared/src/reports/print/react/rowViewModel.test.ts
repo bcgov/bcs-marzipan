@@ -216,7 +216,7 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
-  it('maps date/time status for look-ahead print variants (Confirmed hidden, else Date/Time TBD)', () => {
+  it('maps date/time status for look-ahead print variants (Confirmed hidden, else TBC when date/time present)', () => {
     const unsettled = {
       ...BASE_ACTIVITY,
       dateStatus: 'Tentative',
@@ -227,15 +227,15 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'lookAhead',
     });
-    expect(lookAhead.dateTime.dateStatus).toBe('Date TBD');
-    expect(lookAhead.dateTime.timeStatus).toBe('Time TBD');
+    expect(lookAhead.dateTime.dateStatus).toBe('TBC');
+    expect(lookAhead.dateTime.timeStatus).toBe('TBC');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'execLookAhead',
     });
-    expect(execLa.dateTime.dateStatus).toBe('Date TBD');
-    expect(execLa.dateTime.timeStatus).toBe('Time TBD');
+    expect(execLa.dateTime.dateStatus).toBe('TBC');
+    expect(execLa.dateTime.timeStatus).toBe('TBC');
 
     const confirmed = toPrintRowViewModel(
       {
@@ -250,6 +250,24 @@ describe('toPrintRowViewModel', () => {
     );
     expect(confirmed.dateTime.dateStatus).toBe('');
     expect(confirmed.dateTime.timeStatus).toBe('');
+
+    const noDateOrTime = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        startDate: null,
+        startTime: null,
+        dateStatus: 'Tentative',
+        timeStatus: 'Proposed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(noDateOrTime.dateTime.startDate).toBe('');
+    expect(noDateOrTime.dateTime.startTime).toBe('');
+    expect(noDateOrTime.dateTime.dateStatus).toBe('');
+    expect(noDateOrTime.dateTime.timeStatus).toBe('');
 
     const thirty = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',

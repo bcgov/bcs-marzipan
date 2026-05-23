@@ -1,6 +1,6 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
 import {
-  REPORT_PRINT_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_COVER_SHEET_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
@@ -241,31 +241,31 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--print-zebra);
 }
 /* Fixed layout widths: tie to table + col so preview/PDF respects the grid (colgroup + th/td avoids resets equalizing columns). */
-.corpcal-print-table col.corpcal-print-col-1 { width: 20%; }
-.corpcal-print-table col.corpcal-print-col-2 { width: 53%; }
-.corpcal-print-table col.corpcal-print-col-3 { width: 15%; }
-.corpcal-print-table col.corpcal-print-col-4 { width: 12%; }
+.corpcal-print-table col.corpcal-print-col-1 { width: 18%; }
+.corpcal-print-table col.corpcal-print-col-2 { width: 54%; }
+.corpcal-print-table col.corpcal-print-col-3 { width: 17%; }
+.corpcal-print-table col.corpcal-print-col-4 { width: 11%; }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-1,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-1 {
-  width: 20%;
+  width: 18%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-2,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-2 {
-  width: 53%;
+  width: 54%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-3,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-3 {
-  width: 15%;
+  width: 17%;
 }
 .corpcal-print-root .corpcal-print-table thead th.corpcal-print-col-4,
 .corpcal-print-root .corpcal-print-table tbody td.corpcal-print-col-4 {
-  width: 12%;
+  width: 11%;
 }
-/* Awareness / Long-term: Release omitted; Activity details absorbs col-3 width (53% + 15% = 68%). */
-.corpcal-print-table--omit-release col.corpcal-print-col-2 { width: 68%; }
+/* Awareness / Long-term: Release omitted; Activity details absorbs col-3 width (54% + 17% = 71%). */
+.corpcal-print-table--omit-release col.corpcal-print-col-2 { width: 71%; }
 .corpcal-print-root .corpcal-print-table--omit-release thead th.corpcal-print-col-2,
 .corpcal-print-root .corpcal-print-table--omit-release tbody td.corpcal-print-col-2 {
-  width: 68%;
+  width: 71%;
 }
 
 /* Look-ahead section legend fill on thead cells: preserve in PDF/export (Chrome). */
@@ -356,9 +356,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-weight: 700;
   font-size: 1em;
   color: var(--print-ink);
-}
-.corpcal-print-dt-status-gap {
-  margin-left: 0.6em;
 }
 .corpcal-print-meta-faint {
   font-size: 1em;
@@ -469,12 +466,12 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   background: var(--corpcal-table-row-alt-bg);
 }
 
-/* Look-ahead PDF cover only: one US Letter–aspect sheet at canonical print layout width. */
+/* Look-ahead PDF cover only: one US Letter–aspect sheet at cover sheet width. */
 .corpcal-print-cover-sheet {
   box-sizing: border-box;
   position: relative;
-  width: ${REPORT_PRINT_LAYOUT_WIDTH_PX}px;
-  height: calc(${REPORT_PRINT_LAYOUT_WIDTH_PX}px * 11 / 8.5);
+  width: ${REPORT_PRINT_COVER_SHEET_WIDTH_PX}px;
+  height: calc(${REPORT_PRINT_COVER_SHEET_WIDTH_PX}px * 11 / 8.5);
   margin: 0 auto;
   padding: 0;
   page-break-after: always;

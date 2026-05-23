@@ -23,6 +23,8 @@ import {
   buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   getReportTemplateHtml,
+  REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+  REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import {
@@ -606,10 +608,19 @@ export class ReportsService {
       reportType,
       data
     );
-    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
-    const headerTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)
-      ? buildLookAheadReportPdfHeaderTemplateHtml()
+    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt, {
+      pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+    });
+    const bodyHeaderTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(
+      reportType
+    )
+      ? buildLookAheadReportPdfHeaderTemplateHtml({
+          pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+        })
       : undefined;
+    const coverHeaderTemplate = buildLookAheadReportPdfHeaderTemplateHtml({
+      pdfLayoutToLetterScale: REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
+    });
 
     const useSplitCoverPdf =
       REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType) &&
@@ -625,11 +636,11 @@ export class ReportsService {
       const [coverBuffer, bodyBuffer] = await Promise.all([
         this.pdfGeneratorService.generatePdfFromHtmlCover(
           coverHtml,
-          headerTemplate ?? buildLookAheadReportPdfHeaderTemplateHtml()
+          coverHeaderTemplate
         ),
         this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
           footerTemplate,
-          headerTemplate,
+          headerTemplate: bodyHeaderTemplate,
         }),
       ]);
       return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
@@ -641,7 +652,7 @@ export class ReportsService {
     });
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
-      headerTemplate,
+      headerTemplate: bodyHeaderTemplate,
     });
   }
 }

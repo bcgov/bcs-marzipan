@@ -2,9 +2,8 @@ import { REPORT_PRINT_COVER_CONTENT_WIDTH_PX } from '../../reportPrintDimensions
 
 /**
  * Width of {@link REPORT_PRINT_COVER_CONTENT_WIDTH_PX} **at which every baseline px in this file
- * was tuned**. Must match the live cover column width whenever the print sheet’s layout width or
- * horizontal inset changes and these numbers are updated together. If you intentionally keep an
- * older reference for proportional scaling only, update `lookAheadCoverMetrics.test.ts`.
+ * was tuned** (1024px cover sheet − horizontal insets = 976px). Cover geometry scales only when
+ * {@link REPORT_PRINT_COVER_SHEET_WIDTH_PX} changes — not when body {@link REPORT_PRINT_LAYOUT_WIDTH_PX} changes.
  *
  * Baseline geometry and typography use a 4px grid (multiples of 4 at this width).
  */

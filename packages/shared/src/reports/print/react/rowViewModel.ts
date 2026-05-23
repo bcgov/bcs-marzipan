@@ -253,19 +253,27 @@ function isConfirmedStatusDisplay(value: string): boolean {
 }
 
 /**
- * Look Ahead / Exec Look Ahead print: hide date/time status when Confirmed;
- * otherwise show fixed labels (not raw lookup text).
+ * Look Ahead / Exec Look Ahead print: when a date/time is shown and status is
+ * not Confirmed, append `TBC`; omit status when no date/time value is present.
  */
-function lookAheadDateStatusForPrint(raw: string): string {
+function lookAheadDateStatusForPrint(
+  raw: string,
+  hasStartDate: boolean
+): string {
+  if (!hasStartDate) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'Date TBD';
+  return 'TBC';
 }
 
-function lookAheadTimeStatusForPrint(raw: string): string {
+function lookAheadTimeStatusForPrint(
+  raw: string,
+  hasTimeDisplay: boolean
+): string {
+  if (!hasTimeDisplay) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'Time TBD';
+  return 'TBC';
 }
 
 function shouldUseLookAheadDateTimeStatusRules(
@@ -283,7 +291,8 @@ function shouldUseLookAheadDateTimeStatusRules(
  * rollup `{@link PrintReportDocument}` passes `'shortNoYear'` (Look Ahead date rules).
  *
  * When `variant` is `lookAhead` or `execLookAhead`, Confirmed date/time status
- * is omitted; any other non-empty status becomes `Date TBD` / `Time TBD`.
+ * is omitted; any other non-empty status becomes `TBC` when a date/time value
+ * is present (no date/time value means no status label).
  */
 export function toPrintRowViewModel(
   activity: ActivityResponse,
@@ -311,6 +320,12 @@ export function toPrintRowViewModel(
   const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
   const useLookAheadReleaseRules =
     options.variant === 'lookAhead' || options.variant === 'execLookAhead';
+  const hasStartDate = Boolean(startDateLabel);
+  const startTime =
+    activity.isAllDay === true
+      ? 'All day'
+      : formatTime12h(activity.startDate, activity.startTime);
+  const hasTimeDisplay = Boolean(startTime);
 
   return {
     activityId: activity.id,
@@ -319,14 +334,11 @@ export function toPrintRowViewModel(
       endDate:
         endDateLabel && endDateLabel !== startDateLabel ? endDateLabel : '',
       dateStatus: useLaRules
-        ? lookAheadDateStatusForPrint(rawDateStatus)
+        ? lookAheadDateStatusForPrint(rawDateStatus, hasStartDate)
         : rawDateStatus,
-      startTime:
-        activity.isAllDay === true
-          ? 'All day'
-          : formatTime12h(activity.startDate, activity.startTime),
+      startTime,
       timeStatus: useLaRules
-        ? lookAheadTimeStatusForPrint(rawTimeStatus)
+        ? lookAheadTimeStatusForPrint(rawTimeStatus, hasTimeDisplay)
         : rawTimeStatus,
       lookAheadStatus: normaliseLookAheadStatus(activity.lookAheadStatus),
     },

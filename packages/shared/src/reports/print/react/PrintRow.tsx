@@ -1,12 +1,11 @@
 import { ExternalLink, Languages } from 'lucide-react';
-import type { ReactNode } from 'react';
 
 import { PrintRichText } from './PrintRichText';
 import {
+  splitActivityDisplayIdForPrint,
   type ColumnFlags,
   type PrintReportVariant,
   type PrintRowViewModel,
-  splitActivityDisplayIdForPrint,
 } from './rowViewModel';
 
 /** Corporate Look Ahead and Executive Look Ahead print layouts. */
@@ -15,12 +14,16 @@ function isLookAheadRollupVariant(variant: PrintReportVariant): boolean {
 }
 
 /** Corporate Look Ahead: executive summary (flags render as badges above). */
-function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
+function narrativeIsExecutiveSummaryInline(
+  variant: PrintReportVariant
+): boolean {
   return variant === 'lookAhead';
 }
 
 /** Exec Look Ahead: title + inline summary (flags render as badges above). */
-function narrativeIsExecTitleSummaryInline(variant: PrintReportVariant): boolean {
+function narrativeIsExecTitleSummaryInline(
+  variant: PrintReportVariant
+): boolean {
   return variant === 'execLookAhead';
 }
 
@@ -38,7 +41,9 @@ function LookAheadActivityBadges({ flags }: { flags: ColumnFlags }) {
         </span>
       ) : null}
       {flags.isIssue ? (
-        <span className="corpcal-print-pill corpcal-print-pill-issue">Issue</span>
+        <span className="corpcal-print-pill corpcal-print-pill-issue">
+          Issue
+        </span>
       ) : null}
       {flags.isFyi ? (
         <span className="corpcal-print-pill corpcal-print-pill-fyi">FYI</span>
@@ -55,13 +60,7 @@ function NarrativeInlineFlag({ label }: { label: string }) {
   );
 }
 
-function ActivityIdLink({
-  href,
-  label,
-}: {
-  href: string;
-  label: string;
-}) {
+function ActivityIdLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       className="corpcal-print-link corpcal-print-activity-link"
@@ -129,23 +128,11 @@ export function PrintRow({
   );
 }
 
-function lookAheadDateTimeStatusContent(
-  variant: PrintReportVariant,
-  status: string
-): ReactNode {
-  const isLookAheadVariant =
-    variant === 'lookAhead' || variant === 'execLookAhead';
-  if (isLookAheadVariant && status === 'Date TBD') {
-    return 'Date TBD';
-  }
-  if (isLookAheadVariant && status === 'Time TBD') {
-    return 'Time TBD';
-  }
-  return status;
-}
-
 /** En dash in compact date ranges; screen readers should hear "to" instead. */
 const PRINT_DATE_RANGE_EN_DASH = '\u2013';
+
+/** Gap before date/time status labels (en space; breaks independently of the value). */
+const PRINT_DATE_TIME_STATUS_GAP = '\u2002';
 
 function printDateRangeAriaLabel(display: string): string {
   return display.replaceAll(PRINT_DATE_RANGE_EN_DASH, ' to ');
@@ -182,12 +169,9 @@ function DateTimeCell({
             </span>
           ) : null}
           {dateTime.dateStatus ? (
-            <span
-              className={`corpcal-print-inline-status${
-                dateRange ? ' corpcal-print-dt-status-gap' : ''
-              }`}
-            >
-              {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
+            <span className="corpcal-print-inline-status">
+              {dateRange ? PRINT_DATE_TIME_STATUS_GAP : null}
+              {dateTime.dateStatus}
             </span>
           ) : null}
         </div>
@@ -198,12 +182,9 @@ function DateTimeCell({
             <span className={valueClass}>{dateTime.startTime}</span>
           ) : null}
           {dateTime.timeStatus ? (
-            <span
-              className={`corpcal-print-inline-status${
-                dateTime.startTime ? ' corpcal-print-dt-status-gap' : ''
-              }`}
-            >
-              {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
+            <span className="corpcal-print-inline-status">
+              {dateTime.startTime ? PRINT_DATE_TIME_STATUS_GAP : null}
+              {dateTime.timeStatus}
             </span>
           ) : null}
         </div>
@@ -266,7 +247,9 @@ function ActivityDetailsCell({
 
   return (
     <div className="corpcal-print-stack-md">
-      {useLookAheadBadges ? <LookAheadActivityBadges flags={row.flags} /> : null}
+      {useLookAheadBadges ? (
+        <LookAheadActivityBadges flags={row.flags} />
+      ) : null}
 
       {legacyFlags.length > 0 ? (
         <div className="corpcal-print-flags">
@@ -389,8 +372,7 @@ function ActivityCell({
   variant: PrintReportVariant;
 }) {
   const { activityLink, lastUpdated } = row;
-  const showUpdated =
-    variant !== 'lookAhead' && variant !== 'execLookAhead';
+  const showUpdated = variant !== 'lookAhead' && variant !== 'execLookAhead';
   const splitId = isLookAheadRollupVariant(variant)
     ? splitActivityDisplayIdForPrint(activityLink.label)
     : null;
