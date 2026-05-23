@@ -8,10 +8,26 @@ export const LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS = 1_500;
 /** Matches CSS animation duration used for `.live-row-highlight`. */
 export const LIVE_ROW_HIGHLIGHT_ANIMATION_MS = 1_500;
 
-const remoteHighlightActivityIds = new Set<number>();
+export type RemoteHighlightQueue = {
+  queueRemoteHighlight: (activityId: number) => void;
+};
+
+let remoteHighlightQueue: RemoteHighlightQueue | null = null;
 
 let debounceFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingInvalidateActivities = false;
+
+/** Registers the React highlight queue (mount via {@link LiveActivitySyncProvider}). */
+export function registerRemoteHighlightQueue(
+  queue: RemoteHighlightQueue
+): () => void {
+  remoteHighlightQueue = queue;
+  return () => {
+    if (remoteHighlightQueue === queue) {
+      remoteHighlightQueue = null;
+    }
+  };
+}
 
 function flushInvalidate(queryClient: QueryClient): void {
   debounceFlushTimer = null;
@@ -48,7 +64,7 @@ export function scheduleLiveActivityRefresh(
       typeof options.activityId === 'number' &&
       Number.isFinite(options.activityId)
     ) {
-      remoteHighlightActivityIds.add(options.activityId);
+      remoteHighlightQueue?.queueRemoteHighlight(options.activityId);
     }
   } else if (options.invalidateActivities === true) {
     pendingInvalidateActivities = true;
@@ -62,22 +78,12 @@ export function scheduleLiveActivityRefresh(
   }, LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS);
 }
 
-/**
- * Copies and clears queued remote-highlight activity IDs. Call when refetch settles
- * (e.g. `isFetching` false) so refreshed rows animate.
- */
-export function consumeRemoteHighlightIds(): number[] {
-  const ids = [...remoteHighlightActivityIds];
-  remoteHighlightActivityIds.clear();
-  return ids;
-}
-
-/** @internal resets module timers and highlight queue (Vitest only). */
+/** @internal resets module timers (Vitest only). */
 export function __resetLiveActivitySyncForTests(): void {
   if (debounceFlushTimer !== null) {
     clearTimeout(debounceFlushTimer);
     debounceFlushTimer = null;
   }
   pendingInvalidateActivities = false;
-  remoteHighlightActivityIds.clear();
+  remoteHighlightQueue = null;
 }

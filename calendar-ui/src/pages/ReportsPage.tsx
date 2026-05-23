@@ -21,6 +21,7 @@ import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { useLiveActivityRowHighlights } from '@/hooks/useLiveActivitySyncContext';
 import { useActivityStatuses, useReports } from '@/hooks/useLookups';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
@@ -28,10 +29,6 @@ import {
   saveCustomReportConfig,
 } from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
-import {
-  consumeRemoteHighlightIds,
-  LIVE_ROW_HIGHLIGHT_ANIMATION_MS,
-} from '@/lib/liveActivitySync';
 import {
   handleReportExport,
   type ReportExportFormat,
@@ -130,7 +127,6 @@ export function ReportsPage() {
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const initialTabAppliedRef = useRef(false);
   const defaultsAppliedForReportRef = useRef<string | null>(null);
-  const fetchHighlightPrevRef = useRef(false);
 
   const { data: reports = [] } = useReports();
 
@@ -178,9 +174,6 @@ export function ReportsPage() {
     defaultsAppliedForReportRef.current = activeReport;
   }, [activeReport, preferences.filterState, setPreferences]);
 
-  const [highlightedRemoteActivityIds, setHighlightedRemoteActivityIds] =
-    useState(() => new Set<number>());
-
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
     queryFn: () =>
@@ -190,30 +183,7 @@ export function ReportsPage() {
     enabled: !!activeReport,
   });
 
-  useEffect(() => {
-    const wasFetching = fetchHighlightPrevRef.current;
-    fetchHighlightPrevRef.current = isFetching;
-    if (!wasFetching || isFetching) return;
-
-    const ids = consumeRemoteHighlightIds();
-    if (ids.length === 0) return;
-
-    setHighlightedRemoteActivityIds(new Set(ids));
-    const t = window.setTimeout(
-      () => setHighlightedRemoteActivityIds(new Set()),
-      LIVE_ROW_HIGHLIGHT_ANIMATION_MS
-    );
-    return () => window.clearTimeout(t);
-  }, [isFetching]);
-
-  const reportHighlightSet =
-    highlightedRemoteActivityIds as ReadonlySet<number>;
-
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('[Reports] reportQueryParams', reportQueryParams);
-    }
-  }, [reportQueryParams]);
+  const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
 
   useEffect(() => {
     try {

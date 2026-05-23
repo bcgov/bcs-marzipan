@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   __resetLiveActivitySyncForTests,
-  consumeRemoteHighlightIds,
   LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS,
+  registerRemoteHighlightQueue,
   scheduleLiveActivityRefresh,
 } from './liveActivitySync';
 
@@ -52,13 +52,17 @@ describe('liveActivitySync', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
+    const queued: number[] = [];
+    registerRemoteHighlightQueue({
+      queueRemoteHighlight: (id) => queued.push(id),
+    });
 
     scheduleLiveActivityRefresh(queryClient, {
       source: 'local',
       activityId: 7,
     });
     vi.advanceTimersByTime(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
-    expect(consumeRemoteHighlightIds()).toEqual([]);
+    expect(queued).toEqual([]);
   });
 
   it('local refresh invalidates reports only by default', () => {
@@ -104,9 +108,13 @@ describe('liveActivitySync', () => {
     invalidateSpy.mockRestore();
   });
 
-  it('consumes queued remote ids after invalidate window', () => {
+  it('forwards remote highlight ids to the registered queue without consuming', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
+    });
+    const queued: number[] = [];
+    registerRemoteHighlightQueue({
+      queueRemoteHighlight: (id) => queued.push(id),
     });
 
     scheduleLiveActivityRefresh(queryClient, {
@@ -119,8 +127,7 @@ describe('liveActivitySync', () => {
     });
     vi.advanceTimersByTime(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
 
-    const ids = [...consumeRemoteHighlightIds()].sort((a, b) => a - b);
-    expect(ids).toEqual([15, 16]);
-    expect(consumeRemoteHighlightIds()).toEqual([]);
+    expect([...queued].sort((a, b) => a - b)).toEqual([15, 16]);
+    expect(queued).toHaveLength(2);
   });
 });
