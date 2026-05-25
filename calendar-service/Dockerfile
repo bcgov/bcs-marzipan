@@ -32,9 +32,11 @@ COPY --from=build /app/packages/database/package*.json ./packages/database/
 COPY --from=build /app/packages/shared/package*.json ./packages/shared/
 COPY --from=build /app/calendar-service/package*.json ./calendar-service/
 
-# Copy only the built dist folders
+# Copy built dist folders and shared static assets (fonts, styles, report images for PDF export)
 COPY --from=build /app/packages/database/dist ./packages/database/dist/
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist/
+COPY --from=build /app/packages/shared/styles ./packages/shared/styles/
+COPY --from=build /app/packages/shared/assets ./packages/shared/assets/
 COPY --from=build /app/calendar-service/dist ./calendar-service/dist/
 
 # Install production dependencies only for the workspace
