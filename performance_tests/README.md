@@ -26,7 +26,7 @@ k6 scripts exercise the calendar API and (optionally) the Vite UI. See `performa
 | `PERF_BEARER_TOKEN`               | Shared DEV or CI — skips `POST /auth/login` (throttled to **5 req/min per IP**) |
 | `API_KEY`                         | Optional `X-API-Key` header when required by the environment                    |
 
-Load and smoke API scripts obtain a token once per run (`setup()` in `corpcal-api.js`; smoke logs in per iteration unless `PERF_BEARER_TOKEN` is set). Prefer `PERF_BEARER_TOKEN` for multi-VU runs against shared hosts.
+Load and smoke API scripts obtain a token once per run via `setup()` (or `PERF_BEARER_TOKEN`). Prefer `PERF_BEARER_TOKEN` for multi-VU runs against shared hosts.
 
 ## Profiles (`PERF_PROFILE`)
 
@@ -41,10 +41,11 @@ Override with `VUS` and `DURATION`.
 # API smoke (read-only; loads performance_tests/.env when present)
 npm run perf:k6:local
 
-# API smoke / load (direct k6)
+# API smoke (direct k6; sets PERF_PROFILE=smoke)
 npm run perf:k6:api-smoke
-npm run perf:k6:smoke          # smoke profile flag on smoke script
-npm run perf:k6                # load script (POST /activities)
+
+# API load (POST /activities)
+npm run perf:k6
 
 # Validate all k6 scripts (CI uses this)
 npm run perf:k6:inspect

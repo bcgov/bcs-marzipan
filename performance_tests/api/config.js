@@ -60,11 +60,22 @@ export function loadTestConfig() {
       const n = parseInt(String(raw), 10);
       return Number.isFinite(n) ? n : null;
     })(),
-    smokeMaxMs:
-      smokeMaxMsRaw && smokeMaxMsRaw.trim()
-        ? parseInt(smokeMaxMsRaw, 10)
-        : defaultMaxMs,
-    vuOverride: __ENV.VUS ? parseInt(__ENV.VUS, 10) : null,
+    smokeMaxMs: (() => {
+      const raw = smokeMaxMsRaw?.trim();
+      if (!raw) {
+        return defaultMaxMs;
+      }
+      const n = parseInt(raw, 10);
+      return Number.isFinite(n) && n > 0 ? n : defaultMaxMs;
+    })(),
+    vuOverride: (() => {
+      const raw = __ENV.VUS;
+      if (!raw || !String(raw).trim()) {
+        return null;
+      }
+      const n = parseInt(String(raw), 10);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
     durationOverride: __ENV.DURATION || null,
   };
 }

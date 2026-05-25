@@ -1,14 +1,15 @@
 /**
  * CorpCal authenticated API smoke (read-only, low VUs).
  *
- * Auth:
- *   POST /auth/login (preferred) with PERF_USERNAME / PERF_PASSWORD, or
- *   PERF_BEARER_TOKEN — JWT sent as Authorization: Bearer (same guard as cookie).
+ * Auth (one login per run via setup(); avoids POST /auth/login throttle of 5 req/min per IP):
+ *   PERF_BEARER_TOKEN — JWT sent as Authorization: Bearer (skips login), or
+ *   PERF_USERNAME / PERF_PASSWORD — login once in setup(), token reused by all VUs.
  *
  * Run:
- *   BASE_URL=http://127.0.0.1:3001 k6 run performance_tests/tests/corpcal-api-smoke.js
- *   BASE_URL=https://<dev-host>/api k6 run performance_tests/tests/corpcal-api-smoke.js -e PERF_USERNAME=... -e PERF_PASSWORD=...
+ *   npm run perf:k6:local
  *   npm run perf:k6:api-smoke
+ *   BASE_URL=http://127.0.0.1:3001 k6 run performance_tests/tests/corpcal-api-smoke.js -e PERF_PROFILE=smoke
+ *   BASE_URL=https://<dev-host>/api k6 run performance_tests/tests/corpcal-api-smoke.js -e PERF_PROFILE=smoke -e PERF_USERNAME=... -e PERF_PASSWORD=...
  *
  * DEV token-only (skips login throttles):
  *   k6 run performance_tests/tests/corpcal-api-smoke.js -e BASE_URL=... -e PERF_BEARER_TOKEN="<jwt>"
@@ -68,15 +69,26 @@ function tagReq(name) {
   return { name, suite: 'corpcal-smoke' };
 }
 
-function obtainToken() {
+/**
+ * Obtain JWT once per run. PERF_BEARER_TOKEN skips POST /auth/login (5 req/min per IP).
+ */
+export function setup() {
   if (config.bearerTokenOverride) {
-    return config.bearerTokenOverride;
+    return { token: config.bearerTokenOverride };
   }
   const loginRes = postLogin(config);
-  return extractAccessToken(loginRes);
+  const token = extractAccessToken(loginRes);
+  if (!token) {
+    throw new Error(
+      'setup: login failed — set PERF_BEARER_TOKEN or check PERF_USERNAME / PERF_PASSWORD'
+    );
+  }
+  return { token };
 }
 
-export default function corpcalApiSmoke() {
+export default function corpcalApiSmoke(data) {
+  const token = data.token;
+
   group('01_public_probes', () => {
     getHealth(config);
     getReady(config);
@@ -84,20 +96,6 @@ export default function corpcalApiSmoke() {
   });
 
   sleep(0.35);
-
-  let token = '';
-  group('02_auth_login', () => {
-    token = obtainToken();
-    if (!config.bearerTokenOverride && !token) {
-      // login failed — client checks record failure
-      return;
-    }
-  });
-
-  if (!token) {
-    sleep(1);
-    return;
-  }
 
   const headers = authBearerHeaders(config, token);
 

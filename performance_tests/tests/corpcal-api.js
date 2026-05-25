@@ -9,9 +9,11 @@
  *   PERF_USERNAME / PERF_PASSWORD — login once in setup(), token reused by all VUs.
  *
  * Run locally (k6 must be on PATH):
- *   npm run perf:k6:local
+ *   npm run perf:k6
  *   BASE_URL=http://localhost:3001 k6 run performance_tests/tests/corpcal-api.js
  *   PERF_PROFILE=smoke BASE_URL=http://localhost:3001 k6 run performance_tests/tests/corpcal-api.js
+ *
+ * Read-only smoke (no POST /activities): npm run perf:k6:local
  *
  * Through Vite dev proxy:
  *   BASE_URL=http://localhost:3000/api k6 run performance_tests/tests/corpcal-api.js
