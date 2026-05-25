@@ -12,6 +12,7 @@ import type {
 import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
+  buildTranslationLanguageLabelResolver,
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayRow,
 } from '@corpcal/shared/reports/print/react';
@@ -39,6 +40,7 @@ import { trimTrailingSlashes } from '@corpcal/shared/utils';
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
+import { LookupsService } from '../lookups/lookups.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { mergePdfBuffersInOrder } from './merge-report-pdfs';
@@ -93,7 +95,8 @@ export class ReportsService {
     private readonly activitiesService: ActivitiesService,
     private readonly pdfGeneratorService: PdfGeneratorService,
     private readonly configService: ConfigService,
-    private readonly applicationSettings: ApplicationSettingsService
+    private readonly applicationSettings: ApplicationSettingsService,
+    private readonly lookupsService: LookupsService
   ) {}
 
   /**
@@ -595,8 +598,13 @@ export class ReportsService {
   ): Promise<Buffer> {
     const activityBaseUrl = this.getPublicAppBaseUrl();
     const generatedAt = new Date();
+    const translationLanguages =
+      await this.lookupsService.getTranslationLanguages();
+    const resolveTranslationLanguageLabel =
+      buildTranslationLanguageLabelResolver(translationLanguages);
     const inner = getReportTemplateHtml(reportType, data, {
       activityBaseUrl,
+      resolveTranslationLanguageLabel,
     }).trim();
     if (!inner) {
       throw new NotFoundException(

@@ -17,6 +17,7 @@ import {
   type PrintReportVariant,
   type PrintRowViewModel,
 } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 interface SortedSection {
   id: string;
@@ -118,12 +119,14 @@ export function PrintReportDocument({
   variant,
   activityBaseUrl,
   highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
   activityBaseUrl: string;
   /** In-app preview: flash rows briefly after remote activity updates. */
   highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const sections = collectSortedSections(data);
   const hasAny = reportHasAnyActivities(sections);
@@ -151,6 +154,7 @@ export function PrintReportDocument({
               activityBaseUrl={activityBaseUrl}
               showEventLead={showEventLead}
               highlightActivityIds={highlightActivityIds}
+              resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
             />
           ))
         )}
@@ -165,12 +169,14 @@ function SectionGroup({
   activityBaseUrl,
   showEventLead,
   highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
   showEventLead: boolean;
   highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
   if (dateKeys.length === 0) return null;
@@ -182,6 +188,7 @@ function SectionGroup({
         activityBaseUrl,
         dateCellStyle: 'shortNoYear',
         variant,
+        resolveTranslationLanguageLabel,
       })
     );
     return {

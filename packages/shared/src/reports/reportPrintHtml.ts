@@ -22,6 +22,7 @@ export {
   type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
 export {
+  buildTranslationLanguageLabelResolver,
   buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   CORPCAL_PRINT_ROOT_CLASS,

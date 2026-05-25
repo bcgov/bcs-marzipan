@@ -1,31 +1,62 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildTranslationLanguageLabelResolver,
+  passthroughTranslationLanguageLabelResolver,
   resolveTranslationLanguageDisplayLabel,
   resolveTranslationLanguageDisplayLabels,
+  type TranslationLanguageLookup,
 } from './translationLanguageDisplayLabels';
 
-describe('resolveTranslationLanguageDisplayLabel', () => {
+const SAMPLE_LOOKUPS: readonly TranslationLanguageLookup[] = [
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+];
+
+describe('buildTranslationLanguageLabelResolver', () => {
   it('maps shortcodes to display names case-insensitively', () => {
-    expect(resolveTranslationLanguageDisplayLabel('FR')).toBe('French');
-    expect(resolveTranslationLanguageDisplayLabel('pun')).toBe('Punjabi');
+    const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
+    expect(resolve('FR')).toBe('French');
+    expect(resolve('pun')).toBe('Punjabi');
   });
 
   it('canonicalizes values that are already display names', () => {
-    expect(resolveTranslationLanguageDisplayLabel('french')).toBe('French');
-    expect(resolveTranslationLanguageDisplayLabel('Punjabi')).toBe('Punjabi');
+    const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
+    expect(resolve('french')).toBe('French');
+    expect(resolve('Punjabi')).toBe('Punjabi');
   });
 
   it('returns unknown codes unchanged', () => {
-    expect(resolveTranslationLanguageDisplayLabel('ZH')).toBe('ZH');
+    const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
+    expect(resolve('ZH')).toBe('ZH');
+  });
+});
+
+describe('resolveTranslationLanguageDisplayLabel', () => {
+  it('passes through when no resolver is supplied', () => {
+    expect(
+      resolveTranslationLanguageDisplayLabel(
+        'FR',
+        passthroughTranslationLanguageLabelResolver
+      )
+    ).toBe('FR');
+  });
+
+  it('uses an injected resolver when provided', () => {
+    const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
+    expect(resolveTranslationLanguageDisplayLabel('FR', resolve)).toBe(
+      'French'
+    );
   });
 });
 
 describe('resolveTranslationLanguageDisplayLabels', () => {
-  it('maps each entry in order', () => {
-    expect(resolveTranslationLanguageDisplayLabels(['FR', 'PUN'])).toEqual([
-      'French',
-      'Punjabi',
-    ]);
+  it('maps each entry in order via resolver', () => {
+    const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
+    expect(
+      resolveTranslationLanguageDisplayLabels(['FR', 'PUN'], resolve)
+    ).toEqual(['French', 'Punjabi']);
   });
 });

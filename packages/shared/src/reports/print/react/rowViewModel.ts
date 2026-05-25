@@ -7,7 +7,10 @@ import {
   formatShortDate,
   formatTime12h,
 } from './dateFormatters';
-import { resolveTranslationLanguageDisplayLabels } from './translationLanguageDisplayLabels';
+import {
+  resolveTranslationLanguageDisplayLabels,
+  type TranslationLanguageLabelResolver,
+} from './translationLanguageDisplayLabels';
 
 /** Kind of print report row to render; different columns include different narrative blocks. */
 export type PrintReportVariant =
@@ -187,7 +190,8 @@ function isTranslationsPendingReviewDisplay(
  * `none`. No `Translations:` prefix — {@link PrintRow} renders a Languages icon.
  */
 export function buildLookAheadReleaseTranslationsLine(
-  activity: ActivityResponse
+  activity: ActivityResponse,
+  resolveLabel?: TranslationLanguageLabelResolver
 ): string {
   const langs = activity.translationsRequired ?? [];
   if (
@@ -199,7 +203,10 @@ export function buildLookAheadReleaseTranslationsLine(
   if (!langs || langs.length === 0) {
     return 'none';
   }
-  const displayLabels = resolveTranslationLanguageDisplayLabels(langs);
+  const displayLabels = resolveTranslationLanguageDisplayLabels(
+    langs,
+    resolveLabel
+  );
   if (displayLabels.length < TRANSLATIONS_COLLAPSE_AT) {
     return displayLabels.join(', ');
   }
@@ -305,6 +312,8 @@ export function toPrintRowViewModel(
      * status labels follow look-ahead print rules; otherwise raw API strings.
      */
     variant?: PrintReportVariant;
+    /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+    resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
   }
 ): PrintRowViewModel {
   const useLookAheadDateFormat = options.dateCellStyle === 'shortNoYear';
@@ -372,7 +381,10 @@ export function toPrintRowViewModel(
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
       translationsLine: useLookAheadReleaseRules
         ? lookAheadShowsTranslationsLine(activity)
-          ? buildLookAheadReleaseTranslationsLine(activity)
+          ? buildLookAheadReleaseTranslationsLine(
+              activity,
+              options.resolveTranslationLanguageLabel
+            )
           : ''
         : buildTranslationsLine(activity.translationsRequired),
     },

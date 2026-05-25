@@ -9,6 +9,19 @@ import {
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,
 } from './renderReport';
+import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+
+const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+]);
+
+const TEST_RENDER_OPTIONS = {
+  activityBaseUrl: 'http://localhost:3000',
+  resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+};
 
 const BASE_ACTIVITY: ActivityResponse = {
   id: 101,
@@ -289,9 +302,7 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes translations list when fewer than four languages are required', () => {
-    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
+    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, TEST_RENDER_OPTIONS);
 
     expect(html).toContain('French, Punjabi');
     expect(html).not.toContain('Translations: 2 languages');
@@ -363,9 +374,7 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', many, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
+    const html = renderPrintReportFragmentHtml('look-ahead', many, TEST_RENDER_OPTIONS);
 
     expect(html).toContain('4 translations');
     expect(html).not.toContain('Translations:');

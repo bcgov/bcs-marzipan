@@ -8,6 +8,7 @@ import { PrintPlanningDocument } from './PrintPlanningDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 import type { PrintReportVariant } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
@@ -22,6 +23,8 @@ export type ReactRenderableReportType =
 
 export interface RenderReportOptions {
   activityBaseUrl: string;
+  /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }
 
 /**
@@ -96,6 +99,7 @@ export function renderPrintReportFragmentHtml(
       data={data}
       variant={variant}
       activityBaseUrl={options.activityBaseUrl}
+      resolveTranslationLanguageLabel={options.resolveTranslationLanguageLabel}
     />
   );
 }

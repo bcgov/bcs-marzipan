@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
+  buildTranslationLanguageLabelResolver,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PRINT_STYLES,
@@ -13,6 +14,7 @@ import {
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
+import { useTranslationLanguages } from '@/hooks/useLookups';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -46,6 +48,11 @@ export function PrintReportPreview({
   highlightActivityIds?: ReadonlySet<number>;
 }) {
   const activityBaseUrl = useMemo(() => resolveActivityBaseUrl(), []);
+  const { data: translationLanguages = [] } = useTranslationLanguages();
+  const resolveTranslationLanguageLabel = useMemo(
+    () => buildTranslationLanguageLabelResolver(translationLanguages),
+    [translationLanguages]
+  );
 
   if (!isReactRenderableReportType(reportTypeName)) {
     return null;
@@ -57,6 +64,7 @@ export function PrintReportPreview({
       data={data}
       activityBaseUrl={activityBaseUrl}
       highlightActivityIds={highlightActivityIds}
+      resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
     />
   );
 }
@@ -66,11 +74,15 @@ function PrintReportPreviewRoot({
   data,
   activityBaseUrl,
   highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   reportTypeName: ReactRenderableReportType;
   data: ReportDataResponse;
   activityBaseUrl: string;
   highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: ReturnType<
+    typeof buildTranslationLanguageLabelResolver
+  >;
 }) {
   let document: ReactNode;
   if (reportTypeName === 'planning') {
@@ -89,6 +101,7 @@ function PrintReportPreviewRoot({
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
         highlightActivityIds={highlightActivityIds}
+        resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
       />
     );
   }

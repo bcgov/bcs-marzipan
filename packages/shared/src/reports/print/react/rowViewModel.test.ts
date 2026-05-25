@@ -9,6 +9,14 @@ import {
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
+import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+
+const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+]);
 
 const BASE_ACTIVITY: ActivityResponse = {
   id: 42,
@@ -347,6 +355,7 @@ describe('toPrintRowViewModel', () => {
       {
         activityBaseUrl: 'http://localhost:3000',
         variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
       }
     );
     expect(row.release.translationsLine).toBe('French, Punjabi');
@@ -363,6 +372,7 @@ describe('toPrintRowViewModel', () => {
       {
         activityBaseUrl: 'http://localhost:3000',
         variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
       }
     );
     expect(row.release.translationsLine).toBe('4 translations');
