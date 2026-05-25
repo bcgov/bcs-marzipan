@@ -1,0 +1,57 @@
+name: Update calendar-ui runtime config
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_snowplow:
+        description: 'Set to "true" to enable Snowplow, "false" to disable'
+        required: false
+        default: 'true'
+
+jobs:
+  update-config:
+    name: Create/update config.js ConfigMap and rollout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create config.js
+        run: |
+          cat > config.js <<'EOF'
+          window.__APP_CONFIG__ = { ENABLE_SNOWPLOW: '${{ github.event.inputs.enable_snowplow }}' }
+          EOF
+
+      - name: Login to OpenShift
+        env:
+          OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+          OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+        run: |
+          oc version || true
+          oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify
+
+      - name: Set project / namespace
+        env:
+          NAMESPACE: ${{ secrets.NAMESPACE }}
+        run: |
+          oc project "$NAMESPACE"
+
+      - name: Apply ConfigMap (create-or-update)
+        run: |
+          oc create configmap calendar-ui-config --from-file=config.js=config.js -o yaml --dry-run=client | oc apply -f -
+
+      - name: Restart calendar-ui deployment
+        run: |
+          oc rollout restart deployment/calendar-ui
+          oc rollout status deployment/calendar-ui -w
+
+      - name: Smoke-check config.js served (optional)
+        if: ${{ secrets.CALENDAR_UI_URL != '' }}
+        env:
+          CALENDAR_UI_URL: ${{ secrets.CALENDAR_UI_URL }}
+        run: |
+          echo "Checking $CALENDAR_UI_URL/config.js"
+          curl -fsS "$CALENDAR_UI_URL/config.js" | head -n 5
+
+      - name: Clean up artifact
+        run: |
+          rm -f config.js
