@@ -4,6 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Corporate Calendar</title>
+    <!-- Runtime-config for feature flags and remote toggles -->
+    <script src="/config.js"></script>
+    <script>
+      (function () {
+        try {
+          var enabled =
+            typeof window !== 'undefined' &&
+            window.__APP_CONFIG__ &&
+            window.__APP_CONFIG__.ENABLE_SNOWPLOW === 'true';
+          if (!enabled) return;
+
+          (function(p,l,o,w,i,n,g){if(!p[i]){p.GlobalSnowplowNamespace=p.GlobalSnowplowNamespace||[];
+            p.GlobalSnowplowNamespace.push(i);p[i]=function(){(p[i].q=p[i].q||[]).push(arguments)
+            };p[i].q=p[i].q||[];n=l.createElement(o);g=l.getElementsByTagName(o)[0];n.async=1;
+            n.src=w;g.parentNode.insertBefore(n,g)}}(window,document,"script","https://www2.gov.bc.ca/StaticWebResources/static/sp/sp-2-14-0.js","snowplow"));
+          var collector = 'spm.apps.gov.bc.ca';
+          window.snowplow('newTracker','rt',collector, {
+            appId: 'Snowplow_standalone_BCS',
+            cookieLifetime: 86400 * 548,
+            platform: 'web',
+            post: true,
+            forceSecureTracker: true,
+            contexts: {
+              webPage: true,
+              performanceTiming: true
+            }
+          });
+          window.snowplow('enableActivityTracking', 30, 30);
+          window.snowplow('enableLinkClickTracking');
+          window.snowplow('trackPageView');
+        } catch (e) {
+          /* fail safe - do not block app */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

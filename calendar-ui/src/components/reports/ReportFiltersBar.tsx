@@ -17,6 +17,7 @@ import {
 } from '@/components/shared/ResponsiveFilterRow';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import analytics from '@/lib/analytics';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -223,6 +224,30 @@ export function ReportFiltersBar({
     });
   }, [setPreferences]);
 
+  const handleSearchEnter = useCallback(() => {
+    // Send a calendar_action event with some filter context when the user submits a search
+    try {
+      analytics.trackCalendarAction({
+        action: 'Search',
+        filters: {
+          ...filterState,
+          searchKeyword: searchKeyword || null,
+        },
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [filterState, searchKeyword]);
+
+  const handleClearSearchClick = useCallback(() => {
+    try {
+      analytics.trackCalendarClick('clear_search');
+    } catch {
+      /* ignore */
+    }
+    setPreferences({ searchKeyword: '' });
+  }, [setPreferences]);
+
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
@@ -425,6 +450,12 @@ export function ReportFiltersBar({
             placeholder="Search activities..."
             value={searchKeyword}
             onChange={(e) => setPreferences({ searchKeyword: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearchEnter();
+              }
+            }}
             className="pr-8 pl-8 shadow-none"
             aria-label="Search activities"
           />
@@ -432,7 +463,7 @@ export function ReportFiltersBar({
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-              onClick={() => setPreferences({ searchKeyword: '' })}
+              onClick={handleClearSearchClick}
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />
