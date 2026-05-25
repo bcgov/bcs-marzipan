@@ -8,6 +8,7 @@ import type {
   TeamListItem,
   TransferActivitiesBody,
   UpdateUserBody,
+  UpdateUserSettingsBody,
   UpdateUserTeamRoleBody,
   UserDetail,
   UserHistoryEntry,
@@ -65,6 +66,17 @@ export async function updateUser(
 ): Promise<UserDetail> {
   const response = await api.patch<{ success: boolean; data: UserDetail }>(
     `/users/${id}`,
+    body
+  );
+  return response.data.data;
+}
+
+export async function updateUserSettings(
+  id: number,
+  body: UpdateUserSettingsBody
+): Promise<UserDetail> {
+  const response = await api.patch<{ success: boolean; data: UserDetail }>(
+    `/users/${id}/settings`,
     body
   );
   return response.data.data;

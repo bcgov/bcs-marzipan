@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EMPTY_RICH_TEXT_DOC, tryParseTipTapDoc } from '@corpcal/shared/utils';
 
 import {
+  coalesceRichTextFormStorageValue,
   normalizeActivityRichTextFormFields,
   normalizeActivityRichTextFormValue,
 } from './normalize-activity-rich-text-form';
@@ -45,5 +46,17 @@ describe('normalizeActivityRichTextFormFields', () => {
     expect(data.summary).toBe(EMPTY_RICH_TEXT_DOC);
     expect(data.significance).toBe(EMPTY_RICH_TEXT_DOC);
     expect(data.executiveSummary).toBe(EMPTY_RICH_TEXT_DOC);
+  });
+});
+
+describe('coalesceRichTextFormStorageValue', () => {
+  it('maps equivalent empty variants to EMPTY_RICH_TEXT_DOC', () => {
+    expect(coalesceRichTextFormStorageValue('{"type":"doc"}')).toBe(
+      EMPTY_RICH_TEXT_DOC
+    );
+    expect(coalesceRichTextFormStorageValue(EMPTY_RICH_TEXT_DOC)).toBe(
+      EMPTY_RICH_TEXT_DOC
+    );
+    expect(coalesceRichTextFormStorageValue('')).toBe(EMPTY_RICH_TEXT_DOC);
   });
 });

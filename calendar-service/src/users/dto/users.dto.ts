@@ -9,6 +9,7 @@ import {
   transferActivitiesBodySchema,
   transferActivitiesResponseSchema,
   updateUserBodySchema,
+  updateUserSettingsBodySchema,
   updateUserTeamRoleBodySchema,
   userDetailSchema,
   userHistoryEntrySchema,
@@ -24,6 +25,13 @@ export class CreateUserDto extends createZodDto(createUserBodySchema) {}
  * Request DTO for PATCH /users/:id - Update user role, active status, or notes.
  */
 export class UpdateUserDto extends createZodDto(updateUserBodySchema) {}
+
+/**
+ * Request DTO for PATCH /users/:id/settings - Update per-user settings (flag colour, etc.)
+ */
+export class UpdateUserSettingsDto extends createZodDto(
+  updateUserSettingsBodySchema
+) {}
 
 /**
  * Request DTO for POST /users/:id/teams - Add user to team.

@@ -1,5 +1,6 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
 import {
   EMPTY_RICH_TEXT_DOC,
@@ -104,7 +105,7 @@ export function canonicalizeActivityFormData(
     venueAddress: normalizeVenueAddressForForm(
       data.venueAddress as ActivityResponse['venueAddress']
     ),
-    eventPlanners: canonObjectArray(data.eventPlanners),
+    eventPlanners: normalizeEventPlannerFormEntries(data.eventPlanners),
     representatives: canonObjectArray(data.representatives),
     commsContacts: canonObjectArray(data.commsContacts),
     reportSettings: canonObjectArray(data.reportSettings),

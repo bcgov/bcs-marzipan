@@ -160,7 +160,15 @@ export function ActivityPageHeader({
                       </AvatarFallback>
                     </Avatar>
                     <Flag
-                      className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                      className="absolute -right-0.5 -bottom-0.5 size-2.5"
+                      style={{
+                        fill:
+                          currentFlag.assigneeFlagColour ??
+                          'var(--flag-button-icon)',
+                        color:
+                          currentFlag.assigneeFlagColour ??
+                          'var(--flag-button-icon)',
+                      }}
                       aria-hidden
                     />
                   </>
@@ -193,7 +201,15 @@ export function ActivityPageHeader({
                   </AvatarFallback>
                 </Avatar>
                 <Flag
-                  className="absolute -right-0.5 -bottom-0.5 size-2.5 fill-[color:var(--flag-button-icon)] text-[color:var(--flag-button-icon)]"
+                  className="absolute -right-0.5 -bottom-0.5 size-2.5"
+                  style={{
+                    fill:
+                      currentFlag.assigneeFlagColour ??
+                      'var(--flag-button-icon)',
+                    color:
+                      currentFlag.assigneeFlagColour ??
+                      'var(--flag-button-icon)',
+                  }}
                   aria-hidden
                 />
               </Button>
