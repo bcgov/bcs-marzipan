@@ -121,6 +121,7 @@ export interface UsersTabContentProps {
   onEditUser: (user: UserListItem) => void;
   onTransfer: (user: UserListItem) => void;
   onViewHistory: (user: UserListItem) => void;
+  onViewDetails: (user: UserListItem) => void;
   onDeactivate: (user: UserListItem) => void;
   onReactivate: (user: UserListItem) => void;
   onInitiateReset: (user: UserListItem) => void;
@@ -132,6 +133,7 @@ export function UsersTabContent({
   onEditUser,
   onTransfer,
   onViewHistory,
+  onViewDetails,
   onDeactivate,
   onReactivate,
   onInitiateReset,
@@ -399,7 +401,13 @@ export function UsersTabContent({
               pageRows.map((user) => (
                 <tr key={user.id} className={tableBodyRow}>
                   <td className={`${tableTd} font-medium text-slate-900`}>
-                    {displayName(user)}
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => onViewDetails(user)}
+                    >
+                      {displayName(user)}
+                    </button>
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
                     {user.adEmail ?? '-'}
