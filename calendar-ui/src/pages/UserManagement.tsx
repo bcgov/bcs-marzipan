@@ -26,7 +26,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TransferActivitiesDialog } from '@/components/users/TransferActivitiesDialog';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import { UserDetailDrawer } from '@/components/users/UserDetailDrawer';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserHistoryDrawer } from '@/components/users/UserHistoryDrawer';
 import { UsersTabContent } from '@/components/users/UsersTabContent';
@@ -39,7 +38,6 @@ export function Users() {
   const [transferSourceUser, setTransferSourceUser] =
     useState<UserListItem | null>(null);
   const [historyUser, setHistoryUser] = useState<UserListItem | null>(null);
-  const [detailUser, setDetailUser] = useState<UserListItem | null>(null);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [resetCodeResult, setResetCodeResult] = useState<{
@@ -182,7 +180,6 @@ export function Users() {
             onEditUser={setEditUser}
             onTransfer={setTransferSourceUser}
             onViewHistory={setHistoryUser}
-            onViewDetails={setDetailUser}
             onDeactivate={handleDeactivate}
             onReactivate={handleReactivate}
             onInitiateReset={handleInitiateReset}
@@ -218,14 +215,6 @@ export function Users() {
               user={historyUser}
               open={!!historyUser}
               onClose={() => setHistoryUser(null)}
-            />
-          )}
-
-          {detailUser && (
-            <UserDetailDrawer
-              user={detailUser}
-              open={!!detailUser}
-              onClose={() => setDetailUser(null)}
             />
           )}
 

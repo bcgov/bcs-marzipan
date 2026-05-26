@@ -13,6 +13,7 @@ import {
   Pencil,
   UsersRound,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
@@ -121,7 +122,6 @@ export interface UsersTabContentProps {
   onEditUser: (user: UserListItem) => void;
   onTransfer: (user: UserListItem) => void;
   onViewHistory: (user: UserListItem) => void;
-  onViewDetails: (user: UserListItem) => void;
   onDeactivate: (user: UserListItem) => void;
   onReactivate: (user: UserListItem) => void;
   onInitiateReset: (user: UserListItem) => void;
@@ -133,11 +133,11 @@ export function UsersTabContent({
   onEditUser,
   onTransfer,
   onViewHistory,
-  onViewDetails,
   onDeactivate,
   onReactivate,
   onInitiateReset,
 }: UsersTabContentProps) {
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [teamIds, setTeamIds] = useState<number[]>([]);
   const [roleIds, setRoleIds] = useState<number[]>([]);
@@ -404,7 +404,7 @@ export function UsersTabContent({
                     <button
                       type="button"
                       className="text-left hover:underline"
-                      onClick={() => onViewDetails(user)}
+                      onClick={() => void navigate(`/users/${user.id}`)}
                     >
                       {displayName(user)}
                     </button>
