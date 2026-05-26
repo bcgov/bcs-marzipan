@@ -248,6 +248,7 @@ export class UsersService {
         isActive: users.isActive,
         notes: users.notes,
         flagColour: userSettings.flagColour,
+        directLoginEnabled: userSettings.directLoginEnabled,
       })
       .from(users)
       .leftJoin(userSettings, eq(userSettings.userId, users.id))
@@ -283,6 +284,7 @@ export class UsersService {
     return {
       ...u,
       flagColour: u.flagColour ?? null,
+      directLoginEnabled: u.directLoginEnabled ?? undefined,
       roleName: roleRow?.name ?? 'Unknown',
       teams: teamRows.map((t) => ({
         teamId: t.teamId,
@@ -309,23 +311,48 @@ export class UsersService {
       .values({
         userId: id,
         flagColour: dto.flagColour ?? null,
+        directLoginEnabled: dto.directLoginEnabled ?? false,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: userSettings.userId,
         set: {
           flagColour: dto.flagColour ?? null,
+          directLoginEnabled: dto.directLoginEnabled ?? false,
           updatedAt: new Date(),
         },
       });
 
-    await this.recordUserHistory(id, changedByUserId, 'settings_updated', [
-      {
+    const changes = [] as HistoryChange[];
+    if (
+      dto.flagColour !== undefined &&
+      dto.flagColour !== existing.flagColour
+    ) {
+      changes.push({
         field: 'flagColour',
         oldValue: existing.flagColour,
         newValue: dto.flagColour,
-      },
-    ]);
+      });
+    }
+    if (
+      dto.directLoginEnabled !== undefined &&
+      dto.directLoginEnabled !== existing.directLoginEnabled
+    ) {
+      changes.push({
+        field: 'directLoginEnabled',
+        oldValue: existing.directLoginEnabled,
+        newValue: dto.directLoginEnabled,
+      });
+    }
+
+    if (changes.length > 0) {
+      await this.recordUserHistory(
+        id,
+        changedByUserId,
+        'settings_updated',
+        changes
+      );
+    }
 
     const updated = await this.findOne(id);
     if (!updated) throw new NotFoundException('User not found');

@@ -1,6 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -8,8 +10,14 @@ import {
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
 import type { UserDetail } from '@corpcal/shared/api/types';
-import { fetchRoles, fetchUser, updateUser } from '@/api/usersApi';
-import { PageHeader } from '@/components/layout';
+import {
+  fetchRoles,
+  fetchUser,
+  initiatePasswordReset,
+  updateUser,
+  updateUserSettings,
+} from '@/api/usersApi';
+// removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { UserEditModal } from '@/components/users/UserEditModal';
 import { useAuth } from '@/hooks/useAuth';
 
 // Static mapping of common role names to human-readable permission lists.
@@ -68,6 +78,8 @@ export default function UserDetailPage() {
     queryFn: fetchRoles,
   });
 
+  const queryClient = useQueryClient();
+
   const [localNotes, setLocalNotes] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
 
@@ -75,6 +87,7 @@ export default function UserDetailPage() {
     if (!userDetail) return;
     setLocalNotes(userDetail.notes ?? '');
     setSelectedRoleId(userDetail.roleId ?? null);
+    setDirectLoginEnabled(Boolean(userDetail.directLoginEnabled));
   }, [userDetail]);
 
   const mutation = useMutation({
@@ -82,6 +95,42 @@ export default function UserDetailPage() {
       updateUser(userId, payload),
     onSuccess: () => {
       void navigate('/users');
+    },
+  });
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [directLoginEnabled, setDirectLoginEnabled] = useState(false);
+  const [resetCodeResult, setResetCodeResult] = useState<{
+    code: string;
+    expiresInHours?: number;
+  } | null>(null);
+
+  const resetMutation = useMutation({
+    mutationFn: () => initiatePasswordReset(userId),
+    onSuccess: (data) => {
+      setResetCodeResult({
+        code: data.resetCode,
+        expiresInHours: data.expiresInHours,
+      });
+      toast.success('Temporary login code generated');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to generate temporary login code');
+    },
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: (body: { directLoginEnabled?: boolean }) =>
+      updateUserSettings(userId, {
+        flagColour: userDetail?.flagColour ?? null,
+        directLoginEnabled: body.directLoginEnabled,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update user settings');
     },
   });
 
@@ -110,15 +159,33 @@ export default function UserDetailPage() {
     if (selectedRoleId != null) body.roleId = selectedRoleId;
     body.notes = localNotes || null;
     mutation.mutate(body);
+
+    // Persist direct login setting if it changed from the server value
+    if (userDetail && userDetail.directLoginEnabled !== directLoginEnabled) {
+      settingsMutation.mutate({ directLoginEnabled });
+    }
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="User details"
-        description="View and edit user details"
-        action={null}
-      />
+      <div className="flex items-center justify-between">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => void navigate('/users')}
+          className="shrink-0 gap-2"
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Go back
+        </Button>
+
+        {canEdit ? (
+          <Button onClick={() => setShowEditModal(true)}>Edit</Button>
+        ) : (
+          <div />
+        )}
+      </div>
 
       {isLoading || !userDetail ? (
         <div className="text-slate-500">Loading…</div>
@@ -142,22 +209,7 @@ export default function UserDetailPage() {
                   : '-'}
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => void navigate('/users')}
-              >
-                Back
-              </Button>
-              {canEdit && (
-                <Button
-                  onClick={handleSave}
-                  disabled={mutation.status === 'pending'}
-                >
-                  Save
-                </Button>
-              )}
-            </div>
+            <div />
           </div>
 
           <div className="grid grid-cols-2 gap-6">
@@ -217,8 +269,94 @@ export default function UserDetailPage() {
                   </ul>
                 )}
               </div>
+              <div className="mt-4 rounded border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Direct login</div>
+                    <div className="text-sm text-slate-500">
+                      Enable direct login (email + password)
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Switch
+                      checked={directLoginEnabled}
+                      onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setResetCodeResult({ code: '', expiresInHours: 0 });
+                      resetMutation.mutate();
+                    }}
+                    disabled={resetMutation.status === 'pending'}
+                  >
+                    Generate temporary password
+                  </Button>
+                  {resetCodeResult?.code && (
+                    <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
+                      <code className="font-mono text-sm break-all select-all">
+                        {resetCodeResult.code}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(
+                            resetCodeResult.code
+                          );
+                          toast.success('Copied to clipboard');
+                        }}
+                        aria-label="Copy reset code"
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Bottom action bar */}
+          <div className="pt-4">
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void navigate('/users')}
+              >
+                Cancel
+              </Button>
+              {canEdit && (
+                <Button
+                  onClick={handleSave}
+                  disabled={mutation.status === 'pending'}
+                >
+                  Save
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {showEditModal && (
+            <UserEditModal
+              user={userDetail}
+              onClose={() => setShowEditModal(false)}
+              onSaved={() => {
+                void queryClient.invalidateQueries({
+                  queryKey: ['user', userId],
+                });
+                void queryClient.invalidateQueries({ queryKey: ['users'] });
+                setShowEditModal(false);
+              }}
+              onRemoveFromTeam={() => {
+                /* noop for modal usage here */
+              }}
+            />
+          )}
         </div>
       )}
     </div>

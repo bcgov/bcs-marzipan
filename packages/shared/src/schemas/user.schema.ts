@@ -56,6 +56,7 @@ export type UserListItem = z.infer<typeof userListItemSchema>;
 export const userDetailSchema = userListItemSchema.extend({
   notes: z.string().nullable(),
   flagColour: z.string().nullable(),
+  directLoginEnabled: z.boolean().optional(),
 });
 
 export type UserDetail = z.infer<typeof userDetailSchema>;
@@ -120,6 +121,10 @@ export const updateUserSettingsBodySchema = z.object({
       'Must be a valid 6-digit hex colour (e.g. #FF0000)'
     )
     .nullable(),
+  /**
+   * Allow admins to enable or disable direct (email+password) login for a user.
+   */
+  directLoginEnabled: z.boolean().optional(),
 });
 
 export type UpdateUserSettingsBody = z.infer<
