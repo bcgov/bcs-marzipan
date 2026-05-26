@@ -17,6 +17,8 @@ import {
   updateUser,
   updateUserSettings,
 } from '@/api/usersApi';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -192,21 +194,44 @@ export default function UserDetailPage() {
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold">
-                {userDetail.adDisplayName || userDetail.adUsername}
-              </h2>
-              <div className="text-sm text-slate-500">
-                {userDetail.roleName}
-              </div>
-              <div className="text-xs text-slate-400">
-                Last updated:{' '}
-                {userDetail.lastUpdatedDateTime
-                  ? format(
-                      new Date(userDetail.lastUpdatedDateTime),
-                      'MMM d, yyyy HH:mm'
-                    )
-                  : '-'}
+            <div className="flex items-start gap-4">
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="text-lg font-semibold">
+                  {(userDetail.adDisplayName || userDetail.adUsername || '')
+                    .split(' ')
+                    .map((s) => s[0])
+                    .slice(0, 2)
+                    .join('') || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-2xl leading-tight font-semibold">
+                  {userDetail.adDisplayName || userDetail.adUsername}
+                </h2>
+                <div className="mt-1">
+                  <div className="text-sm text-slate-600">
+                    {userDetail.roleName}
+                  </div>
+                  <div className="mt-2">
+                    <Badge
+                      variant={userDetail.isActive ? 'success' : 'outline'}
+                    >
+                      {userDetail.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="mt-1 text-[16px] font-medium text-pink-600">
+                  {userDetail.jobTitle}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  Last login:{' '}
+                  {userDetail.lastLoginDateTime
+                    ? format(
+                        new Date(userDetail.lastLoginDateTime),
+                        'MMM d, yyyy HH:mm'
+                      )
+                    : '-'}
+                </div>
               </div>
             </div>
             <div />

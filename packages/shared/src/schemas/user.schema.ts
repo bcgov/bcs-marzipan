@@ -57,6 +57,10 @@ export const userDetailSchema = userListItemSchema.extend({
   notes: z.string().nullable(),
   flagColour: z.string().nullable(),
   directLoginEnabled: z.boolean().optional(),
+  /** Active Directory job title (if available) */
+  jobTitle: z.string().nullable().optional(),
+  /** ISO timestamp for the user's last successful login */
+  lastLoginDateTime: z.string().nullable().optional(),
 });
 
 export type UserDetail = z.infer<typeof userDetailSchema>;

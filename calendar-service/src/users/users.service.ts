@@ -249,6 +249,8 @@ export class UsersService {
         notes: users.notes,
         flagColour: userSettings.flagColour,
         directLoginEnabled: userSettings.directLoginEnabled,
+        adJobTitle: users.adJobTitle,
+        lastLoginDateTime: users.lastLoginDateTime,
       })
       .from(users)
       .leftJoin(userSettings, eq(userSettings.userId, users.id))
@@ -285,6 +287,12 @@ export class UsersService {
       ...u,
       flagColour: u.flagColour ?? null,
       directLoginEnabled: u.directLoginEnabled ?? undefined,
+      jobTitle: u.adJobTitle ?? null,
+      lastLoginDateTime: u.lastLoginDateTime
+        ? u.lastLoginDateTime instanceof Date
+          ? u.lastLoginDateTime.toISOString()
+          : String(u.lastLoginDateTime)
+        : null,
       roleName: roleRow?.name ?? 'Unknown',
       teams: teamRows.map((t) => ({
         teamId: t.teamId,
