@@ -329,8 +329,6 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<sc
 
 Examples: `feat(activities): add filtering`, `fix(database): resolve connection issue`
 
-Use `npm run commit` for an interactive prompt.
-
 ### Branch Naming
 
 Format: `<type>/CORPCAL-<number>-<short-description>`
