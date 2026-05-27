@@ -11,6 +11,7 @@ import {
 } from '@corpcal/shared';
 import type { UserDetail } from '@corpcal/shared/api/types';
 import {
+  fetchRolePermissions,
   fetchRoles,
   fetchUser,
   initiatePasswordReset,
@@ -154,7 +155,32 @@ export default function UserDetailPage() {
 
   const selectedRoleName =
     roles.find((r) => r.id === selectedRoleId)?.name ?? '';
-  const permissionList = ROLE_PERMISSIONS[selectedRoleName] ?? [];
+
+  const [rolePermissionList, setRolePermissionList] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRolePermissionList([]);
+    if (!selectedRoleId) return;
+    void fetchRolePermissions(selectedRoleId)
+      .then((rows) => {
+        if (cancelled) return;
+        const descriptions = rows
+          .map((r) => r.description ?? r.key)
+          .filter(Boolean);
+        if (descriptions.length > 0) setRolePermissionList(descriptions);
+        else setRolePermissionList(ROLE_PERMISSIONS[selectedRoleName] ?? []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRolePermissionList(ROLE_PERMISSIONS[selectedRoleName] ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRoleId, selectedRoleName]);
+
+  const permissionList = rolePermissionList;
 
   const handleSave = () => {
     const body: { roleId?: number; notes?: string | null } = {};

@@ -24,10 +24,12 @@ import {
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
+  permissions,
   pitchRequiredStatuses,
   pitchStatuses,
   premierRequested,
   reports,
+  rolePermissions,
   roles,
   tags,
   teams,
@@ -161,6 +163,27 @@ export class LookupsService {
       .where(eq(roles.isActive, true))
       .orderBy(roles.name);
     return results;
+  }
+
+  /**
+   * Get active permissions for a given role id (key + description)
+   */
+  async getRolePermissions(
+    roleId: number
+  ): Promise<{ key: string; description: string | null }[]> {
+    const rows = await this.databaseService.db
+      .select({ key: permissions.key, description: permissions.description })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(
+        and(
+          eq(rolePermissions.roleId, roleId),
+          eq(rolePermissions.isActive, true)
+        )
+      )
+      .orderBy(permissions.key);
+
+    return rows.map((r) => ({ key: r.key, description: r.description }));
   }
 
   /**

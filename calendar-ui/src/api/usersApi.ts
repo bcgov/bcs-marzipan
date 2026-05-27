@@ -175,3 +175,12 @@ export async function fetchRoles(): Promise<RoleOption[]> {
   );
   return Array.isArray(response.data.data) ? response.data.data : [];
 }
+
+export async function fetchRolePermissions(
+  roleId: number
+): Promise<{ key: string; description?: string | null }[]> {
+  const response = await api.get<{ success: boolean; data: any }>(
+    `/lookups/roles/${roleId}/permissions`
+  );
+  return Array.isArray(response.data.data) ? response.data.data : [];
+}

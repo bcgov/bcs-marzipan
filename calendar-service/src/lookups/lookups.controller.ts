@@ -255,6 +255,23 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get permissions for a role' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permissions retrieved successfully',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Role ID' })
+  @Get('roles/:id/permissions')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getRolePermissions(@Param('id') id: string): Promise<{
+    success: boolean;
+    data: { key: string; description: string | null }[];
+  }> {
+    const roleId = Number(id);
+    const data = await this.lookupsService.getRolePermissions(roleId);
+    return { success: true, data };
+  }
+
   @ApiOperation({
     summary: 'Get all users',
     description:
