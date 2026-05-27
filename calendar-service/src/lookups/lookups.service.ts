@@ -172,7 +172,11 @@ export class LookupsService {
     roleId: number
   ): Promise<{ key: string; description: string | null }[]> {
     const rows = await this.databaseService.db
-      .select({ key: permissions.key, description: permissions.description })
+      .select({
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+      })
       .from(rolePermissions)
       .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
       .where(
@@ -183,7 +187,11 @@ export class LookupsService {
       )
       .orderBy(permissions.key);
 
-    return rows.map((r) => ({ key: r.key, description: r.description }));
+    return rows.map((r) => ({
+      key: r.key,
+      displayName: r.displayName,
+      description: r.description,
+    }));
   }
 
   /**

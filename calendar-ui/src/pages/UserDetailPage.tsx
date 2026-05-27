@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Key } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,6 +18,7 @@ import {
   updateUser,
   updateUserSettings,
 } from '@/api/usersApi';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
@@ -157,16 +158,18 @@ export default function UserDetailPage() {
     roles.find((r) => r.id === selectedRoleId)?.name ?? '';
 
   const [rolePermissionList, setRolePermissionList] = useState<string[]>([]);
+  const [showAllPermissions, setShowAllPermissions] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setRolePermissionList([]);
+    setShowAllPermissions(false);
     if (!selectedRoleId) return;
     void fetchRolePermissions(selectedRoleId)
       .then((rows) => {
         if (cancelled) return;
         const descriptions = rows
-          .map((r) => r.description ?? r.key)
+          .map((r) => r.displayName ?? r.description ?? r.key)
           .filter(Boolean);
         if (descriptions.length > 0) setRolePermissionList(descriptions);
         else setRolePermissionList(ROLE_PERMISSIONS[selectedRoleName] ?? []);
@@ -182,6 +185,12 @@ export default function UserDetailPage() {
 
   const permissionList = rolePermissionList;
 
+  const MAX_PERMISSIONS = 8;
+  const totalPermissions = permissionList.length;
+  const visiblePermissions = showAllPermissions
+    ? permissionList
+    : permissionList.slice(0, MAX_PERMISSIONS);
+
   const handleSave = () => {
     const body: { roleId?: number; notes?: string | null } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
@@ -195,7 +204,7 @@ export default function UserDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer variant="narrow" className="space-y-6">
       <div className="flex items-center justify-between">
         <Button
           type="button"
@@ -291,6 +300,36 @@ export default function UserDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {permissionList.length > 0 && (
+                  <>
+                    <ul className="mt-2 space-y-2 p-2 text-sm text-slate-700">
+                      {visiblePermissions.map((p, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <CheckCircle
+                            className="h-5 w-5 shrink-0 text-green-600"
+                            aria-hidden
+                          />
+                          <span>{p}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {totalPermissions > MAX_PERMISSIONS && (
+                      <div className="mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAllPermissions((s) => !s)}
+                          className="px-0"
+                        >
+                          {showAllPermissions
+                            ? 'Show less'
+                            : `Show ${totalPermissions - MAX_PERMISSIONS} more`}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>
@@ -304,48 +343,37 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            <div className="max-w-2xl rounded border border-slate-200 bg-slate-50 p-6">
-              <div className="text-base font-medium">Role permissions</div>
-              {permissionList.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500">
-                  Permissions not available for this role.
-                </p>
-              ) : (
-                <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-normal text-slate-700">
-                  {permissionList.map((p, i) => (
-                    <li key={i}>{p}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            {/* role permissions moved directly under Role select */}
 
-            <div className="max-w-2xl rounded border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between">
+            <div className="max-w-2xl bg-transparent p-0">
+              <div className="font-semibold">Direct login</div>
+
+              <div className="mt-2 flex items-center gap-3">
                 <div>
-                  <div className="font-medium">Direct login</div>
-                  <div className="text-sm text-slate-500">
-                    Enable direct login (email + password)
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
                   <Switch
                     checked={directLoginEnabled}
                     onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
                   />
                 </div>
+                <div className="text-sm text-slate-500">
+                  Enable direct login
+                </div>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => {
                     setResetCodeResult({ code: '', expiresInHours: 0 });
                     resetMutation.mutate();
                   }}
                   disabled={resetMutation.status === 'pending'}
+                  className="flex items-center gap-2 text-slate-500"
                 >
+                  <Key className="h-4 w-4" aria-hidden />
                   Generate temporary password
                 </Button>
+
                 {resetCodeResult?.code && (
                   <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
                     <code className="font-mono text-sm break-all select-all">
@@ -408,6 +436,6 @@ export default function UserDetailPage() {
           )}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

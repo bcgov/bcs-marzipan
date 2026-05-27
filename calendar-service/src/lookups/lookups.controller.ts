@@ -265,7 +265,11 @@ export class LookupsController {
   @Header('Cache-Control', lookupGetCacheControl())
   async getRolePermissions(@Param('id') id: string): Promise<{
     success: boolean;
-    data: { key: string; description: string | null }[];
+    data: {
+      key: string;
+      displayName?: string | null;
+      description: string | null;
+    }[];
   }> {
     const roleId = Number(id);
     const data = await this.lookupsService.getRolePermissions(roleId);
