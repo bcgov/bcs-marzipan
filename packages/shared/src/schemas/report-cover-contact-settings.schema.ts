@@ -16,16 +16,14 @@ const trimmedPhone = z
   .max(REPORT_COVER_CONTACT_PHONE_MAX_LEN)
   .transform((s) => s.trim());
 
-const trimmedEmail = z
+/** Display-only; allow any reasonable characters — no email format validation. */
+const trimmedContactEmail = z
   .string()
   .max(REPORT_COVER_CONTACT_EMAIL_MAX_LEN)
-  .transform((s) => s.trim())
-  .refine((s) => s.length === 0 || z.string().email().safeParse(s).success, {
-    message: 'Invalid email address',
-  });
+  .transform((s) => s.trim());
 
 export const reportCoverContactSettingsSchema: z.ZodType<ReportCoverContactSettings> =
   z.object({
     contactPhone: trimmedPhone,
-    contactEmail: trimmedEmail,
+    contactEmail: trimmedContactEmail,
   });
