@@ -30,6 +30,8 @@ import {
 
 import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
+import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
@@ -76,6 +78,7 @@ import {
 } from '@/hooks/useLiveActivitySyncContext';
 import {
   getLookAheadSectionLabelFromRows,
+  getLookAheadSectionLegendColorFromRows,
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
 import {
@@ -311,14 +314,15 @@ function OverviewCell({
             (cat): BadgeGroupItem => ({
               key: cat,
               label: cat,
-              variant: 'primary',
-              className: 'h-auto min-h-5 whitespace-normal text-white',
+              variant: 'outline',
+              className:
+                'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
             })
           )}
           maxLines={1}
           lineHeight={28}
-          badgeVariant="primary"
-          badgeClassName="h-auto min-h-5 whitespace-normal text-white"
+          badgeVariant="outline"
+          badgeClassName="h-auto min-h-5 whitespace-normal text-slate-600"
           containerClassName="gap-1"
         />
       )}
@@ -359,12 +363,26 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       : null;
 
   const summaryBadgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const sectionLegendColor = sanitizeLegendSwatchHexColor(
+      section
+        ? getLookAheadSectionLegendColorFromRows(lookAheadSectionRows, section)
+        : null
+    );
     const lookAheadItem: BadgeGroupItem | null = lookAheadLabel
       ? {
           key: 'look-ahead',
           label: lookAheadLabel,
           variant: 'primary',
-          className: 'h-auto min-h-5 text-xs text-white',
+          className: sectionLegendColor
+            ? 'h-auto min-h-5 border-transparent text-xs'
+            : 'h-auto min-h-5 text-xs text-white',
+          style: sectionLegendColor
+            ? {
+                backgroundColor: sectionLegendColor,
+                color: contrastingBlackOrWhiteForegroundHex(sectionLegendColor),
+                borderColor: 'transparent',
+              }
+            : undefined,
         }
       : null;
     const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
@@ -374,7 +392,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
     }));
     return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
-  }, [lookAheadLabel, row.tags]);
+  }, [lookAheadLabel, lookAheadSectionRows, row.tags, section]);
 
   const isCollapsedWithTruncation = needsTruncation && !expanded;
 
@@ -543,13 +561,14 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
 function LeadsCell({ row }: { row: ActivityTableRow }) {
   const lines: Array<{ label: string; value: string }> = [];
 
-  if (row.leadOrg) lines.push({ label: 'Lead org', value: row.leadOrg });
   const leadMinistryDisplay =
     row.leadMinistryAbbreviation ?? row.leadMinistry ?? null;
+  if (row.leadOrg && row.leadOrg !== leadMinistryDisplay)
+    lines.push({ label: 'Lead org', value: row.leadOrg });
   if (leadMinistryDisplay)
     lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
   if (row.commsLeadName)
-    lines.push({ label: 'Comms lead', value: row.commsLeadName });
+    lines.push({ label: 'Comms contact', value: row.commsLeadName });
   if (row.eventPlanners?.length)
     lines.push({
       label: 'Event planners',
@@ -568,7 +587,7 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
         <div key={label}>
           <span className="text-slate-500">{label}: </span>
           <span className="font-medium">{value}</span>
-          {label === 'Comms lead' && additionalComms > 0 && (
+          {label === 'Comms contact' && additionalComms > 0 && (
             <Badge
               variant="outline"
               className="ml-1 h-auto min-h-5 text-xs text-slate-600"
