@@ -9,6 +9,19 @@ import {
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,
 } from './renderReport';
+import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+
+const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+]);
+
+const TEST_RENDER_OPTIONS = {
+  activityBaseUrl: 'http://localhost:3000',
+  resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+};
 
 const BASE_ACTIVITY: ActivityResponse = {
   id: 101,
@@ -119,11 +132,13 @@ describe('renderPrintReportFragmentHtml', () => {
     });
 
     expect(html).toContain('data-report-template="LOOK_AHEAD"');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
     expect(html).toContain('Investment of $500M');
     expect(html).not.toContain('Minister announces housing investment');
     expect(html).not.toContain('Event planner:');
     expect(html).not.toContain('Legislative Assembly');
-    expect(html).not.toContain('Updated Apr');
+    expect(html).not.toContain('Last updated Apr');
     expect(html).not.toContain('Apr 27, 2026');
   });
 
@@ -171,20 +186,40 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Event lead:');
   });
 
-  it('renders exec look-ahead print with title and summary in the activity details column', () => {
-    const html = renderPrintReportFragmentHtml('exec', FIXTURE, {
+  it('renders exec look-ahead print with title, inline summary, venue, and last updated in activity details', () => {
+    const activityWithSignificance = {
+      ...BASE_ACTIVITY,
+      significance: 'High visibility announcement for cabinet briefing.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'exec',
+        displayName: 'Executive Look Ahead Report',
+      },
+      sections: [
+        { ...FIXTURE.sections[0], activities: [activityWithSignificance] },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('exec', fixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
     expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
-    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
+    expect(html).toContain('<strong>Minister announces housing investment</strong>');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
+    expect(html).toContain('High visibility announcement for cabinet briefing.');
+    expect(html).toContain('Victoria, Legislative Assembly');
+    expect(html).toContain('Last updated Apr');
     expect(html).not.toContain('Investment of $500M');
     expect(html).not.toContain('Apr 27, 2026');
-    expect(html).toContain('Event planner:');
-    expect(html).toContain('Updated Apr');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Event lead:');
   });
 
   it('renders thirty-sixty-ninety like exec body chrome with title + summary', () => {
@@ -213,7 +248,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Apr 27, 2026');
     expect(html).toContain('Event planner:');
     expect(html).toContain('Legislative Assembly');
-    expect(html).toContain('Updated Apr');
+    expect(html).toContain('Last updated Apr');
   });
 
   it('renders the planning placeholder as a React fragment', () => {
@@ -261,16 +296,15 @@ describe('renderPrintReportFragmentHtml', () => {
 
     expect(html).toContain('href="https://corpcal.example.gov.bc.ca/activity/101"');
     expect(html).toContain('ACT');
-    expect(html).toContain('>101</a>');
+    expect(html).toContain('corpcal-print-activity-link');
+    expect(html).toContain('>101</span>');
     expect(html).not.toContain('>ACT-101</a>');
   });
 
   it('includes translations list when fewer than four languages are required', () => {
-    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
+    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, TEST_RENDER_OPTIONS);
 
-    expect(html).toContain('FR, PUN');
+    expect(html).toContain('French, Punjabi');
     expect(html).not.toContain('Translations: 2 languages');
   });
 
@@ -294,8 +328,8 @@ describe('renderPrintReportFragmentHtml', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
       activityBaseUrl: 'http://localhost:3000',
     });
-    expect(html).not.toContain('FR');
-    expect(html).not.toContain('PUN');
+    expect(html).not.toContain('French');
+    expect(html).not.toContain('Punjabi');
     expect(html).not.toContain('Translations:');
   });
 
@@ -340,11 +374,9 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', many, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
+    const html = renderPrintReportFragmentHtml('look-ahead', many, TEST_RENDER_OPTIONS);
 
-    expect(html).toContain('4 languages');
+    expect(html).toContain('4 translations');
     expect(html).not.toContain('Translations:');
   });
 
@@ -481,6 +513,65 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('corpcal-print-rollup-thead-column-header-row');
   });
 
+  it('omits the Release column for sections with printOmitReleaseColumn', () => {
+    const awarenessAndEvents: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+            },
+            {
+              id: 'awareness',
+              name: 'Awareness',
+              order: 2,
+              filter: { lookAheadSection: 'awareness' },
+              printOmitReleaseColumn: true,
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'events',
+          name: 'Events',
+          order: 1,
+          activities: [BASE_ACTIVITY],
+        },
+        {
+          id: 'awareness',
+          name: 'Awareness',
+          order: 2,
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              id: 401,
+              displayId: 'ACT-401',
+              lookAheadSection: 'awareness',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', awarenessAndEvents, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect((html.match(/corpcal-print-table--omit-release/g) ?? []).length).toBe(
+      1
+    );
+    expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
+    expect(html).toContain('>Activity details</th>');
+    expect(html).toContain('>Activity</th>');
+  });
+
   it('honours an explicit printPerDayColumnHeaderRepeat: true on a non-events section', () => {
     const overridden: ReportDataResponse = {
       ...FIXTURE,
@@ -521,6 +612,57 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('corpcal-print-day-heading-row');
     expect(html).toContain('corpcal-print-per-day-column-header-row');
     expect(html).not.toContain('corpcal-print-rollup-thead-column-header-row');
+  });
+
+  it('includes confidential activities in look-ahead with badge and executive summary', () => {
+    const confidentialActivity: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      isConfidential: true,
+      executiveSummary: 'Hold for GCPE.',
+      summary: 'Sensitive cabinet briefing details.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        { ...FIXTURE.sections[0], activities: [confidentialActivity] },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain('Hold for GCPE.');
+    expect(html).not.toContain('Sensitive cabinet briefing details.');
+  });
+
+  it('includes confidential activities in exec look-ahead with badge and summary', () => {
+    const confidentialActivity: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      isConfidential: true,
+      summary: 'Full summary text for executive readers.',
+      executiveSummary: 'Hold for GCPE.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'exec',
+        displayName: 'Executive Look Ahead Report',
+      },
+      sections: [
+        { ...FIXTURE.sections[0], activities: [confidentialActivity] },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('exec', fixture, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain('Full summary text for executive readers.');
+    expect(html).not.toContain('Hold for GCPE.');
   });
 });
 
@@ -570,7 +712,7 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html).not.toContain(
       'indicates major detail or date changes only (not time switches)'
     );
-    expect(html).toContain('>101</a>');
+    expect(html).toContain('>101</span>');
   });
 
   it('embeds the provided @font-face block before the shared styles', () => {

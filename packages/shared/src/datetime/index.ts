@@ -38,6 +38,7 @@ export {
   formatInstantInPacific,
   formatInstantPacificDate,
   formatInstantPacificTime,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
 } from './format';
 export { toCalendarDateStringFromDb, toCivilTimeStringFromDb } from './mapper';

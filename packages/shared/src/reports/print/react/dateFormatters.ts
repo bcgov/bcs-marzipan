@@ -15,6 +15,7 @@ import {
   formatCalendarDateShortNoYear,
   formatCivilOrInstantTime,
   formatInstantInPacific,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
   isCalendarDateString,
   pacificDayKey,
@@ -62,6 +63,9 @@ export function formatShortDateNoYear(
   return formatCalendarDateShortNoYear(key);
 }
 
+/** Look Ahead activity date cell (single date or range). */
+export { formatLookAheadActivityDate };
+
 /** Last-updated timestamp, e.g. `Apr 27, 2026 9:15 am`, formatted in Pacific. */
 export function formatLastUpdated(
   isoDateTime: string | null | undefined
@@ -89,7 +93,7 @@ export function formatPrintReportGeneratedAt(now: Date): string {
 
 /** Sentence body for the print PDF hint after the bold lead word `Changed`. */
 export const PRINT_FOOTER_CHANGED_EXPLANATION_BODY =
-  'indicates major detail or date changes only (not time switches).';
+  'indicates major detail or date changes only (not time switches)';
 
 /** Full hint sentence (`Changed` is bold in the React markup). */
 export const PRINT_FOOTER_CHANGED_EXPLANATION = `Changed ${PRINT_FOOTER_CHANGED_EXPLANATION_BODY}`;

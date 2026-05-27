@@ -226,11 +226,12 @@ In this example, the global filter restricts activities to the week of January 1
 
 ### Inclusion Logic
 
-Activity inclusion in reports is determined by `isConfidential` (on activities) and `omitted` (on activityReportSettings):
+Activity inclusion in reports is determined primarily by `omitted` (on activityReportSettings). `isConfidential` (on activities) does **not** exclude an activity from report data.
 
 1. If `omitted=true` → Activity is omitted from report (regardless of isConfidential)
-2. If `omitted=false` and `isConfidential=false` → Activity included with standard details
-3. If `omitted=false` and `isConfidential=true` → Activity included with placeholder (redacted) details
+2. If `omitted=false` → Activity is included in report data (regardless of isConfidential)
+
+**Confidential activities in print:** `isConfidential` drives badges and team visibility. Corporate Look Ahead relies on admins entering placeholder executive-summary copy as an editorial workflow; Executive Look Ahead and other report types may show full summary/significance fields when those columns are configured.
 
 ### Behavior
 
@@ -246,7 +247,7 @@ This table replaces the legacy boolean flags on the Activity table:
 
 - **`IsConfidential` (notForLookAhead)**:
   - Legacy: Boolean flag indicating activity should not appear in look-ahead report or should appear redacted
-  - New: `isConfidential=true` on activities (for placeholder) + `omitted=true` in activityReportSettings (for omission)
+  - New: `isConfidential=true` on activities (sensitivity badge + team visibility); use `omitted=true` in activityReportSettings to exclude from a specific report
   - Migration: `isConfidential=true` → `isConfidential=true` on activities
 
 - **`notForThirtySixtyNinety`**:

@@ -104,7 +104,8 @@ export const activities = pgTable(
     lookAheadStatus: varchar('look_ahead_status', { length: 50 }), // 'none', 'new', 'changed'  maps to legacy HqStatusId field
     lookAheadSection: varchar('look_ahead_section', { length: 50 }), // 'events', 'issues', 'news', 'awareness' maps to legacy HqSection field
 
-    // Confidential flag maps to "Not for Look Ahead" in UI
+    // Highly confidential / sensitive; restricts visibility and shows badges in print.
+    // Does not omit activities from reports — use activityReportSettings.omitted for that.
     isConfidential: boolean('is_confidential').notNull().default(false),
 
     // Notes and additional fields

@@ -12,6 +12,7 @@ import type {
 import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
+  buildTranslationLanguageLabelResolver,
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayRow,
 } from '@corpcal/shared/reports/print/react';
@@ -23,6 +24,8 @@ import {
   buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   getReportTemplateHtml,
+  REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+  REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import {
@@ -37,6 +40,7 @@ import { trimTrailingSlashes } from '@corpcal/shared/utils';
 import { ActivitiesService } from '../activities/services/activities.service';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
+import { LookupsService } from '../lookups/lookups.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { mergePdfBuffersInOrder } from './merge-report-pdfs';
@@ -91,7 +95,8 @@ export class ReportsService {
     private readonly activitiesService: ActivitiesService,
     private readonly pdfGeneratorService: PdfGeneratorService,
     private readonly configService: ConfigService,
-    private readonly applicationSettings: ApplicationSettingsService
+    private readonly applicationSettings: ApplicationSettingsService,
+    private readonly lookupsService: LookupsService
   ) {}
 
   /**
@@ -446,7 +451,6 @@ export class ReportsService {
       const filters = reportDataQueryToActivityFindAllFilters(query);
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
-      activities = activities.filter((a) => !a.isConfidential);
       const report: ReportResponse = {
         id: -1,
         name: 'custom',
@@ -557,9 +561,7 @@ export class ReportsService {
 
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
-      const filtered = activities.filter(
-        (a) => !omittedActivityIds.has(a.id) && !a.isConfidential
-      );
+      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({
         id: sectionConfig.id,
@@ -596,8 +598,13 @@ export class ReportsService {
   ): Promise<Buffer> {
     const activityBaseUrl = this.getPublicAppBaseUrl();
     const generatedAt = new Date();
+    const translationLanguages =
+      await this.lookupsService.getTranslationLanguages();
+    const resolveTranslationLanguageLabel =
+      buildTranslationLanguageLabelResolver(translationLanguages);
     const inner = getReportTemplateHtml(reportType, data, {
       activityBaseUrl,
+      resolveTranslationLanguageLabel,
     }).trim();
     if (!inner) {
       throw new NotFoundException(
@@ -609,10 +616,19 @@ export class ReportsService {
       reportType,
       data
     );
-    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt);
-    const headerTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType)
-      ? buildLookAheadReportPdfHeaderTemplateHtml()
+    const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt, {
+      pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+    });
+    const bodyHeaderTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(
+      reportType
+    )
+      ? buildLookAheadReportPdfHeaderTemplateHtml({
+          pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+        })
       : undefined;
+    const coverHeaderTemplate = buildLookAheadReportPdfHeaderTemplateHtml({
+      pdfLayoutToLetterScale: REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
+    });
 
     const useSplitCoverPdf =
       REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(reportType) &&
@@ -628,11 +644,11 @@ export class ReportsService {
       const [coverBuffer, bodyBuffer] = await Promise.all([
         this.pdfGeneratorService.generatePdfFromHtmlCover(
           coverHtml,
-          headerTemplate ?? buildLookAheadReportPdfHeaderTemplateHtml()
+          coverHeaderTemplate
         ),
         this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
           footerTemplate,
-          headerTemplate,
+          headerTemplate: bodyHeaderTemplate,
         }),
       ]);
       return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
@@ -644,7 +660,7 @@ export class ReportsService {
     });
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
-      headerTemplate,
+      headerTemplate: bodyHeaderTemplate,
     });
   }
 }

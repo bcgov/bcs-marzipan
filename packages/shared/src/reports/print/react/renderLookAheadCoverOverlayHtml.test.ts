@@ -20,7 +20,14 @@ describe('renderLookAheadCoverOverlayHtml', () => {
     expect(html).toContain('555-555-3498');
     expect(html).toContain('lucide-phone');
     expect(html).toContain('lucide-mail');
-    expect(html).toContain('corpcal-print-cover-footer-contact-cluster');
+    expect(html).toContain('corpcal-print-cover-footer-contact-item--phone');
+    expect(html).toContain('corpcal-print-cover-footer-contact-item--email');
+    expect(html).toContain('corpcal-print-cover-footer-confidential');
+    expect(html).toContain('corpcal-print-cover-footer-questions');
+    expect(html).toContain('corpcal-print-cover-footer-questions-prefix');
+    expect(html).toContain(
+      'corpcal-print-cover-footer-questions-line--stacked'
+    );
     expect(html).toContain('Contents:');
     expect(html).toContain('CORPORATE');
   });
@@ -61,6 +68,40 @@ describe('renderLookAheadCoverOverlayHtml', () => {
     });
     expect(html).not.toContain('background:red');
     expect(html).not.toContain('<script>');
+  });
+
+  it('renders non-email contact text in the footer', () => {
+    const html = renderLookAheadCoverOverlayHtml({
+      dateRangeLine: 'Monday May 1, 2026',
+      contactPhone: '',
+      contactEmail: 'GCPE inbox (see SharePoint)',
+      sectionRows: [],
+    });
+    expect(html).toContain('GCPE inbox (see SharePoint)');
+    expect(html).toContain('corpcal-print-cover-footer-contact-item--email');
+    expect(html).not.toContain(
+      'corpcal-print-cover-footer-questions-line--stacked'
+    );
+  });
+
+  it('wraps questions prefix in questions-line when no contact details', () => {
+    const html = renderLookAheadCoverOverlayHtml({
+      dateRangeLine: 'Monday May 1, 2026',
+      contactPhone: '',
+      contactEmail: '',
+      sectionRows: [],
+    });
+    expect(html).toContain('corpcal-print-cover-footer-questions-line');
+    expect(html).not.toContain(
+      'corpcal-print-cover-footer-questions-line--stacked'
+    );
+    expect(html).toContain('Questions or comments:');
+    expect(html).not.toContain(
+      'corpcal-print-cover-footer-contact-item--phone'
+    );
+    expect(html).not.toContain(
+      'corpcal-print-cover-footer-contact-item--email'
+    );
   });
 
   it('falls back to date-empty copy when no date range provided', () => {

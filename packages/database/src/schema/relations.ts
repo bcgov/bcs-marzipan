@@ -540,8 +540,12 @@ export const favoriteActivities = pgTable(
  *
  * Inclusion logic:
  * - If omitted=true: activity is omitted from report (regardless of isConfidential)
- * - If omitted=false and isConfidential=false: activity included with standard details
- * - If omitted=false and isConfidential=true: activity included with placeholder (redacted) details
+ * - If omitted=false: activity is included in report data (regardless of isConfidential)
+ *
+ * `isConfidential` does not exclude activities from reports. It marks sensitivity for
+ * UI/print badges and team visibility. For Corporate Look Ahead, admins enter
+ * placeholder executive-summary copy as an editorial process; Executive Look Ahead
+ * may include full summary/significance when configured.
  */
 export const activityReportSettings = pgTable(
   'activity_report_settings',
@@ -555,7 +559,7 @@ export const activityReportSettings = pgTable(
 
     // Whether this activity is omitted from this report
     // If true: activity is omitted (regardless of isConfidential)
-    // If false: activity is included (standard if !isConfidential, placeholder if isConfidential)
+    // If false: activity is included (isConfidential affects badges/copy, not omission)
     omitted: boolean('omitted').notNull().default(false),
 
     // Book-keeping

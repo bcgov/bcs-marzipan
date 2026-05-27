@@ -17,6 +17,7 @@ import {
   type PrintReportVariant,
   type PrintRowViewModel,
 } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 interface SortedSection {
   id: string;
@@ -33,6 +34,8 @@ interface SortedSection {
    * `ReportConfig` (default false when omitted).
    */
   showPerDayPrintChrome: boolean;
+  /** When true, print omits the Release column for this section. */
+  omitReleaseColumn: boolean;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
 
@@ -65,6 +68,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
   const legendColorById = new Map<string, string | null>();
   const printHeadingById = new Map<string, string>();
   const showPerDayChromeById = new Map<string, boolean>();
+  const omitReleaseColumnById = new Map<string, boolean>();
   if (data.report?.config) {
     for (const row of resolveLookAheadSectionRows(data.report.config)) {
       legendColorById.set(row.sectionId, row.legendColor);
@@ -72,6 +76,10 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayChromeById.set(
         row.sectionId,
         row.printPerDayColumnHeaderRepeat ?? DEFAULT_SHOW_PER_DAY_PRINT_CHROME
+      );
+      omitReleaseColumnById.set(
+        row.sectionId,
+        row.printOmitReleaseColumn === true
       );
     }
   }
@@ -85,6 +93,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayPrintChrome:
         showPerDayChromeById.get(section.id) ??
         DEFAULT_SHOW_PER_DAY_PRINT_CHROME,
+      omitReleaseColumn: omitReleaseColumnById.get(section.id) ?? false,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
 }
@@ -109,10 +118,15 @@ export function PrintReportDocument({
   data,
   variant,
   activityBaseUrl,
+  highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
   activityBaseUrl: string;
+  /** In-app preview: flash rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const sections = collectSortedSections(data);
   const hasAny = reportHasAnyActivities(sections);
@@ -139,6 +153,8 @@ export function PrintReportDocument({
               variant={variant}
               activityBaseUrl={activityBaseUrl}
               showEventLead={showEventLead}
+              highlightActivityIds={highlightActivityIds}
+              resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
             />
           ))
         )}
@@ -152,11 +168,15 @@ function SectionGroup({
   variant,
   activityBaseUrl,
   showEventLead,
+  highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
   showEventLead: boolean;
+  highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
   if (dateKeys.length === 0) return null;
@@ -168,6 +188,7 @@ function SectionGroup({
         activityBaseUrl,
         dateCellStyle: 'shortNoYear',
         variant,
+        resolveTranslationLanguageLabel,
       })
     );
     return {
@@ -186,6 +207,8 @@ function SectionGroup({
         variant={variant}
         showPerDayPrintChrome={section.showPerDayPrintChrome}
         showEventLead={showEventLead}
+        omitReleaseColumn={section.omitReleaseColumn}
+        highlightActivityIds={highlightActivityIds}
       />
     </section>
   );

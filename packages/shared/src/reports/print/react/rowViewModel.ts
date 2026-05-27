@@ -3,10 +3,14 @@ import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
 import {
   formatLastUpdated,
+  formatLookAheadActivityDate,
   formatShortDate,
-  formatShortDateNoYear,
   formatTime12h,
 } from './dateFormatters';
+import {
+  resolveTranslationLanguageDisplayLabels,
+  type TranslationLanguageLabelResolver,
+} from './translationLanguageDisplayLabels';
 
 /** Kind of print report row to render; different columns include different narrative blocks. */
 export type PrintReportVariant =
@@ -14,7 +18,7 @@ export type PrintReportVariant =
   | 'lookAhead'
   /** 30/60/90: title + summary, classic chrome. */
   | 'thirtySixtyNinety'
-  /** Exec Look Ahead: title + summary, classic chrome; distinct PDF template slug. */
+  /** Exec Look Ahead: title + inline summary, significance, venue; distinct PDF template slug. */
   | 'execLookAhead';
 
 /** How activity start/end dates render in rollup table column 1. */
@@ -44,9 +48,9 @@ export interface LeadBlock {
 }
 
 export interface DateTimeBlock {
-  /** Pre-formatted start date, e.g. `Apr 27, 2026` or rollup `Apr 27`. Empty when no start date. */
+  /** Pre-formatted date or range, e.g. `Apr 27, 2026` or Look Ahead `Jan 1–31`. Empty when no start date. */
   startDate: string;
-  /** Pre-formatted end date, omitted when the activity is single-day. */
+  /** Pre-formatted end date for legacy two-part ranges; empty when using a combined Look Ahead label. */
   endDate: string;
   dateStatus: string;
   startTime: string;
@@ -84,7 +88,7 @@ export interface ReleaseBlock {
   newsReleaseOrigin: string | null;
   /**
    * Release column text after the optional {@link newsReleaseOrigin} line.
-   * Look Ahead / Exec: language shortcodes or `TBD` / `none` / `N languages` — no
+   * Look Ahead / Exec: language display names or `TBD` / `none` / `N translations` — no
    * `Translations:` prefix (icon in {@link PrintRow}).
    * 30/60/90: full {@link buildTranslationsLine} string including `Translations:`.
    */
@@ -108,6 +112,8 @@ export interface PrintRowViewModel {
   summaryStored: string | null;
   /** Rich executive summary (Corporate Look Ahead column 3). */
   executiveSummaryStored: string | null;
+  /** Rich significance (Exec Look Ahead activity details). */
+  significanceStored: string | null;
   /** Comms contact marked lead (`event_lead` report field). */
   eventLeadStored: string | null;
   release: ReleaseBlock;
@@ -184,7 +190,8 @@ function isTranslationsPendingReviewDisplay(
  * `none`. No `Translations:` prefix — {@link PrintRow} renders a Languages icon.
  */
 export function buildLookAheadReleaseTranslationsLine(
-  activity: ActivityResponse
+  activity: ActivityResponse,
+  resolveLabel?: TranslationLanguageLabelResolver
 ): string {
   const langs = activity.translationsRequired ?? [];
   if (
@@ -196,10 +203,14 @@ export function buildLookAheadReleaseTranslationsLine(
   if (!langs || langs.length === 0) {
     return 'none';
   }
-  if (langs.length < TRANSLATIONS_COLLAPSE_AT) {
-    return langs.join(', ');
+  const displayLabels = resolveTranslationLanguageDisplayLabels(
+    langs,
+    resolveLabel
+  );
+  if (displayLabels.length < TRANSLATIONS_COLLAPSE_AT) {
+    return displayLabels.join(', ');
   }
-  return `${langs.length} languages`;
+  return `${displayLabels.length} translations`;
 }
 
 function pickLeadMinistryOrTeam(activity: ActivityResponse): string | null {
@@ -249,19 +260,27 @@ function isConfirmedStatusDisplay(value: string): boolean {
 }
 
 /**
- * Look Ahead / Exec Look Ahead print: hide date/time status when Confirmed;
- * otherwise show fixed labels (not raw lookup text).
+ * Look Ahead / Exec Look Ahead print: when a date/time is shown and status is
+ * not Confirmed, append `TBC`; omit status when no date/time value is present.
  */
-function lookAheadDateStatusForPrint(raw: string): string {
+function lookAheadDateStatusForPrint(
+  raw: string,
+  hasStartDate: boolean
+): string {
+  if (!hasStartDate) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'Date TBD';
+  return 'TBC';
 }
 
-function lookAheadTimeStatusForPrint(raw: string): string {
+function lookAheadTimeStatusForPrint(
+  raw: string,
+  hasTimeDisplay: boolean
+): string {
+  if (!hasTimeDisplay) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'Time TBD';
+  return 'TBC';
 }
 
 function shouldUseLookAheadDateTimeStatusRules(
@@ -276,10 +295,11 @@ function shouldUseLookAheadDateTimeStatusRules(
  * translations collapsing) lives here so the React layer stays declarative.
  *
  * `@default dateCellStyle` — `'shortWithYear'` keeps legacy callers/tests stable;
- * rollup `{@link PrintReportDocument}` passes `'shortNoYear'`.
+ * rollup `{@link PrintReportDocument}` passes `'shortNoYear'` (Look Ahead date rules).
  *
  * When `variant` is `lookAhead` or `execLookAhead`, Confirmed date/time status
- * is omitted; any other non-empty status becomes `Date TBD` / `Time TBD`.
+ * is omitted; any other non-empty status becomes `TBC` when a date/time value
+ * is present (no date/time value means no status label).
  */
 export function toPrintRowViewModel(
   activity: ActivityResponse,
@@ -292,21 +312,29 @@ export function toPrintRowViewModel(
      * status labels follow look-ahead print rules; otherwise raw API strings.
      */
     variant?: PrintReportVariant;
+    /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+    resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
   }
 ): PrintRowViewModel {
-  const fmtDate =
-    options.dateCellStyle === 'shortNoYear'
-      ? formatShortDateNoYear
-      : formatShortDate;
-
-  const startDateLabel = fmtDate(activity.startDate);
-  const endDateLabel = fmtDate(activity.endDate);
+  const useLookAheadDateFormat = options.dateCellStyle === 'shortNoYear';
+  const startDateLabel = useLookAheadDateFormat
+    ? formatLookAheadActivityDate(activity.startDate, activity.endDate)
+    : formatShortDate(activity.startDate);
+  const endDateLabel = useLookAheadDateFormat
+    ? ''
+    : formatShortDate(activity.endDate);
 
   const rawDateStatus = activity.dateStatus?.trim() ?? '';
   const rawTimeStatus = activity.timeStatus?.trim() ?? '';
   const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
   const useLookAheadReleaseRules =
     options.variant === 'lookAhead' || options.variant === 'execLookAhead';
+  const hasStartDate = Boolean(startDateLabel);
+  const startTime =
+    activity.isAllDay === true
+      ? 'All day'
+      : formatTime12h(activity.startDate, activity.startTime);
+  const hasTimeDisplay = Boolean(startTime);
 
   return {
     activityId: activity.id,
@@ -315,14 +343,11 @@ export function toPrintRowViewModel(
       endDate:
         endDateLabel && endDateLabel !== startDateLabel ? endDateLabel : '',
       dateStatus: useLaRules
-        ? lookAheadDateStatusForPrint(rawDateStatus)
+        ? lookAheadDateStatusForPrint(rawDateStatus, hasStartDate)
         : rawDateStatus,
-      startTime:
-        activity.isAllDay === true
-          ? 'All day'
-          : formatTime12h(activity.startDate, activity.startTime),
+      startTime,
       timeStatus: useLaRules
-        ? lookAheadTimeStatusForPrint(rawTimeStatus)
+        ? lookAheadTimeStatusForPrint(rawTimeStatus, hasTimeDisplay)
         : rawTimeStatus,
       lookAheadStatus: normaliseLookAheadStatus(activity.lookAheadStatus),
     },
@@ -350,12 +375,16 @@ export function toPrintRowViewModel(
     title: activity.title?.trim() ?? '',
     summaryStored: toNonEmpty(activity.summary),
     executiveSummaryStored: toNonEmpty(activity.executiveSummary),
+    significanceStored: toNonEmpty(activity.significance),
     eventLeadStored: getCommsContactLeadDisplayName(activity),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
       translationsLine: useLookAheadReleaseRules
         ? lookAheadShowsTranslationsLine(activity)
-          ? buildLookAheadReleaseTranslationsLine(activity)
+          ? buildLookAheadReleaseTranslationsLine(
+              activity,
+              options.resolveTranslationLanguageLabel
+            )
           : ''
         : buildTranslationsLine(activity.translationsRequired),
     },

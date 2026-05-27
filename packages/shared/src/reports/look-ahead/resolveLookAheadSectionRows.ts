@@ -34,6 +34,11 @@ export interface LookAheadSectionRow {
    * default" (today: only `events`-keyed sections opt in).
    */
   printPerDayColumnHeaderRepeat: boolean | null;
+  /**
+   * When true, print rollup omits the Release column for this section.
+   * `null` means use the default four-column layout.
+   */
+  printOmitReleaseColumn: boolean | null;
 }
 
 export interface ResolveLookAheadSectionRowsOptions {
@@ -74,6 +79,7 @@ export function resolveLookAheadSectionRows(
       legendColor: section.legendColor ?? null,
       printPerDayColumnHeaderRepeat:
         section.printPerDayColumnHeaderRepeat ?? null,
+      printOmitReleaseColumn: section.printOmitReleaseColumn ?? null,
     });
   }
 

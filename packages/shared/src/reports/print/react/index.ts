@@ -20,6 +20,14 @@ export { PrintRow } from './PrintRow';
 export { PrintSectionTable } from './PrintSectionTable';
 export { PrintRichText } from './PrintRichText';
 export {
+  buildTranslationLanguageLabelResolver,
+  passthroughTranslationLanguageLabelResolver,
+  resolveTranslationLanguageDisplayLabel,
+  resolveTranslationLanguageDisplayLabels,
+  type TranslationLanguageLabelResolver,
+  type TranslationLanguageLookup,
+} from './translationLanguageDisplayLabels';
+export {
   buildTranslationsLine,
   compareActivitiesForPrint,
   resolveLeadOrgForPrint,
@@ -37,6 +45,7 @@ export {
   type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
 export { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
+export type { BuildLookAheadReportPdfHeaderTemplateOptions } from './buildLookAheadReportPdfHeaderTemplate';
 export {
   buildReportPdfFooterTemplateHtml,
   type BuildReportPdfFooterTemplateOptions,

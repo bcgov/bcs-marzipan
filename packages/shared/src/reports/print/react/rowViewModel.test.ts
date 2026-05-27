@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import {
@@ -9,6 +9,14 @@ import {
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
+import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+
+const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+]);
 
 const BASE_ACTIVITY: ActivityResponse = {
   id: 42,
@@ -104,6 +112,16 @@ describe('buildTranslationsLine', () => {
 });
 
 describe('toPrintRowViewModel', () => {
+  const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
+
+  it('sets confidential flag on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      { ...BASE_ACTIVITY, isConfidential: true },
+      { activityBaseUrl: 'http://localhost:3000', variant: 'lookAhead' }
+    );
+    expect(row.flags.isConfidential).toBe(true);
+  });
+
   it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
     const dated = {
       ...BASE_ACTIVITY,
@@ -123,6 +141,27 @@ describe('toPrintRowViewModel', () => {
     });
     expect(noYear.dateTime.startDate).toBe('Apr 27');
     expect(noYear.dateTime.startDate).not.toContain('2026');
+    expect(noYear.dateTime.endDate).toBe('');
+  });
+
+  it('formats look-ahead date ranges with compact rules when dateCellStyle is shortNoYear', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(REFERENCE);
+
+    const ranged = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+    };
+
+    const row = toPrintRowViewModel(ranged, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(row.dateTime.startDate).toBe('Jan 1\u201331');
+    expect(row.dateTime.endDate).toBe('');
+
+    vi.useRealTimers();
   });
 
   it('maps core fields, resolving lead preference order and absolute href', () => {
@@ -193,7 +232,7 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
-  it('maps date/time status for look-ahead print variants (Confirmed hidden, else Date/Time TBD)', () => {
+  it('maps date/time status for look-ahead print variants (Confirmed hidden, else TBC when date/time present)', () => {
     const unsettled = {
       ...BASE_ACTIVITY,
       dateStatus: 'Tentative',
@@ -204,15 +243,15 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'lookAhead',
     });
-    expect(lookAhead.dateTime.dateStatus).toBe('Date TBD');
-    expect(lookAhead.dateTime.timeStatus).toBe('Time TBD');
+    expect(lookAhead.dateTime.dateStatus).toBe('TBC');
+    expect(lookAhead.dateTime.timeStatus).toBe('TBC');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'execLookAhead',
     });
-    expect(execLa.dateTime.dateStatus).toBe('Date TBD');
-    expect(execLa.dateTime.timeStatus).toBe('Time TBD');
+    expect(execLa.dateTime.dateStatus).toBe('TBC');
+    expect(execLa.dateTime.timeStatus).toBe('TBC');
 
     const confirmed = toPrintRowViewModel(
       {
@@ -227,6 +266,24 @@ describe('toPrintRowViewModel', () => {
     );
     expect(confirmed.dateTime.dateStatus).toBe('');
     expect(confirmed.dateTime.timeStatus).toBe('');
+
+    const noDateOrTime = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        startDate: null,
+        startTime: null,
+        dateStatus: 'Tentative',
+        timeStatus: 'Proposed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(noDateOrTime.dateTime.startDate).toBe('');
+    expect(noDateOrTime.dateTime.startTime).toBe('');
+    expect(noDateOrTime.dateTime.dateStatus).toBe('');
+    expect(noDateOrTime.dateTime.timeStatus).toBe('');
 
     const thirty = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
@@ -285,6 +342,40 @@ describe('toPrintRowViewModel', () => {
       }
     );
     expect(row.release.translationsLine).toBe('French');
+  });
+
+  it('maps translation shortcodes to display names on look-ahead', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+    expect(row.release.translationsLine).toBe('French, Punjabi');
+  });
+
+  it('collapses look-ahead translations to a count at four or more', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN', 'SC', 'SPA'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+    expect(row.release.translationsLine).toBe('4 translations');
   });
 
   it('uses TBD on look-ahead when translation status is pending review and no languages', () => {

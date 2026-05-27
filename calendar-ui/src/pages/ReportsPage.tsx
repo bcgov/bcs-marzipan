@@ -17,11 +17,11 @@ import { CustomReportPreviewSection } from '@/components/reports/CustomReportPre
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
-import { ReportSection } from '@/components/reports/ReportSection';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { useLiveActivityRowHighlights } from '@/hooks/useLiveActivitySyncContext';
 import { useActivityStatuses, useReports } from '@/hooks/useLookups';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
@@ -37,6 +37,7 @@ import {
   buildReportDataRequestParamsFromActivityPreferences,
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
+import { reportQueryKeys } from '@/lib/reportQueryKeys';
 import { cn } from '@/lib/utils';
 
 const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
@@ -173,8 +174,8 @@ export function ReportsPage() {
     defaultsAppliedForReportRef.current = activeReport;
   }, [activeReport, preferences.filterState, setPreferences]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['report-data', activeReport, reportQueryParamsKey],
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
     queryFn: () =>
       activeReport
         ? fetchReportData(activeReport, reportQueryParams)
@@ -182,11 +183,7 @@ export function ReportsPage() {
     enabled: !!activeReport,
   });
 
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('[Reports] reportQueryParams', reportQueryParams);
-    }
-  }, [reportQueryParams]);
+  const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
 
   useEffect(() => {
     try {
@@ -314,14 +311,19 @@ export function ReportsPage() {
                 value={report.name}
                 className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
               >
-                {isLoading ? (
+                {isLoading && !data ? (
                   <div className="flex min-h-0 flex-1 items-center justify-center py-12">
                     <p className="text-muted-foreground">Loading report...</p>
                   </div>
                 ) : data ? (
                   isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <div className="report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white">
+                      <div
+                        className={cn(
+                          'report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white transition-opacity duration-150',
+                          isFetching && 'opacity-[0.98]'
+                        )}
+                      >
                         <div
                           className="min-h-0 min-w-0 flex-1 overflow-auto px-6 pt-0 pb-6"
                           aria-label="Report preview"
@@ -345,6 +347,7 @@ export function ReportsPage() {
                             <PrintReportPreview
                               reportTypeName={report.name}
                               data={data}
+                              highlightActivityIds={reportHighlightSet}
                             />
                           </div>
                         </div>
@@ -364,18 +367,16 @@ export function ReportsPage() {
                               </TabsTrigger>
                             ))}
                           </TabsList>
-                          {report.name === 'custom' ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="shrink-0"
-                              aria-expanded={isEditModalOpen}
-                              aria-haspopup="dialog"
-                              onClick={handleEditReportClick}
-                            >
-                              Edit Report
-                            </Button>
-                          ) : null}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="shrink-0"
+                            aria-expanded={isEditModalOpen}
+                            aria-haspopup="dialog"
+                            onClick={handleEditReportClick}
+                          >
+                            Edit Report
+                          </Button>
                         </div>
                         {data.sections.map((section: ReportSectionData) => (
                           <TabsContent
@@ -383,36 +384,15 @@ export function ReportsPage() {
                             value={section.id}
                             className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
                           >
-                            {report.name === 'custom' ? (
-                              <CustomReportPreviewSection
-                                section={section}
-                                config={customReportFields}
-                                onFieldsChange={setCustomReportFields}
-                              />
-                            ) : (
-                              <ReportSection section={section} />
-                            )}
+                            <CustomReportPreviewSection
+                              section={section}
+                              config={customReportFields}
+                              onFieldsChange={setCustomReportFields}
+                              highlightedActivityIds={reportHighlightSet}
+                            />
                           </TabsContent>
                         ))}
                       </Tabs>
-                      {report.name !== 'custom' ? (
-                        <div
-                          className="report-html-container border-border max-h-[60vh] min-h-0 w-full min-w-0 shrink-0 overflow-auto border-t bg-white px-6 pt-0 pb-6"
-                          aria-label="Print layout preview"
-                        >
-                          <div
-                            className="report-print-preview-root"
-                            style={{
-                              minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
-                            }}
-                          >
-                            <PrintReportPreview
-                              reportTypeName={report.name}
-                              data={data}
-                            />
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
                   )
                 ) : (

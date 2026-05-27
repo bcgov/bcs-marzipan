@@ -71,6 +71,10 @@ import {
   useUpsertActivityFlag,
 } from '@/hooks/useCalendar';
 import {
+  useLiveActivityRowHighlights,
+  useLiveActivitySyncContext,
+} from '@/hooks/useLiveActivitySyncContext';
+import {
   getLookAheadSectionLabelFromRows,
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
@@ -1105,7 +1109,16 @@ export function ActivityTable({
     }
   }, [filterState]);
 
-  const activitiesQuery = useActivityList(activityFilters);
+  const { isSocketConnected } = useLiveActivitySyncContext();
+
+  const activitiesQuery = useActivityList(activityFilters, {
+    suppressPollingWhileLive: isSocketConnected,
+  });
+
+  const tableRemoteHighlightIds = useLiveActivityRowHighlights(
+    activitiesQuery.isFetching
+  );
+
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
@@ -1752,12 +1765,17 @@ export function ActivityTable({
               <tbody>
                 {pageRows.map((row) => {
                   const isNewRow = newRowIds.has(row.original.id);
+                  const isHighlightRow = tableRemoteHighlightIds.has(
+                    row.original.id
+                  );
                   return (
                     <tr
                       key={row.id}
-                      className={`group/row ${tableBodyRow} cursor-pointer ${
-                        isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                      }`}
+                      className={cn(
+                        `group/row ${tableBodyRow} cursor-pointer`,
+                        isNewRow && 'animate-in fade-in-0 duration-300',
+                        isHighlightRow && 'live-row-highlight'
+                      )}
                       tabIndex={0}
                       onClick={(e) => {
                         if (

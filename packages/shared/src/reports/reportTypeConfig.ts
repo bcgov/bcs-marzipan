@@ -40,7 +40,6 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
     ],
   },
   EXEC: {
-    // Placeholder until DB report types are introduced.
     fields: [
       'startDate',
       'endDate',
@@ -48,11 +47,14 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'displayId',
       'title',
       'isConfidential',
-      'executiveSummary',
       'summary',
+      'significance',
       'category',
       'isIssue',
       'newsReleaseOrigin',
+      'lookAheadStatus',
+      'lookAheadSection',
+      'lastUpdatedDateTime',
     ],
   },
   '30_60_90': {

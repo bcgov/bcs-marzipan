@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
+  buildTranslationLanguageLabelResolver,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PRINT_STYLES,
@@ -13,6 +14,7 @@ import {
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
+import { useTranslationLanguages } from '@/hooks/useLookups';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -38,11 +40,19 @@ function resolveActivityBaseUrl(): string {
 export function PrintReportPreview({
   reportTypeName,
   data,
+  highlightActivityIds,
 }: {
   reportTypeName: string;
   data: ReportDataResponse;
+  /** In-app: flash preview rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const activityBaseUrl = useMemo(() => resolveActivityBaseUrl(), []);
+  const { data: translationLanguages = [] } = useTranslationLanguages();
+  const resolveTranslationLanguageLabel = useMemo(
+    () => buildTranslationLanguageLabelResolver(translationLanguages),
+    [translationLanguages]
+  );
 
   if (!isReactRenderableReportType(reportTypeName)) {
     return null;
@@ -53,6 +63,8 @@ export function PrintReportPreview({
       reportTypeName={reportTypeName}
       data={data}
       activityBaseUrl={activityBaseUrl}
+      highlightActivityIds={highlightActivityIds}
+      resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
     />
   );
 }
@@ -61,22 +73,35 @@ function PrintReportPreviewRoot({
   reportTypeName,
   data,
   activityBaseUrl,
+  highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   reportTypeName: ReactRenderableReportType;
   data: ReportDataResponse;
   activityBaseUrl: string;
+  highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: ReturnType<
+    typeof buildTranslationLanguageLabelResolver
+  >;
 }) {
   let document: ReactNode;
   if (reportTypeName === 'planning') {
     document = <PrintPlanningDocument />;
   } else if (reportTypeName === 'custom') {
-    document = <PrintCustomReportDocument data={data} />;
+    document = (
+      <PrintCustomReportDocument
+        data={data}
+        highlightActivityIds={highlightActivityIds}
+      />
+    );
   } else {
     document = (
       <PrintReportDocument
         data={data}
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
+        highlightActivityIds={highlightActivityIds}
+        resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
       />
     );
   }

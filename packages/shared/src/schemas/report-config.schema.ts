@@ -82,6 +82,11 @@ export const reportSectionSchema = z.object({
    * leave it unset.
    */
   printPerDayColumnHeaderRepeat: z.boolean().optional(),
+  /**
+   * When true, look-ahead print/PDF omits the Release column for this section;
+   * Activity details absorbs the freed width (Awareness, Long-term, etc.).
+   */
+  printOmitReleaseColumn: z.boolean().optional(),
 });
 
 /**

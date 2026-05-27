@@ -36,7 +36,7 @@ function buildReport(
 }
 
 describe('reportConfigSchema (extensions)', () => {
-  it('accepts optional uiDisplayName, reportDisplayName, legendColor, and section.fields', () => {
+  it('accepts optional uiDisplayName, reportDisplayName, legendColor, section.fields, and printOmitReleaseColumn', () => {
     const parsed = reportConfigSchema.parse({
       fields: ['startDate'],
       printTemplate: 'lookAheadV2',
@@ -51,11 +51,13 @@ describe('reportConfigSchema (extensions)', () => {
           order: 1,
           filter: { lookAheadSection: 'events' },
           fields: ['startDate', 'title'],
+          printOmitReleaseColumn: true,
         },
       ],
     });
     expect(parsed.sections[0].legendColor).toBe('#1A2B3C');
     expect(parsed.sections[0].fields).toEqual(['startDate', 'title']);
+    expect(parsed.sections[0].printOmitReleaseColumn).toBe(true);
     expect(parsed.printTemplate).toBe('lookAheadV2');
   });
 
@@ -105,6 +107,7 @@ describe('resolveLookAheadSectionRows', () => {
       reportLegendLabel: 'Events',
       legendColor: null,
       printPerDayColumnHeaderRepeat: null,
+      printOmitReleaseColumn: null,
     });
   });
 
@@ -122,6 +125,29 @@ describe('resolveLookAheadSectionRows', () => {
     const [row] = resolveLookAheadSectionRows(config);
     expect(row.uiLabel).toBe('Events');
     expect(row.reportLegendLabel).toBe('Events');
+  });
+
+  it('resolves printOmitReleaseColumn from section config', () => {
+    const config = buildConfig({
+      sections: [
+        {
+          id: 'awareness',
+          name: 'Awareness',
+          order: 1,
+          filter: { lookAheadSection: 'awareness' },
+          printOmitReleaseColumn: true,
+        },
+        {
+          id: 'events',
+          name: 'Events',
+          order: 2,
+          filter: { lookAheadSection: 'events' },
+        },
+      ],
+    });
+    const rows = resolveLookAheadSectionRows(config);
+    expect(rows[0].printOmitReleaseColumn).toBe(true);
+    expect(rows[1].printOmitReleaseColumn).toBeNull();
   });
 
   it('uses uiDisplayName / reportDisplayName when provided', () => {
