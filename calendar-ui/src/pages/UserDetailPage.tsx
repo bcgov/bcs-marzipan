@@ -219,7 +219,7 @@ export default function UserDetailPage() {
         <div className="text-slate-500">Loading…</div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div>
             <div className="flex items-start gap-4">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="text-lg font-semibold">
@@ -260,10 +260,9 @@ export default function UserDetailPage() {
                 </div>
               </div>
             </div>
-            <div />
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-6">
             <div className="space-y-4">
               <div>
                 <Label>Email</Label>
@@ -271,7 +270,7 @@ export default function UserDetailPage() {
                   value={userDetail.adEmail ?? ''}
                   readOnly
                   disabled
-                  className="bg-slate-50"
+                  className="w-full bg-slate-50"
                 />
               </div>
 
@@ -281,7 +280,7 @@ export default function UserDetailPage() {
                   value={selectedRoleId ? String(selectedRoleId) : ''}
                   onValueChange={(v) => setSelectedRoleId(Number(v) || null)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -305,69 +304,68 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            <div>
-              <div className="rounded border border-slate-200 bg-slate-50 p-4">
-                <div className="font-medium">Role permissions</div>
-                {permissionList.length === 0 ? (
-                  <p className="mt-2 text-sm text-slate-500">
-                    Permissions not available for this role.
-                  </p>
-                ) : (
-                  <ul className="mt-2 list-inside list-disc text-sm text-slate-700">
-                    {permissionList.map((p, i) => (
-                      <li key={i}>{p}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="mt-4 rounded border border-slate-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">Direct login</div>
-                    <div className="text-sm text-slate-500">
-                      Enable direct login (email + password)
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Switch
-                      checked={directLoginEnabled}
-                      onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
-                    />
-                  </div>
-                </div>
+            <div className="max-w-2xl rounded border border-slate-200 bg-slate-50 p-6">
+              <div className="text-base font-medium">Role permissions</div>
+              {permissionList.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Permissions not available for this role.
+                </p>
+              ) : (
+                <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-normal text-slate-700">
+                  {permissionList.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setResetCodeResult({ code: '', expiresInHours: 0 });
-                      resetMutation.mutate();
-                    }}
-                    disabled={resetMutation.status === 'pending'}
-                  >
-                    Generate temporary password
-                  </Button>
-                  {resetCodeResult?.code && (
-                    <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
-                      <code className="font-mono text-sm break-all select-all">
-                        {resetCodeResult.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(
-                            resetCodeResult.code
-                          );
-                          toast.success('Copied to clipboard');
-                        }}
-                        aria-label="Copy reset code"
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                  )}
+            <div className="max-w-2xl rounded border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Direct login</div>
+                  <div className="text-sm text-slate-500">
+                    Enable direct login (email + password)
+                  </div>
                 </div>
+                <div className="flex items-center gap-4">
+                  <Switch
+                    checked={directLoginEnabled}
+                    onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setResetCodeResult({ code: '', expiresInHours: 0 });
+                    resetMutation.mutate();
+                  }}
+                  disabled={resetMutation.status === 'pending'}
+                >
+                  Generate temporary password
+                </Button>
+                {resetCodeResult?.code && (
+                  <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
+                    <code className="font-mono text-sm break-all select-all">
+                      {resetCodeResult.code}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(
+                          resetCodeResult.code
+                        );
+                        toast.success('Copied to clipboard');
+                      }}
+                      aria-label="Copy reset code"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
