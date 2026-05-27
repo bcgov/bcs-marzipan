@@ -7,6 +7,8 @@ import {
 } from '../../reportPrintDimensions';
 import {
   formatLookAheadCoverLayoutLength,
+  LOOK_AHEAD_COVER_CONTENTS_LINE_HEIGHT,
+  LOOK_AHEAD_COVER_FOOTER_CONFIDENTIAL_TO_QUESTIONS_GAP_BASELINE_PX,
   LOOK_AHEAD_COVER_TYPO_BANNER_BC_FONT_BASELINE_PX,
   LOOK_AHEAD_COVER_TYPO_BANNER_BC_LINE_HEIGHT_BASELINE_PX,
   LOOK_AHEAD_COVER_TYPO_BANNER_CORP_FONT_BASELINE_PX,
@@ -547,20 +549,20 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-cover-date-range {
   font-weight: 700;
   font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_DATE_FONT_BASELINE_PX)};
-  line-height: 1.3;
+  line-height: ${LOOK_AHEAD_COVER_CONTENTS_LINE_HEIGHT};
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-heading {
   font-weight: 400;
   font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_FONT_BASELINE_PX)};
-  line-height: 1.3;
+  line-height: ${LOOK_AHEAD_COVER_CONTENTS_LINE_HEIGHT};
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-contents-list {
   /* List gap & row layout must stay aligned with lookAheadCoverFooterTopBaselinePx in lookAheadCoverMetrics. */
   font-weight: 400;
   font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_CONTENTS_FONT_BASELINE_PX)};
-  line-height: 1.3;
+  line-height: ${LOOK_AHEAD_COVER_CONTENTS_LINE_HEIGHT};
   color: var(--corpcal-text);
   display: flex;
   flex-direction: column;
@@ -585,36 +587,64 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-cover-footer-note {
   font-weight: 400;
   font-size: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_FOOTER_FONT_BASELINE_PX)};
-  line-height: 1.3;
+  line-height: ${LOOK_AHEAD_COVER_CONTENTS_LINE_HEIGHT};
   color: var(--corpcal-text);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
-.corpcal-print-cover-footer-contact-cluster {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
-  margin-left: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
-  white-space: nowrap;
-  vertical-align: middle;
+.corpcal-print-cover-footer-confidential {
+  display: block;
+}
+.corpcal-print-cover-footer-questions {
+  display: block;
+  margin-top: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_FOOTER_CONFIDENTIAL_TO_QUESTIONS_GAP_BASELINE_PX)};
+}
+.corpcal-print-cover-footer-questions-line {
+  display: inline-grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
+  row-gap: 0;
+  align-items: baseline;
+  max-width: 100%;
+  min-width: 0;
+}
+.corpcal-print-cover-footer-questions-prefix {
+  grid-column: 1;
+  grid-row: 1;
+}
+.corpcal-print-cover-footer-contact-item--phone {
+  grid-column: 2;
+  grid-row: 1;
+}
+.corpcal-print-cover-footer-contact-item--email {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+.corpcal-print-cover-footer-questions-line--stacked .corpcal-print-cover-footer-contact-item--email {
+  grid-row: 2;
 }
 .corpcal-print-cover-footer-contact-item {
   display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
-  vertical-align: middle;
+  align-items: baseline;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   gap: ${formatLookAheadCoverLayoutLength(LOOK_AHEAD_COVER_TYPO_BANNER_STACK_GAP_BASELINE_PX)};
-  white-space: nowrap;
 }
 .corpcal-print-cover-footer-contact-icon {
   flex: 0 0 auto;
+  align-self: center;
   color: var(--corpcal-text);
 }
 .corpcal-print-cover-footer-contact-icon svg {
   display: block;
 }
 .corpcal-print-cover-footer-contact-text {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Browser print only: Puppeteer puts the hint in footerTemplate ({@link buildReportPdfFooterTemplateHtml}). */

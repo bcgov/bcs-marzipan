@@ -83,6 +83,12 @@ export const REPORT_PDF_HEADER_LOGO_PRINT_PT = 19 as const;
 export const REPORT_PDF_FOOTER_MAIN_PRINT_PT = 8.5 as const;
 export const REPORT_PDF_FOOTER_HINT_PRINT_PT = 8 as const;
 
+/** Look-ahead cover overlay footer note (`corpcal-print-cover-footer-note`) on Letter PDF. */
+export const LOOK_AHEAD_COVER_FOOTER_PRINT_PT = 12 as const;
+
+/** Look-ahead cover overlay date, contents heading, and list on Letter PDF. */
+export const LOOK_AHEAD_COVER_CONTENTS_PRINT_PT = 14 as const;
+
 /**
  * Top margin for Puppeteer `page.pdf({ margin: { top } })` when using
  * `displayHeaderFooter` + {@link buildLookAheadReportPdfHeaderTemplateHtml}.
