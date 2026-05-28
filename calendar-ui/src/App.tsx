@@ -15,6 +15,7 @@ import { Toaster } from './components/ui/sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { lazyWithRetry } from './lib/lazy-with-retry';
+import UserDetailPage from './pages/UserDetailPage';
 
 import './styles/App.css';
 
@@ -60,9 +61,9 @@ const Settings = lazyWithRetry(() =>
 const Users = lazyWithRetry(() =>
   import('./pages/UserManagement').then((m) => ({ default: m.Users }))
 );
-const UserDetailPage = lazyWithRetry(() =>
-  import('./pages/UserDetailPage').then((m) => ({ default: m.default }))
-);
+// NOTE: temporarily statically import UserDetailPage to avoid lazy import
+// resolving to undefined during debugging. Revert to lazyWithRetry when
+// the root cause is identified.
 
 function LoginModalContainer() {
   const { isAuthenticated, isLoading, pendingLoginModal, dismissLoginModal } =

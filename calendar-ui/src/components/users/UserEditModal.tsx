@@ -23,13 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 interface UserEditModalProps {
@@ -47,6 +41,22 @@ export function UserEditModal({
 }: UserEditModalProps) {
   const [roleId, setRoleId] = useState<string>(String(user.roleId));
   const [notes, setNotes] = useState('');
+  const displayInitial = user.adDisplayName || user.adUsername || '';
+  const displayParts = displayInitial.split(' ');
+  const [firstName, setFirstName] = useState(
+    displayParts.slice(0, -1).join(' ') || displayParts[0] || ''
+  );
+  const [lastName, setLastName] = useState(
+    displayParts.length > 1 ? displayParts[displayParts.length - 1] : ''
+  );
+  const [email, setEmail] = useState<string | null>(user.adEmail ?? '');
+  const [phone, setPhone] = useState<string | null>(
+    (user as any).phoneNumber ?? ''
+  );
+  const [jobTitle, setJobTitle] = useState<string | null>(
+    (user as any).jobTitle ?? (user as any).adJobTitle ?? ''
+  );
+  const [isActive, setIsActive] = useState<boolean>(true);
   const [addTeamId, setAddTeamId] = useState<string>('');
   const [addTeamRole, setAddTeamRole] = useState<'owner' | 'member'>('member');
   const [addTeamNotes, setAddTeamNotes] = useState('');
@@ -78,15 +88,20 @@ export function UserEditModal({
       setRoleId(String(detail.roleId));
       setNotes(detail.notes ?? '');
       setFlagColour(detail.flagColour ?? '');
+      // populate new simplified fields
+      const display = detail.adDisplayName || detail.adUsername || '';
+      const parts = display.split(' ');
+      setFirstName(parts.slice(0, -1).join(' ') || parts[0] || '');
+      setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+      setEmail(detail.adEmail ?? '');
+      setPhone((detail as any).phoneNumber ?? '');
+      setJobTitle((detail as any).jobTitle ?? (detail as any).adJobTitle ?? '');
+      setIsActive(Boolean(detail.isActive));
     }
   }, [detail]);
 
   const updateMutation = useMutation({
-    mutationFn: (body: {
-      roleId?: number;
-      isActive?: boolean;
-      notes?: string | null;
-    }) => updateUser(user.id, body),
+    mutationFn: (body: any) => updateUser(user.id, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -154,6 +169,13 @@ export function UserEditModal({
     updateMutation.mutate({
       roleId: newRoleId,
       notes: notes || null,
+      adDisplayName: `${(firstName || '').trim()} ${(
+        lastName || ''
+      ).trim()}`.trim(),
+      adEmail: (email || '').trim() || null,
+      phoneNumber: (phone || '').trim() || null,
+      jobTitle: (jobTitle || '').trim() || null,
+      isActive: Boolean(isActive),
     });
 
     // Save settings separately if the user is admin/sys-admin and the colour changed
@@ -185,139 +207,54 @@ export function UserEditModal({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="user-email">Email</Label>
-              <Input
-                id="user-email"
-                value={user.adEmail ?? ''}
-                readOnly
-                disabled
-                className="bg-slate-50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={roleId} onValueChange={setRoleId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={String(r.id)}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Teams</Label>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                {detail?.teams?.map((t) => (
-                  <div
-                    key={t.teamId}
-                    className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-3 py-2"
-                  >
-                    <span>
-                      {t.teamName}
-                      <span className="ml-2 text-xs text-slate-500">
-                        ({t.role})
-                      </span>
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemoveFromTeam(user.id, t.teamId)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-                {availableTeams.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select value={addTeamId} onValueChange={setAddTeamId}>
-                      <SelectTrigger className="min-w-[180px]">
-                        <SelectValue placeholder="Add to team..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTeams.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>
-                            {t.displayName || t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={addTeamRole}
-                      onValueChange={(v) =>
-                        setAddTeamRole(v as 'owner' | 'member')
-                      }
-                    >
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="owner">Owner</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Notes (optional)"
-                      value={addTeamNotes}
-                      onChange={(e) => setAddTeamNotes(e.target.value)}
-                      className="min-w-[140px]"
-                    />
-                    <Button
-                      size="sm"
-                      disabled={!addTeamId}
-                      onClick={handleAddToTeam}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                )}
+                <Label>First name</Label>
+                <Input
+                  value={firstName ?? ''}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Last name</Label>
+                <Input
+                  value={lastName ?? ''}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="user-notes">Notes</Label>
+              <Label>Email</Label>
               <Input
-                id="user-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Admin notes..."
+                value={email ?? ''}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            {isAdminOrSysAdmin && (
-              <div className="space-y-2">
-                <Label htmlFor="user-flag-colour">Flag colour</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="user-flag-colour"
-                    type="color"
-                    value={flagColour || '#22c55e'}
-                    onChange={(e) => setFlagColour(e.target.value)}
-                    className="h-9 w-14 cursor-pointer rounded border border-slate-200 bg-transparent p-0.5"
-                    title="Pick a flag colour for this user"
-                  />
-                  <span className="font-mono text-sm text-slate-600">
-                    {flagColour || '(using default)'}
-                  </span>
-                  {flagColour && (
-                    <button
-                      type="button"
-                      onClick={() => setFlagColour('')}
-                      className="text-xs text-slate-400 underline hover:text-slate-600"
-                    >
-                      Reset to default
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500">
-                  Colour of the flag icon shown when an activity is assigned to
-                  this user.
-                </p>
-              </div>
-            )}
+
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                value={phone ?? ''}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Job title</Label>
+              <Input
+                value={jobTitle ?? ''}
+                onChange={(e) => setJobTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={isActive}
+                onCheckedChange={(v) => setIsActive(Boolean(v))}
+              />
+              <div className="text-sm">Active</div>
+            </div>
           </div>
         )}
         <DialogFooter>
