@@ -209,11 +209,15 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
     expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
     expect(html).not.toContain('corpcal-print-flag-narrative-inline');
-    expect(html).toContain('<strong>Minister announces housing investment</strong>');
+    expect(html).toContain(
+      '<strong>Minister announces housing investment</strong>'
+    );
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
-    expect(html).toContain('High visibility announcement for cabinet briefing.');
+    expect(html).toContain(
+      'High visibility announcement for cabinet briefing.'
+    );
     expect(html).toContain('Victoria, Legislative Assembly');
     expect(html).toContain('Last updated Apr');
     expect(html).not.toContain('Investment of $500M');
@@ -268,9 +272,13 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
-    expect(html).toContain('Major policy announcement with province-wide housing impact.');
+    expect(html).toContain(
+      'Major policy announcement with province-wide housing impact.'
+    );
     expect(html).toContain('Media advisory, Backgrounder');
-    expect(html).toContain('Coordinate with HOUS and GCPE before announcement.');
+    expect(html).toContain(
+      'Coordinate with HOUS and GCPE before announcement.'
+    );
     expect(html).toContain('French, Punjabi');
     expect(html).toContain('Jordan Smith');
     expect(html).not.toContain('Investment of $500M');
@@ -322,7 +330,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
     });
 
-    expect(html).toContain('href="https://corpcal.example.gov.bc.ca/activity/101"');
+    expect(html).toContain(
+      'href="https://corpcal.example.gov.bc.ca/activity/101"'
+    );
     expect(html).toContain('ACT');
     expect(html).toContain('corpcal-print-activity-link');
     expect(html).toContain('>101</span>');
@@ -330,7 +340,11 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes translations list when fewer than four languages are required', () => {
-    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, TEST_RENDER_OPTIONS);
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      FIXTURE,
+      TEST_RENDER_OPTIONS
+    );
 
     expect(html).toContain('French, Punjabi');
     expect(html).not.toContain('Translations: 2 languages');
@@ -402,7 +416,11 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', many, TEST_RENDER_OPTIONS);
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      many,
+      TEST_RENDER_OPTIONS
+    );
 
     expect(html).toContain('4 translations');
     expect(html).not.toContain('Translations:');
@@ -588,13 +606,17 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', awarenessAndEvents, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
-
-    expect((html.match(/corpcal-print-table--omit-release/g) ?? []).length).toBe(
-      1
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      awarenessAndEvents,
+      {
+        activityBaseUrl: 'http://localhost:3000',
+      }
     );
+
+    expect(
+      (html.match(/corpcal-print-table--omit-release/g) ?? []).length
+    ).toBe(1);
     expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
     expect(html).toContain('>Activity details</th>');
     expect(html).toContain('>Activity</th>');
@@ -660,7 +682,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain(
+      'corpcal-print-pill-confidential">Confidential</span>'
+    );
     expect(html).toContain('Hold for GCPE.');
     expect(html).not.toContain('Sensitive cabinet briefing details.');
   });
@@ -688,7 +712,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain(
+      'corpcal-print-pill-confidential">Confidential</span>'
+    );
     expect(html).toContain('Full summary text for executive readers.');
     expect(html).not.toContain('Hold for GCPE.');
   });
@@ -735,7 +761,9 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('<style>');
     expect(html).toContain('.corpcal-print-root');
-    expect(html).not.toContain('<div class="corpcal-print-pdf-footer-hint-line"');
+    expect(html).not.toContain(
+      '<div class="corpcal-print-pdf-footer-hint-line"'
+    );
     expect(html).not.toContain('* <strong>Changed</strong>');
     expect(html).not.toContain(
       'indicates major detail or date changes only (not time switches)'
@@ -781,7 +809,9 @@ describe('wrapPrintReportHtmlDocument', () => {
     });
 
     expect(html).toContain(coverPageHtml);
-    expect(html).not.toContain('<div class="corpcal-print-pdf-footer-hint-line"');
+    expect(html).not.toContain(
+      '<div class="corpcal-print-pdf-footer-hint-line"'
+    );
     expect(html).not.toContain('* <strong>Changed</strong>');
   });
 
@@ -796,7 +826,9 @@ describe('wrapPrintReportHtmlDocument', () => {
   it('omits body class when coverStandalonePdf is false', () => {
     const html = wrapPrintReportHtmlDocument('<div></div>', {});
 
-    expect(html).not.toContain('class="corpcal-print-pdf-cover-sheet-only-doc"');
+    expect(html).not.toContain(
+      'class="corpcal-print-pdf-cover-sheet-only-doc"'
+    );
     expect(html).toContain('<body');
   });
 });

@@ -741,6 +741,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   }
   .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title {
     display: block;
+    page-break-after: avoid;
+    break-after: avoid;
   }
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }
