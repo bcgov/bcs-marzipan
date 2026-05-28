@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
+import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
@@ -201,6 +201,11 @@ export function ReportsPage() {
 
   const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
 
+  const previewSheetLayoutWidthPx = useMemo(
+    () => reportPrintSheetLayoutWidthPx(activeReport),
+    [activeReport]
+  );
+
   useEffect(() => {
     try {
       sessionStorage.setItem(
@@ -364,7 +369,7 @@ export function ReportsPage() {
                                     '--corpcal-print-root-max-width': 'none',
                                   }
                                 : {
-                                    minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
+                                    minWidth: previewSheetLayoutWidthPx,
                                   }) as CSSProperties
                             }
                           >

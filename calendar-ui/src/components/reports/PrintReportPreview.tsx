@@ -8,7 +8,6 @@ import {
   PRINT_STYLES,
   PrintCustomReportDocument,
   PrintPdfFooterHintLine,
-  PrintPlanningDocument,
   PrintReportDocument,
   rollupPrintVariantForReportType,
   type ReactRenderableReportType,
@@ -85,9 +84,7 @@ function PrintReportPreviewRoot({
   >;
 }) {
   let document: ReactNode;
-  if (reportTypeName === 'planning') {
-    document = <PrintPlanningDocument />;
-  } else if (reportTypeName === 'custom') {
+  if (reportTypeName === 'custom') {
     document = (
       <PrintCustomReportDocument
         data={data}
@@ -106,6 +103,9 @@ function PrintReportPreviewRoot({
     );
   }
 
+  const showFooterChangedHint =
+    reportTypeName !== 'thirty-sixty-ninety' && reportTypeName !== 'planning';
+
   return (
     <>
       <style
@@ -117,9 +117,7 @@ function PrintReportPreviewRoot({
           the same stylesheet, when injected into the Puppeteer-rendered PDF
           (which has no shell), leaves print output unaffected. */}
       <div className="corpcal-print-preview-shell">
-        {reportTypeName !== 'thirty-sixty-ninety' ? (
-          <PrintPdfFooterHintLine />
-        ) : null}
+        {showFooterChangedHint ? <PrintPdfFooterHintLine /> : null}
         {document}
       </div>
     </>
