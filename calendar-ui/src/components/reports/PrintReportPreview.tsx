@@ -117,7 +117,9 @@ function PrintReportPreviewRoot({
           the same stylesheet, when injected into the Puppeteer-rendered PDF
           (which has no shell), leaves print output unaffected. */}
       <div className="corpcal-print-preview-shell">
-        <PrintPdfFooterHintLine />
+        {reportTypeName !== 'thirty-sixty-ninety' ? (
+          <PrintPdfFooterHintLine />
+        ) : null}
         {document}
       </div>
     </>
