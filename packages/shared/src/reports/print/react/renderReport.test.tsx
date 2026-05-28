@@ -222,7 +222,15 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Event lead:');
   });
 
-  it('renders thirty-sixty-ninety like exec body chrome with title + summary', () => {
+  it('renders thirty-sixty-ninety with exec-like body chrome and comms column', () => {
+    const activityWithComms = {
+      ...BASE_ACTIVITY,
+      significance:
+        'Major policy announcement with province-wide housing impact.',
+      strategy: 'Coordinate with HOUS and GCPE before announcement.',
+      commsMaterials: ['Media advisory', 'Backgrounder'],
+      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+    };
     const thirtyFixture: ReportDataResponse = {
       ...FIXTURE,
       report: {
@@ -230,25 +238,41 @@ describe('renderPrintReportFragmentHtml', () => {
         name: 'thirty-sixty-ninety',
         displayName: '30/60/90',
       },
+      sections: [
+        {
+          id: '2026-04',
+          name: 'April 2026',
+          order: 1,
+          activities: [activityWithComms],
+        },
+      ],
     };
     const html = renderPrintReportFragmentHtml(
       'thirty-sixty-ninety',
       thirtyFixture,
       {
         activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
       }
     );
 
-    expect(html).toContain('data-report-template="LOOK_AHEAD"');
+    expect(html).toContain('data-report-template="THIRTY_SIXTY_NINETY"');
+    expect(html).toContain('corpcal-print-pdf-first-page-title');
+    expect(html).toContain('30/60/90 Report');
+    expect(html).toContain('Comms &amp; strategy');
     expect(html).toContain('Minister announces housing investment');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
+    expect(html).toContain('Major policy announcement with province-wide housing impact.');
+    expect(html).toContain('Media advisory, Backgrounder');
+    expect(html).toContain('Coordinate with HOUS and GCPE before announcement.');
+    expect(html).toContain('French, Punjabi');
+    expect(html).toContain('Jordan Smith');
     expect(html).not.toContain('Investment of $500M');
     expect(html).not.toContain('Apr 27, 2026');
-    expect(html).toContain('Event planner:');
-    expect(html).toContain('Legislative Assembly');
-    expect(html).toContain('Last updated Apr');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Issued');
   });
 
   it('renders the planning placeholder as a React fragment', () => {

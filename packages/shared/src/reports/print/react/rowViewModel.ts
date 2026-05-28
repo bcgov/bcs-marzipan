@@ -116,8 +116,21 @@ export interface PrintRowViewModel {
   significanceStored: string | null;
   /** Comms contact marked lead (`event_lead` report field). */
   eventLeadStored: string | null;
+  /** Plain-text strategy for 30/60/90 Comms & strategy column. */
+  strategyStored: string | null;
+  /** Comms material labels for 30/60/90 Comms & strategy column. */
+  commsMaterials: readonly string[];
+  /** Comms contact lead display name for 30/60/90 Activity column. */
+  commsContactLead: string | null;
   release: ReleaseBlock;
   eventPlannerLead: string | null;
+}
+
+/** Exec Look Ahead and 30/60/90 share date/details/activity-id chrome. */
+export function isExecLikeRollupVariant(
+  variant: PrintReportVariant | undefined
+): boolean {
+  return variant === 'execLookAhead' || variant === 'thirtySixtyNinety';
 }
 
 /** Threshold at and above which translations collapse to a count line. */
@@ -286,7 +299,11 @@ function lookAheadTimeStatusForPrint(
 function shouldUseLookAheadDateTimeStatusRules(
   variant: PrintReportVariant | undefined
 ): boolean {
-  return variant === 'lookAhead' || variant === 'execLookAhead';
+  return (
+    variant === 'lookAhead' ||
+    variant === 'execLookAhead' ||
+    variant === 'thirtySixtyNinety'
+  );
 }
 
 /**
@@ -328,7 +345,11 @@ export function toPrintRowViewModel(
   const rawTimeStatus = activity.timeStatus?.trim() ?? '';
   const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
   const useLookAheadReleaseRules =
-    options.variant === 'lookAhead' || options.variant === 'execLookAhead';
+    options.variant === 'lookAhead' ||
+    options.variant === 'execLookAhead' ||
+    options.variant === 'thirtySixtyNinety';
+  const useThirtySixtyNinetyTranslations =
+    options.variant === 'thirtySixtyNinety';
   const hasStartDate = Boolean(startDateLabel);
   const startTime =
     activity.isAllDay === true
@@ -377,16 +398,24 @@ export function toPrintRowViewModel(
     executiveSummaryStored: toNonEmpty(activity.executiveSummary),
     significanceStored: toNonEmpty(activity.significance),
     eventLeadStored: getCommsContactLeadDisplayName(activity),
+    strategyStored: toNonEmpty(activity.strategy),
+    commsMaterials: activity.commsMaterials ?? [],
+    commsContactLead: getCommsContactLeadDisplayName(activity),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
-      translationsLine: useLookAheadReleaseRules
-        ? lookAheadShowsTranslationsLine(activity)
-          ? buildLookAheadReleaseTranslationsLine(
-              activity,
-              options.resolveTranslationLanguageLabel
-            )
-          : ''
-        : buildTranslationsLine(activity.translationsRequired),
+      translationsLine: useThirtySixtyNinetyTranslations
+        ? buildLookAheadReleaseTranslationsLine(
+            activity,
+            options.resolveTranslationLanguageLabel
+          )
+        : useLookAheadReleaseRules
+          ? lookAheadShowsTranslationsLine(activity)
+            ? buildLookAheadReleaseTranslationsLine(
+                activity,
+                options.resolveTranslationLanguageLabel
+              )
+            : ''
+          : buildTranslationsLine(activity.translationsRequired),
     },
     eventPlannerLead: pickEventPlannerLead(activity),
   };

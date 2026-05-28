@@ -137,10 +137,17 @@ export function PrintReportDocument({
     <div
       className={CORPCAL_PRINT_ROOT_CLASS}
       data-report-template={
-        variant === 'execLookAhead' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
+        variant === 'execLookAhead'
+          ? 'EXEC_LOOK_AHEAD'
+          : variant === 'thirtySixtyNinety'
+            ? 'THIRTY_SIXTY_NINETY'
+            : 'LOOK_AHEAD'
       }
     >
       <div className="corpcal-print-body">
+        {variant === 'thirtySixtyNinety' && hasAny ? (
+          <PrintPdfFirstPageTitle title="30/60/90 Report" />
+        ) : null}
         {!hasAny ? (
           <div className="corpcal-print-empty">
             No activities in the selected range.
@@ -159,6 +166,14 @@ export function PrintReportDocument({
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function PrintPdfFirstPageTitle({ title }: { title: string }) {
+  return (
+    <div className="corpcal-print-pdf-first-page-title" aria-hidden="true">
+      {title}
     </div>
   );
 }

@@ -289,8 +289,8 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'thirtySixtyNinety',
     });
-    expect(thirty.dateTime.dateStatus).toBe('Tentative');
-    expect(thirty.dateTime.timeStatus).toBe('Proposed');
+    expect(thirty.dateTime.dateStatus).toBe('TBC');
+    expect(thirty.dateTime.timeStatus).toBe('TBC');
   });
 
   it('derives FYI flag from the category list', () => {
@@ -299,6 +299,28 @@ describe('toPrintRowViewModel', () => {
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(fyi.flags.isFyi).toBe(true);
+  });
+
+  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        strategy: 'Lead with housing affordability message.',
+        commsMaterials: ['Media advisory', 'Backgrounder'],
+        commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+        translationsRequired: ['FR'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'thirtySixtyNinety',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+
+    expect(row.strategyStored).toBe('Lead with housing affordability message.');
+    expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
+    expect(row.commsContactLead).toBe('Jordan Smith');
+    expect(row.release.translationsLine).toBe('French');
   });
 
   it('collapses translations when 4 or more are required', () => {
