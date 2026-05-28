@@ -26,6 +26,7 @@ import {
   ActivityCommsSection,
   ActivityEventSection,
   ActivityOverviewSection,
+  ActivityReleaseSection,
   ActivityReportsSection,
   ActivityScheduleSection,
   ActivitySharingSection,
@@ -157,9 +158,6 @@ export function ActivityFormBody({
               commsMaterialOptions={lookups.commsMaterials}
               commsLeadOptions={commsLeadOptions}
               translationLanguageOptions={lookups.translationLanguages}
-              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-              translationRequiredStatuses={lookups.translationRequiredStatuses}
             />
           </div>
 
@@ -169,6 +167,13 @@ export function ActivityFormBody({
             <ActivityScheduleSection
               dateStatuses={lookups.dateStatuses}
               timeStatuses={lookups.timeStatuses}
+            />
+
+            <ActivityReleaseSection
+              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
+              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+              translationRequiredStatuses={lookups.translationRequiredStatuses}
+              translationLanguageOptions={lookups.translationLanguages}
             />
 
             <ActivityEventSection
