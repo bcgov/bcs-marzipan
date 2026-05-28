@@ -243,7 +243,7 @@ describe('ActivityPage form readiness', () => {
 
     renderActivityPage();
 
-    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
+    await expect(screen.findByText(/Lead team/i)).resolves.toBeInTheDocument();
   });
 
   it('renders form body when activity has no leadTeamId even if lead options not fetched', async () => {
@@ -259,7 +259,7 @@ describe('ActivityPage form readiness', () => {
       },
     });
 
-    await expect(screen.findByText(/Lead team/)).resolves.toBeInTheDocument();
+    await expect(screen.findByText(/Lead team/i)).resolves.toBeInTheDocument();
   });
 });
 
@@ -323,7 +323,7 @@ describe('ActivityPage restore button visibility', () => {
       },
     });
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /Restore/i })
     ).not.toBeInTheDocument();
@@ -388,7 +388,7 @@ describe('ActivityPage optimistic inline edit', () => {
   it('does not show Edit button (removed in optimistic model)', async () => {
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /^Edit$/i })
     ).not.toBeInTheDocument();
@@ -397,7 +397,7 @@ describe('ActivityPage optimistic inline edit', () => {
   it('keeps Save disabled until edit lock and dirty', async () => {
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     const save = screen.getByRole('button', { name: /^Save$/i });
     expect(save).toBeDisabled();
   });
@@ -481,7 +481,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.getByRole('button', { name: /^(Save and )?Review$/i })
     ).toBeInTheDocument();
@@ -500,7 +500,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /^(Save and )?Review$/i })
     ).not.toBeInTheDocument();
@@ -595,7 +595,7 @@ describe('ActivityPage optimistic inline edit', () => {
     mockLockState = 'locked-by-other';
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     const lockBanner = screen.getByRole('alert');
     expect(lockBanner).toHaveTextContent(/Other User/);
     const titleTextarea = screen.getByPlaceholderText('Enter activity title');
@@ -666,7 +666,7 @@ describe('ActivityPage clone button', () => {
       activity: { ...mockActivityWithLeadTeam, canEdit: false },
     });
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /^Clone$/i })
     ).not.toBeInTheDocument();
@@ -688,7 +688,7 @@ describe('ActivityPage clone button', () => {
 
     renderActivityPage();
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /^Clone$/i })
     ).not.toBeInTheDocument();
@@ -701,7 +701,7 @@ describe('ActivityPage clone button', () => {
       activity: { ...mockActivityWithLeadTeam, activityStatus: 'Deleted' },
     });
 
-    await screen.findByText(/Lead team/);
+    await screen.findByText(/Lead team/i);
     expect(
       screen.queryByRole('button', { name: /^Clone$/i })
     ).not.toBeInTheDocument();

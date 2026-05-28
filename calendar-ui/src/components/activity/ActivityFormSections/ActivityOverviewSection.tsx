@@ -735,7 +735,7 @@ export const ActivityOverviewSection: React.FC<
                         !pitchStatusScope.fieldScopeDisabled
                       }
                     >
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="Select Status" />
                     </FormSelectTrigger>
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>
@@ -761,7 +761,7 @@ export const ActivityOverviewSection: React.FC<
             const raw = field.value ?? '';
             const pitchLabel = raw
               ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-              : 'Select pitch date';
+              : 'Select Pitch Date';
             return (
               <FormItem>
                 <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>

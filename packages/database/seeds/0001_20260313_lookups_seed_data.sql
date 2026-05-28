@@ -551,12 +551,12 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO news_release_origins (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by) VALUES
   (1, 'tbd', 'TBD', 1, true, 'News release origin to be determined', 1, 1),
-  (2, 'ministry release', 'Ministry release', 2, true, 'News release originates from a ministry', 1, 1),
-  (3, 'joint ministry 3rd party release', 'Joint ministry / 3rd party release', 3, true, 'Joint news release from ministry and third party', 1, 1),
-  (4, 'joint ministry federal release', 'Joint ministry / Federal release', 4, true, 'Joint news release from ministry and federal government', 1, 1),
-  (5, 'local government release', 'Local government release', 5, true, 'News release from local government', 1, 1),
-  (6, '3rd party release', '3rd party release', 6, true, 'News release from third party organization', 1, 1),
-  (7, 'federal release', 'Federal release', 7, true, 'News release from federal government', 1, 1)
+  (2, 'ministry release', 'Ministry Release', 2, true, 'News release originates from a ministry', 1, 1),
+  (3, 'joint ministry 3rd party release', 'Joint Ministry / 3rd Party Release', 3, true, 'Joint news release from ministry and third party', 1, 1),
+  (4, 'joint ministry federal release', 'Joint Ministry / Federal Release', 4, true, 'Joint news release from ministry and federal government', 1, 1),
+  (5, 'local government release', 'Local Government Release', 5, true, 'News release from local government', 1, 1),
+  (6, '3rd party release', '3rd Party Release', 6, true, 'News release from third party organization', 1, 1),
+  (7, 'federal release', 'Federal Release', 7, true, 'News release from federal government', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -569,8 +569,8 @@ INSERT INTO news_release_distributions (id, name, display_name, sort_order, is_a
   (1, 'tbd', 'TBD', 1, true, 'Distribution to be determined', 1, 1),
   (2, 'provincewide', 'Provincewide', 2, true, 'Provincewide distribution', 1, 1),
   (3, 'regional', 'Regional', 3, true, 'Regional distribution', 1, 1),
-  (4, 'web post only', 'Web post only', 4, true, 'Web post only distribution', 1, 1),
-  (5, 'direct send only', 'Direct send only', 5, true, 'Direct send only distribution', 1, 1),
+  (4, 'web post only', 'Web Post Only', 4, true, 'Web post only distribution', 1, 1),
+  (5, 'direct send only', 'Direct Send Only', 5, true, 'Direct send only distribution', 1, 1),
   (6, 'national', 'National', 6, true, 'National distribution', 1, 1),
   (7, 'other', 'Other', 7, true, 'Other distribution type', 1, 1)
 ON CONFLICT (id) DO NOTHING;

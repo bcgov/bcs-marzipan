@@ -208,7 +208,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               </ComboboxChip>
                             );
                           })}
-                          <ComboboxChipsInput placeholder="Select contacts" />
+                          <ComboboxChipsInput placeholder="Select Contacts" />
                         </>
                       )}
                     </ComboboxValue>
@@ -306,7 +306,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select comms materials" />
+                          <ComboboxChipsInput placeholder="Select Comms Materials" />
                         </>
                       )}
                     </ComboboxValue>
@@ -351,7 +351,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release origin" />
+                  <SelectValue placeholder="Select News Release Origin" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -387,7 +387,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release distribution" />
+                  <SelectValue placeholder="Select News Release Distribution" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -432,7 +432,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                       !translationsScope.fieldScopeDisabled
                     }
                   >
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="Select Status" />
                   </FormSelectTrigger>
                 </FormControl>
               </ActivityFieldScopePermissionTooltip>
@@ -491,7 +491,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                                 {option.label}
                               </ComboboxChip>
                             ))}
-                            <ComboboxChipsInput placeholder="Select translation languages" />
+                            <ComboboxChipsInput placeholder="Select Translation Languages" />
                           </>
                         )}
                       </ComboboxValue>
