@@ -42,11 +42,6 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: OptionItem[];
-  translationLanguageOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
 };
 
 function optionItemsEqual(a: OptionItem, b: OptionItem): boolean {
@@ -74,7 +69,6 @@ function buildCommsContactsFromSelection(
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
-  translationLanguageOptions,
 }) => {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
@@ -85,12 +79,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     value: String(m.id),
     label: m.displayName ?? m.name,
   }));
-  const translationLanguageComboboxOptions = translationLanguageOptions.map(
-    (l) => ({
-      value: String(l.id),
-      label: l.displayName ?? l.name,
-    })
-  );
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.comms}>
@@ -307,10 +295,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           );
         }}
       />
-
-      {/* Release fields moved to their own section `ActivityReleaseSection` */}
-
-      {/* Translations fields moved to ActivityReleaseSection */}
     </ActivityFormSection>
   );
 };

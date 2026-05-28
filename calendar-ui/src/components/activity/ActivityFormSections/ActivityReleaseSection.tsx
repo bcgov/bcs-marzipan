@@ -35,6 +35,7 @@ import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import type { OptionItem } from '@/schemas/types';
 
+import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -57,6 +58,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
   translationLanguageOptions,
 }) => {
   const form = useFormContext<ActivityFormData>();
+  const { readOnly } = useActivityEdit();
   const translationsScope = useActivityFieldScopeControl('translations');
   const translationsAnchorRef = useComboboxAnchor();
 
@@ -76,7 +78,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <FormSelectSafe
-                readOnly={false}
+                readOnly={readOnly}
                 optionValues={newsReleaseOriginOptions.map((o) => o.value)}
                 value={optionalIdSelectDisplayValue(field.value)}
                 onValueChange={(value) =>
@@ -87,7 +89,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
                   )
                 }
               >
-                <FormSelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select news release origin" />
                 </FormSelectTrigger>
                 <SelectContent>
@@ -112,7 +114,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
             <FormControl data-field={field.name}>
               <FormSelectSafe
-                readOnly={false}
+                readOnly={readOnly}
                 optionValues={newsReleaseDistributionOptions.map(
                   (o) => o.value
                 )}
@@ -125,7 +127,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
                   )
                 }
               >
-                <FormSelectTrigger>
+                <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select news release distribution" />
                 </FormSelectTrigger>
                 <SelectContent>
@@ -259,4 +261,4 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
   );
 };
 
-export default ActivityReleaseSection;
+// Use named export only
