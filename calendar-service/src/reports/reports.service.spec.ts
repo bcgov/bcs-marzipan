@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import { defaultThirtySixtyNinetyDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
+import { reportDataQuerySchema } from '@corpcal/shared/schemas';
 
 import { ReportsService } from './reports.service';
 
@@ -30,6 +31,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
 
   let service: ReportsService;
   const ctx = {} as never;
+  const defaultQuery = reportDataQuerySchema.parse({});
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,7 +64,11 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   it('builds calendar month sections from the default three-month window', async () => {
     const expectedRange = defaultThirtySixtyNinetyDateRange(3);
 
-    const result = await service.getReportData('thirty-sixty-ninety', {}, ctx);
+    const result = await service.getReportData(
+      'thirty-sixty-ninety',
+      defaultQuery,
+      ctx
+    );
 
     expect(result.sections).toHaveLength(3);
     expect(result.sections.map((section) => section.name)).toEqual([
@@ -80,10 +86,10 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   it('uses the requested date window when start and end dates are provided', async () => {
     await service.getReportData(
       'thirty-sixty-ninety',
-      {
+      reportDataQuerySchema.parse({
         startDateFrom: '2026-05-01',
         startDateTo: '2026-06-30',
-      },
+      }),
       ctx
     );
 
@@ -107,7 +113,11 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       { activityId: 11, omitted: true },
     ]);
 
-    const result = await service.getReportData('thirty-sixty-ninety', {}, ctx);
+    const result = await service.getReportData(
+      'thirty-sixty-ninety',
+      defaultQuery,
+      ctx
+    );
 
     for (const section of result.sections) {
       expect(section.activities.map((activity) => activity.id)).toEqual([10]);

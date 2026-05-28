@@ -26,6 +26,7 @@ import {
   getReportTemplateHtml,
   REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
+  REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import {
@@ -63,6 +64,13 @@ const REPORT_TYPES_WITH_LOOK_AHEAD_HEADER = new Set([
   'look-ahead',
   'exec',
   'thirty-sixty-ninety',
+  'planning',
+]);
+
+/** Report types whose PDF footer omits the Changed glossary hint. */
+const REPORT_TYPES_WITHOUT_CHANGED_FOOTER_HINT = new Set([
+  'thirty-sixty-ninety',
+  'planning',
 ]);
 
 function pickDefinedActivityFilters(
@@ -650,15 +658,20 @@ export class ReportsService {
       reportType,
       data
     );
+    const isLandscapePdf = reportType === 'planning';
+    const bodyPdfLayoutScale = isLandscapePdf
+      ? REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE
+      : REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE;
     const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt, {
-      pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
-      includeChangedHint: reportType !== 'thirty-sixty-ninety',
+      pdfLayoutToLetterScale: bodyPdfLayoutScale,
+      includeChangedHint:
+        !REPORT_TYPES_WITHOUT_CHANGED_FOOTER_HINT.has(reportType),
     });
     const bodyHeaderTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_HEADER.has(
       reportType
     )
       ? buildLookAheadReportPdfHeaderTemplateHtml({
-          pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+          pdfLayoutToLetterScale: bodyPdfLayoutScale,
         })
       : undefined;
     const coverHeaderTemplate = buildLookAheadReportPdfHeaderTemplateHtml({
@@ -684,6 +697,7 @@ export class ReportsService {
         this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
           footerTemplate,
           headerTemplate: bodyHeaderTemplate,
+          landscape: isLandscapePdf,
         }),
       ]);
       return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
@@ -696,6 +710,7 @@ export class ReportsService {
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
       headerTemplate: bodyHeaderTemplate,
+      landscape: isLandscapePdf,
     });
   }
 }

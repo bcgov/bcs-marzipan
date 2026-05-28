@@ -7,6 +7,8 @@ import {
   REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_SHEET_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
 } from '@corpcal/shared/reports/reportPrintHtml';
 
@@ -15,6 +17,10 @@ export type GenerateReportPdfOptions = {
   footerTemplate: string;
   /** Optional `headerTemplate`; when set, reserves {@link REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS} at the top. */
   headerTemplate?: string;
+  /** When true, exports US Letter landscape (Planning Report). */
+  landscape?: boolean;
+  /** Override viewport width + scale; defaults to portrait body or landscape body. */
+  render?: PdfRenderProfile;
 };
 
 type PdfRenderProfile = {
@@ -25,6 +31,11 @@ type PdfRenderProfile = {
 const BODY_PDF_RENDER: PdfRenderProfile = {
   viewportWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
   pdfScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+};
+
+const LANDSCAPE_BODY_PDF_RENDER: PdfRenderProfile = {
+  viewportWidth: REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
+  pdfScale: REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
 };
 
 const COVER_PDF_RENDER: PdfRenderProfile = {
@@ -121,9 +132,13 @@ export class PdfGeneratorService implements OnModuleDestroy {
     const headerTemplate =
       options.headerTemplate ??
       '<div style="font-size:0;margin:0;padding:0;width:0;height:0;"></div>';
+    const render =
+      options.render ??
+      (options.landscape ? LANDSCAPE_BODY_PDF_RENDER : BODY_PDF_RENDER);
     const pdfOptions: PDFOptions = {
       ...BASE_PDF_OPTIONS,
-      scale: BODY_PDF_RENDER.pdfScale,
+      scale: render.pdfScale,
+      landscape: options.landscape === true,
       displayHeaderFooter: true,
       headerTemplate,
       footerTemplate: options.footerTemplate,
@@ -136,7 +151,7 @@ export class PdfGeneratorService implements OnModuleDestroy {
         right: '0',
       },
     };
-    return this.generatePdfWithOptions(html, pdfOptions, BODY_PDF_RENDER);
+    return this.generatePdfWithOptions(html, pdfOptions, render);
   }
 
   private async generatePdfWithOptions(
