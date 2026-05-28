@@ -1,19 +1,11 @@
 import type { ActivityResponse } from '../../api/types';
 import { pacificDayKey } from '../../datetime';
+import { createCompareActivitiesForPrint } from '../print/react/rowViewModel';
 import type { CalendarMonthSection } from './buildCalendarMonthSections';
 
-function compareActivitiesForMonthSection(
-  a: ActivityResponse,
-  b: ActivityResponse
-): number {
-  const dayA = pacificDayKey(a.startDate) ?? '';
-  const dayB = pacificDayKey(b.startDate) ?? '';
-  if (dayA !== dayB) return dayA.localeCompare(dayB);
-  const ta = a.startTime ?? '';
-  const tb = b.startTime ?? '';
-  if (ta !== tb) return ta.localeCompare(tb);
-  return (a.title ?? '').localeCompare(b.title ?? '');
-}
+const compareActivitiesForMonthSection = createCompareActivitiesForPrint({
+  sortByDayKey: true,
+});
 
 /**
  * Buckets activities into calendar month sections by Pacific start date.

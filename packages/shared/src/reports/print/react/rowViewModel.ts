@@ -1,3 +1,4 @@
+import { pacificDayKey } from '../../../datetime';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
@@ -432,15 +433,31 @@ export function toPrintRowViewModel(
   };
 }
 
+export type CompareActivitiesForPrintOptions = {
+  /** When true, sort by Pacific calendar day before start time and title. */
+  sortByDayKey?: boolean;
+};
+
 /**
- * Stable sort for activities within a section: by `startTime`, then by `title`.
+ * Stable activity sort for print and month sections: by `startTime`, then
+ * `title`; optionally by Pacific calendar day first when bucketing spans days.
  */
-export function compareActivitiesForPrint(
-  a: ActivityResponse,
-  b: ActivityResponse
-): number {
-  const ta = a.startTime ?? '';
-  const tb = b.startTime ?? '';
-  if (ta !== tb) return ta.localeCompare(tb);
-  return (a.title ?? '').localeCompare(b.title ?? '');
+export function createCompareActivitiesForPrint(
+  options: CompareActivitiesForPrintOptions = {}
+): (a: ActivityResponse, b: ActivityResponse) => number {
+  const { sortByDayKey = false } = options;
+  return (a, b) => {
+    if (sortByDayKey) {
+      const dayA = pacificDayKey(a.startDate) ?? '';
+      const dayB = pacificDayKey(b.startDate) ?? '';
+      if (dayA !== dayB) return dayA.localeCompare(dayB);
+    }
+    const ta = a.startTime ?? '';
+    const tb = b.startTime ?? '';
+    if (ta !== tb) return ta.localeCompare(tb);
+    return (a.title ?? '').localeCompare(b.title ?? '');
+  };
 }
+
+/** Default print sort: by `startTime`, then by `title`. */
+export const compareActivitiesForPrint = createCompareActivitiesForPrint();

@@ -4,6 +4,7 @@ import type { ActivityResponse } from '../../../schemas/activity-response.schema
 import {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
   splitActivityDisplayIdForPrint,
   toPrintRowViewModel,
@@ -558,5 +559,31 @@ describe('compareActivitiesForPrint', () => {
     };
     const sorted = [a, b, c].sort(compareActivitiesForPrint);
     expect(sorted.map((s) => s.id)).toEqual([2, 3, 1]);
+  });
+});
+
+describe('createCompareActivitiesForPrint', () => {
+  it('sorts by Pacific day key before startTime when sortByDayKey is true', () => {
+    const compare = createCompareActivitiesForPrint({ sortByDayKey: true });
+    const a: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 1,
+      startDate: '2026-05-28',
+      startTime: '09:00',
+    };
+    const b: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 2,
+      startDate: '2026-05-01',
+      startTime: '10:00',
+    };
+    const c: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 3,
+      startDate: '2026-05-01',
+      startTime: '08:00',
+    };
+    const sorted = [a, b, c].sort(compare);
+    expect(sorted.map((s) => s.id)).toEqual([3, 2, 1]);
   });
 });

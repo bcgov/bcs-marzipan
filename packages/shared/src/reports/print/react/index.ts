@@ -29,9 +29,11 @@ export {
 export {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
+  type CompareActivitiesForPrintOptions,
   type LookAheadBadge,
   type PrintDateCellStyle,
   type PrintReportVariant,

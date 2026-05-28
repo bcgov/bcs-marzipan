@@ -90,6 +90,17 @@ function withoutActivityStartDateWindow(
   return rest;
 }
 
+/** User query filters ready to merge onto section-scoped activity queries. */
+function buildUserActivityFilterOverlay(
+  filters: FilterActivitiesQueryParams,
+  sectionPinsStartDateWindow: boolean
+): Partial<FilterActivitiesQueryParams> {
+  const picked = pickDefinedActivityFilters(filters);
+  return sectionPinsStartDateWindow
+    ? withoutActivityStartDateWindow(picked)
+    : picked;
+}
+
 export interface ReportSettingsDto {
   reportId: number;
   reportName: string;
@@ -503,9 +514,7 @@ export class ReportsService {
 
     const omittedActivityIds = await this.getOmittedActivityIds(report.id);
     const sections: ReportSectionData[] = [];
-    const userFiltersAll = pickDefinedActivityFilters(
-      reportDataQueryToActivityFindAllFilters(query)
-    );
+    const queryActivityFilters = reportDataQueryToActivityFindAllFilters(query);
 
     if (report.name === 'thirty-sixty-ninety') {
       const queryWindow = resolveThirtySixtyNinetyQueryWindow({
@@ -532,7 +541,10 @@ export class ReportsService {
         filters.startDateTo = queryWindow.queryStartDateTo;
       }
 
-      Object.assign(filters, withoutActivityStartDateWindow(userFiltersAll));
+      Object.assign(
+        filters,
+        buildUserActivityFilterOverlay(queryActivityFilters, true)
+      );
 
       if (report.config.globalFilter?.lookAheadSection) {
         filters.lookAheadSection = report.config.globalFilter.lookAheadSection;
@@ -578,10 +590,13 @@ export class ReportsService {
           filters.startDateTo = mergedFilter.dateRange.end;
         }
 
-        const userFilterOverlay = mergedFilter?.dateRange
-          ? withoutActivityStartDateWindow(userFiltersAll)
-          : userFiltersAll;
-        Object.assign(filters, userFilterOverlay);
+        Object.assign(
+          filters,
+          buildUserActivityFilterOverlay(
+            queryActivityFilters,
+            mergedFilter?.dateRange != null
+          )
+        );
 
         if (mergedFilter?.lookAheadSection) {
           filters.lookAheadSection = mergedFilter.lookAheadSection;
