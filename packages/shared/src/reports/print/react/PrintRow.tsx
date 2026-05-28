@@ -254,9 +254,9 @@ function ActivityDetailsCell({
               className="corpcal-print-rich corpcal-print-rich-inline"
             />
           </div>
-          {showEventLead && row.eventLeadStored ? (
+          {showEventLead && row.commsContactLead ? (
             <div className="corpcal-print-meta-faint">
-              Event lead: {row.eventLeadStored}
+              Event lead: {row.commsContactLead}
             </div>
           ) : null}
         </>

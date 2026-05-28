@@ -59,6 +59,22 @@ export function addCalendarMonths(
 }
 
 /**
+ * 30/60/90 preset window: `monthCount` full calendar months starting from the
+ * first day of the Pacific month containing `pacificToday`.
+ */
+export function thirtySixtyNinetyDateRangeFromPacificDate(
+  monthCount: number,
+  pacificToday: CalendarDateString
+): CalendarMonthDateRange {
+  const start = firstDayOfCalendarMonth(pacificToday);
+  const endMonthFirstDay = addCalendarMonths(start, monthCount - 1);
+  return {
+    start,
+    end: lastDayOfCalendarMonth(endMonthFirstDay),
+  };
+}
+
+/**
  * Default 30/60/90 report window: `monthCount` full calendar months starting
  * from the first day of the current Pacific month.
  */
@@ -70,12 +86,7 @@ export function defaultThirtySixtyNinetyDateRange(
   if (today == null) {
     throw new Error('Unable to resolve current Pacific calendar date');
   }
-  const start = firstDayOfCalendarMonth(today);
-  const endMonthFirstDay = addCalendarMonths(start, monthCount - 1);
-  return {
-    start,
-    end: lastDayOfCalendarMonth(endMonthFirstDay),
-  };
+  return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, today);
 }
 
 /**

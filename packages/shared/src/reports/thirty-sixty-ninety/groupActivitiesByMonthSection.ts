@@ -6,6 +6,9 @@ function compareActivitiesForMonthSection(
   a: ActivityResponse,
   b: ActivityResponse
 ): number {
+  const dayA = pacificDayKey(a.startDate) ?? '';
+  const dayB = pacificDayKey(b.startDate) ?? '';
+  if (dayA !== dayB) return dayA.localeCompare(dayB);
   const ta = a.startTime ?? '';
   const tb = b.startTime ?? '';
   if (ta !== tb) return ta.localeCompare(tb);

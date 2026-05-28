@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DateRangeValue } from '@corpcal/shared';
 import {
-  CORP_PACIFIC_OFFSET_MS,
+  defaultThirtySixtyNinetyDateRange,
   pacificCalendarDateFromInstant,
+  thirtySixtyNinetyDateRangeFromPacificDate,
   type CalendarDateString,
-} from '@corpcal/shared/datetime';
-import { defaultThirtySixtyNinetyDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
+} from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
@@ -16,40 +16,26 @@ const PACIFIC_DATE_CHECK_MS = 60_000;
 
 export type ThirtySixtyNinetyMonthCount = (typeof MONTH_COUNTS)[number];
 
-function anchorInstantForPacificCalendarDate(date: CalendarDateString): Date {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  const offsetHours = CORP_PACIFIC_OFFSET_MS / (60 * 60 * 1000);
-  return new Date(Date.UTC(y, m - 1, d, 12 + offsetHours, 0, 0, 0));
-}
-
 function monthRangePreset(
   monthCount: ThirtySixtyNinetyMonthCount,
-  anchor: Date
+  pacificToday: CalendarDateString
 ) {
-  return defaultThirtySixtyNinetyDateRange(monthCount, anchor);
+  return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, pacificToday);
 }
 
 function activeMonthCountFromRange(
   startDate: string,
   endDate: string,
-  anchor: Date
+  pacificToday: CalendarDateString
 ): ThirtySixtyNinetyMonthCount | null {
   if (!startDate || !endDate) return null;
   for (const count of MONTH_COUNTS) {
-    const preset = monthRangePreset(count, anchor);
+    const preset = monthRangePreset(count, pacificToday);
     if (preset.start === startDate && preset.end === endDate) {
       return count;
     }
   }
   return null;
-}
-
-function rangeMatchesPresetForAnchor(
-  startDate: string,
-  endDate: string,
-  anchor: Date
-): ThirtySixtyNinetyMonthCount | null {
-  return activeMonthCountFromRange(startDate, endDate, anchor);
 }
 
 export interface ThirtySixtyNinetyMonthRangeTabsProps {
@@ -71,13 +57,6 @@ export function ThirtySixtyNinetyMonthRangeTabs({
     () => pacificCalendarDateFromInstant(new Date(clockTick)),
     [clockTick]
   );
-  const presetAnchor = useMemo(
-    () =>
-      pacificToday
-        ? anchorInstantForPacificCalendarDate(pacificToday)
-        : new Date(clockTick),
-    [clockTick, pacificToday]
-  );
   const prevPacificTodayRef = useRef(pacificToday);
 
   useEffect(() => {
@@ -89,7 +68,8 @@ export function ThirtySixtyNinetyMonthRangeTabs({
 
   const applyMonthCount = useCallback(
     (monthCount: ThirtySixtyNinetyMonthCount) => {
-      const preset = monthRangePreset(monthCount, presetAnchor);
+      if (!pacificToday) return;
+      const preset = monthRangePreset(monthCount, pacificToday);
       setPreferences({
         filterState: {
           ...preferences.filterState,
@@ -102,7 +82,7 @@ export function ThirtySixtyNinetyMonthRangeTabs({
         },
       });
     },
-    [preferences.filterState, presetAnchor, setPreferences]
+    [preferences.filterState, pacificToday, setPreferences]
   );
 
   useEffect(() => {
@@ -112,32 +92,26 @@ export function ThirtySixtyNinetyMonthRangeTabs({
     if (prevPacificToday.slice(0, 7) === pacificToday.slice(0, 7)) return;
     if (!isDateRangeActive(dateRange)) return;
 
-    const matchedOnPreviousMonth = rangeMatchesPresetForAnchor(
+    const matchedOnPreviousMonth = activeMonthCountFromRange(
       dateRange.startDate,
       dateRange.endDate,
-      anchorInstantForPacificCalendarDate(prevPacificToday)
+      prevPacificToday
     );
     if (matchedOnPreviousMonth != null) {
       applyMonthCount(matchedOnPreviousMonth);
     }
-  }, [
-    applyMonthCount,
-    dateRange.endDate,
-    dateRange.noEndDate,
-    dateRange.noStartDate,
-    dateRange.startDate,
-    pacificToday,
-  ]);
+  }, [applyMonthCount, dateRange, pacificToday]);
 
-  const activeCount = useMemo(
-    () =>
+  const activeCount = useMemo(() => {
+    if (!pacificToday) return 3;
+    return (
       activeMonthCountFromRange(
         dateRange.startDate,
         dateRange.endDate,
-        presetAnchor
-      ) ?? (isDateRangeActive(dateRange) ? null : 3),
-    [dateRange, presetAnchor]
-  );
+        pacificToday
+      ) ?? (isDateRangeActive(dateRange) ? null : 3)
+    );
+  }, [dateRange, pacificToday]);
 
   return (
     <Tabs

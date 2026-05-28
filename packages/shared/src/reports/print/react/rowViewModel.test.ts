@@ -322,6 +322,7 @@ describe('toPrintRowViewModel', () => {
     expect(row.significanceStored).toBe('High-profile announcement.');
     expect(row.dateTime.dateStatus).toBe('');
     expect(row.dateTime.timeStatus).toBe('');
+    expect(row.release.translationsLine).toBe('');
   });
 
   it('maps 30/60/90 comms and strategy fields on the row view-model', () => {

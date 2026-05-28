@@ -116,13 +116,11 @@ export interface PrintRowViewModel {
   executiveSummaryStored: string | null;
   /** Rich significance (Exec Look Ahead activity details). */
   significanceStored: string | null;
-  /** Comms contact marked lead (`event_lead` report field). */
-  eventLeadStored: string | null;
   /** Plain-text strategy for 30/60/90 Comms & strategy column. */
   strategyStored: string | null;
   /** Comms material labels for 30/60/90 Comms & strategy column. */
   commsMaterials: readonly string[];
-  /** Comms contact lead display name for 30/60/90 Activity column. */
+  /** Comms contact marked lead (`event_lead` / 30/60/90 Activity column). */
   commsContactLead: string | null;
   /** Plain-text scheduling notes for Planning Report date column. */
   schedulingNotesStored: string | null;
@@ -406,7 +404,6 @@ export function toPrintRowViewModel(
     summaryStored: toNonEmpty(activity.summary),
     executiveSummaryStored: toNonEmpty(activity.executiveSummary),
     significanceStored: toNonEmpty(activity.significance),
-    eventLeadStored: getCommsContactLeadDisplayName(activity),
     strategyStored: toNonEmpty(activity.strategy),
     commsMaterials: activity.commsMaterials ?? [],
     commsContactLead: getCommsContactLeadDisplayName(activity),
@@ -414,19 +411,22 @@ export function toPrintRowViewModel(
     premierRequested: toNonEmpty(activity.premierRequested),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
-      translationsLine: useThirtySixtyNinetyTranslations
-        ? buildLookAheadReleaseTranslationsLine(
-            activity,
-            options.resolveTranslationLanguageLabel
-          )
-        : useLookAheadReleaseRules
-          ? lookAheadShowsTranslationsLine(activity)
+      translationsLine:
+        options.variant === 'planning'
+          ? ''
+          : useThirtySixtyNinetyTranslations
             ? buildLookAheadReleaseTranslationsLine(
                 activity,
                 options.resolveTranslationLanguageLabel
               )
-            : ''
-          : buildTranslationsLine(activity.translationsRequired),
+            : useLookAheadReleaseRules
+              ? lookAheadShowsTranslationsLine(activity)
+                ? buildLookAheadReleaseTranslationsLine(
+                    activity,
+                    options.resolveTranslationLanguageLabel
+                  )
+                : ''
+              : buildTranslationsLine(activity.translationsRequired),
     },
     eventPlannerLead: pickEventPlannerLead(activity),
   };

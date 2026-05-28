@@ -7,6 +7,7 @@ import {
   defaultThirtySixtyNinetyDateRange,
   firstDayOfCalendarMonth,
   lastDayOfCalendarMonth,
+  thirtySixtyNinetyDateRangeFromPacificDate,
 } from './buildCalendarMonthSections';
 
 const MAY_FIRST = toCalendarDateString('2026-05-01');
@@ -98,6 +99,18 @@ describe('defaultThirtySixtyNinetyDateRange', () => {
     expect(defaultThirtySixtyNinetyDateRange(6, anchor)).toEqual({
       start: '2026-05-01',
       end: '2026-10-31',
+    });
+  });
+
+  it('thirtySixtyNinetyDateRangeFromPacificDate matches default for the same Pacific day', () => {
+    expect(
+      thirtySixtyNinetyDateRangeFromPacificDate(
+        3,
+        toCalendarDateString('2026-05-27')
+      )
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-07-31',
     });
   });
 });
