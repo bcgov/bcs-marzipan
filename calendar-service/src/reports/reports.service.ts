@@ -31,7 +31,8 @@ import {
 } from '@corpcal/shared/reports/reportPrintHtml';
 import {
   buildCalendarMonthSections,
-  defaultThirtySixtyNinetyDateRange,
+  groupActivitiesByMonthSection,
+  resolveThirtySixtyNinetyQueryWindow,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import {
   mergeReportFilters,
@@ -507,25 +508,62 @@ export class ReportsService {
     );
 
     if (report.name === 'thirty-sixty-ninety') {
-      const effectiveRange =
-        query.startDateFrom && query.startDateTo
-          ? {
-              startDate: query.startDateFrom,
-              endDate: query.startDateTo,
-            }
-          : (() => {
-              const preset = defaultThirtySixtyNinetyDateRange(3);
-              return { startDate: preset.start, endDate: preset.end };
-            })();
-      const monthSections = buildCalendarMonthSections(effectiveRange);
+      const queryWindow = resolveThirtySixtyNinetyQueryWindow({
+        startDateFrom: query.startDateFrom,
+        startDateTo: query.startDateTo,
+      });
+      const monthSections = buildCalendarMonthSections({
+        startDate: queryWindow.sectionRange.start,
+        endDate: queryWindow.sectionRange.end,
+      });
+
+      const filters: FilterActivitiesQueryParams = {
+        page: query.page,
+        limit: query.limit,
+        sharedWithTeamIds: undefined,
+        includeCompleted: undefined,
+        includeDeleted: undefined,
+      };
+
+      if (queryWindow.queryStartDateFrom) {
+        filters.startDateFrom = queryWindow.queryStartDateFrom;
+      }
+      if (queryWindow.queryStartDateTo) {
+        filters.startDateTo = queryWindow.queryStartDateTo;
+      }
+
+      Object.assign(filters, withoutActivityStartDateWindow(userFiltersAll));
+
+      if (report.config.globalFilter?.lookAheadSection) {
+        filters.lookAheadSection = report.config.globalFilter.lookAheadSection;
+      }
+
+      let activities = await this.activitiesService.findAll(filters, ctx);
+      activities = filterActivityResponsesBySearchKeyword(activities, search);
+      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
+      const activitiesByMonth = groupActivitiesByMonthSection(
+        filtered,
+        monthSections
+      );
 
       for (const monthSection of monthSections) {
-        const mergedFilter = mergeReportFilters(report.config.globalFilter, {
-          dateRange: {
-            start: monthSection.dateRange.start,
-            end: monthSection.dateRange.end,
-          },
+        sections.push({
+          id: monthSection.id,
+          name: monthSection.name,
+          order: monthSection.order,
+          activities: activitiesByMonth.get(monthSection.id) ?? [],
         });
+      }
+
+      return { report, sections };
+    }
+
+    const sectionResults = await Promise.all(
+      report.config.sections.map(async (sectionConfig) => {
+        const mergedFilter = mergeReportFilters(
+          report.config!.globalFilter,
+          sectionConfig.filter
+        );
 
         const filters: FilterActivitiesQueryParams = {
           page: query.page,
@@ -540,7 +578,10 @@ export class ReportsService {
           filters.startDateTo = mergedFilter.dateRange.end;
         }
 
-        Object.assign(filters, withoutActivityStartDateWindow(userFiltersAll));
+        const userFilterOverlay = mergedFilter?.dateRange
+          ? withoutActivityStartDateWindow(userFiltersAll)
+          : userFiltersAll;
+        Object.assign(filters, userFilterOverlay);
 
         if (mergedFilter?.lookAheadSection) {
           filters.lookAheadSection = mergedFilter.lookAheadSection;
@@ -552,59 +593,13 @@ export class ReportsService {
           (a) => !omittedActivityIds.has(a.id)
         );
 
-        sections.push({
-          id: monthSection.id,
-          name: monthSection.name,
-          order: monthSection.order,
-          activities: filtered,
-        });
-      }
+        return { sectionConfig, filtered };
+      })
+    );
 
-      return { report, sections };
-    }
-
-    for (const sectionConfig of report.config.sections) {
-      // Merge global filter with section filter
-      const mergedFilter = mergeReportFilters(
-        report.config.globalFilter,
-        sectionConfig.filter
-      );
-
-      const filters: FilterActivitiesQueryParams = {
-        page: query.page,
-        limit: query.limit,
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
-      };
-
-      // Apply date filters from report section config
-      if (mergedFilter?.dateRange) {
-        filters.startDateFrom = mergedFilter.dateRange.start;
-        filters.startDateTo = mergedFilter.dateRange.end;
-      }
-
-      const userFilterOverlay = mergedFilter?.dateRange
-        ? withoutActivityStartDateWindow(userFiltersAll)
-        : userFiltersAll;
-      Object.assign(filters, userFilterOverlay);
-
-      // Apply status filters
-      // TODO: Implement status filtering based on activity status names
-      // if (mergedFilter?.status?.length || options?.status?.length) {
-      //   // For now, we'll handle status filtering in the frontend or add it later
-      //   // This would require mapping status names to IDs
-      // }
-
-      // Apply look-ahead section filter
-      if (mergedFilter?.lookAheadSection) {
-        filters.lookAheadSection = mergedFilter.lookAheadSection;
-      }
-
-      let activities = await this.activitiesService.findAll(filters, ctx);
-      activities = filterActivityResponsesBySearchKeyword(activities, search);
-      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
-
+    for (const { sectionConfig, filtered } of sectionResults.sort(
+      (a, b) => a.sectionConfig.order - b.sectionConfig.order
+    )) {
       sections.push({
         id: sectionConfig.id,
         name: sectionConfig.name,

@@ -1,17 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
-import { defaultThirtySixtyNinetyDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
+import {
+  defaultThirtySixtyNinetyDateRange,
+  resolveThirtySixtyNinetyQueryWindow,
+} from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { reportDataQuerySchema } from '@corpcal/shared/schemas';
 
 import { ReportsService } from './reports.service';
 
-function createActivity(id: number): ActivityResponse {
+function createActivity(
+  id: number,
+  startDate = '2026-05-15'
+): ActivityResponse {
   return {
     id,
     displayId: `ACT-${id}`,
     isConfidential: false,
     title: `Activity ${id}`,
+    startDate,
   } as ActivityResponse;
 }
 
@@ -76,14 +83,14 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/),
       expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/),
     ]);
-    expect(activitiesService.findAll).toHaveBeenCalledTimes(3);
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
       startDateFrom: expectedRange.start,
-      startDateTo: expect.any(String),
+      startDateTo: expectedRange.end,
     });
   });
 
-  it('uses the requested date window when start and end dates are provided', async () => {
+  it('uses one activity query for the requested date window', async () => {
     await service.getReportData(
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
@@ -93,21 +100,82 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       ctx
     );
 
-    expect(activitiesService.findAll).toHaveBeenCalledTimes(2);
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
       startDateFrom: '2026-05-01',
-      startDateTo: '2026-05-31',
-    });
-    expect(activitiesService.findAll.mock.calls[1]?.[0]).toMatchObject({
-      startDateFrom: '2026-06-01',
       startDateTo: '2026-06-30',
     });
   });
 
+  it('groups activities into calendar month sections from a single query', async () => {
+    activitiesService.findAll.mockResolvedValue([
+      createActivity(10, '2026-05-10'),
+      createActivity(20, '2026-06-05'),
+    ]);
+
+    const result = await service.getReportData(
+      'thirty-sixty-ninety',
+      reportDataQuerySchema.parse({
+        startDateFrom: '2026-05-01',
+        startDateTo: '2026-06-30',
+      }),
+      ctx
+    );
+
+    expect(result.sections).toHaveLength(2);
+    expect(
+      result.sections[0]?.activities.map((activity) => activity.id)
+    ).toEqual([10]);
+    expect(
+      result.sections[1]?.activities.map((activity) => activity.id)
+    ).toEqual([20]);
+  });
+
+  it('derives an open-ended future query when only start is provided', async () => {
+    const window = resolveThirtySixtyNinetyQueryWindow({
+      startDateFrom: '2026-05-01',
+    });
+
+    await service.getReportData(
+      'thirty-sixty-ninety',
+      reportDataQuerySchema.parse({
+        startDateFrom: '2026-05-01',
+      }),
+      ctx
+    );
+
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      startDateFrom: '2026-05-01',
+    });
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).not.toHaveProperty(
+      'startDateTo'
+    );
+    expect(window.queryStartDateTo).toBeUndefined();
+  });
+
+  it('derives an open-ended past query when only end is provided', async () => {
+    await service.getReportData(
+      'thirty-sixty-ninety',
+      reportDataQuerySchema.parse({
+        startDateTo: '2026-06-30',
+      }),
+      ctx
+    );
+
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      startDateTo: '2026-06-30',
+    });
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).not.toHaveProperty(
+      'startDateFrom'
+    );
+  });
+
   it('filters omitted activities out of each month section', async () => {
     activitiesService.findAll.mockResolvedValue([
-      createActivity(10),
-      createActivity(11),
+      createActivity(10, '2026-05-10'),
+      createActivity(11, '2026-05-12'),
     ]);
     vi.spyOn(service, 'getActivitiesForReport').mockResolvedValue([
       { activityId: 11, omitted: true },
@@ -119,8 +187,14 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       ctx
     );
 
-    for (const section of result.sections) {
-      expect(section.activities.map((activity) => activity.id)).toEqual([10]);
-    }
+    const maySection = result.sections.find(
+      (section) => section.id === '2026-05'
+    );
+    expect(maySection?.activities.map((activity) => activity.id)).toEqual([10]);
+    expect(
+      result.sections
+        .filter((section) => section.id !== '2026-05')
+        .every((section) => section.activities.length === 0)
+    ).toBe(true);
   });
 });
