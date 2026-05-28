@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import type { DateRangeValue } from '@corpcal/shared';
 import { defaultThirtySixtyNinetyDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,9 +81,9 @@ export function ThirtySixtyNinetyMonthRangeTabs({
           applyMonthCount(parsed);
         }
       }}
-      className="w-full"
+      className="w-auto"
     >
-      <TabsList variant="line" size="sm" aria-label="30/60/90 month range">
+      <TabsList size="sm" aria-label="30/60/90 month range">
         <TabsTrigger value="1">1 month</TabsTrigger>
         <TabsTrigger value="3">3 months</TabsTrigger>
         <TabsTrigger value="6">6 months</TabsTrigger>
@@ -91,12 +92,12 @@ export function ThirtySixtyNinetyMonthRangeTabs({
   );
 }
 
-export function buildDefaultThirtySixtyNinetyFilterDateRange() {
+export function buildDefaultThirtySixtyNinetyFilterDateRange(): DateRangeValue {
   const preset = defaultThirtySixtyNinetyDateRange(3);
   return {
     startDate: preset.start,
     endDate: preset.end,
     noStartDate: false,
     noEndDate: false,
-  } as const;
+  };
 }

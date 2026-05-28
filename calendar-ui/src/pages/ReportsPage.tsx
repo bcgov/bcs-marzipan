@@ -318,15 +318,15 @@ export function ReportsPage() {
                       }
                     : undefined
                 }
+                printPreviewRowLeading={
+                  activeReport === 'thirty-sixty-ninety' ? (
+                    <ThirtySixtyNinetyMonthRangeTabs
+                      preferences={preferences}
+                      setPreferences={setPreferences}
+                    />
+                  ) : undefined
+                }
               />
-              {activeReport === 'thirty-sixty-ninety' ? (
-                <div className="border-border mt-3 border-b pb-3">
-                  <ThirtySixtyNinetyMonthRangeTabs
-                    preferences={preferences}
-                    setPreferences={setPreferences}
-                  />
-                </div>
-              ) : null}
             </div>
 
             {reports.map((report) => (

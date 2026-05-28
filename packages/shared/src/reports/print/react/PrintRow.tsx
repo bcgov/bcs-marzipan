@@ -1,4 +1,4 @@
-import { ExternalLink, Languages } from 'lucide-react';
+import { ExternalLink, Languages, NotebookText } from 'lucide-react';
 
 import { PrintRichText } from './PrintRichText';
 import {
@@ -29,7 +29,7 @@ function narrativeIsExecTitleSummaryInline(
 }
 
 /** Confidential, Issue, and FYI badges on one line at the top of Activity details. */
-function LookAheadActivityBadges({ flags }: { flags: ColumnFlags }) {
+function ActivityDetailBadges({ flags }: { flags: ColumnFlags }) {
   if (!flags.isConfidential && !flags.isIssue && !flags.isFyi) {
     return null;
   }
@@ -50,14 +50,6 @@ function LookAheadActivityBadges({ flags }: { flags: ColumnFlags }) {
         <span className="corpcal-print-pill corpcal-print-pill-fyi">FYI</span>
       ) : null}
     </div>
-  );
-}
-
-function NarrativeInlineFlag({ label }: { label: string }) {
-  return (
-    <span className="corpcal-print-flag corpcal-print-flag-narrative-inline">
-      {label}
-    </span>
   );
 }
 
@@ -219,23 +211,6 @@ function ActivityDetailsCell({
   variant: PrintReportVariant;
   showEventLead: boolean;
 }) {
-  const useLookAheadBadges = isLookAheadRollupVariant(variant);
-  const legacyFlags: { key: string; label: string; className: string }[] = [];
-  if (!useLookAheadBadges && row.flags.isIssue) {
-    legacyFlags.push({
-      key: 'issue',
-      label: 'ISSUE',
-      className: 'corpcal-print-flag',
-    });
-  }
-  if (!useLookAheadBadges && row.flags.isConfidential) {
-    legacyFlags.push({
-      key: 'confidential',
-      label: 'CONFIDENTIAL',
-      className: 'corpcal-print-flag corpcal-print-flag-alert',
-    });
-  }
-
   const venueLines: string[] = [];
   if (row.venue.city) venueLines.push(row.venue.city);
   if (row.venue.name) venueLines.push(row.venue.name);
@@ -246,19 +221,7 @@ function ActivityDetailsCell({
 
   return (
     <div className="corpcal-print-stack-md">
-      {useLookAheadBadges ? (
-        <LookAheadActivityBadges flags={row.flags} />
-      ) : null}
-
-      {legacyFlags.length > 0 ? (
-        <div className="corpcal-print-flags">
-          {legacyFlags.map((flag) => (
-            <span key={flag.key} className={flag.className}>
-              {flag.label}
-            </span>
-          ))}
-        </div>
-      ) : null}
+      <ActivityDetailBadges flags={row.flags} />
 
       {narrativeIsExecutiveSummaryInline(variant) ? (
         <>
@@ -290,8 +253,6 @@ function ActivityDetailsCell({
         <>
           {row.title ? (
             <div className="corpcal-print-title corpcal-print-narrative-head">
-              {row.flags.isFyi ? <NarrativeInlineFlag label="FYI" /> : null}
-              {row.flags.isFyi ? ' ' : null}
               {row.title}
             </div>
           ) : null}
@@ -326,12 +287,17 @@ function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
   return (
     <div className="corpcal-print-stack">
       {hasCommsMaterials ? (
-        <div className="corpcal-print-meta-strong">
-          {row.commsMaterials.join(', ')}
+        <div className="corpcal-print-inline-row corpcal-print-translations-row">
+          <NotebookText
+            className="corpcal-print-comms-materials-icon"
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span className="corpcal-print-text">
+            {row.commsMaterials.join(', ')}
+          </span>
         </div>
-      ) : null}
-      {hasStrategy ? (
-        <div className="corpcal-print-meta">{row.strategyStored}</div>
       ) : null}
       {hasTranslations ? (
         <div className="corpcal-print-inline-row corpcal-print-translations-row">
@@ -345,6 +311,9 @@ function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
             {translationsLine}
           </span>
         </div>
+      ) : null}
+      {hasStrategy ? (
+        <div className="corpcal-print-text">{row.strategyStored}</div>
       ) : null}
     </div>
   );

@@ -280,6 +280,11 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-stack-md > * + * { margin-top: 6px; }
 .corpcal-print-stack-lg > * + * { margin-top: 8px; }
 
+.corpcal-print-text {
+  font-size: 1em;
+  font-weight: 400;
+  color: var(--print-ink);
+}
 .corpcal-print-meta-strong {
   font-weight: 700;
   font-size: 1em;
@@ -316,16 +321,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: #2e5a34;
   color: var(--print-look-ahead-accent-green);
 }
+.corpcal-print-comms-materials-icon {
+  flex: 0 0 auto;
+  margin-top: 0.15em;
+  color: var(--print-ink);
+}
 .corpcal-print-narrative-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.35em 0.5em;
-}
-.corpcal-print-flag-narrative-inline {
-  flex: 0 0 auto;
-  margin-top: 0.1em;
-  color: var(--print-ink);
 }
 .corpcal-print-activity-link {
   display: inline-flex;
@@ -393,16 +398,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   gap: 6px;
   margin-bottom: 2px;
 }
-.corpcal-print-flag {
-  font-size: 1em;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--print-ink-muted);
-}
-.corpcal-print-flag-alert {
-  color: var(--corpcal-text-alert);
-}
-
 /* Shad-style badge: rounded-full, body em, font-semibold, border/padding */
 .corpcal-print-pill {
   display: inline-flex;

@@ -257,6 +257,10 @@ describe('renderPrintReportFragmentHtml', () => {
     );
 
     expect(html).toContain('data-report-template="THIRTY_SIXTY_NINETY"');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
+    expect(html).not.toContain('>ISSUE</span>');
+    expect(html).not.toContain('>CONFIDENTIAL</span>');
     expect(html).toContain('corpcal-print-pdf-first-page-title');
     expect(html).toContain('30/60/90 Report');
     expect(html).toContain('Comms &amp; strategy');
