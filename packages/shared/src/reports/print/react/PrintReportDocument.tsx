@@ -199,8 +199,6 @@ function SectionGroup({
   resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
-  if (dateKeys.length === 0) return null;
-
   const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
     const activities = section.activitiesByKey.get(dayKey) ?? [];
     const rows: PrintRowViewModel[] = activities.map((a) =>

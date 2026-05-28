@@ -223,6 +223,7 @@ export function PrintGroupedSectionTable({
 }) {
   const columnSpan = printSectionColumnCount(omitReleaseColumn);
   const tableClassName = `${printSectionTableClassName(omitReleaseColumn)} corpcal-print-section-rollup-table`;
+  const hasRows = days.some((day) => day.rows.length > 0);
 
   return (
     <div className="corpcal-print-table-wrap corpcal-print-table-wrap--section-rollup">
@@ -282,17 +283,25 @@ export function PrintGroupedSectionTable({
           ))
         ) : (
           <tbody className="corpcal-print-day-tbody">
-            {days.flatMap((day) =>
-              day.rows.map((row) => (
-                <PrintRow
-                  key={row.activityId}
-                  row={row}
-                  variant={variant}
-                  showEventLead={showEventLead}
-                  omitReleaseColumn={omitReleaseColumn}
-                  highlightActivityIds={highlightActivityIds}
-                />
-              ))
+            {hasRows ? (
+              days.flatMap((day) =>
+                day.rows.map((row) => (
+                  <PrintRow
+                    key={row.activityId}
+                    row={row}
+                    variant={variant}
+                    showEventLead={showEventLead}
+                    omitReleaseColumn={omitReleaseColumn}
+                    highlightActivityIds={highlightActivityIds}
+                  />
+                ))
+              )
+            ) : (
+              <tr className="corpcal-print-empty-month-row">
+                <td colSpan={columnSpan} className="corpcal-print-empty-month">
+                  No activities.
+                </td>
+              </tr>
             )}
           </tbody>
         )}

@@ -463,6 +463,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   border: 1px dashed var(--print-border);
   background: var(--corpcal-table-row-alt-bg);
 }
+.corpcal-print-empty-month {
+  padding: 12px 8px;
+  font-size: 0.9375em;
+  font-style: italic;
+  color: var(--print-ink-faint);
+  text-align: center;
+}
 
 /* Look-ahead PDF cover only: one US Letter–aspect sheet at cover sheet width. */
 .corpcal-print-cover-sheet {

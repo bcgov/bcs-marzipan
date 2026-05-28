@@ -287,6 +287,44 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Issued');
   });
 
+  it('renders empty calendar month sections with a placeholder row', () => {
+    const thirtyFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'thirty-sixty-ninety',
+        displayName: '30/60/90',
+      },
+      sections: [
+        {
+          id: '2026-04',
+          name: 'April 2026',
+          order: 1,
+          activities: [],
+        },
+        {
+          id: '2026-05',
+          name: 'May 2026',
+          order: 2,
+          activities: [BASE_ACTIVITY],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml(
+      'thirty-sixty-ninety',
+      thirtyFixture,
+      {
+        activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+      }
+    );
+
+    expect(html).toContain('April 2026');
+    expect(html).toContain('May 2026');
+    expect(html).toContain('corpcal-print-empty-month');
+    expect(html).toContain('No activities.');
+  });
+
   it('renders planning report with landscape template, significance column, and scheduling context', () => {
     const planningActivity = {
       ...BASE_ACTIVITY,

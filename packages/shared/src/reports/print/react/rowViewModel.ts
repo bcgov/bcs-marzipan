@@ -90,9 +90,9 @@ export interface ReleaseBlock {
   newsReleaseOrigin: string | null;
   /**
    * Release column text after the optional {@link newsReleaseOrigin} line.
-   * Look Ahead / Exec: language display names or `TBD` / `none` / `N translations` — no
-   * `Translations:` prefix (icon in {@link PrintRow}).
-   * 30/60/90: full {@link buildTranslationsLine} string including `Translations:`.
+   * Look Ahead / Exec / 30/60/90: language display names or `TBD` / `none` /
+   * `N translations` — no `Translations:` prefix (Languages icon in {@link PrintRow}).
+   * Other variants: full {@link buildTranslationsLine} string including `Translations:`.
    */
   translationsLine: string;
 }
@@ -356,9 +356,7 @@ export function toPrintRowViewModel(
   const rawTimeStatus = activity.timeStatus?.trim() ?? '';
   const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
   const useLookAheadReleaseRules =
-    options.variant === 'lookAhead' ||
-    options.variant === 'execLookAhead' ||
-    options.variant === 'thirtySixtyNinety';
+    options.variant === 'lookAhead' || options.variant === 'execLookAhead';
   const useThirtySixtyNinetyTranslations =
     options.variant === 'thirtySixtyNinety';
   const hasStartDate = Boolean(startDateLabel);
