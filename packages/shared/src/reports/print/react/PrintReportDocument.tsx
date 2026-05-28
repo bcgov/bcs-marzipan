@@ -141,12 +141,17 @@ export function PrintReportDocument({
           ? 'EXEC_LOOK_AHEAD'
           : variant === 'thirtySixtyNinety'
             ? 'THIRTY_SIXTY_NINETY'
-            : 'LOOK_AHEAD'
+            : variant === 'planning'
+              ? 'PLANNING'
+              : 'LOOK_AHEAD'
       }
     >
       <div className="corpcal-print-body">
         {variant === 'thirtySixtyNinety' && hasAny ? (
           <PrintPdfFirstPageTitle title="30/60/90 Report" />
+        ) : null}
+        {variant === 'planning' && hasAny ? (
+          <PrintPdfFirstPageTitle title="Planning Report" />
         ) : null}
         {!hasAny ? (
           <div className="corpcal-print-empty">

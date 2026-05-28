@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import {
   REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX,
   REPORT_PRINT_BODY_FONT_SIZE_PX,
   REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_BODY_TARGET_PRINT_PT,
   REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
   REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_SHEET_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   reportPdfTemplateCssPxForPrintPt,
+  reportPrintSheetLayoutWidthPx,
 } from './reportPrintDimensions';
 
 describe('reportPrintDimensions', () => {
@@ -57,6 +61,21 @@ describe('reportPrintDimensions', () => {
     expect(bodyPx * REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE).toBeCloseTo(
       (8.5 * 96) / 72,
       0
+    );
+  });
+
+  it('uses landscape layout width for planning report preview/PDF', () => {
+    expect(REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX).toBe(1056);
+    expect(REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE).toBeCloseTo(
+      REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX /
+        REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
+      8
+    );
+    expect(reportPrintSheetLayoutWidthPx('planning')).toBe(
+      REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX
+    );
+    expect(reportPrintSheetLayoutWidthPx('look-ahead')).toBe(
+      REPORT_PRINT_LAYOUT_WIDTH_PX
     );
   });
 });

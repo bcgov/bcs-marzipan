@@ -1,6 +1,7 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
 import {
   REPORT_PRINT_COVER_SHEET_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
@@ -647,7 +648,39 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   display: none;
 }
 
-.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title {
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] {
+  max-width: var(
+    --corpcal-print-root-max-width,
+    ${REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX}px
+  );
+}
+
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-1 { width: 22%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-2 { width: 38%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-3 { width: 24%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-4 { width: 16%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-1,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-1 {
+  width: 22%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-2,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-2 {
+  width: 38%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-3,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-3 {
+  width: 24%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-4,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-4 {
+  width: 16%;
+}
+.corpcal-print-planning-date-extras {
+  margin-top: 6px;
+}
+
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-pdf-first-page-title {
   display: none;
   text-align: center;
   font-size: 2rem;
@@ -712,6 +745,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 
 @media print {
+  @page {
+    size: letter;
+  }
+  @page planning-page {
+    size: letter landscape;
+  }
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] {
+    max-width: none;
+    page: planning-page;
+  }
   /*
    * Standalone cover PDF (merged with body in a second pass): do not force a page break after
    * the only cover block — avoids a trailing blank Letter page before the merger appends pages.
@@ -739,7 +782,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   .${CORPCAL_PRINT_ROOT_CLASS} {
     font-size: var(--print-body-font-size);
   }
-  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title {
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title,
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-pdf-first-page-title {
     display: block;
     page-break-after: avoid;
     break-after: avoid;

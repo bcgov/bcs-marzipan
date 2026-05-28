@@ -287,13 +287,76 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Issued');
   });
 
-  it('renders the planning placeholder as a React fragment', () => {
-    const html = renderPrintReportFragmentHtml('planning', FIXTURE, {
+  it('renders planning report with landscape template, significance column, and scheduling context', () => {
+    const planningActivity = {
+      ...BASE_ACTIVITY,
+      significance:
+        'Major policy announcement with province-wide housing impact.',
+      schedulingNotes: 'Date TBD; align with regional council schedule.',
+      premierRequested: 'Premier David Eby',
+      venueAddress: {
+        venueName: 'Legislative Assembly',
+        addressLine1: '501 Belleville St',
+        addressLine2: null,
+        city: 'Victoria',
+        provinceOrState: 'BC',
+        country: 'Canada',
+      },
+    };
+    const planningFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'planning',
+        displayName: 'Planning Report',
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'schedule',
+              name: 'GCPE Corporate Calendar: Activities Schedule',
+              reportDisplayName:
+                'GCPE Corporate Calendar: Activities Schedule',
+              order: 1,
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'schedule',
+          name: 'GCPE Corporate Calendar: Activities Schedule',
+          order: 1,
+          activities: [planningActivity],
+        },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('planning', planningFixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
     expect(html).toContain('data-report-template="PLANNING"');
-    expect(html).toContain('PLANNING template placeholder');
+    expect(html).toContain('corpcal-print-pdf-first-page-title');
+    expect(html).toContain('Planning Report');
+    expect(html).toContain('GCPE Corporate Calendar: Activities Schedule');
+    expect(html).toContain('Significance');
+    expect(html).not.toContain('Release');
+    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain(
+      'The Minister will announce new housing funding and respond to media questions'
+    );
+    expect(html).toContain(
+      'Major policy announcement with province-wide housing impact.'
+    );
+    expect(html).toContain(
+      'Date TBD; align with regional council schedule.'
+    );
+    expect(html).toContain('Premier David Eby');
+    expect(html).toContain('Victoria, Legislative Assembly');
+    expect(html).toContain('Last updated Apr');
+    expect(html).not.toContain('PLANNING template placeholder');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Issued');
   });
 
   it('renders the custom report as a React fragment', () => {

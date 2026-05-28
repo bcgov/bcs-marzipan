@@ -111,7 +111,9 @@ export function PrintRow({
       </td>
       {!omitReleaseColumn ? (
         <td className="corpcal-print-col-3">
-          {variant === 'thirtySixtyNinety' ? (
+          {variant === 'planning' ? (
+            <SignificanceCell row={row} />
+          ) : variant === 'thirtySixtyNinety' ? (
             <CommsStrategyCell row={row} />
           ) : (
             <ReleaseCell row={row} variant={variant} />
@@ -198,6 +200,25 @@ function DateTimeCell({
           </span>
         </div>
       ) : null}
+      {variant === 'planning' ? (
+        <PlanningDateExtras row={row} />
+      ) : null}
+    </div>
+  );
+}
+
+function PlanningDateExtras({ row }: { row: PrintRowViewModel }) {
+  const { schedulingNotesStored, premierRequested } = row;
+  if (!schedulingNotesStored && !premierRequested) return null;
+
+  return (
+    <div className="corpcal-print-stack-md corpcal-print-planning-date-extras">
+      {schedulingNotesStored ? (
+        <div className="corpcal-print-text">{schedulingNotesStored}</div>
+      ) : null}
+      {premierRequested ? (
+        <div className="corpcal-print-meta-faint">{premierRequested}</div>
+      ) : null}
     </div>
   );
 }
@@ -218,6 +239,8 @@ function ActivityDetailsCell({
 
   const showVenue = isExecLikeRollupVariant(variant);
   const showLastUpdatedInDetails = isExecLikeRollupVariant(variant);
+  const showSignificanceInDetails =
+    isExecLikeRollupVariant(variant) && variant !== 'planning';
 
   return (
     <div className="corpcal-print-stack-md">
@@ -247,7 +270,9 @@ function ActivityDetailsCell({
               className="corpcal-print-rich corpcal-print-rich-inline"
             />
           </div>
-          <PrintRichText value={row.significanceStored} />
+          {showSignificanceInDetails ? (
+            <PrintRichText value={row.significanceStored} />
+          ) : null}
         </>
       ) : (
         <>
@@ -271,6 +296,14 @@ function ActivityDetailsCell({
       ) : null}
     </div>
   );
+}
+
+function SignificanceCell({ row }: { row: PrintRowViewModel }) {
+  if (!row.significanceStored) {
+    return <span className="corpcal-print-meta-faint">—</span>;
+  }
+
+  return <PrintRichText value={row.significanceStored} />;
 }
 
 function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
@@ -375,9 +408,12 @@ function ActivityCell({
   const showUpdated =
     variant !== 'lookAhead' &&
     variant !== 'execLookAhead' &&
-    variant !== 'thirtySixtyNinety';
+    variant !== 'thirtySixtyNinety' &&
+    variant !== 'planning';
   const usesSplitActivityId =
-    isLookAheadRollupVariant(variant) || variant === 'thirtySixtyNinety';
+    isLookAheadRollupVariant(variant) ||
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning';
   const splitId = usesSplitActivityId
     ? splitActivityDisplayIdForPrint(activityLink.label)
     : null;

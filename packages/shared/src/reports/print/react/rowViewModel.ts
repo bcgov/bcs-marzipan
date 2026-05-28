@@ -19,7 +19,9 @@ export type PrintReportVariant =
   /** 30/60/90: title + summary, classic chrome. */
   | 'thirtySixtyNinety'
   /** Exec Look Ahead: title + inline summary, significance, venue; distinct PDF template slug. */
-  | 'execLookAhead';
+  | 'execLookAhead'
+  /** Planning Report: landscape layout; significance in dedicated column. */
+  | 'planning';
 
 /** How activity start/end dates render in rollup table column 1. */
 export type PrintDateCellStyle = 'shortWithYear' | 'shortNoYear';
@@ -122,15 +124,23 @@ export interface PrintRowViewModel {
   commsMaterials: readonly string[];
   /** Comms contact lead display name for 30/60/90 Activity column. */
   commsContactLead: string | null;
+  /** Plain-text scheduling notes for Planning Report date column. */
+  schedulingNotesStored: string | null;
+  /** Premier requested lookup display name for Planning Report date column. */
+  premierRequested: string | null;
   release: ReleaseBlock;
   eventPlannerLead: string | null;
 }
 
-/** Exec Look Ahead and 30/60/90 share date/details/activity-id chrome. */
+/** Exec Look Ahead, 30/60/90, and Planning share date/details/activity-id chrome. */
 export function isExecLikeRollupVariant(
   variant: PrintReportVariant | undefined
 ): boolean {
-  return variant === 'execLookAhead' || variant === 'thirtySixtyNinety';
+  return (
+    variant === 'execLookAhead' ||
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning'
+  );
 }
 
 /** Threshold at and above which translations collapse to a count line. */
@@ -302,7 +312,8 @@ function shouldUseLookAheadDateTimeStatusRules(
   return (
     variant === 'lookAhead' ||
     variant === 'execLookAhead' ||
-    variant === 'thirtySixtyNinety'
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning'
   );
 }
 
@@ -401,6 +412,8 @@ export function toPrintRowViewModel(
     strategyStored: toNonEmpty(activity.strategy),
     commsMaterials: activity.commsMaterials ?? [],
     commsContactLead: getCommsContactLeadDisplayName(activity),
+    schedulingNotesStored: toNonEmpty(activity.schedulingNotes),
+    premierRequested: toNonEmpty(activity.premierRequested),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
       translationsLine: useThirtySixtyNinetyTranslations

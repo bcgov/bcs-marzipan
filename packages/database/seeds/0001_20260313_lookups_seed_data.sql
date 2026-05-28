@@ -659,7 +659,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     4,
     true,
     'team',
-    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "category", "isIssue", "newsReleaseOrigin", "strategy"], "printTemplate": "planningV1", "sections": [{"id": "all", "name": "All Activities", "order": 1}]}'::jsonb,
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "significance", "category", "isIssue", "schedulingNotes", "premierRequested", "lookAheadStatus", "lastUpdatedDateTime"], "printTemplate": "planningV2", "sections": [{"id": "schedule", "name": "GCPE Corporate Calendar: Activities Schedule", "reportDisplayName": "GCPE Corporate Calendar: Activities Schedule", "order": 1}]}'::jsonb,
     'Planning report for activities with strategy and scheduling context',
     1,
     1

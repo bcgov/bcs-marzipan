@@ -77,7 +77,6 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
     ],
   },
   PLANNING: {
-    // Placeholder until DB report types are introduced.
     fields: [
       'startDate',
       'endDate',
@@ -86,10 +85,13 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'title',
       'isConfidential',
       'summary',
+      'significance',
       'category',
       'isIssue',
-      'newsReleaseOrigin',
-      'strategy',
+      'schedulingNotes',
+      'premierRequested',
+      'lookAheadStatus',
+      'lastUpdatedDateTime',
     ],
   },
 };
@@ -97,7 +99,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
 /**
  * Maps the DB `reports.name` to an internal `ReportType`.
  *
- * Note: `exec` and `planning` are placeholders for future DB entries.
+ * Note: `exec` is a placeholder comment drift fix — it is seeded in DB.
  */
 const REPORT_TYPE_BY_DB_REPORT_NAME: Record<string, ReportType> = {
   'look-ahead': 'LOOK_AHEAD',

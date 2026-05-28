@@ -16,6 +16,13 @@ const THIRTY_SIXTY_NINETY_COLUMN_HEADERS = [
   'Activity',
 ] as const;
 
+const PLANNING_COLUMN_HEADERS = [
+  'Date & time',
+  'Activity details',
+  'Significance',
+  'Activity',
+] as const;
+
 const RELEASE_COLUMN_HEADER = 'Release';
 
 /** Column headers for a section table; omits Release when configured. */
@@ -25,6 +32,9 @@ export function printSectionColumnHeaders(
 ): readonly string[] {
   if (variant === 'thirtySixtyNinety') {
     return THIRTY_SIXTY_NINETY_COLUMN_HEADERS;
+  }
+  if (variant === 'planning') {
+    return PLANNING_COLUMN_HEADERS;
   }
   if (!omitReleaseColumn) return PRINT_SECTION_COLUMN_HEADERS;
   return PRINT_SECTION_COLUMN_HEADERS.filter(

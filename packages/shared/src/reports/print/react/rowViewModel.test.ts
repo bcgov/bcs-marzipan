@@ -301,6 +301,29 @@ describe('toPrintRowViewModel', () => {
     expect(fyi.flags.isFyi).toBe(true);
   });
 
+  it('maps planning scheduling and premier requested fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        schedulingNotes: 'Tentative: first week of next month.',
+        premierRequested: 'Premier David Eby',
+        significance: 'High-profile announcement.',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'planning',
+      }
+    );
+
+    expect(row.schedulingNotesStored).toBe(
+      'Tentative: first week of next month.'
+    );
+    expect(row.premierRequested).toBe('Premier David Eby');
+    expect(row.significanceStored).toBe('High-profile announcement.');
+    expect(row.dateTime.dateStatus).toBe('');
+    expect(row.dateTime.timeStatus).toBe('');
+  });
+
   it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
     const row = toPrintRowViewModel(
       {
