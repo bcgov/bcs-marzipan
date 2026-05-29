@@ -8,7 +8,9 @@ import {
   type CSSProperties,
 } from 'react';
 
+import type { DateRangeValue } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { shouldWarnLargeReportRange } from '@corpcal/shared/reports/reportDateRange';
 import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
@@ -16,12 +18,17 @@ import { isDateRangeActive } from '@/components/activity/ActivityTable/Scheduled
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
+import {
+  buildDefaultLookAheadFilterDateRange,
+  LookAheadDayRangeTabs,
+} from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
+import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
 import {
-  buildDefaultThirtySixtyNinetyFilterDateRange,
-  ThirtySixtyNinetyMonthRangeTabs,
-} from '@/components/reports/ThirtySixtyNinetyMonthRangeTabs';
+  buildDefaultReportMonthFilterDateRange,
+  ReportMonthRangeTabs,
+} from '@/components/reports/ReportMonthRangeTabs';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,6 +47,7 @@ import {
 } from '@/lib/report-export';
 import {
   buildReportDataRequestParamsFromActivityPreferences,
+  resolveReportQueryDateRange,
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
 import { reportQueryKeys } from '@/lib/reportQueryKeys';
@@ -83,6 +91,30 @@ function getExportConfig(reportType: string) {
   }
 
   return { label: 'Export PDF', format: 'pdf' as const };
+}
+
+function buildDefaultFilterDateRangeForReport(
+  reportName: string
+): DateRangeValue {
+  switch (reportName) {
+    case 'look-ahead':
+    case 'exec':
+      return buildDefaultLookAheadFilterDateRange();
+    default:
+      return buildDefaultReportMonthFilterDateRange();
+  }
+}
+
+function reportUsesDayRangeTabs(reportName: string): boolean {
+  return reportName === 'look-ahead' || reportName === 'exec';
+}
+
+function reportUsesMonthRangeTabs(reportName: string): boolean {
+  return (
+    reportName === 'thirty-sixty-ninety' ||
+    reportName === 'planning' ||
+    reportName === 'custom'
+  );
 }
 
 export function ReportsPage() {
@@ -148,46 +180,37 @@ export function ReportsPage() {
     }
   }, [reports]);
 
-  // Apply config-based date defaults once per report tab when scheduled range is still empty.
+  // Apply report-type date defaults once per tab when scheduled range is still empty.
   useEffect(() => {
     if (!activeReport) return;
     if (defaultsAppliedForReportRef.current === activeReport) {
       return;
     }
 
-    const defaults = getReportTypeConfigByReportName(activeReport)?.defaults;
-    const dr = preferences.filterState.dateRange;
-    const empty =
-      dr.startDate === '' &&
-      dr.endDate === '' &&
-      !dr.noStartDate &&
-      !dr.noEndDate;
+    if (isDateRangeActive(preferences.filterState.dateRange)) {
+      defaultsAppliedForReportRef.current = activeReport;
+      return;
+    }
 
-    if (defaults && empty && (defaults.startDate || defaults.endDate)) {
-      setPreferences({
-        filterState: {
-          ...preferences.filterState,
-          dateRange: {
-            startDate: defaults.startDate ?? '',
-            endDate: defaults.endDate ?? '',
+    const configDefaults =
+      getReportTypeConfigByReportName(activeReport)?.defaults;
+    const dateRange: DateRangeValue =
+      configDefaults && (configDefaults.startDate || configDefaults.endDate)
+        ? {
+            startDate: configDefaults.startDate ?? '',
+            endDate: configDefaults.endDate ?? '',
             noStartDate: false,
             noEndDate: false,
-          },
-        },
-      });
-    }
-    defaultsAppliedForReportRef.current = activeReport;
-  }, [activeReport, preferences.filterState, setPreferences]);
+          }
+        : buildDefaultFilterDateRangeForReport(activeReport);
 
-  useEffect(() => {
-    if (activeReport !== 'thirty-sixty-ninety') return;
-    if (isDateRangeActive(preferences.filterState.dateRange)) return;
     setPreferences({
       filterState: {
         ...preferences.filterState,
-        dateRange: buildDefaultThirtySixtyNinetyFilterDateRange(),
+        dateRange,
       },
     });
+    defaultsAppliedForReportRef.current = activeReport;
   }, [activeReport, preferences.filterState, setPreferences]);
 
   const { data, isLoading, isFetching, error } = useQuery({
@@ -198,6 +221,24 @@ export function ReportsPage() {
         : Promise.reject(new Error('No report selected')),
     enabled: !!activeReport,
   });
+
+  const resolvedReportDateRange = useMemo(() => {
+    if (!activeReport) return null;
+    return resolveReportQueryDateRange(activeReport, preferences.filterState);
+  }, [activeReport, preferences.filterState]);
+
+  const showLargeRangeWarning = useMemo(() => {
+    if (!resolvedReportDateRange) return false;
+    if (data?.meta?.largeResultWarning != null) {
+      return data.meta.largeResultWarning;
+    }
+    return shouldWarnLargeReportRange({
+      spanDays: resolvedReportDateRange.spanDays,
+    });
+  }, [data?.meta?.largeResultWarning, resolvedReportDateRange]);
+
+  const wasDateRangeClamped =
+    data?.meta?.wasClamped ?? resolvedReportDateRange?.wasClamped ?? false;
 
   const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
 
@@ -324,10 +365,23 @@ export function ReportsPage() {
                     : undefined
                 }
                 printPreviewRowLeading={
-                  activeReport === 'thirty-sixty-ninety' ? (
-                    <ThirtySixtyNinetyMonthRangeTabs
+                  reportUsesDayRangeTabs(activeReport) ? (
+                    <LookAheadDayRangeTabs
                       preferences={preferences}
                       setPreferences={setPreferences}
+                    />
+                  ) : reportUsesMonthRangeTabs(activeReport) ? (
+                    <ReportMonthRangeTabs
+                      preferences={preferences}
+                      setPreferences={setPreferences}
+                    />
+                  ) : undefined
+                }
+                printPreviewRowTrailing={
+                  isFullscreenPrintPreview(activeReport) ? (
+                    <ReportLargeRangeWarning
+                      showLargeRangeWarning={showLargeRangeWarning}
+                      wasClamped={wasDateRangeClamped}
                     />
                   ) : undefined
                 }

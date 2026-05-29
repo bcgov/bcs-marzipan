@@ -44,6 +44,8 @@ export interface ReportFiltersBarProps {
   };
   /** Optional controls on the left of the print-preview row (e.g. 30/60/90 month tabs). */
   printPreviewRowLeading?: ReactNode;
+  /** Optional warning or status on the right of the print-preview row, before the checkbox. */
+  printPreviewRowTrailing?: ReactNode;
 }
 
 /**
@@ -55,6 +57,7 @@ export function ReportFiltersBar({
   setPreferences,
   printPreviewConstraint,
   printPreviewRowLeading,
+  printPreviewRowTrailing,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -443,24 +446,29 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
-      {printPreviewConstraint || printPreviewRowLeading ? (
+      {printPreviewConstraint ||
+      printPreviewRowLeading ||
+      printPreviewRowTrailing ? (
         <div className="mb-2 flex h-9 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center">
             {printPreviewRowLeading}
           </div>
-          {printPreviewConstraint ? (
-            <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-              <Checkbox
-                checked={printPreviewConstraint.checked}
-                onCheckedChange={(v) =>
-                  printPreviewConstraint.onCheckedChange(v === true)
-                }
-                aria-label="Print preview"
-                className="border-input"
-              />
-              Print preview
-            </label>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-4">
+            {printPreviewRowTrailing}
+            {printPreviewConstraint ? (
+              <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={printPreviewConstraint.checked}
+                  onCheckedChange={(v) =>
+                    printPreviewConstraint.onCheckedChange(v === true)
+                  }
+                  aria-label="Print preview"
+                  className="border-input"
+                />
+                Print preview
+              </label>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
