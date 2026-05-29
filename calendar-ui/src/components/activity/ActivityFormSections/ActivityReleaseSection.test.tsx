@@ -34,23 +34,31 @@ const mockLookups = {
     { id: 2, name: 'Spanish', displayName: 'Spanish' },
   ],
   translationRequiredStatuses: [
-    { id: 1, name: 'Not required', displayName: 'Not required' },
-    { id: 2, name: 'Required', displayName: 'Required' },
+    {
+      id: 1,
+      name: 'Not required',
+      displayName: 'Not required',
+      label: 'Not required',
+      value: 1,
+    },
+    {
+      id: 2,
+      name: 'Required',
+      displayName: 'Required',
+      label: 'Required',
+      value: 2,
+    },
   ],
   governmentRepresentatives: [],
-  newsReleaseDistributions: [
-    { id: 1, name: 'Internal', displayName: 'Internal', value: '1' },
-  ],
+  newsReleaseDistributions: [{ value: '1', label: 'Internal' }],
   premierRequested: [],
-  newsReleaseOrigins: [
-    { id: 1, name: 'Origin A', displayName: 'Origin A', value: '1' },
-  ],
+  newsReleaseOrigins: [{ value: '1', label: 'Origin A' }],
   sharedWithTeams: [],
   quickShareGroups: [],
   dateStatuses: [],
   timeStatuses: [],
   venueStatuses: [],
-} as any;
+};
 
 function ActivityReleaseSectionHarness({
   readOnly,
