@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import { useElementWidth } from '@/hooks/useElementWidth';
 import { cn } from '@/lib/utils';
@@ -16,6 +23,7 @@ export interface BadgeGroupItem {
   label: string;
   variant?: BadgeProps['variant'];
   className?: string;
+  style?: CSSProperties;
 }
 
 export interface BadgeGroupProps {
@@ -186,6 +194,7 @@ export function BadgeGroup({
           data-badge-group-measure="true"
           variant={item.variant ?? badgeVariant}
           className={cn(badgeClassName, item.className)}
+          style={item.style}
         >
           {item.label}
         </Badge>
