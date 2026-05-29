@@ -643,7 +643,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
   (
     3,
     'exec',
-    'Executive Look Ahead Report',
+    'Exec Look Ahead',
     3,
     true,
     'team',
