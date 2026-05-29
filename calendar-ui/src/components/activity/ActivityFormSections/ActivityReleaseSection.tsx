@@ -76,31 +76,31 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
         render={({ field }) => (
           <FormItem>
             <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormControl data-field={field.name}>
-              <FormSelectSafe
-                readOnly={readOnly}
-                optionValues={newsReleaseOriginOptions.map((o) => o.value)}
-                value={optionalIdSelectDisplayValue(field.value)}
-                onValueChange={(value) =>
-                  setActivityFormFieldValue(
-                    form,
-                    field.name,
-                    optionalSelectIdValue(value)
-                  )
-                }
-              >
+            <FormSelectSafe
+              readOnly={readOnly}
+              optionValues={newsReleaseOriginOptions.map((o) => o.value)}
+              value={optionalIdSelectDisplayValue(field.value)}
+              onValueChange={(value) =>
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  optionalSelectIdValue(value)
+                )
+              }
+            >
+              <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
                   <SelectValue placeholder="Select news release origin" />
                 </FormSelectTrigger>
-                <SelectContent>
-                  {newsReleaseOriginOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </FormSelectSafe>
-            </FormControl>
+              </FormControl>
+              <SelectContent>
+                {newsReleaseOriginOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </FormSelectSafe>
             <FormMessage />
           </FormItem>
         )}
