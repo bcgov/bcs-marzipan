@@ -203,7 +203,7 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
   return (
     <>
       <AdminSection
-        title="Activity completion automation"
+        title="Activity Completion Automation"
         description="Configure how frequently reviewed activities with confirmed date and time are automatically moved to Completed status after their end time."
         isLoading={isLoading}
         headerAction={

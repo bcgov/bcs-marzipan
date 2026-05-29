@@ -176,7 +176,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
   return (
     <>
       <AdminSection
-        title="Look Ahead status reset"
+        title="Look Ahead Status Reset"
         description="Automatically clear Look Ahead status for activities in the configured forward window. You can also run a manual clear with an optional day override."
         isLoading={isLoading}
         headerAction={

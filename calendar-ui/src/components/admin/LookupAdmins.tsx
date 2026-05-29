@@ -608,7 +608,7 @@ export function TagsAdmin() {
 export function MinistryGroupsAdmin() {
   return (
     <GenericLookupAdmin<MinistryGroupListItem>
-      title="Ministry groups"
+      title="Ministry Groups"
       description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
