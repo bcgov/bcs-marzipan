@@ -4,6 +4,7 @@ import type { ActivityResponse } from '../../../schemas/activity-response.schema
 import {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
   splitActivityDisplayIdForPrint,
   toPrintRowViewModel,
@@ -289,8 +290,8 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'thirtySixtyNinety',
     });
-    expect(thirty.dateTime.dateStatus).toBe('Tentative');
-    expect(thirty.dateTime.timeStatus).toBe('Proposed');
+    expect(thirty.dateTime.dateStatus).toBe('TBC');
+    expect(thirty.dateTime.timeStatus).toBe('TBC');
   });
 
   it('derives FYI flag from the category list', () => {
@@ -299,6 +300,52 @@ describe('toPrintRowViewModel', () => {
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(fyi.flags.isFyi).toBe(true);
+  });
+
+  it('maps planning scheduling and premier requested fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        schedulingNotes: 'Tentative: first week of next month.',
+        premierRequested: 'Premier David Eby',
+        significance: 'High-profile announcement.',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'planning',
+      }
+    );
+
+    expect(row.schedulingNotesStored).toBe(
+      'Tentative: first week of next month.'
+    );
+    expect(row.premierRequested).toBe('Premier David Eby');
+    expect(row.significanceStored).toBe('High-profile announcement.');
+    expect(row.dateTime.dateStatus).toBe('');
+    expect(row.dateTime.timeStatus).toBe('');
+    expect(row.release.translationsLine).toBe('');
+  });
+
+  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        strategy: 'Lead with housing affordability message.',
+        commsMaterials: ['Media advisory', 'Backgrounder'],
+        commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+        translationsRequired: ['FR'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'thirtySixtyNinety',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+
+    expect(row.strategyStored).toBe('Lead with housing affordability message.');
+    expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
+    expect(row.commsContactLead).toBe('Jordan Smith');
+    expect(row.release.translationsLine).toBe('French');
   });
 
   it('collapses translations when 4 or more are required', () => {
@@ -512,5 +559,31 @@ describe('compareActivitiesForPrint', () => {
     };
     const sorted = [a, b, c].sort(compareActivitiesForPrint);
     expect(sorted.map((s) => s.id)).toEqual([2, 3, 1]);
+  });
+});
+
+describe('createCompareActivitiesForPrint', () => {
+  it('sorts by Pacific day key before startTime when sortByDayKey is true', () => {
+    const compare = createCompareActivitiesForPrint({ sortByDayKey: true });
+    const a: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 1,
+      startDate: '2026-05-28',
+      startTime: '09:00',
+    };
+    const b: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 2,
+      startDate: '2026-05-01',
+      startTime: '10:00',
+    };
+    const c: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 3,
+      startDate: '2026-05-01',
+      startTime: '08:00',
+    };
+    const sorted = [a, b, c].sort(compare);
+    expect(sorted.map((s) => s.id)).toEqual([3, 2, 1]);
   });
 });

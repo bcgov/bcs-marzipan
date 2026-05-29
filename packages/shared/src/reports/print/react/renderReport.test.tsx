@@ -209,11 +209,15 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('data-report-template="EXEC_LOOK_AHEAD"');
     expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
     expect(html).not.toContain('corpcal-print-flag-narrative-inline');
-    expect(html).toContain('<strong>Minister announces housing investment</strong>');
+    expect(html).toContain(
+      '<strong>Minister announces housing investment</strong>'
+    );
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
     );
-    expect(html).toContain('High visibility announcement for cabinet briefing.');
+    expect(html).toContain(
+      'High visibility announcement for cabinet briefing.'
+    );
     expect(html).toContain('Victoria, Legislative Assembly');
     expect(html).toContain('Last updated Apr');
     expect(html).not.toContain('Investment of $500M');
@@ -222,7 +226,15 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Event lead:');
   });
 
-  it('renders thirty-sixty-ninety like exec body chrome with title + summary', () => {
+  it('renders thirty-sixty-ninety with exec-like body chrome and comms column', () => {
+    const activityWithComms = {
+      ...BASE_ACTIVITY,
+      significance:
+        'Major policy announcement with province-wide housing impact.',
+      strategy: 'Coordinate with HOUS and GCPE before announcement.',
+      commsMaterials: ['Media advisory', 'Backgrounder'],
+      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+    };
     const thirtyFixture: ReportDataResponse = {
       ...FIXTURE,
       report: {
@@ -230,7 +242,75 @@ describe('renderPrintReportFragmentHtml', () => {
         name: 'thirty-sixty-ninety',
         displayName: '30/60/90',
       },
+      sections: [
+        {
+          id: '2026-04',
+          name: 'April 2026',
+          order: 1,
+          activities: [activityWithComms],
+        },
+      ],
     };
+    const html = renderPrintReportFragmentHtml(
+      'thirty-sixty-ninety',
+      thirtyFixture,
+      {
+        activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+
+    expect(html).toContain('data-report-template="THIRTY_SIXTY_NINETY"');
+    expect(html).toContain('corpcal-print-pill-issue">Issue</span>');
+    expect(html).not.toContain('corpcal-print-flag-narrative-inline');
+    expect(html).not.toContain('>ISSUE</span>');
+    expect(html).not.toContain('>CONFIDENTIAL</span>');
+    expect(html).toContain('corpcal-print-pdf-first-page-title');
+    expect(html).toContain('30/60/90 Report');
+    expect(html).toContain('Comms &amp; strategy');
+    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain(
+      'The Minister will announce new housing funding and respond to media questions'
+    );
+    expect(html).toContain(
+      'Major policy announcement with province-wide housing impact.'
+    );
+    expect(html).toContain('Media advisory, Backgrounder');
+    expect(html).toContain(
+      'Coordinate with HOUS and GCPE before announcement.'
+    );
+    expect(html).toContain('French, Punjabi');
+    expect(html).toContain('Jordan Smith');
+    expect(html).not.toContain('Investment of $500M');
+    expect(html).not.toContain('Apr 27, 2026');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Issued');
+  });
+
+  it('renders empty calendar month sections with a placeholder row', () => {
+    const thirtyFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'thirty-sixty-ninety',
+        displayName: '30/60/90',
+      },
+      sections: [
+        {
+          id: '2026-04',
+          name: 'April 2026',
+          order: 1,
+          activities: [],
+        },
+        {
+          id: '2026-05',
+          name: 'May 2026',
+          order: 2,
+          activities: [BASE_ACTIVITY],
+        },
+      ],
+    };
+
     const html = renderPrintReportFragmentHtml(
       'thirty-sixty-ninety',
       thirtyFixture,
@@ -239,25 +319,82 @@ describe('renderPrintReportFragmentHtml', () => {
       }
     );
 
-    expect(html).toContain('data-report-template="LOOK_AHEAD"');
-    expect(html).toContain('Minister announces housing investment');
-    expect(html).toContain(
-      'The Minister will announce new housing funding and respond to media questions'
-    );
-    expect(html).not.toContain('Investment of $500M');
-    expect(html).not.toContain('Apr 27, 2026');
-    expect(html).toContain('Event planner:');
-    expect(html).toContain('Legislative Assembly');
-    expect(html).toContain('Last updated Apr');
+    expect(html).toContain('April 2026');
+    expect(html).toContain('May 2026');
+    expect(html).toContain('corpcal-print-empty-month');
+    expect(html).toContain('No activities.');
   });
 
-  it('renders the planning placeholder as a React fragment', () => {
-    const html = renderPrintReportFragmentHtml('planning', FIXTURE, {
+  it('renders planning report with landscape template, significance column, and scheduling context', () => {
+    const planningActivity = {
+      ...BASE_ACTIVITY,
+      significance:
+        'Major policy announcement with province-wide housing impact.',
+      schedulingNotes: 'Date TBD; align with regional council schedule.',
+      premierRequested: 'Premier David Eby',
+      venueAddress: {
+        venueName: 'Legislative Assembly',
+        addressLine1: '501 Belleville St',
+        addressLine2: null,
+        city: 'Victoria',
+        provinceOrState: 'BC',
+        country: 'Canada',
+      },
+    };
+    const planningFixture: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        name: 'planning',
+        displayName: 'Planning Report',
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'schedule',
+              name: 'GCPE Corporate Calendar: Activities Schedule',
+              reportDisplayName:
+                'GCPE Corporate Calendar: Activities Schedule',
+              order: 1,
+            },
+          ],
+        },
+      },
+      sections: [
+        {
+          id: 'schedule',
+          name: 'GCPE Corporate Calendar: Activities Schedule',
+          order: 1,
+          activities: [planningActivity],
+        },
+      ],
+    };
+    const html = renderPrintReportFragmentHtml('planning', planningFixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
     expect(html).toContain('data-report-template="PLANNING"');
-    expect(html).toContain('PLANNING template placeholder');
+    expect(html).toContain('corpcal-print-pdf-first-page-title');
+    expect(html).toContain('Planning Report');
+    expect(html).toContain('GCPE Corporate Calendar: Activities Schedule');
+    expect(html).toContain('Significance');
+    expect(html).not.toContain('Release');
+    expect(html).toContain('Minister announces housing investment');
+    expect(html).toContain(
+      'The Minister will announce new housing funding and respond to media questions'
+    );
+    expect(html).toContain(
+      'Major policy announcement with province-wide housing impact.'
+    );
+    expect(html).toContain(
+      'Date TBD; align with regional council schedule.'
+    );
+    expect(html).toContain('Premier David Eby');
+    expect(html).toContain('Victoria, Legislative Assembly');
+    expect(html).toContain('Last updated Apr');
+    expect(html).not.toContain('PLANNING template placeholder');
+    expect(html).not.toContain('Event planner:');
+    expect(html).not.toContain('Issued');
   });
 
   it('renders the custom report as a React fragment', () => {
@@ -294,7 +431,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
     });
 
-    expect(html).toContain('href="https://corpcal.example.gov.bc.ca/activity/101"');
+    expect(html).toContain(
+      'href="https://corpcal.example.gov.bc.ca/activity/101"'
+    );
     expect(html).toContain('ACT');
     expect(html).toContain('corpcal-print-activity-link');
     expect(html).toContain('>101</span>');
@@ -302,7 +441,11 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes translations list when fewer than four languages are required', () => {
-    const html = renderPrintReportFragmentHtml('look-ahead', FIXTURE, TEST_RENDER_OPTIONS);
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      FIXTURE,
+      TEST_RENDER_OPTIONS
+    );
 
     expect(html).toContain('French, Punjabi');
     expect(html).not.toContain('Translations: 2 languages');
@@ -374,7 +517,11 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', many, TEST_RENDER_OPTIONS);
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      many,
+      TEST_RENDER_OPTIONS
+    );
 
     expect(html).toContain('4 translations');
     expect(html).not.toContain('Translations:');
@@ -560,13 +707,17 @@ describe('renderPrintReportFragmentHtml', () => {
       ],
     };
 
-    const html = renderPrintReportFragmentHtml('look-ahead', awarenessAndEvents, {
-      activityBaseUrl: 'http://localhost:3000',
-    });
-
-    expect((html.match(/corpcal-print-table--omit-release/g) ?? []).length).toBe(
-      1
+    const html = renderPrintReportFragmentHtml(
+      'look-ahead',
+      awarenessAndEvents,
+      {
+        activityBaseUrl: 'http://localhost:3000',
+      }
     );
+
+    expect(
+      (html.match(/corpcal-print-table--omit-release/g) ?? []).length
+    ).toBe(1);
     expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
     expect(html).toContain('>Activity details</th>');
     expect(html).toContain('>Activity</th>');
@@ -632,7 +783,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain(
+      'corpcal-print-pill-confidential">Confidential</span>'
+    );
     expect(html).toContain('Hold for GCPE.');
     expect(html).not.toContain('Sensitive cabinet briefing details.');
   });
@@ -660,7 +813,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('corpcal-print-pill-confidential">Confidential</span>');
+    expect(html).toContain(
+      'corpcal-print-pill-confidential">Confidential</span>'
+    );
     expect(html).toContain('Full summary text for executive readers.');
     expect(html).not.toContain('Hold for GCPE.');
   });
@@ -707,7 +862,9 @@ describe('renderPrintReportDocumentHtml', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('<style>');
     expect(html).toContain('.corpcal-print-root');
-    expect(html).not.toContain('<div class="corpcal-print-pdf-footer-hint-line"');
+    expect(html).not.toContain(
+      '<div class="corpcal-print-pdf-footer-hint-line"'
+    );
     expect(html).not.toContain('* <strong>Changed</strong>');
     expect(html).not.toContain(
       'indicates major detail or date changes only (not time switches)'
@@ -753,7 +910,9 @@ describe('wrapPrintReportHtmlDocument', () => {
     });
 
     expect(html).toContain(coverPageHtml);
-    expect(html).not.toContain('<div class="corpcal-print-pdf-footer-hint-line"');
+    expect(html).not.toContain(
+      '<div class="corpcal-print-pdf-footer-hint-line"'
+    );
     expect(html).not.toContain('* <strong>Changed</strong>');
   });
 
@@ -768,7 +927,9 @@ describe('wrapPrintReportHtmlDocument', () => {
   it('omits body class when coverStandalonePdf is false', () => {
     const html = wrapPrintReportHtmlDocument('<div></div>', {});
 
-    expect(html).not.toContain('class="corpcal-print-pdf-cover-sheet-only-doc"');
+    expect(html).not.toContain(
+      'class="corpcal-print-pdf-cover-sheet-only-doc"'
+    );
     expect(html).toContain('<body');
   });
 });

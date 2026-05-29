@@ -1,6 +1,7 @@
 import { CORPCAL_SEMANTIC_TOKEN_CSS } from '../../../styles/corpcalTokensEmbedded.generated';
 import {
   REPORT_PRINT_COVER_SHEET_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
@@ -280,6 +281,11 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 .corpcal-print-stack-md > * + * { margin-top: 6px; }
 .corpcal-print-stack-lg > * + * { margin-top: 8px; }
 
+.corpcal-print-text {
+  font-size: 1em;
+  font-weight: 400;
+  color: var(--print-ink);
+}
 .corpcal-print-meta-strong {
   font-weight: 700;
   font-size: 1em;
@@ -316,16 +322,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: #2e5a34;
   color: var(--print-look-ahead-accent-green);
 }
+.corpcal-print-comms-materials-icon {
+  flex: 0 0 auto;
+  margin-top: 0.15em;
+  color: var(--print-ink);
+}
 .corpcal-print-narrative-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.35em 0.5em;
-}
-.corpcal-print-flag-narrative-inline {
-  flex: 0 0 auto;
-  margin-top: 0.1em;
-  color: var(--print-ink);
 }
 .corpcal-print-activity-link {
   display: inline-flex;
@@ -393,16 +399,6 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   gap: 6px;
   margin-bottom: 2px;
 }
-.corpcal-print-flag {
-  font-size: 1em;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--print-ink-muted);
-}
-.corpcal-print-flag-alert {
-  color: var(--corpcal-text-alert);
-}
-
 /* Shad-style badge: rounded-full, body em, font-semibold, border/padding */
 .corpcal-print-pill {
   display: inline-flex;
@@ -466,6 +462,13 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   color: var(--print-ink-faint);
   border: 1px dashed var(--print-border);
   background: var(--corpcal-table-row-alt-bg);
+}
+.corpcal-print-empty-month {
+  padding: 12px 8px;
+  font-size: 0.9375em;
+  font-style: italic;
+  color: var(--print-ink-faint);
+  text-align: center;
 }
 
 /* Look-ahead PDF cover only: one US Letter–aspect sheet at cover sheet width. */
@@ -652,6 +655,51 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   display: none;
 }
 
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] {
+  max-width: var(
+    --corpcal-print-root-max-width,
+    ${REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX}px
+  );
+}
+
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-1 { width: 22%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-2 { width: 38%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-3 { width: 24%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table col.corpcal-print-col-4 { width: 16%; }
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-1,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-1 {
+  width: 22%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-2,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-2 {
+  width: 38%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-3,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-3 {
+  width: 24%;
+}
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table thead th.corpcal-print-col-4,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-table tbody td.corpcal-print-col-4 {
+  width: 16%;
+}
+.corpcal-print-planning-date-extras {
+  margin-top: 6px;
+}
+
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title,
+.${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-pdf-first-page-title {
+  display: none;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 24px 0 20px;
+  color: var(--print-ink);
+}
+.corpcal-print-preview-shell .corpcal-print-pdf-first-page-title {
+  display: none !important;
+}
+
 /* Preview-only sticky stacking for the look-ahead rollup table. Wrapped in
    .corpcal-print-preview-shell so the same PRINT_STYLES string that powers the
    Puppeteer PDF stays unaffected (the wrapper is only injected by the in-app
@@ -704,6 +752,16 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
 }
 
 @media print {
+  @page {
+    size: letter;
+  }
+  @page planning-page {
+    size: letter landscape;
+  }
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] {
+    max-width: none;
+    page: planning-page;
+  }
   /*
    * Standalone cover PDF (merged with body in a second pass): do not force a page break after
    * the only cover block — avoids a trailing blank Letter page before the merger appends pages.
@@ -730,6 +788,12 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   }
   .${CORPCAL_PRINT_ROOT_CLASS} {
     font-size: var(--print-body-font-size);
+  }
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="THIRTY_SIXTY_NINETY"] .corpcal-print-pdf-first-page-title,
+  .${CORPCAL_PRINT_ROOT_CLASS}[data-report-template="PLANNING"] .corpcal-print-pdf-first-page-title {
+    display: block;
+    page-break-after: avoid;
+    break-after: avoid;
   }
   .corpcal-print-table { page-break-inside: auto; }
   .corpcal-print-table tr { page-break-inside: avoid; page-break-after: auto; }

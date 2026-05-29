@@ -1,3 +1,4 @@
+import { pacificDayKey } from '../../../datetime';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
@@ -19,7 +20,9 @@ export type PrintReportVariant =
   /** 30/60/90: title + summary, classic chrome. */
   | 'thirtySixtyNinety'
   /** Exec Look Ahead: title + inline summary, significance, venue; distinct PDF template slug. */
-  | 'execLookAhead';
+  | 'execLookAhead'
+  /** Planning Report: landscape layout; significance in dedicated column. */
+  | 'planning';
 
 /** How activity start/end dates render in rollup table column 1. */
 export type PrintDateCellStyle = 'shortWithYear' | 'shortNoYear';
@@ -88,9 +91,9 @@ export interface ReleaseBlock {
   newsReleaseOrigin: string | null;
   /**
    * Release column text after the optional {@link newsReleaseOrigin} line.
-   * Look Ahead / Exec: language display names or `TBD` / `none` / `N translations` — no
-   * `Translations:` prefix (icon in {@link PrintRow}).
-   * 30/60/90: full {@link buildTranslationsLine} string including `Translations:`.
+   * Look Ahead / Exec / 30/60/90: language display names or `TBD` / `none` /
+   * `N translations` — no `Translations:` prefix (Languages icon in {@link PrintRow}).
+   * Other variants: full {@link buildTranslationsLine} string including `Translations:`.
    */
   translationsLine: string;
 }
@@ -114,10 +117,29 @@ export interface PrintRowViewModel {
   executiveSummaryStored: string | null;
   /** Rich significance (Exec Look Ahead activity details). */
   significanceStored: string | null;
-  /** Comms contact marked lead (`event_lead` report field). */
-  eventLeadStored: string | null;
+  /** Plain-text strategy for 30/60/90 Comms & strategy column. */
+  strategyStored: string | null;
+  /** Comms material labels for 30/60/90 Comms & strategy column. */
+  commsMaterials: readonly string[];
+  /** Comms contact marked lead (`event_lead` / 30/60/90 Activity column). */
+  commsContactLead: string | null;
+  /** Plain-text scheduling notes for Planning Report date column. */
+  schedulingNotesStored: string | null;
+  /** Premier requested lookup display name for Planning Report date column. */
+  premierRequested: string | null;
   release: ReleaseBlock;
   eventPlannerLead: string | null;
+}
+
+/** Exec Look Ahead, 30/60/90, and Planning share date/details/activity-id chrome. */
+export function isExecLikeRollupVariant(
+  variant: PrintReportVariant | undefined
+): boolean {
+  return (
+    variant === 'execLookAhead' ||
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning'
+  );
 }
 
 /** Threshold at and above which translations collapse to a count line. */
@@ -286,7 +308,12 @@ function lookAheadTimeStatusForPrint(
 function shouldUseLookAheadDateTimeStatusRules(
   variant: PrintReportVariant | undefined
 ): boolean {
-  return variant === 'lookAhead' || variant === 'execLookAhead';
+  return (
+    variant === 'lookAhead' ||
+    variant === 'execLookAhead' ||
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning'
+  );
 }
 
 /**
@@ -329,6 +356,8 @@ export function toPrintRowViewModel(
   const useLaRules = shouldUseLookAheadDateTimeStatusRules(options.variant);
   const useLookAheadReleaseRules =
     options.variant === 'lookAhead' || options.variant === 'execLookAhead';
+  const useThirtySixtyNinetyTranslations =
+    options.variant === 'thirtySixtyNinety';
   const hasStartDate = Boolean(startDateLabel);
   const startTime =
     activity.isAllDay === true
@@ -376,31 +405,59 @@ export function toPrintRowViewModel(
     summaryStored: toNonEmpty(activity.summary),
     executiveSummaryStored: toNonEmpty(activity.executiveSummary),
     significanceStored: toNonEmpty(activity.significance),
-    eventLeadStored: getCommsContactLeadDisplayName(activity),
+    strategyStored: toNonEmpty(activity.strategy),
+    commsMaterials: activity.commsMaterials ?? [],
+    commsContactLead: getCommsContactLeadDisplayName(activity),
+    schedulingNotesStored: toNonEmpty(activity.schedulingNotes),
+    premierRequested: toNonEmpty(activity.premierRequested),
     release: {
       newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
-      translationsLine: useLookAheadReleaseRules
-        ? lookAheadShowsTranslationsLine(activity)
-          ? buildLookAheadReleaseTranslationsLine(
-              activity,
-              options.resolveTranslationLanguageLabel
-            )
-          : ''
-        : buildTranslationsLine(activity.translationsRequired),
+      translationsLine:
+        options.variant === 'planning'
+          ? ''
+          : useThirtySixtyNinetyTranslations
+            ? buildLookAheadReleaseTranslationsLine(
+                activity,
+                options.resolveTranslationLanguageLabel
+              )
+            : useLookAheadReleaseRules
+              ? lookAheadShowsTranslationsLine(activity)
+                ? buildLookAheadReleaseTranslationsLine(
+                    activity,
+                    options.resolveTranslationLanguageLabel
+                  )
+                : ''
+              : buildTranslationsLine(activity.translationsRequired),
     },
     eventPlannerLead: pickEventPlannerLead(activity),
   };
 }
 
+export type CompareActivitiesForPrintOptions = {
+  /** When true, sort by Pacific calendar day before start time and title. */
+  sortByDayKey?: boolean;
+};
+
 /**
- * Stable sort for activities within a section: by `startTime`, then by `title`.
+ * Stable activity sort for print and month sections: by `startTime`, then
+ * `title`; optionally by Pacific calendar day first when bucketing spans days.
  */
-export function compareActivitiesForPrint(
-  a: ActivityResponse,
-  b: ActivityResponse
-): number {
-  const ta = a.startTime ?? '';
-  const tb = b.startTime ?? '';
-  if (ta !== tb) return ta.localeCompare(tb);
-  return (a.title ?? '').localeCompare(b.title ?? '');
+export function createCompareActivitiesForPrint(
+  options: CompareActivitiesForPrintOptions = {}
+): (a: ActivityResponse, b: ActivityResponse) => number {
+  const { sortByDayKey = false } = options;
+  return (a, b) => {
+    if (sortByDayKey) {
+      const dayA = pacificDayKey(a.startDate) ?? '';
+      const dayB = pacificDayKey(b.startDate) ?? '';
+      if (dayA !== dayB) return dayA.localeCompare(dayB);
+    }
+    const ta = a.startTime ?? '';
+    const tb = b.startTime ?? '';
+    if (ta !== tb) return ta.localeCompare(tb);
+    return (a.title ?? '').localeCompare(b.title ?? '');
+  };
 }
+
+/** Default print sort: by `startTime`, then by `title`. */
+export const compareActivitiesForPrint = createCompareActivitiesForPrint();

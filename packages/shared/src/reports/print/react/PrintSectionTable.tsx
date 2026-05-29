@@ -9,12 +9,33 @@ export const PRINT_SECTION_COLUMN_HEADERS = [
   'Activity',
 ] as const;
 
+const THIRTY_SIXTY_NINETY_COLUMN_HEADERS = [
+  'Date & time',
+  'Activity details',
+  'Comms & strategy',
+  'Activity',
+] as const;
+
+const PLANNING_COLUMN_HEADERS = [
+  'Date & time',
+  'Activity details',
+  'Significance',
+  'Activity',
+] as const;
+
 const RELEASE_COLUMN_HEADER = 'Release';
 
 /** Column headers for a section table; omits Release when configured. */
 export function printSectionColumnHeaders(
-  omitReleaseColumn: boolean
+  omitReleaseColumn: boolean,
+  variant?: PrintReportVariant
 ): readonly string[] {
+  if (variant === 'thirtySixtyNinety') {
+    return THIRTY_SIXTY_NINETY_COLUMN_HEADERS;
+  }
+  if (variant === 'planning') {
+    return PLANNING_COLUMN_HEADERS;
+  }
   if (!omitReleaseColumn) return PRINT_SECTION_COLUMN_HEADERS;
   return PRINT_SECTION_COLUMN_HEADERS.filter(
     (label) => label !== RELEASE_COLUMN_HEADER
@@ -119,13 +140,15 @@ function PrintSectionColumnHeaderRow({
   sectionLegendColor,
   rowClassName,
   omitReleaseColumn,
+  variant,
 }: {
   sectionLegendColor: string | null;
   /** Applied to the column-header `<tr>`; per-day vs flat-rollup thead use distinct classes for border/radius. */
   rowClassName?: string;
   omitReleaseColumn: boolean;
+  variant?: PrintReportVariant;
 }) {
-  const headers = printSectionColumnHeaders(omitReleaseColumn);
+  const headers = printSectionColumnHeaders(omitReleaseColumn, variant);
   const bgHex = safeSwatchColor(sectionLegendColor);
   const foreground = bgHex ? contrastingBlackOrWhiteForegroundHex(bgHex) : null;
   const lines = foreground ? theadHeaderLinesFromFg(foreground) : null;
@@ -200,6 +223,7 @@ export function PrintGroupedSectionTable({
 }) {
   const columnSpan = printSectionColumnCount(omitReleaseColumn);
   const tableClassName = `${printSectionTableClassName(omitReleaseColumn)} corpcal-print-section-rollup-table`;
+  const hasRows = days.some((day) => day.rows.length > 0);
 
   return (
     <div className="corpcal-print-table-wrap corpcal-print-table-wrap--section-rollup">
@@ -222,6 +246,7 @@ export function PrintGroupedSectionTable({
               rowClassName="corpcal-print-rollup-thead-column-header-row"
               sectionLegendColor={sectionLegendColor}
               omitReleaseColumn={omitReleaseColumn}
+              variant={variant}
             />
           ) : null}
         </thead>
@@ -242,6 +267,7 @@ export function PrintGroupedSectionTable({
                 rowClassName="corpcal-print-per-day-column-header-row"
                 sectionLegendColor={sectionLegendColor}
                 omitReleaseColumn={omitReleaseColumn}
+                variant={variant}
               />
               {day.rows.map((row) => (
                 <PrintRow
@@ -257,17 +283,25 @@ export function PrintGroupedSectionTable({
           ))
         ) : (
           <tbody className="corpcal-print-day-tbody">
-            {days.flatMap((day) =>
-              day.rows.map((row) => (
-                <PrintRow
-                  key={row.activityId}
-                  row={row}
-                  variant={variant}
-                  showEventLead={showEventLead}
-                  omitReleaseColumn={omitReleaseColumn}
-                  highlightActivityIds={highlightActivityIds}
-                />
-              ))
+            {hasRows ? (
+              days.flatMap((day) =>
+                day.rows.map((row) => (
+                  <PrintRow
+                    key={row.activityId}
+                    row={row}
+                    variant={variant}
+                    showEventLead={showEventLead}
+                    omitReleaseColumn={omitReleaseColumn}
+                    highlightActivityIds={highlightActivityIds}
+                  />
+                ))
+              )
+            ) : (
+              <tr className="corpcal-print-empty-month-row">
+                <td colSpan={columnSpan} className="corpcal-print-empty-month">
+                  No activities.
+                </td>
+              </tr>
             )}
           </tbody>
         )}
@@ -329,6 +363,7 @@ export function PrintSectionTable({
             <PrintSectionColumnHeaderRow
               sectionLegendColor={resolvedLegend}
               omitReleaseColumn={omitReleaseColumn}
+              variant={variant}
             />
           </thead>
           <tbody>

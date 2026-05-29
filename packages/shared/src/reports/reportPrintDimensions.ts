@@ -19,6 +19,17 @@ export const REPORT_LETTER_CONTENT_WIDTH_PX = 816 as const;
  */
 export const REPORT_PRINT_LAYOUT_WIDTH_PX = 933 as const;
 
+/**
+ * US Letter landscape content width at 96 CSS px/in (11in × 96).
+ */
+export const REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX = 1056 as const;
+
+/**
+ * Canonical layout width for landscape Planning Report body HTML (Puppeteer +
+ * in-app “PDF width” preview). Tuned for the same ~10.5pt body target as portrait.
+ */
+export const REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX = 1207 as const;
+
 /** US Letter page height at 96 CSS px/in (11in × 96). Used with Puppeteer PDF margins. */
 export const REPORT_LETTER_PAGE_HEIGHT_PX = 1056 as const;
 
@@ -52,15 +63,32 @@ export const REPORT_PRINT_COVER_CONTENT_WIDTH_PX =
   REPORT_PRINT_COVER_SHEET_WIDTH_PX - 2 * REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX;
 
 /** Puppeteer `scale` mapping a layout viewport width onto Letter content width. */
-export function reportPdfLayoutToLetterScale(layoutWidthPx: number): number {
-  return REPORT_LETTER_CONTENT_WIDTH_PX / layoutWidthPx;
+export function reportPdfLayoutToLetterScale(
+  layoutWidthPx: number,
+  options: { letterContentWidthPx?: number } = {}
+): number {
+  const letterWidth =
+    options.letterContentWidthPx ?? REPORT_LETTER_CONTENT_WIDTH_PX;
+  return letterWidth / layoutWidthPx;
 }
 
 export const REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE =
   reportPdfLayoutToLetterScale(REPORT_PRINT_LAYOUT_WIDTH_PX);
 
+export const REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE =
+  reportPdfLayoutToLetterScale(REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX, {
+    letterContentWidthPx: REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX,
+  });
+
 export const REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE =
   reportPdfLayoutToLetterScale(REPORT_PRINT_COVER_SHEET_WIDTH_PX);
+
+/** Max preview/PDF sheet width for a built-in report type. */
+export function reportPrintSheetLayoutWidthPx(reportTypeName: string): number {
+  return reportTypeName === 'planning'
+    ? REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX
+    : REPORT_PRINT_LAYOUT_WIDTH_PX;
+}
 
 /**
  * CSS px for Puppeteer header/footer inline styles so text renders at `printPt` on the

@@ -76,6 +76,11 @@ const CALENDAR_LONG_NO_WEEKDAY_FORMATTER = pacificDateFormatter({
   year: 'numeric',
 });
 
+const CALENDAR_MONTH_YEAR_FORMATTER = pacificDateFormatter({
+  month: 'long',
+  year: 'numeric',
+});
+
 const PACIFIC_TIME_FORMATTER = pacificDateFormatter({
   hour: 'numeric',
   minute: '2-digit',
@@ -115,6 +120,13 @@ export function formatCalendarDateShortNoYear(
 /** `April 27, 2026` - long phrase without weekday. */
 export function formatCalendarDateLong(date: CalendarDateString): string {
   return CALENDAR_LONG_NO_WEEKDAY_FORMATTER.format(
+    calendarDateToAnchorInstant(date)
+  );
+}
+
+/** `August 2026` - month section heading for rollup reports. */
+export function formatCalendarMonthYear(date: CalendarDateString): string {
+  return CALENDAR_MONTH_YEAR_FORMATTER.format(
     calendarDateToAnchorInstant(date)
   );
 }

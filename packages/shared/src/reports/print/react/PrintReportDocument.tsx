@@ -46,6 +46,20 @@ interface SortedSection {
  */
 const DEFAULT_SHOW_PER_DAY_PRINT_CHROME = false;
 
+const VARIANT_TO_TEMPLATE_SLUG: Record<PrintReportVariant, string> = {
+  execLookAhead: 'EXEC_LOOK_AHEAD',
+  thirtySixtyNinety: 'THIRTY_SIXTY_NINETY',
+  planning: 'PLANNING',
+  lookAhead: 'LOOK_AHEAD',
+};
+
+const VARIANT_TO_FIRST_PAGE_TITLE: Partial<
+  Record<PrintReportVariant, string>
+> = {
+  thirtySixtyNinety: '30/60/90 Report',
+  planning: 'Planning Report',
+};
+
 function indexActivitiesByDay(
   activities: ActivityResponse[]
 ): Map<string, ActivityResponse[]> {
@@ -132,15 +146,19 @@ export function PrintReportDocument({
   const hasAny = reportHasAnyActivities(sections);
   const effectiveFields = getEffectiveReportFields(data.report);
   const showEventLead = effectiveReportFieldsIncludeEventLead(effectiveFields);
+  const firstPageTitle = hasAny
+    ? VARIANT_TO_FIRST_PAGE_TITLE[variant]
+    : undefined;
 
   return (
     <div
       className={CORPCAL_PRINT_ROOT_CLASS}
-      data-report-template={
-        variant === 'execLookAhead' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
-      }
+      data-report-template={VARIANT_TO_TEMPLATE_SLUG[variant]}
     >
       <div className="corpcal-print-body">
+        {firstPageTitle ? (
+          <PrintPdfFirstPageTitle title={firstPageTitle} />
+        ) : null}
         {!hasAny ? (
           <div className="corpcal-print-empty">
             No activities in the selected range.
@@ -163,6 +181,14 @@ export function PrintReportDocument({
   );
 }
 
+function PrintPdfFirstPageTitle({ title }: { title: string }) {
+  return (
+    <div className="corpcal-print-pdf-first-page-title" aria-hidden="true">
+      {title}
+    </div>
+  );
+}
+
 function SectionGroup({
   section,
   variant,
@@ -179,8 +205,6 @@ function SectionGroup({
   resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const dateKeys = sortedDateKeysForSection(section);
-  if (dateKeys.length === 0) return null;
-
   const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
     const activities = section.activitiesByKey.get(dayKey) ?? [];
     const rows: PrintRowViewModel[] = activities.map((a) =>

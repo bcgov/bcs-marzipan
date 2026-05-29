@@ -26,8 +26,14 @@ import {
   getReportTemplateHtml,
   REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
+  REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
+import {
+  buildCalendarMonthSections,
+  groupActivitiesByMonthSection,
+  resolveThirtySixtyNinetyQueryWindow,
+} from '@corpcal/shared/reports/thirty-sixty-ninety';
 import {
   mergeReportFilters,
   reportConfigSchema,
@@ -52,10 +58,20 @@ import {
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
 /** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
-const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set([
+const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set(['look-ahead', 'exec']);
+
+/** Reports that use the shared confidential header band in PDF body export. */
+const REPORT_TYPES_WITH_LOOK_AHEAD_HEADER = new Set([
   'look-ahead',
-  'thirty-sixty-ninety',
   'exec',
+  'thirty-sixty-ninety',
+  'planning',
+]);
+
+/** Report types whose PDF footer omits the Changed glossary hint. */
+const REPORT_TYPES_WITHOUT_CHANGED_FOOTER_HINT = new Set([
+  'thirty-sixty-ninety',
+  'planning',
 ]);
 
 function pickDefinedActivityFilters(
@@ -72,6 +88,17 @@ function withoutActivityStartDateWindow(
 ): Partial<FilterActivitiesQueryParams> {
   const { startDateFrom: _f, startDateTo: _t, ...rest } = filters;
   return rest;
+}
+
+/** User query filters ready to merge onto section-scoped activity queries. */
+function buildUserActivityFilterOverlay(
+  filters: FilterActivitiesQueryParams,
+  sectionPinsStartDateWindow: boolean
+): Partial<FilterActivitiesQueryParams> {
+  const picked = pickDefinedActivityFilters(filters);
+  return sectionPinsStartDateWindow
+    ? withoutActivityStartDateWindow(picked)
+    : picked;
 }
 
 export interface ReportSettingsDto {
@@ -487,46 +514,17 @@ export class ReportsService {
 
     const omittedActivityIds = await this.getOmittedActivityIds(report.id);
     const sections: ReportSectionData[] = [];
-    const userFiltersAll = pickDefinedActivityFilters(
-      reportDataQueryToActivityFindAllFilters(query)
-    );
+    const queryActivityFilters = reportDataQueryToActivityFindAllFilters(query);
 
-    for (const sectionConfig of report.config.sections) {
-      // Merge global filter with section filter
-      const mergedFilter = mergeReportFilters(
-        report.config.globalFilter,
-        sectionConfig.filter
-      );
-
-      // Special handling for 30/60/90 report
-      if (report.name === 'thirty-sixty-ninety') {
-        const today = new Date();
-        const thirtyDays = new Date(today);
-        thirtyDays.setDate(today.getDate() + 30);
-        const sixtyDays = new Date(today);
-        sixtyDays.setDate(today.getDate() + 60);
-        const ninetyDays = new Date(today);
-        ninetyDays.setDate(today.getDate() + 90);
-
-        const sectionFilter = mergedFilter || {};
-
-        if (sectionConfig.id === 'thirty') {
-          sectionFilter.dateRange = {
-            start: today.toISOString().split('T')[0],
-            end: thirtyDays.toISOString().split('T')[0],
-          };
-        } else if (sectionConfig.id === 'sixty') {
-          sectionFilter.dateRange = {
-            start: thirtyDays.toISOString().split('T')[0],
-            end: sixtyDays.toISOString().split('T')[0],
-          };
-        } else if (sectionConfig.id === 'ninety') {
-          sectionFilter.dateRange = {
-            start: sixtyDays.toISOString().split('T')[0],
-            end: ninetyDays.toISOString().split('T')[0],
-          };
-        }
-      }
+    if (report.name === 'thirty-sixty-ninety') {
+      const queryWindow = resolveThirtySixtyNinetyQueryWindow({
+        startDateFrom: query.startDateFrom,
+        startDateTo: query.startDateTo,
+      });
+      const monthSections = buildCalendarMonthSections({
+        startDate: queryWindow.sectionRange.start,
+        endDate: queryWindow.sectionRange.end,
+      });
 
       const filters: FilterActivitiesQueryParams = {
         page: query.page,
@@ -536,33 +534,87 @@ export class ReportsService {
         includeDeleted: undefined,
       };
 
-      // Apply date filters from report section config
-      if (mergedFilter?.dateRange) {
-        filters.startDateFrom = mergedFilter.dateRange.start;
-        filters.startDateTo = mergedFilter.dateRange.end;
+      if (queryWindow.queryStartDateFrom) {
+        filters.startDateFrom = queryWindow.queryStartDateFrom;
+      }
+      if (queryWindow.queryStartDateTo) {
+        filters.startDateTo = queryWindow.queryStartDateTo;
       }
 
-      const userFilterOverlay = mergedFilter?.dateRange
-        ? withoutActivityStartDateWindow(userFiltersAll)
-        : userFiltersAll;
-      Object.assign(filters, userFilterOverlay);
+      Object.assign(
+        filters,
+        buildUserActivityFilterOverlay(queryActivityFilters, true)
+      );
 
-      // Apply status filters
-      // TODO: Implement status filtering based on activity status names
-      // if (mergedFilter?.status?.length || options?.status?.length) {
-      //   // For now, we'll handle status filtering in the frontend or add it later
-      //   // This would require mapping status names to IDs
-      // }
-
-      // Apply look-ahead section filter
-      if (mergedFilter?.lookAheadSection) {
-        filters.lookAheadSection = mergedFilter.lookAheadSection;
+      if (report.config.globalFilter?.lookAheadSection) {
+        filters.lookAheadSection = report.config.globalFilter.lookAheadSection;
       }
 
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
+      const activitiesByMonth = groupActivitiesByMonthSection(
+        filtered,
+        monthSections
+      );
 
+      for (const monthSection of monthSections) {
+        sections.push({
+          id: monthSection.id,
+          name: monthSection.name,
+          order: monthSection.order,
+          activities: activitiesByMonth.get(monthSection.id) ?? [],
+        });
+      }
+
+      return { report, sections };
+    }
+
+    const sectionResults = await Promise.all(
+      report.config.sections.map(async (sectionConfig) => {
+        const mergedFilter = mergeReportFilters(
+          report.config!.globalFilter,
+          sectionConfig.filter
+        );
+
+        const filters: FilterActivitiesQueryParams = {
+          page: query.page,
+          limit: query.limit,
+          sharedWithTeamIds: undefined,
+          includeCompleted: undefined,
+          includeDeleted: undefined,
+        };
+
+        if (mergedFilter?.dateRange) {
+          filters.startDateFrom = mergedFilter.dateRange.start;
+          filters.startDateTo = mergedFilter.dateRange.end;
+        }
+
+        Object.assign(
+          filters,
+          buildUserActivityFilterOverlay(
+            queryActivityFilters,
+            mergedFilter?.dateRange != null
+          )
+        );
+
+        if (mergedFilter?.lookAheadSection) {
+          filters.lookAheadSection = mergedFilter.lookAheadSection;
+        }
+
+        let activities = await this.activitiesService.findAll(filters, ctx);
+        activities = filterActivityResponsesBySearchKeyword(activities, search);
+        const filtered = activities.filter(
+          (a) => !omittedActivityIds.has(a.id)
+        );
+
+        return { sectionConfig, filtered };
+      })
+    );
+
+    for (const { sectionConfig, filtered } of sectionResults.sort(
+      (a, b) => a.sectionConfig.order - b.sectionConfig.order
+    )) {
       sections.push({
         id: sectionConfig.id,
         name: sectionConfig.name,
@@ -616,14 +668,20 @@ export class ReportsService {
       reportType,
       data
     );
+    const isLandscapePdf = reportType === 'planning';
+    const bodyPdfLayoutScale = isLandscapePdf
+      ? REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE
+      : REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE;
     const footerTemplate = buildReportPdfFooterTemplateHtml(generatedAt, {
-      pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+      pdfLayoutToLetterScale: bodyPdfLayoutScale,
+      includeChangedHint:
+        !REPORT_TYPES_WITHOUT_CHANGED_FOOTER_HINT.has(reportType),
     });
-    const bodyHeaderTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_COVER.has(
+    const bodyHeaderTemplate = REPORT_TYPES_WITH_LOOK_AHEAD_HEADER.has(
       reportType
     )
       ? buildLookAheadReportPdfHeaderTemplateHtml({
-          pdfLayoutToLetterScale: REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
+          pdfLayoutToLetterScale: bodyPdfLayoutScale,
         })
       : undefined;
     const coverHeaderTemplate = buildLookAheadReportPdfHeaderTemplateHtml({
@@ -649,6 +707,7 @@ export class ReportsService {
         this.pdfGeneratorService.generatePdfFromHtml(bodyHtml, {
           footerTemplate,
           headerTemplate: bodyHeaderTemplate,
+          landscape: isLandscapePdf,
         }),
       ]);
       return mergePdfBuffersInOrder([coverBuffer, bodyBuffer]);
@@ -661,6 +720,7 @@ export class ReportsService {
     return this.pdfGeneratorService.generatePdfFromHtml(html, {
       footerTemplate,
       headerTemplate: bodyHeaderTemplate,
+      landscape: isLandscapePdf,
     });
   }
 }

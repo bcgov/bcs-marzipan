@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
 import {
   DEFAULT_ACTIVITY_FILTER_STATE,
@@ -42,6 +42,8 @@ export interface ReportFiltersBarProps {
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
   };
+  /** Optional controls on the left of the print-preview row (e.g. 30/60/90 month tabs). */
+  printPreviewRowLeading?: ReactNode;
 }
 
 /**
@@ -52,6 +54,7 @@ export function ReportFiltersBar({
   preferences,
   setPreferences,
   printPreviewConstraint,
+  printPreviewRowLeading,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -440,23 +443,24 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
-      {printPreviewConstraint ? (
-        <div className="flex justify-end">
-          <div className="flex h-9 w-full max-w-md min-w-[240px] items-center justify-end">
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={printPreviewConstraint.checked}
-                  onCheckedChange={(v) =>
-                    printPreviewConstraint.onCheckedChange(v === true)
-                  }
-                  aria-label="Print preview"
-                  className="border-input"
-                />
-                Print preview
-              </label>
-            </div>
+      {printPreviewConstraint || printPreviewRowLeading ? (
+        <div className="mb-2 flex h-9 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center">
+            {printPreviewRowLeading}
           </div>
+          {printPreviewConstraint ? (
+            <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+              <Checkbox
+                checked={printPreviewConstraint.checked}
+                onCheckedChange={(v) =>
+                  printPreviewConstraint.onCheckedChange(v === true)
+                }
+                aria-label="Print preview"
+                className="border-input"
+              />
+              Print preview
+            </label>
+          ) : null}
         </div>
       ) : null}
     </div>

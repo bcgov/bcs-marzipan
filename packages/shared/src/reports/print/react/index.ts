@@ -14,7 +14,6 @@ export {
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 export { PrintCustomReportDocument } from './PrintCustomReportDocument';
-export { PrintPlanningDocument } from './PrintPlanningDocument';
 export { PrintReportDocument } from './PrintReportDocument';
 export { PrintRow } from './PrintRow';
 export { PrintSectionTable } from './PrintSectionTable';
@@ -30,9 +29,11 @@ export {
 export {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
+  type CompareActivitiesForPrintOptions,
   type LookAheadBadge,
   type PrintDateCellStyle,
   type PrintReportVariant,

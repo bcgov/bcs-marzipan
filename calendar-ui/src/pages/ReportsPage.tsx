@@ -9,14 +9,19 @@ import {
 } from 'react';
 
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { REPORT_PRINT_LAYOUT_WIDTH_PX } from '@corpcal/shared/reports/reportPrintHtml';
+import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
+import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
+import {
+  buildDefaultThirtySixtyNinetyFilterDateRange,
+  ThirtySixtyNinetyMonthRangeTabs,
+} from '@/components/reports/ThirtySixtyNinetyMonthRangeTabs';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -174,6 +179,17 @@ export function ReportsPage() {
     defaultsAppliedForReportRef.current = activeReport;
   }, [activeReport, preferences.filterState, setPreferences]);
 
+  useEffect(() => {
+    if (activeReport !== 'thirty-sixty-ninety') return;
+    if (isDateRangeActive(preferences.filterState.dateRange)) return;
+    setPreferences({
+      filterState: {
+        ...preferences.filterState,
+        dateRange: buildDefaultThirtySixtyNinetyFilterDateRange(),
+      },
+    });
+  }, [activeReport, preferences.filterState, setPreferences]);
+
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
     queryFn: () =>
@@ -184,6 +200,11 @@ export function ReportsPage() {
   });
 
   const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
+
+  const previewSheetLayoutWidthPx = useMemo(
+    () => reportPrintSheetLayoutWidthPx(activeReport),
+    [activeReport]
+  );
 
   useEffect(() => {
     try {
@@ -302,6 +323,14 @@ export function ReportsPage() {
                       }
                     : undefined
                 }
+                printPreviewRowLeading={
+                  activeReport === 'thirty-sixty-ninety' ? (
+                    <ThirtySixtyNinetyMonthRangeTabs
+                      preferences={preferences}
+                      setPreferences={setPreferences}
+                    />
+                  ) : undefined
+                }
               />
             </div>
 
@@ -340,7 +369,7 @@ export function ReportsPage() {
                                     '--corpcal-print-root-max-width': 'none',
                                   }
                                 : {
-                                    minWidth: REPORT_PRINT_LAYOUT_WIDTH_PX,
+                                    minWidth: previewSheetLayoutWidthPx,
                                   }) as CSSProperties
                             }
                           >
