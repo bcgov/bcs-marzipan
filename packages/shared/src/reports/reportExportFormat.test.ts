@@ -11,7 +11,7 @@ describe('buildReportExportTable', () => {
   const minimalReport = {
     id: 1,
     name: 'look-ahead',
-    displayName: 'Look ahead',
+    displayName: 'Look Ahead',
     sortOrder: 0,
     isActive: true,
     visibility: 'global',

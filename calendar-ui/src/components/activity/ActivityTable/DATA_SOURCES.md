@@ -22,7 +22,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Representatives attending    | `activity_representatives.representative_name` (free text) | Scheduling – rep badges            |
 | Comms contacts               | User names (for lead)                                      | Leads – comms lead name            |
 | Venue                        | Joined `venue_addresses` (see below)                       | Scheduling – formatted address     |
-| Look ahead status / section  | DB enum values (not from lookup table)                     | Summary – look ahead badge         |
+| Look Ahead status / section  | DB enum values (not from lookup table)                     | Summary – look ahead badge         |
 
 ## Values not from lookups
 
@@ -39,7 +39,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | -------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Category badges            | Category displayName                     | Raw `cat` (no transform; displayName is already correct, e.g. FYI)                                 |
 | Pitch label                | Pitch required displayName (when used)   | `toSentenceCase(pitchLabel)`                                                                       |
-| Look ahead badge           | Look ahead status + section (enum)       | `getLookAheadStatusLabel` / `getLookAheadSectionLabel` + `"LA …"` template                         |
+| Look Ahead badge           | Look Ahead status + section (enum)       | `getLookAheadStatusLabel` / `getLookAheadSectionLabel` + `"LA …"` template                         |
 | Date status badge          | Date status displayName                  | `toSentenceCase(row.dateStatus)`                                                                   |
 | Time status badge          | Time status displayName                  | `toSentenceCase(row.timeStatus)`                                                                   |
 | Premier badge              | Premier requested displayName            | None (display as-is)                                                                               |
@@ -51,7 +51,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Activity status badge      | Activity status displayName              | None (display as-is); colour from `getActivityStatusBadgeVariant(normalizeActivityStatus(status))` |
 | Dates in scheduling        | ISO date strings                         | `formatDate(iso)` – "Mon DD" style                                                                 |
 
-Look ahead status/section are **enum values** from the schema (e.g. `new`, `events`); they are not from a lookup table. The UI maps them to labels via `getLookAheadStatusLabel` / `getLookAheadSectionLabel` in `form-options.ts`.
+Look Ahead status/section are **enum values** from the schema (e.g. `new`, `events`); they are not from a lookup table. The UI maps them to labels via `getLookAheadStatusLabel` / `getLookAheadSectionLabel` in `form-options.ts`.
 
 ### Venue address fields (`venueAddress`)
 
