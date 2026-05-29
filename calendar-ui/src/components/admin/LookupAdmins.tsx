@@ -453,7 +453,7 @@ export function CategoriesAdmin() {
     <GenericLookupAdmin<Category>
       title="Categories"
       description="Manage activity categories"
-      entityType="Category"
+      entityType="category"
       apiEndpoint="/lookups/categories"
       queryKey={lookupQueryKeys.categories()}
       queryFn={fetchCategories}
@@ -467,7 +467,7 @@ export function CitiesAdmin() {
     <GenericLookupAdmin<City>
       title="Cities"
       description="Manage city locations"
-      entityType="City"
+      entityType="city"
       apiEndpoint="/lookups/cities"
       queryKey={lookupQueryKeys.cities()}
       queryFn={fetchCities}
@@ -475,7 +475,7 @@ export function CitiesAdmin() {
       additionalColumns={[
         {
           accessorKey: 'provinceOrState',
-          header: 'Province / State',
+          header: 'Province / state',
           cell: ({ row }) => (
             <span className="text-slate-600">
               {row.original.provinceOrState || '—'}
@@ -499,9 +499,9 @@ export function CitiesAdmin() {
 export function CommsMaterialsAdmin() {
   return (
     <GenericLookupAdmin<CommsMaterial>
-      title="Communications Materials"
+      title="Communications materials"
       description="Manage communication material types"
-      entityType="Communications Material"
+      entityType="communications material"
       apiEndpoint="/lookups/comms-materials"
       queryKey={lookupQueryKeys.commsMaterials()}
       queryFn={fetchCommsMaterials}
@@ -513,9 +513,9 @@ export function CommsMaterialsAdmin() {
 export function GovernmentRepresentativesAdmin() {
   return (
     <GenericLookupAdmin<GovernmentRepresentative>
-      title="Government Representatives"
-      description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
-      entityType="Government Representative"
+      title="Government representatives"
+      description="Manage government representatives. Ministers can be assigned from the ministries section when creating or editing a ministry."
+      entityType="government representative"
       apiEndpoint="/lookups/government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
       queryFn={fetchGovernmentRepresentatives}
@@ -562,7 +562,7 @@ export function TagsAdmin() {
     <GenericLookupAdmin<Tag>
       title="Tags"
       description="Manage activity tags"
-      entityType="Tag"
+      entityType="tag"
       apiEndpoint="/lookups/tags"
       queryKey={lookupQueryKeys.tagsAdmin()}
       queryFn={fetchAllTags}
@@ -608,9 +608,9 @@ export function TagsAdmin() {
 export function MinistryGroupsAdmin() {
   return (
     <GenericLookupAdmin<MinistryGroupListItem>
-      title="Ministry Groups"
-      description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
-      entityType="Ministry group"
+      title="Ministry groups"
+      description="Named groups for activity “shared with teams” shortcuts. Assign ministries to a group in the ministries section."
+      entityType="ministry group"
       apiEndpoint="/lookups/ministry-groups"
       queryKey={lookupQueryKeys.ministryGroups()}
       queryFn={fetchMinistryGroups}
@@ -728,7 +728,7 @@ export function MinistriesAdmin() {
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
       description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
-      entityType="Ministry"
+      entityType="ministry"
       apiEndpoint="/lookups/ministries"
       queryKey={lookupQueryKeys.ministries()}
       queryFn={fetchMinistries}
@@ -751,9 +751,9 @@ export function MinistriesAdmin() {
 export function ActivityStatusesAdmin() {
   return (
     <GenericLookupAdmin<ActivityStatus>
-      title="Activity Statuses"
+      title="Activity statuses"
       description="Manage activity status types"
-      entityType="Activity Status"
+      entityType="activity status"
       apiEndpoint="/lookups/activity-statuses"
       queryKey={lookupQueryKeys.activityStatuses()}
       queryFn={fetchActivityStatuses}
@@ -767,7 +767,7 @@ export function ThemesAdmin() {
     <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
       description="Manage activity themes"
-      entityType="Theme"
+      entityType="theme"
       apiEndpoint="/lookups/themes"
       queryKey={lookupQueryKeys.themes()}
       queryFn={fetchThemes}
@@ -813,9 +813,9 @@ const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
 export function VenuePresetsAdmin() {
   return (
     <GenericLookupAdmin<VenuePreset>
-      title="Venue Presets"
+      title="Venue presets"
       description="Manage venue presets for the activity form"
-      entityType="Venue Preset"
+      entityType="venue preset"
       apiEndpoint="/lookups/venue-presets"
       queryKey={lookupQueryKeys.venuePresets()}
       queryFn={fetchVenuePresets as () => Promise<VenuePreset[]>}

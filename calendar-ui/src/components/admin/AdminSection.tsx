@@ -50,7 +50,7 @@ export function AdminSection({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
-              {title}
+              {title.charAt(0).toUpperCase() + title.slice(1)}
             </h2>
             {description && (
               <p className="mt-1 text-sm text-slate-600">{description}</p>
@@ -63,7 +63,7 @@ export function AdminSection({
               className="flex items-center gap-1 text-sm text-slate-600 transition-colors hover:text-slate-900"
             >
               <ArrowUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Quick Navigation</span>
+              <span className="hidden sm:inline">Back to quick navigation</span>
             </button>
             {onAdd && (
               <Button
