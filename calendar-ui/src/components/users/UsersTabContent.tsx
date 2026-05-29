@@ -340,7 +340,7 @@ export function UsersTabContent({
               <th className={tableTh}>Status</th>
               <th className={tableTh}>
                 <span className="inline-flex items-center gap-1">
-                  Last updated
+                  Last Updated
                   <SortIndicator
                     columnId="lastUpdated"
                     sortKey={sortKey}

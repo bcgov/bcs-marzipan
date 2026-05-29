@@ -68,7 +68,7 @@ export function EditLockIdleSettingsAdmin(): React.ReactElement | null {
 
   return (
     <AdminSection
-      title="Edit Lock Idle Timeout"
+      title="Edit lock idle timeout"
       description="When a user holds an activity edit lock without activity, the lock expires after this many minutes. Users get a warning two minutes before."
       isLoading={isLoading}
       headerAction={

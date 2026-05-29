@@ -112,11 +112,11 @@ const categoryFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -135,7 +135,7 @@ const cityFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
@@ -151,7 +151,7 @@ const cityFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -170,11 +170,11 @@ const commsMaterialFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -193,7 +193,7 @@ const govRepFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
@@ -203,7 +203,7 @@ const govRepFields: FormField[] = [
     type: 'text',
     placeholder: 'Minister, MLA, etc.',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -222,11 +222,11 @@ const tagFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -421,15 +421,15 @@ const themeFields: FormField[] = [
 const venuePresetFields: FormField[] = [
   {
     name: 'venueName',
-    label: 'Venue Name',
+    label: 'Venue name',
     type: 'text',
     required: true,
     placeholder: 'Enter venue name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'pinnedSortOrder',
-    label: 'Pinned Sort Order',
+    label: 'Pinned sort order',
     type: 'number',
     placeholder: '0',
   },
@@ -475,7 +475,7 @@ export function CitiesAdmin() {
       additionalColumns={[
         {
           accessorKey: 'provinceOrState',
-          header: 'Province / state',
+          header: 'Province / State',
           cell: ({ row }) => (
             <span className="text-slate-600">
               {row.original.provinceOrState || '—'}

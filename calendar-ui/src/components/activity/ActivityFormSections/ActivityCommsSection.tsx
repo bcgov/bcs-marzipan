@@ -208,7 +208,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               </ComboboxChip>
                             );
                           })}
-                          <ComboboxChipsInput placeholder="Select Contacts" />
+                          <ComboboxChipsInput placeholder="Select contacts" />
                         </>
                       )}
                     </ComboboxValue>
@@ -306,7 +306,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select Comms Materials" />
+                          <ComboboxChipsInput placeholder="Select comms materials" />
                         </>
                       )}
                     </ComboboxValue>
@@ -351,7 +351,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select News Release Origin" />
+                  <SelectValue placeholder="Select news release origin" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -387,7 +387,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select News Release Distribution" />
+                  <SelectValue placeholder="Select news release distribution" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -491,7 +491,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                                 {option.label}
                               </ComboboxChip>
                             ))}
-                            <ComboboxChipsInput placeholder="Select Translation Languages" />
+                            <ComboboxChipsInput placeholder="Select translation languages" />
                           </>
                         )}
                       </ComboboxValue>

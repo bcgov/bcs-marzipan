@@ -167,12 +167,12 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   },
   {
     id: 'startDate',
-    label: 'Scheduled date',
+    label: 'Scheduled Date',
     defaultDirection: 'asc',
     tieBreakers: [{ key: 'startTime', direction: 'asc' }],
   },
-  { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
-  { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
+  { id: 'lastUpdated', label: 'Last Updated', defaultDirection: 'desc' },
+  { id: 'createdDateTime', label: 'Date Created', defaultDirection: 'desc' },
 ];
 
 /** Status column can be sorted by activity status, last updated, or date created. */

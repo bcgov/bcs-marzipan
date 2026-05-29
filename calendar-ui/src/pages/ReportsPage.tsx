@@ -80,6 +80,11 @@ function getExportConfig(reportType: string) {
   return { label: 'Export PDF', format: 'pdf' as const };
 }
 
+function toSentenceCase(s?: string | null): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
 export function ReportsPage() {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -277,7 +282,7 @@ export function ReportsPage() {
             <TabsList className="mb-0" variant="line" size="med">
               {reports.map((report) => (
                 <TabsTrigger key={report.id} value={report.name}>
-                  {report.displayName}
+                  {toSentenceCase(report.displayName)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -363,7 +368,8 @@ export function ReportsPage() {
                           <TabsList className="mb-0 min-w-0 shrink">
                             {data.sections.map((section: ReportSectionData) => (
                               <TabsTrigger key={section.id} value={section.id}>
-                                {section.name} ({section.activities.length})
+                                {toSentenceCase(section.name)} (
+                                {section.activities.length})
                               </TabsTrigger>
                             ))}
                           </TabsList>

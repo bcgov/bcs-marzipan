@@ -60,15 +60,15 @@ const ADMIN_ROLE_ID = 5;
 const SYSTEM_ADMIN_ONLY_LINKS = [
   'System Banner',
   'Login Modal',
-  'Edit Lock Idle',
-  'Activity Completion',
-  'Look Ahead Reset',
-  'Review-Exempt Fields',
+  'Edit lock idle',
+  'Activity completion',
+  'Look Ahead reset',
+  'Review-exempt fields',
 ];
 
 const LOOKUP_LINKS = [
-  'Report PDF Cover Contact',
-  'Ministry Groups',
+  'Report PDF cover contact',
+  'Ministry groups',
   'Ministries',
   'Government Representatives',
   'Categories',

@@ -127,7 +127,7 @@ export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
 
   return (
     <AdminSection
-      title="Review-Exempt Activity Fields"
+      title="Review-exempt activity fields"
       description={DESCRIPTION}
       isLoading={isLoading}
       headerAction={
