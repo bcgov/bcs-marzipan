@@ -300,7 +300,10 @@ function OverviewCell({
           </span>
         )}
       </div>
-      <div className="mb-1 text-[16px] font-semibold text-slate-900">
+      <div
+        className="mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900"
+        title={row.title}
+      >
         {row.title}
       </div>
       {pitchLabel && (
@@ -330,6 +333,14 @@ function OverviewCell({
   );
 }
 
+const SUMMARY_MAX_LINES = 5;
+const SUMMARY_LINE_HEIGHT_PX = 20;
+
+function summaryContentNeedsTruncation(el: HTMLDivElement): boolean {
+  const maxHeight = SUMMARY_LINE_HEIGHT_PX * SUMMARY_MAX_LINES;
+  return el.scrollHeight > maxHeight + 1 || el.scrollWidth > el.clientWidth + 1;
+}
+
 function SummaryCell({ row }: { row: ActivityTableRow }) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
@@ -337,12 +348,9 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   const showMoreLessRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (contentRef.current) {
-      const lineHeight = 20;
-      const maxLines = 5;
-      setNeedsTruncation(
-        contentRef.current.scrollHeight > lineHeight * maxLines
-      );
+    const el = contentRef.current;
+    if (el) {
+      setNeedsTruncation(summaryContentNeedsTruncation(el));
     }
   }, [row.summary]);
 
@@ -421,13 +429,10 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       >
         <div
           ref={contentRef}
-          className="text-[14px] leading-[1.4]"
-          style={{
-            display: '-webkit-box',
-            WebkitLineClamp: expanded ? 'unset' : 5,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
+          className={cn(
+            'text-[14px] leading-[1.4] wrap-anywhere',
+            !expanded && 'line-clamp-5'
+          )}
         >
           <ActivityRichTextContent value={row.summary} stopLinkPropagation />
         </div>
