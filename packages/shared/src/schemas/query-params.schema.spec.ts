@@ -200,10 +200,11 @@ describe('filterActivitiesQuerySchema', () => {
 });
 
 describe('reportDataQuerySchema', () => {
-  it('defaults page to 1 and limit to 500', () => {
+  it('parses empty query without pagination fields', () => {
     const result = reportDataQuerySchema.parse({});
-    expect(result.page).toBe(1);
-    expect(result.limit).toBe(500);
+    expect(result).toEqual({});
+    expect('page' in result).toBe(false);
+    expect('limit' in result).toBe(false);
   });
 
   it('accepts search and maps startDate/endDate aliases', () => {
@@ -225,9 +226,5 @@ describe('reportDataQuerySchema', () => {
     });
     const filters = reportDataQueryToActivityFindAllFilters(parsed);
     expect(filters.startDateFrom).toBe('2025-01-01');
-  });
-
-  it('rejects limit above 500', () => {
-    expect(() => reportDataQuerySchema.parse({ limit: '501' })).toThrow();
   });
 });
