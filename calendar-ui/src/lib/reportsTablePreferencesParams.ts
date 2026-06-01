@@ -2,8 +2,12 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '@corpcal/shared';
+import { buildDefaultPreferencesForReport } from '@/lib/report-preferences-defaults';
 
 export const STORAGE_KEY = 'reportsTablePreferences';
+export const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
+
+export const URL_PARAM_REPORT = 'report';
 
 const URL_PARAM_SORT = 'sort';
 const URL_PARAM_DIR = 'dir';
@@ -57,6 +61,10 @@ export interface ActivityTablePreferences {
   pageSize: number;
   searchKeyword: string;
   filterState: ActivityFilterState;
+}
+
+export interface ReportsPreferencesBundle {
+  byReport: Record<string, ActivityTablePreferences>;
 }
 
 const DEFAULT_PREFERENCES: ActivityTablePreferences = {
@@ -251,9 +259,194 @@ function parseFromSearchParams(
   };
 }
 
-function parseFromStorage(
+function parseSinglePreferencesFromRaw(
+  parsed: Record<string, unknown>,
   canSeeDeleted: boolean
 ): ActivityTablePreferences | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const sortKey =
+    typeof parsed.sortKey === 'string' && VALID_SORT_KEYS.has(parsed.sortKey)
+      ? parsed.sortKey
+      : DEFAULT_PREFERENCES.sortKey;
+  const sortDirection =
+    parsed.sortDirection === 'asc' || parsed.sortDirection === 'desc'
+      ? parsed.sortDirection
+      : DEFAULT_PREFERENCES.sortDirection;
+  const showCompleted =
+    typeof parsed.showCompleted === 'boolean'
+      ? parsed.showCompleted
+      : DEFAULT_PREFERENCES.showCompleted;
+  const showDeleted = !canSeeDeleted
+    ? false
+    : typeof parsed.showDeleted === 'boolean'
+      ? parsed.showDeleted
+      : DEFAULT_PREFERENCES.showDeleted;
+  const pageSize =
+    typeof parsed.pageSize === 'number' &&
+    Number.isFinite(parsed.pageSize) &&
+    parsed.pageSize >= MIN_PAGE_SIZE &&
+    parsed.pageSize <= MAX_PAGE_SIZE
+      ? parsed.pageSize
+      : DEFAULT_PREFERENCES.pageSize;
+  const searchKeyword =
+    typeof parsed.searchKeyword === 'string'
+      ? parsed.searchKeyword.trim()
+      : DEFAULT_PREFERENCES.searchKeyword;
+
+  const rawFilter = parsed.filterState as Record<string, unknown> | undefined;
+  let filterState: ActivityFilterState = DEFAULT_ACTIVITY_FILTER_STATE;
+  if (rawFilter && typeof rawFilter === 'object') {
+    const dr = rawFilter.dateRange as Record<string, unknown> | undefined;
+    if (dr && typeof dr === 'object') {
+      const pitchRequiredStatusNames = Array.isArray(
+        rawFilter.pitchRequiredStatusNames
+      )
+        ? (rawFilter.pitchRequiredStatusNames as string[]).filter(
+            (s): s is string => typeof s === 'string'
+          )
+        : [];
+      const pdf = rawFilter.pitchDateFilter as
+        | { kind: string; dateRange?: Record<string, unknown> }
+        | undefined;
+      let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
+        kind: 'any',
+      };
+      if (pdf && typeof pdf === 'object' && pdf.kind === 'not_scheduled') {
+        pitchDateFilter = { kind: 'not_scheduled' };
+      } else if (
+        pdf &&
+        typeof pdf === 'object' &&
+        pdf.kind === 'scheduled' &&
+        pdf.dateRange &&
+        typeof pdf.dateRange === 'object'
+      ) {
+        const pr = pdf.dateRange;
+        pitchDateFilter = {
+          kind: 'scheduled',
+          dateRange: {
+            startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
+            endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
+            noStartDate: pr.noStartDate === true,
+            noEndDate: pr.noEndDate === true,
+          },
+        };
+      }
+      const lookAheadStatusValues = Array.isArray(
+        rawFilter.lookAheadStatusValues
+      )
+        ? (rawFilter.lookAheadStatusValues as string[]).filter(
+            (s): s is string => typeof s === 'string'
+          )
+        : [];
+      const lookAheadSectionValues = Array.isArray(
+        rawFilter.lookAheadSectionValues
+      )
+        ? (rawFilter.lookAheadSectionValues as string[]).filter(
+            (s): s is string => typeof s === 'string'
+          )
+        : [];
+      const dateConfirmedFilterValue = rawFilter.dateConfirmedFilter;
+      const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
+        dateConfirmedFilterValue === 'confirmed' ||
+        dateConfirmedFilterValue === 'not_confirmed'
+          ? dateConfirmedFilterValue
+          : 'any';
+      const timeConfirmedFilterValue = rawFilter.timeConfirmedFilter;
+      const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
+        timeConfirmedFilterValue === 'confirmed' ||
+        timeConfirmedFilterValue === 'not_confirmed'
+          ? timeConfirmedFilterValue
+          : 'any';
+      const tagIds = Array.isArray(rawFilter.tagIds)
+        ? (rawFilter.tagIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
+        ? (rawFilter.leadMinistryIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
+        ? (rawFilter.leadOrgIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const commsContactLeadUserIds = Array.isArray(
+        rawFilter.commsContactLeadUserIds
+      )
+        ? (rawFilter.commsContactLeadUserIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const eventPlannerLeadIds = Array.isArray(rawFilter.eventPlannerLeadIds)
+        ? (rawFilter.eventPlannerLeadIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const translationLanguageIds = Array.isArray(
+        rawFilter.translationLanguageIds
+      )
+        ? (rawFilter.translationLanguageIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      const translationRequiredStatusIds = Array.isArray(
+        rawFilter.translationRequiredStatusIds
+      )
+        ? (rawFilter.translationRequiredStatusIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
+      filterState = {
+        dateRange: {
+          startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
+          endDate: typeof dr.endDate === 'string' ? dr.endDate : '',
+          noStartDate: dr.noStartDate === true,
+          noEndDate: dr.noEndDate === true,
+        },
+        categoryNames: Array.isArray(rawFilter.categoryNames)
+          ? (rawFilter.categoryNames as string[]).filter(
+              (s): s is string => typeof s === 'string'
+            )
+          : [],
+        activityStatusIds: Array.isArray(rawFilter.activityStatusIds)
+          ? (rawFilter.activityStatusIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [],
+        pitchRequiredStatusNames,
+        pitchDateFilter,
+        lookAheadStatusValues,
+        lookAheadSectionValues,
+        dateConfirmedFilter,
+        timeConfirmedFilter,
+        tagIds,
+        leadMinistryIds,
+        leadOrgIds,
+        commsContactLeadUserIds,
+        eventPlannerLeadIds,
+        translationRequiredStatusIds,
+        translationLanguageIds,
+      };
+    }
+  }
+
+  return {
+    sortKey,
+    sortDirection,
+    showCompleted,
+    showDeleted,
+    pageSize,
+    searchKeyword,
+    filterState,
+  };
+}
+
+function parseBundleFromStorage(
+  canSeeDeleted: boolean
+): ReportsPreferencesBundle | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -261,190 +454,89 @@ function parseFromStorage(
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== 'object') return null;
 
-    const sortKey =
-      typeof parsed.sortKey === 'string' && VALID_SORT_KEYS.has(parsed.sortKey)
-        ? parsed.sortKey
-        : DEFAULT_PREFERENCES.sortKey;
-    const sortDirection =
-      parsed.sortDirection === 'asc' || parsed.sortDirection === 'desc'
-        ? parsed.sortDirection
-        : DEFAULT_PREFERENCES.sortDirection;
-    const showCompleted =
-      typeof parsed.showCompleted === 'boolean'
-        ? parsed.showCompleted
-        : DEFAULT_PREFERENCES.showCompleted;
-    const showDeleted = !canSeeDeleted
-      ? false
-      : typeof parsed.showDeleted === 'boolean'
-        ? parsed.showDeleted
-        : DEFAULT_PREFERENCES.showDeleted;
-    const pageSize =
-      typeof parsed.pageSize === 'number' &&
-      Number.isFinite(parsed.pageSize) &&
-      parsed.pageSize >= MIN_PAGE_SIZE &&
-      parsed.pageSize <= MAX_PAGE_SIZE
-        ? parsed.pageSize
-        : DEFAULT_PREFERENCES.pageSize;
-    const searchKeyword =
-      typeof parsed.searchKeyword === 'string'
-        ? parsed.searchKeyword.trim()
-        : DEFAULT_PREFERENCES.searchKeyword;
-
-    const rawFilter = parsed.filterState as Record<string, unknown> | undefined;
-    let filterState: ActivityFilterState = DEFAULT_ACTIVITY_FILTER_STATE;
-    if (rawFilter && typeof rawFilter === 'object') {
-      const dr = rawFilter.dateRange as Record<string, unknown> | undefined;
-      if (dr && typeof dr === 'object') {
-        const pitchRequiredStatusNames = Array.isArray(
-          rawFilter.pitchRequiredStatusNames
-        )
-          ? (rawFilter.pitchRequiredStatusNames as string[]).filter(
-              (s): s is string => typeof s === 'string'
-            )
-          : [];
-        const pdf = rawFilter.pitchDateFilter as
-          | { kind: string; dateRange?: Record<string, unknown> }
-          | undefined;
-        let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
-          kind: 'any',
-        };
-        if (pdf && typeof pdf === 'object' && pdf.kind === 'not_scheduled') {
-          pitchDateFilter = { kind: 'not_scheduled' };
-        } else if (
-          pdf &&
-          typeof pdf === 'object' &&
-          pdf.kind === 'scheduled' &&
-          pdf.dateRange &&
-          typeof pdf.dateRange === 'object'
-        ) {
-          const pr = pdf.dateRange;
-          pitchDateFilter = {
-            kind: 'scheduled',
-            dateRange: {
-              startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
-              endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
-              noStartDate: pr.noStartDate === true,
-              noEndDate: pr.noEndDate === true,
-            },
-          };
-        }
-        const lookAheadStatusValues = Array.isArray(
-          rawFilter.lookAheadStatusValues
-        )
-          ? (rawFilter.lookAheadStatusValues as string[]).filter(
-              (s): s is string => typeof s === 'string'
-            )
-          : [];
-        const lookAheadSectionValues = Array.isArray(
-          rawFilter.lookAheadSectionValues
-        )
-          ? (rawFilter.lookAheadSectionValues as string[]).filter(
-              (s): s is string => typeof s === 'string'
-            )
-          : [];
-        const dateConfirmedFilterValue = rawFilter.dateConfirmedFilter;
-        const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
-          dateConfirmedFilterValue === 'confirmed' ||
-          dateConfirmedFilterValue === 'not_confirmed'
-            ? dateConfirmedFilterValue
-            : 'any';
-        const timeConfirmedFilterValue = rawFilter.timeConfirmedFilter;
-        const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
-          timeConfirmedFilterValue === 'confirmed' ||
-          timeConfirmedFilterValue === 'not_confirmed'
-            ? timeConfirmedFilterValue
-            : 'any';
-        const tagIds = Array.isArray(rawFilter.tagIds)
-          ? (rawFilter.tagIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
-          ? (rawFilter.leadMinistryIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
-          ? (rawFilter.leadOrgIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const commsContactLeadUserIds = Array.isArray(
-          rawFilter.commsContactLeadUserIds
-        )
-          ? (rawFilter.commsContactLeadUserIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const eventPlannerLeadIds = Array.isArray(rawFilter.eventPlannerLeadIds)
-          ? (rawFilter.eventPlannerLeadIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const translationLanguageIds = Array.isArray(
-          rawFilter.translationLanguageIds
-        )
-          ? (rawFilter.translationLanguageIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const translationRequiredStatusIds = Array.isArray(
-          rawFilter.translationRequiredStatusIds
-        )
-          ? (rawFilter.translationRequiredStatusIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        filterState = {
-          dateRange: {
-            startDate: typeof dr.startDate === 'string' ? dr.startDate : '',
-            endDate: typeof dr.endDate === 'string' ? dr.endDate : '',
-            noStartDate: dr.noStartDate === true,
-            noEndDate: dr.noEndDate === true,
-          },
-          categoryNames: Array.isArray(rawFilter.categoryNames)
-            ? (rawFilter.categoryNames as string[]).filter(
-                (s): s is string => typeof s === 'string'
-              )
-            : [],
-          activityStatusIds: Array.isArray(rawFilter.activityStatusIds)
-            ? (rawFilter.activityStatusIds as number[]).filter(
-                (n): n is number => typeof n === 'number' && Number.isFinite(n)
-              )
-            : [],
-          pitchRequiredStatusNames,
-          pitchDateFilter,
-          lookAheadStatusValues,
-          lookAheadSectionValues,
-          dateConfirmedFilter,
-          timeConfirmedFilter,
-          tagIds,
-          leadMinistryIds,
-          leadOrgIds,
-          commsContactLeadUserIds,
-          eventPlannerLeadIds,
-          translationRequiredStatusIds,
-          translationLanguageIds,
-        };
-      }
+    if (!parsed.byReport || typeof parsed.byReport !== 'object') {
+      return null;
     }
 
-    return {
-      sortKey,
-      sortDirection,
-      showCompleted,
-      showDeleted,
-      pageSize,
-      searchKeyword,
-      filterState,
-    };
+    const byReport: Record<string, ActivityTablePreferences> = {};
+    for (const [key, value] of Object.entries(
+      parsed.byReport as Record<string, unknown>
+    )) {
+      if (typeof key !== 'string' || !value || typeof value !== 'object') {
+        continue;
+      }
+      const prefs = parseSinglePreferencesFromRaw(
+        value as Record<string, unknown>,
+        canSeeDeleted
+      );
+      if (prefs) {
+        byReport[key] = prefs;
+      }
+    }
+    return { byReport };
   } catch {
     return null;
   }
 }
 
+export function createEmptyBundle(): ReportsPreferencesBundle {
+  return { byReport: {} };
+}
+
+export function getStoredReportTabName(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = sessionStorage.getItem(REPORTS_TAB_STORAGE_KEY);
+    return v?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPreferencesForReport(
+  bundle: ReportsPreferencesBundle,
+  reportName: string,
+  canSeeDeleted: boolean
+): ActivityTablePreferences {
+  if (!reportName) {
+    return {
+      ...DEFAULT_PREFERENCES,
+      showDeleted: canSeeDeleted ? DEFAULT_PREFERENCES.showDeleted : false,
+    };
+  }
+  return (
+    bundle.byReport[reportName] ??
+    buildDefaultPreferencesForReport(reportName, canSeeDeleted)
+  );
+}
+
+export function getInitialBundle(
+  searchParams: URLSearchParams,
+  canSeeDeleted: boolean
+): ReportsPreferencesBundle {
+  const empty = createEmptyBundle();
+
+  if (hasAnyKnownParam(searchParams) || searchParams.has(URL_PARAM_REPORT)) {
+    const reportName =
+      searchParams.get(URL_PARAM_REPORT)?.trim() ||
+      getStoredReportTabName() ||
+      '';
+    const fromUrl = parseFromSearchParams(searchParams, canSeeDeleted);
+    const fromStorage = parseBundleFromStorage(canSeeDeleted) ?? empty;
+    if (reportName) {
+      return {
+        byReport: { ...fromStorage.byReport, [reportName]: fromUrl },
+      };
+    }
+    return fromStorage;
+  }
+
+  return parseBundleFromStorage(canSeeDeleted) ?? empty;
+}
+
 export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
   return (
+    searchParams.has(URL_PARAM_REPORT) ||
     searchParams.has(URL_PARAM_SORT) ||
     searchParams.has(URL_PARAM_DIR) ||
     searchParams.has(URL_PARAM_COMPLETED) ||
@@ -473,22 +565,6 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
   );
 }
 
-export function getInitialPreferences(
-  searchParams: URLSearchParams,
-  canSeeDeleted: boolean
-): ActivityTablePreferences {
-  if (hasAnyKnownParam(searchParams)) {
-    return parseFromSearchParams(searchParams, canSeeDeleted);
-  }
-  const fromStorage = parseFromStorage(canSeeDeleted);
-  return (
-    fromStorage ?? {
-      ...DEFAULT_PREFERENCES,
-      showDeleted: canSeeDeleted ? DEFAULT_PREFERENCES.showDeleted : false,
-    }
-  );
-}
-
 /**
  * Builds URL params from preferences. Omits any param whose value is an empty
  * string so that "param is present" means "user set this filter". Otherwise
@@ -496,7 +572,8 @@ export function getInitialPreferences(
  * instead of sessionStorage when the URL is "empty or unrelated".
  */
 export function preferencesToParams(
-  prefs: ActivityTablePreferences
+  prefs: ActivityTablePreferences,
+  reportName?: string
 ): Record<string, string> {
   const f = prefs.filterState;
   const raw: Record<string, string> = {
@@ -537,6 +614,10 @@ export function preferencesToParams(
       out[key] = value;
     }
   }
+  const trimmedReport = reportName?.trim();
+  if (trimmedReport) {
+    out[URL_PARAM_REPORT] = trimmedReport;
+  }
   return out;
 }
 
@@ -544,10 +625,19 @@ export function preferencesToParams(
  * Returns the reports URL search string from sessionStorage (e.g. "?sort=lastUpdated&dir=desc").
  * Uses {@link STORAGE_KEY}. Returns "" if no valid stored preferences.
  */
-export function getStoredReportsSearch(canSeeDeleted: boolean): string {
-  const prefs = parseFromStorage(canSeeDeleted);
-  if (!prefs) return '';
-  const params = new URLSearchParams(preferencesToParams(prefs));
+export function getStoredReportsSearch(
+  canSeeDeleted: boolean,
+  reportName?: string
+): string {
+  const bundle = parseBundleFromStorage(canSeeDeleted);
+  if (!bundle) return '';
+  const name =
+    reportName?.trim() ||
+    getStoredReportTabName() ||
+    Object.keys(bundle.byReport)[0];
+  if (!name) return '';
+  const prefs = getPreferencesForReport(bundle, name, canSeeDeleted);
+  const params = new URLSearchParams(preferencesToParams(prefs, name));
   const search = params.toString();
   return search ? `?${search}` : '';
 }

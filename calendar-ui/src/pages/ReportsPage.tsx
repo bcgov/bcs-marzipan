@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import {
   useEffect,
   useMemo,
@@ -8,27 +9,18 @@ import {
   type CSSProperties,
 } from 'react';
 
-import type { DateRangeValue } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { shouldWarnLargeReportRange } from '@corpcal/shared/reports/reportDateRange';
 import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
-import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
-import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
-import {
-  buildDefaultLookAheadFilterDateRange,
-  LookAheadDayRangeTabs,
-} from '@/components/reports/LookAheadDayRangeTabs';
+import { LookAheadDayRangeTabs } from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
-import {
-  buildDefaultReportMonthFilterDateRange,
-  ReportMonthRangeTabs,
-} from '@/components/reports/ReportMonthRangeTabs';
+import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,9 +43,13 @@ import {
   stableSerializeReportQueryParams,
 } from '@/lib/report-from-activity-filters';
 import { reportQueryKeys } from '@/lib/reportQueryKeys';
+import {
+  getStoredReportTabName,
+  REPORTS_TAB_STORAGE_KEY,
+  URL_PARAM_REPORT,
+} from '@/lib/reportsTablePreferencesParams';
 import { cn } from '@/lib/utils';
 
-const REPORTS_TAB_STORAGE_KEY = 'reportsTab';
 /** Persists fullscreen print preview width (full viewport vs Letter content width). */
 const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
 
@@ -93,18 +89,6 @@ function getExportConfig(reportType: string) {
   return { label: 'Export PDF', format: 'pdf' as const };
 }
 
-function buildDefaultFilterDateRangeForReport(
-  reportName: string
-): DateRangeValue {
-  switch (reportName) {
-    case 'look-ahead':
-    case 'exec':
-      return buildDefaultLookAheadFilterDateRange();
-    default:
-      return buildDefaultReportMonthFilterDateRange();
-  }
-}
-
 function reportUsesDayRangeTabs(reportName: string): boolean {
   return reportName === 'look-ahead' || reportName === 'exec';
 }
@@ -123,8 +107,13 @@ export function ReportsPage() {
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
 
-  const { preferences, setPreferences } =
-    useReportsTablePreferences(canSeeDeleted);
+  const [searchParams] = useSearchParams();
+  const [activeReport, setActiveReport] = useState('');
+
+  const { preferences, setPreferences } = useReportsTablePreferences(
+    canSeeDeleted,
+    activeReport
+  );
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
 
   const statusArchiveIds = useMemo(() => {
@@ -153,8 +142,6 @@ export function ReportsPage() {
     [reportQueryParams]
   );
 
-  const [activeReport, setActiveReport] = useState<string>('');
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [customReportFields, setCustomReportFields] = useState(() =>
     loadCustomReportConfig()
@@ -163,7 +150,6 @@ export function ReportsPage() {
   const [previewSheetWidthMode, setPreviewSheetWidthMode] =
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const initialTabAppliedRef = useRef(false);
-  const defaultsAppliedForReportRef = useRef<string | null>(null);
 
   const { data: reports = [] } = useReports();
 
@@ -171,47 +157,17 @@ export function ReportsPage() {
     if (initialTabAppliedRef.current || reports.length === 0) return;
     initialTabAppliedRef.current = true;
 
-    const stored = sessionStorage.getItem(REPORTS_TAB_STORAGE_KEY);
+    const fromUrl = searchParams.get(URL_PARAM_REPORT)?.trim();
+    const stored = getStoredReportTabName();
     const initialReport =
-      (stored && reports.find((r) => r.name === stored)) || reports[0];
+      (fromUrl && reports.find((r) => r.name === fromUrl)) ||
+      (stored && reports.find((r) => r.name === stored)) ||
+      reports[0];
 
     if (initialReport) {
       setActiveReport(initialReport.name);
     }
-  }, [reports]);
-
-  // Apply report-type date defaults once per tab when scheduled range is still empty.
-  useEffect(() => {
-    if (!activeReport) return;
-    if (defaultsAppliedForReportRef.current === activeReport) {
-      return;
-    }
-
-    if (isDateRangeActive(preferences.filterState.dateRange)) {
-      defaultsAppliedForReportRef.current = activeReport;
-      return;
-    }
-
-    const configDefaults =
-      getReportTypeConfigByReportName(activeReport)?.defaults;
-    const dateRange: DateRangeValue =
-      configDefaults && (configDefaults.startDate || configDefaults.endDate)
-        ? {
-            startDate: configDefaults.startDate ?? '',
-            endDate: configDefaults.endDate ?? '',
-            noStartDate: false,
-            noEndDate: false,
-          }
-        : buildDefaultFilterDateRangeForReport(activeReport);
-
-    setPreferences({
-      filterState: {
-        ...preferences.filterState,
-        dateRange,
-      },
-    });
-    defaultsAppliedForReportRef.current = activeReport;
-  }, [activeReport, preferences.filterState, setPreferences]);
+  }, [reports, searchParams]);
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
@@ -260,7 +216,6 @@ export function ReportsPage() {
 
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
-    defaultsAppliedForReportRef.current = null;
     sessionStorage.setItem(REPORTS_TAB_STORAGE_KEY, reportName);
   };
 
