@@ -99,7 +99,7 @@ export function Settings() {
     },
     {
       id: 'look-ahead-reset' as Section,
-      label: 'Look ahead reset',
+      label: 'Look Ahead reset',
       icon: Eraser,
       show: isSystemAdmin,
     },
