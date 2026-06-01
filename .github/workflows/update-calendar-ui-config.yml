@@ -25,12 +25,11 @@ jobs:
           EOF
 
       - name: Login to OpenShift
-        env:
-          OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
-          OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
-        run: |
-          oc version || true
-          oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify
+        uses: redhat-actions/oc-login@v2
+        with:
+          openshift_server: ${{ secrets.OPENSHIFT_SERVER }}
+          token: ${{ secrets.OPENSHIFT_TOKEN }}
+          insecure_skip_tls_verify: false
 
       - name: Set project / namespace
         env:
@@ -48,7 +47,7 @@ jobs:
           oc rollout status deployment/calendar-ui -w
 
       - name: Smoke-check config.js served (optional)
-        if: ${{ secrets.CALENDAR_UI_URL != '' }}
+        if: ${{ secrets.CALENDAR_UI_URL }}
         env:
           CALENDAR_UI_URL: ${{ secrets.CALENDAR_UI_URL }}
         run: |
