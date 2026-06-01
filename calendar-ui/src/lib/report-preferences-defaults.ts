@@ -11,7 +11,7 @@ const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;
 const DEFAULT_PAGE_SIZE = 10;
 
-function buildDefaultLookAheadFilterDateRange(): DateRangeValue {
+export function buildDefaultLookAheadFilterDateRange(): DateRangeValue {
   const preset = defaultLookAheadDateRange();
   return {
     startDate: preset.start,
@@ -21,7 +21,7 @@ function buildDefaultLookAheadFilterDateRange(): DateRangeValue {
   };
 }
 
-function buildDefaultReportMonthFilterDateRange(): DateRangeValue {
+export function buildDefaultReportMonthFilterDateRange(): DateRangeValue {
   const preset = defaultThirtySixtyNinetyDateRange(3);
   return {
     startDate: preset.start,

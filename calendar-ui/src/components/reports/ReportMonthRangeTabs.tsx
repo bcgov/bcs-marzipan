@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { DateRangeValue } from '@corpcal/shared';
 import {
-  defaultThirtySixtyNinetyDateRange,
   pacificCalendarDateFromInstant,
   thirtySixtyNinetyDateRangeFromPacificDate,
   type CalendarDateString,
@@ -133,14 +131,4 @@ export function ReportMonthRangeTabs({
       </TabsList>
     </Tabs>
   );
-}
-
-export function buildDefaultReportMonthFilterDateRange(): DateRangeValue {
-  const preset = defaultThirtySixtyNinetyDateRange(3);
-  return {
-    startDate: preset.start,
-    endDate: preset.end,
-    noStartDate: false,
-    noEndDate: false,
-  };
 }

@@ -67,6 +67,21 @@ describe('normalizeReportActivityDateRange', () => {
     expect(result.wasClamped).toBe(false);
   });
 
+  it('swaps inverted bounds into chronological order', () => {
+    expect(
+      normalizeReportActivityDateRange({
+        startDateFrom: '2026-06-30',
+        startDateTo: '2026-01-01',
+      })
+    ).toEqual({
+      start: '2026-01-01',
+      end: '2026-06-30',
+      wasClamped: false,
+      inferredBound: null,
+      spanDays: 181,
+    });
+  });
+
   it('throws when no bounds and no defaultRange', () => {
     expect(() => normalizeReportActivityDateRange({})).toThrow(
       /requires at least one date bound or defaultRange/

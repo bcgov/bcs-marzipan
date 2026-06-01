@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { DateRangeValue } from '@corpcal/shared';
 import { pacificCalendarDateFromInstant } from '@corpcal/shared/datetime';
 import {
-  defaultLookAheadDateRange,
   lookAheadDateRangeFromTomorrow,
   type LookAheadDayCount,
 } from '@corpcal/shared/reports/look-ahead';
@@ -121,14 +119,4 @@ export function LookAheadDayRangeTabs({
       </TabsList>
     </Tabs>
   );
-}
-
-export function buildDefaultLookAheadFilterDateRange(): DateRangeValue {
-  const preset = defaultLookAheadDateRange();
-  return {
-    startDate: preset.start,
-    endDate: preset.end,
-    noStartDate: false,
-    noEndDate: false,
-  };
 }

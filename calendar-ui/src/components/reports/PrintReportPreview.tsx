@@ -1,5 +1,6 @@
-import { useMemo, type ComponentProps, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
+import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
   buildTranslationLanguageLabelResolver,
   CUSTOM_REPORT_PRINT_STYLES,
@@ -12,13 +13,8 @@ import {
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
-import type { ReportDataResponse } from '@/api/reportsApi';
 import { useTranslationLanguages } from '@/hooks/useLookups';
-
-/** Print components resolve from shared src; API types resolve from shared dist. */
-type PrintReportDocumentData = ComponentProps<
-  typeof PrintReportDocument
->['data'];
+import { toPrintReportDocumentData } from '@/lib/print-report-data';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -57,6 +53,7 @@ export function PrintReportPreview({
     () => buildTranslationLanguageLabelResolver(translationLanguages),
     [translationLanguages]
   );
+  const printData = useMemo(() => toPrintReportDocumentData(data), [data]);
 
   if (!isReactRenderableReportType(reportTypeName)) {
     return null;
@@ -65,7 +62,7 @@ export function PrintReportPreview({
   return (
     <PrintReportPreviewRoot
       reportTypeName={reportTypeName}
-      data={data}
+      printData={printData}
       activityBaseUrl={activityBaseUrl}
       highlightActivityIds={highlightActivityIds}
       resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
@@ -75,20 +72,19 @@ export function PrintReportPreview({
 
 function PrintReportPreviewRoot({
   reportTypeName,
-  data,
+  printData,
   activityBaseUrl,
   highlightActivityIds,
   resolveTranslationLanguageLabel,
 }: {
   reportTypeName: ReactRenderableReportType;
-  data: ReportDataResponse;
+  printData: ReturnType<typeof toPrintReportDocumentData>;
   activityBaseUrl: string;
   highlightActivityIds?: ReadonlySet<number>;
   resolveTranslationLanguageLabel?: ReturnType<
     typeof buildTranslationLanguageLabelResolver
   >;
 }) {
-  const printData = data as PrintReportDocumentData;
   let document: ReactNode;
   if (reportTypeName === 'custom') {
     document = (

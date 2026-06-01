@@ -78,9 +78,6 @@ function clampRangeToMaxSpan(
   end: CalendarDateString,
   maxSpanYears: number
 ): { start: CalendarDateString; end: CalendarDateString; wasClamped: boolean } {
-  if (start > end) {
-    return { start, end, wasClamped: false };
-  }
   const maxEnd = maxEndFromStart(start, maxSpanYears);
   if (end <= maxEnd) {
     return { start, end, wasClamped: false };
@@ -93,6 +90,7 @@ function clampRangeToMaxSpan(
  * and section scaffolding.
  *
  * - Single bound → infer the missing bound at `maxSpanYears` from the provided bound.
+ * - Both bounds, start after end → swap to chronological order.
  * - Both bounds, span > max → keep start, trim end.
  * - Neither bound → `defaultRange` (required).
  */
@@ -113,6 +111,9 @@ export function normalizeReportActivityDateRange(
   if (startProvided && endProvided) {
     start = startProvided;
     end = endProvided;
+    if (start > end) {
+      [start, end] = [end, start];
+    }
     const clamped = clampRangeToMaxSpan(start, end, maxSpanYears);
     start = clamped.start;
     end = clamped.end;
@@ -144,6 +145,6 @@ export function normalizeReportActivityDateRange(
     end,
     wasClamped,
     inferredBound,
-    spanDays: start <= end ? inclusiveSpanDays(start, end) : 0,
+    spanDays: inclusiveSpanDays(start, end),
   };
 }

@@ -432,6 +432,10 @@ export function ReportsPage() {
                   </div>
                 ) : (
                   <>
+                    <ReportLargeRangeWarning
+                      showLargeRangeWarning={showLargeRangeWarning}
+                      wasClamped={wasDateRangeClamped}
+                    />
                     {data.sections[0] ? (
                       <div className="space-y-4">
                         <ReportTableSummaryBar

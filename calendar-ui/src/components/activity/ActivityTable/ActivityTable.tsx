@@ -29,7 +29,7 @@ import {
 } from 'react';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
-import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
@@ -65,6 +65,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getLookAheadStatusLabel } from '@/constants/form-options';
+import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -82,23 +83,11 @@ import {
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
 import {
-  useActivityStatuses,
   useCategories,
-  useEventPlanners,
-  useMinistries,
-  useOrganizations,
-  usePitchRequiredStatuses,
-  useTags,
   useTranslationLanguages,
-  useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
-import {
-  buildActivityFilterSummaryLinesForDetailPopover,
-  getAppliedActivityFilterTypeLabels,
-  type ActivityFilterSummaryContext,
-} from '@/lib/activity-filter-summary';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   filterActivityRowsByFilters,
@@ -106,6 +95,11 @@ import {
   type ActivityListQueryParams,
   type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
+import {
+  buildActivityTableBooleanFilters,
+  buildActivityTableFilterSummaryDetails,
+  resolveEffectiveArchiveFilterVisibility,
+} from '@/lib/activity-table-summary-bar-state';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
   CORP_PACIFIC_TIME_ZONE,
@@ -773,19 +767,25 @@ export function ActivityTable({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, hasPermission } = useAuth();
-  const pitchFieldVisibility = useMemo(() => {
-    if (!user) {
-      return { canViewPitchStatus: false, canViewPitchDate: false };
-    }
-    const ctx = { permissions: user.permissions, roleName: user.roleName };
-    return {
-      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
-      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
-    };
-  }, [user]);
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+  const {
+    pitchFieldVisibility,
+    statusArchiveIds,
+    statusOptions,
+    pitchRequiredStatusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationOptions,
+    translationStatusOptions,
+    filterSummaryContext: filterSummaryContextForBar,
+    hasActivityStatuses,
+  } = useActivityTableFilterLookups(canSeeDeleted);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const { preferences, setPreferences } =
@@ -830,18 +830,8 @@ export function ActivityTable({
   const [pageIndex, setPageIndex] = useState(0);
 
   const { data: categoriesForFilter = [] } = useCategories();
-  const { data: activityStatusesForFilter = [] } = useActivityStatuses();
-  const { data: pitchRequiredStatusesForFilter = [] } =
-    usePitchRequiredStatuses();
-  const { data: tagsForFilter = [] } = useTags();
-  const { data: ministriesForFilter = [] } = useMinistries();
-  const { data: organizationsForFilter = [] } = useOrganizations();
-  const { data: usersForFilter = [] } = useUsers();
-  const { data: eventPlannersForFilter = [] } = useEventPlanners();
   const { data: translationLanguagesForFilter = [] } =
     useTranslationLanguages();
-  const { data: translationRequiredStatusesForFilter = [] } =
-    useTranslationRequiredStatuses();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -849,88 +839,7 @@ export function ActivityTable({
         .map((c) => ({ value: c.displayName, label: c.displayName })),
     [categoriesForFilter]
   );
-  const statusArchiveIds = useMemo(() => {
-    const completed = activityStatusesForFilter.find(
-      (s) => s.name === 'completed'
-    );
-    const deleted = activityStatusesForFilter.find((s) => s.name === 'deleted');
-    return {
-      completedStatusId: completed?.id,
-      deletedStatusId: deleted?.id,
-    };
-  }, [activityStatusesForFilter]);
 
-  const statusOptions = useMemo(
-    () =>
-      activityStatusesForFilter
-        .filter((s) => canSeeDeleted || s.name !== 'deleted')
-        .map((s) => ({
-          value: String(s.id),
-          label: s.displayName,
-        })),
-    [activityStatusesForFilter, canSeeDeleted]
-  );
-
-  const pitchRequiredStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatusesForFilter.map((s) => ({
-        value: s.displayName,
-        label: s.displayName,
-      })),
-    [pitchRequiredStatusesForFilter]
-  );
-
-  const tagOptions = useMemo(
-    () =>
-      tagsForFilter.map((t) => ({
-        value: String(t.id),
-        label: t.displayName ?? t.label ?? String(t.id),
-      })),
-    [tagsForFilter]
-  );
-
-  const ministryOptions = useMemo(
-    () =>
-      ministriesForFilter.map((m) => ({
-        value: String(m.id),
-        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
-      })),
-    [ministriesForFilter]
-  );
-  const organizationOptions = useMemo(
-    () =>
-      organizationsForFilter.map((o) => ({
-        value: String(o.id),
-        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
-      })),
-    [organizationsForFilter]
-  );
-  const commsContactOptions = useMemo(
-    () =>
-      usersForFilter.map((u) => ({
-        value: String(u.id),
-        label: u.name ?? u.email ?? String(u.id),
-      })),
-    [usersForFilter]
-  );
-  const eventPlannerOptions = useMemo(
-    () =>
-      eventPlannersForFilter.map((ep) => ({
-        value: String(ep.id),
-        label: ep.label ?? String(ep.id),
-      })),
-    [eventPlannersForFilter]
-  );
-  const translationOptions = useMemo(
-    () =>
-      translationLanguagesForFilter.map((l) => {
-        const displayLabel = l.shortcode
-          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
-          : (l.displayName ?? String(l.id));
-        return { value: String(l.id), label: displayLabel };
-      }),
-    [translationLanguagesForFilter]
-  );
   const translationLanguageOptionsForFilter = useMemo(
     () =>
       translationLanguagesForFilter.map((l) => ({
@@ -938,22 +847,6 @@ export function ActivityTable({
         label: l.shortcode ?? l.displayName ?? String(l.id),
       })),
     [translationLanguagesForFilter]
-  );
-  const translationStatusOptions = useMemo(
-    () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
-    [translationRequiredStatusesForFilter]
-  );
-  const translationRequiredStatusOptionsForFilter = useMemo(
-    () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
-    [translationRequiredStatusesForFilter]
   );
 
   const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
@@ -985,7 +878,7 @@ export function ActivityTable({
   ]);
 
   const savedFilterDefaultLookupsReady =
-    activityStatusesForFilter.length > 0 && !savedFiltersHook.isLoading;
+    hasActivityStatuses && !savedFiltersHook.isLoading;
 
   useEffect(() => {
     const decision = getSavedFilterAutoApplyDecision({
@@ -1046,19 +939,14 @@ export function ActivityTable({
     pitchFieldVisibility,
   ]);
 
-  const hasStatusFilter = filterState.activityStatusIds.length > 0;
-  const statusFilterIncludesCompleted =
-    statusArchiveIds.completedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.completedStatusId);
-  const statusFilterIncludesDeleted =
-    statusArchiveIds.deletedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.deletedStatusId);
-  const effectiveShowCompleted = hasStatusFilter
-    ? statusFilterIncludesCompleted
-    : showCompleted;
-  const effectiveShowDeleted = hasStatusFilter
-    ? statusFilterIncludesDeleted && canSeeDeleted
-    : showDeleted && canSeeDeleted;
+  const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
+    resolveEffectiveArchiveFilterVisibility(
+      filterState,
+      statusArchiveIds,
+      showCompleted,
+      showDeleted,
+      canSeeDeleted
+    );
 
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
@@ -1196,24 +1084,19 @@ export function ActivityTable({
   );
 
   const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
-    const hasTranslationStatus =
-      translationRequiredStatusOptionsForFilter.length > 0;
+    const hasTranslationStatus = translationStatusOptions.length > 0;
     const hasTranslationLanguages =
       translationLanguageOptionsForFilter.length > 0;
     if (!hasTranslationStatus && !hasTranslationLanguages) return undefined;
     return {
       ...(hasTranslationStatus && {
-        translationRequiredStatusOptions:
-          translationRequiredStatusOptionsForFilter,
+        translationRequiredStatusOptions: translationStatusOptions,
       }),
       ...(hasTranslationLanguages && {
         translationLanguageOptions: translationLanguageOptionsForFilter,
       }),
     };
-  }, [
-    translationRequiredStatusOptionsForFilter,
-    translationLanguageOptionsForFilter,
-  ]);
+  }, [translationStatusOptions, translationLanguageOptionsForFilter]);
 
   const filteredData = useMemo(() => {
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
@@ -1463,45 +1346,31 @@ export function ActivityTable({
     meta: { userMap, handleHeaderSort },
   });
 
-  const eventTableFilters = useMemo(() => {
-    const disabledTooltip = hasStatusFilter
-      ? 'Controlled by status filter'
-      : undefined;
-    const filters = [
-      {
-        id: 'show-completed',
-        label: 'Show completed',
-        checked: effectiveShowCompleted,
-        onCheckedChange: (checked: boolean) => {
+  const eventTableFilters = useMemo(
+    () =>
+      buildActivityTableBooleanFilters({
+        hasStatusFilter,
+        effectiveShowCompleted,
+        effectiveShowDeleted,
+        canSeeDeleted,
+        onShowCompletedChange: (checked) => {
           setActiveSavedFilter(null);
           setPreferences({ showCompleted: checked });
         },
-        disabled: hasStatusFilter,
-        disabledTooltip,
-      },
-    ];
-    if (canSeeDeleted) {
-      filters.push({
-        id: 'show-deleted',
-        label: 'Show deleted',
-        checked: effectiveShowDeleted,
-        onCheckedChange: (checked: boolean) => {
+        onShowDeletedChange: (checked) => {
           setActiveSavedFilter(null);
           setPreferences({ showDeleted: checked });
         },
-        disabled: hasStatusFilter,
-        disabledTooltip,
-      });
-    }
-    return filters;
-  }, [
-    hasStatusFilter,
-    effectiveShowCompleted,
-    effectiveShowDeleted,
-    canSeeDeleted,
-    setPreferences,
-    setActiveSavedFilter,
-  ]);
+      }),
+    [
+      hasStatusFilter,
+      effectiveShowCompleted,
+      effectiveShowDeleted,
+      canSeeDeleted,
+      setPreferences,
+      setActiveSavedFilter,
+    ]
+  );
 
   const handleFilterStateChange = useCallback(
     (nextFilterState: typeof filterState) => {
@@ -1519,55 +1388,25 @@ export function ActivityTable({
     return fromList?.name ?? activeSavedFilter.name;
   }, [activeSavedFilter, savedFiltersHook.savedFilters]);
 
-  const filterSummaryContextForBar = useMemo(
-    (): ActivityFilterSummaryContext => ({
-      statusOptions,
-      pitchRequiredStatusOptions,
-      tagOptions,
-      ministryOptions,
-      organizationOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-      translationStatusOptions,
-      translationOptions,
-    }),
-    [
-      statusOptions,
-      pitchRequiredStatusOptions,
-      tagOptions,
-      ministryOptions,
-      organizationOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-      translationStatusOptions,
-      translationOptions,
-    ]
-  );
-
-  const appliedFilterTypeLabels = useMemo(
+  const {
+    appliedFilterTypeLabels,
+    filterDetailLines,
+    hasPanelFiltersActive,
+    hasActiveCriteria,
+  } = useMemo(
     () =>
-      getAppliedActivityFilterTypeLabels(
+      buildActivityTableFilterSummaryDetails({
         filterState,
         searchKeyword,
-        filterSummaryContextForBar
-      ),
-    [filterState, searchKeyword, filterSummaryContextForBar]
-  );
-
-  const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
-    searchKeyword.trim() !== '';
-
-  const filterDetailLines = useMemo(
-    () =>
-      hasActiveCriteria
-        ? buildActivityFilterSummaryLinesForDetailPopover(
-            filterState,
-            searchKeyword,
-            filterSummaryContextForBar
-          )
-        : [],
-    [filterState, searchKeyword, filterSummaryContextForBar, hasActiveCriteria]
+        filterSummaryContext: filterSummaryContextForBar,
+        pitchFieldVisibility,
+      }),
+    [
+      filterState,
+      searchKeyword,
+      filterSummaryContextForBar,
+      pitchFieldVisibility,
+    ]
   );
 
   const handleClearPanelFilters = useCallback(() => {
@@ -1587,10 +1426,7 @@ export function ActivityTable({
     });
   }, [setPreferences, setActiveSavedFilter]);
 
-  const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
-    filterState,
-    pitchFieldVisibility
-  )
+  const tableSummaryOnClearFilters = hasPanelFiltersActive
     ? handleClearPanelFilters
     : undefined;
 

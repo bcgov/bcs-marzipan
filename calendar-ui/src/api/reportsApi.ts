@@ -1,26 +1,13 @@
 import type {
-  ActivityResponse,
   ReportDataMeta,
+  ReportDataResponse,
+  ReportSectionData,
 } from '@corpcal/shared/api/types';
 import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
-import type { ReportResponse } from '@corpcal/shared/schemas/lookup.schema';
 
 import api from './axios';
 
-export type { ReportDataMeta };
-
-export interface ReportSectionData {
-  id: string;
-  name: string;
-  order: number;
-  activities: ActivityResponse[];
-}
-
-export interface ReportDataResponse {
-  report: ReportResponse;
-  sections: ReportSectionData[];
-  meta?: ReportDataMeta;
-}
+export type { ReportDataMeta, ReportDataResponse, ReportSectionData };
 
 /** Query params for `/reports/data/:type` and CSV/XLSX/PDF export (strings as sent in the URL). */
 export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
