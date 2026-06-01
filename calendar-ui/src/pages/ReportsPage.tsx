@@ -12,7 +12,7 @@ import {
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { shouldWarnLargeReportRange } from '@corpcal/shared/reports/reportDateRange';
 import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
-import { fetchReportData, type ReportSectionData } from '@/api/reportsApi';
+import { fetchReportData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
 import { CustomReportPreviewSection } from '@/components/reports/CustomReportPreviewSection';
 import { EditReportModal } from '@/components/reports/EditReportModal';
@@ -253,6 +253,20 @@ export function ReportsPage() {
 
   const exportConfig = getExportConfig(activeReport);
 
+  const printPreviewRowTrailing =
+    activeReport === 'custom' ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="shrink-0"
+        aria-expanded={isEditModalOpen}
+        aria-haspopup="dialog"
+        onClick={handleEditReportClick}
+      >
+        Customize
+      </Button>
+    ) : undefined;
+
   if (error && activeReport) {
     return (
       <StatusMessage
@@ -325,13 +339,16 @@ export function ReportsPage() {
                     />
                   ) : undefined
                 }
+                printPreviewRowTrailing={printPreviewRowTrailing}
               />
-              <ReportTableSummaryBar
-                preferences={preferences}
-                setPreferences={setPreferences}
-                canSeeDeleted={canSeeDeleted}
-                activityCount={data?.meta?.activityCount ?? 0}
-              />
+              {activeReport !== 'custom' ? (
+                <ReportTableSummaryBar
+                  preferences={preferences}
+                  setPreferences={setPreferences}
+                  canSeeDeleted={canSeeDeleted}
+                  activityCount={data?.meta?.activityCount ?? 0}
+                />
+              ) : null}
             </div>
 
             {reports.map((report) => (
@@ -403,44 +420,28 @@ export function ReportsPage() {
                     </div>
                   ) : (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <Tabs
-                        defaultValue={data.sections[0]?.id ?? 'section-1'}
-                        className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden"
-                      >
-                        <div className="mb-4 flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3">
-                          <TabsList className="mb-0 min-w-0 shrink">
-                            {data.sections.map((section: ReportSectionData) => (
-                              <TabsTrigger key={section.id} value={section.id}>
-                                {section.name} ({section.activities.length})
-                              </TabsTrigger>
-                            ))}
-                          </TabsList>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="shrink-0"
-                            aria-expanded={isEditModalOpen}
-                            aria-haspopup="dialog"
-                            onClick={handleEditReportClick}
-                          >
-                            Edit Report
-                          </Button>
+                      {data.sections[0] ? (
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4 overflow-hidden">
+                          <ReportTableSummaryBar
+                            preferences={preferences}
+                            setPreferences={setPreferences}
+                            canSeeDeleted={canSeeDeleted}
+                            activityCount={data.meta?.activityCount ?? 0}
+                          />
+                          <CustomReportPreviewSection
+                            section={data.sections[0]}
+                            config={customReportFields}
+                            onFieldsChange={setCustomReportFields}
+                            highlightedActivityIds={reportHighlightSet}
+                          />
                         </div>
-                        {data.sections.map((section: ReportSectionData) => (
-                          <TabsContent
-                            key={section.id}
-                            value={section.id}
-                            className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
-                          >
-                            <CustomReportPreviewSection
-                              section={section}
-                              config={customReportFields}
-                              onFieldsChange={setCustomReportFields}
-                              highlightedActivityIds={reportHighlightSet}
-                            />
-                          </TabsContent>
-                        ))}
-                      </Tabs>
+                      ) : (
+                        <div className="flex min-h-0 flex-1 items-center justify-center py-12">
+                          <p className="text-muted-foreground">
+                            No activities to display
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )
                 ) : (

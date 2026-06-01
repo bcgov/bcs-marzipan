@@ -36,6 +36,8 @@ export interface ReportFiltersBarProps {
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
   /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
   printPreviewRowLeading?: ReactNode;
+  /** Optional trailing controls on the same row (e.g. Customize, print preview). */
+  printPreviewRowTrailing?: ReactNode;
 }
 
 /**
@@ -46,6 +48,7 @@ export function ReportFiltersBar({
   preferences,
   setPreferences,
   printPreviewRowLeading,
+  printPreviewRowTrailing,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -434,11 +437,16 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
-      {printPreviewRowLeading ? (
+      {printPreviewRowLeading || printPreviewRowTrailing ? (
         <div className="mb-2 flex h-9 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center">
             {printPreviewRowLeading}
           </div>
+          {printPreviewRowTrailing ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {printPreviewRowTrailing}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
