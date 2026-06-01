@@ -34,7 +34,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     get: vi.fn(),
   };
   const applicationSettings = {};
-  const lookupsService = {};
+  const lookupsService = {} as never;
 
   let service: ReportsService;
   const ctx = {} as never;
@@ -48,7 +48,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       pdfGeneratorService as never,
       configService as never,
       applicationSettings as never,
-      lookupsService as never
+      lookupsService
     );
 
     vi.spyOn(service, 'findReportByName').mockResolvedValue({
@@ -173,8 +173,8 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   });
 
   it('filters omitted activities out of each month section', async () => {
-    const retainedActivityDate = '2026-06-10';
-    const omittedActivityDate = '2026-06-12';
+    const retainedActivityDate = '2026-05-10';
+    const omittedActivityDate = '2026-05-12';
     const expectedSectionId = retainedActivityDate.slice(0, 7);
 
     activitiesService.findAll.mockResolvedValue([
@@ -187,7 +187,10 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
 
     const result = await service.getReportData(
       'thirty-sixty-ninety',
-      defaultQuery,
+      reportDataQuerySchema.parse({
+        startDateFrom: '2026-05-01',
+        startDateTo: '2026-05-31',
+      }),
       ctx
     );
 
@@ -197,10 +200,6 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     expect(matchingSection?.activities.map((activity) => activity.id)).toEqual([
       10,
     ]);
-    expect(
-      result.sections
-        .filter((section) => section.id !== expectedSectionId)
-        .every((section) => section.activities.length === 0)
-    ).toBe(true);
+    expect(result.sections).toHaveLength(1);
   });
 });
