@@ -1,5 +1,8 @@
 name: Update calendar-ui runtime config
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
