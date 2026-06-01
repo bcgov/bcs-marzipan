@@ -23,6 +23,10 @@ import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWa
 import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
 import { ReportTableSummaryBar } from '@/components/reports/ReportTableSummaryBar';
 import { StatusMessage } from '@/components/shared';
+import {
+  tableContainer,
+  tableScrollWrapper,
+} from '@/components/table/tableConstants';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +58,14 @@ import { cn } from '@/lib/utils';
 
 /** Persists fullscreen print preview width (full viewport vs Letter content width). */
 const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
+
+/**
+ * Max height for the print preview panel so report content scrolls inside the bordered
+ * container. Reserves space for app header, PageContainer py-8, page header, tabs,
+ * filters, summary bar, preview toolbar, and bottom gutter.
+ */
+const REPORT_PRINT_PREVIEW_MAX_HEIGHT =
+  'calc(100dvh - var(--header-height, 3.5rem) - 21rem)';
 
 type ReportPreviewSheetWidthMode = 'full' | 'print';
 
@@ -280,7 +292,7 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden">
+    <>
       <PageHeader
         title="Reports"
         description="Generate and export various activity reports"
@@ -300,99 +312,98 @@ export function ReportsPage() {
         }
       />
 
-      <div className="flex h-[calc(100dvh-11rem)] min-h-0 min-w-0 flex-col overflow-hidden">
-        <Tabs
-          value={activeReport}
-          onValueChange={handleTabChange}
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        >
-          <div className="mb-0 shrink-0">
-            <TabsList className="mb-0" variant="line" size="med">
-              {reports.map((report) => (
-                <TabsTrigger key={report.id} value={report.name}>
-                  {report.displayName}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+      <Tabs value={activeReport} onValueChange={handleTabChange}>
+        <div className="mb-0">
+          <TabsList className="mb-0" variant="line" size="med">
+            {reports.map((report) => (
+              <TabsTrigger key={report.id} value={report.name}>
+                {report.displayName}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-          <div
-            className={cn(
-              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-              isFullscreenPrintPreview(activeReport) ? 'gap-0' : 'gap-4'
-            )}
-          >
-            <div className="flex shrink-0 flex-col gap-4">
-              <ReportFiltersBar
+        <div
+          className={cn(
+            'mt-0 min-w-0',
+            isFullscreenPrintPreview(activeReport) ? 'space-y-0' : 'space-y-4'
+          )}
+        >
+          <div className="flex flex-col gap-4">
+            <ReportFiltersBar
+              preferences={preferences}
+              setPreferences={setPreferences}
+              printPreviewRowLeading={
+                reportUsesDayRangeTabs(activeReport) ? (
+                  <LookAheadDayRangeTabs
+                    preferences={preferences}
+                    setPreferences={setPreferences}
+                  />
+                ) : reportUsesMonthRangeTabs(activeReport) ? (
+                  <ReportMonthRangeTabs
+                    preferences={preferences}
+                    setPreferences={setPreferences}
+                  />
+                ) : undefined
+              }
+              printPreviewRowTrailing={printPreviewRowTrailing}
+            />
+            {activeReport !== 'custom' ? (
+              <ReportTableSummaryBar
                 preferences={preferences}
                 setPreferences={setPreferences}
-                printPreviewRowLeading={
-                  reportUsesDayRangeTabs(activeReport) ? (
-                    <LookAheadDayRangeTabs
-                      preferences={preferences}
-                      setPreferences={setPreferences}
-                    />
-                  ) : reportUsesMonthRangeTabs(activeReport) ? (
-                    <ReportMonthRangeTabs
-                      preferences={preferences}
-                      setPreferences={setPreferences}
-                    />
-                  ) : undefined
-                }
-                printPreviewRowTrailing={printPreviewRowTrailing}
+                canSeeDeleted={canSeeDeleted}
+                activityCount={data?.meta?.activityCount ?? 0}
               />
-              {activeReport !== 'custom' ? (
-                <ReportTableSummaryBar
-                  preferences={preferences}
-                  setPreferences={setPreferences}
-                  canSeeDeleted={canSeeDeleted}
-                  activityCount={data?.meta?.activityCount ?? 0}
-                />
-              ) : null}
-            </div>
+            ) : null}
+          </div>
 
-            {reports.map((report) => (
-              <TabsContent
-                key={report.id}
-                value={report.name}
-                className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none data-[state=inactive]:hidden"
-              >
-                {isLoading && !data ? (
-                  <div className="flex min-h-0 flex-1 items-center justify-center py-12">
-                    <p className="text-muted-foreground">Loading report...</p>
-                  </div>
-                ) : data ? (
-                  isFullscreenPrintPreview(report.name) ? (
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
-                        <ReportLargeRangeWarning
-                          showLargeRangeWarning={showLargeRangeWarning}
-                          wasClamped={wasDateRangeClamped}
+          {reports.map((report) => (
+            <TabsContent
+              key={report.id}
+              value={report.name}
+              className="mt-0 outline-none data-[state=inactive]:hidden"
+            >
+              {isLoading && !data ? (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-muted-foreground">Loading report...</p>
+                </div>
+              ) : data ? (
+                isFullscreenPrintPreview(report.name) ? (
+                  <div
+                    className="flex min-h-0 flex-col"
+                    style={{ maxHeight: REPORT_PRINT_PREVIEW_MAX_HEIGHT }}
+                  >
+                    <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
+                      <ReportLargeRangeWarning
+                        showLargeRangeWarning={showLargeRangeWarning}
+                        wasClamped={wasDateRangeClamped}
+                      />
+                      <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={previewSheetWidthMode === 'print'}
+                          onCheckedChange={(checked) =>
+                            setPreviewSheetWidthMode(checked ? 'print' : 'full')
+                          }
+                          aria-label="Print width"
+                          className="border-input"
                         />
-                        <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={previewSheetWidthMode === 'print'}
-                            onCheckedChange={(checked) =>
-                              setPreviewSheetWidthMode(
-                                checked ? 'print' : 'full'
-                              )
-                            }
-                            aria-label="Print preview"
-                            className="border-input"
-                          />
-                          Print preview
-                        </label>
-                      </div>
+                        Print width
+                      </label>
+                    </div>
+                    <div
+                      className={cn(
+                        'report-html-container min-h-0 flex-1',
+                        tableContainer,
+                        'border-border',
+                        isFetching && 'opacity-[0.98]'
+                      )}
+                    >
                       <div
-                        className={cn(
-                          'report-html-container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white transition-opacity duration-150',
-                          isFetching && 'opacity-[0.98]'
-                        )}
+                        className={tableScrollWrapper}
+                        aria-label="Report preview"
                       >
-                        <div
-                          className="min-h-0 min-w-0 flex-1 overflow-auto px-6 pt-0 pb-6"
-                          aria-label="Report preview"
-                        >
+                        <div className="px-6 pt-0 pb-6">
                           <div
                             className={
                               previewSheetWidthMode === 'full'
@@ -418,44 +429,44 @@ export function ReportsPage() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                      {data.sections[0] ? (
-                        <div className="flex min-h-0 min-w-0 flex-1 flex-col space-y-4 overflow-hidden">
-                          <ReportTableSummaryBar
-                            preferences={preferences}
-                            setPreferences={setPreferences}
-                            canSeeDeleted={canSeeDeleted}
-                            activityCount={data.meta?.activityCount ?? 0}
-                          />
-                          <CustomReportPreviewSection
-                            section={data.sections[0]}
-                            config={customReportFields}
-                            onFieldsChange={setCustomReportFields}
-                            highlightedActivityIds={reportHighlightSet}
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex min-h-0 flex-1 items-center justify-center py-12">
-                          <p className="text-muted-foreground">
-                            No activities to display
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                ) : (
-                  <div className="flex min-h-0 flex-1 items-center justify-center py-12">
-                    <p className="text-muted-foreground">
-                      Select filters and the report will load automatically
-                    </p>
                   </div>
-                )}
-              </TabsContent>
-            ))}
-          </div>
-        </Tabs>
-      </div>
+                ) : (
+                  <>
+                    {data.sections[0] ? (
+                      <div className="space-y-4">
+                        <ReportTableSummaryBar
+                          preferences={preferences}
+                          setPreferences={setPreferences}
+                          canSeeDeleted={canSeeDeleted}
+                          activityCount={data.meta?.activityCount ?? 0}
+                        />
+                        <CustomReportPreviewSection
+                          section={data.sections[0]}
+                          config={customReportFields}
+                          onFieldsChange={setCustomReportFields}
+                          highlightedActivityIds={reportHighlightSet}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-12">
+                        <p className="text-muted-foreground">
+                          No activities to display
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-muted-foreground">
+                    Select filters and the report will load automatically
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          ))}
+        </div>
+      </Tabs>
 
       <EditReportModal
         open={isEditModalOpen}
@@ -464,6 +475,6 @@ export function ReportsPage() {
         onFieldsChange={setCustomReportFields}
         onSave={handleSaveCustomReportConfig}
       />
-    </div>
+    </>
   );
 }
